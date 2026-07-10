@@ -16,7 +16,7 @@ export default function BottomNav() {
     { to: '/spots', label: t('nav.spots'), Icon: Compass, testid: 'bottom-nav-explore' },
     { to: '/homestays', label: t('nav.homestays'), Icon: Sparkles, testid: 'bottom-nav-book' },
     { to: '/responsible', label: 'Green', Icon: Bookmark, testid: 'bottom-nav-saved' },
-    { to: user ? (user.role === 'provider' ? '/provider/dashboard' : '/login') : '/login', label: user ? (user.name?.split(' ')[0] || 'Me') : t('nav.login'), Icon: User, testid: 'bottom-nav-profile' },
+    { to: user ? (user.role === 'provider' ? '/provider/dashboard' : '/dashboard') : '/login', label: user ? (user.name?.split(' ')[0] || 'Me') : t('nav.login'), Icon: User, testid: 'bottom-nav-profile' },
   ];
 
   return (

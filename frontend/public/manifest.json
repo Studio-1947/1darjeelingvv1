@@ -1,0 +1,26 @@
+{
+  "short_name": "1 Darjeeling",
+  "name": "1 Darjeeling — One Darjeeling. Every experience.",
+  "description": "Tourism spots, homestays, drivers, cafes, cultural events and Himalayan biodiversity — in a single app.",
+  "icons": [
+    {
+      "src": "/logo192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "theme_color": "#2C5E3B",
+  "background_color": "#FAFAF7",
+  "categories": ["travel", "lifestyle", "food"]
+}

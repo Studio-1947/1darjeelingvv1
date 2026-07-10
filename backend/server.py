@@ -290,7 +290,42 @@ async def create_booking(body: BookingIn, user=Depends(current_user)):
 @api.get("/bookings/me")
 async def my_bookings(user=Depends(current_user)):
     items = await db.bookings.find({"user_id": user["id"]}, {"_id": 0}).sort("created_at", -1).to_list(200)
+    # Enrich with listing details
+    for b in items:
+        listing = await db.listings.find_one({"id": b.get("listing_id")}, {"_id": 0, "id": 1, "title": 1, "image": 1, "location": 1, "type": 1, "price": 1})
+        b["listing"] = listing
     return {"items": items}
+
+
+@api.get("/bookings/provider")
+async def provider_bookings(user=Depends(current_user)):
+    """Bookings received by the currently-logged-in provider (for their listings)."""
+    # Find provider profile
+    provider = await db.providers.find_one({"user_id": user["id"]}, {"_id": 0})
+    # Find all listing IDs owned by this user
+    my_listings = await db.listings.find({"provider_id": {"$in": [user["id"], provider["id"] if provider else None]}}, {"_id": 0}).to_list(500)
+    listing_ids = [l["id"] for l in my_listings]
+    if not listing_ids:
+        return {"items": [], "stats": {"total": 0, "confirmed": 0, "pending": 0, "revenue": 0}, "listings": []}
+    bookings = await db.bookings.find({"listing_id": {"$in": listing_ids}}, {"_id": 0}).sort("created_at", -1).to_list(500)
+    # Enrich with customer name + listing snapshot
+    for b in bookings:
+        cust = await db.users.find_one({"id": b.get("user_id")}, {"_id": 0, "name": 1, "phone": 1})
+        b["customer"] = cust
+        b["listing"] = next((l for l in my_listings if l["id"] == b["listing_id"]), None)
+    # Compute revenue from listing prices * confirmed bookings (best-effort)
+    confirmed = [b for b in bookings if b.get("status") == "confirmed"]
+    revenue = 0
+    for b in confirmed:
+        l = b.get("listing") or {}
+        revenue += int(l.get("price") or 0)
+    stats = {
+        "total": len(bookings),
+        "confirmed": len(confirmed),
+        "pending": len([b for b in bookings if b.get("status") == "pending_payment"]),
+        "revenue": revenue,
+    }
+    return {"items": bookings, "stats": stats, "listings": my_listings}
 
 
 # ============ PAYMENTS (Razorpay) ============

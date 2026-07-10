@@ -10,6 +10,7 @@ import ListingDetail from '@/pages/ListingDetail';
 import Login from '@/pages/Login';
 import ProviderOnboard from '@/pages/ProviderOnboard';
 import ProviderDashboard from '@/pages/ProviderDashboard';
+import TouristDashboard from '@/pages/TouristDashboard';
 import Responsible from '@/pages/Responsible';
 import Privacy from '@/pages/Privacy';
 import Admin from '@/pages/Admin';
@@ -33,6 +34,7 @@ export default function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/provider/onboard" element={<ProviderOnboard />} />
             <Route path="/provider/dashboard" element={<ProviderDashboard />} />
+            <Route path="/dashboard" element={<TouristDashboard />} />
             <Route path="/responsible" element={<Responsible />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/admin" element={<Admin />} />

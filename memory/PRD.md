@@ -1,81 +1,79 @@
 # 1 Darjeeling — Product Requirements Document
 
 ## Problem Statement (original)
-Build a tourism + local marketplace app for Darjeeling. Tourists explore tourism spots, drivers, homestays, local shops, cafes, cultural events and biodiversity in one place. Architecture supports future online ordering + local services. Onboarding flows for service providers (homestays, drivers, shops) and tourists. Service provider registration fee: **₹99 one-time**. Tourist booking charge: **₹1 per booking** (stays + drivers). Design language: **light and bold**. All fonts must be Google Fonts. Available in **Bengali (base), Hindi, Nepali, English**. Login: Google Auth + WhatsApp OTP. Hostinger VPS deployment. Include **Privacy Policy** page and **Responsible Tourism** page.
+Full-stack tourism + local marketplace for Darjeeling — tourists explore spots, homestays, drivers, shops, cafes, events & biodiversity; providers onboard (₹99 one-time); tourists pay ₹1 per stay/driver booking. Design: light and bold, Google Sans font, mixed MakeMyTrip + Instagram vibe. Base language English, also Bengali/Hindi/Nepali. Google Auth + WhatsApp OTP. Hostinger VPS deployable. Includes Privacy Policy + Responsible Tourism pages, and mobile-app installable (PWA).
 
 ## User Personas
-1. **Tourist** — Traveller planning a Darjeeling trip. Wants curated homestays, drivers, cafes, events and cultural insight in one app. Speaks Bengali/Hindi/Nepali/English.
-2. **Service Provider** — Local homestay owner, driver, shop owner, cafe. Pays ₹99 once, lists business, receives tourist bookings.
-3. **Admin** — 1 Darjeeling operations team. Seeds content, monitors platform health.
+- **Tourist** — Browses discovery feed, books homestays/drivers, keeps track of bookings in a personal dashboard.
+- **Service Provider** — Homestay/driver/shop/cafe owner; onboards for ₹99, manages listings + received bookings + revenue in a provider dashboard.
+- **Admin** — Ops team; seeds content, monitors stats.
 
 ## Core Requirements (static)
-- Discovery-first UX with light-and-bold Google-fonts typography (Anek Bangla + Hind Siliguri + Anek Devanagari)
-- Multi-language: **English default (Bengali/Hindi/Nepali available via language switcher)** + English, Hindi, Nepali (i18next)
-- WhatsApp OTP login (mocked in dev — universal code `123456` accepted, plus per-session mock OTP)
-- Google OAuth (deferred — button visible but disabled until keys supplied)
-- Razorpay payments — ₹99 provider registration, ₹1 booking commission
-- Server-side HMAC-SHA256 signature verification for every payment
-- Privacy policy + Responsible tourism content pages
-- Deployable on Hostinger VPS (standard React build + FastAPI + MongoDB)
+- Discovery-first, mobile-first UX; installable as PWA (Add to Home Screen on iOS/Android).
+- Multi-language: English (default), Bengali, Hindi, Nepali (i18next, `Google Sans` + Noto scripts).
+- WhatsApp OTP login (mocked; universal code `123456` accepted).
+- Google OAuth (deferred — placeholder button in login).
+- Razorpay payments — ₹99 provider registration + ₹1 per booking commission (server-side HMAC-SHA256 verification).
+- Provider dashboard with bookings + revenue + listings management.
+- Tourist dashboard with bookings history + stats + quick actions.
+- Privacy policy + Responsible tourism pages.
 
 ## Architecture
-- **Frontend**: React 19 (CRA + craco), Tailwind, framer-motion, react-i18next, react-router-dom v7, Radix/shadcn primitives
-- **Backend**: FastAPI + motor (async MongoDB) + PyJWT + razorpay SDK
-- **DB**: MongoDB (`one_darjeeling`) — collections: `users`, `otps`, `providers`, `listings`, `bookings`, `payments`
-- **Auth**: JWT (30-day) signed with `JWT_SECRET`; stored in `localStorage` on frontend
-- **Payments**: Razorpay Standard Checkout — order creation on backend, checkout on frontend, HMAC verify on backend
+- **Frontend**: React 19 (CRA/craco), Tailwind, framer-motion, react-i18next, react-router-dom v7. Google Sans + DM Sans + Noto Sans (Bengali/Devanagari) via Google Fonts.
+- **Backend**: FastAPI + motor (async MongoDB) + PyJWT + razorpay SDK.
+- **DB**: MongoDB (`one_darjeeling`) — collections: `users`, `otps`, `providers`, `listings`, `bookings`, `payments`.
+- **PWA**: `manifest.json` with theme #2C5E3B + apple-mobile-web-app meta tags for standalone iOS install.
 
 ## Implemented (Jan 2026)
-### Backend (`/app/backend/server.py`)
-- `GET /api/` health
+### Backend
 - Auth: `POST /api/auth/otp/send`, `POST /api/auth/otp/verify`, `GET /api/auth/me`
-- Users: `PATCH /api/users/me`
 - Providers: `POST /api/providers/onboard`, `GET /api/providers/me`
-- Listings (unified for spot/homestay/driver/shop/cafe/event/biodiversity): `GET /api/listings?type=&q=`, `GET /api/listings/{id}`, `POST /api/listings`
-- Bookings: `POST /api/bookings`, `GET /api/bookings/me`
-- Payments (Razorpay): `POST /api/payments/order`, `POST /api/payments/verify`
-- Admin: `POST /api/admin/seed` (idempotent — 27 items), `GET /api/admin/stats`
-- Seed data (`/app/backend/seed_data.py`) — 6 spots + 4 homestays + 3 drivers + 3 shops + 3 cafes + 4 events + 4 biodiversity entries
+- Listings (all 7 types): `GET /api/listings?type=&q=`, `GET /api/listings/{id}`, `POST /api/listings`
+- Bookings: `POST /api/bookings`, `GET /api/bookings/me` (with listing enrichment), `GET /api/bookings/provider` (with customer + stats + revenue)
+- Payments: `POST /api/payments/order`, `POST /api/payments/verify` (HMAC signature check)
+- Admin: `POST /api/admin/seed` (27 items), `GET /api/admin/stats`
 
 ### Frontend
-- Light-bold design system with `Anek Bangla`, `Hind Siliguri`, `Anek Devanagari` Google fonts; Pine Green / Prayer Flag Red / Golden Yellow palette
-- Pages: `Discover`, `Category` (per-type + search), `ListingDetail` (with booking sidebar), `Login` (WhatsApp OTP + role toggle + Google-soon), `ProviderOnboard`, `ProviderDashboard`, `Responsible`, `Privacy`, `Admin`
-- Language switcher (Bengali/English/Hindi/Nepali) — English default (Bengali/Hindi/Nepali available via language switcher), persists in localStorage
-- Razorpay checkout wired for provider registration (₹99) and booking commission (₹1)
-- Mock OTP shown in the UI + universal `123456` for testing
+- **Design system**: Google Sans font stack; Pine Green / Prayer-Flag Red / Golden Yellow; Light & bold with generous spacing; Instagram + MakeMyTrip hybrid.
+- **Discover home**: Instagram-style perfectly circular story avatars with gradient rings, MMT-style booking widget (Homestays/Drivers/Spots tabs), gradient deal cards, horizontal spot rail with "Explore" pills, homestay quick-pick with "Book Now" buttons, Instagram feed with contextual CTAs, provider onboarding banner.
+- **Category page**: Instagram Explore-style grid + Feed view toggle; each tile shows contextual CTA (Book Now / Talk to Driver / Visit Shop / Join Event / Learn More / Explore).
+- **Listing detail**: Heart + Share floating buttons; Get Directions + Call Now action pills; contextual primary CTA in booking sidebar; mobile sticky bottom-bar CTA.
+- **Login**: role toggle (Tourist / Provider), mock OTP with universal code display, Google button placeholder.
+- **Provider Dashboard** (NEW): Status badge, 4 gradient stat cards (Total bookings, Confirmed, Revenue ₹, Listings live), tabs [Bookings | My listings | Business profile]. Each booking row shows customer + dates + notes + Call & WhatsApp quick actions.
+- **Tourist Dashboard** (NEW): Avatar profile header, 3 gradient stats (Bookings / Upcoming / Trips taken), booking cards with status pills, Quick actions grid.
+- **Clean minimal navbar**: Brand + prominent center search + language + user avatar circle (or Log-in pill). Provider CTA moved to home banner / bottom nav.
+- **Mobile bottom tab nav** (Instagram-style): Home / Explore / Book / Green / Profile (5 tabs with safe-area padding).
+- **PWA**: `manifest.json`, apple-touch-icon meta tags — installable on iOS/Android home screen.
+- Pages: Discover, Category (7 types + search), ListingDetail, Login, ProviderOnboard, ProviderDashboard, TouristDashboard, Responsible, Privacy, Admin.
 
 ### Testing (Iteration 1)
-- Backend: **23/23 checks passed (100%)** — auth, listings, providers, bookings, Razorpay order creation on both flows, signature rejection, admin stats. All validated against public URL.
+- Backend: **23/23 checks passed** — auth, listings, providers, bookings, Razorpay orders (₹99 + ₹1), signature rejection, admin stats.
 
-## Backlog / Next Actions (P0 → P2)
+## Backlog / Next Actions
 
 ### P0
-- Wire real WhatsApp OTP (MSG91/Twilio) — currently MOCKED
-- Enable Google OAuth (needs `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET`) — button placeholder in Login page
-- Provider dashboard: list of bookings received + revenue summary
-- Admin: content moderation (approve/reject provider listings)
+- Wire real WhatsApp OTP (MSG91/Twilio)
+- Enable Google OAuth (needs GOOGLE_CLIENT_ID + SECRET)
+- Test dashboards with real E2E (testing agent)
+- Add PWA install prompt + service worker for offline shell
 
 ### P1
-- Online ordering for local shops (cart + Razorpay full-value payment, not just ₹1)
-- Reviews & ratings on listings
-- Provider image upload (currently URL-only) — needs S3/Cloudinary
-- Map view for spots/homestays (Google Maps or Mapbox)
-- Booking calendar (block dates already booked on homestays)
+- Provider: edit/delete listings inline, add multiple listings per provider
+- Tourist: saved/favourite listings screen, in-app messages with providers
+- Booking calendar with date blocking
+- Reviews & ratings
 
 ### P2
+- Full local-shop online ordering (cart + Razorpay full value)
 - Notification system (WhatsApp/email confirmations)
-- Referral / promo codes
-- Multi-currency for international tourists
-- Blog/Journal for responsible tourism content
-- Progressive Web App (offline discovery for spotty hill signal)
+- Referral codes
+- Full offline PWA with cached listings
 
 ## Deployment (Hostinger VPS)
-1. `git push` codebase (or `Save to GitHub` in Emergent chat)
-2. On VPS: Node 20, Python 3.11, MongoDB 7, Nginx, PM2/systemd, Certbot for SSL
-3. Frontend: `yarn build` → serve `build/` via Nginx
-4. Backend: `uvicorn server:app` under systemd, proxied by Nginx at `/api`
-5. Update `REACT_APP_BACKEND_URL` to production domain
-6. Add Razorpay LIVE keys and production Google OAuth credentials
-7. Configure Razorpay webhook for async payment confirmation
+Node 20 + Python 3.11 + MongoDB 7 + Nginx + systemd + Certbot.
+- Frontend: `yarn build` → serve via Nginx
+- Backend: `uvicorn` under systemd, proxied at `/api`
+- Add Razorpay LIVE + production Google OAuth keys
+- Configure Razorpay webhook
 
 _Last updated: January 2026_
