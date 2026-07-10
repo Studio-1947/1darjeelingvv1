@@ -10,7 +10,7 @@ import os
 import logging
 import hmac
 import hashlib
-import random
+import secrets as _secrets
 import uuid
 import jwt as pyjwt
 from pathlib import Path
@@ -152,7 +152,7 @@ async def root():
 @api.post("/auth/otp/send")
 async def send_otp(body: SendOTPBody):
     """Mock WhatsApp OTP send. Any 6-digit code will work; universal test code is '123456'."""
-    otp = str(random.randint(100000, 999999))
+    otp = f"{_secrets.randbelow(1000000):06d}"
     await db.otps.update_one(
         {"phone": body.phone},
         {"$set": {"phone": body.phone, "otp": otp, "channel": body.channel, "created_at": now_iso()}},

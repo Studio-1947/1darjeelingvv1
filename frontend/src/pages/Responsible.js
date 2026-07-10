@@ -21,7 +21,7 @@ export default function Responsible() {
         {items.map((p, i) => {
           const Icon = ICONS[i % ICONS.length];
           return (
-            <div key={i} className="card-shell p-5 md:p-7 flex gap-4 md:gap-5" data-testid={`responsible-principle-${i}`}>
+            <div key={p.t} className="card-shell p-5 md:p-7 flex gap-4 md:gap-5" data-testid={`responsible-principle-${i}`}>
               <div className="w-11 h-11 md:w-12 md:h-12 rounded-2xl bg-pine text-white grid place-items-center flex-shrink-0">
                 <Icon size={20} />
               </div>

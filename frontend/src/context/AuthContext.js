@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
 import api from '@/lib/api';
 
 const AuthCtx = createContext(null);
@@ -13,7 +13,7 @@ export function AuthProvider({ children }) {
     try {
       const { data } = await api.get('/auth/me');
       setUser(data.user);
-    } catch {
+    } catch (e) {
       localStorage.removeItem('token');
       setUser(null);
     } finally { setLoading(false); }
@@ -21,20 +21,22 @@ export function AuthProvider({ children }) {
 
   useEffect(() => { refresh(); }, [refresh]);
 
-  const login = (token, u) => {
+  const login = useCallback((token, u) => {
     localStorage.setItem('token', token);
     setUser(u);
-  };
-  const logout = () => {
+  }, []);
+
+  const logout = useCallback(() => {
     localStorage.removeItem('token');
     setUser(null);
-  };
+  }, []);
 
-  return (
-    <AuthCtx.Provider value={{ user, loading, login, logout, refresh, setUser }}>
-      {children}
-    </AuthCtx.Provider>
+  const value = useMemo(
+    () => ({ user, loading, login, logout, refresh, setUser }),
+    [user, loading, login, logout, refresh]
   );
+
+  return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;
 }
 
 export const useAuth = () => useContext(AuthCtx);

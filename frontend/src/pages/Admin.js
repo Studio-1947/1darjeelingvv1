@@ -1,11 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import api from '@/lib/api';
 
 export default function Admin() {
   const [stats, setStats] = useState(null);
   const [msg, setMsg] = useState('');
-  const load = () => api.get('/admin/stats').then((r) => setStats(r.data));
-  useEffect(() => { load(); }, []);
+
+  const load = useCallback(() => api.get('/admin/stats').then((r) => setStats(r.data)), []);
+
+  useEffect(() => { load(); }, [load]);
 
   const seed = async () => {
     setMsg('Seeding…');

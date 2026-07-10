@@ -16,7 +16,7 @@ export default function BookingConfirmation({ open, onClose, mode = 'booking', d
   const providerPhone = provider.contact_phone || provider.phone || '';
 
   const copyId = async () => {
-    try { await navigator.clipboard.writeText(data.id || ''); } catch (e) { /* ignore */ }
+    try { await navigator.clipboard.writeText(data.id || ''); } catch (e) { console.warn('copy failed', e); }
   };
 
   return (

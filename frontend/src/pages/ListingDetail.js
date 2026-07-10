@@ -48,9 +48,9 @@ export default function ListingDetail() {
     if (!item) return;
     const url = window.location.href;
     if (navigator.share) {
-      try { await navigator.share({ title: item.title, text: item.description, url }); return; } catch (e) { /* fall through */ }
+      try { await navigator.share({ title: item.title, text: item.description, url }); return; } catch (e) { console.warn('share failed', e); }
     }
-    try { await navigator.clipboard.writeText(url); setMsg('Link copied!'); setTimeout(() => setMsg(''), 1500); } catch (e) { /* ignore */ }
+    try { await navigator.clipboard.writeText(url); setMsg('Link copied!'); setTimeout(() => setMsg(''), 1500); } catch (e) { console.warn('clipboard failed', e); }
   };
 
   const doBook = async () => {
