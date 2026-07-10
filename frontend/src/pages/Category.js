@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useSearchParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import api from '@/lib/api';
-import ListingCard from '@/components/ListingCard';
+import FeedCard from '@/components/FeedCard';
+import { LayoutGrid, Rows3, MapPin } from 'lucide-react';
 
 const TYPE_MAP = {
   spots: 'spot',
@@ -22,6 +23,7 @@ export default function Category({ typeOverride }) {
   const type = typeOverride ? typeOverride : TYPE_MAP[paramType];
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [view, setView] = useState('grid'); // 'grid' or 'feed'
 
   useEffect(() => {
     setLoading(true);
@@ -33,20 +35,58 @@ export default function Category({ typeOverride }) {
   const title = type ? t(`categories.${type}`) : (q ? `“${q}”` : t('nav.discover'));
 
   return (
-    <div className="mx-auto max-w-7xl px-4 md:px-8 py-8 md:py-10">
-      <div className="mb-6 md:mb-8">
-        <h1 className="font-display font-extrabold text-3xl sm:text-4xl md:text-5xl text-ink">{title}</h1>
-        {q && <p className="mt-2 text-ink-soft">{items.length} results</p>}
+    <div className="mx-auto max-w-6xl px-4 md:px-6 py-6 md:py-8">
+      {/* Sticky sub-header */}
+      <div className="flex items-end justify-between mb-4 md:mb-6">
+        <div>
+          {q && <div className="text-[11px] font-bold uppercase tracking-widest text-flag">Search</div>}
+          <h1 className="font-display font-extrabold text-3xl sm:text-4xl md:text-5xl text-ink leading-tight">{title}</h1>
+          <p className="mt-1 text-sm text-ink-soft">{items.length} results</p>
+        </div>
+        <div className="hidden sm:flex items-center gap-1 p-1 rounded-full bg-white border border-[var(--line)]">
+          <button onClick={() => setView('grid')} data-testid="view-grid"
+            className={`p-2 rounded-full ${view === 'grid' ? 'bg-mist text-pine' : 'text-ink-soft'}`}>
+            <LayoutGrid size={16} />
+          </button>
+          <button onClick={() => setView('feed')} data-testid="view-feed"
+            className={`p-2 rounded-full ${view === 'feed' ? 'bg-mist text-pine' : 'text-ink-soft'}`}>
+            <Rows3 size={16} />
+          </button>
+        </div>
       </div>
+
       {loading ? (
         <p className="text-ink-soft">{t('common.loading')}</p>
       ) : items.length === 0 ? (
         <div className="mist-panel p-8 md:p-10 text-center">
           <p className="text-ink-soft">No listings yet in this category.</p>
         </div>
+      ) : view === 'grid' ? (
+        // Instagram Explore-style grid: tight, image-first
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1.5 sm:gap-3 md:gap-4">
+          {items.map((it) => (
+            <Link key={it.id} to={`/listing/${it.id}`} data-testid={`grid-tile-${it.id}`}
+              className="block relative aspect-square overflow-hidden rounded-lg sm:rounded-2xl bg-mist group">
+              {it.image && (
+                <img src={it.image} alt={it.title}
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
+              )}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent transition-opacity" />
+              <div className="absolute bottom-0 inset-x-0 p-2 sm:p-3 text-white">
+                <div className="font-display font-extrabold text-xs sm:text-sm md:text-base leading-tight line-clamp-2 drop-shadow">{it.title}</div>
+                <div className="text-[10px] text-white/90 flex items-center gap-1 mt-0.5"><MapPin size={10} /> <span className="line-clamp-1">{it.location}</span></div>
+              </div>
+              {it.price > 0 && (
+                <div className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-white/95 text-ink text-[11px] font-extrabold">
+                  ₹{it.price}
+                </div>
+              )}
+            </Link>
+          ))}
+        </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6">
-          {items.map((it) => <ListingCard key={it.id} item={it} />)}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
+          {items.map((it, i) => <FeedCard key={it.id} item={it} priority={i < 2} />)}
         </div>
       )}
     </div>

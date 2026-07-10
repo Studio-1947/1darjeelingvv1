@@ -87,6 +87,9 @@ html[lang="ne"] h1, html[lang="ne"] h2, html[lang="ne"] h3, html[lang="ne"] h4 {
 ::-webkit-scrollbar-thumb { background: #C9D3CC; border-radius: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
 
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
 /* Utility */
 .btn-hover { transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease; }
 .btn-hover:hover { transform: translateY(-2px); box-shadow: 0 12px 24px -8px rgba(20,32,26,0.18); }
