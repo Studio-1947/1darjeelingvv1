@@ -1,0 +1,34 @@
+{
+  "summary": "Full backend smoke of 1 Darjeeling API against public URL. 23/23 checks passed. Seed is idempotent (27 items), auth (mock OTP + universal 123456 + invalid rejection + user reuse) works, JWT/me route correct, provider onboarding + role escalation to 'provider' works, Razorpay LIVE test order creation succeeds for both flows with correct paise amounts (9900 / 100), signature verify correctly rejects fake HMAC (400), listings CRUD/search/404 all correct, bookings + bookings/me correct, admin stats returns expected keys.",
+  "tested_scope": ["backend", "auth", "integration"],
+  "passed": [
+    "GET /api/ returns {app:'1 Darjeeling', status:'ok'}",
+    "POST /api/admin/seed idempotent; total_in_seed=27; second call inserted 0",
+    "GET /api/listings?type=spot returns 6 items with all required fields (id,title,type,description,location,price,image,tags)",
+    "GET /api/listings?type=homestay returns 4 items",
+    "GET /api/listings/{id} returns single listing; unknown id -> 404",
+    "GET /api/listings?q=tea returns 3 filtered items (case-insensitive search)",
+    "POST /api/auth/otp/send returns {sent:true, mock_otp:<6 digits>}",
+    "POST /api/auth/otp/verify works with returned mock_otp AND universal '123456'; invalid '000000' -> 400",
+    "verify creates user first call and reuses same user id on second call for same phone",
+    "GET /api/auth/me with Bearer token returns user; without token -> 401",
+    "POST /api/providers/onboard creates provider with status='pending_payment' AND user role becomes 'provider'",
+    "GET /api/providers/me returns provider for logged-in user",
+    "POST /api/payments/order flow=provider_registration -> amount 9900 paise, real Razorpay order_ id, key_id=rzp_test_TBtLJY8UCCWL8B",
+    "POST /api/payments/order flow=booking_commission -> amount 100 paise",
+    "POST /api/payments/verify with fake signature -> 400 (HMAC mismatch)",
+    "POST /api/bookings creates booking with status='pending_payment'; unknown listing_id -> 404",
+    "GET /api/bookings/me returns user's bookings",
+    "GET /api/admin/stats returns users/providers/listings/bookings/payments counts"
+  ],
+  "failed": [],
+  "action_items": [],
+  "success_rate": {"backend": "100%", "frontend": "not tested (skipped per request)"},
+  "retest_needed": false,
+  "full_testing_deferred": true,
+  "notes": {
+    "mocked": "WhatsApp OTP delivery is MOCKED — mock_otp returned in response body; universal code '123456' always accepted.",
+    "razorpay": "Live Razorpay TEST keys used; order creation hits real Razorpay API and works; signature verify uses HMAC-SHA256 and correctly rejects invalid signature.",
+    "test_credentials_file": "/app/memory/test_credentials.md is present but empty — no persistent admin accounts documented; auth tests used mock OTP phones (+919999999999, +919888777666)."
+  }
+}

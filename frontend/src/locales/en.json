@@ -1,0 +1,117 @@
+{
+  "brand": "1 Darjeeling",
+  "brand_tagline": "One Darjeeling. Every experience.",
+  "nav": {
+    "discover": "Discover",
+    "spots": "Spots",
+    "homestays": "Homestays",
+    "drivers": "Drivers",
+    "shops": "Shops",
+    "cafes": "Cafes",
+    "events": "Events",
+    "biodiversity": "Biodiversity",
+    "responsible": "Responsible Travel",
+    "privacy": "Privacy",
+    "provider": "For Providers",
+    "login": "Log in",
+    "logout": "Log out",
+    "dashboard": "Dashboard",
+    "admin": "Admin"
+  },
+  "hero": {
+    "eyebrow": "Under the shadow of Kanchenjunga",
+    "title_1": "One Darjeeling.",
+    "title_2": "Every experience.",
+    "subtitle": "Homestays, drivers, tea gardens, cafes, cultural festivals and Himalayan biodiversity — in a single app.",
+    "cta_explore": "Start exploring",
+    "cta_provider": "List your service"
+  },
+  "categories": {
+    "spot": "Tourism spots",
+    "homestay": "Homestays",
+    "driver": "Drivers",
+    "shop": "Local shops",
+    "cafe": "Cafes",
+    "event": "Festivals",
+    "biodiversity": "Biodiversity"
+  },
+  "search": { "placeholder": "Search — place, shop or event" },
+  "common": {
+    "book_now": "Book now",
+    "view_details": "View details",
+    "starting_from": "From",
+    "per_night": "/ night",
+    "per_day": "/ day",
+    "loading": "Loading…",
+    "explore_all": "Explore all",
+    "back": "Back",
+    "save": "Save",
+    "cancel": "Cancel",
+    "continue": "Continue",
+    "yes": "Yes",
+    "no": "No"
+  },
+  "auth": {
+    "welcome": "Welcome",
+    "phone_label": "WhatsApp number",
+    "phone_placeholder": "+91 98XX XXX XXX",
+    "send_otp": "Send OTP",
+    "otp_label": "Enter OTP",
+    "verify": "Verify & continue",
+    "google_login": "Continue with Google",
+    "google_soon": "Coming soon",
+    "role_tourist": "I'm a tourist",
+    "role_provider": "I offer services",
+    "mock_note": "Mock mode: use the OTP shown or 123456"
+  },
+  "provider": {
+    "onboard_title": "List your business",
+    "onboard_sub": "Reach thousands of travellers for a one-time ₹99 fee.",
+    "business_name": "Business name",
+    "business_type": "Business type",
+    "description": "Description",
+    "location": "Location",
+    "contact": "Contact phone",
+    "price_from": "Starting price (₹)",
+    "image_url": "Image URL",
+    "submit_pay": "Pay ₹99 & list",
+    "active": "Active",
+    "pending": "Payment pending",
+    "dashboard_title": "Provider dashboard"
+  },
+  "booking": {
+    "checkin": "Check-in",
+    "checkout": "Check-out",
+    "guests": "Guests",
+    "notes": "Notes (optional)",
+    "fee_note": "A ₹1 platform fee applies per booking.",
+    "pay_confirm": "Confirm with ₹1",
+    "success": "Booking confirmed!"
+  },
+  "responsible": {
+    "title": "Responsible Tourism",
+    "lead": "Darjeeling is a fragile Himalayan ecosystem. Let's protect it together.",
+    "principles": [
+      { "t": "Say no to plastic", "d": "Carry reusable bottles, bags and cups. Refill at local shops." },
+      { "t": "Stay local", "d": "Choose homestays over chains. Your money reaches local families." },
+      { "t": "Respect wildlife", "d": "Do not feed or chase wild animals. Observe from a distance." },
+      { "t": "Save the tea gardens", "d": "Walk marked trails only. Don't trample undergrowth." },
+      { "t": "Honour culture", "d": "Ask permission before photographing monasteries and people." },
+      { "t": "Keep it quiet", "d": "Keep noise low — the hills and their creatures prefer it that way." }
+    ]
+  },
+  "privacy": {
+    "title": "Privacy Policy",
+    "updated": "Last updated: January 2026",
+    "sections": [
+      { "h": "What we collect", "p": "Name, phone, email and booking details — only to deliver our service." },
+      { "h": "How we use data", "p": "To process bookings, connect you with providers, and improve the platform." },
+      { "h": "Your rights", "p": "You may request deletion or export of your data at any time." },
+      { "h": "Contact", "p": "Questions? privacy@1darjeeling.in" }
+    ]
+  },
+  "footer": {
+    "made": "Made in Darjeeling, for Darjeeling",
+    "rights": "All rights reserved"
+  }
+}
