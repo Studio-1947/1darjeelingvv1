@@ -13,7 +13,25 @@ api.interceptors.request.use((cfg) => {
 
 export default api;
 
-// Razorpay checkout loader
+// -------- Payment helpers (mock + Razorpay) --------
+
+/**
+ * Creates an order on the backend. Returns { mock, key_id, order, amount }.
+ */
+export async function createPaymentOrder({ flow, reference_id }) {
+  const { data } = await api.post('/payments/order', { flow, reference_id });
+  return data;
+}
+
+/**
+ * Completes a mock payment on the backend.
+ */
+export async function completeMockPayment({ order_id, flow, reference_id }) {
+  const { data } = await api.post('/payments/mock/complete', { order_id, flow, reference_id });
+  return data;
+}
+
+// Real Razorpay checkout (unchanged from before) — kept for prod use
 export const loadRazorpay = () =>
   new Promise((resolve) => {
     if (window.Razorpay) return resolve(true);
@@ -24,18 +42,17 @@ export const loadRazorpay = () =>
     document.body.appendChild(s);
   });
 
-export async function payWithRazorpay({ flow, reference_id, name, description, prefill = {} }) {
+export async function payWithRazorpay({ order, key_id, flow, reference_id, name, description, prefill = {} }) {
   const ok = await loadRazorpay();
   if (!ok) throw new Error('Razorpay SDK failed to load');
-  const { data } = await api.post('/payments/order', { flow, reference_id });
   return new Promise((resolve, reject) => {
     const rzp = new window.Razorpay({
-      key: data.key_id,
-      amount: data.order.amount,
+      key: key_id,
+      amount: order.amount,
       currency: 'INR',
       name: name || '1 Darjeeling',
       description: description || 'Payment',
-      order_id: data.order.id,
+      order_id: order.id,
       prefill,
       theme: { color: '#2C5E3B' },
       modal: { ondismiss: () => reject(new Error('Payment cancelled')) },

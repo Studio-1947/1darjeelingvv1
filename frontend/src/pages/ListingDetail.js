@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import api, { payWithRazorpay } from '@/lib/api';
+import api, { createPaymentOrder, completeMockPayment, payWithRazorpay } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
+import MockPaymentModal from '@/components/MockPaymentModal';
+import BookingConfirmation from '@/components/BookingConfirmation';
 import { MapPin, Tag, ArrowLeft, Phone, Share2, Heart, MessageCircle, Store, Coffee, Ticket, Leaf, Mountain, Navigation, ArrowRight } from 'lucide-react';
 
 export default function ListingDetail() {
@@ -16,6 +18,8 @@ export default function ListingDetail() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
   const [liked, setLiked] = useState(false);
+  const [payModal, setPayModal] = useState(null); // { order, amount, description, bookingId }
+  const [confirm, setConfirm] = useState(null); // { open, data }
 
   useEffect(() => {
     api.get(`/listings/${id}`).then((r) => setItem(r.data.item)).finally(() => setLoading(false));
@@ -61,17 +65,43 @@ export default function ListingDetail() {
         guests: Number(form.guests) || 1,
         notes: form.notes,
       });
-      await payWithRazorpay({
-        flow: 'booking_commission',
-        reference_id: data.booking.id,
-        description: `₹1 platform fee — ${item.title}`,
-        prefill: { contact: user.phone, name: user.name },
-      });
-      setMsg(t('booking.success'));
-      setTimeout(() => nav('/'), 1200);
+      const bookingId = data.booking.id;
+      const orderRes = await createPaymentOrder({ flow: 'booking_commission', reference_id: bookingId });
+      if (orderRes.mock) {
+        // Open dummy modal
+        setPayModal({
+          amount: orderRes.amount,
+          order: orderRes.order,
+          description: `platform fee — ${item.title}`,
+          bookingId,
+        });
+      } else {
+        await payWithRazorpay({
+          order: orderRes.order,
+          key_id: orderRes.key_id,
+          flow: 'booking_commission',
+          reference_id: bookingId,
+          description: `₹1 platform fee — ${item.title}`,
+          prefill: { contact: user.phone, name: user.name },
+        });
+        setMsg(t('booking.success'));
+        setTimeout(() => nav('/dashboard'), 1200);
+      }
     } catch (e) {
       setMsg(e?.response?.data?.detail || e.message || 'Failed');
     } finally { setBusy(false); }
+  };
+
+  const finishMockPayment = async () => {
+    if (!payModal) return;
+    const res = await completeMockPayment({
+      order_id: payModal.order.id,
+      flow: 'booking_commission',
+      reference_id: payModal.bookingId,
+    });
+    setPayModal(null);
+    // Show confirmation
+    setConfirm({ open: true, data: res.record });
   };
 
   if (loading) return <div className="mx-auto max-w-5xl p-10 text-ink-soft">{t('common.loading')}</div>;
@@ -213,6 +243,26 @@ export default function ListingDetail() {
           </button>
         </div>
       </div>
+
+      {/* Mock Payment Modal */}
+      <MockPaymentModal
+        open={!!payModal}
+        onClose={() => setPayModal(null)}
+        amount={payModal?.amount || 0}
+        title="Confirm booking payment"
+        description={payModal?.description || ''}
+        onPay={finishMockPayment}
+        prefill={{ upi: `${(user?.name || 'traveller').toLowerCase().replace(/\s+/g, '')}@ybl` }}
+      />
+
+      {/* Booking Confirmation */}
+      <BookingConfirmation
+        open={!!confirm?.open}
+        onClose={() => { setConfirm(null); nav('/dashboard'); }}
+        mode="booking"
+        data={confirm?.data}
+        onView={() => { setConfirm(null); nav('/dashboard'); }}
+      />
     </div>
   );
 }

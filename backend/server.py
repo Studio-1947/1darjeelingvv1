@@ -28,6 +28,7 @@ DB_NAME = os.environ['DB_NAME']
 JWT_SECRET = os.environ['JWT_SECRET']
 RAZORPAY_KEY_ID = os.environ.get('RAZORPAY_KEY_ID', '')
 RAZORPAY_KEY_SECRET = os.environ.get('RAZORPAY_KEY_SECRET', '')
+MOCK_PAYMENTS = os.environ.get('MOCK_PAYMENTS', 'true').lower() == 'true'
 
 # --- Mongo
 client = AsyncIOMotorClient(MONGO_URL)
@@ -334,9 +335,32 @@ AMOUNTS = {"provider_registration": 9900, "booking_commission": 100}  # in paise
 
 @api.post("/payments/order")
 async def create_order(body: OrderIn, user=Depends(current_user)):
+    amount = AMOUNTS[body.flow]
+
+    # --- Mock mode: skip real gateway
+    if MOCK_PAYMENTS:
+        mock_order_id = f"mock_order_{uid()[:12]}"
+        await db.payments.insert_one({
+            "id": uid(),
+            "user_id": user["id"],
+            "flow": body.flow,
+            "reference_id": body.reference_id,
+            "amount": amount,
+            "order_id": mock_order_id,
+            "status": "created",
+            "mock": True,
+            "created_at": now_iso(),
+        })
+        return {
+            "mock": True,
+            "key_id": "mock_gateway",
+            "order": {"id": mock_order_id, "amount": amount, "currency": "INR"},
+            "amount": amount,
+        }
+
+    # --- Real Razorpay
     if not rzp_client:
         raise HTTPException(500, "Razorpay not configured")
-    amount = AMOUNTS[body.flow]
     receipt = f"{body.flow[:20]}_{body.reference_id[:16]}_{uid()[:6]}"[:40]
     try:
         order = rzp_client.order.create({
@@ -359,7 +383,69 @@ async def create_order(body: OrderIn, user=Depends(current_user)):
         "status": "created",
         "created_at": now_iso(),
     })
-    return {"key_id": RAZORPAY_KEY_ID, "order": order, "amount": amount}
+    return {"mock": False, "key_id": RAZORPAY_KEY_ID, "order": order, "amount": amount}
+
+
+class MockCompleteIn(BaseModel):
+    order_id: str
+    flow: Literal["provider_registration", "booking_commission"]
+    reference_id: str
+
+
+@api.post("/payments/mock/complete")
+async def mock_complete(body: MockCompleteIn, user=Depends(current_user)):
+    """Complete a mock payment. Marks payment as paid and triggers side-effects (same as verify)."""
+    if not MOCK_PAYMENTS:
+        raise HTTPException(400, "Mock payments disabled")
+    payment = await db.payments.find_one({"order_id": body.order_id}, {"_id": 0})
+    if not payment:
+        raise HTTPException(404, "Order not found")
+    if payment.get("status") == "paid":
+        return {"ok": True, "already": True}
+
+    await db.payments.update_one(
+        {"order_id": body.order_id},
+        {"$set": {"status": "paid", "payment_id": f"mock_pay_{uid()[:12]}", "paid_at": now_iso()}},
+    )
+
+    booking_or_provider = None
+    if body.flow == "provider_registration":
+        await db.providers.update_one({"id": body.reference_id}, {"$set": {"status": "active", "activated_at": now_iso()}})
+        await db.users.update_one({"id": user["id"]}, {"$set": {"provider_paid": True}})
+        p = await db.providers.find_one({"id": body.reference_id}, {"_id": 0})
+        if p:
+            listing = {
+                "id": uid(),
+                "title": p["business_name"],
+                "type": p["business_type"],
+                "description": p["description"],
+                "location": p["location"],
+                "price": p.get("price_from", 0),
+                "image": (p.get("images") or [""])[0],
+                "tags": [],
+                "provider_id": p["id"],
+                "extras": p.get("extras", {}),
+                "created_at": now_iso(),
+            }
+            await db.listings.insert_one({**listing})
+            p["listing_id"] = listing["id"]
+        booking_or_provider = p
+    elif body.flow == "booking_commission":
+        await db.bookings.update_one({"id": body.reference_id}, {"$set": {"status": "confirmed", "confirmed_at": now_iso()}})
+        booking = await db.bookings.find_one({"id": body.reference_id}, {"_id": 0})
+        if booking:
+            listing = await db.listings.find_one({"id": booking.get("listing_id")}, {"_id": 0})
+            booking["listing"] = listing
+            # Enrich with provider info for confirmation UI
+            if listing and listing.get("provider_id"):
+                provider = await db.providers.find_one({"id": listing["provider_id"]}, {"_id": 0}) \
+                    or await db.users.find_one({"id": listing["provider_id"]}, {"_id": 0, "name": 1, "phone": 1})
+                booking["provider"] = provider
+            # Log a mock notification (real WhatsApp would go here)
+            log.info(f"[MOCK NOTIFY] Booking {booking['id']} confirmed. Tourist={user.get('phone')} Provider={booking.get('provider', {}).get('contact_phone') or booking.get('provider', {}).get('phone')}")
+        booking_or_provider = booking
+
+    return {"ok": True, "status": "paid", "record": booking_or_provider}
 
 
 @api.post("/payments/verify")

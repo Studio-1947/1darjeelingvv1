@@ -77,3 +77,10 @@ Node 20 + Python 3.11 + MongoDB 7 + Nginx + systemd + Certbot.
 - Configure Razorpay webhook
 
 _Last updated: January 2026_
+
+## Update — Jan 2026 (Iteration 2)
+- **Dummy payment gateway** — added `MOCK_PAYMENTS=true` mode. Backend returns a mock order (no real Razorpay hit) and exposes `POST /api/payments/mock/complete` that marks payment paid + triggers same side-effects (provider activation OR booking confirmation).
+- **MockPaymentModal** — branded "1 Darjeeling · Secure Pay" checkout with UPI / Card / Net Banking method toggle, pre-filled test data, 1.2s simulated processing, sandbox notice. Feels real but doesn't charge anything.
+- **BookingConfirmation** — Full-screen success modal shown to tourist AND to provider (via updated booking status). Includes listing summary, booking ID with Copy button, host contact (Call + WhatsApp CTAs), and "View my bookings" primary CTA.
+- **Provider onboarding** now uses the same dummy flow → shows a Provider welcome confirmation and routes to `/provider/dashboard`.
+- Real Razorpay path preserved — set `MOCK_PAYMENTS=false` in `.env` to switch to production checkout (existing HMAC-verified flow).

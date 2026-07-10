@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import api, { payWithRazorpay } from '@/lib/api';
+import api, { createPaymentOrder, completeMockPayment, payWithRazorpay } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
+import MockPaymentModal from '@/components/MockPaymentModal';
+import BookingConfirmation from '@/components/BookingConfirmation';
 
 const TYPES = ['homestay', 'driver', 'shop', 'cafe'];
 
@@ -16,6 +18,8 @@ export default function ProviderOnboard() {
   });
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
+  const [payModal, setPayModal] = useState(null);
+  const [confirm, setConfirm] = useState(null);
 
   useEffect(() => {
     if (!user) nav('/login?next=/provider/onboard');
@@ -34,18 +38,42 @@ export default function ProviderOnboard() {
         price_from: Number(form.price_from) || 0,
         images: form.image_url ? [form.image_url] : [],
       });
-      await payWithRazorpay({
-        flow: 'provider_registration',
-        reference_id: data.provider.id,
-        description: '₹99 one-time provider registration',
-        prefill: { contact: user.phone, name: user.name },
-      });
-      await refresh();
-      setMsg('Success! Your business is now listed.');
-      setTimeout(() => nav('/provider/dashboard'), 1200);
+      const providerId = data.provider.id;
+      const orderRes = await createPaymentOrder({ flow: 'provider_registration', reference_id: providerId });
+      if (orderRes.mock) {
+        setPayModal({
+          amount: orderRes.amount,
+          order: orderRes.order,
+          description: 'one-time registration',
+          providerId,
+        });
+      } else {
+        await payWithRazorpay({
+          order: orderRes.order,
+          key_id: orderRes.key_id,
+          flow: 'provider_registration',
+          reference_id: providerId,
+          description: '₹99 one-time provider registration',
+          prefill: { contact: user.phone, name: user.name },
+        });
+        await refresh();
+        nav('/provider/dashboard');
+      }
     } catch (e) {
       setMsg(e?.response?.data?.detail || e.message || 'Failed');
     } finally { setBusy(false); }
+  };
+
+  const finishMockPayment = async () => {
+    if (!payModal) return;
+    const res = await completeMockPayment({
+      order_id: payModal.order.id,
+      flow: 'provider_registration',
+      reference_id: payModal.providerId,
+    });
+    setPayModal(null);
+    await refresh();
+    setConfirm({ open: true, data: res.record });
   };
 
   return (
@@ -67,7 +95,7 @@ export default function ProviderOnboard() {
             <span className="text-xs font-semibold text-ink-soft">{t('provider.business_type')}</span>
             <select value={form.business_type} onChange={(e) => setForm({ ...form, business_type: e.target.value })}
               data-testid="provider-type" className="mt-1 w-full px-3 py-2.5 rounded-xl border border-[var(--line)] bg-white outline-none">
-              {TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+              {TYPES.map((tp) => <option key={tp} value={tp}>{tp}</option>)}
             </select>
           </label>
         </div>
@@ -105,8 +133,26 @@ export default function ProviderOnboard() {
           className="w-full py-3 rounded-full bg-flag text-white font-bold btn-hover disabled:opacity-60">
           {busy ? t('common.loading') : t('provider.submit_pay')}
         </button>
-        {msg && <p data-testid="provider-msg" className="text-sm text-center text-pine font-semibold">{msg}</p>}
+        {msg && <p data-testid="provider-msg" className="text-sm text-center text-flag font-semibold">{msg}</p>}
       </form>
+
+      <MockPaymentModal
+        open={!!payModal}
+        onClose={() => setPayModal(null)}
+        amount={payModal?.amount || 0}
+        title="Provider registration"
+        description={payModal?.description || ''}
+        onPay={finishMockPayment}
+        prefill={{ upi: `${(form.business_name || 'business').toLowerCase().replace(/\s+/g, '')}@ybl` }}
+      />
+
+      <BookingConfirmation
+        open={!!confirm?.open}
+        onClose={() => { setConfirm(null); nav('/provider/dashboard'); }}
+        mode="provider"
+        data={confirm?.data}
+        onView={() => { setConfirm(null); nav('/provider/dashboard'); }}
+      />
     </div>
   );
 }
