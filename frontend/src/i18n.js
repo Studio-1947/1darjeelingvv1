@@ -7,13 +7,20 @@ import en from './locales/en.json';
 import hi from './locales/hi.json';
 import ne from './locales/ne.json';
 
+// Migration: reset stored language once to switch default to English (Jan 2026)
+const LANG_VERSION = 'v2-en-default';
+if (localStorage.getItem('lang_version') !== LANG_VERSION) {
+  localStorage.removeItem('lang');
+  localStorage.setItem('lang_version', LANG_VERSION);
+}
+
 i18n
   .use(LanguageDetector)
   .use(initReactI18next)
   .init({
     resources: { bn: { translation: bn }, en: { translation: en }, hi: { translation: hi }, ne: { translation: ne } },
-    fallbackLng: 'bn',
-    lng: localStorage.getItem('lang') || 'bn',
+    fallbackLng: 'en',
+    lng: localStorage.getItem('lang') || 'en',
     interpolation: { escapeValue: false },
     detection: { order: ['localStorage', 'navigator'], caches: ['localStorage'] },
   });
@@ -22,7 +29,7 @@ i18n
 const setHtmlLang = (lng) => {
   document.documentElement.setAttribute('lang', lng);
 };
-setHtmlLang(i18n.language || 'bn');
+setHtmlLang(i18n.language || 'en');
 i18n.on('languageChanged', (lng) => {
   setHtmlLang(lng);
   localStorage.setItem('lang', lng);

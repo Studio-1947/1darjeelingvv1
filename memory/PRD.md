@@ -10,7 +10,7 @@ Build a tourism + local marketplace app for Darjeeling. Tourists explore tourism
 
 ## Core Requirements (static)
 - Discovery-first UX with light-and-bold Google-fonts typography (Anek Bangla + Hind Siliguri + Anek Devanagari)
-- Multi-language: **Bengali default** + English, Hindi, Nepali (i18next)
+- Multi-language: **English default (Bengali/Hindi/Nepali available via language switcher)** + English, Hindi, Nepali (i18next)
 - WhatsApp OTP login (mocked in dev — universal code `123456` accepted, plus per-session mock OTP)
 - Google OAuth (deferred — button visible but disabled until keys supplied)
 - Razorpay payments — ₹99 provider registration, ₹1 booking commission
@@ -40,7 +40,7 @@ Build a tourism + local marketplace app for Darjeeling. Tourists explore tourism
 ### Frontend
 - Light-bold design system with `Anek Bangla`, `Hind Siliguri`, `Anek Devanagari` Google fonts; Pine Green / Prayer Flag Red / Golden Yellow palette
 - Pages: `Discover`, `Category` (per-type + search), `ListingDetail` (with booking sidebar), `Login` (WhatsApp OTP + role toggle + Google-soon), `ProviderOnboard`, `ProviderDashboard`, `Responsible`, `Privacy`, `Admin`
-- Language switcher (Bengali/English/Hindi/Nepali) — Bengali default, persists in localStorage
+- Language switcher (Bengali/English/Hindi/Nepali) — English default (Bengali/Hindi/Nepali available via language switcher), persists in localStorage
 - Razorpay checkout wired for provider registration (₹99) and booking commission (₹1)
 - Mock OTP shown in the UI + universal `123456` for testing
 

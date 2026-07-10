@@ -56,46 +56,46 @@ export default function Discover() {
     <div>
       {/* HERO */}
       <section className="relative overflow-hidden">
-        <div className="mx-auto max-w-7xl px-5 md:px-8 pt-12 md:pt-20 pb-16 grid lg:grid-cols-12 gap-10 items-center">
+        <div className="mx-auto max-w-7xl px-5 md:px-8 pt-8 md:pt-20 pb-12 md:pb-16 grid lg:grid-cols-12 gap-8 md:gap-10 items-center">
           <div className="lg:col-span-7">
             <span className="chip" data-testid="hero-eyebrow">{t('hero.eyebrow')}</span>
-            <h1 className="mt-5 font-display font-extrabold text-5xl md:text-6xl lg:text-7xl text-ink leading-[1.02] tracking-tight">
+            <h1 className="mt-4 md:mt-5 font-display font-extrabold text-[2.4rem] leading-[1.05] sm:text-5xl md:text-6xl lg:text-7xl text-ink tracking-tight">
               <span className="block">{t('hero.title_1')}</span>
               <span className="block"><span className="headline-mark">{t('hero.title_2')}</span></span>
             </h1>
-            <p className="mt-6 text-lg text-ink-soft max-w-xl leading-relaxed">{t('hero.subtitle')}</p>
+            <p className="mt-4 md:mt-6 text-base md:text-lg text-ink-soft max-w-xl leading-relaxed">{t('hero.subtitle')}</p>
 
-            <form onSubmit={submitSearch} className="mt-8 flex items-center gap-2 bg-white p-2 rounded-full border border-[var(--line)] shadow-sm max-w-xl">
-              <Search size={20} className="ml-3 text-ink-soft" />
+            <form onSubmit={submitSearch} className="mt-6 md:mt-8 flex items-center gap-2 bg-white p-1.5 md:p-2 rounded-full border border-[var(--line)] shadow-sm max-w-xl">
+              <Search size={18} className="ml-2 md:ml-3 text-ink-soft flex-shrink-0" />
               <input
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 placeholder={t('search.placeholder')}
                 data-testid="hero-search-input"
-                className="flex-1 py-2.5 px-2 bg-transparent outline-none text-ink placeholder:text-ink-soft"
+                className="flex-1 min-w-0 py-2 md:py-2.5 px-1 md:px-2 bg-transparent outline-none text-sm md:text-base text-ink placeholder:text-ink-soft"
               />
-              <button data-testid="hero-search-btn" className="px-5 py-2.5 rounded-full bg-pine text-white font-bold btn-hover">{t('hero.cta_explore')}</button>
+              <button data-testid="hero-search-btn" className="px-3 md:px-5 py-2 md:py-2.5 rounded-full bg-pine text-white text-sm md:text-base font-bold btn-hover whitespace-nowrap">{t('hero.cta_explore')}</button>
             </form>
 
-            <div className="mt-6 flex items-center gap-3">
-              <Link to="/provider/onboard" data-testid="hero-provider-cta" className="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-flag text-white font-bold btn-hover">
+            <div className="mt-5 md:mt-6 flex flex-wrap items-center gap-3">
+              <Link to="/provider/onboard" data-testid="hero-provider-cta" className="inline-flex items-center gap-2 px-4 md:px-5 py-2.5 md:py-3 rounded-full bg-flag text-white text-sm md:text-base font-bold btn-hover">
                 {t('hero.cta_provider')} <ArrowRight size={16} />
               </Link>
-              <Link to="/responsible" data-testid="hero-responsible-cta" className="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-white border border-[var(--line)] text-ink font-bold btn-hover">
+              <Link to="/responsible" data-testid="hero-responsible-cta" className="inline-flex items-center gap-2 px-4 md:px-5 py-2.5 md:py-3 rounded-full bg-white border border-[var(--line)] text-ink text-sm md:text-base font-bold btn-hover">
                 {t('nav.responsible')}
               </Link>
             </div>
           </div>
-          <div className="lg:col-span-5 relative">
-            <div className="relative aspect-[4/5] w-full rounded-[36px] overflow-hidden bg-mist">
+          <div className="lg:col-span-5 relative order-first lg:order-last">
+            <div className="relative aspect-[4/3] sm:aspect-[4/5] w-full rounded-3xl md:rounded-[36px] overflow-hidden bg-mist">
               <img src={HERO_IMG} alt="Kanchenjunga" className="w-full h-full object-cover" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
-              <div className="absolute bottom-6 left-6 right-6 text-white">
-                <div className="text-xs uppercase tracking-widest opacity-90">Kanchenjunga</div>
-                <div className="font-display font-extrabold text-3xl mt-1 drop-shadow">8,586 m</div>
+              <div className="absolute bottom-4 md:bottom-6 left-4 md:left-6 right-4 md:right-6 text-white">
+                <div className="text-[10px] md:text-xs uppercase tracking-widest opacity-90">Kanchenjunga</div>
+                <div className="font-display font-extrabold text-2xl md:text-3xl mt-1 drop-shadow">8,586 m</div>
               </div>
             </div>
-            <div className="absolute -bottom-6 -left-6 w-40 h-40 rounded-3xl overflow-hidden border-4 border-white shadow-xl hidden md:block">
+            <div className="absolute -bottom-4 -right-3 md:-bottom-6 md:-left-6 md:right-auto w-24 h-24 md:w-40 md:h-40 rounded-2xl md:rounded-3xl overflow-hidden border-4 border-white shadow-xl">
               <img src={RED_PANDA} alt="Red panda" className="w-full h-full object-cover" />
             </div>
           </div>
@@ -103,15 +103,15 @@ export default function Discover() {
       </section>
 
       {/* Category grid */}
-      <section className="mx-auto max-w-7xl px-5 md:px-8 py-10">
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+      <section className="mx-auto max-w-7xl px-5 md:px-8 py-8 md:py-10">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3">
           {CATS.map(({ key, to, Icon }, i) => (
             <motion.div key={key} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
-              <Link to={to} data-testid={`cat-${key}`} className="card-shell p-5 flex flex-col items-start gap-3 h-full">
-                <div className="w-10 h-10 rounded-full bg-mist text-pine grid place-items-center">
-                  <Icon size={18} />
+              <Link to={to} data-testid={`cat-${key}`} className="card-shell p-4 md:p-5 flex flex-col items-start gap-2 md:gap-3 h-full">
+                <div className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-mist text-pine grid place-items-center">
+                  <Icon size={16} />
                 </div>
-                <div className="font-display font-bold text-ink">{t(`categories.${key}`)}</div>
+                <div className="font-display font-bold text-sm md:text-base text-ink">{t(`categories.${key}`)}</div>
               </Link>
             </motion.div>
           ))}
@@ -119,42 +119,42 @@ export default function Discover() {
       </section>
 
       {/* Featured Spots */}
-      <section className="mx-auto max-w-7xl px-5 md:px-8 py-10">
-        <div className="flex items-end justify-between mb-6">
-          <h2 className="font-display font-extrabold text-3xl md:text-4xl text-ink">{t('categories.spot')}</h2>
-          <Link to="/spots" className="text-sm font-bold text-pine">{t('common.explore_all')} →</Link>
+      <section className="mx-auto max-w-7xl px-5 md:px-8 py-8 md:py-10">
+        <div className="flex items-end justify-between mb-5 md:mb-6">
+          <h2 className="font-display font-extrabold text-2xl sm:text-3xl md:text-4xl text-ink">{t('categories.spot')}</h2>
+          <Link to="/spots" className="text-sm font-bold text-pine whitespace-nowrap">{t('common.explore_all')} →</Link>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6">
           {featured.map((it) => <ListingCard key={it.id} item={it} />)}
         </div>
       </section>
 
       {/* Homestays */}
-      <section className="mx-auto max-w-7xl px-5 md:px-8 py-10">
-        <div className="flex items-end justify-between mb-6">
-          <h2 className="font-display font-extrabold text-3xl md:text-4xl text-ink">{t('categories.homestay')}</h2>
-          <Link to="/homestays" className="text-sm font-bold text-pine">{t('common.explore_all')} →</Link>
+      <section className="mx-auto max-w-7xl px-5 md:px-8 py-8 md:py-10">
+        <div className="flex items-end justify-between mb-5 md:mb-6">
+          <h2 className="font-display font-extrabold text-2xl sm:text-3xl md:text-4xl text-ink">{t('categories.homestay')}</h2>
+          <Link to="/homestays" className="text-sm font-bold text-pine whitespace-nowrap">{t('common.explore_all')} →</Link>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 md:gap-6">
           {homestays.map((it) => <ListingCard key={it.id} item={it} />)}
         </div>
       </section>
 
       {/* Provider banner */}
-      <section className="mx-auto max-w-7xl px-5 md:px-8 py-10">
-        <div className="mist-panel p-8 md:p-12 grid md:grid-cols-2 gap-8 items-center">
+      <section className="mx-auto max-w-7xl px-5 md:px-8 py-8 md:py-10">
+        <div className="mist-panel p-6 md:p-12 grid md:grid-cols-2 gap-6 md:gap-8 items-center">
           <div>
             <span className="chip">₹99 one-time</span>
-            <h3 className="mt-3 font-display font-extrabold text-3xl md:text-4xl text-ink">{t('provider.onboard_title')}</h3>
-            <p className="mt-3 text-ink-soft max-w-md">{t('provider.onboard_sub')}</p>
+            <h3 className="mt-3 font-display font-extrabold text-2xl sm:text-3xl md:text-4xl text-ink">{t('provider.onboard_title')}</h3>
+            <p className="mt-3 text-sm md:text-base text-ink-soft max-w-md">{t('provider.onboard_sub')}</p>
             <Link to="/provider/onboard" data-testid="banner-provider-cta" className="mt-5 inline-flex items-center gap-2 px-5 py-3 rounded-full bg-pine text-white font-bold btn-hover">
               {t('hero.cta_provider')} <ArrowRight size={16} />
             </Link>
           </div>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-3 gap-2 md:gap-3">
             {[HomeIcon, Car, Store, Coffee, Mountain, PartyPopper].map((Ic, i) => (
-              <div key={i} className="aspect-square rounded-2xl bg-white border border-[var(--line)] grid place-items-center text-pine">
-                <Ic size={22} />
+              <div key={i} className="aspect-square rounded-xl md:rounded-2xl bg-white border border-[var(--line)] grid place-items-center text-pine">
+                <Ic size={20} />
               </div>
             ))}
           </div>

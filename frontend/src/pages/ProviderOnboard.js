@@ -49,14 +49,14 @@ export default function ProviderOnboard() {
   };
 
   return (
-    <div className="mx-auto max-w-3xl px-5 md:px-8 py-10">
-      <div className="text-center mb-8">
+    <div className="mx-auto max-w-3xl px-4 md:px-8 py-8 md:py-10">
+      <div className="text-center mb-6 md:mb-8">
         <span className="chip">₹99 · one-time</span>
-        <h1 className="mt-3 font-display font-extrabold text-4xl md:text-5xl text-ink">{t('provider.onboard_title')}</h1>
-        <p className="mt-2 text-ink-soft">{t('provider.onboard_sub')}</p>
+        <h1 className="mt-3 font-display font-extrabold text-3xl sm:text-4xl md:text-5xl text-ink leading-tight">{t('provider.onboard_title')}</h1>
+        <p className="mt-2 text-sm md:text-base text-ink-soft">{t('provider.onboard_sub')}</p>
       </div>
 
-      <form onSubmit={submit} className="mist-panel p-6 md:p-8 space-y-4" data-testid="provider-onboard-form">
+      <form onSubmit={submit} className="mist-panel p-5 md:p-8 space-y-4" data-testid="provider-onboard-form">
         <div className="grid md:grid-cols-2 gap-4">
           <label className="block">
             <span className="text-xs font-semibold text-ink-soft">{t('provider.business_name')}</span>

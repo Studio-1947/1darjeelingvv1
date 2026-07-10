@@ -53,21 +53,21 @@ export default function ListingDetail() {
   const unit = item.type === 'homestay' ? t('common.per_night') : item.type === 'driver' ? t('common.per_day') : '';
 
   return (
-    <div className="mx-auto max-w-6xl px-5 md:px-8 py-8">
+    <div className="mx-auto max-w-6xl px-4 md:px-8 py-6 md:py-8 pb-24 md:pb-8">
       <button onClick={() => nav(-1)} data-testid="detail-back" className="inline-flex items-center gap-2 text-sm font-semibold text-ink-soft mb-4">
         <ArrowLeft size={16} /> {t('common.back')}
       </button>
 
-      <div className="grid lg:grid-cols-5 gap-8">
+      <div className="grid lg:grid-cols-5 gap-6 md:gap-8">
         <div className="lg:col-span-3">
-          <div className="rounded-3xl overflow-hidden bg-mist aspect-[4/3]">
+          <div className="rounded-2xl md:rounded-3xl overflow-hidden bg-mist aspect-[4/3]">
             {item.image && <img src={item.image} alt={item.title} className="w-full h-full object-cover" />}
           </div>
-          <div className="mt-6">
+          <div className="mt-5 md:mt-6">
             <span className="chip capitalize">{t(`categories.${item.type}`)}</span>
-            <h1 className="mt-3 font-display font-extrabold text-3xl md:text-5xl text-ink" data-testid="listing-title">{item.title}</h1>
-            <p className="mt-2 text-ink-soft flex items-center gap-1"><MapPin size={14} /> {item.location}</p>
-            <p className="mt-5 text-ink leading-relaxed">{item.description}</p>
+            <h1 className="mt-3 font-display font-extrabold text-3xl sm:text-4xl md:text-5xl text-ink leading-tight" data-testid="listing-title">{item.title}</h1>
+            <p className="mt-2 text-sm md:text-base text-ink-soft flex items-center gap-1"><MapPin size={14} /> {item.location}</p>
+            <p className="mt-4 md:mt-5 text-ink leading-relaxed">{item.description}</p>
             {item.tags?.length > 0 && (
               <div className="mt-4 flex flex-wrap gap-2">
                 {item.tags.map((tg) => <span key={tg} className="chip"><Tag size={11} className="mr-1" /> {tg}</span>)}
@@ -77,11 +77,11 @@ export default function ListingDetail() {
         </div>
 
         <aside className="lg:col-span-2">
-          <div className="mist-panel p-6 md:p-7 sticky top-24">
+          <div className="mist-panel p-5 md:p-7 lg:sticky lg:top-24">
             {item.price > 0 && (
               <div className="mb-4">
                 <div className="text-xs uppercase tracking-widest text-ink-soft">{t('common.starting_from')}</div>
-                <div className="font-display font-extrabold text-4xl text-ink">₹{item.price}<span className="text-lg text-ink-soft font-semibold">{unit}</span></div>
+                <div className="font-display font-extrabold text-3xl md:text-4xl text-ink">₹{item.price}<span className="text-base md:text-lg text-ink-soft font-semibold">{unit}</span></div>
               </div>
             )}
 
@@ -92,19 +92,19 @@ export default function ListingDetail() {
                     <label className="block">
                       <span className="text-xs font-semibold text-ink-soft">{t('booking.checkin')}</span>
                       <input type="date" value={form.check_in} onChange={(e) => setForm({ ...form, check_in: e.target.value })}
-                        data-testid="booking-checkin" className="mt-1 w-full px-3 py-2 rounded-xl border border-[var(--line)] outline-none" />
+                        data-testid="booking-checkin" className="mt-1 w-full px-3 py-2.5 rounded-xl border border-[var(--line)] outline-none text-sm" />
                     </label>
                     <label className="block">
                       <span className="text-xs font-semibold text-ink-soft">{t('booking.checkout')}</span>
                       <input type="date" value={form.check_out} onChange={(e) => setForm({ ...form, check_out: e.target.value })}
-                        data-testid="booking-checkout" className="mt-1 w-full px-3 py-2 rounded-xl border border-[var(--line)] outline-none" />
+                        data-testid="booking-checkout" className="mt-1 w-full px-3 py-2.5 rounded-xl border border-[var(--line)] outline-none text-sm" />
                     </label>
                   </div>
                 )}
                 <label className="block">
                   <span className="text-xs font-semibold text-ink-soft">{t('booking.guests')}</span>
                   <input type="number" min="1" value={form.guests} onChange={(e) => setForm({ ...form, guests: e.target.value })}
-                    data-testid="booking-guests" className="mt-1 w-full px-3 py-2 rounded-xl border border-[var(--line)] outline-none" />
+                    data-testid="booking-guests" className="mt-1 w-full px-3 py-2.5 rounded-xl border border-[var(--line)] outline-none" />
                 </label>
                 <label className="block">
                   <span className="text-xs font-semibold text-ink-soft">{t('booking.notes')}</span>
