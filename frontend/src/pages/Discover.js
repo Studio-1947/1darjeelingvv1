@@ -142,6 +142,9 @@ export default function Discover() {
                 <div className="absolute bottom-0 inset-x-0 p-3 md:p-4 text-white">
                   <div className="text-[10px] uppercase tracking-widest opacity-90">{s.location}</div>
                   <div className="font-display font-extrabold text-lg md:text-xl leading-tight drop-shadow line-clamp-2">{s.title}</div>
+                  <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white text-pine font-bold text-xs">
+                    <Mountain size={12} /> {t('cta.explore')}
+                  </div>
                 </div>
               </div>
             </Link>
@@ -160,19 +163,23 @@ export default function Discover() {
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
           {homestays.slice(0, 4).map((h) => (
-            <Link key={h.id} to={`/listing/${h.id}`} data-testid={`stay-tile-${h.id}`} className="block rounded-2xl overflow-hidden bg-white border border-[var(--line)] btn-hover">
-              <div className="aspect-square bg-mist overflow-hidden">
+            <div key={h.id} data-testid={`stay-tile-${h.id}`} className="flex flex-col rounded-2xl overflow-hidden bg-white border border-[var(--line)] btn-hover">
+              <Link to={`/listing/${h.id}`} className="block aspect-square bg-mist overflow-hidden">
                 {h.image && <img src={h.image} alt={h.title} className="w-full h-full object-cover" loading="lazy" />}
-              </div>
-              <div className="p-3">
+              </Link>
+              <div className="p-3 flex-1 flex flex-col">
                 <div className="font-display font-bold text-sm md:text-base text-ink line-clamp-1">{h.title}</div>
                 <div className="text-[11px] text-ink-soft line-clamp-1 mt-0.5">{h.location}</div>
                 <div className="mt-1.5 flex items-baseline gap-1">
                   <span className="font-extrabold text-pine text-sm md:text-base">₹{h.price}</span>
                   <span className="text-[10px] text-ink-soft">/night</span>
                 </div>
+                <Link to={`/listing/${h.id}`} data-testid={`stay-book-${h.id}`}
+                  className="mt-3 inline-flex items-center justify-center gap-1.5 py-2 rounded-full bg-flag text-white font-bold text-xs btn-hover">
+                  {t('cta.book_now')} <ArrowRight size={12} />
+                </Link>
               </div>
-            </Link>
+            </div>
           ))}
         </div>
       </section>

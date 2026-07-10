@@ -1,4 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Anek+Bangla:wght@400;500;600;700;800&family=Hind+Siliguri:wght@300;400;500;600;700&family=Anek+Devanagari:wght@400;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Google+Sans+Code:ital,wght@0,300..800;1,300..800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;0,9..40,900;1,9..40,400;1,9..40,600&family=Noto+Sans+Bengali:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;500;600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -51,21 +52,26 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--ink);
-  font-family: 'Hind Siliguri', 'Anek Bangla', system-ui, sans-serif;
+  font-family: 'Google Sans', 'Google Sans Text', 'DM Sans', 'Noto Sans Bengali', 'Noto Sans Devanagari', system-ui, -apple-system, sans-serif;
   font-feature-settings: "ss01";
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 h1, h2, h3, h4 {
-  font-family: 'Anek Bangla', 'Hind Siliguri', system-ui, sans-serif;
-  letter-spacing: -0.01em;
+  font-family: 'Google Sans', 'Google Sans Display', 'DM Sans', 'Noto Sans Bengali', 'Noto Sans Devanagari', system-ui, sans-serif;
+  letter-spacing: -0.015em;
+}
+
+html[lang="bn"] body,
+html[lang="bn"] h1, html[lang="bn"] h2, html[lang="bn"] h3, html[lang="bn"] h4 {
+  font-family: 'Google Sans', 'Noto Sans Bengali', 'DM Sans', system-ui, sans-serif;
 }
 
 html[lang="hi"] body, html[lang="ne"] body,
 html[lang="hi"] h1, html[lang="hi"] h2, html[lang="hi"] h3, html[lang="hi"] h4,
 html[lang="ne"] h1, html[lang="ne"] h2, html[lang="ne"] h3, html[lang="ne"] h4 {
-  font-family: 'Anek Devanagari', 'Hind Siliguri', system-ui, sans-serif;
+  font-family: 'Google Sans', 'Noto Sans Devanagari', 'DM Sans', system-ui, sans-serif;
 }
 
 /* Grain overlay utility */

@@ -39,6 +39,7 @@
   "common": {
     "book_now": "এখনই বুক করুন",
     "view_details": "বিস্তারিত দেখুন",
+    "explore": "অন্বেষণ",
     "starting_from": "শুরু",
     "per_night": "প্রতি রাত",
     "per_day": "প্রতি দিন",
@@ -50,6 +51,20 @@
     "continue": "চালিয়ে যান",
     "yes": "হ্যাঁ",
     "no": "না"
+  },
+  "cta": {
+    "book_now": "এখনই বুক করুন",
+    "explore": "অন্বেষণ",
+    "view": "দেখুন",
+    "talk_to_driver": "চালকের সাথে কথা বলুন",
+    "contact_shop": "দোকান দেখুন",
+    "visit_cafe": "ক্যাফে দেখুন",
+    "join_event": "যোগ দিন",
+    "learn_more": "আরও জানুন",
+    "get_directions": "রাস্তা পান",
+    "call_now": "কল করুন",
+    "contact_provider": "যোগাযোগ করুন",
+    "reserve": "সংরক্ষিত করুন"
   },
   "auth": {
     "welcome": "স্বাগতম",

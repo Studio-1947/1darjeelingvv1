@@ -32,11 +32,18 @@
   },
   "search": { "placeholder": "खोजें — जगह, दुकान या उत्सव" },
   "common": {
-    "book_now": "अभी बुक करें", "view_details": "विवरण देखें",
+    "book_now": "अभी बुक करें", "view_details": "विवरण देखें", "explore": "खोजें",
     "starting_from": "से", "per_night": "/ रात", "per_day": "/ दिन",
     "loading": "लोड हो रहा है…", "explore_all": "सब देखें",
     "back": "वापस", "save": "सहेजें", "cancel": "रद्द", "continue": "जारी रखें",
     "yes": "हाँ", "no": "नहीं"
+  },
+  "cta": {
+    "book_now": "अभी बुक करें", "explore": "खोजें", "view": "देखें",
+    "talk_to_driver": "ड्राइवर से बात करें", "contact_shop": "दुकान देखें",
+    "visit_cafe": "कैफे देखें", "join_event": "शामिल हों",
+    "learn_more": "और जानें", "get_directions": "रास्ता",
+    "call_now": "कॉल करें", "contact_provider": "संपर्क करें", "reserve": "आरक्षित करें"
   },
   "auth": {
     "welcome": "स्वागत है", "phone_label": "व्हाट्सएप नंबर",

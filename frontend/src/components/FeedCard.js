@@ -1,11 +1,20 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Heart, MapPin, Share2, Bookmark, MessageCircle } from 'lucide-react';
+import { Heart, MapPin, Share2, Bookmark, MessageCircle, ArrowRight, Phone, Store, Coffee, Ticket, Leaf, Mountain } from 'lucide-react';
+
+const CTA_MAP = {
+  homestay: { key: 'book_now', Icon: ArrowRight, color: 'bg-flag text-white' },
+  driver: { key: 'talk_to_driver', Icon: Phone, color: 'bg-pine text-white' },
+  shop: { key: 'contact_shop', Icon: Store, color: 'bg-ink text-white' },
+  cafe: { key: 'visit_cafe', Icon: Coffee, color: 'bg-ink text-white' },
+  event: { key: 'join_event', Icon: Ticket, color: 'bg-flag text-white' },
+  biodiversity: { key: 'learn_more', Icon: Leaf, color: 'bg-pine text-white' },
+  spot: { key: 'explore', Icon: Mountain, color: 'bg-pine text-white' },
+};
 
 /**
- * Instagram-post-style feed card.
- * Shows: avatar+category header, big image, actions row, price + caption.
+ * Instagram-post-style feed card with contextual CTA button.
  */
 export default function FeedCard({ item, priority = false }) {
   const { t } = useTranslation();
@@ -13,6 +22,8 @@ export default function FeedCard({ item, priority = false }) {
   const [saved, setSaved] = useState(false);
   const unit = item.type === 'homestay' ? t('common.per_night') : item.type === 'driver' ? t('common.per_day') : '';
   const cat = t(`categories.${item.type}`);
+  const cta = CTA_MAP[item.type] || CTA_MAP.spot;
+  const CtaIcon = cta.Icon;
 
   return (
     <article className="bg-white rounded-3xl border border-[var(--line)] overflow-hidden max-w-xl mx-auto md:mx-0" data-testid={`feed-card-${item.id}`}>
@@ -67,6 +78,15 @@ export default function FeedCard({ item, priority = false }) {
             {item.tags.slice(0, 3).map((tg) => `#${tg.replace(/-/g, '')}`).join('  ')}
           </div>
         )}
+
+        {/* CTA */}
+        <Link
+          to={`/listing/${item.id}`}
+          data-testid={`feed-cta-${item.id}`}
+          className={`mt-3.5 w-full inline-flex items-center justify-center gap-2 py-2.5 rounded-full font-bold text-sm btn-hover ${cta.color}`}
+        >
+          <CtaIcon size={16} /> {t(`cta.${cta.key}`)}
+        </Link>
       </div>
     </article>
   );

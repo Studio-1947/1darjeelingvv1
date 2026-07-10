@@ -39,6 +39,7 @@
   "common": {
     "book_now": "Book now",
     "view_details": "View details",
+    "explore": "Explore",
     "starting_from": "From",
     "per_night": "/ night",
     "per_day": "/ day",
@@ -50,6 +51,20 @@
     "continue": "Continue",
     "yes": "Yes",
     "no": "No"
+  },
+  "cta": {
+    "book_now": "Book Now",
+    "explore": "Explore",
+    "view": "View",
+    "talk_to_driver": "Talk to Driver",
+    "contact_shop": "Visit Shop",
+    "visit_cafe": "Visit Cafe",
+    "join_event": "Join Event",
+    "learn_more": "Learn More",
+    "get_directions": "Get Directions",
+    "call_now": "Call Now",
+    "contact_provider": "Contact Provider",
+    "reserve": "Reserve"
   },
   "auth": {
     "welcome": "Welcome",

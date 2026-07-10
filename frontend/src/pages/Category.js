@@ -3,7 +3,7 @@ import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import api from '@/lib/api';
 import FeedCard from '@/components/FeedCard';
-import { LayoutGrid, Rows3, MapPin } from 'lucide-react';
+import { LayoutGrid, Rows3, MapPin, ArrowRight } from 'lucide-react';
 
 const TYPE_MAP = {
   spots: 'spot',
@@ -63,26 +63,42 @@ export default function Category({ typeOverride }) {
         </div>
       ) : view === 'grid' ? (
         // Instagram Explore-style grid: tight, image-first
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1.5 sm:gap-3 md:gap-4">
-          {items.map((it) => (
-            <Link key={it.id} to={`/listing/${it.id}`} data-testid={`grid-tile-${it.id}`}
-              className="block relative aspect-square overflow-hidden rounded-lg sm:rounded-2xl bg-mist group">
-              {it.image && (
-                <img src={it.image} alt={it.title}
-                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
-              )}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent transition-opacity" />
-              <div className="absolute bottom-0 inset-x-0 p-2 sm:p-3 text-white">
-                <div className="font-display font-extrabold text-xs sm:text-sm md:text-base leading-tight line-clamp-2 drop-shadow">{it.title}</div>
-                <div className="text-[10px] text-white/90 flex items-center gap-1 mt-0.5"><MapPin size={10} /> <span className="line-clamp-1">{it.location}</span></div>
-              </div>
-              {it.price > 0 && (
-                <div className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-white/95 text-ink text-[11px] font-extrabold">
-                  ₹{it.price}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
+          {items.map((it) => {
+            const ctaKey = it.type === 'homestay' ? 'book_now'
+              : it.type === 'driver' ? 'talk_to_driver'
+              : it.type === 'shop' ? 'contact_shop'
+              : it.type === 'cafe' ? 'visit_cafe'
+              : it.type === 'event' ? 'join_event'
+              : it.type === 'biodiversity' ? 'learn_more'
+              : 'explore';
+            return (
+              <div key={it.id} data-testid={`grid-tile-${it.id}`} className="flex flex-col rounded-xl sm:rounded-2xl bg-white border border-[var(--line)] overflow-hidden btn-hover">
+                <Link to={`/listing/${it.id}`} className="block relative aspect-square overflow-hidden bg-mist group">
+                  {it.image && (
+                    <img src={it.image} alt={it.title}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+                  <div className="absolute bottom-0 inset-x-0 p-2 sm:p-3 text-white">
+                    <div className="font-display font-extrabold text-xs sm:text-sm md:text-base leading-tight line-clamp-2 drop-shadow">{it.title}</div>
+                    <div className="text-[10px] text-white/90 flex items-center gap-1 mt-0.5"><MapPin size={10} /> <span className="line-clamp-1">{it.location}</span></div>
+                  </div>
+                  {it.price > 0 && (
+                    <div className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-white/95 text-ink text-[11px] font-extrabold">
+                      ₹{it.price}
+                    </div>
+                  )}
+                </Link>
+                <div className="p-2 sm:p-3">
+                  <Link to={`/listing/${it.id}`} data-testid={`grid-cta-${it.id}`}
+                    className="w-full inline-flex items-center justify-center gap-1.5 py-2 rounded-full bg-flag text-white font-bold text-xs btn-hover">
+                    {t(`cta.${ctaKey}`)} <ArrowRight size={12} />
+                  </Link>
                 </div>
-              )}
-            </Link>
-          ))}
+              </div>
+            );
+          })}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">

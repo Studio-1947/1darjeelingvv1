@@ -5,9 +5,9 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        display: ['"Anek Bangla"', '"Hind Siliguri"', 'system-ui', 'sans-serif'],
-        body: ['"Hind Siliguri"', '"Anek Bangla"', 'system-ui', 'sans-serif'],
-        deva: ['"Anek Devanagari"', '"Hind Siliguri"', 'system-ui', 'sans-serif'],
+        display: ['"Google Sans"', '"Google Sans Display"', '"DM Sans"', 'system-ui', 'sans-serif'],
+        body: ['"Google Sans"', '"Google Sans Text"', '"DM Sans"', 'system-ui', 'sans-serif'],
+        deva: ['"Google Sans"', '"Noto Sans Devanagari"', '"DM Sans"', 'system-ui', 'sans-serif'],
       },
       borderRadius: {
         lg: 'var(--radius)',
