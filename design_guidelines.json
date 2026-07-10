@@ -1,0 +1,106 @@
+{
+  "theme": "Light theme default, warm, trustworthy, and culturally rooted. 'Light and bold' design language.",
+  "typography": {
+    "fonts": {
+      "heading": "Anek Bangla",
+      "body": "Hind Siliguri"
+    },
+    "instructions": "Use Google Fonts 'Anek Bangla' for bold, modern headings and 'Hind Siliguri' for highly legible body text supporting both Bengali, Devanagari (Hindi/Nepali), and Latin. Load them via Google Fonts in index.css.",
+    "hierarchy": {
+      "h1": "text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight",
+      "h2": "text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight",
+      "h3": "text-xl sm:text-2xl font-semibold",
+      "body": "text-base font-normal leading-relaxed text-slate-800",
+      "small": "text-sm text-slate-600"
+    }
+  },
+  "colors": {
+    "background": "#FAFAFA",
+    "surface": "#FFFFFF",
+    "primary": "#2C5E3B",
+    "primary_foreground": "#FFFFFF",
+    "secondary": "#C42E2E",
+    "secondary_foreground": "#FFFFFF",
+    "accent": "#F0B90B",
+    "accent_foreground": "#1E1E1E",
+    "muted": "#F0F0F0",
+    "muted_foreground": "#64748B",
+    "border": "#E2E8F0",
+    "instructions": "Use Pine Green (#2C5E3B) as primary to represent Darjeeling's tea gardens and forests. Use Prayer Flag Red (#C42E2E) as secondary for interactive or high-visibility accents. Use warm Golden Yellow (#F0B90B) for highlights and badges. Background should be Mist White (#FAFAFA)."
+  },
+  "visual_enhancers": {
+    "shadows": {
+      "card": "shadow-sm hover:shadow-lg transition-shadow duration-300",
+      "dropdown": "shadow-[0_8px_32px_rgba(0,0,0,0.12)]"
+    },
+    "borders": "1px solid border color, avoiding heavy lines. Use soft radii.",
+    "radii": {
+      "button": "rounded-full",
+      "card": "rounded-2xl",
+      "input": "rounded-xl"
+    }
+  },
+  "layouts": {
+    "spacing": "Generous spacing. Use p-6, p-8, p-12 for sections.",
+    "grids": "Use Bento grids for the discover page. grid-cols-1 md:grid-cols-3 lg:grid-cols-4 with gap-6. Dashboard uses high-density grid.",
+    "header": "Solid background with a crisp bottom border. No fully transparent headers.",
+    "alignment": "Left-align dense text and labels. Center align hero sections and major CTAs."
+  },
+  "components": {
+    "buttons": "Pill-shaped (rounded-full) with clear hover states (hover:-translate-y-1 hover:shadow-md transition-transform duration-200). Primary uses bg-primary text-white.",
+    "cards": "Clean cards with minimal borders (border border-slate-200) and rounded-2xl. Image constraints max-h-[80vh] for mobile.",
+    "inputs": "Shadcn inputs with rounded-xl, 1px border, subtle focus ring (focus:ring-2 focus:ring-primary/20).",
+    "language_switcher": "Prominent dropdown in header to toggle Bengali, English, Hindi, Nepali. Default to Bengali.",
+    "instructions_to_main_agent": "Since this is a JS project, use standard JS (+ JSX) for all components. Do NOT use .tsx files. Build robust responsive UI using Tailwind CSS. Incorporate Radix UI or Shadcn JS primitives. Make sure to implement both Tourist (Discovery/E-commerce) and Service Provider (Dashboard) views."
+  },
+  "motion": {
+    "interactions": "Hover states on all buttons and cards. Add entrance animations for bento grid items using framer-motion (staggerChildren).",
+    "transitions": "Use specific transitions: 'transition: transform 0.2s ease, opacity 0.2s ease'. Do NOT use 'transition: all'."
+  },
+  "accessibility": {
+    "contrast": "Ensure text contrast meets APCA/WCAG standards. Do not place white text over light green. Use text-shadow over hero images.",
+    "data_testid": "All interactive and key informational elements MUST include a data-testid attribute (e.g., data-testid='booking-submit-button', data-testid='language-switcher')."
+  },
+  "media": {
+    "image_urls": {
+      "tea_garden_mist": {
+        "url": "https://images.pexels.com/photos/35151733/pexels-photo-35151733.jpeg",
+        "description": "Misty village in tea plantations. Good for hero or background."
+      },
+      "tea_plantation": {
+        "url": "https://images.pexels.com/photos/103875/pexels-photo-103875.jpeg",
+        "description": "Scenic view of tea plantations. Good for biodiversity/nature section."
+      },
+      "himalayan_mountain": {
+        "url": "https://images.unsplash.com/photo-1584395631446-e41b0fc3f68d",
+        "description": "Snow covered Himalayan mountain. Perfect for '1 Darjeeling' branding or hero."
+      },
+      "red_panda": {
+        "url": "https://images.unsplash.com/photo-1542880941-1abfea46bba6",
+        "description": "Red panda on log. Use for Biodiversity section."
+      },
+      "indian_cafe": {
+        "url": "https://images.pexels.com/photos/33932441/pexels-photo-33932441.png",
+        "description": "South Indian filter coffee. Use for local cafes/shops section."
+      }
+    }
+  },
+  "UNIVERSAL GUIDELINES FOR MAIN AGENT": [
+    "You tend to converge toward generic, 'on distribution' outputs. Avoid this: make creative, distinctive frontends that surprise and delight.",
+    "Do not use dark colors as gradients.",
+    "Don't make generic centered layouts, simplistic gradients, and uniform styling.",
+    "Create depth through layered design elements with z-index hierarchy.",
+    "Use glass-morphism effects with backdrop filters (12-24px blur) where appropriate, but NEVER use completely transparent backgrounds behind text.",
+    "You MUST NOT apply universal transition (e.g., transition: all).",
+    "You MUST NOT center align the app container (.App { text-align: center; }).",
+    "Always use modern button styles like pill-shaped, or sharp button with interaction animations & color relevant to the app style.",
+    "NEVER use AI assistant Emoji characters like 🤖🧠💭💡🔮🎯 etc for icons.",
+    "Every interaction needs micro-animations - hover states, transitions, parallax effects, and entrance animations.",
+    "Use 2-3x more spacing than feels comfortable. Cramped designs look cheap.",
+    "Subtle grain textures, noise overlays, custom cursors, selection states, and loading animations: separates good from extraordinary.",
+    "Main agent relies on provided image URLs. NEVER use placeholder text or dummy image URLs.",
+    "Prioritize using pre-existing components from src/components/ui when applicable.",
+    "Use `lucide-react` for icons.",
+    "Ensure the application structure explicitly handles the default Bengali language layout, allowing safe fallback to English/Devanagari."
+  ]
+}
