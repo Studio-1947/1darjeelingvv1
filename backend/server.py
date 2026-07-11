@@ -2,10 +2,15 @@
 1 Darjeeling - Backend API
 Tourism + local marketplace platform for Darjeeling.
 """
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, Header
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, Header, Request
+from fastapi.responses import JSONResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 import os
 import logging
 import hmac
@@ -29,6 +34,12 @@ JWT_SECRET = os.environ['JWT_SECRET']
 RAZORPAY_KEY_ID = os.environ.get('RAZORPAY_KEY_ID', '')
 RAZORPAY_KEY_SECRET = os.environ.get('RAZORPAY_KEY_SECRET', '')
 MOCK_PAYMENTS = os.environ.get('MOCK_PAYMENTS', 'true').lower() == 'true'
+APP_ENV = os.environ.get('APP_ENV', 'development').lower()  # 'development' | 'production'
+IS_PROD = APP_ENV == 'production'
+
+# Safety net: refuse to boot in prod with mock payments still enabled
+if IS_PROD and MOCK_PAYMENTS:
+    raise RuntimeError("MOCK_PAYMENTS must be 'false' in production. Set MOCK_PAYMENTS=false in .env.")
 
 # --- Mongo
 client = AsyncIOMotorClient(MONGO_URL)
@@ -40,6 +51,25 @@ rzp_client = razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET)) if RAZ
 # --- App
 app = FastAPI(title="1 Darjeeling API")
 api = APIRouter(prefix="/api")
+
+# Rate limiter
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# Security headers middleware
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+        if IS_PROD:
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        return response
+
+app.add_middleware(SecurityHeadersMiddleware)
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 log = logging.getLogger("one-darjeeling")
@@ -150,23 +180,28 @@ async def root():
 
 # ============ AUTH ROUTES ============
 @api.post("/auth/otp/send")
-async def send_otp(body: SendOTPBody):
-    """Mock WhatsApp OTP send. Any 6-digit code will work; universal test code is '123456'."""
+@limiter.limit("5/minute")
+async def send_otp(request: Request, body: SendOTPBody):
+    """WhatsApp OTP send. In mock mode returns OTP in response (dev only)."""
     otp = f"{_secrets.randbelow(1000000):06d}"
     await db.otps.update_one(
         {"phone": body.phone},
         {"$set": {"phone": body.phone, "otp": otp, "channel": body.channel, "created_at": now_iso()}},
         upsert=True,
     )
-    log.info(f"[MOCK OTP] phone={body.phone} otp={otp} (universal test code: 123456)")
-    # Return the OTP in the response ONLY in mock mode so the UI can show it
-    return {"sent": True, "channel": body.channel, "mock_otp": otp, "hint": "Mock mode: use the OTP shown or 123456"}
+    if not IS_PROD:
+        log.info(f"[MOCK OTP] phone=****{body.phone[-4:]} otp={otp}")
+        return {"sent": True, "channel": body.channel, "mock_otp": otp, "hint": "Mock mode: use the OTP shown or 123456"}
+    # In prod, never return the OTP or log it
+    return {"sent": True, "channel": body.channel}
 
 
 @api.post("/auth/otp/verify")
-async def verify_otp(body: VerifyOTPBody):
+@limiter.limit("10/minute")
+async def verify_otp(request: Request, body: VerifyOTPBody):
     rec = await db.otps.find_one({"phone": body.phone}, {"_id": 0})
-    universal_ok = body.otp == "123456"
+    # Universal test code — dev/preview only, disabled in prod
+    universal_ok = (not IS_PROD) and body.otp == "123456"
     if not universal_ok and (not rec or rec.get("otp") != body.otp):
         raise HTTPException(400, "Invalid OTP")
 
@@ -181,8 +216,11 @@ async def verify_otp(body: VerifyOTPBody):
             "created_at": now_iso(),
         }
         await db.users.insert_one({**user})
-    # remove any _id key just in case
     user.pop("_id", None)
+
+    # Delete the OTP once used
+    if rec:
+        await db.otps.delete_one({"phone": body.phone})
 
     token = make_token(user["id"], user["phone"], user["role"])
     return {"token": token, "user": user}
@@ -196,11 +234,26 @@ async def me(user=Depends(current_user)):
 # ============ USERS ============
 @api.patch("/users/me")
 async def update_me(patch: dict, user=Depends(current_user)):
-    allowed = {"name", "email", "language", "avatar", "role"}
+    # `role` intentionally excluded — role changes go through provider onboarding flow
+    allowed = {"name", "email", "language", "avatar"}
     upd = {k: v for k, v in patch.items() if k in allowed}
     if upd:
         await db.users.update_one({"id": user["id"]}, {"$set": upd})
     return {"user": (await db.users.find_one({"id": user["id"]}, {"_id": 0}))}
+
+
+@api.delete("/users/me")
+async def delete_me(user=Depends(current_user)):
+    """GDPR-style user data deletion. Removes user + their OTPs, providers, listings, bookings, payments."""
+    uid_ = user["id"]
+    # Cascade delete
+    await db.otps.delete_many({"phone": user.get("phone")})
+    await db.providers.delete_many({"user_id": uid_})
+    await db.listings.delete_many({"provider_id": uid_})
+    await db.bookings.delete_many({"user_id": uid_})
+    await db.payments.delete_many({"user_id": uid_})
+    await db.users.delete_one({"id": uid_})
+    return {"deleted": True}
 
 
 # ============ PROVIDER ONBOARDING ============
@@ -441,8 +494,9 @@ async def mock_complete(body: MockCompleteIn, user=Depends(current_user)):
                 provider = await db.providers.find_one({"id": listing["provider_id"]}, {"_id": 0}) \
                     or await db.users.find_one({"id": listing["provider_id"]}, {"_id": 0, "name": 1, "phone": 1})
                 booking["provider"] = provider
-            # Log a mock notification (real WhatsApp would go here)
-            log.info(f"[MOCK NOTIFY] Booking {booking['id']} confirmed. Tourist={user.get('phone')} Provider={booking.get('provider', {}).get('contact_phone') or booking.get('provider', {}).get('phone')}")
+            # Log a mock notification (real WhatsApp would go here). PII redacted in prod.
+            if not IS_PROD:
+                log.info(f"[MOCK NOTIFY] Booking {booking['id']} confirmed. Tourist=****{(user.get('phone') or '')[-4:]}")
         booking_or_provider = booking
 
     return {"ok": True, "status": "paid", "record": booking_or_provider}
@@ -495,9 +549,26 @@ async def verify_payment(body: VerifyPaymentIn, user=Depends(current_user)):
 
 
 # ============ ADMIN / SEED ============
+@api.post("/dev/seed")
+async def dev_seed():
+    """Public seed endpoint — allowed only in non-production for demos."""
+    if IS_PROD:
+        raise HTTPException(403, "Not available in production")
+    from seed_data import SEED_LISTINGS
+    inserted = 0
+    for item in SEED_LISTINGS:
+        exists = await db.listings.find_one({"title": item["title"], "type": item["type"]}, {"_id": 1})
+        if exists:
+            continue
+        doc = {"id": uid(), "created_at": now_iso(), **item}
+        await db.listings.insert_one({**doc})
+        inserted += 1
+    return {"seeded": inserted, "total_in_seed": len(SEED_LISTINGS)}
+
+
 @api.post("/admin/seed")
-async def seed_data():
-    """Idempotent seed of sample Darjeeling content."""
+async def seed_data(user=Depends(require_admin)):
+    """Idempotent seed of sample Darjeeling content. Admin only."""
     from seed_data import SEED_LISTINGS
     inserted = 0
     for item in SEED_LISTINGS:
@@ -511,7 +582,7 @@ async def seed_data():
 
 
 @api.get("/admin/stats")
-async def admin_stats():
+async def admin_stats(user=Depends(require_admin)):
     stats = {
         "users": await db.users.count_documents({}),
         "providers": await db.providers.count_documents({}),
@@ -522,12 +593,33 @@ async def admin_stats():
     return stats
 
 
+@api.post("/admin/bootstrap")
+@limiter.limit("3/hour")
+async def admin_bootstrap(request: Request, body: dict, user=Depends(current_user)):
+    """Bootstrap the very first admin. Requires a shared secret matching ADMIN_BOOTSTRAP_SECRET env var.
+    Once at least one admin exists, this endpoint returns 403."""
+    admin_count = await db.users.count_documents({"role": "admin"})
+    if admin_count > 0:
+        raise HTTPException(403, "Admin already exists")
+    secret = os.environ.get('ADMIN_BOOTSTRAP_SECRET', '')
+    if not secret or body.get('secret') != secret:
+        raise HTTPException(403, "Invalid bootstrap secret")
+    await db.users.update_one({"id": user["id"]}, {"$set": {"role": "admin"}})
+    return {"ok": True, "user_id": user["id"]}
+
+
 # ============ Wire router ============
 app.include_router(api)
+
+# CORS — restrict in prod
+_cors_env = os.environ.get('CORS_ORIGINS', '*')
+if IS_PROD and _cors_env.strip() == '*':
+    raise RuntimeError("CORS_ORIGINS='*' is not allowed in production. Set explicit origin(s) in .env.")
+_cors_origins = [o.strip() for o in _cors_env.split(',') if o.strip()]
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
+    allow_origins=_cors_origins if _cors_origins != ['*'] else ['*'],
     allow_methods=["*"],
     allow_headers=["*"],
 )

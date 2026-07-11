@@ -62,7 +62,7 @@ export default function Discover() {
           return ordered.length;
         };
         const n = await load();
-        if (n === 0) { await api.post('/admin/seed'); await load(); }
+        if (n === 0) { await api.post('/dev/seed'); await load(); }
       } catch (e) {
         if (process.env.NODE_ENV !== 'production') console.error(e);
       }
