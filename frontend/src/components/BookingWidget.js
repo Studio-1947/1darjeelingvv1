@@ -110,8 +110,7 @@ export default function BookingWidget() {
           <div ref={dateRef} className="block md:col-span-4 relative">
             <span className="text-[11px] font-bold uppercase tracking-wider text-ink-soft">When</span>
             <div 
-              onClick={() => setShowDatePicker(!showDatePicker)}
-              className="mt-1 flex items-center gap-2 border border-[var(--line)] rounded-2xl px-3 py-2.5 md:py-3 cursor-pointer bg-white"
+              className="mt-1 flex items-center gap-2 border border-[var(--line)] rounded-2xl px-3 py-2.5 md:py-3 bg-white"
             >
               <Calendar size={16} className="text-ink-soft flex-shrink-0" />
               <div className="flex-1 min-w-0 text-sm md:text-base text-ink select-none">
