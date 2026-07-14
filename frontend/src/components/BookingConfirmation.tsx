@@ -33,7 +33,7 @@ export default function BookingConfirmation({ open, onClose, mode = 'booking', d
           </div>
           <div className="text-[11px] uppercase tracking-widest opacity-90 font-bold">{isBooking ? 'Booking confirmed' : 'You’re live!'}</div>
           <h2 className="mt-1 font-display font-extrabold text-3xl leading-tight">
-            {isBooking ? `Trip locked in ✨` : `Welcome to 1 Darjeeling`}
+            {isBooking ? `Trip locked in` : `Welcome to 1 Darjeeling`}
           </h2>
           <p className="mt-1 text-sm text-white/90">
             {isBooking

@@ -10,7 +10,7 @@ export default function Responsible() {
   return (
     <div className="mx-auto max-w-5xl px-4 md:px-8 py-10 md:py-14" data-testid="responsible-page">
       <div className="text-center max-w-2xl mx-auto">
-        <span className="chip">🌿 Community pledge</span>
+        <span className="chip"><Leaf size={11} className="mr-1" /> Community pledge</span>
         <h1 className="mt-4 font-display font-extrabold text-3xl sm:text-4xl md:text-6xl text-ink leading-tight">
           <span className="headline-mark">{t('responsible.title')}</span>
         </h1>
