@@ -45,6 +45,18 @@
     "learn_more": "और जानें", "get_directions": "रास्ता",
     "call_now": "कॉल करें", "contact_provider": "संपर्क करें", "reserve": "आरक्षित करें"
   },
+  "detail": {
+    "about": "इस जगह के बारे में",
+    "offers": "यहाँ क्या-क्या मिलेगा",
+    "host": "अपने मेज़बान से मिलिए",
+    "location": "आप कहाँ ठहरेंगे",
+    "verified": "सत्यापित प्रदाता",
+    "speaks": "भाषाएँ",
+    "avg_spend": "औसत खर्च",
+    "onwards": "से आगे",
+    "walk_in_note": "किसी भी दिन आ सकते हैं, या पहले से कॉल करके जगह आरक्षित करें।",
+    "info_note": "यह जानकारी के लिए है। ज़िम्मेदारी से घूमें।"
+  },
   "auth": {
     "welcome": "स्वागत है", "phone_label": "व्हाट्सएप नंबर",
     "phone_placeholder": "+91 98XX XXX XXX", "send_otp": "OTP भेजें",

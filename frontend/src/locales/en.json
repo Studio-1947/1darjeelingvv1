@@ -66,6 +66,18 @@
     "contact_provider": "Contact Provider",
     "reserve": "Reserve"
   },
+  "detail": {
+    "about": "About this place",
+    "offers": "What this place offers",
+    "host": "Meet your host",
+    "location": "Where you'll be",
+    "verified": "Verified provider",
+    "speaks": "Speaks",
+    "avg_spend": "Average spend",
+    "onwards": "onwards",
+    "walk_in_note": "Walk in any day, or call ahead to reserve a table.",
+    "info_note": "This entry is informational. Visit responsibly."
+  },
   "auth": {
     "welcome": "Welcome",
     "phone_label": "WhatsApp number",
