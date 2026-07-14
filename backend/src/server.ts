@@ -36,7 +36,7 @@ const AMOUNTS: Record<string, number> = {
 const app = express();
 app.use(express.json());
 
-// CORS setup mirroring request origin when credentials are used
+
 app.use(cors({
   origin: (origin, callback) => {
     callback(null, true);
