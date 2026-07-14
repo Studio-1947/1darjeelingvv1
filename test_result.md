@@ -115,11 +115,22 @@ backend:
       - working: true
         agent: "main"
         comment: "Ported TypeScript backend was only returning enriched bookings but missing stats and listings. This caused stats.revenue to be undefined and throw a TypeError on frontend rendering. Refactored the route to compute stats and map listings, resolving the crash."
+  - task: "Prioritize active provider profile in backend queries"
+    implemented: true
+    working: true
+    file: "backend/src/server.ts"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "Fixed a bug where users with multiple provider profiles (e.g. a draft and an active one) loaded the draft profile by default. Updated /api/providers/me and /api/bookings/provider to find the active profile first, resolving listings/bookings visibility issues."
 frontend:
   - task: "Add interactive profile avatar dropdown with Dashboard and Logout options"
     implemented: true
     working: true
-    file: "frontend/src/components/Header.js"
+    file: "frontend/src/components/Header.tsx"
     stuck_count: 0
     priority: "high"
     needs_retesting: false
@@ -127,6 +138,29 @@ frontend:
       - working: true
         agent: "main"
         comment: "Implemented absolute-positioned dropdown for the user avatar in the header. Toggles display of user profile details, Dashboard router link, and Logout functionality. Verified working in E2E browser tests."
+  - task: "Add form required checks and date constraints"
+    implemented: true
+    working: true
+    file: "frontend/src/pages/ListingDetail.tsx, Login.tsx, ProviderOnboard.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "Enforced required constraints on Name input (login/registration), price (onboarding), and check-in/check-out dates (homestay details booking). Added checkout after checkin date checks."
+backend:
+  - task: "Validate mandatory user name, onboarding fields, and bookings dates"
+    implemented: true
+    working: true
+    file: "backend/src/server.ts"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "Implemented backend validation checks: name requirement on registration (/auth/otp/verify), standard onboarding details (/providers/onboard), and date checking for homestay bookings (/bookings)."
 metadata:
   created_by: "main_agent"
   version: "1.0"
