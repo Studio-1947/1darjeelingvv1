@@ -191,13 +191,13 @@ export default function ListingDetail() {
                 )}
                 <label className="block">
                   <span className="text-xs font-semibold text-ink-soft">{t('booking.guests')}</span>
-                  <input type="number" min="1" value={form.guests} onChange={(e) => setForm({ ...form, guests: e.target.value })}
+                  <input type="number" min="1" value={form.guests} onChange={(e) => setForm({ ...form, guests: Number(e.target.value) || 1 })}
                     data-testid="booking-guests" className="mt-1 w-full px-3 py-2.5 rounded-xl border border-[var(--line)] outline-none" />
                 </label>
                 <label className="block">
                   <span className="text-xs font-semibold text-ink-soft">{t('booking.notes')}</span>
                   <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                    data-testid="booking-notes" rows="3" className="mt-1 w-full px-3 py-2 rounded-xl border border-[var(--line)] outline-none" />
+                    data-testid="booking-notes" rows={3} className="mt-1 w-full px-3 py-2 rounded-xl border border-[var(--line)] outline-none" />
                 </label>
 
                 <p className="text-xs text-ink-soft">{t('booking.fee_note')}</p>

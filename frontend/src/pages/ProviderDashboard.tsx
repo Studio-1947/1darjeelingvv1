@@ -5,7 +5,7 @@ import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { CheckCircle2, Clock, Wallet, CalendarCheck, Users, LayoutList, Phone, MessageCircle, ArrowRight, ExternalLink } from 'lucide-react';
 
-function StatCard({ label, value, sub, icon: Icon, tone = 'pine' }) {
+function StatCard({ label, value, sub, icon: Icon, tone = 'pine' }: { label: string; value: any; sub?: string; icon: any; tone?: string }) {
   const tones = {
     pine: 'from-pine to-pine-dark',
     flag: 'from-flag to-[#8a1e1e]',

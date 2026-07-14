@@ -18,7 +18,7 @@ export default function TouristDashboard() {
   const { t } = useTranslation();
   const { user, loading: authLoading, logout } = useAuth();
   const nav = useNavigate();
-  const [bookings, setBookings] = useState([]);
+  const [bookings, setBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
