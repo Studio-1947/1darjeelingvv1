@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: 1darjeeling_postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=one_darjeeling
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: 1darjeeling_backend
+    restart: on-failure
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/one_darjeeling
+      - JWT_SECRET=your_jwt_secret_here
+      - MOCK_PAYMENTS=true
+      - APP_ENV=development
+      - CORS_ORIGINS=*
+    depends_on:
+      - postgres
+
+volumes:
+  pg_data:

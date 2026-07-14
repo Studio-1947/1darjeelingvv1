@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 
 export default function Privacy() {
   const { t } = useTranslation();
-  const sections = t('privacy.sections', { returnObjects: true });
+  const sections = t('privacy.sections', { returnObjects: true }) as any;
   return (
     <div className="mx-auto max-w-3xl px-4 md:px-8 py-10 md:py-14" data-testid="privacy-page">
       <h1 className="font-display font-extrabold text-3xl sm:text-4xl md:text-5xl text-ink leading-tight">{t('privacy.title')}</h1>

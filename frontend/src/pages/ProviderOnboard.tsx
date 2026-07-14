@@ -101,7 +101,7 @@ export default function ProviderOnboard() {
         </div>
         <label className="block">
           <span className="text-xs font-semibold text-ink-soft">{t('provider.description')}</span>
-          <textarea required rows="3" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })}
+          <textarea required rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })}
             data-testid="provider-description" className="mt-1 w-full px-3 py-2 rounded-xl border border-[var(--line)] bg-white outline-none" />
         </label>
         <div className="grid md:grid-cols-2 gap-4">

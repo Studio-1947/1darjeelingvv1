@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Shield, CheckCircle2, IndianRupee, Loader2 } from 'lucide-react';
+import { X, Shield, Lock, CheckCircle2, IndianRupee, Loader2 } from 'lucide-react';
 
 /**
  * Dummy payment gateway modal — mimics a real Razorpay-style checkout
@@ -8,7 +8,7 @@ import { X, Shield, CheckCircle2, IndianRupee, Loader2 } from 'lucide-react';
  * Props:
  *   open, onClose, amount (paise), title, description, onPay (async), onSuccess
  */
-export default function MockPaymentModal({ open, onClose, amount, title = 'Complete payment', description = '', onPay, prefill = {} }) {
+export default function MockPaymentModal({ open, onClose, amount, title = 'Complete payment', description = '', onPay, prefill = {} as any }: { open: boolean, onClose: () => void, amount: number, title?: string, description?: string, onPay: () => Promise<void>, prefill?: any }) {
   const [busy, setBusy] = useState(false);
   const [method, setMethod] = useState('upi');
   const [done, setDone] = useState(false);
@@ -108,7 +108,7 @@ export default function MockPaymentModal({ open, onClose, amount, title = 'Compl
              (<>Pay ₹{rupees.toFixed(0)}</>)}
           </button>
 
-          <p className="mt-3 text-[10px] text-center text-ink-soft">🔒 Encrypted. Sandbox mode — no real money is charged.</p>
+          <p className="mt-3 text-[10px] text-center text-ink-soft flex items-center justify-center gap-1"><Lock size={10} /> Encrypted. Sandbox mode — no real money is charged.</p>
         </div>
       </div>
     </div>

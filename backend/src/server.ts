@@ -36,7 +36,7 @@ const AMOUNTS: Record<string, number> = {
 const app = express();
 app.use(express.json());
 
-// CORS setup mirroring request origin when credentials are used
+
 app.use(cors({
   origin: (origin, callback) => {
     callback(null, true);
@@ -362,7 +362,7 @@ app.get('/api/listings', async (req: Request, res: Response) => {
 });
 
 app.get('/api/listings/:id', async (req: Request, res: Response) => {
-  const [item] = await db.select().from(schema.listings).where(eq(schema.listings.id, req.params.id)).limit(1);
+  const [item] = await db.select().from(schema.listings).where(eq(schema.listings.id, req.params.id as any)).limit(1);
   if (!item) {
     return res.status(404).json({ detail: 'Not found' });
   }
