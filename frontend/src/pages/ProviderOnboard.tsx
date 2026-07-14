@@ -119,7 +119,7 @@ export default function ProviderOnboard() {
         <div className="grid md:grid-cols-2 gap-4">
           <label className="block">
             <span className="text-xs font-semibold text-ink-soft">{t('provider.price_from')}</span>
-            <input type="number" min="0" value={form.price_from} onChange={(e) => setForm({ ...form, price_from: e.target.value })}
+            <input required type="number" min="0" value={form.price_from} onChange={(e) => setForm({ ...form, price_from: e.target.value })}
               data-testid="provider-price" className="mt-1 w-full px-3 py-2.5 rounded-xl border border-[var(--line)] bg-white outline-none" />
           </label>
           <label className="block">
