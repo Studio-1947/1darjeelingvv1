@@ -36,6 +36,18 @@
     "learn_more": "थप जान्नुहोस्", "get_directions": "बाटो",
     "call_now": "कल गर्नुहोस्", "contact_provider": "सम्पर्क", "reserve": "आरक्षण"
   },
+  "detail": {
+    "about": "यस ठाउँको बारेमा",
+    "offers": "यहाँ के-के पाइन्छ",
+    "host": "आफ्नो होस्टलाई चिन्नुहोस्",
+    "location": "तपाईं कहाँ बस्नुहुनेछ",
+    "verified": "प्रमाणित प्रदायक",
+    "speaks": "भाषाहरू",
+    "avg_spend": "औसत खर्च",
+    "onwards": "देखि",
+    "walk_in_note": "जुनसुकै दिन आउन सक्नुहुन्छ, वा पहिले नै फोन गरेर ठाउँ आरक्षण गर्नुहोस्।",
+    "info_note": "यो जानकारीमूलक हो। जिम्मेवार भई घुम्नुहोस्।"
+  },
   "auth": {
     "welcome": "स्वागत छ", "phone_label": "WhatsApp नम्बर",
     "phone_placeholder": "+९१ ९८XX XXX XXX", "send_otp": "OTP पठाउनुहोस्",

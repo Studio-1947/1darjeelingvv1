@@ -92,7 +92,7 @@ export default function Discover() {
         </div>
         <div className="relative z-10 mx-auto max-w-6xl px-4 md:px-6 pt-10 md:pt-16 pb-8 md:pb-12">
           <div className="text-white max-w-2xl">
-            <span className="chip bg-white/20 !text-white backdrop-blur border border-white/30">{t('hero.eyebrow')}</span>
+            <span className="chip bg-white/20 !text-black backdrop-blur border border-white/30">{t('hero.eyebrow')}</span>
             <h1 className="mt-4 font-display font-extrabold text-[2.3rem] leading-[1.05] sm:text-5xl md:text-6xl tracking-tight drop-shadow-lg">
               {t('hero.title_1')}<br />{t('hero.title_2')}
             </h1>
@@ -203,7 +203,7 @@ export default function Discover() {
       <section className="mx-auto max-w-6xl px-4 md:px-6 pt-10 md:pt-14">
         <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-pine to-pine-dark text-white p-6 md:p-10">
           <div className="max-w-lg relative z-10">
-            <span className="chip bg-white/15 !text-white backdrop-blur">₹99 · one-time</span>
+            <span className="chip bg-white/15 !text-black backdrop-blur">₹99 · one-time</span>
             <h3 className="mt-3 font-display font-extrabold text-2xl sm:text-3xl md:text-4xl leading-tight">{t('provider.onboard_title')}</h3>
             <p className="mt-2 text-white/90 text-sm md:text-base">{t('provider.onboard_sub')}</p>
             <Link to="/provider/onboard" data-testid="banner-provider-cta" className="mt-5 inline-flex items-center gap-2 px-5 py-3 rounded-full bg-white text-pine font-extrabold btn-hover">
