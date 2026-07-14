@@ -7,9 +7,22 @@ import { Search, User } from 'lucide-react';
 
 export default function Header() {
   const { t } = useTranslation();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [q, setQ] = React.useState('');
+  const [dropdownOpen, setDropdownOpen] = React.useState(false);
+  const dropdownRef = React.useRef(null);
   const nav = useNavigate();
+
+  React.useEffect(() => {
+    if (!dropdownOpen) return;
+    const handler = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setDropdownOpen(false);
+      }
+    };
+    window.addEventListener('click', handler);
+    return () => window.removeEventListener('click', handler);
+  }, [dropdownOpen]);
 
   const submitSearch = (e) => {
     e.preventDefault();
@@ -49,10 +62,37 @@ export default function Header() {
         <div className="flex items-center gap-2">
           <LanguageSwitcher />
           {user ? (
-            <button onClick={goProfile} data-testid="header-profile"
-              className="w-9 h-9 rounded-full bg-gradient-to-br from-pine to-pine-dark text-white grid place-items-center font-bold btn-hover">
-              {user.name ? user.name.trim().charAt(0).toUpperCase() : <User size={16} />}
-            </button>
+            <div className="relative" ref={dropdownRef}>
+              <button onClick={() => setDropdownOpen(!dropdownOpen)} data-testid="header-profile"
+                className="w-9 h-9 rounded-full bg-gradient-to-br from-pine to-pine-dark text-white grid place-items-center font-bold btn-hover focus:outline-none overflow-hidden">
+                {user.avatar ? (
+                  <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
+                ) : user.name ? (
+                  user.name.trim().charAt(0).toUpperCase()
+                ) : (
+                  <User size={16} />
+                )}
+              </button>
+
+              {dropdownOpen && (
+                <div className="absolute right-0 mt-2 w-48 bg-white border border-[var(--line)] rounded-2xl shadow-xl py-2 z-50" data-testid="header-profile-dropdown">
+                  <div className="px-4 py-2 border-b border-[var(--line)]">
+                    <p className="text-sm font-bold text-ink truncate">{user.name}</p>
+                    <p className="text-[10px] uppercase tracking-wider font-bold text-ink-soft mt-0.5 capitalize">{user.role}</p>
+                  </div>
+                  
+                  <button onClick={() => { setDropdownOpen(false); goProfile(); }}
+                    className="w-full text-left px-4 py-2.5 text-sm text-ink hover:bg-mist font-semibold transition-colors">
+                    {t('nav.dashboard') || 'Dashboard'}
+                  </button>
+                  
+                  <button onClick={() => { setDropdownOpen(false); logout(); nav('/'); }}
+                    className="w-full text-left px-4 py-2.5 text-sm text-flag hover:bg-mist font-bold border-t border-[var(--line)] transition-colors">
+                    {t('nav.logout') || 'Log out'}
+                  </button>
+                </div>
+              )}
+            </div>
           ) : (
             <Link to="/login" data-testid="header-login"
               className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-flag text-white font-semibold text-xs md:text-sm btn-hover">
