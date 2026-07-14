@@ -55,6 +55,16 @@ export default function ListingDetail() {
 
   const doBook = async () => {
     if (!user) { nav('/login?next=' + encodeURIComponent(`/listing/${id}`)); return; }
+    if (item.type === 'homestay') {
+      if (!form.check_in || !form.check_out) {
+        setMsg('Check-in and check-out dates are required');
+        return;
+      }
+      if (new Date(form.check_out) <= new Date(form.check_in)) {
+        setMsg('Check-out date must be after check-in date');
+        return;
+      }
+    }
     setBusy(true); setMsg('');
     try {
       const { data } = await api.post('/bookings', {
@@ -179,12 +189,12 @@ export default function ListingDetail() {
                   <div className="grid grid-cols-2 gap-3">
                     <label className="block">
                       <span className="text-xs font-semibold text-ink-soft">{t('booking.checkin')}</span>
-                      <input type="date" value={form.check_in} onChange={(e) => setForm({ ...form, check_in: e.target.value })}
+                      <input required type="date" value={form.check_in} onChange={(e) => setForm({ ...form, check_in: e.target.value })}
                         data-testid="booking-checkin" className="mt-1 w-full px-3 py-2.5 rounded-xl border border-[var(--line)] outline-none text-sm" />
                     </label>
                     <label className="block">
                       <span className="text-xs font-semibold text-ink-soft">{t('booking.checkout')}</span>
-                      <input type="date" value={form.check_out} onChange={(e) => setForm({ ...form, check_out: e.target.value })}
+                      <input required type="date" value={form.check_out} onChange={(e) => setForm({ ...form, check_out: e.target.value })}
                         data-testid="booking-checkout" className="mt-1 w-full px-3 py-2.5 rounded-xl border border-[var(--line)] outline-none text-sm" />
                     </label>
                   </div>

@@ -109,7 +109,7 @@ export default function Login() {
             </label>
             <label className="block">
               <span className="text-xs font-semibold text-ink-soft">Name</span>
-              <input value={name} onChange={(e) => setName(e.target.value)}
+              <input value={name} onChange={(e) => setName(e.target.value)} required
                 data-testid="login-name" placeholder="Your name"
                 className="mt-1 w-full px-3 py-2.5 rounded-xl border border-[var(--line)] bg-white outline-none" />
             </label>

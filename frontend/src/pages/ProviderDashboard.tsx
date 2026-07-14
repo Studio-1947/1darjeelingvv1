@@ -84,10 +84,15 @@ export default function ProviderDashboard() {
           <h1 className="mt-1 font-display font-extrabold text-3xl sm:text-4xl md:text-5xl text-ink leading-tight">{provider.business_name}</h1>
           <p className="text-sm text-ink-soft mt-1 capitalize">{provider.business_type} · {provider.location}</p>
         </div>
-        <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full font-bold text-xs ${active ? 'bg-pine/10 text-pine' : 'bg-gold/20 text-[#8a6b04]'}`}
-          data-testid="provider-status">
-          {active ? <CheckCircle2 size={14} /> : <Clock size={14} />} {active ? t('provider.active') : t('provider.pending')}
-        </span>
+        <div className="flex items-center gap-3">
+          <Link to="/dashboard" className="inline-flex items-center gap-1.5 text-xs font-semibold text-pine border border-pine/30 rounded-full px-3.5 py-1.5 hover:bg-pine/5 transition-colors">
+            Switch to Traveller
+          </Link>
+          <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full font-bold text-xs ${active ? 'bg-pine/10 text-pine' : 'bg-gold/20 text-[#8a6b04]'}`}
+            data-testid="provider-status">
+            {active ? <CheckCircle2 size={14} /> : <Clock size={14} />} {active ? t('provider.active') : t('provider.pending')}
+          </span>
+        </div>
       </div>
 
       {/* Stats grid */}

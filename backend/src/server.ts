@@ -189,10 +189,13 @@ app.post('/api/auth/otp/verify', rateLimiter(10, 60 * 1000, 'otp_verify'), async
 
   let [user] = await db.select().from(schema.users).where(eq(schema.users.phone, phone)).limit(1);
   if (!user) {
+    if (!name || name.trim() === '') {
+      return res.status(400).json({ detail: 'Name is required for registration' });
+    }
     user = {
       id: uuidv4(),
       phone,
-      name: name || `User ${phone.slice(-4)}`,
+      name: name.trim(),
       role,
       providerPaid: false,
       email: null,
@@ -255,6 +258,10 @@ app.delete('/api/users/me', authenticateToken, async (req: Request, res: Respons
 app.post('/api/providers/onboard', authenticateToken, async (req: Request, res: Response) => {
   const { business_name, business_type, description, location, contact_phone, price_from = 0, images = [], extras = {} } = req.body;
 
+  if (!business_name || !business_name.trim() || !business_type || !description || !description.trim() || !location || !location.trim() || !contact_phone || !contact_phone.trim()) {
+    return res.status(400).json({ detail: 'Business name, type, description, location, and contact phone are required' });
+  }
+
   const provider = {
     id: uuidv4(),
     userId: req.user.id,
@@ -294,7 +301,8 @@ app.post('/api/providers/onboard', authenticateToken, async (req: Request, res: 
 });
 
 app.get('/api/providers/me', authenticateToken, async (req: Request, res: Response) => {
-  const [provider] = await db.select().from(schema.providers).where(eq(schema.providers.userId, req.user.id)).limit(1);
+  const providersList = await db.select().from(schema.providers).where(eq(schema.providers.userId, req.user.id));
+  const provider = providersList.find(p => p.status === 'active') || providersList[0];
   if (!provider) {
     return res.json({ provider: null });
   }
@@ -425,9 +433,19 @@ app.post('/api/listings', authenticateToken, async (req: Request, res: Response)
 
 // ============ BOOKINGS ============
 app.post('/api/bookings', authenticateToken, async (req: Request, res: Response) => {
-  const { listing_id, listing_type, check_in, check_out, guests = 1, notes = '' } = req.body;
+  const { listing_id, listing_type, check_in, check_out, guests = 1, notes } = req.body;
+
   if (!listing_id || !listing_type) {
     return res.status(400).json({ detail: 'Listing ID and type are required' });
+  }
+
+  if (listing_type === 'homestay') {
+    if (!check_in || !check_out) {
+      return res.status(400).json({ detail: 'Check-in and check-out dates are required for homestays' });
+    }
+    if (new Date(check_out) <= new Date(check_in)) {
+      return res.status(400).json({ detail: 'Check-out date must be after check-in date' });
+    }
   }
 
   const [listing] = await db.select().from(schema.listings).where(eq(schema.listings.id, listing_id)).limit(1);
@@ -512,7 +530,8 @@ app.get('/api/bookings/me', authenticateToken, async (req: Request, res: Respons
 });
 
 app.get('/api/bookings/provider', authenticateToken, async (req: Request, res: Response) => {
-  const [provider] = await db.select().from(schema.providers).where(eq(schema.providers.userId, req.user.id)).limit(1);
+  const providersList = await db.select().from(schema.providers).where(eq(schema.providers.userId, req.user.id));
+  const provider = providersList.find(p => p.status === 'active') || providersList[0];
   const possibleProviderIds = [req.user.id];
   if (provider) {
     possibleProviderIds.push(provider.id);
