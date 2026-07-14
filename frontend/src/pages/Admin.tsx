@@ -6,7 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 export default function Admin() {
   const { user, loading: authLoading } = useAuth();
   const nav = useNavigate();
-  const [stats, setStats] = useState(null);
+  const [stats, setStats] = useState<Record<string, any> | null>(null);
   const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
 

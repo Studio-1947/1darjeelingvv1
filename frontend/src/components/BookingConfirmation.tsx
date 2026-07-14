@@ -6,7 +6,7 @@ import { CheckCircle2, MapPin, Calendar, Users, Phone, MessageCircle, ArrowRight
  * Booking / provider registration confirmation modal.
  * Shows details for both sides: tourist sees provider contact, provider sees business active.
  */
-export default function BookingConfirmation({ open, onClose, mode = 'booking', data = {}, onView }) {
+export default function BookingConfirmation({ open, onClose, mode = 'booking', data = {} as any, onView }: { open: boolean, onClose: () => void, mode?: string, data?: any, onView?: () => void }) {
   if (!open) return null;
 
   const isBooking = mode === 'booking';

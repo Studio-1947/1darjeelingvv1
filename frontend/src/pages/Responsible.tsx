@@ -6,7 +6,7 @@ const ICONS = [Recycle, TreePine, PawPrint, Leaf, Camera, VolumeX];
 
 export default function Responsible() {
   const { t } = useTranslation();
-  const items = t('responsible.principles', { returnObjects: true });
+  const items = t('responsible.principles', { returnObjects: true }) as any;
   return (
     <div className="mx-auto max-w-5xl px-4 md:px-8 py-10 md:py-14" data-testid="responsible-page">
       <div className="text-center max-w-2xl mx-auto">

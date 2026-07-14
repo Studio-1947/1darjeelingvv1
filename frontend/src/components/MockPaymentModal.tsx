@@ -8,7 +8,7 @@ import { X, Shield, Lock, CheckCircle2, IndianRupee, Loader2 } from 'lucide-reac
  * Props:
  *   open, onClose, amount (paise), title, description, onPay (async), onSuccess
  */
-export default function MockPaymentModal({ open, onClose, amount, title = 'Complete payment', description = '', onPay, prefill = {} }) {
+export default function MockPaymentModal({ open, onClose, amount, title = 'Complete payment', description = '', onPay, prefill = {} as any }: { open: boolean, onClose: () => void, amount: number, title?: string, description?: string, onPay: () => Promise<void>, prefill?: any }) {
   const [busy, setBusy] = useState(false);
   const [method, setMethod] = useState('upi');
   const [done, setDone] = useState(false);
