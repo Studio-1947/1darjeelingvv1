@@ -81,10 +81,23 @@ export default function Header() {
                     <p className="text-[10px] uppercase tracking-wider font-bold text-ink-soft mt-0.5 capitalize">{user.role}</p>
                   </div>
                   
-                  <button onClick={() => { setDropdownOpen(false); goProfile(); }}
-                    className="w-full text-left px-4 py-2.5 text-sm text-ink hover:bg-mist font-semibold transition-colors">
-                    {t('nav.dashboard') || 'Dashboard'}
-                  </button>
+                  {user.role === 'provider' ? (
+                    <>
+                      <button onClick={() => { setDropdownOpen(false); nav('/provider/dashboard'); }}
+                        className="w-full text-left px-4 py-2.5 text-sm text-ink hover:bg-mist font-semibold transition-colors">
+                        Business Dashboard
+                      </button>
+                      <button onClick={() => { setDropdownOpen(false); nav('/dashboard'); }}
+                        className="w-full text-left px-4 py-2.5 text-sm text-ink hover:bg-mist font-semibold transition-colors">
+                        Personal Bookings
+                      </button>
+                    </>
+                  ) : (
+                    <button onClick={() => { setDropdownOpen(false); goProfile(); }}
+                      className="w-full text-left px-4 py-2.5 text-sm text-ink hover:bg-mist font-semibold transition-colors">
+                      {t('nav.dashboard') || 'Dashboard'}
+                    </button>
+                  )}
                   
                   <button onClick={() => { setDropdownOpen(false); logout(); nav('/'); }}
                     className="w-full text-left px-4 py-2.5 text-sm text-flag hover:bg-mist font-bold border-t border-[var(--line)] transition-colors">

@@ -294,7 +294,8 @@ app.post('/api/providers/onboard', authenticateToken, async (req: Request, res: 
 });
 
 app.get('/api/providers/me', authenticateToken, async (req: Request, res: Response) => {
-  const [provider] = await db.select().from(schema.providers).where(eq(schema.providers.userId, req.user.id)).limit(1);
+  const providersList = await db.select().from(schema.providers).where(eq(schema.providers.userId, req.user.id));
+  const provider = providersList.find(p => p.status === 'active') || providersList[0];
   if (!provider) {
     return res.json({ provider: null });
   }
@@ -512,7 +513,8 @@ app.get('/api/bookings/me', authenticateToken, async (req: Request, res: Respons
 });
 
 app.get('/api/bookings/provider', authenticateToken, async (req: Request, res: Response) => {
-  const [provider] = await db.select().from(schema.providers).where(eq(schema.providers.userId, req.user.id)).limit(1);
+  const providersList = await db.select().from(schema.providers).where(eq(schema.providers.userId, req.user.id));
+  const provider = providersList.find(p => p.status === 'active') || providersList[0];
   const possibleProviderIds = [req.user.id];
   if (provider) {
     possibleProviderIds.push(provider.id);

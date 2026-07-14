@@ -24,7 +24,6 @@ export default function TouristDashboard() {
   useEffect(() => {
     if (authLoading) return;
     if (!user) { nav('/login?next=/dashboard'); return; }
-    if (user.role === 'provider') { nav('/provider/dashboard'); return; }
     api.get('/bookings/me').then((r) => setBookings(r.data.items || [])).finally(() => setLoading(false));
   }, [user, authLoading, nav]);
 
@@ -135,10 +134,17 @@ export default function TouristDashboard() {
             <div className="w-10 h-10 rounded-full bg-mist text-pine grid place-items-center mb-2"><Ticket size={18} /></div>
             <div className="font-display font-bold text-ink">Cultural events</div>
           </Link>
-          <Link to="/provider/onboard" className="rounded-2xl p-4 bg-gradient-to-br from-pine to-pine-dark text-white btn-hover">
-            <div className="w-10 h-10 rounded-full bg-white/15 text-white grid place-items-center mb-2"><Store size={18} /></div>
-            <div className="font-display font-bold">List your business</div>
-          </Link>
+          {user.role === 'provider' ? (
+            <Link to="/provider/dashboard" className="rounded-2xl p-4 bg-gradient-to-br from-pine to-pine-dark text-white btn-hover">
+              <div className="w-10 h-10 rounded-full bg-white/15 text-white grid place-items-center mb-2"><Store size={18} /></div>
+              <div className="font-display font-bold">Business Dashboard</div>
+            </Link>
+          ) : (
+            <Link to="/provider/onboard" className="rounded-2xl p-4 bg-gradient-to-br from-pine to-pine-dark text-white btn-hover">
+              <div className="w-10 h-10 rounded-full bg-white/15 text-white grid place-items-center mb-2"><Store size={18} /></div>
+              <div className="font-display font-bold">List your business</div>
+            </Link>
+          )}
         </div>
       </div>
     </div>
