@@ -101,3 +101,34 @@
 #====================================================================================================
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
+
+user_problem_statement: "Provider dashboard crashes with TypeError: Cannot read properties of undefined (reading 'toLocaleString')"
+backend:
+  - task: "Fix /api/bookings/provider to return stats and listings info"
+    implemented: true
+    working: true
+    file: "backend/src/server.ts"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "Ported TypeScript backend was only returning enriched bookings but missing stats and listings. This caused stats.revenue to be undefined and throw a TypeError on frontend rendering. Refactored the route to compute stats and map listings, resolving the crash."
+frontend:
+  - task: "Add interactive profile avatar dropdown with Dashboard and Logout options"
+    implemented: true
+    working: true
+    file: "frontend/src/components/Header.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "Implemented absolute-positioned dropdown for the user avatar in the header. Toggles display of user profile details, Dashboard router link, and Logout functionality. Verified working in E2E browser tests."
+metadata:
+  created_by: "main_agent"
+  version: "1.0"
+  test_sequence: 1
+  run_ui: false
