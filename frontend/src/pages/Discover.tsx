@@ -1,12 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import api from '@/lib/api';
+import { sizedImage } from '@/lib/listingContent';
 import FeedCard from '@/components/FeedCard';
 import StoryCircle from '@/components/StoryCircle';
 import BookingWidget from '@/components/BookingWidget';
-import { Mountain, Home as HomeIcon, Car, Store, Coffee, PartyPopper, Leaf, ArrowRight, Sparkles, TrendingUp } from 'lucide-react';
+import { Mountain, Home as HomeIcon, Car, Store, Coffee, PartyPopper, Leaf, ArrowRight, Sparkles, TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const HERO_IMG = 'https://images.unsplash.com/photo-1584395631446-e41b0fc3f68d';
 const RED_PANDA = 'https://images.unsplash.com/photo-1542880941-1abfea46bba6';
@@ -35,6 +36,15 @@ export default function Discover() {
   const [feed, setFeed] = useState([]);
   const [spots, setSpots] = useState([]);
   const [homestays, setHomestays] = useState([]);
+  const spotsScrollRef = useRef<HTMLDivElement>(null);
+
+  const scrollSpots = (direction: 'left' | 'right') => {
+    if (spotsScrollRef.current) {
+      const container = spotsScrollRef.current;
+      const scrollAmount = container.clientWidth * 0.75;
+      container.scrollBy({ left: direction === 'left' ? -scrollAmount : scrollAmount, behavior: 'smooth' });
+    }
+  };
 
   useEffect(() => {
     (async () => {
@@ -96,9 +106,12 @@ export default function Discover() {
           >
             <source src="https://res.cloudinary.com/drgb8w8ak/video/upload/v1783579758/S_47_July_26_web_cover_video_e1wiyd.mp4" type="video/mp4" />
           </video>
-          <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/50 to-[var(--bg)]" />
+          {/* Top dark overlay to ensure white text remains readable */}
+          <div className="absolute top-0 inset-x-0 h-4/5 bg-gradient-to-b from-black/85 via-black/40 to-transparent" />
+          {/* Short bottom fade-to-white transition */}
+          <div className="absolute bottom-0 inset-x-0 h-16 bg-gradient-to-t from-[var(--bg)] to-transparent" />
         </div>
-        <div className="relative z-10 mx-auto max-w-6xl px-4 md:px-6 pt-10 md:pt-16 pb-8 md:pb-12">
+        <div className="relative z-10 mx-auto max-w-6xl px-4 md:px-6 pt-20 md:pt-36 pb-20 md:pb-32">
           <div className="text-white max-w-2xl">
             <span className="chip bg-white/20 !text-black backdrop-blur border border-white/30">{t('hero.eyebrow')}</span>
             <h1 className="mt-4 font-display font-extrabold text-[2.3rem] leading-[1.05] sm:text-5xl md:text-6xl tracking-tight drop-shadow-lg">
@@ -142,23 +155,47 @@ export default function Discover() {
           </div>
           <Link to="/spots" className="text-sm font-bold text-pine whitespace-nowrap">See all →</Link>
         </div>
-        <div className="flex gap-3 md:gap-4 overflow-x-auto no-scrollbar snap-x snap-mandatory -mx-4 px-4 md:mx-0 md:px-0 pb-2">
-          {spots.map((s) => (
-            <Link key={s.id} to={`/listing/${s.id}`} data-testid={`spot-tile-${s.id}`}
-              className="snap-start flex-shrink-0 w-[70%] sm:w-[45%] md:w-[30%] rounded-2xl overflow-hidden bg-white border border-[var(--line)] btn-hover">
-              <div className="aspect-[4/5] relative bg-mist overflow-hidden">
-                {s.image && <img src={s.image} alt={s.title} className="w-full h-full object-cover" loading="lazy" />}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
-                <div className="absolute bottom-0 inset-x-0 p-3 md:p-4 text-white">
-                  <div className="text-[10px] uppercase tracking-widest opacity-90">{s.location}</div>
-                  <div className="font-display font-extrabold text-lg md:text-xl leading-tight drop-shadow line-clamp-2">{s.title}</div>
-                  <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white text-pine font-bold text-xs">
-                    <Mountain size={12} /> {t('cta.explore')}
+        <div className="relative group">
+          {/* Left Navigation Arrow */}
+          <button
+            onClick={() => scrollSpots('left')}
+            className="absolute -left-5 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-white shadow-lg border border-[var(--line)] text-ink flex items-center justify-center transition-all hover:bg-mist active:scale-95 hidden md:flex"
+            aria-label="Scroll left"
+          >
+            <ChevronLeft size={20} className="text-ink" />
+          </button>
+
+          {/* Scroll Container */}
+          <div
+            ref={spotsScrollRef}
+            className="flex gap-3 md:gap-4 overflow-x-auto no-scrollbar -mx-4 px-4 md:mx-0 md:px-0 pb-2"
+          >
+            {spots.map((s) => (
+              <Link key={s.id} to={`/listing/${s.id}`} data-testid={`spot-tile-${s.id}`}
+                className="flex-shrink-0 w-[70%] sm:w-[45%] md:w-[30%] rounded-2xl overflow-hidden bg-white border border-[var(--line)] btn-hover">
+                <div className="aspect-[4/5] relative bg-mist overflow-hidden">
+                  {s.image && <img src={sizedImage(s.image)} alt={s.title} className="w-full h-full object-cover" loading="lazy" decoding="async" />}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+                  <div className="absolute bottom-0 inset-x-0 p-3 md:p-4 text-white">
+                    <div className="text-[10px] uppercase tracking-widest opacity-90">{s.location}</div>
+                    <div className="font-display font-extrabold text-lg md:text-xl leading-tight drop-shadow line-clamp-2">{s.title}</div>
+                    <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white text-pine font-bold text-xs">
+                      <Mountain size={12} /> {t('cta.explore')}
+                    </div>
                   </div>
                 </div>
-              </div>
-            </Link>
-          ))}
+              </Link>
+            ))}
+          </div>
+
+          {/* Right Navigation Arrow */}
+          <button
+            onClick={() => scrollSpots('right')}
+            className="absolute -right-5 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-white shadow-lg border border-[var(--line)] text-ink flex items-center justify-center transition-all hover:bg-mist active:scale-95 hidden md:flex"
+            aria-label="Scroll right"
+          >
+            <ChevronRight size={20} className="text-ink" />
+          </button>
         </div>
       </section>
 
@@ -175,7 +212,7 @@ export default function Discover() {
           {homestays.slice(0, 4).map((h) => (
             <div key={h.id} data-testid={`stay-tile-${h.id}`} className="flex flex-col rounded-2xl overflow-hidden bg-white border border-[var(--line)] btn-hover">
               <Link to={`/listing/${h.id}`} className="block aspect-square bg-mist overflow-hidden">
-                {h.image && <img src={h.image} alt={h.title} className="w-full h-full object-cover" loading="lazy" />}
+                {h.image && <img src={sizedImage(h.image, 500)} alt={h.title} className="w-full h-full object-cover" loading="lazy" decoding="async" />}
               </Link>
               <div className="p-3 flex-1 flex flex-col">
                 <div className="font-display font-bold text-sm md:text-base text-ink line-clamp-1">{h.title}</div>
@@ -218,7 +255,7 @@ export default function Discover() {
               {t('hero.cta_provider')} <ArrowRight size={16} />
             </Link>
           </div>
-          <img src={RED_PANDA} alt="" className="absolute -right-8 -bottom-8 md:right-6 md:bottom-6 w-40 h-40 md:w-52 md:h-52 rounded-full object-cover border-4 border-white/20 opacity-90" />
+          <img src={sizedImage(RED_PANDA, 400)} alt="" className="absolute -right-8 -bottom-8 md:right-6 md:bottom-6 w-40 h-40 md:w-52 md:h-52 rounded-full object-cover border-4 border-white/20 opacity-90" />
         </div>
       </section>
     </div>
