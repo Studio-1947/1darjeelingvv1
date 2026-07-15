@@ -30,7 +30,7 @@ async function handlePaymentSuccess(flow: string, referenceId: string, userId: s
         location: p.location,
         price: Number(p.priceFrom || 0),
         image: (p.images || [''])[0] || '',
-        tags: [],
+        tags: (p.extras as any)?.tags || [],
         providerId: p.id,
         extras: p.extras || {},
         createdAt: new Date().toISOString()

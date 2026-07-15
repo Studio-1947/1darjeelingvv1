@@ -277,14 +277,35 @@ export default function ListingDetail() {
         </Screen>
       )}
 
+      {/* ============ GALLERY (homestays) — full screen ============ */}
+      {item.type === 'homestay' && item.extras?.images && item.extras.images.length > 0 && (
+        <Screen tone="white" testid="detail-gallery">
+          <Eyebrow n={nextStep()}>Photos</Eyebrow>
+          <h2 className="mt-8 font-display font-extrabold text-3xl sm:text-4xl md:text-5xl text-ink leading-tight max-w-2xl">
+            Explore the Stay
+          </h2>
+          <div className="mt-10 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {item.extras.images.map((url: string, index: number) => (
+              <div key={index} className="aspect-[4/3] rounded-3xl overflow-hidden border border-[var(--line)] bg-mist shadow-md hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
+                <img src={url} alt={`Gallery ${index + 1}`} className="w-full h-full object-cover" />
+              </div>
+            ))}
+          </div>
+        </Screen>
+      )}
+
       {/* ============ MEET YOUR HOST (homestays) — full screen ============ */}
       {item.type === 'homestay' && (
         <Screen tone="mist" testid="detail-host">
           <Eyebrow n={nextStep()}>{t('detail.host')}</Eyebrow>
           <div className="mt-8 grid lg:grid-cols-5 gap-10 lg:gap-16 items-center">
             <div className="lg:col-span-2">
-              <div className="w-32 h-32 md:w-44 md:h-44 rounded-full bg-gradient-to-br from-pine to-pine-dark text-white grid place-items-center font-display font-extrabold text-6xl md:text-7xl">
-                {host.initial}
+              <div className="w-32 h-32 md:w-44 md:h-44 rounded-full bg-gradient-to-br from-pine to-pine-dark text-white overflow-hidden shadow-md flex items-center justify-center font-display font-extrabold text-6xl md:text-7xl">
+                {host.avatar ? (
+                  <img src={host.avatar} alt={host.name} className="w-full h-full object-cover" />
+                ) : (
+                  host.initial
+                )}
               </div>
               <div className="mt-6 flex items-center gap-2 flex-wrap">
                 <span className="font-display font-extrabold text-2xl md:text-3xl text-ink">{host.name}</span>
@@ -333,6 +354,9 @@ export default function ListingDetail() {
           <div className="p-6 md:p-8 bg-white flex flex-col md:flex-row md:items-end md:justify-between gap-5">
             <div>
               <div className="font-display font-extrabold text-2xl text-ink">{item.location}</div>
+              {item.extras?.address && (
+                <div className="mt-1 text-sm font-semibold text-ink-soft">{item.extras.address}</div>
+              )}
               <p className="mt-2 text-ink-soft leading-relaxed flex items-start gap-2 max-w-xl">
                 <Info size={15} className="mt-1 flex-shrink-0" /> {areaNoteFor(item.type)}
               </p>
