@@ -30,13 +30,11 @@ function Screen({ tone = 'bg', wide = false, children, testid }: { tone?: 'bg' |
   );
 }
 
-/** Centred section header: numbered eyebrow, title, optional note. */
-function SectionHead({ n, label, title, note }: { n: string, label: string, title: string, note?: string }) {
+/** Centred section header: eyebrow, title, optional note. */
+function SectionHead({ label, title, note }: { label: string, title: string, note?: string }) {
   return (
     <div className="text-center max-w-3xl mx-auto">
       <div className="inline-flex items-center gap-3 text-xs font-bold uppercase tracking-widest text-ink-soft">
-        <span className="text-pine">{n}</span>
-        <span className="w-8 h-px bg-[var(--line)]" />
         {label}
       </div>
       <h2 className="mt-5 font-display font-extrabold text-3xl sm:text-4xl md:text-5xl text-ink leading-tight">{title}</h2>
@@ -199,10 +197,6 @@ export default function ListingDetail() {
   const gallery = galleryImagesFor(item);
   const personSrc = personImageFor(item);
 
-  // Section numbering runs across whichever sections this listing type shows.
-  let step = 0;
-  const nextStep = () => String(++step).padStart(2, '0');
-
   return (
     <div className="pb-28 lg:pb-0">
       {/* ============ HERO — full screen ============ */}
@@ -226,12 +220,12 @@ export default function ListingDetail() {
           </button>
         </div>
 
-        {/* Centred hero content */}
-        <div ref={heroContentRef} style={{ opacity: 0 }} className="absolute inset-0 flex flex-col items-center justify-center text-center px-4">
+        {/* Left-aligned hero content */}
+        <div ref={heroContentRef} style={{ opacity: 0 }} className="absolute inset-0 flex flex-col items-start justify-center text-left px-4 md:px-8 lg:px-16">
           <span className="chip bg-white/90 capitalize">{t(`categories.${item.type}`)}</span>
           <h1 className="mt-5 font-display font-extrabold text-5xl sm:text-6xl md:text-8xl text-white leading-[0.95] max-w-4xl"
             data-testid="listing-title">{item.title}</h1>
-          <div className="mt-5 flex flex-wrap justify-center items-center gap-x-6 gap-y-2 text-white/90 text-base md:text-lg font-semibold">
+          <div className="mt-5 flex flex-wrap justify-start items-center gap-x-6 gap-y-2 text-white/90 text-base md:text-lg font-semibold">
             <span className="flex items-center gap-1.5"><MapPin size={18} /> {item.location}</span>
             {item.price > 0 && (
               <span className="flex items-center gap-1.5">
@@ -248,7 +242,7 @@ export default function ListingDetail() {
 
       {/* ============ ABOUT — centred, detailed ============ */}
       <Screen tone="bg" testid="detail-about">
-        <SectionHead n={nextStep()} label={t('detail.about')} title={item.title} />
+        <SectionHead label={t('detail.about')} title={item.title} />
         <p className="mt-8 text-lg md:text-xl text-ink leading-relaxed text-center max-w-3xl mx-auto">{c.about}</p>
         {item.tags?.length > 0 && (
           <div className="mt-8 flex flex-wrap justify-center gap-2">
@@ -260,7 +254,7 @@ export default function ListingDetail() {
       {/* ============ PHOTOS — gallery ============ */}
       {gallery.length > 0 && (
         <Screen tone="white" wide testid="detail-photos">
-          <SectionHead n={nextStep()} label={t('detail.photos')} title={t('detail.photos')} note={t('detail.gallery_note')} />
+          <SectionHead label={t('detail.photos')} title={t('detail.photos')} note={t('detail.gallery_note')} />
           <div className="mt-10 grid sm:grid-cols-3 gap-4 md:gap-5">
             {gallery.map((src, i) => (
               <SmartImg key={src + i} src={src} fallback={fallbackImg} alt={`${item.title} ${i + 1}`}
@@ -273,7 +267,7 @@ export default function ListingDetail() {
       {/* ============ WHAT THIS PLACE OFFERS ============ */}
       {amenities.length > 0 && (
         <Screen tone="mist" wide testid="detail-offers">
-          <SectionHead n={nextStep()} label={t('detail.offers')} title={t('detail.offers')} />
+          <SectionHead label={t('detail.offers')} title={t('detail.offers')} />
           <div className="mt-10 grid sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5 max-w-4xl mx-auto">
             {amenities.map(({ Icon, label }) => (
               <div key={label} className="flex items-center gap-4 p-5 rounded-2xl border border-[var(--line)] bg-white">
@@ -288,7 +282,7 @@ export default function ListingDetail() {
       {/* ============ MEET YOUR HOST (homestay) ============ */}
       {item.type === 'homestay' && (
         <Screen tone="bg" testid="detail-host">
-          <SectionHead n={nextStep()} label={t('detail.host')} title={t('detail.host')} />
+          <SectionHead label={t('detail.host')} title={t('detail.host')} />
           <div className="mt-10 text-center max-w-2xl mx-auto">
             <Avatar photo={personSrc} initial={initial} />
             <div className="mt-6 flex items-center justify-center gap-2 flex-wrap">
@@ -307,7 +301,7 @@ export default function ListingDetail() {
       {/* ============ MEET YOUR DRIVER (driver) ============ */}
       {item.type === 'driver' && (
         <Screen tone="bg" testid="detail-driver">
-          <SectionHead n={nextStep()} label={t('detail.meet_driver')} title={t('detail.meet_driver')} />
+          <SectionHead label={t('detail.meet_driver')} title={t('detail.meet_driver')} />
           <div className="mt-10 text-center max-w-2xl mx-auto">
             <Avatar photo={personSrc} initial={initial} />
             <div className="mt-6 flex items-center justify-center gap-2 flex-wrap">
@@ -322,7 +316,7 @@ export default function ListingDetail() {
       {/* ============ BEST TIME TO VISIT (festivals) ============ */}
       {item.type === 'event' && c.bestTime && (
         <Screen tone="white" testid="detail-besttime">
-          <SectionHead n={nextStep()} label={t('detail.best_time')} title={t('detail.best_time')} />
+          <SectionHead label={t('detail.best_time')} title={t('detail.best_time')} />
           <div className="mt-10 mx-auto max-w-xl rounded-3xl border border-[var(--line)] bg-[var(--bg)] p-8 text-center">
             <CalendarClock size={40} className="text-pine mx-auto" />
             <p className="mt-4 text-xl md:text-2xl font-display font-bold text-ink leading-snug">{c.bestTime}</p>
@@ -333,7 +327,7 @@ export default function ListingDetail() {
       {/* ============ DRIVER ROUTES (instead of a location map) ============ */}
       {item.type === 'driver' && c.routes && c.routes.length > 0 && (
         <Screen tone="mist" testid="detail-routes">
-          <SectionHead n={nextStep()} label={t('detail.routes')} title={t('detail.routes')} note={t('detail.routes_note')} />
+          <SectionHead label={t('detail.routes')} title={t('detail.routes')} note={t('detail.routes_note')} />
           <div className="mt-10 mx-auto max-w-2xl space-y-3">
             {c.routes.map((r, i) => (
               <div key={i} className="flex items-start gap-4 p-5 rounded-2xl border border-[var(--line)] bg-white text-left">
@@ -349,8 +343,8 @@ export default function ListingDetail() {
       {item.type !== 'driver' && (
         <Screen tone="bg" wide testid={item.type === 'biodiversity' ? 'detail-spotted' : 'detail-location'}>
           {item.type === 'biodiversity'
-            ? <SectionHead n={nextStep()} label={t('detail.spotted')} title={t('detail.spotted')} note={t('detail.spotted_note')} />
-            : <SectionHead n={nextStep()} label={t('detail.location')} title={t('detail.location')} />}
+            ? <SectionHead label={t('detail.spotted')} title={t('detail.spotted')} note={t('detail.spotted_note')} />
+            : <SectionHead label={t('detail.location')} title={t('detail.location')} />}
 
           <div className="mt-10 rounded-3xl border border-[var(--line)] overflow-hidden bg-white">
             <MapEmbed coords={c.coords!} title={item.location} className="w-full h-[42vh] min-h-[260px]" />
@@ -378,7 +372,7 @@ export default function ListingDetail() {
       {/* ============ RESERVE (commercial types only) ============ */}
       {commercial && (
         <Screen tone="white" testid="detail-reserve">
-          <SectionHead n={nextStep()} label={t('detail.reserve')}
+          <SectionHead label={t('detail.reserve')}
             title={item.price > 0 ? `₹${item.price}${unit}` : t('detail.reserve')}
             note={bookable ? t('booking.fee_note') : t('detail.walk_in_note')} />
 
