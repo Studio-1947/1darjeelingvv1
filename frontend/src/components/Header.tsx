@@ -87,10 +87,12 @@ export default function Header() {
                         className="w-full text-left px-4 py-2.5 text-sm text-ink hover:bg-mist font-semibold transition-colors">
                         Business Dashboard
                       </button>
-                      <button onClick={() => { setDropdownOpen(false); nav('/dashboard'); }}
-                        className="w-full text-left px-4 py-2.5 text-sm text-ink hover:bg-mist font-semibold transition-colors">
-                        Personal Bookings
-                      </button>
+                      {localStorage.getItem(`unlocked_traveller_${user.id}`) === 'true' && (
+                        <button onClick={() => { setDropdownOpen(false); nav('/dashboard'); }}
+                          className="w-full text-left px-4 py-2.5 text-sm text-ink hover:bg-mist font-semibold transition-colors">
+                          Personal Bookings
+                        </button>
+                      )}
                     </>
                   ) : (
                     <button onClick={() => { setDropdownOpen(false); goProfile(); }}
@@ -99,7 +101,7 @@ export default function Header() {
                     </button>
                   )}
                   
-                  <button onClick={() => { setDropdownOpen(false); logout(); nav('/'); }}
+                  <button onClick={() => { setDropdownOpen(false); nav('/login'); logout(); }}
                     className="w-full text-left px-4 py-2.5 text-sm text-flag hover:bg-mist font-bold border-t border-[var(--line)] transition-colors">
                     {t('nav.logout') || 'Log out'}
                   </button>

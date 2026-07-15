@@ -22,7 +22,7 @@ export default function ProviderOnboard() {
   const [confirm, setConfirm] = useState(null);
 
   useEffect(() => {
-    if (!user) nav('/login?next=/provider/onboard');
+    if (!user) nav('/login');
   }, [user, nav]);
 
   const submit = async (e) => {

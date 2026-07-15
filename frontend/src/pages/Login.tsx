@@ -16,10 +16,17 @@ export default function Login() {
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
   const [name, setName] = useState('');
-  const [role, setRole] = useState('tourist');
+  const [role, setRole] = useState(() => {
+    const r = sp.get('role');
+    if (r === 'provider' || r === 'tourist') return r;
+    return next.includes('provider') ? 'provider' : 'tourist';
+  });
   const [mockOtp, setMockOtp] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+  const [userExists, setUserExists] = useState(false);
+  const [showConfirmSwitch, setShowConfirmSwitch] = useState(false);
+  const [verificationData, setVerificationData] = useState<any>(null);
 
   const sendOtp = async (e) => {
     e.preventDefault();
@@ -27,6 +34,7 @@ export default function Login() {
     try {
       const { data } = await api.post('/auth/otp/send', { phone, channel: 'whatsapp' });
       setMockOtp(data.mock_otp);
+      setUserExists(!!data.exists);
       setStep(2);
     } catch (e) { setErr(e?.response?.data?.detail || 'Failed to send OTP'); }
     finally { setBusy(false); }
@@ -37,8 +45,21 @@ export default function Login() {
     setBusy(true); setErr('');
     try {
       const { data } = await api.post('/auth/otp/verify', { phone, otp, name, role });
-      login(data.token, data.user);
-      nav(next);
+      if (role === 'tourist' && data.user.role === 'provider') {
+        setVerificationData(data);
+        setShowConfirmSwitch(true);
+      } else {
+        login(data.token, data.user);
+        if (data.user.role === 'provider') {
+          if (data.user.providerPaid) {
+            nav('/provider/dashboard');
+          } else {
+            nav('/provider/onboard');
+          }
+        } else {
+          nav(next);
+        }
+      }
     } catch (e) { setErr(e?.response?.data?.detail || 'Invalid OTP'); }
     finally { setBusy(false); }
   };
@@ -52,7 +73,7 @@ export default function Login() {
           <p className="text-sm text-ink-soft mt-1">{t('brand_tagline')}</p>
         </div>
 
-        {step === 1 && (
+        {step === 1 && !showConfirmSwitch && (
           <form onSubmit={sendOtp} className="space-y-4" data-testid="login-step-1">
             <div className="grid grid-cols-2 gap-2 p-1 rounded-full bg-mist">
               <button type="button" onClick={() => setRole('tourist')} data-testid="role-tourist"
@@ -79,18 +100,10 @@ export default function Login() {
               className="w-full py-3 rounded-full bg-pine text-white font-bold btn-hover disabled:opacity-60">
               {busy ? t('common.loading') : t('auth.send_otp')}
             </button>
-
-            <div className="relative py-2 flex items-center gap-3 text-xs text-ink-soft">
-              <span className="flex-1 h-px bg-[var(--line)]" /> or <span className="flex-1 h-px bg-[var(--line)]" />
-            </div>
-            <button type="button" disabled data-testid="login-google"
-              className="w-full py-3 rounded-full border border-[var(--line)] bg-white text-ink-soft font-bold cursor-not-allowed">
-              {t('auth.google_login')} · {t('auth.google_soon')}
-            </button>
           </form>
         )}
 
-        {step === 2 && (
+        {step === 2 && !showConfirmSwitch && (
           <form onSubmit={verify} className="space-y-4" data-testid="login-step-2">
             {mockOtp && (
               <div className="rounded-xl bg-gold/20 border border-gold/40 px-4 py-3 text-sm text-ink">
@@ -107,12 +120,14 @@ export default function Login() {
                   className="flex-1 bg-transparent outline-none py-1 tracking-widest font-mono text-lg" />
               </div>
             </label>
-            <label className="block">
-              <span className="text-xs font-semibold text-ink-soft">Name</span>
-              <input value={name} onChange={(e) => setName(e.target.value)} required
-                data-testid="login-name" placeholder="Your name"
-                className="mt-1 w-full px-3 py-2.5 rounded-xl border border-[var(--line)] bg-white outline-none" />
-            </label>
+            {!userExists && (
+              <label className="block">
+                <span className="text-xs font-semibold text-ink-soft">Name</span>
+                <input value={name} onChange={(e) => setName(e.target.value)} required={!userExists}
+                  data-testid="login-name" placeholder="Your name"
+                  className="mt-1 w-full px-3 py-2.5 rounded-xl border border-[var(--line)] bg-white outline-none" />
+              </label>
+            )}
 
             <button disabled={busy} data-testid="login-verify"
               className="w-full py-3 rounded-full bg-pine text-white font-bold btn-hover disabled:opacity-60">
@@ -120,6 +135,57 @@ export default function Login() {
             </button>
             <button type="button" onClick={() => setStep(1)} className="w-full text-xs text-ink-soft">← change number</button>
           </form>
+        )}
+
+        {showConfirmSwitch && verificationData && (
+          <div className="space-y-6" data-testid="login-confirm-switch">
+            <p className="text-sm text-ink-soft">
+              You already have a registered **service provider** profile with this WhatsApp number.
+            </p>
+            <p className="text-sm text-ink font-semibold">
+              Which dashboard would you like to open?
+            </p>
+            <div className="space-y-3">
+              <button
+                type="button"
+                onClick={() => {
+                  localStorage.setItem(`unlocked_traveller_${verificationData.user.id}`, 'true');
+                  login(verificationData.token, verificationData.user);
+                  nav('/dashboard');
+                }}
+                className="w-full py-3 rounded-full border border-pine text-pine font-bold hover:bg-pine/5 transition-colors"
+                data-testid="choose-traveller"
+              >
+                Go to Traveler Dashboard
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  login(verificationData.token, verificationData.user);
+                  if (verificationData.user.providerPaid) {
+                    nav('/provider/dashboard');
+                  } else {
+                    nav('/provider/onboard');
+                  }
+                }}
+                className="w-full py-3 rounded-full bg-pine text-white font-bold btn-hover"
+                data-testid="choose-provider"
+              >
+                Go to Business Dashboard
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setShowConfirmSwitch(false);
+                setVerificationData(null);
+                setStep(1);
+              }}
+              className="w-full text-xs text-ink-soft mt-4 text-center"
+            >
+              Cancel and change number
+            </button>
+          </div>
         )}
 
         {err && <p data-testid="login-error" className="mt-4 text-sm text-flag font-semibold text-center">{err}</p>}
