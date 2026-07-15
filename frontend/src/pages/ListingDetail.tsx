@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import gsap from 'gsap';
 import api, { createPaymentOrder, completeMockPayment, payWithRazorpay } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { amenitiesFor, hostFor } from '@/lib/listingMeta';
-import { contentFor, stockPhoto, fallbackFor } from '@/lib/listingContent';
+import { contentFor, listingImage, galleryImagesFor, personImageFor, fallbackFor } from '@/lib/listingContent';
 import SmartImg from '@/components/SmartImg';
 import MapEmbed from '@/components/MapEmbed';
 import MockPaymentModal from '@/components/MockPaymentModal';
@@ -71,10 +72,26 @@ export default function ListingDetail() {
   const [liked, setLiked] = useState(false);
   const [payModal, setPayModal] = useState(null); // { order, amount, description, bookingId }
   const [confirm, setConfirm] = useState(null); // { open, data }
+  const heroRef = useRef<HTMLElement>(null);
+  const heroContentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     api.get(`/listings/${id}`).then((r) => setItem(r.data.item)).finally(() => setLoading(false));
   }, [id]);
+
+  // On landing, only the hero image shows; then the title block rises up from
+  // below into place on its own. The page scrolls normally throughout.
+  useEffect(() => {
+    if (loading || !item) return;
+    const ctx = gsap.context(() => {
+      gsap.fromTo(
+        heroContentRef.current,
+        { yPercent: 55, autoAlpha: 0 },
+        { yPercent: 0, autoAlpha: 1, duration: 1.1, delay: 0.35, ease: 'power3.out' },
+      );
+    }, heroRef);
+    return () => ctx.revert();
+  }, [loading, item]);
 
   const bookable = item && (item.type === 'homestay' || item.type === 'driver');
   // Types that trade — everything else (spots, events, biodiversity) is informational.
@@ -178,8 +195,10 @@ export default function ListingDetail() {
   const c = contentFor(item);
   const initial = (item.title || '?').trim().charAt(0).toUpperCase();
   const fallbackImg = fallbackFor(item.type);
-  // Biodiversity seed images aren't always the animal itself — prefer a topical photo.
-  const heroSrc = item.type === 'biodiversity' && c.gallery?.length ? stockPhoto(c.gallery[0], 2000, 1200) : (item.image || (c.gallery?.length ? stockPhoto(c.gallery[0], 2000, 1200) : fallbackImg));
+  // A distinct per-listing hero (provider image kept; shared seed images replaced).
+  const heroSrc = listingImage(item, 2000, 1200);
+  const gallery = galleryImagesFor(item);
+  const personSrc = host.avatar || personImageFor(item);
 
   // Section numbering runs across whichever sections this listing type shows.
   let step = 0;
@@ -188,7 +207,7 @@ export default function ListingDetail() {
   return (
     <div className="pb-28 lg:pb-0">
       {/* ============ HERO — full screen ============ */}
-      <section className={`relative ${SCREEN_H} h-[calc(100svh-3.5rem)] md:h-[calc(100svh-4rem)] w-full overflow-hidden bg-mist`} data-testid="detail-hero">
+      <section ref={heroRef} className={`relative ${SCREEN_H} h-[calc(100svh-3.5rem)] md:h-[calc(100svh-4rem)] w-full overflow-hidden bg-mist`} data-testid="detail-hero">
         <SmartImg src={heroSrc} fallback={fallbackImg} alt={item.title} className="absolute inset-0 w-full h-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/45" />
 
@@ -209,7 +228,7 @@ export default function ListingDetail() {
         </div>
 
         {/* Centred hero content */}
-        <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4">
+        <div ref={heroContentRef} style={{ opacity: 0 }} className="absolute inset-0 flex flex-col items-center justify-center text-center px-4">
           <span className="chip bg-white/90 capitalize">{t(`categories.${item.type}`)}</span>
           <h1 className="mt-5 font-display font-extrabold text-5xl sm:text-6xl md:text-8xl text-white leading-[0.95] max-w-4xl"
             data-testid="listing-title">{item.title}</h1>
@@ -240,12 +259,12 @@ export default function ListingDetail() {
       </Screen>
 
       {/* ============ PHOTOS — gallery ============ */}
-      {c.gallery && c.gallery.length > 0 && (
+      {gallery.length > 0 && (
         <Screen tone="white" wide testid="detail-photos">
           <SectionHead n={nextStep()} label={t('detail.photos')} title={t('detail.photos')} note={t('detail.gallery_note')} />
           <div className="mt-10 grid sm:grid-cols-3 gap-4 md:gap-5">
-            {c.gallery.map((q, i) => (
-              <SmartImg key={q + i} src={stockPhoto(q, 900, 700, i + 1)} fallback={fallbackImg} alt={`${item.title} ${i + 1}`}
+            {gallery.map((src, i) => (
+              <SmartImg key={src + i} src={src} fallback={fallbackImg} alt={`${item.title} ${i + 1}`}
                 className="w-full aspect-[4/3] object-cover rounded-2xl border border-[var(--line)]" />
             ))}
           </div>
@@ -286,7 +305,7 @@ export default function ListingDetail() {
         <Screen tone="bg" testid="detail-host">
           <SectionHead n={nextStep()} label={t('detail.host')} title={t('detail.host')} />
           <div className="mt-10 text-center max-w-2xl mx-auto">
-            <Avatar photo={host.avatar || (c.personPhoto ? stockPhoto(c.personPhoto, 600, 600) : undefined)} initial={host.initial} />
+            <Avatar photo={personSrc} initial={host.initial} />
             <div className="mt-6 flex items-center justify-center gap-2 flex-wrap">
               <span className="font-display font-extrabold text-2xl md:text-3xl text-ink">{host.name}</span>
               {host.verified && (
@@ -307,7 +326,7 @@ export default function ListingDetail() {
         <Screen tone="bg" testid="detail-driver">
           <SectionHead n={nextStep()} label={t('detail.meet_driver')} title={t('detail.meet_driver')} />
           <div className="mt-10 text-center max-w-2xl mx-auto">
-            <Avatar photo={c.personPhoto ? stockPhoto(c.personPhoto, 600, 600) : undefined} initial={initial} />
+            <Avatar photo={personSrc} initial={initial} />
             <div className="mt-6 flex items-center justify-center gap-2 flex-wrap">
               <span className="font-display font-extrabold text-2xl md:text-3xl text-ink">{item.title}</span>
               <span className="chip bg-white"><BadgeCheck size={12} className="mr-1" /> {t('detail.verified')}</span>
