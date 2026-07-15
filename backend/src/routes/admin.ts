@@ -11,6 +11,7 @@ import { IS_PROD, ADMIN_BOOTSTRAP_SECRET } from '../config';
 const router = Router();
 
 // ============ ADMIN / DEV / SEED ROUTES ============
+let isSeeding = false;
 
 // Dev Seed listings (Only available in development)
 router.post('/dev/seed', async (req: Request, res: Response) => {
@@ -18,68 +19,86 @@ router.post('/dev/seed', async (req: Request, res: Response) => {
     return res.status(403).json({ detail: 'Not available in production' });
   }
 
-  let inserted = 0;
-  for (const item of SEED_LISTINGS) {
-    const exists = await db.select()
-      .from(schema.listings)
-      .where(and(eq(schema.listings.title, item.title), eq(schema.listings.type, item.type)))
-      .limit(1);
+  if (isSeeding) {
+    return res.json({ seeded: 0, total_in_seed: SEED_LISTINGS.length, message: 'Seeding already in progress' });
+  }
+  isSeeding = true;
 
-    if (exists.length > 0) {
-      continue;
+  try {
+    let inserted = 0;
+    for (const item of SEED_LISTINGS) {
+      const exists = await db.select()
+        .from(schema.listings)
+        .where(and(eq(schema.listings.title, item.title), eq(schema.listings.type, item.type)))
+        .limit(1);
+
+      if (exists.length > 0) {
+        continue;
+      }
+
+      const doc = {
+        id: uuidv4(),
+        title: item.title,
+        type: item.type,
+        description: item.description,
+        location: item.location,
+        price: item.price,
+        image: item.image,
+        tags: item.tags,
+        providerId: 'admin-seed-provider',
+        extras: item.extras || {},
+        createdAt: new Date().toISOString()
+      };
+      await db.insert(schema.listings).values(doc);
+      inserted++;
     }
 
-    const doc = {
-      id: uuidv4(),
-      title: item.title,
-      type: item.type,
-      description: item.description,
-      location: item.location,
-      price: item.price,
-      image: item.image,
-      tags: item.tags,
-      providerId: 'admin-seed-provider',
-      extras: item.extras || {},
-      createdAt: new Date().toISOString()
-    };
-    await db.insert(schema.listings).values(doc);
-    inserted++;
+    res.json({ seeded: inserted, total_in_seed: SEED_LISTINGS.length });
+  } finally {
+    isSeeding = false;
   }
-
-  res.json({ seeded: inserted, total_in_seed: SEED_LISTINGS.length });
 });
 
 // Admin Seed listings
 router.post('/admin/seed', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
-  let inserted = 0;
-  for (const item of SEED_LISTINGS) {
-    const exists = await db.select()
-      .from(schema.listings)
-      .where(and(eq(schema.listings.title, item.title), eq(schema.listings.type, item.type)))
-      .limit(1);
+  if (isSeeding) {
+    return res.json({ seeded: 0, total_in_seed: SEED_LISTINGS.length, message: 'Seeding already in progress' });
+  }
+  isSeeding = true;
 
-    if (exists.length > 0) {
-      continue;
+  try {
+    let inserted = 0;
+    for (const item of SEED_LISTINGS) {
+      const exists = await db.select()
+        .from(schema.listings)
+        .where(and(eq(schema.listings.title, item.title), eq(schema.listings.type, item.type)))
+        .limit(1);
+
+      if (exists.length > 0) {
+        continue;
+      }
+
+      const doc = {
+        id: uuidv4(),
+        title: item.title,
+        type: item.type,
+        description: item.description,
+        location: item.location,
+        price: item.price,
+        image: item.image,
+        tags: item.tags,
+        providerId: 'admin-seed-provider',
+        extras: item.extras || {},
+        createdAt: new Date().toISOString()
+      };
+      await db.insert(schema.listings).values(doc);
+      inserted++;
     }
 
-    const doc = {
-      id: uuidv4(),
-      title: item.title,
-      type: item.type,
-      description: item.description,
-      location: item.location,
-      price: item.price,
-      image: item.image,
-      tags: item.tags,
-      providerId: 'admin-seed-provider',
-      extras: item.extras || {},
-      createdAt: new Date().toISOString()
-    };
-    await db.insert(schema.listings).values(doc);
-    inserted++;
+    res.json({ seeded: inserted, total_in_seed: SEED_LISTINGS.length });
+  } finally {
+    isSeeding = false;
   }
-
-  res.json({ seeded: inserted, total_in_seed: SEED_LISTINGS.length });
 });
 
 // Admin Stats

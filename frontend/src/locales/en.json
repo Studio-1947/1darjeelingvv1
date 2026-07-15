@@ -76,7 +76,16 @@
     "avg_spend": "Average spend",
     "onwards": "onwards",
     "walk_in_note": "Walk in any day, or call ahead to reserve a table.",
-    "info_note": "This entry is informational. Visit responsibly."
+    "info_note": "This entry is informational. Visit responsibly.",
+    "photos": "Photos",
+    "gallery_note": "A glimpse of what to expect",
+    "best_time": "Best time to visit",
+    "meet_driver": "Meet your driver",
+    "routes": "Routes covered",
+    "routes_note": "Where this driver operates",
+    "spotted": "Spotted locations",
+    "spotted_note": "Where you're most likely to find it",
+    "reserve": "Reserve"
   },
   "auth": {
     "welcome": "Welcome",
