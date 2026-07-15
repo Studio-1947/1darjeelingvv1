@@ -10,6 +10,7 @@ export const users = pgTable('users', {
   language: text('language'),
   avatar: text('avatar'),
   createdAt: text('created_at').notNull(),
+  password: text('password'),
 });
 
 export const otps = pgTable('otps', {
