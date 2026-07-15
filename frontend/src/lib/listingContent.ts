@@ -37,6 +37,19 @@ export function stockPhoto(query: string, w = 1600, h = 1000, seed = 1): string 
   return `https://loremflickr.com/${w}/${h}/${tags}?lock=${seed}`;
 }
 
+// The five shared seed images (see backend/src/seed_data.ts). A listing whose
+// image is one of these is using a default, not a real photo of itself — so we
+// swap in a distinct per-listing image. Anything else is a genuine
+// provider-uploaded URL and is kept as-is.
+const SEED_IMAGE_SET = new Set<string>(Object.values(FALLBACK));
+
+/** Stable numeric hash of a string — gives each listing its own image seed. */
+export function seedFor(s = ''): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return h % 100000;
+}
+
 export interface ListingContent {
   about?: string;              // detailed, factual description
   gallery?: string[];          // Unsplash keyword queries
@@ -255,6 +268,38 @@ export const CONTENT: Record<string, ListingContent> = {
     spotted: ['Senchal Wildlife Sanctuary', 'Singalila National Park', 'Neora Valley National Park'],
   },
 };
+
+/** Primary keyword used to fetch a listing's own photo. */
+function primaryKeyword(item: any): string {
+  const c = CONTENT[item?.title] || {};
+  if (c.gallery?.length) return c.gallery[0];
+  // No curated entry (e.g. a provider-created listing): build from its own data.
+  return `${item?.title || ''} ${item?.location || 'Darjeeling'}`.trim();
+}
+
+/**
+ * A distinct image for each listing. Keeps a genuine provider-uploaded image;
+ * otherwise fetches a per-listing photo (unique keyword + per-title seed), so no
+ * two listings share the same picture across cards and the detail hero.
+ */
+export function listingImage(item: any, w = 1200, h = 900): string {
+  if (item?.image && !SEED_IMAGE_SET.has(item.image)) return item.image;
+  return stockPhoto(primaryKeyword(item), w, h, seedFor(item?.title));
+}
+
+/** The gallery photos for a listing, each distinct across listings. */
+export function galleryImagesFor(item: any, w = 900, h = 700): string[] {
+  const c = CONTENT[item?.title] || {};
+  const base = seedFor(item?.title);
+  return (c.gallery || []).map((kw, i) => stockPhoto(kw, w, h, base + i + 1));
+}
+
+/** Host / driver portrait, or undefined when there's no curated keyword. */
+export function personImageFor(item: any, w = 600, h = 600): string | undefined {
+  const c = CONTENT[item?.title] || {};
+  if (!c.personPhoto) return undefined;
+  return stockPhoto(c.personPhoto, w, h, seedFor(item?.title) + 91);
+}
 
 /** Content for a listing, with type-level fallbacks so every listing renders. */
 export function contentFor(item: any): Required<Pick<ListingContent, 'about'>> & ListingContent {
