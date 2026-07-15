@@ -2,6 +2,8 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { MapPin } from 'lucide-react';
+import SmartImg from '@/components/SmartImg';
+import { listingImage, fallbackFor } from '@/lib/listingContent';
 
 export default function ListingCard({ item, badge }) {
   const { t } = useTranslation();
@@ -9,11 +11,7 @@ export default function ListingCard({ item, badge }) {
   return (
     <Link to={`/listing/${item.id}`} data-testid={`listing-card-${item.id}`} className="card-shell block">
       <div className="relative aspect-[4/3] overflow-hidden bg-mist">
-        {item.image ? (
-          <img src={item.image} alt={item.title} className="w-full h-full object-cover" loading="lazy" />
-        ) : (
-          <div className="w-full h-full bg-mist" />
-        )}
+        <SmartImg src={listingImage(item, 800, 600)} fallback={fallbackFor(item.type)} alt={item.title} className="w-full h-full object-cover" />
         {badge && <span className="absolute top-3 left-3 chip bg-white text-pine shadow-sm">{badge}</span>}
         {item.price > 0 && (
           <span className="absolute bottom-3 right-3 px-3 py-1 rounded-full bg-white/95 text-ink text-sm font-bold shadow-sm">

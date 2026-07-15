@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Heart, MapPin, Share2, Bookmark, MessageCircle, ArrowRight, Phone, Store, Coffee, Ticket, Leaf, Mountain } from 'lucide-react';
+import SmartImg from '@/components/SmartImg';
+import { listingImage, fallbackFor } from '@/lib/listingContent';
 
 const CTA_MAP = {
   homestay: { key: 'book_now', Icon: ArrowRight, color: 'bg-flag text-white' },
@@ -24,6 +26,8 @@ export default function FeedCard({ item, priority = false }) {
   const cat = t(`categories.${item.type}`);
   const cta = CTA_MAP[item.type] || CTA_MAP.spot;
   const CtaIcon = cta.Icon;
+  const img = listingImage(item, 900, 900);
+  const fallbackImg = fallbackFor(item.type);
 
   return (
     <article className="bg-white rounded-3xl border border-[var(--line)] overflow-hidden max-w-xl mx-auto md:mx-0" data-testid={`feed-card-${item.id}`}>
@@ -32,7 +36,7 @@ export default function FeedCard({ item, priority = false }) {
         <div className="w-10 h-10 rounded-full p-[2px] bg-gradient-to-tr from-pine via-gold to-flag flex-shrink-0">
           <div className="w-full h-full rounded-full bg-white p-[2px]">
             <div className="w-full h-full rounded-full overflow-hidden bg-mist">
-              {item.image && <img src={item.image} alt="" className="w-full h-full object-cover" loading={priority ? 'eager' : 'lazy'} />}
+              <SmartImg src={img} fallback={fallbackImg} alt="" className="w-full h-full object-cover" loading={priority ? 'eager' : 'lazy'} />
             </div>
           </div>
         </div>
@@ -45,7 +49,7 @@ export default function FeedCard({ item, priority = false }) {
       {/* Image */}
       <Link to={`/listing/${item.id}`} className="block relative bg-mist" data-testid={`feed-card-image-${item.id}`}>
         <div className="aspect-square w-full overflow-hidden">
-          {item.image && <img src={item.image} alt={item.title} className="w-full h-full object-cover" loading={priority ? 'eager' : 'lazy'} />}
+          <SmartImg src={img} fallback={fallbackImg} alt={item.title} className="w-full h-full object-cover" loading={priority ? 'eager' : 'lazy'} />
         </div>
         {item.price > 0 && (
           <div className="absolute bottom-3 left-3 px-3 py-1.5 rounded-full bg-white/95 backdrop-blur text-ink text-sm font-extrabold shadow-sm">
