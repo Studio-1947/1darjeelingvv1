@@ -3,36 +3,59 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import api, { createPaymentOrder, completeMockPayment, payWithRazorpay } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
-import { amenitiesFor, hostFor, areaNoteFor } from '@/lib/listingMeta';
+import { amenitiesFor } from '@/lib/listingMeta';
+import { contentFor, stockPhoto, fallbackFor } from '@/lib/listingContent';
+import SmartImg from '@/components/SmartImg';
+import MapEmbed from '@/components/MapEmbed';
 import MockPaymentModal from '@/components/MockPaymentModal';
 import BookingConfirmation from '@/components/BookingConfirmation';
 import {
-  MapPin, Tag, ArrowLeft, Phone, Share2, Heart, MessageCircle, Store, Coffee, Ticket,
-  Leaf, Mountain, Navigation, ArrowRight, BadgeCheck, Languages, Info, ChevronDown,
+  MapPin, Tag, ArrowLeft, Phone, Share2, Heart, Store, Coffee, Ticket,
+  Leaf, Mountain, Navigation, ArrowRight, BadgeCheck, Languages, ChevronDown,
+  CalendarClock, Route, Crosshair,
 } from 'lucide-react';
 
 // The site header is sticky (h-14 mobile / h-16 desktop), so a "full screen"
 // section is the viewport minus that, or each one would sit past the fold.
 const SCREEN_H = 'min-h-[calc(100svh-3.5rem)] md:min-h-[calc(100svh-4rem)]';
 
-/** Full-viewport section. Every part of the listing gets a screen of its own. */
-function Screen({ tone = 'bg', children, testid }: { tone?: 'bg' | 'white' | 'mist', children: React.ReactNode, testid?: string }) {
+/** Full-viewport section with a centred column. Each part gets its own screen. */
+function Screen({ tone = 'bg', wide = false, children, testid }: { tone?: 'bg' | 'white' | 'mist', wide?: boolean, children: React.ReactNode, testid?: string }) {
   const bg = tone === 'white' ? 'bg-white' : tone === 'mist' ? 'bg-mist' : 'bg-[var(--bg)]';
   return (
     <section data-testid={testid} className={`${SCREEN_H} flex items-center ${bg}`}>
-      <div className="mx-auto max-w-6xl w-full px-4 md:px-8 py-20 md:py-24">{children}</div>
+      <div className={`mx-auto w-full px-4 md:px-8 py-20 md:py-24 ${wide ? 'max-w-6xl' : 'max-w-4xl'}`}>{children}</div>
     </section>
   );
 }
 
-function Eyebrow({ n, children }: { n: string, children: React.ReactNode }) {
+/** Centred section header: numbered eyebrow, title, optional note. */
+function SectionHead({ n, label, title, note }: { n: string, label: string, title: string, note?: string }) {
   return (
-    <div className="flex items-center gap-3 text-xs font-bold uppercase tracking-widest text-ink-soft">
-      <span className="text-pine">{n}</span>
-      <span className="w-8 h-px bg-[var(--line)]" />
-      {children}
+    <div className="text-center max-w-3xl mx-auto">
+      <div className="inline-flex items-center gap-3 text-xs font-bold uppercase tracking-widest text-ink-soft">
+        <span className="text-pine">{n}</span>
+        <span className="w-8 h-px bg-[var(--line)]" />
+        {label}
+      </div>
+      <h2 className="mt-5 font-display font-extrabold text-3xl sm:text-4xl md:text-5xl text-ink leading-tight">{title}</h2>
+      {note && <p className="mt-3 text-ink-soft">{note}</p>}
     </div>
   );
+}
+
+/** Real photo if it loads, otherwise the branded initial — never a broken face. */
+function Avatar({ photo, initial }: { photo?: string, initial: string }) {
+  const [failed, setFailed] = useState(false);
+  const base = 'w-36 h-36 md:w-44 md:h-44 rounded-full overflow-hidden mx-auto shadow-lg ring-4 ring-white';
+  if (!photo || failed) {
+    return (
+      <div className={`${base} bg-gradient-to-br from-pine to-pine-dark text-white grid place-items-center font-display font-extrabold text-6xl md:text-7xl`}>
+        {initial}
+      </div>
+    );
+  }
+  return <img src={photo} alt="" onError={() => setFailed(true)} className={`${base} object-cover`} />;
 }
 
 export default function ListingDetail() {
@@ -151,8 +174,11 @@ export default function ListingDetail() {
   const cta = CTA_CONFIG[item.type] || CTA_CONFIG.spot;
   const CtaIcon = cta.Icon;
   const amenities = amenitiesFor(item);
-  const host = hostFor(item);
-  const priceLabel = item.type === 'shop' || item.type === 'cafe' ? t('detail.avg_spend') : t('common.starting_from');
+  const c = contentFor(item);
+  const initial = (item.title || '?').trim().charAt(0).toUpperCase();
+  const fallbackImg = fallbackFor(item.type);
+  // Biodiversity seed images aren't always the animal itself — prefer a topical photo.
+  const heroSrc = item.type === 'biodiversity' && c.gallery?.length ? stockPhoto(c.gallery[0], 2000, 1200) : (item.image || (c.gallery?.length ? stockPhoto(c.gallery[0], 2000, 1200) : fallbackImg));
 
   // Section numbering runs across whichever sections this listing type shows.
   let step = 0;
@@ -160,10 +186,10 @@ export default function ListingDetail() {
 
   return (
     <div className="pb-28 lg:pb-0">
-      {/* ============ 01 · HERO — full screen ============ */}
+      {/* ============ HERO — full screen ============ */}
       <section className={`relative ${SCREEN_H} h-[calc(100svh-3.5rem)] md:h-[calc(100svh-4rem)] w-full overflow-hidden bg-mist`} data-testid="detail-hero">
-        {item.image && <img src={item.image} alt={item.title} className="absolute inset-0 w-full h-full object-cover" />}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-black/45" />
+        <SmartImg src={heroSrc} fallback={fallbackImg} alt={item.title} className="absolute inset-0 w-full h-full object-cover" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/45" />
 
         <button onClick={() => nav(-1)} data-testid="detail-back"
           className="absolute top-4 left-4 md:top-6 md:left-8 inline-flex items-center gap-2 pl-3 pr-4 py-2.5 rounded-full bg-white/95 backdrop-blur text-sm font-bold text-ink btn-hover">
@@ -181,19 +207,18 @@ export default function ListingDetail() {
           </button>
         </div>
 
-        <div className="absolute inset-x-0 bottom-0">
-          <div className="mx-auto max-w-6xl px-4 md:px-8 pb-28 md:pb-20">
-            <span className="chip bg-white/90 capitalize">{t(`categories.${item.type}`)}</span>
-            <h1 className="mt-4 font-display font-extrabold text-5xl sm:text-6xl md:text-8xl text-white leading-[0.95] max-w-4xl"
-              data-testid="listing-title">{item.title}</h1>
-            <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-2 text-white/90 text-base md:text-lg font-semibold">
-              <span className="flex items-center gap-1.5"><MapPin size={18} /> {item.location}</span>
-              {item.price > 0 && (
-                <span className="flex items-center gap-1.5">
-                  ₹{item.price}<span className="font-normal text-white/75">{unit || ` ${t('detail.onwards')}`}</span>
-                </span>
-              )}
-            </div>
+        {/* Centred hero content */}
+        <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4">
+          <span className="chip bg-white/90 capitalize">{t(`categories.${item.type}`)}</span>
+          <h1 className="mt-5 font-display font-extrabold text-5xl sm:text-6xl md:text-8xl text-white leading-[0.95] max-w-4xl"
+            data-testid="listing-title">{item.title}</h1>
+          <div className="mt-5 flex flex-wrap justify-center items-center gap-x-6 gap-y-2 text-white/90 text-base md:text-lg font-semibold">
+            <span className="flex items-center gap-1.5"><MapPin size={18} /> {item.location}</span>
+            {item.price > 0 && (
+              <span className="flex items-center gap-1.5">
+                ₹{item.price}<span className="font-normal text-white/75">{unit || ` ${t('detail.onwards')}`}</span>
+              </span>
+            )}
           </div>
         </div>
 
@@ -202,73 +227,37 @@ export default function ListingDetail() {
         </div>
       </section>
 
-      {/* ============ ABOUT — full screen ============ */}
+      {/* ============ ABOUT — centred, detailed ============ */}
       <Screen tone="bg" testid="detail-about">
-        <Eyebrow n={nextStep()}>{t('detail.about')}</Eyebrow>
-        <div className="mt-8 grid lg:grid-cols-5 gap-10 lg:gap-16 items-start">
-          <div className="lg:col-span-3">
-            <h2 className="font-display font-extrabold text-3xl sm:text-4xl md:text-5xl text-ink leading-tight">
-              {item.title}
-            </h2>
-            <p className="mt-6 text-lg md:text-xl text-ink leading-relaxed">{item.description}</p>
-            {item.tags?.length > 0 && (
-              <div className="mt-7 flex flex-wrap gap-2">
-                {item.tags.map((tg: string) => <span key={tg} className="chip"><Tag size={11} className="mr-1" /> {tg}</span>)}
-              </div>
-            )}
+        <SectionHead n={nextStep()} label={t('detail.about')} title={item.title} />
+        <p className="mt-8 text-lg md:text-xl text-ink leading-relaxed text-center max-w-3xl mx-auto">{c.about}</p>
+        {item.tags?.length > 0 && (
+          <div className="mt-8 flex flex-wrap justify-center gap-2">
+            {item.tags.map((tg: string) => <span key={tg} className="chip"><Tag size={11} className="mr-1" /> {tg}</span>)}
           </div>
-
-          <div className="lg:col-span-2 mist-panel p-6 md:p-7 w-full">
-            <div className="space-y-4">
-              <div className="flex items-start gap-3">
-                <MapPin size={18} className="text-pine mt-0.5 flex-shrink-0" />
-                <div>
-                  <div className="text-xs uppercase tracking-widest text-ink-soft font-bold">{t('detail.location')}</div>
-                  <div className="text-ink font-semibold">{item.location}</div>
-                </div>
-              </div>
-              {item.price > 0 && (
-                <div className="flex items-start gap-3">
-                  <Tag size={18} className="text-pine mt-0.5 flex-shrink-0" />
-                  <div>
-                    <div className="text-xs uppercase tracking-widest text-ink-soft font-bold">{priceLabel}</div>
-                    <div className="text-ink font-semibold">₹{item.price}{unit}</div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="mt-6 flex flex-wrap gap-2.5">
-              <button onClick={openMaps} data-testid="detail-directions"
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-white border border-[var(--line)] text-ink font-bold text-sm btn-hover">
-                <Navigation size={15} /> {t('cta.get_directions')}
-              </button>
-              {item.type === 'driver' && host.phone && (
-                <a href={`tel:${host.phone.replace(/\D/g, '')}`} data-testid="detail-call"
-                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-pine text-white font-bold text-sm btn-hover">
-                  <Phone size={15} /> {t('cta.call_now')}
-                </a>
-              )}
-              {(item.type === 'shop' || item.type === 'cafe') && (
-                <button className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-white border border-[var(--line)] text-ink font-bold text-sm btn-hover">
-                  <MessageCircle size={15} /> {t('cta.contact_provider')}
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
+        )}
       </Screen>
 
-      {/* ============ WHAT THIS PLACE OFFERS — full screen ============ */}
+      {/* ============ PHOTOS — gallery ============ */}
+      {c.gallery && c.gallery.length > 0 && (
+        <Screen tone="white" wide testid="detail-photos">
+          <SectionHead n={nextStep()} label={t('detail.photos')} title={t('detail.photos')} note={t('detail.gallery_note')} />
+          <div className="mt-10 grid sm:grid-cols-3 gap-4 md:gap-5">
+            {c.gallery.map((q, i) => (
+              <SmartImg key={q + i} src={stockPhoto(q, 900, 700, i + 1)} fallback={fallbackImg} alt={`${item.title} ${i + 1}`}
+                className="w-full aspect-[4/3] object-cover rounded-2xl border border-[var(--line)]" />
+            ))}
+          </div>
+        </Screen>
+      )}
+
+      {/* ============ WHAT THIS PLACE OFFERS ============ */}
       {amenities.length > 0 && (
-        <Screen tone="white" testid="detail-offers">
-          <Eyebrow n={nextStep()}>{t('detail.offers')}</Eyebrow>
-          <h2 className="mt-8 font-display font-extrabold text-3xl sm:text-4xl md:text-5xl text-ink leading-tight max-w-2xl">
-            {t('detail.offers')}
-          </h2>
-          <div className="mt-10 grid sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
+        <Screen tone="mist" wide testid="detail-offers">
+          <SectionHead n={nextStep()} label={t('detail.offers')} title={t('detail.offers')} />
+          <div className="mt-10 grid sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5 max-w-4xl mx-auto">
             {amenities.map(({ Icon, label }) => (
-              <div key={label} className="flex items-center gap-4 p-5 rounded-2xl border border-[var(--line)] bg-[var(--bg)]">
+              <div key={label} className="flex items-center gap-4 p-5 rounded-2xl border border-[var(--line)] bg-white">
                 <Icon size={24} className="text-pine flex-shrink-0" />
                 <span className="text-ink font-semibold">{label}</span>
               </div>
@@ -277,121 +266,127 @@ export default function ListingDetail() {
         </Screen>
       )}
 
-      {/* ============ MEET YOUR HOST (homestays) — full screen ============ */}
+      {/* ============ MEET YOUR HOST (homestay) ============ */}
       {item.type === 'homestay' && (
-        <Screen tone="mist" testid="detail-host">
-          <Eyebrow n={nextStep()}>{t('detail.host')}</Eyebrow>
-          <div className="mt-8 grid lg:grid-cols-5 gap-10 lg:gap-16 items-center">
-            <div className="lg:col-span-2">
-              <div className="w-32 h-32 md:w-44 md:h-44 rounded-full bg-gradient-to-br from-pine to-pine-dark text-white grid place-items-center font-display font-extrabold text-6xl md:text-7xl">
-                {host.initial}
-              </div>
-              <div className="mt-6 flex items-center gap-2 flex-wrap">
-                <span className="font-display font-extrabold text-2xl md:text-3xl text-ink">{host.name}</span>
-                {host.verified && (
-                  <span className="chip bg-white"><BadgeCheck size={12} className="mr-1" /> {t('detail.verified')}</span>
-                )}
-              </div>
-              <p className="mt-1.5 text-sm text-ink-soft flex items-center gap-1.5"><MapPin size={13} /> {item.location}</p>
+        <Screen tone="bg" testid="detail-host">
+          <SectionHead n={nextStep()} label={t('detail.host')} title={t('detail.host')} />
+          <div className="mt-10 text-center max-w-2xl mx-auto">
+            <Avatar photo={c.personPhoto ? stockPhoto(c.personPhoto, 600, 600) : undefined} initial={initial} />
+            <div className="mt-6 flex items-center justify-center gap-2 flex-wrap">
+              <span className="font-display font-extrabold text-2xl md:text-3xl text-ink">{item.title}</span>
+              <span className="chip bg-white"><BadgeCheck size={12} className="mr-1" /> {t('detail.verified')}</span>
             </div>
+            <p className="mt-2 text-sm text-ink-soft flex items-center justify-center gap-1.5"><MapPin size={13} /> {item.location}</p>
+            <p className="mt-6 text-lg text-ink leading-relaxed">{c.about}</p>
+            <p className="mt-5 text-ink-soft flex items-center justify-center gap-2">
+              <Languages size={18} className="text-pine" /> {t('detail.speaks')}: Nepali, Hindi, English
+            </p>
+          </div>
+        </Screen>
+      )}
 
-            <div className="lg:col-span-3">
-              <h2 className="font-display font-extrabold text-3xl sm:text-4xl md:text-5xl text-ink leading-tight">
-                {t('detail.host')}
-              </h2>
-              <p className="mt-6 text-lg md:text-xl text-ink leading-relaxed">{host.bio}</p>
-              <p className="mt-6 text-ink-soft flex items-center gap-2">
-                <Languages size={18} className="text-pine" /> {t('detail.speaks')}: {host.languages.join(', ')}
-              </p>
-              {host.phone && (
-                <a href={`tel:${host.phone}`} data-testid="detail-host-call"
-                  className="mt-7 inline-flex items-center gap-2 px-5 py-3 rounded-full bg-white border border-[var(--line)] text-ink font-bold btn-hover">
-                  <Phone size={16} /> {t('cta.contact_provider')}
-                </a>
+      {/* ============ MEET YOUR DRIVER (driver) ============ */}
+      {item.type === 'driver' && (
+        <Screen tone="bg" testid="detail-driver">
+          <SectionHead n={nextStep()} label={t('detail.meet_driver')} title={t('detail.meet_driver')} />
+          <div className="mt-10 text-center max-w-2xl mx-auto">
+            <Avatar photo={c.personPhoto ? stockPhoto(c.personPhoto, 600, 600) : undefined} initial={initial} />
+            <div className="mt-6 flex items-center justify-center gap-2 flex-wrap">
+              <span className="font-display font-extrabold text-2xl md:text-3xl text-ink">{item.title}</span>
+              <span className="chip bg-white"><BadgeCheck size={12} className="mr-1" /> {t('detail.verified')}</span>
+            </div>
+            <p className="mt-6 text-lg text-ink leading-relaxed">{c.about}</p>
+          </div>
+        </Screen>
+      )}
+
+      {/* ============ BEST TIME TO VISIT (festivals) ============ */}
+      {item.type === 'event' && c.bestTime && (
+        <Screen tone="white" testid="detail-besttime">
+          <SectionHead n={nextStep()} label={t('detail.best_time')} title={t('detail.best_time')} />
+          <div className="mt-10 mx-auto max-w-xl rounded-3xl border border-[var(--line)] bg-[var(--bg)] p-8 text-center">
+            <CalendarClock size={40} className="text-pine mx-auto" />
+            <p className="mt-4 text-xl md:text-2xl font-display font-bold text-ink leading-snug">{c.bestTime}</p>
+          </div>
+        </Screen>
+      )}
+
+      {/* ============ DRIVER ROUTES (instead of a location map) ============ */}
+      {item.type === 'driver' && c.routes && c.routes.length > 0 && (
+        <Screen tone="mist" testid="detail-routes">
+          <SectionHead n={nextStep()} label={t('detail.routes')} title={t('detail.routes')} note={t('detail.routes_note')} />
+          <div className="mt-10 mx-auto max-w-2xl space-y-3">
+            {c.routes.map((r, i) => (
+              <div key={i} className="flex items-start gap-4 p-5 rounded-2xl border border-[var(--line)] bg-white text-left">
+                <Route size={22} className="text-pine flex-shrink-0 mt-0.5" />
+                <span className="text-ink font-semibold">{r}</span>
+              </div>
+            ))}
+          </div>
+        </Screen>
+      )}
+
+      {/* ============ WHERE YOU'LL BE / SPOTTED LOCATIONS (real map) ============ */}
+      {item.type !== 'driver' && (
+        <Screen tone="bg" wide testid={item.type === 'biodiversity' ? 'detail-spotted' : 'detail-location'}>
+          {item.type === 'biodiversity'
+            ? <SectionHead n={nextStep()} label={t('detail.spotted')} title={t('detail.spotted')} note={t('detail.spotted_note')} />
+            : <SectionHead n={nextStep()} label={t('detail.location')} title={t('detail.location')} />}
+
+          <div className="mt-10 rounded-3xl border border-[var(--line)] overflow-hidden bg-white">
+            <MapEmbed coords={c.coords!} title={item.location} className="w-full h-[42vh] min-h-[260px]" />
+            <div className="p-6 md:p-8">
+              {item.type === 'biodiversity' && c.spotted && c.spotted.length > 0 ? (
+                <div className="flex flex-wrap justify-center gap-2">
+                  {c.spotted.map((s) => (
+                    <span key={s} className="chip"><Crosshair size={12} className="mr-1" /> {s}</span>
+                  ))}
+                </div>
+              ) : (
+                <div className="font-display font-extrabold text-2xl text-ink text-center">{item.location}</div>
               )}
+              <div className="mt-6 flex justify-center">
+                <button onClick={openMaps} data-testid="detail-open-maps"
+                  className="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-white border border-[var(--line)] text-ink font-bold btn-hover">
+                  <Navigation size={16} /> {t('cta.get_directions')} <ArrowRight size={15} />
+                </button>
+              </div>
             </div>
           </div>
         </Screen>
       )}
 
-      {/* ============ WHERE YOU'LL BE — full screen ============ */}
-      <Screen tone="bg" testid="detail-location">
-        <Eyebrow n={nextStep()}>{t('detail.location')}</Eyebrow>
-        <h2 className="mt-8 font-display font-extrabold text-3xl sm:text-4xl md:text-5xl text-ink leading-tight max-w-2xl">
-          {t('detail.location')}
-        </h2>
-        <div className="mt-10 rounded-3xl border border-[var(--line)] overflow-hidden">
-          {/* Contour-style placeholder — the listing model carries no coordinates yet */}
-          <div className="relative h-[38vh] min-h-[220px] bg-mist grain">
-            <div className="absolute inset-0 opacity-[0.5] bg-[radial-gradient(circle_at_30%_40%,transparent_0,transparent_38px,var(--line)_39px,var(--line)_40px,transparent_41px),radial-gradient(circle_at_70%_65%,transparent_0,transparent_58px,var(--line)_59px,var(--line)_60px,transparent_61px)]" />
-            <div className="absolute inset-0 grid place-items-center">
-              <div className="w-16 h-16 rounded-full bg-flag text-white grid place-items-center shadow-lg">
-                <MapPin size={28} />
-              </div>
-            </div>
-          </div>
-          <div className="p-6 md:p-8 bg-white flex flex-col md:flex-row md:items-end md:justify-between gap-5">
-            <div>
-              <div className="font-display font-extrabold text-2xl text-ink">{item.location}</div>
-              <p className="mt-2 text-ink-soft leading-relaxed flex items-start gap-2 max-w-xl">
-                <Info size={15} className="mt-1 flex-shrink-0" /> {areaNoteFor(item.type)}
-              </p>
-            </div>
-            <button onClick={openMaps} data-testid="detail-open-maps"
-              className="flex-shrink-0 inline-flex items-center gap-2 px-5 py-3 rounded-full bg-white border border-[var(--line)] text-ink font-bold btn-hover">
-              <Navigation size={16} /> {t('cta.get_directions')} <ArrowRight size={15} />
-            </button>
-          </div>
-        </div>
-      </Screen>
+      {/* ============ RESERVE (commercial types only) ============ */}
+      {commercial && (
+        <Screen tone="white" testid="detail-reserve">
+          <SectionHead n={nextStep()} label={t('detail.reserve')}
+            title={item.price > 0 ? `₹${item.price}${unit}` : t('detail.reserve')}
+            note={bookable ? t('booking.fee_note') : t('detail.walk_in_note')} />
 
-      {/* ============ PRICE / BOOKING — full screen ============ */}
-      <Screen tone="white" testid="detail-price">
-        <Eyebrow n={nextStep()}>{commercial ? priceLabel : t('cta.explore')}</Eyebrow>
-        <div className="mt-8 grid lg:grid-cols-5 gap-10 lg:gap-16 items-center">
-          <div className="lg:col-span-2">
-            {commercial && item.price > 0 ? (
-              <>
-                <div className="text-xs uppercase tracking-widest text-ink-soft font-bold">{priceLabel}</div>
-                <div className="mt-2 font-display font-extrabold text-6xl md:text-7xl text-ink leading-none">
-                  ₹{item.price}
-                  <span className="block mt-2 text-lg md:text-xl text-ink-soft font-semibold">{unit || t('detail.onwards')}</span>
-                </div>
-              </>
-            ) : (
-              <h2 className="font-display font-extrabold text-3xl sm:text-4xl md:text-5xl text-ink leading-tight">
-                {item.title}
-              </h2>
-            )}
-            <p className="mt-6 text-ink-soft leading-relaxed max-w-md">
-              {bookable ? t('booking.fee_note') : commercial ? t('detail.walk_in_note') : t('detail.info_note')}
-            </p>
-          </div>
-
-          <div className="lg:col-span-3">
+          <div className="mt-10 mx-auto max-w-xl">
             <div className="mist-panel p-6 md:p-8">
               {bookable ? (
                 <div className="space-y-4">
                   {item.type === 'homestay' && (
                     <div className="grid grid-cols-2 gap-4">
-                      <label className="block">
+                      <label className="block text-left">
                         <span className="text-xs font-semibold text-ink-soft">{t('booking.checkin')}</span>
                         <input required type="date" value={form.check_in} onChange={(e) => setForm({ ...form, check_in: e.target.value })}
                           data-testid="booking-checkin" className="mt-1 w-full px-3 py-3 rounded-xl border border-[var(--line)] bg-white outline-none text-sm" />
                       </label>
-                      <label className="block">
+                      <label className="block text-left">
                         <span className="text-xs font-semibold text-ink-soft">{t('booking.checkout')}</span>
                         <input required type="date" value={form.check_out} onChange={(e) => setForm({ ...form, check_out: e.target.value })}
                           data-testid="booking-checkout" className="mt-1 w-full px-3 py-3 rounded-xl border border-[var(--line)] bg-white outline-none text-sm" />
                       </label>
                     </div>
                   )}
-                  <label className="block">
+                  <label className="block text-left">
                     <span className="text-xs font-semibold text-ink-soft">{t('booking.guests')}</span>
                     <input type="number" min="1" value={form.guests} onChange={(e) => setForm({ ...form, guests: Number(e.target.value) || 1 })}
                       data-testid="booking-guests" className="mt-1 w-full px-3 py-3 rounded-xl border border-[var(--line)] bg-white outline-none" />
                   </label>
-                  <label className="block">
+                  <label className="block text-left">
                     <span className="text-xs font-semibold text-ink-soft">{t('booking.notes')}</span>
                     <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })}
                       data-testid="booking-notes" rows={3} className="mt-1 w-full px-3 py-2.5 rounded-xl border border-[var(--line)] bg-white outline-none" />
@@ -411,8 +406,8 @@ export default function ListingDetail() {
               )}
             </div>
           </div>
-        </div>
-      </Screen>
+        </Screen>
+      )}
 
       {/* Sticky bottom bar (mobile) */}
       <div className="lg:hidden fixed bottom-16 inset-x-0 z-30 px-4 pb-3">
@@ -427,9 +422,11 @@ export default function ListingDetail() {
             onClick={bookable ? doBook : openMaps}
             disabled={busy}
             data-testid="mobile-sticky-cta"
-            className={`ml-auto flex-shrink-0 inline-flex items-center gap-2 px-5 py-3 rounded-full font-extrabold btn-hover ${cta.color}`}
+            className={`ml-auto flex-shrink-0 inline-flex items-center gap-2 px-5 py-3 rounded-full font-extrabold btn-hover ${bookable ? cta.color : 'bg-pine text-white'}`}
           >
-            <CtaIcon size={16} /> {bookable ? (item.type === 'driver' ? t('cta.talk_to_driver') : t('cta.book_now')) : t(`cta.${cta.key}`)}
+            {bookable
+              ? <><CtaIcon size={16} /> {item.type === 'driver' ? t('cta.talk_to_driver') : t('cta.book_now')}</>
+              : <><Navigation size={16} /> {t('cta.get_directions')}</>}
           </button>
         </div>
       </div>
