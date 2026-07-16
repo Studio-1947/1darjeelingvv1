@@ -36,9 +36,9 @@ export const SEED_LISTINGS: SeedListing[] = [
     { title: "Prakash - Airport/NJP Transfer", type: "driver", description: "Punctual pickup from Bagdogra & NJP. Bottled water and clean sedan.", location: "Darjeeling", price: 3200, image: "https://res.cloudinary.com/drgb8w8ak/image/upload/v1784115416/prakash_vmpj0x.webp", tags: ["transfer", "airport"] },
 
     // -------- Local Shops --------
-    { title: "Nathmulls Tea House", type: "shop", description: "Legendary tea shop with the finest first-flush Darjeeling teas since 1931.", location: "Laden La Road, Darjeeling", price: 400, image: TEA_PLANTATION, tags: ["tea", "gifts", "heritage"] },
-    { title: "Hayden Hall Craft Store", type: "shop", description: "Handwoven shawls and crafts made by local women's cooperatives.", location: "Laden La Road, Darjeeling", price: 800, image: TEA_GARDEN, tags: ["crafts", "handwoven", "cooperative"] },
-    { title: "Life & Leaf Wooden Toys", type: "shop", description: "Local artisan wooden toys, magnets, and prayer wheels.", location: "Chowrasta, Darjeeling", price: 250, image: CAFE, tags: ["souvenirs", "artisan"] },
+    { title: "Nathmulls Tea House", type: "shop", description: "Legendary tea shop with the finest first-flush Darjeeling teas since 1931.", location: "Laden La Road, Darjeeling", price: 400, image: "https://res.cloudinary.com/drgb8w8ak/image/upload/v1784201627/nathmulls_kecous.webp", tags: ["tea", "gifts", "heritage"] },
+    { title: "Hayden Hall Craft Store", type: "shop", description: "Handwoven shawls and crafts made by local women's cooperatives.", location: "Laden La Road, Darjeeling", price: 800, image: "https://res.cloudinary.com/drgb8w8ak/image/upload/v1784201631/hayden_ianxfd.webp", tags: ["crafts", "handwoven", "cooperative"] },
+    { title: "Life & Leaf Wooden Toys", type: "shop", description: "Local artisan wooden toys, magnets, and prayer wheels.", location: "Chowrasta, Darjeeling", price: 250, image: "https://res.cloudinary.com/drgb8w8ak/image/upload/v1784201408/woodentoys_f8vdhz.webp", tags: ["souvenirs", "artisan"] },
 
     // -------- Cafes --------
     { title: "Sonam's Kitchen", type: "cafe", description: "Breakfast institution loved by locals & travellers. Try the pancakes.", location: "Dr. Zakir Hussain Road, Darjeeling", price: 300, image: "https://res.cloudinary.com/drgb8w8ak/image/upload/v1784111263/sonamkitchen_tkkacn.webp", tags: ["breakfast", "cozy"] },

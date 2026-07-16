@@ -30,10 +30,10 @@ function Screen({ tone = 'bg', wide = false, children, testid }: { tone?: 'bg' |
   );
 }
 
-/** Centred section header: eyebrow, title, optional note. */
+/** Left-aligned section header (matches the hero): eyebrow, title, optional note. */
 function SectionHead({ label, title, note }: { label: string, title: string, note?: string }) {
   return (
-    <div className="text-center max-w-3xl mx-auto">
+    <div className="text-left max-w-3xl">
       <div className="inline-flex items-center gap-3 text-xs font-bold uppercase tracking-widest text-ink-soft">
         {label}
       </div>
@@ -46,7 +46,7 @@ function SectionHead({ label, title, note }: { label: string, title: string, not
 /** Real photo if it loads, otherwise the branded initial — never a broken face. */
 function Avatar({ photo, initial }: { photo?: string, initial: string }) {
   const [failed, setFailed] = useState(false);
-  const base = 'w-36 h-36 md:w-44 md:h-44 rounded-full overflow-hidden mx-auto shadow-lg ring-4 ring-white';
+  const base = 'w-36 h-36 md:w-44 md:h-44 rounded-full overflow-hidden shadow-lg ring-4 ring-white';
   if (!photo || failed) {
     return (
       <div className={`${base} bg-gradient-to-br from-pine to-pine-dark text-white grid place-items-center font-display font-extrabold text-6xl md:text-7xl`}>
@@ -247,12 +247,12 @@ export default function ListingDetail() {
         </div>
       </section>
 
-      {/* ============ ABOUT — centred, detailed ============ */}
+      {/* ============ ABOUT — detailed ============ */}
       <Screen tone="bg" testid="detail-about">
         <SectionHead label={t('detail.about')} title={item.title} />
-        <p className="mt-8 text-lg md:text-xl text-ink leading-relaxed text-center max-w-3xl mx-auto">{c.about}</p>
+        <p className="mt-8 text-lg md:text-xl text-ink leading-relaxed max-w-3xl">{c.about}</p>
         {item.tags?.length > 0 && (
-          <div className="mt-8 flex flex-wrap justify-center gap-2">
+          <div className="mt-8 flex flex-wrap justify-start gap-2">
             {item.tags.map((tg: string) => <span key={tg} className="chip"><Tag size={11} className="mr-1" /> {tg}</span>)}
           </div>
         )}
@@ -290,15 +290,15 @@ export default function ListingDetail() {
       {item.type === 'homestay' && (
         <Screen tone="bg" testid="detail-host">
           <SectionHead label={t('detail.host')} title={t('detail.host')} />
-          <div className="mt-10 text-center max-w-2xl mx-auto">
+          <div className="mt-10 text-left max-w-2xl">
             <Avatar photo={personSrc} initial={initial} />
-            <div className="mt-6 flex items-center justify-center gap-2 flex-wrap">
+            <div className="mt-6 flex items-center justify-start gap-2 flex-wrap">
               <span className="font-display font-extrabold text-2xl md:text-3xl text-ink">{item.title}</span>
               <span className="chip bg-white"><BadgeCheck size={12} className="mr-1" /> {t('detail.verified')}</span>
             </div>
-            <p className="mt-2 text-sm text-ink-soft flex items-center justify-center gap-1.5"><MapPin size={13} /> {item.location}</p>
+            <p className="mt-2 text-sm text-ink-soft flex items-center justify-start gap-1.5"><MapPin size={13} /> {item.location}</p>
             <p className="mt-6 text-lg text-ink leading-relaxed">{c.about}</p>
-            <p className="mt-5 text-ink-soft flex items-center justify-center gap-2">
+            <p className="mt-5 text-ink-soft flex items-center justify-start gap-2">
               <Languages size={18} className="text-pine" /> {t('detail.speaks')}: Nepali, Hindi, English
             </p>
           </div>
@@ -309,9 +309,9 @@ export default function ListingDetail() {
       {item.type === 'driver' && (
         <Screen tone="bg" testid="detail-driver">
           <SectionHead label={t('detail.meet_driver')} title={t('detail.meet_driver')} />
-          <div className="mt-10 text-center max-w-2xl mx-auto">
+          <div className="mt-10 text-left max-w-2xl">
             <Avatar photo={personSrc} initial={initial} />
-            <div className="mt-6 flex items-center justify-center gap-2 flex-wrap">
+            <div className="mt-6 flex items-center justify-start gap-2 flex-wrap">
               <span className="font-display font-extrabold text-2xl md:text-3xl text-ink">{item.title}</span>
               <span className="chip bg-white"><BadgeCheck size={12} className="mr-1" /> {t('detail.verified')}</span>
             </div>
@@ -324,8 +324,8 @@ export default function ListingDetail() {
       {item.type === 'event' && c.bestTime && (
         <Screen tone="white" testid="detail-besttime">
           <SectionHead label={t('detail.best_time')} title={t('detail.best_time')} />
-          <div className="mt-10 mx-auto max-w-xl rounded-3xl border border-[var(--line)] bg-[var(--bg)] p-8 text-center">
-            <CalendarClock size={40} className="text-pine mx-auto" />
+          <div className="mt-10 max-w-xl rounded-3xl border border-[var(--line)] bg-[var(--bg)] p-8 text-left">
+            <CalendarClock size={40} className="text-pine" />
             <p className="mt-4 text-xl md:text-2xl font-display font-bold text-ink leading-snug">{c.bestTime}</p>
           </div>
         </Screen>
@@ -335,7 +335,7 @@ export default function ListingDetail() {
       {item.type === 'driver' && c.routes && c.routes.length > 0 && (
         <Screen tone="mist" testid="detail-routes">
           <SectionHead label={t('detail.routes')} title={t('detail.routes')} note={t('detail.routes_note')} />
-          <div className="mt-10 mx-auto max-w-2xl space-y-3">
+          <div className="mt-10 max-w-2xl space-y-3">
             {c.routes.map((r, i) => (
               <div key={i} className="flex items-start gap-4 p-5 rounded-2xl border border-[var(--line)] bg-white text-left">
                 <Route size={22} className="text-pine flex-shrink-0 mt-0.5" />
@@ -357,15 +357,15 @@ export default function ListingDetail() {
             <MapEmbed coords={c.coords!} title={item.location} className="w-full h-[42vh] min-h-[260px]" />
             <div className="p-6 md:p-8">
               {item.type === 'biodiversity' && c.spotted && c.spotted.length > 0 ? (
-                <div className="flex flex-wrap justify-center gap-2">
+                <div className="flex flex-wrap justify-start gap-2">
                   {c.spotted.map((s) => (
                     <span key={s} className="chip"><Crosshair size={12} className="mr-1" /> {s}</span>
                   ))}
                 </div>
               ) : (
-                <div className="font-display font-extrabold text-2xl text-ink text-center">{item.location}</div>
+                <div className="font-display font-extrabold text-2xl text-ink text-left">{item.location}</div>
               )}
-              <div className="mt-6 flex justify-center">
+              <div className="mt-6 flex justify-start">
                 <button onClick={openMaps} data-testid="detail-open-maps"
                   className="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-white border border-[var(--line)] text-ink font-bold btn-hover">
                   <Navigation size={16} /> {t('cta.get_directions')} <ArrowRight size={15} />
@@ -383,7 +383,7 @@ export default function ListingDetail() {
             title={item.price > 0 ? `₹${item.price}${unit}` : t('detail.reserve')}
             note={bookable ? t('booking.fee_note') : t('detail.walk_in_note')} />
 
-          <div className="mt-10 mx-auto max-w-xl">
+          <div className="mt-10 max-w-xl">
             <div className="mist-panel p-6 md:p-8">
               {bookable ? (
                 <div className="space-y-4">
