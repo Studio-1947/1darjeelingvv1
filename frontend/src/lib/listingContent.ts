@@ -37,6 +37,22 @@ export function stockPhoto(query: string, w = 1600, h = 1000, seed = 1): string 
   return `https://loremflickr.com/${w}/${h}/${tags}?lock=${seed}`;
 }
 
+/**
+ * Bare Unsplash/Pexels URLs (as stored in seed data) serve the full-resolution
+ * original — several MB per photo, which janks scrolling while cards decode.
+ * Both CDNs resize on the fly via query params; other hosts pass through as-is.
+ */
+export function sizedImage(url: string, w = 800): string {
+  if (!url) return url;
+  const sep = url.includes('?') ? '&' : '?';
+  if (url.includes('images.unsplash.com')) return `${url}${sep}auto=format&fit=crop&w=${w}&q=75`;
+  if (url.includes('images.pexels.com')) return `${url}${sep}auto=compress&cs=tinysrgb&w=${w}`;
+  if (url.includes('res.cloudinary.com') && url.includes('/image/upload/') && !/\/upload\/[^/]*[wqf]_/.test(url)) {
+    return url.replace('/image/upload/', `/image/upload/w_${w},c_limit,q_auto/`);
+  }
+  return url;
+}
+
 // The five shared seed images (see backend/src/seed_data.ts). A listing whose
 // image is one of these is using a default, not a real photo of itself — so we
 // swap in a distinct per-listing image. Anything else is a genuine
@@ -283,7 +299,7 @@ function primaryKeyword(item: any): string {
  * two listings share the same picture across cards and the detail hero.
  */
 export function listingImage(item: any, w = 1200, h = 900): string {
-  if (item?.image && !SEED_IMAGE_SET.has(item.image)) return item.image;
+  if (item?.image && !SEED_IMAGE_SET.has(item.image)) return sizedImage(item.image, w);
   return stockPhoto(primaryKeyword(item), w, h, seedFor(item?.title));
 }
 
@@ -312,7 +328,7 @@ export function contentFor(item: any): Required<Pick<ListingContent, 'about'>> &
   return {
     about: c.about || item?.description || '',
     gallery: c.gallery,
-    coords: c.coords || DARJEELING,
+    coords: pinned || c.coords || DARJEELING,
     bestTime: c.bestTime,
     routes,
     spotted: c.spotted,

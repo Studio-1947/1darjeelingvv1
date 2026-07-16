@@ -1,4 +1,4 @@
-import { pgTable, text, integer, boolean, numeric, jsonb } from 'drizzle-orm/pg-core';
+import { pgTable, text, integer, boolean, numeric, jsonb, doublePrecision } from 'drizzle-orm/pg-core';
 
 export const users = pgTable('users', {
   id: text('id').primaryKey(),
@@ -27,6 +27,8 @@ export const providers = pgTable('providers', {
   businessType: text('business_type').notNull(),
   description: text('description').notNull(),
   location: text('location').notNull(),
+  latitude: doublePrecision('latitude'),
+  longitude: doublePrecision('longitude'),
   contactPhone: text('contact_phone').notNull(),
   priceFrom: integer('price_from').default(0).notNull(),
   images: jsonb('images').$type<string[]>().default([]).notNull(),
@@ -42,6 +44,8 @@ export const listings = pgTable('listings', {
   type: text('type').notNull(),
   description: text('description').notNull(),
   location: text('location').notNull(),
+  latitude: doublePrecision('latitude'),
+  longitude: doublePrecision('longitude'),
   price: integer('price').default(0).notNull(),
   image: text('image').default('').notNull(),
   tags: jsonb('tags').$type<string[]>().default([]).notNull(),

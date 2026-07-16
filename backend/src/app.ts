@@ -12,6 +12,7 @@ import listingsRouter from './routes/listings';
 import bookingsRouter from './routes/bookings';
 import paymentsRouter from './routes/payments';
 import adminRouter from './routes/admin';
+import geocodeRouter from './routes/geocode';
 
 export const app = express();
 app.use(express.json());
@@ -75,4 +76,5 @@ app.use('/api/providers', providersRouter);
 app.use('/api/listings', listingsRouter);
 app.use('/api/bookings', bookingsRouter);
 app.use('/api/payments', paymentsRouter);
+app.use('/api/geocode', geocodeRouter);
 app.use('/api', adminRouter); // Mount admin routes directly under /api (e.g. /api/admin/seed, /api/admin/stats)
