@@ -110,6 +110,57 @@ Every route across auth, users, providers, listings, bookings, payments, and adm
 - Payments are mocked by default (`MOCK_PAYMENTS=true`): checkout completes instantly via `POST /api/payments/mock/complete` with no real Razorpay call. Set `MOCK_PAYMENTS=false` and provide real `RAZORPAY_KEY_ID`/`SECRET` to exercise the live HMAC-verified flow.
 - Admin login: `POST /api/auth/admin/login` with `ADMIN_USERNAME`/`ADMIN_PASSWORD` from `.env`, or bootstrap a DB-backed admin via `POST /api/admin/bootstrap`.
 
+## Production deployment
+
+This VPS already runs a **system-level Nginx + Certbot** in front of several other apps (each its own `sites-available` file, each with its own DuckDNS domain and Let's Encrypt cert via `certbot --nginx`). This app follows the exact same convention rather than introducing its own — it does **not** run its own Nginx/Certbot on ports 80/443.
+
+The app itself deploys as three containers: `postgres`, `backend` (Express API), and an `nginx` container that bakes in both frontend static builds (public app at `/`, admin console at `/admin`) and reverse-proxies `/api` + `/api-docs` to the backend. That `nginx` container is bound to `127.0.0.1:8091` only — never exposed directly. The VPS's existing system Nginx is what actually terminates TLS and is reachable from the internet; it reverse-proxies `onedarjeeling.duckdns.org` to `127.0.0.1:8091`, exactly like it already does for the other apps on this box (compare `/etc/nginx/sites-available/s47-task.duckdns.org`).
+
+### One-time VPS setup
+
+1. **Clone the repo** to `/var/www/1darjeelingvv1` (already done) and `cd` into it.
+2. **Create `.env`** from the template: `cp .env.production.example .env`, then fill in real values — a strong `POSTGRES_PASSWORD`, `JWT_SECRET`, `ADMIN_BOOTSTRAP_SECRET`, a changed `ADMIN_PASSWORD`, and your Razorpay live keys (or leave `MOCK_PAYMENTS=true` until you're ready to charge real money). This file is gitignored — it stays on the server and is never pulled from or pushed to GitHub.
+3. **Confirm 8091 is free**: `sudo ss -tlnp | grep 8091` should print nothing. If it's taken, pick a different port in `docker-compose.prod.yml`'s `nginx.ports` and in step 5 below.
+4. **Bring the app containers up**:
+   ```sh
+   docker compose -f docker-compose.prod.yml up -d --build
+   curl -I http://127.0.0.1:8091/   # sanity check — should be 200, straight from this container
+   ```
+5. **Add the host Nginx site** (this is the one step that touches the shared system Nginx — it only *adds* a new file, never edits an existing one):
+   ```sh
+   sudo cp deploy/host-nginx-site.conf.example /etc/nginx/sites-available/onedarjeeling.duckdns.org
+   sudo ln -s /etc/nginx/sites-available/onedarjeeling.duckdns.org /etc/nginx/sites-enabled/
+   sudo nginx -t && sudo systemctl reload nginx
+   ```
+   `nginx -t` must print "syntax is ok" / "test is successful" before you reload — if it doesn't, stop and fix the config rather than reloading anyway (a bad reload here would affect every other app on this box, not just this one).
+6. **Issue the TLS cert** via the same Certbot already managing the other domains' certs:
+   ```sh
+   sudo certbot --nginx -d onedarjeeling.duckdns.org
+   ```
+   This edits the site file in place to add the SSL block and HTTP→HTTPS redirect — the same thing it already did for the other five certs visible in `sudo certbot certificates`. No separate renewal setup needed; the existing Certbot timer on this VPS picks it up automatically.
+7. **Seed + bootstrap admin** (first time only): once containers are up, follow the same `/api/admin/bootstrap` flow described earlier in this README, but against `https://onedarjeeling.duckdns.org/api/...` instead of localhost.
+
+### Ongoing deploys (GitHub Actions)
+
+`.github/workflows/deploy.yml` SSHes into the VPS on every push to `main` and runs `git reset --hard origin/main && docker compose -f docker-compose.prod.yml up -d --build --remove-orphans`. It needs these **GitHub repo secrets** (Settings → Secrets and variables → Actions):
+
+| Secret | Value |
+|---|---|
+| `VPS_HOST` | The VPS's IP or hostname |
+| `VPS_USER` | The SSH user (e.g. `deploy`) |
+| `VPS_SSH_KEY` | The **private** key of a deploy keypair (see below) |
+| `VPS_PORT` | Optional, defaults to `22` |
+
+**Generating the deploy key** (run once, on the VPS, as the `deploy` user):
+```sh
+ssh-keygen -t ed25519 -C "github-actions-deploy" -f ~/.ssh/gh_actions_deploy -N ""
+cat ~/.ssh/gh_actions_deploy.pub >> ~/.ssh/authorized_keys
+cat ~/.ssh/gh_actions_deploy       # copy this whole output...
+```
+Paste that private key output as the `VPS_SSH_KEY` GitHub secret (the full `-----BEGIN OPENSSH PRIVATE KEY-----` block, unmodified). This is a *separate* keypair from whatever SSH key the VPS already uses to `git clone`/`git pull` from GitHub — that one lets the VPS talk to GitHub; this new one lets GitHub Actions talk to the VPS, the opposite direction. Never reuse the VPS's own GitHub-facing key for this.
+
+Once the secrets are set, just `git push` to `main` and the workflow redeploys automatically — no manual SSH needed for routine updates. The workflow only touches this app's own containers (`docker compose -f docker-compose.prod.yml up -d --build`); it never touches the host Nginx config, so routine deploys can't affect other apps on the box. Re-run steps 5–6 above manually only if you ever need to set this app up on a fresh VPS.
+
 ## Known issues / further reading
 
 This repo carries some rough edges from a rapid AI-assisted build. See **`INVESTIGATION.md`** for the full audit: stale docs, a dependency conflict, an unauthenticated seeding endpoint, and a couple of missing authorization checks worth fixing before any public deployment.

@@ -83,7 +83,12 @@ android-sdk/
 .env
 .env.*
 !.env.example
+!.env.production.example
 *.env
 credentials.json
 *.key
 .credentials
+
+# Generated at deploy time by deploy/init-letsencrypt.sh — not source
+deploy/nginx/conf.d/
+deploy/certbot/

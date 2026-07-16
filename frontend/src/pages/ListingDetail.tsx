@@ -1,15 +1,12 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import gsap from 'gsap';
-import api, { createPaymentOrder, completeMockPayment, payWithRazorpay } from '@/lib/api';
-import { useAuth } from '@/context/AuthContext';
-import { amenitiesFor } from '@/lib/listingMeta';
-import { contentFor, listingImage, galleryImagesFor, personImageFor, fallbackFor } from '@/lib/listingContent';
-import SmartImg from '@/components/SmartImg';
-import MapEmbed from '@/components/MapEmbed';
+import api from '@/lib/api';
+import { amenitiesFor, hostFor } from '@/lib/listingMeta';
+import { contentFor, galleryImagesFor, personImageFor, fallbackFor } from '@/lib/listingContent';
 import MockPaymentModal from '@/components/MockPaymentModal';
 import BookingConfirmation from '@/components/BookingConfirmation';
+import DetailHero from '@/components/listing-detail/DetailHero';
 import {
   MapPin, Tag, ArrowLeft, Phone, Share2, Heart, Store, Coffee, Ticket,
   Leaf, Mountain, Navigation, ArrowRight, BadgeCheck, Languages, ChevronDown,
@@ -60,51 +57,14 @@ function Avatar({ photo, initial }: { photo?: string, initial: string }) {
 export default function ListingDetail() {
   const { id } = useParams();
   const { t } = useTranslation();
-  const { user } = useAuth();
   const nav = useNavigate();
   const [item, setItem] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState({ check_in: '', check_out: '', guests: 1, notes: '' });
-  const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState('');
-  const [liked, setLiked] = useState(false);
-  const [payModal, setPayModal] = useState(null); // { order, amount, description, bookingId }
-  const [confirm, setConfirm] = useState(null); // { open, data }
-  const heroRef = useRef<HTMLElement>(null);
-  const heroContentRef = useRef<HTMLDivElement>(null);
+  const booking = useBookingFlow(item, id);
 
   useEffect(() => {
     api.get(`/listings/${id}`).then((r) => setItem(r.data.item)).finally(() => setLoading(false));
   }, [id]);
-
-  // On landing, only the hero image shows; then the title block rises up from
-  // below into place on its own. The page scrolls normally throughout.
-  useEffect(() => {
-    if (loading || !item) return;
-    const ctx = gsap.context(() => {
-      gsap.fromTo(
-        heroContentRef.current,
-        { yPercent: 55, autoAlpha: 0 },
-        { yPercent: 0, autoAlpha: 1, duration: 1.1, delay: 0.35, ease: 'power3.out' },
-      );
-    }, heroRef);
-    return () => ctx.revert();
-  }, [loading, item]);
-
-  const bookable = item && (item.type === 'homestay' || item.type === 'driver');
-  // Types that trade — everything else (spots, events, biodiversity) is informational.
-  const commercial = item && ['homestay', 'driver', 'shop', 'cafe'].includes(item.type);
-
-  // Contextual CTA config per listing type
-  const CTA_CONFIG = {
-    homestay: { key: 'book_now', Icon: ArrowRight, color: 'bg-flag text-white' },
-    driver: { key: 'talk_to_driver', Icon: Phone, color: 'bg-pine text-white' },
-    shop: { key: 'contact_shop', Icon: Store, color: 'bg-ink text-white' },
-    cafe: { key: 'visit_cafe', Icon: Coffee, color: 'bg-ink text-white' },
-    event: { key: 'join_event', Icon: Ticket, color: 'bg-flag text-white' },
-    biodiversity: { key: 'learn_more', Icon: Leaf, color: 'bg-pine text-white' },
-    spot: { key: 'explore', Icon: Mountain, color: 'bg-pine text-white' },
-  };
 
   const openMaps = () => {
     if (!item) return;
@@ -118,77 +78,20 @@ export default function ListingDetail() {
     if (navigator.share) {
       try { await navigator.share({ title: item.title, text: item.description, url }); return; } catch (e) { console.warn('share failed', e); }
     }
-    try { await navigator.clipboard.writeText(url); setMsg('Link copied!'); setTimeout(() => setMsg(''), 1500); } catch (e) { console.warn('clipboard failed', e); }
-  };
-
-  const doBook = async () => {
-    if (!user) { nav('/login?next=' + encodeURIComponent(`/listing/${id}`)); return; }
-    if (item.type === 'homestay') {
-      if (!form.check_in || !form.check_out) {
-        setMsg('Check-in and check-out dates are required');
-        return;
-      }
-      if (new Date(form.check_out) <= new Date(form.check_in)) {
-        setMsg('Check-out date must be after check-in date');
-        return;
-      }
-    }
-    setBusy(true); setMsg('');
-    try {
-      const { data } = await api.post('/bookings', {
-        listing_id: item.id,
-        listing_type: item.type,
-        check_in: form.check_in || null,
-        check_out: form.check_out || null,
-        guests: Number(form.guests) || 1,
-        notes: form.notes,
-      });
-      const bookingId = data.booking.id;
-      const orderRes = await createPaymentOrder({ flow: 'booking_commission', reference_id: bookingId });
-      if (orderRes.mock) {
-        // Open dummy modal
-        setPayModal({
-          amount: orderRes.amount,
-          order: orderRes.order,
-          description: `platform fee — ${item.title}`,
-          bookingId,
-        });
-      } else {
-        await payWithRazorpay({
-          order: orderRes.order,
-          key_id: orderRes.key_id,
-          flow: 'booking_commission',
-          reference_id: bookingId,
-          description: `₹1 platform fee — ${item.title}`,
-          prefill: { contact: user.phone, name: user.name },
-        });
-        setMsg(t('booking.success'));
-        setTimeout(() => nav('/dashboard'), 1200);
-      }
-    } catch (e) {
-      setMsg(e?.response?.data?.detail || e.message || 'Failed');
-    } finally { setBusy(false); }
-  };
-
-  const finishMockPayment = async () => {
-    if (!payModal) return;
-    const res = await completeMockPayment({
-      order_id: payModal.order.id,
-      flow: 'booking_commission',
-      reference_id: payModal.bookingId,
-    });
-    setPayModal(null);
-    // Show confirmation
-    setConfirm({ open: true, data: res.record });
+    try { await navigator.clipboard.writeText(url); booking.setMsg('Link copied!'); setTimeout(() => booking.setMsg(''), 1500); } catch (e) { console.warn('clipboard failed', e); }
   };
 
   if (loading) return <div className="mx-auto max-w-5xl p-10 text-ink-soft">{t('common.loading')}</div>;
   if (!item) return <div className="mx-auto max-w-5xl p-10">Not found.</div>;
 
+  const bookable = item.type === 'homestay' || item.type === 'driver';
+  // Types that trade — everything else (spots, events, biodiversity) is informational.
+  const commercial = ['homestay', 'driver', 'shop', 'cafe'].includes(item.type);
+
   const unit = item.type === 'homestay' ? t('common.per_night') : item.type === 'driver' ? t('common.per_day') : '';
-  const cta = CTA_CONFIG[item.type] || CTA_CONFIG.spot;
-  const CtaIcon = cta.Icon;
+  const cta = ctaFor(item.type);
   const amenities = amenitiesFor(item);
+  const host = hostFor(item);
   const c = contentFor(item);
   const initial = (item.title || '?').trim().charAt(0).toUpperCase();
   const fallbackImg = fallbackFor(item.type);
@@ -202,7 +105,7 @@ export default function ListingDetail() {
 
   const heroSrc = listingImage(item, 2000, 1200);
   const gallery = galleryImagesFor(item);
-  const personSrc = personImageFor(item);
+  const personSrc = host.avatar || personImageFor(item);
 
   return (
     <div className="pb-28 lg:pb-0">
@@ -216,36 +119,11 @@ export default function ListingDetail() {
           <ArrowLeft size={16} /> {t('common.back')}
         </button>
 
-        <div className="absolute top-4 right-4 md:top-6 md:right-8 flex gap-2">
-          <button onClick={() => setLiked(!liked)} data-testid="detail-like" aria-label={t('common.save')}
-            className="w-11 h-11 rounded-full bg-white/95 backdrop-blur grid place-items-center btn-hover">
-            <Heart size={18} className={liked ? 'fill-flag text-flag' : 'text-ink'} />
-          </button>
-          <button onClick={shareIt} data-testid="detail-share" aria-label="Share"
-            className="w-11 h-11 rounded-full bg-white/95 backdrop-blur grid place-items-center btn-hover">
-            <Share2 size={18} className="text-ink" />
-          </button>
-        </div>
+      <AboutSection item={item} about={c.about} />
 
-        {/* Left-aligned hero content */}
-        <div ref={heroContentRef} style={{ opacity: 0 }} className="absolute inset-0 flex flex-col items-start justify-center text-left px-4 md:px-8 lg:px-16">
-          <span className="chip bg-white/90 capitalize">{t(`categories.${item.type}`)}</span>
-          <h1 className="mt-5 font-display font-extrabold text-5xl sm:text-6xl md:text-8xl text-white leading-[0.95] max-w-4xl"
-            data-testid="listing-title">{item.title}</h1>
-          <div className="mt-5 flex flex-wrap justify-start items-center gap-x-6 gap-y-2 text-white/90 text-base md:text-lg font-semibold">
-            <span className="flex items-center gap-1.5"><MapPin size={18} /> {item.location}</span>
-            {item.price > 0 && (
-              <span className="flex items-center gap-1.5">
-                ₹{item.price}<span className="font-normal text-white/75">{unit || ` ${t('detail.onwards')}`}</span>
-              </span>
-            )}
-          </div>
-        </div>
+      {gallery.length > 0 && <PhotosSection item={item} gallery={gallery} fallbackImg={fallbackImg} />}
 
-        <div className="absolute inset-x-0 bottom-6 hidden md:flex justify-center text-white/70">
-          <ChevronDown size={26} className="animate-bounce" />
-        </div>
-      </section>
+      {amenities.length > 0 && <OffersSection amenities={amenities} />}
 
       {/* ============ ABOUT — detailed ============ */}
       <Screen tone="bg" testid="detail-about">
@@ -346,7 +224,6 @@ export default function ListingDetail() {
         </Screen>
       )}
 
-      {/* ============ WHERE YOU'LL BE / SPOTTED LOCATIONS (real map) ============ */}
       {item.type !== 'driver' && (
         <Screen tone="bg" wide testid={item.type === 'biodiversity' ? 'detail-spotted' : 'detail-location'}>
           {item.type === 'biodiversity'
@@ -376,7 +253,6 @@ export default function ListingDetail() {
         </Screen>
       )}
 
-      {/* ============ RESERVE (commercial types only) ============ */}
       {commercial && (
         <Screen tone="white" testid="detail-reserve">
           <SectionHead label={t('detail.reserve')}
@@ -429,46 +305,24 @@ export default function ListingDetail() {
         </Screen>
       )}
 
-      {/* Sticky bottom bar (mobile) */}
-      <div className="lg:hidden fixed bottom-16 inset-x-0 z-30 px-4 pb-3">
-        <div className="mx-auto max-w-md bg-white rounded-2xl border border-[var(--line)] shadow-[0_-8px_24px_-8px_rgba(20,32,26,0.18)] p-2.5 flex items-center gap-2">
-          {item.price > 0 && (
-            <div className="pl-2">
-              <div className="text-[10px] font-bold uppercase tracking-widest text-ink-soft leading-none">{t('common.starting_from')}</div>
-              <div className="font-display font-extrabold text-lg text-ink leading-tight">₹{item.price}<span className="text-[10px] text-ink-soft font-semibold">{unit}</span></div>
-            </div>
-          )}
-          <button
-            onClick={bookable ? doBook : openMaps}
-            disabled={busy}
-            data-testid="mobile-sticky-cta"
-            className={`ml-auto flex-shrink-0 inline-flex items-center gap-2 px-5 py-3 rounded-full font-extrabold btn-hover ${bookable ? cta.color : 'bg-pine text-white'}`}
-          >
-            {bookable
-              ? <><CtaIcon size={16} /> {item.type === 'driver' ? t('cta.talk_to_driver') : t('cta.book_now')}</>
-              : <><Navigation size={16} /> {t('cta.get_directions')}</>}
-          </button>
-        </div>
-      </div>
+      <MobileStickyBar item={item} unit={unit} bookable={bookable} cta={cta} busy={booking.busy}
+        onBook={booking.doBook} onOpenMaps={openMaps} />
 
-      {/* Mock Payment Modal */}
       <MockPaymentModal
-        open={!!payModal}
-        onClose={() => setPayModal(null)}
-        amount={payModal?.amount || 0}
+        open={!!booking.payModal}
+        onClose={() => booking.setPayModal(null)}
+        amount={booking.payModal?.amount || 0}
         title="Confirm booking payment"
-        description={payModal?.description || ''}
-        onPay={finishMockPayment}
-        prefill={{ upi: `${(user?.name || 'traveller').toLowerCase().replace(/\s+/g, '')}@ybl` }}
+        description={booking.payModal?.description || ''}
+        onPay={booking.finishMockPayment}
+        prefill={{ upi: `${(booking.user?.name || 'traveller').toLowerCase().replace(/\s+/g, '')}@ybl` }}
       />
-
-      {/* Booking Confirmation */}
       <BookingConfirmation
-        open={!!confirm?.open}
-        onClose={() => { setConfirm(null); nav('/dashboard'); }}
+        open={!!booking.confirm?.open}
+        onClose={() => { booking.setConfirm(null); nav('/dashboard'); }}
         mode="booking"
-        data={confirm?.data}
-        onView={() => { setConfirm(null); nav('/dashboard'); }}
+        data={booking.confirm?.data}
+        onView={() => { booking.setConfirm(null); nav('/dashboard'); }}
       />
     </div>
   );

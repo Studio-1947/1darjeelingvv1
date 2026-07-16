@@ -10,4 +10,4 @@ RUN npm run build
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "npx drizzle-kit push && npm start"]
+CMD ["sh", "-c", "npx drizzle-kit push --force && npm start"]

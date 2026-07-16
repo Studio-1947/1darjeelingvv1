@@ -1,8 +1,4 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
-import api, { createPaymentOrder, completeMockPayment, payWithRazorpay } from '@/lib/api';
-import { useAuth } from '@/context/AuthContext';
+import React from 'react';
 import MockPaymentModal from '@/components/MockPaymentModal';
 import BookingConfirmation from '@/components/BookingConfirmation';
 import LocationPicker from '@/components/LocationPicker';
@@ -70,17 +66,12 @@ export default function ProviderOnboard() {
     } finally { setBusy(false); }
   };
 
-  const finishMockPayment = async () => {
-    if (!payModal) return;
-    const res = await completeMockPayment({
-      order_id: payModal.order.id,
-      flow: 'provider_registration',
-      reference_id: payModal.providerId,
-    });
-    setPayModal(null);
-    await refresh();
-    setConfirm({ open: true, data: res.record });
-  };
+  const stepScreen =
+    o.step === 1 ? <BasicInfoStep o={o} />
+    : o.form.business_type === 'driver' ? <DriverForm o={o} />
+    : o.form.business_type === 'homestay' ? <HomestayForm o={o} />
+    : (o.form.business_type === 'cafe' || o.form.business_type === 'shop') ? <CafeShopForm o={o} />
+    : null;
 
   return (
     <div className="mx-auto max-w-3xl px-4 md:px-8 py-8 md:py-10">
@@ -150,22 +141,21 @@ export default function ProviderOnboard() {
       </form>
 
       <MockPaymentModal
-        open={!!payModal}
-        onClose={() => setPayModal(null)}
-        amount={payModal?.amount || 0}
+        open={!!o.payModal}
+        onClose={() => o.setPayModal(null)}
+        amount={o.payModal?.amount || 0}
         title="Provider registration"
-        description={payModal?.description || ''}
-        onPay={finishMockPayment}
-        prefill={{ upi: `${(form.business_name || 'business').toLowerCase().replace(/\s+/g, '')}@ybl` }}
+        description={o.payModal?.description || ''}
+        onPay={o.finishMockPayment}
+        prefill={{ upi: `${(o.form.business_name || 'business').toLowerCase().replace(/\s+/g, '')}@ybl` }}
       />
-
       <BookingConfirmation
-        open={!!confirm?.open}
-        onClose={() => { setConfirm(null); nav('/provider/dashboard'); }}
+        open={!!o.confirm?.open}
+        onClose={() => { o.setConfirm(null); o.nav('/provider/dashboard'); }}
         mode="provider"
-        data={confirm?.data}
-        onView={() => { setConfirm(null); nav('/provider/dashboard'); }}
+        data={o.confirm?.data}
+        onView={() => { o.setConfirm(null); o.nav('/provider/dashboard'); }}
       />
-    </div>
+    </>
   );
 }
