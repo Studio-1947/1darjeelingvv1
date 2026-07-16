@@ -271,8 +271,8 @@ export default function ListingDetail() {
         </Screen>
       )}
 
-      {/* ============ WHAT THIS PLACE OFFERS ============ */}
-      {amenities.length > 0 && (
+      {/* ============ WHAT THIS PLACE OFFERS (not for wildlife/flora) ============ */}
+      {item.type !== 'biodiversity' && amenities.length > 0 && (
         <Screen tone="mist" wide testid="detail-offers">
           <SectionHead label={t('detail.offers')} title={t('detail.offers')} />
           <div className="mt-10 grid sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5 max-w-4xl mx-auto">

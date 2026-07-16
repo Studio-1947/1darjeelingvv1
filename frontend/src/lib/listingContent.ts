@@ -47,6 +47,9 @@ export function sizedImage(url: string, w = 800): string {
   const sep = url.includes('?') ? '&' : '?';
   if (url.includes('images.unsplash.com')) return `${url}${sep}auto=format&fit=crop&w=${w}&q=75`;
   if (url.includes('images.pexels.com')) return `${url}${sep}auto=compress&cs=tinysrgb&w=${w}`;
+  if (url.includes('res.cloudinary.com') && url.includes('/image/upload/') && !/\/upload\/[^/]*[wqf]_/.test(url)) {
+    return url.replace('/image/upload/', `/image/upload/w_${w},c_limit,q_auto/`);
+  }
   return url;
 }
 

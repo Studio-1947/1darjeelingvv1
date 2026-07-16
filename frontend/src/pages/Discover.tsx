@@ -9,20 +9,16 @@ import StoryCircle from '@/components/StoryCircle';
 import BookingWidget from '@/components/BookingWidget';
 import { Mountain, Home as HomeIcon, Car, Store, Coffee, PartyPopper, Leaf, ArrowRight, Sparkles, TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react';
 
-const HERO_IMG = 'https://images.unsplash.com/photo-1584395631446-e41b0fc3f68d';
 const RED_PANDA = 'https://images.unsplash.com/photo-1542880941-1abfea46bba6';
-const TEA_GARDEN = 'https://images.pexels.com/photos/35151733/pexels-photo-35151733.jpeg';
-const TEA_PLANTATION = 'https://images.pexels.com/photos/103875/pexels-photo-103875.jpeg';
-const CAFE_IMG = 'https://images.pexels.com/photos/33932441/pexels-photo-33932441.png';
 
 const STORIES = [
-  { key: 'spot', to: '/spots', image: HERO_IMG, Icon: Mountain },
-  { key: 'homestay', to: '/homestays', image: TEA_GARDEN, Icon: HomeIcon },
-  { key: 'driver', to: '/drivers', image: TEA_PLANTATION, Icon: Car },
-  { key: 'shop', to: '/shops', image: null, Icon: Store },
-  { key: 'cafe', to: '/cafes', image: CAFE_IMG, Icon: Coffee },
-  { key: 'event', to: '/events', image: null, Icon: PartyPopper },
-  { key: 'biodiversity', to: '/biodiversity', image: RED_PANDA, Icon: Leaf },
+  { key: 'spot', to: '/spots', Icon: Mountain },
+  { key: 'homestay', to: '/homestays', Icon: HomeIcon },
+  { key: 'driver', to: '/drivers', Icon: Car },
+  { key: 'shop', to: '/shops', Icon: Store },
+  { key: 'cafe', to: '/cafes', Icon: Coffee },
+  { key: 'event', to: '/events', Icon: PartyPopper },
+  { key: 'biodiversity', to: '/biodiversity', Icon: Leaf },
 ];
 
 const DEALS = [
@@ -37,14 +33,35 @@ export default function Discover() {
   const [spots, setSpots] = useState([]);
   const [homestays, setHomestays] = useState([]);
   const spotsScrollRef = useRef<HTMLDivElement>(null);
+  const heroVideoRef = useRef<HTMLVideoElement>(null);
+  const pointerRestoreRef = useRef<number>(undefined);
 
   const scrollSpots = (direction: 'left' | 'right') => {
     if (spotsScrollRef.current) {
       const container = spotsScrollRef.current;
       const scrollAmount = container.clientWidth * 0.75;
+      // As cards glide under a stationary cursor, :hover flips on/off per card,
+      // each firing a 200ms box-shadow/transform transition that repaints the
+      // tile. Suspend pointer events until the smooth scroll settles.
+      container.style.pointerEvents = 'none';
+      window.clearTimeout(pointerRestoreRef.current);
+      pointerRestoreRef.current = window.setTimeout(() => { container.style.pointerEvents = ''; }, 650);
       container.scrollBy({ left: direction === 'left' ? -scrollAmount : scrollAmount, behavior: 'smooth' });
     }
   };
+
+  // The hero video keeps decoding frames even when scrolled far out of view,
+  // eating main-thread/GPU budget that the carousel animation needs.
+  useEffect(() => {
+    const v = heroVideoRef.current;
+    if (!v) return;
+    const io = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) v.play().catch(() => {});
+      else v.pause();
+    }, { threshold: 0.05 });
+    io.observe(v);
+    return () => io.disconnect();
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -87,7 +104,7 @@ export default function Discover() {
           <div className="flex items-start gap-3 md:gap-4">
             {STORIES.map((s, i) => (
               <motion.div key={s.key} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
-                <StoryCircle to={s.to} label={t(`categories.${s.key}`)} image={s.image} icon={s.Icon} active={i === 0} />
+                <StoryCircle to={s.to} label={t(`categories.${s.key}`)} image={null} icon={s.Icon} active={i === 0} />
               </motion.div>
             ))}
           </div>
@@ -98,6 +115,7 @@ export default function Discover() {
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 z-0">
           <video
+            ref={heroVideoRef}
             autoPlay
             loop
             muted
