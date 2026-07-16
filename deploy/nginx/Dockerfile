@@ -20,7 +20,6 @@ RUN npm run build
 
 FROM nginx:1.27-alpine
 RUN rm -f /etc/nginx/conf.d/default.conf
-# Active server config is bind-mounted at runtime (deploy/nginx/conf.d/) so
-# init-letsencrypt.sh can swap HTTP-only <-> HTTPS without rebuilding this image.
+COPY deploy/nginx/app.conf /etc/nginx/conf.d/app.conf
 COPY --from=frontend-build /app/build /usr/share/nginx/html
 COPY --from=admin-build /app/dist /usr/share/nginx/html/admin

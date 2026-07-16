@@ -8,6 +8,12 @@
 # briefly deleted) the dev environment's actual postgres container. The
 # `name:` below is what actually prevents that; the distinct container/
 # volume names are defense-in-depth on top of it.
+#
+# This VPS already runs a system-level Nginx + Certbot fronting every other
+# app on the box (see README's "Production deployment" section) — so unlike
+# an earlier draft of this file, nginx here is NOT exposed on 80/443. It's
+# bound to 127.0.0.1 only, on a port the system Nginx reverse-proxies to,
+# exactly like every other project already deployed here.
 name: 1darjeeling-prod
 
 services:
@@ -44,24 +50,12 @@ services:
     container_name: 1darjeeling_prod_nginx
     restart: unless-stopped
     ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./deploy/nginx/conf.d:/etc/nginx/conf.d
-      - ./deploy/certbot/conf:/etc/letsencrypt
-      - ./deploy/certbot/www:/var/www/certbot
+      # Loopback-only — the VPS's system Nginx is what's actually reachable
+      # from the internet; it proxy_passes to this port. Change the host
+      # port here (left of the colon) if 8091 is ever already taken.
+      - "127.0.0.1:8091:80"
     depends_on:
       - backend
-
-  certbot:
-    image: certbot/certbot
-    container_name: 1darjeeling_prod_certbot
-    restart: unless-stopped
-    volumes:
-      - ./deploy/certbot/conf:/etc/letsencrypt
-      - ./deploy/certbot/www:/var/www/certbot
-    entrypoint: >
-      /bin/sh -c "trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot; sleep 12h & wait $${!}; done"
 
 volumes:
   pg_data_prod:
