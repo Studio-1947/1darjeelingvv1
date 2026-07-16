@@ -1,7 +1,7 @@
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import swaggerUi from 'swagger-ui-express';
-import { IS_PROD } from './config';
+import { IS_PROD, CORS_ORIGINS } from './config';
 import { swaggerSpec } from './swagger';
 
 // Import router modules
@@ -18,7 +18,10 @@ app.use(express.json());
 
 app.use(cors({
   origin: (origin, callback) => {
-    callback(null, true);
+    if (CORS_ORIGINS.includes('*') || !origin || CORS_ORIGINS.includes(origin)) {
+      return callback(null, true);
+    }
+    callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
 }));

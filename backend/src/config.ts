@@ -9,6 +9,9 @@ export const JWT_SECRET = process.env.JWT_SECRET || 'supersecretjwtkey12345!';
 export const MOCK_PAYMENTS = process.env.MOCK_PAYMENTS ? process.env.MOCK_PAYMENTS.toLowerCase() === 'true' : true;
 export const APP_ENV = process.env.APP_ENV || 'development';
 export const IS_PROD = APP_ENV === 'production';
+export const CORS_ORIGINS = process.env.CORS_ORIGINS
+  ? process.env.CORS_ORIGINS.split(',').map(o => o.trim())
+  : ['*'];
 export const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID || '';
 export const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || '';
 export const ADMIN_BOOTSTRAP_SECRET = process.env.ADMIN_BOOTSTRAP_SECRET || '';

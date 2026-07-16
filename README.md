@@ -110,6 +110,44 @@ Every route across auth, users, providers, listings, bookings, payments, and adm
 - Payments are mocked by default (`MOCK_PAYMENTS=true`): checkout completes instantly via `POST /api/payments/mock/complete` with no real Razorpay call. Set `MOCK_PAYMENTS=false` and provide real `RAZORPAY_KEY_ID`/`SECRET` to exercise the live HMAC-verified flow.
 - Admin login: `POST /api/auth/admin/login` with `ADMIN_USERNAME`/`ADMIN_PASSWORD` from `.env`, or bootstrap a DB-backed admin via `POST /api/admin/bootstrap`.
 
+## Production deployment
+
+The app deploys to a VPS as four containers behind one Nginx: `postgres`, `backend` (Express API), and a combined `nginx` container that bakes in both frontend static builds (public app at `/`, admin console at `/admin`) plus reverse-proxies `/api` and `/api-docs` to the backend. `certbot` runs alongside it renewing the TLS cert. Each app on the VPS owns its own Nginx + Certbot pair on its own domain — this one is `onedarjeeling.duckdns.org`, and it doesn't share a reverse proxy with anything else already running on the box.
+
+### One-time VPS setup
+
+1. **Clone the repo** to `/var/www/1darjeelingvv1` (already done) and `cd` into it.
+2. **Create `.env`** from the template: `cp .env.production.example .env`, then fill in real values — a strong `POSTGRES_PASSWORD`, `JWT_SECRET`, `ADMIN_BOOTSTRAP_SECRET`, a changed `ADMIN_PASSWORD`, your Razorpay live keys (or leave `MOCK_PAYMENTS=true` until you're ready to charge real money), and `CERTBOT_EMAIL` for Let's Encrypt renewal notices. This file is gitignored — it stays on the server and is never pulled from or pushed to GitHub.
+3. **Confirm DNS**: `onedarjeeling.duckdns.org` must already resolve to this VPS's IP (per your DuckDNS setup) before requesting a certificate.
+4. **Bootstrap TLS and bring the stack up**:
+   ```sh
+   chmod +x deploy/init-letsencrypt.sh
+   CERTBOT_EMAIL=you@example.com ./deploy/init-letsencrypt.sh
+   ```
+   This starts everything over plain HTTP first, obtains the real certificate via the webroot challenge, then switches Nginx to the HTTPS config and starts the renewal loop. It's idempotent — safe to re-run on a fresh clone; it skips straight to a normal `up -d --build` if a certificate already exists.
+5. **Seed + bootstrap admin** (first time only): once containers are up, follow the same `/api/admin/bootstrap` flow described earlier in this README, but against `https://onedarjeeling.duckdns.org/api/...` instead of localhost.
+
+### Ongoing deploys (GitHub Actions)
+
+`.github/workflows/deploy.yml` SSHes into the VPS on every push to `main` and runs `git reset --hard origin/main && docker compose -f docker-compose.prod.yml up -d --build --remove-orphans`. It needs these **GitHub repo secrets** (Settings → Secrets and variables → Actions):
+
+| Secret | Value |
+|---|---|
+| `VPS_HOST` | The VPS's IP or hostname |
+| `VPS_USER` | The SSH user (e.g. `deploy`) |
+| `VPS_SSH_KEY` | The **private** key of a deploy keypair (see below) |
+| `VPS_PORT` | Optional, defaults to `22` |
+
+**Generating the deploy key** (run once, on the VPS, as the `deploy` user):
+```sh
+ssh-keygen -t ed25519 -C "github-actions-deploy" -f ~/.ssh/gh_actions_deploy -N ""
+cat ~/.ssh/gh_actions_deploy.pub >> ~/.ssh/authorized_keys
+cat ~/.ssh/gh_actions_deploy       # copy this whole output...
+```
+Paste that private key output as the `VPS_SSH_KEY` GitHub secret (the full `-----BEGIN OPENSSH PRIVATE KEY-----` block, unmodified). This is a *separate* keypair from whatever SSH key the VPS already uses to `git clone`/`git pull` from GitHub — that one lets the VPS talk to GitHub; this new one lets GitHub Actions talk to the VPS, the opposite direction. Never reuse the VPS's own GitHub-facing key for this.
+
+Once the secrets are set, just `git push` to `main` and the workflow redeploys automatically — no manual SSH needed for routine updates. Re-run `deploy/init-letsencrypt.sh` manually only if you ever need to re-bootstrap TLS (e.g. a fresh clone on a new server).
+
 ## Known issues / further reading
 
 This repo carries some rough edges from a rapid AI-assisted build. See **`INVESTIGATION.md`** for the full audit: stale docs, a dependency conflict, an unauthenticated seeding endpoint, and a couple of missing authorization checks worth fixing before any public deployment.

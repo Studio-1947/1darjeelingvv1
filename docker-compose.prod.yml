@@ -1,0 +1,67 @@
+# Production stack — deliberately isolated from docker-compose.yml (the
+# local-dev-only file) with both an explicit project `name` AND distinct
+# container/volume names. Both matter: Compose derives a project name from
+# the directory by default, so two compose files in the same folder with a
+# same-named service (e.g. "postgres") are tracked as the SAME resource
+# regardless of container_name — confirmed the hard way while testing this
+# file, where `docker compose -f docker-compose.prod.yml up` recreated (and
+# briefly deleted) the dev environment's actual postgres container. The
+# `name:` below is what actually prevents that; the distinct container/
+# volume names are defense-in-depth on top of it.
+name: 1darjeeling-prod
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: 1darjeeling_prod_postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    volumes:
+      - pg_data_prod:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: 1darjeeling_prod_backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      # Computed here (not hand-duplicated in .env) so Postgres credentials
+      # only ever live in one place.
+      - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+    depends_on:
+      - postgres
+
+  nginx:
+    build:
+      context: .
+      dockerfile: deploy/nginx/Dockerfile
+    container_name: 1darjeeling_prod_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/nginx/conf.d:/etc/nginx/conf.d
+      - ./deploy/certbot/conf:/etc/letsencrypt
+      - ./deploy/certbot/www:/var/www/certbot
+    depends_on:
+      - backend
+
+  certbot:
+    image: certbot/certbot
+    container_name: 1darjeeling_prod_certbot
+    restart: unless-stopped
+    volumes:
+      - ./deploy/certbot/conf:/etc/letsencrypt
+      - ./deploy/certbot/www:/var/www/certbot
+    entrypoint: >
+      /bin/sh -c "trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot; sleep 12h & wait $${!}; done"
+
+volumes:
+  pg_data_prod:
