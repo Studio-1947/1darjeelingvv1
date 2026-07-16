@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
-import { CheckCircle2, Clock, Wallet, CalendarCheck, Users, LayoutList, Phone, MessageCircle, ArrowRight, ExternalLink, X, Upload, Plus, Trash2, Edit } from 'lucide-react';
+import { CheckCircle2, Clock, Wallet, CalendarCheck, Users, LayoutList, Phone, MessageCircle, ArrowRight, ExternalLink, X, Upload, Plus, Trash2, Edit, Pencil } from 'lucide-react';
+import ListingFormModal from '@/components/ListingFormModal';
 
 function StatCard({ label, value, sub, icon: Icon, tone = 'pine' }: { label: string; value: any; sub?: string; icon: any; tone?: string }) {
   const tones = {
@@ -41,6 +42,18 @@ export default function ProviderDashboard() {
   const [tab, setTab] = useState('bookings');
   const [selectedListing, setSelectedListing] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [listingModal, setListingModal] = useState<{ open: boolean; editing: any | null }>({ open: false, editing: null });
+
+  const loadData = useCallback(async () => {
+    const [p, b] = await Promise.all([
+      api.get('/providers/me'),
+      api.get('/bookings/provider'),
+    ]);
+    setProvider(p.data.provider);
+    setStats(b.data.stats || {});
+    setBookings(b.data.items || []);
+    setListings(b.data.listings || []);
+  }, []);
 
   const loadDashboard = React.useCallback(async () => {
     try {
@@ -61,11 +74,28 @@ export default function ProviderDashboard() {
     if (authLoading) return;
     if (!user) { nav('/login'); return; }
     (async () => {
-      setLoading(true);
-      await loadDashboard();
-      setLoading(false);
+      try {
+        await loadDashboard();
+      } finally {
+        setLoading(false);
+      }
     })();
   }, [user, authLoading, nav, loadDashboard]);
+
+  const handleSaveListing = async (values: any) => {
+    if (listingModal.editing) {
+      await api.patch(`/listings/${listingModal.editing.id}`, values);
+    } else {
+      await api.post('/listings', values);
+    }
+    await loadDashboard();
+  };
+
+  const handleDeleteListing = async (listingId: string) => {
+    if (!window.confirm('Delete this listing? This cannot be undone.')) return;
+    await api.delete(`/listings/${listingId}`);
+    await loadDashboard();
+  };
 
   if (authLoading || loading) return <div className="p-10 text-center text-ink-soft">{t('common.loading')}</div>;
 
@@ -139,6 +169,7 @@ export default function ProviderDashboard() {
       <div className="mt-8 flex items-center gap-2 border-b border-[var(--line)]">
         {[
           { k: 'bookings', label: 'Bookings' },
+          { k: 'listings', label: 'Listings' },
           { k: 'profile', label: 'Business profile' },
         ].map(({ k, label }) => (
           <button key={k} onClick={() => setTab(k)} data-testid={`tab-${k}`}
@@ -195,6 +226,53 @@ export default function ProviderDashboard() {
         </div>
       )}
 
+      {/* Listings */}
+      {tab === 'listings' && (
+        <div className="mt-6">
+          <div className="flex justify-end mb-4">
+            <button
+              onClick={() => setListingModal({ open: true, editing: null })}
+              data-testid="add-listing-cta"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-flag text-white font-bold text-xs btn-hover"
+            >
+              <Plus size={14} /> Add listing
+            </button>
+          </div>
+          {listings.length === 0 ? (
+            <div className="mist-panel p-8 text-center text-ink-soft">You have no active listings.</div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {listings.map((l) => (
+                <div key={l.id} className="bg-white rounded-2xl border border-[var(--line)] overflow-hidden">
+                  <div className="aspect-[4/3] bg-mist overflow-hidden">
+                    {l.image && <img src={l.image} alt={l.title} className="w-full h-full object-cover" />}
+                  </div>
+                  <div className="p-4">
+                    <div className="font-display font-bold text-ink line-clamp-1">{l.title}</div>
+                    <div className="text-xs text-ink-soft mt-0.5 capitalize">{l.type} · {l.location}</div>
+                    {l.price > 0 && <div className="mt-2 font-extrabold text-pine">₹{l.price}</div>}
+                    <div className="mt-3 flex items-center gap-3">
+                      <Link to={`/listing/${l.id}`} data-testid={`view-listing-${l.id}`}
+                        className="inline-flex items-center gap-1.5 text-xs font-bold text-pine">
+                        View <ExternalLink size={11} />
+                      </Link>
+                      <button onClick={() => setSelectedListing(l)} data-testid={`edit-listing-${l.id}`}
+                        className="inline-flex items-center gap-1.5 text-xs font-bold text-ink-soft hover:text-ink">
+                        <Pencil size={11} /> Edit
+                      </button>
+                      <button onClick={() => handleDeleteListing(l.id)} data-testid={`delete-listing-${l.id}`}
+                        className="inline-flex items-center gap-1.5 text-xs font-bold text-flag hover:text-[#8a1e1e]">
+                        <Trash2 size={11} /> Delete
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Profile */}
       {tab === 'profile' && (
         <div className="mt-6 mist-panel p-5 md:p-6">
@@ -222,6 +300,13 @@ export default function ProviderDashboard() {
           onSave={loadDashboard}
         />
       )}
+
+      <ListingFormModal
+        open={listingModal.open}
+        initial={listingModal.editing || undefined}
+        onClose={() => setListingModal({ open: false, editing: null })}
+        onSubmit={handleSaveListing}
+      />
     </div>
   );
 }
@@ -604,6 +689,5 @@ function EditListingModal({ listing, onClose, onSave }: { listing: any; onClose:
           </div>
         </form>
       </div>
-    </div>
-  );
+    );
 }

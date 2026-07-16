@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import { APP_ENV } from '../config';
 
 interface RateLimitStore {
   [ip: string]: {
@@ -16,6 +17,10 @@ export function rateLimiter(limit: number, windowMs: number, keyPrefix: string) 
   const store = rateLimitStores[keyPrefix];
 
   return (req: Request, res: Response, next: NextFunction) => {
+    if (APP_ENV === 'test') {
+      return next();
+    }
+
     const ip = req.ip || req.socket.remoteAddress || 'unknown';
     const now = Date.now();
     const record = store[ip];

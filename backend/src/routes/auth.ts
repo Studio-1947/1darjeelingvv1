@@ -10,6 +10,41 @@ const router = Router();
 
 // ============ AUTH ROUTES ============
 
+/**
+ * @openapi
+ * /auth/otp/send:
+ *   post:
+ *     summary: Send a WhatsApp OTP to a phone number (mocked outside production)
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [phone]
+ *             properties:
+ *               phone: { type: string, example: "+919999999999" }
+ *               channel: { type: string, default: whatsapp }
+ *     responses:
+ *       200:
+ *         description: OTP sent (mock_otp only present outside production)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 sent: { type: boolean }
+ *                 channel: { type: string }
+ *                 mock_otp: { type: string }
+ *                 hint: { type: string }
+ *                 exists: { type: boolean }
+ *       400:
+ *         description: Missing phone number
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ */
 // Send OTP
 router.post('/otp/send', rateLimiter(5, 60 * 1000, 'otp_send'), async (req: Request, res: Response) => {
   const { phone, channel = 'whatsapp' } = req.body;
@@ -45,6 +80,40 @@ router.post('/otp/send', rateLimiter(5, 60 * 1000, 'otp_send'), async (req: Requ
   return res.json({ sent: true, channel, exists });
 });
 
+/**
+ * @openapi
+ * /auth/otp/verify:
+ *   post:
+ *     summary: Verify an OTP and log in (creating the user on first verification)
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [phone, otp]
+ *             properties:
+ *               phone: { type: string }
+ *               otp: { type: string, description: "6-digit OTP, or '123456' universal code outside production" }
+ *               name: { type: string, description: "Required on first login for a new phone number" }
+ *               role: { type: string, enum: [tourist, provider], default: tourist }
+ *     responses:
+ *       200:
+ *         description: Login success
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 token: { type: string }
+ *                 user: { $ref: '#/components/schemas/User' }
+ *       400:
+ *         description: Invalid OTP or missing name for new registration
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ */
 // Verify OTP
 router.post('/otp/verify', rateLimiter(10, 60 * 1000, 'otp_verify'), async (req: Request, res: Response) => {
   const { phone, otp, name, role = 'tourist' } = req.body;
@@ -87,11 +156,68 @@ router.post('/otp/verify', rateLimiter(10, 60 * 1000, 'otp_verify'), async (req:
   return res.json({ token, user });
 });
 
+/**
+ * @openapi
+ * /auth/me:
+ *   get:
+ *     summary: Get the current authenticated user
+ *     tags: [Auth]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200:
+ *         description: The current user
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 user: { $ref: '#/components/schemas/User' }
+ *       401:
+ *         description: Missing or invalid token
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ */
 // Current User Details
 router.get('/me', authenticateToken, (req: Request, res: Response) => {
   res.json({ user: req.user });
 });
 
+/**
+ * @openapi
+ * /auth/admin/login:
+ *   post:
+ *     summary: Admin login with username/password
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [password]
+ *             properties:
+ *               phone: { type: string, description: "Admin username, or a user's phone for a DB-backed admin" }
+ *               username: { type: string, description: "Alias for phone" }
+ *               password: { type: string }
+ *     responses:
+ *       200:
+ *         description: Login success
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 token: { type: string }
+ *                 user: { $ref: '#/components/schemas/User' }
+ *       400:
+ *         description: Missing credentials
+ *       401:
+ *         description: Invalid credentials or not an admin
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ */
 // Admin Login with Password
 router.post('/admin/login', rateLimiter(10, 60 * 1000, 'admin_login'), async (req: Request, res: Response) => {
   const { phone, password } = req.body;

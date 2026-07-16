@@ -1,13 +1,60 @@
 import { Router, Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { db, schema } from '../db';
-import { eq, desc, inArray } from 'drizzle-orm';
+import { eq, desc, inArray, and, lt, gt } from 'drizzle-orm';
 import { authenticateToken } from '../middleware/auth';
 
 const router = Router();
 
 // ============ BOOKINGS ============
 
+/**
+ * @openapi
+ * /bookings:
+ *   post:
+ *     summary: Create a booking for a listing
+ *     description: Booking starts in status pending_payment; it's confirmed via the payments flow (/payments/order then /payments/mock/complete or /payments/verify).
+ *     tags: [Bookings]
+ *     security: [{ bearerAuth: [] }]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [listing_id, listing_type]
+ *             properties:
+ *               listing_id: { type: string }
+ *               listing_type: { type: string }
+ *               check_in: { type: string, description: "Required (and must precede check_out) when listing_type is homestay" }
+ *               check_out: { type: string }
+ *               guests: { type: integer, default: 1 }
+ *               notes: { type: string }
+ *     responses:
+ *       200:
+ *         description: Created booking
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 booking: { $ref: '#/components/schemas/Booking' }
+ *       400:
+ *         description: Missing/invalid fields (e.g. bad homestay date range)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ *       404:
+ *         description: Listing not found
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ *       409:
+ *         description: Homestay is already confirmed-booked for an overlapping date range
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ */
 // Create a booking
 router.post('/', authenticateToken, async (req: Request, res: Response) => {
   const { listing_id, listing_type, check_in, check_out, guests = 1, notes } = req.body;
@@ -28,6 +75,20 @@ router.post('/', authenticateToken, async (req: Request, res: Response) => {
   const [listing] = await db.select().from(schema.listings).where(eq(schema.listings.id, listing_id)).limit(1);
   if (!listing) {
     return res.status(404).json({ detail: 'Listing not found' });
+  }
+
+  if (listing_type === 'homestay') {
+    const overlapping = await db.select().from(schema.bookings).where(
+      and(
+        eq(schema.bookings.listingId, listing_id),
+        eq(schema.bookings.status, 'confirmed'),
+        lt(schema.bookings.checkIn, check_out),
+        gt(schema.bookings.checkOut, check_in)
+      )
+    ).limit(1);
+    if (overlapping.length > 0) {
+      return res.status(409).json({ detail: 'These dates are already booked for this homestay' });
+    }
   }
 
   const booking = {
@@ -64,6 +125,33 @@ router.post('/', authenticateToken, async (req: Request, res: Response) => {
   res.json({ booking: bookingReturn });
 });
 
+/**
+ * @openapi
+ * /bookings/me:
+ *   get:
+ *     summary: Get the current user's own bookings (as a tourist), enriched with listing summaries
+ *     tags: [Bookings]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200:
+ *         description: The user's bookings
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 items:
+ *                   type: array
+ *                   items:
+ *                     allOf:
+ *                       - $ref: '#/components/schemas/Booking'
+ *                       - type: object
+ *                         properties:
+ *                           listing:
+ *                             oneOf:
+ *                               - type: object
+ *                               - type: 'null'
+ */
 // Get user's own bookings
 router.get('/me', authenticateToken, async (req: Request, res: Response) => {
   const bookings = await db.select()
@@ -107,6 +195,41 @@ router.get('/me', authenticateToken, async (req: Request, res: Response) => {
   res.json({ items: enrichedBookings });
 });
 
+/**
+ * @openapi
+ * /bookings/provider:
+ *   get:
+ *     summary: Get bookings received by the current user's provider listings, with stats and revenue
+ *     tags: [Bookings]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200:
+ *         description: Provider bookings, listings, and aggregate stats
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 items:
+ *                   type: array
+ *                   items:
+ *                     allOf:
+ *                       - $ref: '#/components/schemas/Booking'
+ *                       - type: object
+ *                         properties:
+ *                           customer: { type: object, nullable: true }
+ *                           listing: { type: object, nullable: true }
+ *                 stats:
+ *                   type: object
+ *                   properties:
+ *                     total: { type: integer }
+ *                     confirmed: { type: integer }
+ *                     pending: { type: integer }
+ *                     revenue: { type: integer }
+ *                 listings:
+ *                   type: array
+ *                   items: { $ref: '#/components/schemas/Listing' }
+ */
 // Get provider's bookings
 router.get('/provider', authenticateToken, async (req: Request, res: Response) => {
   const providersList = await db.select().from(schema.providers).where(eq(schema.providers.userId, req.user.id));
