@@ -28,6 +28,8 @@ async function handlePaymentSuccess(flow: string, referenceId: string, userId: s
         type: p.businessType,
         description: p.description,
         location: p.location,
+        latitude: p.latitude,
+        longitude: p.longitude,
         price: Number(p.priceFrom || 0),
         image: (p.images || [''])[0] || '',
         tags: [],

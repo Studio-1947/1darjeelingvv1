@@ -113,7 +113,16 @@
     "submit_pay": "Pay ₹99 & list",
     "active": "Active",
     "pending": "Payment pending",
-    "dashboard_title": "Provider dashboard"
+    "dashboard_title": "Provider dashboard",
+    "pin_location": "Pin your exact location"
+  },
+  "locationPicker": {
+    "search_placeholder": "Search address or landmark…",
+    "hint": "Drag the pin or tap the map to set your exact location.",
+    "no_results": "No matches — drag the pin instead.",
+    "search_failed": "Search unavailable — drag the pin instead.",
+    "popular": "Popular places",
+    "results": "Search results"
   },
   "booking": {
     "checkin": "Check-in",

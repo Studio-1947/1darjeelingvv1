@@ -10,7 +10,7 @@ const router = Router();
 
 // Register/Onboard a provider
 router.post('/onboard', authenticateToken, async (req: Request, res: Response) => {
-  const { business_name, business_type, description, location, contact_phone, price_from = 0, images = [], extras = {} } = req.body;
+  const { business_name, business_type, description, location, latitude = null, longitude = null, contact_phone, price_from = 0, images = [], extras = {} } = req.body;
 
   if (!business_name || !business_name.trim() || !business_type || !description || !description.trim() || !location || !location.trim() || !contact_phone || !contact_phone.trim()) {
     return res.status(400).json({ detail: 'Business name, type, description, location, and contact phone are required' });
@@ -23,6 +23,8 @@ router.post('/onboard', authenticateToken, async (req: Request, res: Response) =
     businessType: business_type,
     description,
     location,
+    latitude: typeof latitude === 'number' ? latitude : null,
+    longitude: typeof longitude === 'number' ? longitude : null,
     contactPhone: contact_phone,
     priceFrom: price_from,
     images: images,
@@ -42,6 +44,8 @@ router.post('/onboard', authenticateToken, async (req: Request, res: Response) =
     business_type: provider.businessType,
     description: provider.description,
     location: provider.location,
+    latitude: provider.latitude,
+    longitude: provider.longitude,
     contact_phone: provider.contactPhone,
     price_from: provider.priceFrom,
     images: provider.images,
@@ -68,6 +72,8 @@ router.get('/me', authenticateToken, async (req: Request, res: Response) => {
     business_type: provider.businessType,
     description: provider.description,
     location: provider.location,
+    latitude: provider.latitude,
+    longitude: provider.longitude,
     contact_phone: provider.contactPhone,
     price_from: provider.priceFrom,
     images: provider.images,

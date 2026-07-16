@@ -11,6 +11,7 @@ import listingsRouter from './routes/listings';
 import bookingsRouter from './routes/bookings';
 import paymentsRouter from './routes/payments';
 import adminRouter from './routes/admin';
+import geocodeRouter from './routes/geocode';
 
 const app = express();
 app.use(express.json());
@@ -46,6 +47,7 @@ app.use('/api/providers', providersRouter);
 app.use('/api/listings', listingsRouter);
 app.use('/api/bookings', bookingsRouter);
 app.use('/api/payments', paymentsRouter);
+app.use('/api/geocode', geocodeRouter);
 app.use('/api', adminRouter); // Mount admin/dev routes directly under /api (e.g. /api/dev/seed, /api/admin/stats)
 
 // ============ SERVER INIT ============

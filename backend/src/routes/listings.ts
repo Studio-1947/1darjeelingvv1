@@ -39,6 +39,8 @@ router.get('/', async (req: Request, res: Response) => {
     type: item.type,
     description: item.description,
     location: item.location,
+    latitude: item.latitude,
+    longitude: item.longitude,
     price: item.price,
     image: item.image,
     tags: item.tags,
@@ -63,6 +65,8 @@ router.get('/:id', async (req: Request, res: Response) => {
     type: item.type,
     description: item.description,
     location: item.location,
+    latitude: item.latitude,
+    longitude: item.longitude,
     price: item.price,
     image: item.image,
     tags: item.tags,
@@ -76,7 +80,7 @@ router.get('/:id', async (req: Request, res: Response) => {
 
 // Create a new listing
 router.post('/', authenticateToken, async (req: Request, res: Response) => {
-  const { title, type, description, location, price = 0, image = '', tags = [], provider_id, extras = {} } = req.body;
+  const { title, type, description, location, latitude = null, longitude = null, price = 0, image = '', tags = [], provider_id, extras = {} } = req.body;
   if (!title || !type || !description || !location) {
     return res.status(400).json({ detail: 'Title, type, description and location are required' });
   }
@@ -87,6 +91,8 @@ router.post('/', authenticateToken, async (req: Request, res: Response) => {
     type,
     description,
     location,
+    latitude: typeof latitude === 'number' ? latitude : null,
+    longitude: typeof longitude === 'number' ? longitude : null,
     price,
     image,
     tags,
@@ -103,6 +109,8 @@ router.post('/', authenticateToken, async (req: Request, res: Response) => {
     type: listing.type,
     description: listing.description,
     location: listing.location,
+    latitude: listing.latitude,
+    longitude: listing.longitude,
     price: listing.price,
     image: listing.image,
     tags: listing.tags,
