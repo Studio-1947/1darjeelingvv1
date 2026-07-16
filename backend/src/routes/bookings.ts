@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { db, schema } from '../db';
-import { eq, desc, inArray } from 'drizzle-orm';
+import { eq, desc, inArray, and, lt, gt } from 'drizzle-orm';
 import { authenticateToken } from '../middleware/auth';
 
 const router = Router();
@@ -49,6 +49,11 @@ const router = Router();
  *         content:
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
+ *       409:
+ *         description: Homestay is already confirmed-booked for an overlapping date range
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
  */
 // Create a booking
 router.post('/', authenticateToken, async (req: Request, res: Response) => {
@@ -70,6 +75,20 @@ router.post('/', authenticateToken, async (req: Request, res: Response) => {
   const [listing] = await db.select().from(schema.listings).where(eq(schema.listings.id, listing_id)).limit(1);
   if (!listing) {
     return res.status(404).json({ detail: 'Listing not found' });
+  }
+
+  if (listing_type === 'homestay') {
+    const overlapping = await db.select().from(schema.bookings).where(
+      and(
+        eq(schema.bookings.listingId, listing_id),
+        eq(schema.bookings.status, 'confirmed'),
+        lt(schema.bookings.checkIn, check_out),
+        gt(schema.bookings.checkOut, check_in)
+      )
+    ).limit(1);
+    if (overlapping.length > 0) {
+      return res.status(409).json({ detail: 'These dates are already booked for this homestay' });
+    }
   }
 
   const booking = {

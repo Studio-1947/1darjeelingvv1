@@ -231,4 +231,138 @@ router.post('/', authenticateToken, async (req: Request, res: Response) => {
   res.json({ item: listingReturn });
 });
 
+async function canManageListing(req: Request, listing: typeof schema.listings.$inferSelect): Promise<boolean> {
+  if (req.user.role === 'admin') return true;
+  const ownProviderId = await resolveOwnProviderId(req.user.id);
+  return !!ownProviderId && ownProviderId === listing.providerId;
+}
+
+/**
+ * @openapi
+ * /listings/{id}:
+ *   patch:
+ *     summary: Update a listing you own
+ *     description: Callers must be an admin, or the active provider that owns this listing. The listing's type and provider_id cannot be changed here.
+ *     tags: [Listings]
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               title: { type: string }
+ *               description: { type: string }
+ *               location: { type: string }
+ *               price: { type: integer }
+ *               image: { type: string }
+ *               tags: { type: array, items: { type: string } }
+ *               extras: { type: object }
+ *     responses:
+ *       200:
+ *         description: Updated listing
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 item: { $ref: '#/components/schemas/Listing' }
+ *       403:
+ *         description: Caller does not own this listing and is not an admin
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ *       404:
+ *         description: Listing not found
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ *   delete:
+ *     summary: Delete a listing you own
+ *     description: Callers must be an admin, or the active provider that owns this listing.
+ *     tags: [Listings]
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Deleted
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 ok: { type: boolean }
+ *       403:
+ *         description: Caller does not own this listing and is not an admin
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ *       404:
+ *         description: Listing not found
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ */
+// Update a listing (provider who owns it, or admin)
+router.patch('/:id', authenticateToken, async (req: Request, res: Response) => {
+  const [listing] = await db.select().from(schema.listings).where(eq(schema.listings.id, req.params.id as any)).limit(1);
+  if (!listing) {
+    return res.status(404).json({ detail: 'Not found' });
+  }
+  if (!(await canManageListing(req, listing))) {
+    return res.status(403).json({ detail: 'You do not have permission to edit this listing' });
+  }
+
+  const allowed = ['title', 'description', 'location', 'price', 'image', 'tags', 'extras'] as const;
+  const updateFields: Record<string, any> = {};
+  for (const key of allowed) {
+    if (req.body[key] !== undefined) {
+      updateFields[key] = req.body[key];
+    }
+  }
+
+  if (Object.keys(updateFields).length > 0) {
+    await db.update(schema.listings).set(updateFields).where(eq(schema.listings.id, listing.id));
+  }
+
+  const [updated] = await db.select().from(schema.listings).where(eq(schema.listings.id, listing.id)).limit(1);
+  const itemReturn = {
+    id: updated.id,
+    title: updated.title,
+    type: updated.type,
+    description: updated.description,
+    location: updated.location,
+    price: updated.price,
+    image: updated.image,
+    tags: updated.tags,
+    provider_id: updated.providerId,
+    extras: updated.extras,
+    created_at: updated.createdAt
+  };
+  res.json({ item: itemReturn });
+});
+
+// Delete a listing (provider who owns it, or admin)
+router.delete('/:id', authenticateToken, async (req: Request, res: Response) => {
+  const [listing] = await db.select().from(schema.listings).where(eq(schema.listings.id, req.params.id as any)).limit(1);
+  if (!listing) {
+    return res.status(404).json({ detail: 'Not found' });
+  }
+  if (!(await canManageListing(req, listing))) {
+    return res.status(403).json({ detail: 'You do not have permission to delete this listing' });
+  }
+
+  await db.delete(schema.listings).where(eq(schema.listings.id, listing.id));
+  res.json({ ok: true });
+});
+
 export default router;

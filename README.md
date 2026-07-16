@@ -12,7 +12,7 @@ Full-stack tourism + local marketplace for Darjeeling. Tourists discover spots, 
 | `memory/`         | Product requirements doc (`PRD.md`)                | — |
 | `.agents/`        | AI coding-agent kit (skills/rules for assistants) — not part of the running app | — |
 
-The API is Postgres-backed via Drizzle ORM. **`memory/PRD.md` still describes an older FastAPI + MongoDB backend design — that description is stale; the code in `backend/` is the source of truth.** See `INVESTIGATION.md` for the full list of stale docs and other findings.
+The API is Postgres-backed via Drizzle ORM. See **`memory/PRD.md`** for the full product overview (personas, user journeys, feature inventory, business model, data model) and **`INVESTIGATION.md`** for the repo audit (security findings, doc drift, dependency issues) — both were rewritten 2026-07-16 to match the current codebase.
 
 ## Prerequisites
 
@@ -45,7 +45,7 @@ The API is Postgres-backed via Drizzle ORM. **`memory/PRD.md` still describes an
    corepack yarn@1.22.22 install
    corepack yarn@1.22.22 start   # http://localhost:3000
    ```
-   (`npm install` fails here — `react-day-picker@8.10.1` and the pinned `date-fns@4.1.0` have an unresolved peer conflict that Yarn tolerates and npm doesn't. See `INVESTIGATION.md`.)
+   (`npm install` still fails here — CRA's `react-scripts@5.0.1` peer-requires `typescript@^3.2.1 || ^4` while the project intentionally runs `typescript@5.5.4`. This is inherent to CRA being unmaintained, not something to fix by downgrading TypeScript — Yarn tolerates it, which is why `frontend/` is Yarn-managed. See `INVESTIGATION.md` §3.1.)
 
 4. **Admin dashboard**
    ```sh
@@ -54,18 +54,21 @@ The API is Postgres-backed via Drizzle ORM. **`memory/PRD.md` still describes an
    npm run dev   # http://localhost:5173
    ```
 
-5. **Seed sample data** (27 listings across all 7 categories):
+5. **Seed sample data** (27 listings across all 7 categories) — requires an admin JWT:
    ```sh
-   curl -X POST http://localhost:8000/api/dev/seed
+   TOKEN=$(curl -s -X POST http://localhost:8000/api/auth/admin/login \
+     -H "Content-Type: application/json" \
+     -d '{"phone":"admin","password":"adminpassword123"}' | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>console.log(JSON.parse(d).token))")
+   curl -X POST http://localhost:8000/api/admin/seed -H "Authorization: Bearer $TOKEN"
    ```
-   This route only works while `APP_ENV` is not `production` (see `INVESTIGATION.md` for why it should not be trusted as the only guard).
+   (There used to be an unauthenticated `/api/dev/seed` shortcut — it was removed as a security fix; see `INVESTIGATION.md` §1.1. The admin app's "reseed" button in `frontend-admin` already calls the authenticated route above.)
 
-Or run backend + frontend + admin together from the repo root:
+Or install and run backend + frontend + admin together from the repo root:
 ```sh
-npm install
+npm run install:all
 npm run dev
 ```
-(This still requires Postgres running and `.env` files already in place per steps above; the root `dev` script does not create them.)
+(`npm run install:all` installs each app with its own correct package manager — npm for `backend`/`frontend-admin`, Yarn for `frontend`. Plain `npm install` at the root only installs this root folder's own tooling, not the three sub-apps. Running `dev` still requires Postgres running and `.env` files already in place per steps above; it does not create them.)
 
 ## Environment variables
 
