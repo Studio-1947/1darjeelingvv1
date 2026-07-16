@@ -13,6 +13,31 @@ const router = Router();
 // ============ ADMIN / DEV / SEED ROUTES ============
 let isSeeding = false;
 
+/**
+ * @openapi
+ * /dev/seed:
+ *   post:
+ *     summary: Seed sample listings (dev convenience route, no auth)
+ *     description: >
+ *       Blocked only by APP_ENV !== production — no authentication required otherwise.
+ *       See INVESTIGATION.md §1.1: this duplicates /admin/seed and should not be relied on for production safety.
+ *     tags: [Admin]
+ *     responses:
+ *       200:
+ *         description: Seed result
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 seeded: { type: integer }
+ *                 total_in_seed: { type: integer }
+ *       403:
+ *         description: Not available in production
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ */
 // Dev Seed listings (Only available in development)
 router.post('/dev/seed', async (req: Request, res: Response) => {
   if (IS_PROD) {
@@ -59,6 +84,29 @@ router.post('/dev/seed', async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * @openapi
+ * /admin/seed:
+ *   post:
+ *     summary: Seed sample listings (admin only)
+ *     tags: [Admin]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200:
+ *         description: Seed result
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 seeded: { type: integer }
+ *                 total_in_seed: { type: integer }
+ *       403:
+ *         description: Not an admin
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ */
 // Admin Seed listings
 router.post('/admin/seed', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
   if (isSeeding) {
@@ -101,6 +149,32 @@ router.post('/admin/seed', authenticateToken, requireAdmin, async (req: Request,
   }
 });
 
+/**
+ * @openapi
+ * /admin/stats:
+ *   get:
+ *     summary: Get platform-wide counts
+ *     tags: [Admin]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200:
+ *         description: Counts
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 users: { type: integer }
+ *                 providers: { type: integer }
+ *                 listings: { type: integer }
+ *                 bookings: { type: integer }
+ *                 payments: { type: integer, description: "Count of payments with status=paid" }
+ *       403:
+ *         description: Not an admin
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ */
 // Admin Stats
 router.get('/admin/stats', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
   const usersCount = await db.select({ value: count() }).from(schema.users);
@@ -118,6 +192,42 @@ router.get('/admin/stats', authenticateToken, requireAdmin, async (req: Request,
   });
 });
 
+/**
+ * @openapi
+ * /admin/bootstrap:
+ *   post:
+ *     summary: Promote the current user to the first DB-backed admin
+ *     description: Only works while no admin user exists yet, and requires ADMIN_BOOTSTRAP_SECRET to match.
+ *     tags: [Admin]
+ *     security: [{ bearerAuth: [] }]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [secret, password]
+ *             properties:
+ *               secret: { type: string }
+ *               password: { type: string, description: "New admin password to set on this user" }
+ *     responses:
+ *       200:
+ *         description: User promoted to admin
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 ok: { type: boolean }
+ *                 user_id: { type: string }
+ *       400:
+ *         description: Missing password
+ *       403:
+ *         description: Admin already exists, or invalid bootstrap secret
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ */
 // Admin Bootstrap
 router.post('/admin/bootstrap', rateLimiter(3, 60 * 60 * 1000, 'admin_bootstrap'), authenticateToken, async (req: Request, res: Response) => {
   const { secret, password } = req.body;
@@ -144,12 +254,53 @@ router.post('/admin/bootstrap', rateLimiter(3, 60 * 60 * 1000, 'admin_bootstrap'
   res.json({ ok: true, user_id: req.user.id });
 });
 
+/**
+ * @openapi
+ * /admin/listings:
+ *   get:
+ *     summary: List all listings
+ *     tags: [Admin]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200:
+ *         description: All listings
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 items:
+ *                   type: array
+ *                   items: { $ref: '#/components/schemas/Listing' }
+ */
 // Admin Listings List
 router.get('/admin/listings', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
   const items = await db.select().from(schema.listings);
   res.json({ items });
 });
 
+/**
+ * @openapi
+ * /admin/listings/{id}:
+ *   delete:
+ *     summary: Delete a listing
+ *     tags: [Admin]
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Deleted
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 ok: { type: boolean }
+ */
 // Admin Listings Delete
 router.delete('/admin/listings/:id', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
   const { id } = req.params;
@@ -157,6 +308,25 @@ router.delete('/admin/listings/:id', authenticateToken, requireAdmin, async (req
   res.json({ ok: true });
 });
 
+/**
+ * @openapi
+ * /admin/users:
+ *   get:
+ *     summary: List all users with their provider status
+ *     tags: [Admin]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200:
+ *         description: All users
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 items:
+ *                   type: array
+ *                   items: { type: object }
+ */
 // Admin Users List
 router.get('/admin/users', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
   const items = await db.select({
@@ -175,6 +345,33 @@ router.get('/admin/users', authenticateToken, requireAdmin, async (req: Request,
   res.json({ items });
 });
 
+/**
+ * @openapi
+ * /admin/users/{id}:
+ *   delete:
+ *     summary: Delete a user (admins cannot be deleted this way)
+ *     tags: [Admin]
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Deleted
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 ok: { type: boolean }
+ *       403:
+ *         description: Cannot delete an admin user
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ */
 // Admin Users Delete
 router.delete('/admin/users/:id', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
   const { id } = req.params;
@@ -186,6 +383,42 @@ router.delete('/admin/users/:id', authenticateToken, requireAdmin, async (req: R
   res.json({ ok: true });
 });
 
+/**
+ * @openapi
+ * /admin/providers/{id}/status:
+ *   put:
+ *     summary: Update a provider's status
+ *     tags: [Admin]
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [status]
+ *             properties:
+ *               status: { type: string, enum: [pending_payment, active] }
+ *     responses:
+ *       200:
+ *         description: Updated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 ok: { type: boolean }
+ *       400:
+ *         description: Missing status
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ */
 // Admin Providers status update
 router.put('/admin/providers/:id/status', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
   const { id } = req.params;
@@ -197,12 +430,50 @@ router.put('/admin/providers/:id/status', authenticateToken, requireAdmin, async
   res.json({ ok: true });
 });
 
+/**
+ * @openapi
+ * /admin/bookings:
+ *   get:
+ *     summary: List all bookings
+ *     tags: [Admin]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200:
+ *         description: All bookings
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 items:
+ *                   type: array
+ *                   items: { $ref: '#/components/schemas/Booking' }
+ */
 // Admin Bookings List
 router.get('/admin/bookings', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
   const items = await db.select().from(schema.bookings);
   res.json({ items });
 });
 
+/**
+ * @openapi
+ * /admin/payments:
+ *   get:
+ *     summary: List all payments
+ *     tags: [Admin]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200:
+ *         description: All payments
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 items:
+ *                   type: array
+ *                   items: { type: object }
+ */
 // Admin Payments List
 router.get('/admin/payments', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
   const items = await db.select().from(schema.payments);

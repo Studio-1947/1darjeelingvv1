@@ -1,7 +1,9 @@
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
+import swaggerUi from 'swagger-ui-express';
 import { pool } from './db';
 import { PORT, IS_PROD, log } from './config';
+import { swaggerSpec } from './swagger';
 
 // Import router modules
 import authRouter from './routes/auth';
@@ -34,6 +36,31 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
+// ============ API DOCS ============
+app.get('/api-docs.json', (req: Request, res: Response) => {
+  res.json(swaggerSpec);
+});
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+  customSiteTitle: '1 Darjeeling API Docs',
+}));
+
+/**
+ * @openapi
+ * /:
+ *   get:
+ *     summary: Health check
+ *     tags: [Health]
+ *     responses:
+ *       200:
+ *         description: API is up
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 app: { type: string, example: "1 Darjeeling" }
+ *                 status: { type: string, example: "ok" }
+ */
 // ============ ROOT / HEALTH ============
 app.get('/api', (req: Request, res: Response) => {
   res.json({ app: "1 Darjeeling", status: "ok" });
@@ -51,6 +78,7 @@ app.use('/api', adminRouter); // Mount admin/dev routes directly under /api (e.g
 // ============ SERVER INIT ============
 const server = app.listen(PORT, () => {
   log.info(`Server running on http://localhost:${PORT}`);
+  log.info(`API docs available at http://localhost:${PORT}/api-docs`);
 });
 
 process.on('SIGTERM', () => {

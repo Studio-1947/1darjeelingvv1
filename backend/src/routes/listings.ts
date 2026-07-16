@@ -8,6 +8,71 @@ const router = Router();
 
 // ============ LISTINGS ============
 
+/**
+ * @openapi
+ * /listings:
+ *   get:
+ *     summary: List/search listings
+ *     tags: [Listings]
+ *     parameters:
+ *       - in: query
+ *         name: type
+ *         schema: { type: string, enum: [spot, homestay, driver, shop, cafe, event, biodiversity] }
+ *         description: Filter by listing type
+ *       - in: query
+ *         name: q
+ *         schema: { type: string }
+ *         description: Case-insensitive search across title, description, location
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, default: 60 }
+ *     responses:
+ *       200:
+ *         description: Matching listings
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 items:
+ *                   type: array
+ *                   items: { $ref: '#/components/schemas/Listing' }
+ *   post:
+ *     summary: Create a listing
+ *     tags: [Listings]
+ *     security: [{ bearerAuth: [] }]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [title, type, description, location]
+ *             properties:
+ *               title: { type: string }
+ *               type: { type: string, enum: [spot, homestay, driver, shop, cafe, event, biodiversity] }
+ *               description: { type: string }
+ *               location: { type: string }
+ *               price: { type: integer, default: 0 }
+ *               image: { type: string }
+ *               tags: { type: array, items: { type: string } }
+ *               provider_id: { type: string, description: "Defaults to the caller's user id if omitted" }
+ *               extras: { type: object }
+ *     responses:
+ *       200:
+ *         description: Created listing
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 item: { $ref: '#/components/schemas/Listing' }
+ *       400:
+ *         description: Missing required fields
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ */
 // Get list of listings with filter
 router.get('/', async (req: Request, res: Response) => {
   const type = req.query.type as string | undefined;
@@ -50,6 +115,32 @@ router.get('/', async (req: Request, res: Response) => {
   res.json({ items: itemsReturn });
 });
 
+/**
+ * @openapi
+ * /listings/{id}:
+ *   get:
+ *     summary: Get a single listing by id
+ *     tags: [Listings]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: The listing
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 item: { $ref: '#/components/schemas/Listing' }
+ *       404:
+ *         description: Listing not found
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ */
 // Get single listing detail
 router.get('/:id', async (req: Request, res: Response) => {
   const [item] = await db.select().from(schema.listings).where(eq(schema.listings.id, req.params.id as any)).limit(1);

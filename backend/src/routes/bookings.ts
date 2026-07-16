@@ -8,6 +8,48 @@ const router = Router();
 
 // ============ BOOKINGS ============
 
+/**
+ * @openapi
+ * /bookings:
+ *   post:
+ *     summary: Create a booking for a listing
+ *     description: Booking starts in status pending_payment; it's confirmed via the payments flow (/payments/order then /payments/mock/complete or /payments/verify).
+ *     tags: [Bookings]
+ *     security: [{ bearerAuth: [] }]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [listing_id, listing_type]
+ *             properties:
+ *               listing_id: { type: string }
+ *               listing_type: { type: string }
+ *               check_in: { type: string, description: "Required (and must precede check_out) when listing_type is homestay" }
+ *               check_out: { type: string }
+ *               guests: { type: integer, default: 1 }
+ *               notes: { type: string }
+ *     responses:
+ *       200:
+ *         description: Created booking
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 booking: { $ref: '#/components/schemas/Booking' }
+ *       400:
+ *         description: Missing/invalid fields (e.g. bad homestay date range)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ *       404:
+ *         description: Listing not found
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ */
 // Create a booking
 router.post('/', authenticateToken, async (req: Request, res: Response) => {
   const { listing_id, listing_type, check_in, check_out, guests = 1, notes } = req.body;
@@ -64,6 +106,33 @@ router.post('/', authenticateToken, async (req: Request, res: Response) => {
   res.json({ booking: bookingReturn });
 });
 
+/**
+ * @openapi
+ * /bookings/me:
+ *   get:
+ *     summary: Get the current user's own bookings (as a tourist), enriched with listing summaries
+ *     tags: [Bookings]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200:
+ *         description: The user's bookings
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 items:
+ *                   type: array
+ *                   items:
+ *                     allOf:
+ *                       - $ref: '#/components/schemas/Booking'
+ *                       - type: object
+ *                         properties:
+ *                           listing:
+ *                             oneOf:
+ *                               - type: object
+ *                               - type: 'null'
+ */
 // Get user's own bookings
 router.get('/me', authenticateToken, async (req: Request, res: Response) => {
   const bookings = await db.select()
@@ -107,6 +176,41 @@ router.get('/me', authenticateToken, async (req: Request, res: Response) => {
   res.json({ items: enrichedBookings });
 });
 
+/**
+ * @openapi
+ * /bookings/provider:
+ *   get:
+ *     summary: Get bookings received by the current user's provider listings, with stats and revenue
+ *     tags: [Bookings]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200:
+ *         description: Provider bookings, listings, and aggregate stats
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 items:
+ *                   type: array
+ *                   items:
+ *                     allOf:
+ *                       - $ref: '#/components/schemas/Booking'
+ *                       - type: object
+ *                         properties:
+ *                           customer: { type: object, nullable: true }
+ *                           listing: { type: object, nullable: true }
+ *                 stats:
+ *                   type: object
+ *                   properties:
+ *                     total: { type: integer }
+ *                     confirmed: { type: integer }
+ *                     pending: { type: integer }
+ *                     revenue: { type: integer }
+ *                 listings:
+ *                   type: array
+ *                   items: { $ref: '#/components/schemas/Listing' }
+ */
 // Get provider's bookings
 router.get('/provider', authenticateToken, async (req: Request, res: Response) => {
   const providersList = await db.select().from(schema.providers).where(eq(schema.providers.userId, req.user.id));

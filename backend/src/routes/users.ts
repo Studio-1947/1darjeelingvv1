@@ -7,6 +7,46 @@ const router = Router();
 
 // ============ USERS ============
 
+/**
+ * @openapi
+ * /users/me:
+ *   patch:
+ *     summary: Update the current user's profile
+ *     tags: [Users]
+ *     security: [{ bearerAuth: [] }]
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name: { type: string }
+ *               email: { type: string }
+ *               language: { type: string }
+ *               avatar: { type: string }
+ *     responses:
+ *       200:
+ *         description: Updated user
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 user: { $ref: '#/components/schemas/User' }
+ *   delete:
+ *     summary: Delete the current user's account and all associated data
+ *     tags: [Users]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200:
+ *         description: Account deleted
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 deleted: { type: boolean }
+ */
 // Update User Profile
 router.patch('/me', authenticateToken, async (req: Request, res: Response) => {
   const patch = req.body || {};
