@@ -4,7 +4,7 @@
   "description": "Root configuration to manage backend and frontend dev servers",
   "private": true,
   "scripts": {
-    "install:all": "npm install --prefix backend && npm install --prefix frontend && npm install --prefix frontend-admin",
+    "install:all": "npm install --prefix backend && cd frontend && corepack yarn@1.22.22 install && cd .. && npm install --prefix frontend-admin",
     "start:backend": "npm run dev --prefix backend",
     "start:frontend": "npm start --prefix frontend",
     "start:admin": "npm run dev --prefix frontend-admin",

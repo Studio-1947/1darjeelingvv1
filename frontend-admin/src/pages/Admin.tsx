@@ -92,7 +92,7 @@ export default function Admin() {
     if (!confirm('Are you sure you want to seed default sample listings?')) return;
     setActionMsg('Seeding...');
     try {
-      const { data } = await api.post('/dev/seed');
+      const { data } = await api.post('/admin/seed');
       setActionMsg(`Successfully seeded ${data.seeded} listings!`);
       loadAdminData();
     } catch (e) {

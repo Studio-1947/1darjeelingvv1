@@ -1,58 +1,10 @@
-import express, { Request, Response, NextFunction } from 'express';
-import cors from 'cors';
+import { app } from './app';
 import { pool } from './db';
-import { PORT, IS_PROD, log } from './config';
+import { PORT, log } from './config';
 
-// Import router modules
-import authRouter from './routes/auth';
-import usersRouter from './routes/users';
-import providersRouter from './routes/providers';
-import listingsRouter from './routes/listings';
-import bookingsRouter from './routes/bookings';
-import paymentsRouter from './routes/payments';
-import adminRouter from './routes/admin';
-import geocodeRouter from './routes/geocode';
-
-const app = express();
-app.use(express.json());
-
-app.use(cors({
-  origin: (origin, callback) => {
-    callback(null, true);
-  },
-  credentials: true,
-}));
-
-// Security headers middleware
-app.use((req: Request, res: Response, next: NextFunction) => {
-  res.setHeader("X-Content-Type-Options", "nosniff");
-  res.setHeader("X-Frame-Options", "DENY");
-  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
-  res.setHeader("Permissions-Policy", "geolocation=(), microphone=(), camera=()");
-  if (IS_PROD) {
-    res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
-  }
-  next();
-});
-
-// ============ ROOT / HEALTH ============
-app.get('/api', (req: Request, res: Response) => {
-  res.json({ app: "1 Darjeeling", status: "ok" });
-});
-
-// ============ MOUNT ROUTERS ============
-app.use('/api/auth', authRouter);
-app.use('/api/users', usersRouter);
-app.use('/api/providers', providersRouter);
-app.use('/api/listings', listingsRouter);
-app.use('/api/bookings', bookingsRouter);
-app.use('/api/payments', paymentsRouter);
-app.use('/api/geocode', geocodeRouter);
-app.use('/api', adminRouter); // Mount admin/dev routes directly under /api (e.g. /api/dev/seed, /api/admin/stats)
-
-// ============ SERVER INIT ============
 const server = app.listen(PORT, () => {
   log.info(`Server running on http://localhost:${PORT}`);
+  log.info(`API docs available at http://localhost:${PORT}/api-docs`);
 });
 
 process.on('SIGTERM', () => {

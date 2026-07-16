@@ -79,6 +79,46 @@ async function handlePaymentSuccess(flow: string, referenceId: string, userId: s
 
 // ============ PAYMENTS ============
 
+/**
+ * @openapi
+ * /payments/order:
+ *   post:
+ *     summary: Create a payment order (mock or real Razorpay depending on MOCK_PAYMENTS)
+ *     tags: [Payments]
+ *     security: [{ bearerAuth: [] }]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [flow, reference_id]
+ *             properties:
+ *               flow: { type: string, enum: [provider_registration, booking_commission] }
+ *               reference_id: { type: string, description: "Provider id (provider_registration) or booking id (booking_commission)" }
+ *     responses:
+ *       200:
+ *         description: Order created
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 mock: { type: boolean }
+ *                 key_id: { type: string }
+ *                 order: { type: object }
+ *                 amount: { type: integer, description: "Amount in paise" }
+ *       400:
+ *         description: Missing fields or invalid flow
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ *       502:
+ *         description: Razorpay order creation failed
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ */
 // Create order
 router.post('/order', authenticateToken, async (req: Request, res: Response) => {
   const { flow, reference_id } = req.body;
@@ -150,6 +190,52 @@ router.post('/order', authenticateToken, async (req: Request, res: Response) => 
   }
 });
 
+/**
+ * @openapi
+ * /payments/mock/complete:
+ *   post:
+ *     summary: Complete a mock payment order (dev/sandbox only)
+ *     description: Only available when MOCK_PAYMENTS=true. Marks the order paid and triggers the same side effects as a real payment (provider activation or booking confirmation).
+ *     tags: [Payments]
+ *     security: [{ bearerAuth: [] }]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [order_id, flow, reference_id]
+ *             properties:
+ *               order_id: { type: string }
+ *               flow: { type: string, enum: [provider_registration, booking_commission] }
+ *               reference_id: { type: string }
+ *     responses:
+ *       200:
+ *         description: Payment marked paid
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 ok: { type: boolean }
+ *                 status: { type: string }
+ *                 record: { type: object, nullable: true }
+ *       400:
+ *         description: Mock payments disabled, or missing fields
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ *       403:
+ *         description: Order does not belong to the calling user
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ *       404:
+ *         description: Order not found
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ */
 // Complete mock payment
 router.post('/mock/complete', authenticateToken, rateLimiter(10, 60 * 1000, 'mock_complete'), async (req: Request, res: Response) => {
   if (!MOCK_PAYMENTS) {
@@ -166,6 +252,10 @@ router.post('/mock/complete', authenticateToken, rateLimiter(10, 60 * 1000, 'moc
     return res.status(404).json({ detail: 'Order not found' });
   }
 
+  if (payment.userId !== req.user.id) {
+    return res.status(403).json({ detail: 'Not authorized to complete this payment' });
+  }
+
   if (payment.status === 'paid') {
     return res.json({ ok: true, already: true });
   }
@@ -178,6 +268,57 @@ router.post('/mock/complete', authenticateToken, rateLimiter(10, 60 * 1000, 'moc
   res.json({ ok: true, status: 'paid', record: resultRecord });
 });
 
+/**
+ * @openapi
+ * /payments/verify:
+ *   post:
+ *     summary: Verify a real Razorpay payment signature and complete the order
+ *     tags: [Payments]
+ *     security: [{ bearerAuth: [] }]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [razorpay_order_id, razorpay_payment_id, razorpay_signature, flow, reference_id]
+ *             properties:
+ *               razorpay_order_id: { type: string }
+ *               razorpay_payment_id: { type: string }
+ *               razorpay_signature: { type: string }
+ *               flow: { type: string, enum: [provider_registration, booking_commission] }
+ *               reference_id: { type: string }
+ *     responses:
+ *       200:
+ *         description: Payment verified and completed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 ok: { type: boolean }
+ *                 status: { type: string }
+ *       400:
+ *         description: Missing fields or invalid signature
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ *       403:
+ *         description: Order does not belong to the calling user
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ *       404:
+ *         description: Order not found
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ *       500:
+ *         description: Razorpay secret not configured
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ */
 // Verify payment signature
 router.post('/verify', authenticateToken, async (req: Request, res: Response) => {
   const { razorpay_order_id, razorpay_payment_id, razorpay_signature, flow, reference_id } = req.body;
@@ -188,6 +329,10 @@ router.post('/verify', authenticateToken, async (req: Request, res: Response) =>
   const [payment] = await db.select().from(schema.payments).where(eq(schema.payments.orderId, razorpay_order_id)).limit(1);
   if (!payment) {
     return res.status(404).json({ detail: 'Order not found' });
+  }
+
+  if (payment.userId !== req.user.id) {
+    return res.status(403).json({ detail: 'Not authorized to complete this payment' });
   }
 
   if (!RAZORPAY_KEY_SECRET) {
