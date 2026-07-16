@@ -4,6 +4,12 @@ import { db, schema } from '../db';
 import { eq, or, and, ilike } from 'drizzle-orm';
 import { authenticateToken } from '../middleware/auth';
 
+async function resolveOwnProviderId(userId: string): Promise<string | null> {
+  const providersList = await db.select().from(schema.providers).where(eq(schema.providers.userId, userId));
+  const active = providersList.find(p => p.status === 'active');
+  return active ? active.id : null;
+}
+
 const router = Router();
 
 // ============ LISTINGS ============
@@ -39,6 +45,10 @@ const router = Router();
  *                   items: { $ref: '#/components/schemas/Listing' }
  *   post:
  *     summary: Create a listing
+ *     description: >
+ *       Callers must be an active provider (listing is created under their own provider id — any
+ *       provider_id in the body is ignored) or an admin (may set provider_id explicitly). Other
+ *       authenticated users (e.g. tourists) are rejected.
  *     tags: [Listings]
  *     security: [{ bearerAuth: [] }]
  *     requestBody:
@@ -56,7 +66,7 @@ const router = Router();
  *               price: { type: integer, default: 0 }
  *               image: { type: string }
  *               tags: { type: array, items: { type: string } }
- *               provider_id: { type: string, description: "Defaults to the caller's user id if omitted" }
+ *               provider_id: { type: string, description: "Admin only — ignored for non-admin callers" }
  *               extras: { type: object }
  *     responses:
  *       200:
@@ -69,6 +79,11 @@ const router = Router();
  *                 item: { $ref: '#/components/schemas/Listing' }
  *       400:
  *         description: Missing required fields
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ *       403:
+ *         description: Caller is not an active provider or admin
  *         content:
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
@@ -172,6 +187,17 @@ router.post('/', authenticateToken, async (req: Request, res: Response) => {
     return res.status(400).json({ detail: 'Title, type, description and location are required' });
   }
 
+  let providerId: string;
+  if (req.user.role === 'admin') {
+    providerId = provider_id || req.user.id;
+  } else {
+    const ownProviderId = await resolveOwnProviderId(req.user.id);
+    if (!ownProviderId) {
+      return res.status(403).json({ detail: 'Only active providers or admins can create listings' });
+    }
+    providerId = ownProviderId;
+  }
+
   const listing = {
     id: uuidv4(),
     title,
@@ -181,7 +207,7 @@ router.post('/', authenticateToken, async (req: Request, res: Response) => {
     price,
     image,
     tags,
-    providerId: provider_id || req.user.id,
+    providerId,
     extras,
     createdAt: new Date().toISOString()
   };

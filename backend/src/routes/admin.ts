@@ -6,83 +6,12 @@ import { eq, and, count } from 'drizzle-orm';
 import { SEED_LISTINGS } from '../seed_data';
 import { authenticateToken, requireAdmin, hashPassword } from '../middleware/auth';
 import { rateLimiter } from '../middleware/rateLimiter';
-import { IS_PROD, ADMIN_BOOTSTRAP_SECRET } from '../config';
+import { ADMIN_BOOTSTRAP_SECRET } from '../config';
 
 const router = Router();
 
 // ============ ADMIN / DEV / SEED ROUTES ============
 let isSeeding = false;
-
-/**
- * @openapi
- * /dev/seed:
- *   post:
- *     summary: Seed sample listings (dev convenience route, no auth)
- *     description: >
- *       Blocked only by APP_ENV !== production — no authentication required otherwise.
- *       See INVESTIGATION.md §1.1: this duplicates /admin/seed and should not be relied on for production safety.
- *     tags: [Admin]
- *     responses:
- *       200:
- *         description: Seed result
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 seeded: { type: integer }
- *                 total_in_seed: { type: integer }
- *       403:
- *         description: Not available in production
- *         content:
- *           application/json:
- *             schema: { $ref: '#/components/schemas/Error' }
- */
-// Dev Seed listings (Only available in development)
-router.post('/dev/seed', async (req: Request, res: Response) => {
-  if (IS_PROD) {
-    return res.status(403).json({ detail: 'Not available in production' });
-  }
-
-  if (isSeeding) {
-    return res.json({ seeded: 0, total_in_seed: SEED_LISTINGS.length, message: 'Seeding already in progress' });
-  }
-  isSeeding = true;
-
-  try {
-    let inserted = 0;
-    for (const item of SEED_LISTINGS) {
-      const exists = await db.select()
-        .from(schema.listings)
-        .where(and(eq(schema.listings.title, item.title), eq(schema.listings.type, item.type)))
-        .limit(1);
-
-      if (exists.length > 0) {
-        continue;
-      }
-
-      const doc = {
-        id: uuidv4(),
-        title: item.title,
-        type: item.type,
-        description: item.description,
-        location: item.location,
-        price: item.price,
-        image: item.image,
-        tags: item.tags,
-        providerId: 'admin-seed-provider',
-        extras: item.extras || {},
-        createdAt: new Date().toISOString()
-      };
-      await db.insert(schema.listings).values(doc);
-      inserted++;
-    }
-
-    res.json({ seeded: inserted, total_in_seed: SEED_LISTINGS.length });
-  } finally {
-    isSeeding = false;
-  }
-});
 
 /**
  * @openapi

@@ -8,24 +8,20 @@ Severity is relative to "before this goes anywhere near a public/production depl
 
 ## 1. Security — needs a decision, not just a note
 
-### 1.1 `POST /api/dev/seed` is unauthenticated, gated only by an env var
-`backend/src/routes/admin.ts:17` — the only check is `if (IS_PROD) return 403`, and `IS_PROD` comes from `APP_ENV === 'production'` (`backend/src/config.ts`), which **defaults to `'development'` if `APP_ENV` is unset**. Confirmed live: `curl -X POST http://localhost:8000/api/dev/seed` succeeded with no credentials and inserted 27 listings.
+### 1.1 ✅ FIXED — `POST /api/dev/seed` was unauthenticated, gated only by an env var
+`backend/src/routes/admin.ts` used to only check `if (IS_PROD) return 403`, and `IS_PROD` came from `APP_ENV === 'production'`, which **defaults to `'development'` if `APP_ENV` is unset**. Confirmed live pre-fix: `curl -X POST http://localhost:8000/api/dev/seed` succeeded with no credentials.
 
-If a deployment ever forgets to set `APP_ENV=production` explicitly, this becomes a public, unauthenticated write endpoint. There is already a separate, properly authenticated `/api/admin/seed` (same logic, duplicated) — **`/dev/seed` should either be removed or the duplication resolved**, and production-safety should not rely on a single env var defaulting the *wrong* way.
+**Resolved 2026-07-16:** the route has been deleted entirely (the authenticated `/api/admin/seed` already covered the same need). `frontend-admin/src/pages/Admin.tsx`'s "reseed" button, which called `/dev/seed` directly, was updated to call `/admin/seed` instead. Validated live: `POST /dev/seed` now 404s; `/admin/seed` 401s without a token and succeeds (idempotently) with an admin token; the admin UI's HMR picked up the change with no errors.
 
-**Action needed:** decide whether `/dev/seed` is deleted (recommended — `/admin/seed` covers the same need for anyone with an admin token) or explicitly hard-disabled in any real deployment via infra config, not just `.env`.
+### 1.2 ✅ FIXED — `POST /api/listings` had no role/ownership check
+`backend/src/routes/listings.ts` used to let any authenticated user (tourist or provider) create a listing and pass an arbitrary `provider_id` in the body, trusted as-is.
 
-### 1.2 `POST /api/listings` has no role/ownership check
-`backend/src/routes/listings.ts:78` — any authenticated user (tourist or provider, doesn't matter) can create a listing, and can pass an arbitrary `provider_id` in the body that is trusted as-is (`providerId: provider_id || req.user.id`). Nothing checks the caller is an active/paid provider, or that `provider_id` belongs to them.
+**Resolved 2026-07-16:** the route now requires the caller to be either an admin (may set `provider_id` explicitly) or an active provider (listing is created under their own provider id — any `provider_id` in the body is ignored); anyone else gets `403`. Validated live: a plain tourist gets 403; an active provider's listing is force-attached to their own provider id even when a different `provider_id` is submitted; an admin's explicit `provider_id` is honored.
 
-**Impact:** any logged-in tourist can spam the discovery feed with fake listings, or attach a listing to someone else's `provider_id` so it shows up as theirs. Since login only requires a phone number + mock OTP, this is cheap to do.
+### 1.3 ✅ FIXED — `POST /api/payments/mock/complete` (and `/verify`) had no ownership check
+`backend/src/routes/payments.ts` looked up the payment purely by `order_id` and never checked `payment.userId === req.user.id`. Any authenticated user who obtained/guessed another user's `order_id` could mark that order paid and trigger its side effects (activate someone else's provider, confirm someone else's booking).
 
-**Action needed:** decide the intended authorization model (only `role === 'provider'` with `providerPaid === true`? only via `/providers/onboard` → payment flow, never directly?) and enforce it here.
-
-### 1.3 `POST /api/payments/mock/complete` has no ownership check
-`backend/src/routes/payments.ts:152` — looks up the payment purely by `order_id` and never checks `payment.userId === req.user.id`. Any authenticated user who obtains/guesses another user's `order_id` can mark that order paid and trigger its side effects (activate someone else's provider listing, or confirm someone else's booking). `order_id`s are UUID-derived so not trivially guessable, but this is real-money-adjacent logic (provider activation, booking confirmation) with a missing authorization check that costs one `eq()` clause to fix. The same gap does not apply to `/verify` (real Razorpay flow) in practice, since a valid HMAC signature can't be forged without the secret — but it has the same missing ownership check on principle.
-
-**Action needed:** add `and(eq(payments.orderId, order_id), eq(payments.userId, req.user.id))` to both routes.
+**Resolved 2026-07-16:** both `/mock/complete` and `/verify` now return `403` if `payment.userId !== req.user.id`. Validated live with a two-user test: user B's attempt to complete user A's order now 403s; user A completing their own order still succeeds and confirms the booking correctly.
 
 ### 1.4 `ADMIN_PASSWORD` default is a real, weak, checked-in-adjacent default
 `backend/src/config.ts:16` — `ADMIN_PASSWORD` defaults to the literal string `adminpassword123` if the env var isn't set, and this default is also what's written into `.env.example`-equivalent instructions and this very investigation's dev `.env`. Fine for local dev; **must not reach any shared/staging/production environment.**
@@ -90,8 +86,8 @@ The file's YAML testing-protocol header describes a `main_agent` / `testing_agen
 
 ## Suggested priority order
 
-1. **§1.2 and §1.3** (missing authorization checks) — small, well-defined code changes, real integrity risk even in mock-payment mode.
-2. **§1.1** (`/dev/seed`) — delete or hard-gate; trivial fix, currently live-exploitable if `APP_ENV` is ever misconfigured.
+1. ~~§1.2 and §1.3 (missing authorization checks)~~ — **done**.
+2. ~~§1.1 (`/dev/seed`)~~ — **done**.
 3. **§2.1/§2.2** (PRD + `.env.example` rewrite) — no code risk, but actively misleads anyone onboarding.
 4. **§3.1/§3.2** (dependency conflict + root install script) — fix once, stop yarn/npm from silently diverging.
 5. Everything else (§1.4, §2.3, §2.4, §3.3, §3.4, §4) — lower urgency, mostly cleanup/decisions rather than bugs.

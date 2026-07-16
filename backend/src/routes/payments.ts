@@ -223,6 +223,11 @@ router.post('/order', authenticateToken, async (req: Request, res: Response) => 
  *         content:
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
+ *       403:
+ *         description: Order does not belong to the calling user
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
  *       404:
  *         description: Order not found
  *         content:
@@ -243,6 +248,10 @@ router.post('/mock/complete', authenticateToken, rateLimiter(10, 60 * 1000, 'moc
   const [payment] = await db.select().from(schema.payments).where(eq(schema.payments.orderId, order_id)).limit(1);
   if (!payment) {
     return res.status(404).json({ detail: 'Order not found' });
+  }
+
+  if (payment.userId !== req.user.id) {
+    return res.status(403).json({ detail: 'Not authorized to complete this payment' });
   }
 
   if (payment.status === 'paid') {
@@ -292,6 +301,11 @@ router.post('/mock/complete', authenticateToken, rateLimiter(10, 60 * 1000, 'moc
  *         content:
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
+ *       403:
+ *         description: Order does not belong to the calling user
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
  *       404:
  *         description: Order not found
  *         content:
@@ -313,6 +327,10 @@ router.post('/verify', authenticateToken, async (req: Request, res: Response) =>
   const [payment] = await db.select().from(schema.payments).where(eq(schema.payments.orderId, razorpay_order_id)).limit(1);
   if (!payment) {
     return res.status(404).json({ detail: 'Order not found' });
+  }
+
+  if (payment.userId !== req.user.id) {
+    return res.status(403).json({ detail: 'Not authorized to complete this payment' });
   }
 
   if (!RAZORPAY_KEY_SECRET) {
