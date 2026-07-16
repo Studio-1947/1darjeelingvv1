@@ -4,13 +4,13 @@ Full-stack tourism + local marketplace for Darjeeling. Tourists discover spots, 
 
 ## Monorepo layout
 
-| Path              | What it is                                        | Stack |
-|-------------------|----------------------------------------------------|-------|
-| `backend/`        | REST API                                           | Node 20, Express 5, TypeScript, Drizzle ORM, PostgreSQL |
-| `frontend/`       | Public tourist/provider web app                    | React 19 (CRA + craco), Tailwind, react-i18next, react-router v7 |
-| `frontend-admin/` | Internal admin dashboard                           | React 19, Vite, TypeScript, Tailwind |
-| `memory/`         | Product requirements doc (`PRD.md`)                | — |
-| `.agents/`        | AI coding-agent kit (skills/rules for assistants) — not part of the running app | — |
+| Path              | What it is                                                                      | Stack                                                            |
+| ----------------- | ------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| `backend/`        | REST API                                                                        | Node 20, Express 5, TypeScript, Drizzle ORM, PostgreSQL          |
+| `frontend/`       | Public tourist/provider web app                                                 | React 19 (CRA + craco), Tailwind, react-i18next, react-router v7 |
+| `frontend-admin/` | Internal admin dashboard                                                        | React 19, Vite, TypeScript, Tailwind                             |
+| `memory/`         | Product requirements doc (`PRD.md`)                                             | —                                                                |
+| `.agents/`        | AI coding-agent kit (skills/rules for assistants) — not part of the running app | —                                                                |
 
 The API is Postgres-backed via Drizzle ORM. See **`memory/PRD.md`** for the full product overview (personas, user journeys, feature inventory, business model, data model) and **`INVESTIGATION.md`** for the repo audit (security findings, doc drift, dependency issues) — both were rewritten 2026-07-16 to match the current codebase.
 
@@ -24,12 +24,15 @@ The API is Postgres-backed via Drizzle ORM. See **`memory/PRD.md`** for the full
 ## First-time setup
 
 1. **Start Postgres**
+
    ```sh
    docker compose up -d postgres
    ```
+
    This starts `postgres:15-alpine` on `localhost:5432` (db `one_darjeeling`, user/pass `postgres`/`postgres`).
 
 2. **Backend**
+
    ```sh
    cd backend
    cp .env.example .env   # then edit — see "Environment variables" below, .env.example is stale
@@ -39,15 +42,18 @@ The API is Postgres-backed via Drizzle ORM. See **`memory/PRD.md`** for the full
    ```
 
 3. **Frontend (public app)**
+
    ```sh
    cd frontend
    cp .env.example .env   # REACT_APP_BACKEND_URL=http://localhost:8000
    corepack yarn@1.22.22 install
    corepack yarn@1.22.22 start   # http://localhost:3000
    ```
+
    (`npm install` still fails here — CRA's `react-scripts@5.0.1` peer-requires `typescript@^3.2.1 || ^4` while the project intentionally runs `typescript@5.5.4`. This is inherent to CRA being unmaintained, not something to fix by downgrading TypeScript — Yarn tolerates it, which is why `frontend/` is Yarn-managed. See `INVESTIGATION.md` §3.1.)
 
 4. **Admin dashboard**
+
    ```sh
    cd frontend-admin
    npm install
@@ -64,10 +70,12 @@ The API is Postgres-backed via Drizzle ORM. See **`memory/PRD.md`** for the full
    (There used to be an unauthenticated `/api/dev/seed` shortcut — it was removed as a security fix; see `INVESTIGATION.md` §1.1. The admin app's "reseed" button in `frontend-admin` already calls the authenticated route above.)
 
 Or install and run backend + frontend + admin together from the repo root:
+
 ```sh
 npm run install:all
 npm run dev
 ```
+
 (`npm run install:all` installs each app with its own correct package manager — npm for `backend`/`frontend-admin`, Yarn for `frontend`. Plain `npm install` at the root only installs this root folder's own tooling, not the three sub-apps. Running `dev` still requires Postgres running and `.env` files already in place per steps above; it does not create them.)
 
 ## Environment variables
@@ -89,6 +97,7 @@ ADMIN_PASSWORD=<change me>
 ```
 
 `frontend/.env`:
+
 ```
 REACT_APP_BACKEND_URL=http://localhost:8000
 ```
@@ -126,7 +135,7 @@ The app itself deploys as three containers: `postgres`, `backend` (Express API),
    docker compose -f docker-compose.prod.yml up -d --build
    curl -I http://127.0.0.1:8091/   # sanity check — should be 200, straight from this container
    ```
-5. **Add the host Nginx site** (this is the one step that touches the shared system Nginx — it only *adds* a new file, never edits an existing one):
+5. **Add the host Nginx site** (this is the one step that touches the shared system Nginx — it only _adds_ a new file, never edits an existing one):
    ```sh
    sudo cp deploy/host-nginx-site.conf.example /etc/nginx/sites-available/onedarjeeling.duckdns.org
    sudo ln -s /etc/nginx/sites-available/onedarjeeling.duckdns.org /etc/nginx/sites-enabled/
@@ -144,23 +153,26 @@ The app itself deploys as three containers: `postgres`, `backend` (Express API),
 
 `.github/workflows/deploy.yml` SSHes into the VPS on every push to `main` and runs `git reset --hard origin/main && docker compose -f docker-compose.prod.yml up -d --build --remove-orphans`. It needs these **GitHub repo secrets** (Settings → Secrets and variables → Actions):
 
-| Secret | Value |
-|---|---|
-| `VPS_HOST` | The VPS's IP or hostname |
-| `VPS_USER` | The SSH user (e.g. `deploy`) |
+| Secret        | Value                                               |
+| ------------- | --------------------------------------------------- |
+| `VPS_HOST`    | The VPS's IP or hostname                            |
+| `VPS_USER`    | The SSH user (e.g. `deploy`)                        |
 | `VPS_SSH_KEY` | The **private** key of a deploy keypair (see below) |
-| `VPS_PORT` | Optional, defaults to `22` |
+| `VPS_PORT`    | Optional, defaults to `22`                          |
 
 **Generating the deploy key** (run once, on the VPS, as the `deploy` user):
+
 ```sh
 ssh-keygen -t ed25519 -C "github-actions-deploy" -f ~/.ssh/gh_actions_deploy -N ""
 cat ~/.ssh/gh_actions_deploy.pub >> ~/.ssh/authorized_keys
 cat ~/.ssh/gh_actions_deploy       # copy this whole output...
 ```
-Paste that private key output as the `VPS_SSH_KEY` GitHub secret (the full `-----BEGIN OPENSSH PRIVATE KEY-----` block, unmodified). This is a *separate* keypair from whatever SSH key the VPS already uses to `git clone`/`git pull` from GitHub — that one lets the VPS talk to GitHub; this new one lets GitHub Actions talk to the VPS, the opposite direction. Never reuse the VPS's own GitHub-facing key for this.
+
+Paste that private key output as the `VPS_SSH_KEY` GitHub secret (the full `-----BEGIN OPENSSH PRIVATE KEY-----` block, unmodified). This is a _separate_ keypair from whatever SSH key the VPS already uses to `git clone`/`git pull` from GitHub — that one lets the VPS talk to GitHub; this new one lets GitHub Actions talk to the VPS, the opposite direction. Never reuse the VPS's own GitHub-facing key for this.
 
 Once the secrets are set, just `git push` to `main` and the workflow redeploys automatically — no manual SSH needed for routine updates. The workflow only touches this app's own containers (`docker compose -f docker-compose.prod.yml up -d --build`); it never touches the host Nginx config, so routine deploys can't affect other apps on the box. Re-run steps 5–6 above manually only if you ever need to set this app up on a fresh VPS.
 
 ## Known issues / further reading
 
 This repo carries some rough edges from a rapid AI-assisted build. See **`INVESTIGATION.md`** for the full audit: stale docs, a dependency conflict, an unauthenticated seeding endpoint, and a couple of missing authorization checks worth fixing before any public deployment.
+done changing
