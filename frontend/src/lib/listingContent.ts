@@ -304,12 +304,17 @@ export function personImageFor(item: any, w = 600, h = 600): string | undefined 
 /** Content for a listing, with type-level fallbacks so every listing renders. */
 export function contentFor(item: any): Required<Pick<ListingContent, 'about'>> & ListingContent {
   const c = CONTENT[item?.title] || {};
+  // extras.routes set by provider takes priority over the static editorial map
+  const routes: string[] | undefined =
+    (item?.extras?.routes as string[] | undefined)?.length
+      ? (item.extras.routes as string[])
+      : c.routes;
   return {
     about: c.about || item?.description || '',
     gallery: c.gallery,
     coords: c.coords || DARJEELING,
     bestTime: c.bestTime,
-    routes: c.routes,
+    routes,
     spotted: c.spotted,
     personPhoto: c.personPhoto,
   };
