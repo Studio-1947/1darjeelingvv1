@@ -192,7 +192,14 @@ export default function ListingDetail() {
   const c = contentFor(item);
   const initial = (item.title || '?').trim().charAt(0).toUpperCase();
   const fallbackImg = fallbackFor(item.type);
-  // A distinct per-listing hero (provider image kept; shared seed images replaced).
+  const handleBack = () => {
+    if (window.history.state && window.history.state.idx > 0) {
+      nav(-1);
+    } else {
+      nav('/');
+    }
+  };
+
   const heroSrc = listingImage(item, 2000, 1200);
   const gallery = galleryImagesFor(item);
   const personSrc = personImageFor(item);
@@ -204,7 +211,7 @@ export default function ListingDetail() {
         <SmartImg src={heroSrc} fallback={fallbackImg} alt={item.title} className="absolute inset-0 w-full h-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/45" />
 
-        <button onClick={() => nav(-1)} data-testid="detail-back"
+        <button onClick={handleBack} data-testid="detail-back"
           className="absolute top-4 left-4 md:top-6 md:left-8 inline-flex items-center gap-2 pl-3 pr-4 py-2.5 rounded-full bg-white/95 backdrop-blur text-sm font-bold text-ink btn-hover">
           <ArrowLeft size={16} /> {t('common.back')}
         </button>
@@ -264,8 +271,8 @@ export default function ListingDetail() {
         </Screen>
       )}
 
-      {/* ============ WHAT THIS PLACE OFFERS ============ */}
-      {amenities.length > 0 && (
+      {/* ============ WHAT THIS PLACE OFFERS (not for wildlife/flora) ============ */}
+      {item.type !== 'biodiversity' && amenities.length > 0 && (
         <Screen tone="mist" wide testid="detail-offers">
           <SectionHead label={t('detail.offers')} title={t('detail.offers')} />
           <div className="mt-10 grid sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5 max-w-4xl mx-auto">

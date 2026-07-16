@@ -50,7 +50,7 @@
     "buttons": "Pill-shaped (rounded-full) with clear hover states (hover:-translate-y-1 hover:shadow-md transition-transform duration-200). Primary uses bg-primary text-white.",
     "cards": "Clean cards with minimal borders (border border-slate-200) and rounded-2xl. Image constraints max-h-[80vh] for mobile.",
     "inputs": "Shadcn inputs with rounded-xl, 1px border, subtle focus ring (focus:ring-2 focus:ring-primary/20).",
-    "language_switcher": "Prominent dropdown in header to toggle Bengali, English, Hindi, Nepali. Default to Bengali.",
+    "language_switcher": "Prominent dropdown in header to toggle English, Bengali, Hindi, Nepali. Default to English (decided 2026-07-16: most universal for both domestic and international visitors; matches frontend/src/i18n.ts).",
     "instructions_to_main_agent": "Since this is a JS project, use standard JS (+ JSX) for all components. Do NOT use .tsx files. Build robust responsive UI using Tailwind CSS. Incorporate Radix UI or Shadcn JS primitives. Make sure to implement both Tourist (Discovery/E-commerce) and Service Provider (Dashboard) views."
   },
   "motion": {

@@ -81,7 +81,16 @@
     "description": "विवरण", "location": "स्थान", "contact": "संपर्क",
     "price_from": "प्रारंभिक मूल्य (₹)", "image_url": "छवि URL",
     "submit_pay": "₹99 दें और सूचीबद्ध हों", "active": "सक्रिय",
-    "pending": "भुगतान बाकी", "dashboard_title": "प्रदाता डैशबोर्ड"
+    "pending": "भुगतान बाकी", "dashboard_title": "प्रदाता डैशबोर्ड",
+    "pin_location": "अपना सटीक स्थान पिन करें"
+  },
+  "locationPicker": {
+    "search_placeholder": "पता या लैंडमार्क खोजें…",
+    "hint": "सटीक स्थान सेट करने के लिए पिन खींचें या नक़्शे पर टैप करें।",
+    "no_results": "कोई परिणाम नहीं — पिन खींचकर सेट करें।",
+    "search_failed": "खोज अभी उपलब्ध नहीं — पिन खींचकर सेट करें।",
+    "popular": "प्रसिद्ध स्थान",
+    "results": "खोज परिणाम"
   },
   "booking": {
     "checkin": "चेक-इन", "checkout": "चेक-आउट", "guests": "अतिथि",

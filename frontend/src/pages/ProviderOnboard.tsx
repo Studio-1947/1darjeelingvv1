@@ -5,6 +5,7 @@ import api, { createPaymentOrder, completeMockPayment, payWithRazorpay } from '@
 import { useAuth } from '@/context/AuthContext';
 import MockPaymentModal from '@/components/MockPaymentModal';
 import BookingConfirmation from '@/components/BookingConfirmation';
+import LocationPicker from '@/components/LocationPicker';
 
 const TYPES = ['homestay', 'driver', 'shop', 'cafe'];
 
@@ -16,6 +17,9 @@ export default function ProviderOnboard() {
     business_name: '', business_type: 'homestay', description: '',
     location: '', contact_phone: '', price_from: '', image_url: '',
   });
+  // Set once the owner interacts with the map; informal addresses often don't
+  // geocode, so the pinned coordinates are the authoritative location.
+  const [coords, setCoords] = useState<{ lat: number, lng: number } | null>(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
   const [payModal, setPayModal] = useState(null);
@@ -35,6 +39,8 @@ export default function ProviderOnboard() {
         description: form.description,
         location: form.location,
         contact_phone: form.contact_phone,
+        latitude: coords?.lat ?? null,
+        longitude: coords?.lng ?? null,
         price_from: Number(form.price_from) || 0,
         images: form.image_url ? [form.image_url] : [],
       });
@@ -115,6 +121,13 @@ export default function ProviderOnboard() {
             <input required value={form.contact_phone} onChange={(e) => setForm({ ...form, contact_phone: e.target.value })}
               data-testid="provider-contact" className="mt-1 w-full px-3 py-2.5 rounded-xl border border-[var(--line)] bg-white outline-none" />
           </label>
+        </div>
+        <div className="block">
+          <span className="text-xs font-semibold text-ink-soft">{t('provider.pin_location')}</span>
+          <LocationPicker
+            className="mt-1"
+            onLocationSelect={(lat, lng) => setCoords({ lat, lng })}
+          />
         </div>
         <div className="grid md:grid-cols-2 gap-4">
           <label className="block">
