@@ -23,10 +23,48 @@ Severity is relative to "before this goes anywhere near a public/production depl
 
 **Resolved 2026-07-16:** both `/mock/complete` and `/verify` now return `403` if `payment.userId !== req.user.id`. Validated live with a two-user test: user B's attempt to complete user A's order now 403s; user A completing their own order still succeeds and confirms the booking correctly.
 
-### 1.4 `ADMIN_PASSWORD` default is a real, weak, checked-in-adjacent default
-`backend/src/config.ts:16` — `ADMIN_PASSWORD` defaults to the literal string `adminpassword123` if the env var isn't set, and this default is also what's written into `.env.example`-equivalent instructions and this very investigation's dev `.env`. Fine for local dev; **must not reach any shared/staging/production environment.**
+**⚠️ This fix was incomplete — see §1.5.** The ownership check closed the "complete someone else's order" hole but not the "complete *your own* order against someone else's reference" hole, and the regression test added here asserted only the former.
 
-**Action needed:** treat this as a deployment checklist item — fail startup (rather than silently default) if `APP_ENV=production` and `ADMIN_PASSWORD`/`JWT_SECRET`/`ADMIN_BOOTSTRAP_SECRET` are unset or equal to their dev defaults.
+### 1.5 ✅ FIXED — `flow`/`reference_id` were trusted from the request body, not the order
+Follow-up to §1.3, found 2026-07-17. Both `/mock/complete` and `/verify` passed the **body's** `flow` and `reference_id` into `handlePaymentSuccess(...)`, never comparing them against the stored `payment.flow` / `payment.referenceId`. §1.3's ownership check passed cleanly, because the order genuinely did belong to the caller — it was the *target* that was unvalidated.
+
+Exploitable two ways, both confirmed live against the pre-fix code (each returned `200`):
+- **Price bypass + privilege escalation:** buy your own ₹1 `booking_commission` order (100 paise), then complete it with `flow=provider_registration` and `reference_id=<any provider id>`. That activates a provider — potentially someone else's — for 1% of the ₹99 fee.
+- **Free booking confirmation:** complete your own order against another user's `booking_id`, confirming their booking without paying its commission.
+
+**Resolved 2026-07-17:** both routes now `400` if `payment.flow !== flow || payment.referenceId !== reference_id`, and pass the **stored** `payment.flow` / `payment.referenceId` into `handlePaymentSuccess(...)` rather than the body values (defense in depth — the body no longer reaches the side-effect handler at all). Two regression tests added to `backend/test/payments.test.ts` covering both exploits above; both were confirmed to fail against the old code (`expected 200 to be 400`) before the fix landed. Full suite: 47 passing.
+
+**Lesson worth generalizing:** §1.3 fixed the specific check that had been demonstrated and wrote a test asserting exactly that check. The green suite then read as "payments are authorized," which is what hid this for a day. When fixing an authorization bug, enumerate *every* attacker-controlled input the handler consumes — here, `userId` was validated and `flow`/`reference_id` were not.
+
+### 1.4 ✅ FIXED — weak/insecure config defaults could silently reach production
+Originally filed as just `ADMIN_PASSWORD` defaulting to `adminpassword123`. Re-audit 2026-07-17 found the same pattern on two more variables, and the combination was materially worse than any one of them:
+
+- **`JWT_SECRET` defaulted to the literal `'supersecretjwtkey12345!'`** (`config.ts:8`). Combined with `middleware/auth.ts:42-51` — where `sub === 'admin-system'` grants full admin with **no database lookup at all** — anyone who could read that constant could mint a permanent admin token offline. In a public repo, the secret is public.
+- **`APP_ENV` defaulted to `'development'`** (`config.ts:10`). This is the *exact* failure mode §1.1 was burned by: the `/dev/seed` fix deleted the route but left the fail-open default in place. With `APP_ENV` unset in production, `routes/auth.ts:125` accepts the universal OTP `123456` for **any phone number** and `/otp/send` returns the live OTP in the response body — total account takeover from one missing variable. It also silently disabled any `IS_PROD`-gated guard, including the ones prescribed by this very section.
+
+**Resolved 2026-07-17:** `config.ts` now validates at startup and throws rather than guessing:
+- `APP_ENV` is **required** and must be one of `development | test | production`. No default — an unset value is an operator mistake, not a request for dev mode.
+- `JWT_SECRET`, `ADMIN_PASSWORD`, `ADMIN_BOOTSTRAP_SECRET` must be set to a real value when `APP_ENV=production`; startup fails if any is unset, equal to its dev default, or still a `change_me_*` placeholder from `.env.production.example` (that last check exists because the template's placeholders are *not* the dev defaults and would otherwise have passed validation).
+- `CORS_ORIGINS=*` is rejected in production; `MOCK_PAYMENTS=true` in production logs a loud warning (legitimate before go-live, so not fatal).
+
+Validated by running the config module as a real subprocess across nine env combinations — every guard throws with a message naming the offending variable, and `development` / `test` / a fully-populated production config all load clean. Server boot re-confirmed (`GET /api` → 200); full suite 47 passing; `tsc --noEmit` clean. `.env.example` and `.env.production.example` updated to document which variables are required vs. defaulted.
+
+### 1.6 ✅ FIXED — settlement was not idempotent, and there was no webhook at all
+Found 2026-07-17 while wiring up real Razorpay. Two coupled problems:
+
+**No webhook receiver.** The only path that settled a payment was the browser callback into `/payments/verify`. That callback is best-effort — if the customer closes the tab (or their connection drops) after paying on Razorpay's UI, it never fires. Razorpay captures the money, but the app never activates the provider or confirms the booking: **charged, nothing delivered, no record**. This is the single most common way a Razorpay integration loses money in production, and it had no mitigation here.
+
+**`/verify` had no idempotency guard.** It never checked `payment.status === 'paid'` before running side effects, so a replayed callback ran `handlePaymentSuccess` again — which for `provider_registration` **inserts a listing every time**. Latent while `/verify` was the only settlement path; adding a webhook would have made double-delivery the *normal* case (webhook + callback both fire, by design), turning a latent bug into duplicate listings on essentially every real registration. The webhook could not be added safely until this was fixed.
+
+**Resolved 2026-07-17:**
+- Added `settlePaymentOnce()`, which settles via a conditional `UPDATE ... WHERE order_id = ? AND status <> 'paid' RETURNING`. The DB does the locking: whichever caller wins gets a row and runs the side effects; the loser gets zero rows and skips them. Correct under a genuine webhook/callback race, not just sequential replay. `/mock/complete` and `/verify` both route through it.
+- Added `POST /api/payments/webhook`, authenticated by `X-Razorpay-Signature` (HMAC-SHA256 of the raw body against `RAZORPAY_WEBHOOK_SECRET`) rather than a bearer token, since Razorpay has no session. Handles `payment.captured` and `order.paid`; acknowledges everything else with 200 so Razorpay stops retrying, and returns 500 only on transient failures where a retry is actually wanted. Signature comparison is `crypto.timingSafeEqual` (also applied to `/verify`, which previously used `!==`).
+- `app.ts` mounts `express.raw()` for the webhook path **ahead of** `express.json()` — the signature covers the exact bytes sent, and re-serialising parsed JSON changes them.
+- `config.ts` now refuses to start when `MOCK_PAYMENTS=false` and any Razorpay variable is missing, and rejects `rzp_test_*` keys under `APP_ENV=production`.
+
+Validated: 10 new tests in `backend/test/webhook.test.ts` (signature rejection incl. a body-tamper case, unhandled-event ack, unknown-order ack, browser-never-returns settlement, triple delivery → one listing, webhook/callback race → one listing, `order.paid`). The two idempotency tests were confirmed to **fail** with the `status <> 'paid'` guard removed, so they genuinely cover the regression. The README's local-webhook curl snippet was executed verbatim against a live server and returns the documented output. Full suite: **57 passing**.
+
+**Still open (see the table below):** `/payments/order` does not verify that `reference_id` belongs to the caller (item F).
 
 ---
 
@@ -99,4 +137,22 @@ The file's YAML testing-protocol header describes a `main_agent` / `testing_agen
 4. ~~§2.2 (`.env.example` rewrite)~~ — **done**.
 5. ~~§3.1/§3.2 (dependency conflict + root install script)~~ — **done**.
 6. ~~§3.3 (backend test suite)~~ — **done**.
-7. Everything else (§1.4, §2.3, §2.4, §3.4, §4) — lower urgency, mostly cleanup/decisions rather than bugs.
+7. ~~§1.5 (payment reference binding)~~ and ~~§1.4 (config fails closed)~~ — **done 2026-07-17**.
+8. Everything else (§2.3, §2.4, §3.4, §3.5, §4) — lower urgency, mostly cleanup/decisions rather than bugs.
+
+---
+
+## Still open — found 2026-07-17, not yet fixed
+
+These came out of the same re-audit that produced §1.4/§1.5. None are fixed; listing them so they aren't lost.
+
+| # | Issue | Where | Why it matters |
+| - | ----- | ----- | -------------- |
+| A | **Rate limiting is inoperative in production.** Keys on `req.ip`, but `app.set('trust proxy')` is never called. Behind system Nginx → container Nginx, every request carries the same proxy IP. | `middleware/rateLimiter.ts:24` | All users share one bucket: brute-force protection on `/admin/login` is gone, *and* the first 5 OTP requests/minute lock out the whole platform. Also in-memory, so it resets every deploy. |
+| B | **`drizzle-kit push --force` runs on every prod container start.** | `backend/Dockerfile:13` | `push --force` reconciles the DB to the schema without asking — a renamed/removed column silently drops production data on deploy. No migration files, and no backup of `pg_data_prod`. |
+| C | **Deploy workflow runs no tests.** Push to `main` → `git reset --hard` → rebuild. | `.github/workflows/deploy.yml` | §3.3's suite exists precisely as a regression net and nothing runs it. (It would not have caught §1.5 — see that entry's lesson — but it's the missing half of that work.) |
+| D | **Password hashing is PBKDF2 at 1,000 iterations.** | `middleware/auth.ts:10-18` | OWASP guidance is ~600,000 for PBKDF2-SHA512 — this is ~600× under, and it only protects admin passwords. |
+| E | **No error handler or 404 handler.** `app.ts` ends at the router mounts. | `src/app.ts` | Thrown async routes hit Express's default handler, leaking stack traces whenever `APP_ENV !== 'production'`. |
+| F | **`/payments/order` doesn't verify `reference_id` belongs to the caller.** | `routes/payments.ts:121` | Same root cause as §1.5 (reference IDs unvalidated against the caller), though §1.5's fix means an unowned reference can no longer be *settled*. |
+| G | **`depends_on` without `condition: service_healthy`.** | `docker-compose.prod.yml` | Backend races Postgres on boot; combined with (B), the auto-migration runs against a DB that may not be ready. |
+| H | **`backend/package.json` pins `typescript: ^7.0.2`** — TypeScript 7 (the native port) as the production build compiler, via a drifted caret range rather than a deliberate choice. | `backend/package.json` | Worth an explicit decision. |

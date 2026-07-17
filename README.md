@@ -102,6 +102,8 @@ ADMIN_PASSWORD=<change me>
 REACT_APP_BACKEND_URL=http://localhost:8000
 ```
 
+`APP_ENV` is **required** — the backend refuses to start without it (it must be `development`, `test`, or `production`). It is deliberately not defaulted, because assuming `development` in production would silently enable the mock-OTP bypass. When `APP_ENV=production`, the backend also refuses to start if `JWT_SECRET`, `ADMIN_PASSWORD`, or `ADMIN_BOOTSTRAP_SECRET` is unset, left at a dev default, or still a `change_me_*` placeholder, or if `CORS_ORIGINS` is `*`. In development all of those fall back to insecure-but-convenient defaults.
+
 `frontend-admin` reads `VITE_API_URL` (defaults to `http://localhost:8000/api` if unset — no `.env` needed for local dev).
 
 ## API documentation
@@ -118,6 +120,100 @@ Every route across auth, users, providers, listings, bookings, payments, and adm
 - OTP login is mocked: `POST /api/auth/otp/send` returns the OTP in the response body, and the universal code `123456` is always accepted (non-production only).
 - Payments are mocked by default (`MOCK_PAYMENTS=true`): checkout completes instantly via `POST /api/payments/mock/complete` with no real Razorpay call. Set `MOCK_PAYMENTS=false` and provide real `RAZORPAY_KEY_ID`/`SECRET` to exercise the live HMAC-verified flow.
 - Admin login: `POST /api/auth/admin/login` with `ADMIN_USERNAME`/`ADMIN_PASSWORD` from `.env`, or bootstrap a DB-backed admin via `POST /api/admin/bootstrap`.
+
+## Razorpay setup
+
+Payments are mocked by default. Everything below is only needed to take **real** money.
+
+### How the flow works
+
+```
+1. Browser  → POST /api/payments/order        → backend creates a Razorpay order, stores it (status=created)
+2. Browser  → Razorpay Checkout (checkout.js) → customer pays on Razorpay's UI
+3a. Browser → POST /api/payments/verify       → HMAC-verified callback  ─┐
+3b. Razorpay→ POST /api/payments/webhook      → HMAC-verified server call ┴→ whichever arrives first settles
+4. Settlement → provider activated / booking confirmed (exactly once)
+```
+
+**Both 3a and 3b matter.** 3a is best-effort: if the customer closes the tab after paying, it never fires, and without 3b that payment is charged by Razorpay but never settled in the app — money taken, nothing delivered. 3b is the authoritative path and works even with the browser gone. They race by design; settlement is idempotent, so the loser is a no-op (`already: true`).
+
+Amounts are **never** taken from the client: `AMOUNTS` in `backend/src/config.ts` is the only source (`provider_registration` ₹99, `booking_commission` ₹1). The flow/reference a payment settles is read from the stored order, not the request body — see `INVESTIGATION.md` §1.5 for why.
+
+### 1. Get your API keys
+
+Razorpay Dashboard → **Account & Settings → API Keys → Generate Key**. You get a key id (`rzp_test_*` or `rzp_live_*`) and a **key secret shown exactly once** — copy it now. Start in **Test Mode** (toggle in the dashboard).
+
+### 2. Create the webhook
+
+Dashboard → **Settings → Webhooks → Add New Webhook**:
+
+| Field         | Value                                                        |
+| ------------- | ------------------------------------------------------------ |
+| Webhook URL   | `https://onedarjeeling.duckdns.org/api/payments/webhook`     |
+| Secret        | Any long random string you generate — **you choose this**    |
+| Active Events | `payment.captured` and `order.paid`                          |
+
+The **Secret is not your key secret** — it's a separate value you invent here and paste into `RAZORPAY_WEBHOOK_SECRET`. It's what proves an incoming webhook is really from Razorpay.
+
+Generate one with:
+
+```sh
+openssl rand -hex 32
+```
+
+### 3. Configure the backend
+
+```
+MOCK_PAYMENTS=false
+RAZORPAY_KEY_ID=rzp_live_xxxxxxxxxxxx
+RAZORPAY_KEY_SECRET=<the key secret shown once at generation>
+RAZORPAY_WEBHOOK_SECRET=<the secret you invented in step 2>
+```
+
+The backend refuses to start if `MOCK_PAYMENTS=false` and any of these is missing, or if a `rzp_test_*` key is used while `APP_ENV=production`. No `/api` path changes are needed — the existing `/api` proxy already routes the webhook.
+
+### 4. Test cards (Test Mode only)
+
+| Scenario     | Card                  | Details                          |
+| ------------ | --------------------- | -------------------------------- |
+| Success      | `4111 1111 1111 1111` | any future expiry, any CVV       |
+| Failure      | `4000 0000 0000 0002` | any future expiry, any CVV       |
+| UPI success  | `success@razorpay`    | —                                |
+| UPI failure  | `failure@razorpay`    | —                                |
+
+Use OTP `1234` on the 3-D Secure page. Never use real card numbers in Test Mode.
+
+### 5. Testing the webhook locally
+
+Razorpay can't reach `localhost`, so either tunnel or forge a delivery yourself.
+
+**Tunnel** (real end-to-end): run `ngrok http 8000`, then set the dashboard webhook URL to `https://<id>.ngrok-free.app/api/payments/webhook`.
+
+**Forge a delivery** (no tunnel; signs the body exactly like Razorpay does):
+
+```sh
+SECRET='your_webhook_secret'
+ORDER_ID='mock_order_abc123'   # an order_id you got back from POST /api/payments/order
+BODY="{\"event\":\"payment.captured\",\"payload\":{\"payment\":{\"entity\":{\"id\":\"pay_test_1\",\"order_id\":\"$ORDER_ID\"}}}}"
+SIG=$(printf '%s' "$BODY" | openssl dgst -sha256 -hmac "$SECRET" -r | cut -d' ' -f1)
+
+curl -s -X POST http://localhost:8000/api/payments/webhook \
+  -H "Content-Type: application/json" \
+  -H "X-Razorpay-Signature: $SIG" \
+  -d "$BODY"
+# → {"ok":true,"already":false}   (send it again → {"ok":true,"already":true})
+```
+
+The signature covers the **raw bytes**, so the body must be sent verbatim — this is why `app.ts` mounts `express.raw()` for this one path ahead of `express.json()`. Reformatting the JSON invalidates the signature.
+
+### 6. Go-live checklist
+
+- [ ] Dashboard **KYC/activation** complete — live keys don't work until Razorpay approves the account.
+- [ ] Switched dashboard to **Live Mode** and regenerated `rzp_live_*` keys.
+- [ ] Webhook re-created in **Live Mode** (test-mode webhooks do **not** carry over) and pointed at the production URL.
+- [ ] `MOCK_PAYMENTS=false` and all three Razorpay vars set in the VPS `.env`.
+- [ ] One real low-value transaction end-to-end, then confirm in Dashboard → Webhooks that the delivery returned **200**.
+- [ ] Settlement account added (Dashboard → Settings → Settlements), or money sits in the Razorpay balance.
 
 ## Production deployment
 
@@ -174,5 +270,4 @@ Once the secrets are set, just `git push` to `main` and the workflow redeploys a
 
 ## Known issues / further reading
 
-This repo carries some rough edges from a rapid AI-assisted build. See **`INVESTIGATION.md`** for the full audit: stale docs, a dependency conflict, an unauthenticated seeding endpoint, and a couple of missing authorization checks worth fixing before any public deployment.
-done changing
+This repo carries some rough edges from a rapid AI-assisted build. See **`INVESTIGATION.md`** for the full audit — what's been fixed (stale docs, a dependency conflict, an unauthenticated seeding endpoint, the authorization and payment-binding holes, and config that used to fail open) and the **"Still open"** table of what hasn't been, including inoperative production rate limiting and `drizzle-kit push --force` auto-migrating the production database on every deploy. Read that table before any public deployment.

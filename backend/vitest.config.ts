@@ -15,6 +15,7 @@ export default defineConfig({
       APP_ENV: 'test',
       CORS_ORIGINS: '*',
       ADMIN_BOOTSTRAP_SECRET: 'test_bootstrap_secret',
+      RAZORPAY_WEBHOOK_SECRET: 'test_webhook_secret',
       ADMIN_USERNAME: 'admin',
       ADMIN_PASSWORD: 'test_admin_password',
     },

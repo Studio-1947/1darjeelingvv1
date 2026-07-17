@@ -14,6 +14,13 @@ import paymentsRouter from './routes/payments';
 import adminRouter from './routes/admin';
 
 export const app = express();
+
+// Razorpay signs the raw bytes of the webhook body, so this route must keep them verbatim.
+// It has to be mounted BEFORE express.json(), which would otherwise consume the stream and leave
+// only a parsed object — re-serialising that yields different bytes and the HMAC never matches.
+// express.json() then skips this request because express.raw() has already marked the body read.
+app.use('/api/payments/webhook', express.raw({ type: '*/*' }));
+
 app.use(express.json());
 
 app.use(cors({

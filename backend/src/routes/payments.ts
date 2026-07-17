@@ -2,10 +2,10 @@ import { Router, Request, Response } from 'express';
 import crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import { db, schema } from '../db';
-import { eq } from 'drizzle-orm';
+import { eq, and, ne } from 'drizzle-orm';
 import { authenticateToken } from '../middleware/auth';
 import { rateLimiter } from '../middleware/rateLimiter';
-import { AMOUNTS, MOCK_PAYMENTS, rzpClient, RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, IS_PROD, log } from '../config';
+import { AMOUNTS, MOCK_PAYMENTS, rzpClient, RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, RAZORPAY_WEBHOOK_SECRET, IS_PROD, log } from '../config';
 
 const router = Router();
 
@@ -73,6 +73,33 @@ async function handlePaymentSuccess(flow: string, referenceId: string, userId: s
     }
   }
   return null;
+}
+
+type PaymentRow = typeof schema.payments.$inferSelect;
+
+/**
+ * Marks an order paid and runs its side effects at most once.
+ *
+ * With webhooks enabled, a successful payment is reported twice by design: once by the browser
+ * callback into /verify, once by Razorpay into /webhook — and they race. The conditional
+ * `WHERE status <> 'paid'` is the lock: whoever wins gets a row back and runs the side effects;
+ * the loser gets zero rows and skips them. Without this, provider_registration would insert a
+ * duplicate listing per delivery.
+ *
+ * Always uses the *stored* flow/referenceId (see INVESTIGATION.md §1.5) — never caller input.
+ */
+async function settlePaymentOnce(payment: PaymentRow, gatewayPaymentId: string) {
+  const settled = await db.update(schema.payments)
+    .set({ status: 'paid', paymentId: gatewayPaymentId, paidAt: new Date().toISOString() })
+    .where(and(eq(schema.payments.orderId, payment.orderId), ne(schema.payments.status, 'paid')))
+    .returning();
+
+  if (settled.length === 0) {
+    return { alreadySettled: true as const, record: null };
+  }
+
+  const record = await handlePaymentSuccess(payment.flow, payment.referenceId, payment.userId);
+  return { alreadySettled: false as const, record };
 }
 
 // ============ PAYMENTS ============
@@ -193,7 +220,11 @@ router.post('/order', authenticateToken, async (req: Request, res: Response) => 
  * /payments/mock/complete:
  *   post:
  *     summary: Complete a mock payment order (dev/sandbox only)
- *     description: Only available when MOCK_PAYMENTS=true. Marks the order paid and triggers the same side effects as a real payment (provider activation or booking confirmation).
+ *     description: >
+ *       Only available when MOCK_PAYMENTS=true. Marks the order paid and triggers the same side
+ *       effects as a real payment (provider activation or booking confirmation). The submitted
+ *       flow and reference_id must match those the order was created with, and the order must
+ *       belong to the caller.
  *     tags: [Payments]
  *     security: [{ bearerAuth: [] }]
  *     requestBody:
@@ -219,7 +250,7 @@ router.post('/order', authenticateToken, async (req: Request, res: Response) => 
  *                 status: { type: string }
  *                 record: { type: object, nullable: true }
  *       400:
- *         description: Mock payments disabled, or missing fields
+ *         description: Mock payments disabled, missing fields, or flow/reference_id do not match the order
  *         content:
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
@@ -254,16 +285,25 @@ router.post('/mock/complete', authenticateToken, rateLimiter(10, 60 * 1000, 'moc
     return res.status(403).json({ detail: 'Not authorized to complete this payment' });
   }
 
+  // The order records what was actually paid for. Redeeming it against any other
+  // flow/reference would let a cheap order settle an expensive one, or settle
+  // another user's provider/booking entirely.
+  if (payment.flow !== flow || payment.referenceId !== reference_id) {
+    return res.status(400).json({ detail: 'Flow and reference ID do not match this order' });
+  }
+
   if (payment.status === 'paid') {
     return res.json({ ok: true, already: true });
   }
 
-  await db.update(schema.payments)
-    .set({ status: 'paid', paymentId: `mock_pay_${uuidv4().replace(/-/g, '').slice(0, 12)}`, paidAt: new Date().toISOString() })
-    .where(eq(schema.payments.orderId, order_id));
-
-  const resultRecord = await handlePaymentSuccess(flow, reference_id, req.user.id);
-  res.json({ ok: true, status: 'paid', record: resultRecord });
+  const { alreadySettled, record } = await settlePaymentOnce(
+    payment,
+    `mock_pay_${uuidv4().replace(/-/g, '').slice(0, 12)}`
+  );
+  if (alreadySettled) {
+    return res.json({ ok: true, already: true });
+  }
+  res.json({ ok: true, status: 'paid', record });
 });
 
 /**
@@ -297,7 +337,7 @@ router.post('/mock/complete', authenticateToken, rateLimiter(10, 60 * 1000, 'moc
  *                 ok: { type: boolean }
  *                 status: { type: string }
  *       400:
- *         description: Missing fields or invalid signature
+ *         description: Missing fields, invalid signature, or flow/reference_id do not match the order
  *         content:
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
@@ -333,6 +373,11 @@ router.post('/verify', authenticateToken, async (req: Request, res: Response) =>
     return res.status(403).json({ detail: 'Not authorized to complete this payment' });
   }
 
+  // See /mock/complete — the order, not the request body, decides what gets settled.
+  if (payment.flow !== flow || payment.referenceId !== reference_id) {
+    return res.status(400).json({ detail: 'Flow and reference ID do not match this order' });
+  }
+
   if (!RAZORPAY_KEY_SECRET) {
     return res.status(500).json({ detail: 'Razorpay secret not configured' });
   }
@@ -342,16 +387,117 @@ router.post('/verify', authenticateToken, async (req: Request, res: Response) =>
     .update(`${razorpay_order_id}|${razorpay_payment_id}`)
     .digest('hex');
 
-  if (expectedSignature !== razorpay_signature) {
+  const expectedBuf = Buffer.from(expectedSignature, 'utf8');
+  const providedBuf = Buffer.from(String(razorpay_signature), 'utf8');
+  if (expectedBuf.length !== providedBuf.length || !crypto.timingSafeEqual(expectedBuf, providedBuf)) {
     return res.status(400).json({ detail: 'Invalid payment signature' });
   }
 
-  await db.update(schema.payments)
-    .set({ status: 'paid', paymentId: razorpay_payment_id, paidAt: new Date().toISOString() })
-    .where(eq(schema.payments.orderId, razorpay_order_id));
+  // May race the webhook for the same order — settlePaymentOnce makes that safe.
+  const { alreadySettled } = await settlePaymentOnce(payment, razorpay_payment_id);
+  res.json({ ok: true, status: 'paid', already: alreadySettled });
+});
 
-  await handlePaymentSuccess(flow, reference_id, req.user.id);
-  res.json({ ok: true, status: 'paid' });
+/**
+ * @openapi
+ * /payments/webhook:
+ *   post:
+ *     summary: Razorpay webhook receiver — called by Razorpay's servers, not by the app
+ *     description: >
+ *       Authenticated by the X-Razorpay-Signature header (HMAC-SHA256 of the raw request body
+ *       using RAZORPAY_WEBHOOK_SECRET), NOT by a bearer token. This is the authoritative record
+ *       of payment: the browser callback into /payments/verify is best-effort and is lost if the
+ *       customer closes the tab, so without this endpoint those payments are charged by Razorpay
+ *       but never settled in the app. Safe to deliver more than once — settlement is idempotent.
+ *       Handles payment.captured and order.paid; every other event is acknowledged and ignored.
+ *     tags: [Payments]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema: { type: object, description: "Raw Razorpay event payload" }
+ *     responses:
+ *       200:
+ *         description: Event processed, ignored, or already settled — Razorpay stops retrying
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 ok: { type: boolean }
+ *                 already: { type: boolean }
+ *                 ignored: { type: string }
+ *       400:
+ *         description: Missing or invalid signature
+ *       503:
+ *         description: RAZORPAY_WEBHOOK_SECRET not configured
+ */
+// Razorpay webhook. NOTE: no authenticateToken — Razorpay has no session; the signature is the auth.
+router.post('/webhook', async (req: Request, res: Response) => {
+  if (!RAZORPAY_WEBHOOK_SECRET) {
+    log.error('[webhook] received but RAZORPAY_WEBHOOK_SECRET is not configured — ignoring');
+    return res.status(503).json({ detail: 'Webhook not configured' });
+  }
+
+  const signature = req.headers['x-razorpay-signature'];
+  if (typeof signature !== 'string' || !signature) {
+    return res.status(400).json({ detail: 'Missing X-Razorpay-Signature header' });
+  }
+
+  // req.body is a Buffer here: app.ts mounts express.raw for this exact path, ahead of
+  // express.json. The signature covers the precise bytes Razorpay sent, so re-serialising parsed
+  // JSON (different key order/whitespace) would produce a different HMAC and never verify.
+  if (!Buffer.isBuffer(req.body)) {
+    log.error('[webhook] body is not raw — express.raw is not mounted for this path');
+    return res.status(500).json({ detail: 'Webhook body parser misconfigured' });
+  }
+  const raw = req.body;
+
+  const expected = crypto.createHmac('sha256', RAZORPAY_WEBHOOK_SECRET).update(raw).digest('hex');
+  const expectedBuf = Buffer.from(expected, 'utf8');
+  const providedBuf = Buffer.from(signature, 'utf8');
+  if (expectedBuf.length !== providedBuf.length || !crypto.timingSafeEqual(expectedBuf, providedBuf)) {
+    log.error('[webhook] signature mismatch — rejecting');
+    return res.status(400).json({ detail: 'Invalid webhook signature' });
+  }
+
+  let event: any;
+  try {
+    event = JSON.parse(raw.toString('utf8'));
+  } catch {
+    return res.status(400).json({ detail: 'Malformed webhook payload' });
+  }
+
+  const eventType: string = event?.event || 'unknown';
+  const paymentEntity = event?.payload?.payment?.entity;
+  const orderId: string | undefined = paymentEntity?.order_id || event?.payload?.order?.entity?.id;
+
+  // Razorpay retries any non-2xx with backoff. Anything we deliberately don't act on must still
+  // be acknowledged, or it gets redelivered for days.
+  if (eventType !== 'payment.captured' && eventType !== 'order.paid') {
+    return res.json({ ok: true, ignored: eventType });
+  }
+  if (!orderId) {
+    log.error(`[webhook] ${eventType} carried no order id — acknowledging`);
+    return res.json({ ok: true, ignored: eventType });
+  }
+
+  try {
+    const [payment] = await db.select().from(schema.payments).where(eq(schema.payments.orderId, orderId)).limit(1);
+    if (!payment) {
+      // Not ours (or created against another environment sharing these keys). Ack so it stops.
+      log.error(`[webhook] ${eventType} for unknown order ${orderId} — acknowledging`);
+      return res.json({ ok: true, unknown_order: true });
+    }
+
+    const { alreadySettled } = await settlePaymentOnce(payment, paymentEntity?.id || `rzp_${orderId}`);
+    log.info(`[webhook] ${eventType} order=${orderId} flow=${payment.flow} ${alreadySettled ? 'already settled' : 'settled'}`);
+    return res.json({ ok: true, already: alreadySettled });
+  } catch (err: any) {
+    // 500 here is deliberate: a transient DB failure should be retried by Razorpay, not swallowed.
+    log.error(`[webhook] failed to settle order ${orderId}: ${err?.message || err}`);
+    return res.status(500).json({ detail: 'Webhook processing failed' });
+  }
 });
 
 export default router;
