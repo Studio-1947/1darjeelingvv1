@@ -138,21 +138,58 @@ The file's YAML testing-protocol header describes a `main_agent` / `testing_agen
 5. ~~§3.1/§3.2 (dependency conflict + root install script)~~ — **done**.
 6. ~~§3.3 (backend test suite)~~ — **done**.
 7. ~~§1.5 (payment reference binding)~~ and ~~§1.4 (config fails closed)~~ — **done 2026-07-17**.
-8. Everything else (§2.3, §2.4, §3.4, §3.5, §4) — lower urgency, mostly cleanup/decisions rather than bugs.
+8. ~~§1.6 (webhook + idempotent settlement)~~ — **done 2026-07-17**.
+9. ~~§5.A–§5.G (rate limiting, migrations, CI gate, password hashing, error handling, order ownership, healthcheck)~~ — **done 2026-07-17**.
+10. Remaining: §5.H (TypeScript 7 decision), §3.5 (`ProviderOnboard` authLoading guard), §2.3, §2.4, §3.4, §4 — cleanup and decisions rather than bugs.
 
 ---
 
-## Still open — found 2026-07-17, not yet fixed
+## 5. Second-wave findings — 2026-07-17
 
-These came out of the same re-audit that produced §1.4/§1.5. None are fixed; listing them so they aren't lost.
+Found in the re-audit that produced §1.4/§1.5. **A–G are now fixed** (2026-07-17); H remains a decision.
 
-| # | Issue | Where | Why it matters |
-| - | ----- | ----- | -------------- |
-| A | **Rate limiting is inoperative in production.** Keys on `req.ip`, but `app.set('trust proxy')` is never called. Behind system Nginx → container Nginx, every request carries the same proxy IP. | `middleware/rateLimiter.ts:24` | All users share one bucket: brute-force protection on `/admin/login` is gone, *and* the first 5 OTP requests/minute lock out the whole platform. Also in-memory, so it resets every deploy. |
-| B | **`drizzle-kit push --force` runs on every prod container start.** | `backend/Dockerfile:13` | `push --force` reconciles the DB to the schema without asking — a renamed/removed column silently drops production data on deploy. No migration files, and no backup of `pg_data_prod`. |
-| C | **Deploy workflow runs no tests.** Push to `main` → `git reset --hard` → rebuild. | `.github/workflows/deploy.yml` | §3.3's suite exists precisely as a regression net and nothing runs it. (It would not have caught §1.5 — see that entry's lesson — but it's the missing half of that work.) |
-| D | **Password hashing is PBKDF2 at 1,000 iterations.** | `middleware/auth.ts:10-18` | OWASP guidance is ~600,000 for PBKDF2-SHA512 — this is ~600× under, and it only protects admin passwords. |
-| E | **No error handler or 404 handler.** `app.ts` ends at the router mounts. | `src/app.ts` | Thrown async routes hit Express's default handler, leaking stack traces whenever `APP_ENV !== 'production'`. |
-| F | **`/payments/order` doesn't verify `reference_id` belongs to the caller.** | `routes/payments.ts:121` | Same root cause as §1.5 (reference IDs unvalidated against the caller), though §1.5's fix means an unowned reference can no longer be *settled*. |
-| G | **`depends_on` without `condition: service_healthy`.** | `docker-compose.prod.yml` | Backend races Postgres on boot; combined with (B), the auto-migration runs against a DB that may not be ready. |
-| H | **`backend/package.json` pins `typescript: ^7.0.2`** — TypeScript 7 (the native port) as the production build compiler, via a drifted caret range rather than a deliberate choice. | `backend/package.json` | Worth an explicit decision. |
+### 5.A ✅ FIXED — rate limiting was inoperative in production
+`middleware/rateLimiter.ts` keyed on `req.ip`, but `app.set('trust proxy')` was never called. Both Nginx layers append `$proxy_add_x_forwarded_for` (verified in `deploy/host-nginx-site.conf.example` and `deploy/nginx/app.conf`), so every request reached Express carrying the proxy's address: **all callers shared one bucket**. Brute-force protection on `/admin/login` was gone, and the first 5 OTP requests in a minute locked out the entire platform.
+
+**Fixed:** `app.set('trust proxy', TRUST_PROXY_HOPS)` — a hop **count** (2 in production, 0 in dev), deliberately not `true`. `true` trusts the leftmost `X-Forwarded-For` entry, which is entirely attacker-supplied; counting from the right means a forged prefix is ignored. Also swept expired entries (the store grew once per unique IP forever) and added a `Retry-After` header.
+
+The limiter previously early-returned on `APP_ENV === 'test'`, so it had **zero test coverage** — it was untestable by construction. `rateLimiter()` now takes an `{ enabled }` override. 7 tests in `test/rateLimiter.test.ts`, including one asserting the spoofing case and one that *documents the old bug* (unrelated clients sharing a bucket without trust proxy). Verified `TRUST_PROXY_HOPS` resolves to 2/0/0 for production/development/test.
+
+**Still true:** the store is in-memory, so counters reset on deploy and are per-process. Fine for one backend container; a second instance needs Redis.
+
+### 5.B ✅ FIXED — `drizzle-kit push --force` ran on every production container start
+`backend/Dockerfile` ran `push --force` at each boot, which diffs the live database against `schema.ts` and reconciles it **without asking** — a renamed or dropped column would silently take production data with it. There were no migration files and no backup of `pg_data_prod`.
+
+**Fixed:** generated `drizzle/0000_hard_caretaker.sql` and switched the `CMD` to `drizzle-kit migrate`, which applies versioned SQL tracked in a `__drizzle_migrations` ledger (each migration runs once; re-deploys are no-ops). Confirmed safe to adopt because production has not been deployed yet (no data to baseline around). Validated by migrating a scratch database from empty and diffing `information_schema.columns` against the push-built schema: **62 columns, identical**, and a second `migrate` run is a clean no-op. README documents the generate→review→commit flow and warns off `push`.
+
+### 5.C ✅ FIXED — the deploy workflow ran no tests
+Push to `main` went straight to `git reset --hard` + rebuild, so §3.3's suite never guarded a release.
+
+**Fixed:** `.github/workflows/deploy.yml` now has a `test` job (Postgres service + health-gated wait, `npm ci`, `test:setup`, `tsc --noEmit`, `npm test`) and `deploy` declares `needs: test`.
+
+This surfaced a prerequisite: the `one_darjeeling_test` database was created **by hand and documented nowhere** — only `vitest.config.ts` even named it — so `npm test` failed on a fresh clone and could not run in CI at all. Added `backend/scripts/setup-test-db.ts` (`npm run test:setup`), verified by dropping the test database entirely and rebuilding it from zero: **80 tests pass**, and re-running is idempotent.
+
+### 5.D ✅ FIXED — password hashing was PBKDF2 at 1,000 iterations
+`middleware/auth.ts` used 1,000 iterations — roughly 200× under OWASP's floor — and compared hashes with `!==`.
+
+**Fixed:** 210,000 iterations. (Note: the first-pass audit cited ~600,000; that is the **PBKDF2-SHA256** figure. This code uses SHA512, whose OWASP floor is 210,000 — using 600k would have been ~3× the intended work factor for no benefit.) Measured ~120ms/hash, which is fine for a rare admin login and is precisely the operation worth making slow. Comparison is now `crypto.timingSafeEqual`.
+
+Hashes are self-describing — `pbkdf2$<digest>$<iterations>$<salt>$<hash>` — so the work factor can rise again without locking anyone out. Legacy `salt:hash` values still verify at 1,000 iterations and are **transparently re-hashed on next successful login** (the only moment the plaintext exists), so no admin is locked out and no password reset is needed. 9 tests in `test/password.test.ts`, including the legacy round-trip, the in-place upgrade, and that a *failed* login neither admits nor upgrades.
+
+### 5.E ✅ FIXED — no error handler or 404 handler, leaking SQL to callers
+Worse than first reported. I flagged this as leaking stack traces "whenever `APP_ENV !== 'production'`" — in fact Express's built-in handler decides that by reading **`NODE_ENV`**, which this app never sets anywhere (it uses `APP_ENV`). So the leak was unconditional, **production included**.
+
+Confirmed live: a 500 returned an HTML page containing the failing `insert into "listings" (...)` statement, its column list, and its parameter values — schema disclosure to any caller who can trigger an error.
+
+**Fixed:** JSON 404 handler and a central error handler in `app.ts`. 5xx responses are now a generic `{"detail":"Internal server error"}` with the real error logged server-side; 4xx keep their own message (malformed JSON now correctly returns **400** rather than a 500 HTML page); CORS rejections are tagged `403`. 4 tests in `test/errors.test.ts` assert no stack frames, file paths, or SQL reach the response.
+
+### 5.F ✅ FIXED — `/payments/order` didn't verify `reference_id` belongs to the caller
+Graded "medium" initially; on closer reading it was a live escalation. §1.5 stopped an order being *redeemed* against someone else's reference, but nothing stopped an attacker **creating** the order that way: pay ₹1 with `reference_id` set to a stranger's booking and `handlePaymentSuccess` confirms *their* booking; pay ₹99 against a stranger's provider and it activates. Confirmed pre-fix — all three probes returned `200`.
+
+**Fixed:** `assertOwnsReference()` validates at order creation that the reference exists (`404`) and belongs to the caller (`403`), and refuses unknown flows by default so a future flow can't be added without an ownership rule. 3 regression tests.
+
+### 5.G ✅ FIXED — `depends_on` without `condition: service_healthy`
+The backend raced Postgres on boot, and with (B) the auto-reconcile fired at a database that might not be up. **Fixed:** `pg_isready` healthcheck on the postgres service + `condition: service_healthy` on the backend. Validated with `docker compose config`.
+
+### 5.H ⏳ OPEN — `backend/package.json` pins `typescript: ^7.0.2`
+TypeScript 7 (the native port) is the production build compiler, arrived at via a drifted caret range rather than a deliberate choice. `tsc --noEmit` and `npm run build` are both clean on it today, so this is a decision to make rather than a bug: pin it intentionally, or move back to a 5.x line.

@@ -35,9 +35,9 @@ The API is Postgres-backed via Drizzle ORM. See **`memory/PRD.md`** for the full
 
    ```sh
    cd backend
-   cp .env.example .env   # then edit — see "Environment variables" below, .env.example is stale
+   cp .env.example .env   # then edit — see "Environment variables" below
    npm install
-   npx drizzle-kit push   # creates/syncs tables from src/schema.ts
+   npm run db:migrate     # applies drizzle/*.sql — same command production runs
    npm run dev            # http://localhost:8000
    ```
 
@@ -105,6 +105,34 @@ REACT_APP_BACKEND_URL=http://localhost:8000
 `APP_ENV` is **required** — the backend refuses to start without it (it must be `development`, `test`, or `production`). It is deliberately not defaulted, because assuming `development` in production would silently enable the mock-OTP bypass. When `APP_ENV=production`, the backend also refuses to start if `JWT_SECRET`, `ADMIN_PASSWORD`, or `ADMIN_BOOTSTRAP_SECRET` is unset, left at a dev default, or still a `change_me_*` placeholder, or if `CORS_ORIGINS` is `*`. In development all of those fall back to insecure-but-convenient defaults.
 
 `frontend-admin` reads `VITE_API_URL` (defaults to `http://localhost:8000/api` if unset — no `.env` needed for local dev).
+
+## Database migrations
+
+Schema lives in `backend/src/schema.ts`; the database is changed through versioned SQL migrations in `backend/drizzle/`, applied by `drizzle-kit migrate` and tracked in a `__drizzle_migrations` ledger so each runs exactly once.
+
+To change the schema:
+
+```sh
+cd backend
+# 1. edit src/schema.ts, then:
+npm run db:generate    # writes a new drizzle/NNNN_*.sql — review it, it's part of the diff
+npm run db:migrate     # apply locally
+# 2. commit BOTH schema.ts and the generated .sql
+```
+
+The migration is what runs in production (`backend/Dockerfile`'s `CMD` runs `drizzle-kit migrate` before starting the server), so an un-committed migration means a deploy that doesn't have the table it expects.
+
+> **Do not use `drizzle-kit push` against any database you care about.** It diffs the live database against `schema.ts` and reconciles it without asking — a renamed or dropped column takes its data with it. Production used to run `push --force` on every container start; that's what the migrations above replaced. `db:push` remains in `package.json` for throwaway local databases only.
+
+## Running the tests
+
+```sh
+cd backend
+npm run test:setup   # creates the one_darjeeling_test database + syncs schema (idempotent, needs Postgres up)
+npm test             # vitest
+```
+
+Tests run against `one_darjeeling_test`, a **separate database** from your dev one, because the suite truncates every table between tests. `test:setup` only needs re-running when the schema changes. CI runs exactly these two commands (`.github/workflows/deploy.yml`), and a red suite blocks the deploy.
 
 ## API documentation
 

@@ -51,6 +51,26 @@ function requireRealValueInProd(name: string, value: string | undefined, devDefa
 }
 
 export const PORT = process.env.PORT || 8000;
+
+// Number of reverse proxies in front of Express, passed to app.set('trust proxy').
+// Production chain is: client -> system Nginx (host) -> nginx container -> backend, and both
+// Nginx layers append $proxy_add_x_forwarded_for, so there are exactly 2 trusted hops.
+// This is a hop COUNT rather than `true` on purpose: `true` trusts the leftmost X-Forwarded-For
+// entry, which is entirely attacker-supplied — anyone could spoof their IP and evade rate limits.
+// Counting from the right means a forged prefix is ignored. In development there is no proxy, so 0.
+const rawTrustProxy = process.env.TRUST_PROXY_HOPS?.trim();
+export const TRUST_PROXY_HOPS = rawTrustProxy !== undefined && rawTrustProxy !== ''
+  ? Number(rawTrustProxy)
+  : (IS_PROD ? 2 : 0);
+if (!Number.isInteger(TRUST_PROXY_HOPS) || TRUST_PROXY_HOPS < 0) {
+  throw new Error(`[config] TRUST_PROXY_HOPS must be a non-negative integer, got "${rawTrustProxy}".`);
+}
+
+// Rate limiting is off in the test suite by default (tests would trip the OTP limits immediately).
+// Individual tests opt back in per-middleware — see middleware/rateLimiter.ts.
+export const RATE_LIMIT_ENABLED = process.env.RATE_LIMIT_ENABLED
+  ? process.env.RATE_LIMIT_ENABLED.toLowerCase() === 'true'
+  : APP_ENV !== 'test';
 export const JWT_SECRET = requireRealValueInProd('JWT_SECRET', process.env.JWT_SECRET, 'dev_only_insecure_jwt_secret');
 export const MOCK_PAYMENTS = process.env.MOCK_PAYMENTS ? process.env.MOCK_PAYMENTS.toLowerCase() === 'true' : true;
 export const CORS_ORIGINS = process.env.CORS_ORIGINS

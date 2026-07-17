@@ -77,6 +77,59 @@ describe('payments ownership', () => {
     expect(res.status).toBe(404);
   });
 
+  it('blocks creating an order against another user\'s booking', async () => {
+    const { token: victimToken } = await registerUser({ name: 'Order Victim' });
+    const listing = await createListing({ title: 'Order Victim Spot' });
+    const bookingRes = await request(app)
+      .post('/api/bookings')
+      .set('Authorization', `Bearer ${victimToken}`)
+      .send({ listing_id: listing.id, listing_type: 'spot' });
+    const victimBookingId = bookingRes.body.booking.id as string;
+
+    const { token: attackerToken } = await registerUser({ name: 'Order Attacker' });
+    const res = await request(app)
+      .post('/api/payments/order')
+      .set('Authorization', `Bearer ${attackerToken}`)
+      .send({ flow: 'booking_commission', reference_id: victimBookingId });
+
+    expect(res.status).toBe(403);
+  });
+
+  it('blocks creating an order against another user\'s provider registration', async () => {
+    const { token: victimToken, phone } = await registerUser({ name: 'Prov Victim', role: 'provider' });
+    const onboardRes = await request(app)
+      .post('/api/providers/onboard')
+      .set('Authorization', `Bearer ${victimToken}`)
+      .send({
+        business_name: 'Victim Co',
+        business_type: 'homestay',
+        description: 'Unpaid',
+        location: 'Darjeeling',
+        contact_phone: phone,
+      });
+    const victimProviderId = onboardRes.body.provider.id as string;
+
+    const { token: attackerToken } = await registerUser({ name: 'Prov Attacker' });
+    const res = await request(app)
+      .post('/api/payments/order')
+      .set('Authorization', `Bearer ${attackerToken}`)
+      .send({ flow: 'provider_registration', reference_id: victimProviderId });
+
+    expect(res.status).toBe(403);
+
+    const me = await request(app).get('/api/providers/me').set('Authorization', `Bearer ${victimToken}`);
+    expect(me.body.provider.status).toBe('pending_payment');
+  });
+
+  it('404s creating an order for a reference that does not exist', async () => {
+    const { token } = await registerUser({ name: 'Ghost Referencer' });
+    const res = await request(app)
+      .post('/api/payments/order')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ flow: 'booking_commission', reference_id: 'no-such-booking' });
+    expect(res.status).toBe(404);
+  });
+
   it('blocks completing an order against a reference_id it was not created for', async () => {
     // Victim onboards as a provider but never pays — stays pending_payment.
     const { token: victimToken, phone } = await registerUser({ name: 'Victim Provider', role: 'provider' });

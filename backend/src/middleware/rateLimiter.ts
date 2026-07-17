@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { APP_ENV } from '../config';
+import { RATE_LIMIT_ENABLED } from '../config';
 
 interface RateLimitStore {
   [ip: string]: {
@@ -10,14 +10,44 @@ interface RateLimitStore {
 
 const rateLimitStores: { [key: string]: RateLimitStore } = {};
 
-export function rateLimiter(limit: number, windowMs: number, keyPrefix: string) {
+// Entries are only ever rewritten when the same IP comes back, so without a sweep the store grows
+// once per unique IP forever — a slow leak that a burst of traffic turns into a fast one.
+function sweepExpired(store: RateLimitStore, now: number) {
+  for (const key of Object.keys(store)) {
+    if (now > store[key].resetTime) {
+      delete store[key];
+    }
+  }
+}
+
+/**
+ * Fixed-window per-IP rate limiter.
+ *
+ * Correct client attribution depends on app.set('trust proxy', TRUST_PROXY_HOPS) — see app.ts.
+ * Without it, every request behind the production Nginx chain carries the proxy's IP, so all
+ * callers share a single bucket: brute-force protection disappears and the first few requests
+ * lock out the whole platform.
+ *
+ * Known limits: in-memory, so counters reset on deploy and are per-process (fine for the current
+ * single backend container; a second instance would need a shared store such as Redis).
+ */
+export function rateLimiter(
+  limit: number,
+  windowMs: number,
+  keyPrefix: string,
+  opts: { enabled?: boolean } = {}
+) {
+  // Resolved once at mount time; opts.enabled lets tests exercise the limiter, which is otherwise
+  // disabled under APP_ENV=test and would go completely untested.
+  const enabled = opts.enabled ?? RATE_LIMIT_ENABLED;
+
   if (!rateLimitStores[keyPrefix]) {
     rateLimitStores[keyPrefix] = {};
   }
   const store = rateLimitStores[keyPrefix];
 
   return (req: Request, res: Response, next: NextFunction) => {
-    if (APP_ENV === 'test') {
+    if (!enabled) {
       return next();
     }
 
@@ -26,6 +56,7 @@ export function rateLimiter(limit: number, windowMs: number, keyPrefix: string) 
     const record = store[ip];
 
     if (!record || now > record.resetTime) {
+      sweepExpired(store, now);
       store[ip] = {
         count: 1,
         resetTime: now + windowMs
@@ -34,6 +65,7 @@ export function rateLimiter(limit: number, windowMs: number, keyPrefix: string) 
     }
 
     if (record.count >= limit) {
+      res.setHeader('Retry-After', Math.ceil((record.resetTime - now) / 1000));
       return res.status(429).json({ detail: 'Rate limit exceeded' });
     }
 

@@ -78,6 +78,42 @@ async function handlePaymentSuccess(flow: string, referenceId: string, userId: s
 type PaymentRow = typeof schema.payments.$inferSelect;
 
 /**
+ * Checks that `referenceId` names something the caller actually owns and may pay for.
+ * Returns null when allowed, or the error to send.
+ */
+async function assertOwnsReference(
+  flow: string,
+  referenceId: string,
+  userId: string
+): Promise<{ status: number; detail: string } | null> {
+  if (flow === 'provider_registration') {
+    const [provider] = await db.select().from(schema.providers).where(eq(schema.providers.id, referenceId)).limit(1);
+    if (!provider) {
+      return { status: 404, detail: 'Provider not found' };
+    }
+    if (provider.userId !== userId) {
+      return { status: 403, detail: 'You can only pay for your own provider registration' };
+    }
+    return null;
+  }
+
+  if (flow === 'booking_commission') {
+    const [booking] = await db.select().from(schema.bookings).where(eq(schema.bookings.id, referenceId)).limit(1);
+    if (!booking) {
+      return { status: 404, detail: 'Booking not found' };
+    }
+    if (booking.userId !== userId) {
+      return { status: 403, detail: 'You can only pay for your own booking' };
+    }
+    return null;
+  }
+
+  // Unknown flows are rejected by the AMOUNTS lookup before this is reached; refuse by default
+  // rather than silently allowing any future flow added without an ownership rule.
+  return { status: 400, detail: 'Invalid payment flow' };
+}
+
+/**
  * Marks an order paid and runs its side effects at most once.
  *
  * With webhooks enabled, a successful payment is reported twice by design: once by the browser
@@ -109,6 +145,10 @@ async function settlePaymentOnce(payment: PaymentRow, gatewayPaymentId: string) 
  * /payments/order:
  *   post:
  *     summary: Create a payment order (mock or real Razorpay depending on MOCK_PAYMENTS)
+ *     description: >
+ *       The reference_id must name something the caller owns — their own provider for
+ *       provider_registration, or their own booking for booking_commission. The amount is set
+ *       server-side from the flow and is never taken from the client.
  *     tags: [Payments]
  *     security: [{ bearerAuth: [] }]
  *     requestBody:
@@ -138,6 +178,16 @@ async function settlePaymentOnce(payment: PaymentRow, gatewayPaymentId: string) 
  *         content:
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
+ *       403:
+ *         description: reference_id belongs to another user
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ *       404:
+ *         description: reference_id does not exist
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
  *       502:
  *         description: Razorpay order creation failed
  *         content:
@@ -154,6 +204,15 @@ router.post('/order', authenticateToken, async (req: Request, res: Response) => 
   const amount = AMOUNTS[flow];
   if (!amount) {
     return res.status(400).json({ detail: 'Invalid payment flow' });
+  }
+
+  // Bind the reference to the caller at the point it enters the system. §1.5 stopped an order
+  // being *redeemed* against someone else's reference, but without this an attacker could simply
+  // create the order that way — paying ₹1 to confirm a stranger's booking, or ₹99 to activate a
+  // provider that isn't theirs. The order is the record of record, so it has to be right here.
+  const ownershipError = await assertOwnsReference(flow, reference_id, req.user.id);
+  if (ownershipError) {
+    return res.status(ownershipError.status).json({ detail: ownershipError.detail });
   }
 
   if (MOCK_PAYMENTS) {
