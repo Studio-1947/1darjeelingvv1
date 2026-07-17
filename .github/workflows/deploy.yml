@@ -74,6 +74,27 @@ jobs:
     needs: test # a red suite must stop the release
     runs-on: ubuntu-latest
     steps:
+      # An unset GitHub secret silently becomes an empty string, so a missing VPS_USER reaches
+      # sshd as a blank username and surfaces as "ssh: handshake failed ... [none publickey]" —
+      # which reads like a broken deploy key and sends you digging through the VPS's auth log.
+      # Name the actual problem here instead. Values are never printed, only whether they're set.
+      - name: Check required secrets are set
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+        run: |
+          missing=""
+          if [ -z "$VPS_HOST" ]; then missing="$missing VPS_HOST"; fi
+          if [ -z "$VPS_USER" ]; then missing="$missing VPS_USER"; fi
+          if [ -z "$VPS_SSH_KEY" ]; then missing="$missing VPS_SSH_KEY"; fi
+          if [ -n "$missing" ]; then
+            echo "::error::Missing repository secret(s):$missing — add them under Settings > Secrets and variables > Actions. VPS_USER should be the SSH login (e.g. 'deploy')."
+            exit 1
+          fi
+          echo "All required secrets are present."
+          echo "VPS_USER is set (${#VPS_USER} chars); VPS_SSH_KEY is set (${#VPS_SSH_KEY} chars)."
+
       - name: SSH into VPS and redeploy
         uses: appleboy/ssh-action@v1.2.0
         with:

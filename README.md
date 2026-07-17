@@ -289,10 +289,19 @@ The app itself deploys as three containers: `postgres`, `backend` (Express API),
 **Generating the deploy key** (run once, on the VPS, as the `deploy` user):
 
 ```sh
-ssh-keygen -t ed25519 -C "github-actions-deploy" -f ~/.ssh/gh_actions_deploy -N ""
-cat ~/.ssh/gh_actions_deploy.pub >> ~/.ssh/authorized_keys
-cat ~/.ssh/gh_actions_deploy       # copy this whole output...
+ssh-keygen -t ed25519 -C "gh-actions-1darjeeling" -f ~/.ssh/gh_actions_1darjeeling -N ""
+cat ~/.ssh/gh_actions_1darjeeling.pub >> ~/.ssh/authorized_keys
+cat ~/.ssh/gh_actions_1darjeeling  # copy this whole output...
+rm ~/.ssh/gh_actions_1darjeeling   # ...then delete it; GitHub is now the only copy
 ```
+
+**Use a key dedicated to this repo, and name it after the repo** — both matter on a VPS hosting several projects:
+
+- Every key in `deploy`'s `authorized_keys` logs in as `deploy`, so they all have identical power over the whole box. A per-repo key doesn't isolate anything; what it gives you is **revocation** (drop one line to cut off one project, instead of rotating every project at once) and **attribution** (`auth.log` records the fingerprint, so you can see which project connected).
+- GitHub Actions secrets can be read by anyone able to modify a workflow in that repo. Share one key across repos and write access to the least-careful repo becomes access to _all_ of them.
+- The `-C` comment is the only thing distinguishing entries in `authorized_keys`. Naming every project's key `github-actions-deploy` produces a list you can't safely revoke from, because you can't tell what each line is for. Name it after the repo and the file documents itself.
+
+Check what's currently trusted with `ssh-keygen -lf ~/.ssh/authorized_keys`; anything you can't account for should be removed.
 
 Paste that private key output as the `VPS_SSH_KEY` GitHub secret (the full `-----BEGIN OPENSSH PRIVATE KEY-----` block, unmodified). This is a _separate_ keypair from whatever SSH key the VPS already uses to `git clone`/`git pull` from GitHub — that one lets the VPS talk to GitHub; this new one lets GitHub Actions talk to the VPS, the opposite direction. Never reuse the VPS's own GitHub-facing key for this.
 
