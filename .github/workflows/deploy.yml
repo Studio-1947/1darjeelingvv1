@@ -42,7 +42,22 @@ jobs:
         working-directory: backend
         run: npm ci
 
-      - name: Create test database and sync schema
+      # A schema.ts edit without a matching `npm run db:generate` would deploy a server expecting
+      # columns the migrations never create. The test DB is built by migrate too, so most such
+      # drift already fails the suite — this catches the rest (e.g. a column no test touches yet)
+      # and says plainly what to do about it.
+      - name: Verify migrations are up to date with schema.ts
+        working-directory: backend
+        run: |
+          npx drizzle-kit generate
+          if [ -n "$(git status --porcelain drizzle)" ]; then
+            echo "::error::schema.ts has changes with no committed migration. Run 'npm run db:generate' and commit the generated SQL."
+            git status --porcelain drizzle
+            exit 1
+          fi
+          echo "migrations are in sync with schema.ts"
+
+      - name: Create test database and apply migrations
         working-directory: backend
         run: npm run test:setup
 

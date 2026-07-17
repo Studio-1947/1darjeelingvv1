@@ -6,7 +6,13 @@
  * to be created by hand and nothing said so, which meant `npm test` failed on a fresh clone and
  * could not run in CI at all.
  *
- * Safe to re-run: creating an existing database is a no-op, and drizzle-kit push is idempotent.
+ * Uses `drizzle-kit migrate` — the exact command production runs (backend/Dockerfile) — rather
+ * than `push`. That difference matters: push builds the schema straight from schema.ts, so a
+ * developer who edits schema.ts and forgets `npm run db:generate` would still get a green suite
+ * while production came up missing the column. Migrating here means the tests run against
+ * precisely what the migrations produce, and a forgotten migration fails locally and in CI.
+ *
+ * Safe to re-run: creating an existing database is a no-op, and migrate skips applied migrations.
  *
  *   npm run test:setup
  */
@@ -42,8 +48,8 @@ async function main() {
     await client.end();
   }
 
-  console.log('[test-db] syncing schema via drizzle-kit push...');
-  execFileSync('npx', ['drizzle-kit', 'push', '--force'], {
+  console.log('[test-db] applying migrations (same path as production)...');
+  execFileSync('npx', ['drizzle-kit', 'migrate'], {
     cwd: path.join(__dirname, '..'),
     env: { ...process.env, DATABASE_URL: TEST_URL },
     stdio: 'inherit',

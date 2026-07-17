@@ -128,11 +128,13 @@ The migration is what runs in production (`backend/Dockerfile`'s `CMD` runs `dri
 
 ```sh
 cd backend
-npm run test:setup   # creates the one_darjeeling_test database + syncs schema (idempotent, needs Postgres up)
+npm run test:setup   # creates one_darjeeling_test + applies migrations (idempotent, needs Postgres up)
 npm test             # vitest
 ```
 
-Tests run against `one_darjeeling_test`, a **separate database** from your dev one, because the suite truncates every table between tests. `test:setup` only needs re-running when the schema changes. CI runs exactly these two commands (`.github/workflows/deploy.yml`), and a red suite blocks the deploy.
+Tests run against `one_darjeeling_test`, a **separate database** from your dev one, because the suite truncates every table between tests. Re-run `test:setup` after adding a migration.
+
+`test:setup` applies **migrations**, deliberately — not `db:push`. Building the test schema straight from `schema.ts` would mean a forgotten `db:generate` still produced a green suite while production came up missing the column. Tests therefore run against exactly what production runs. CI additionally fails if `schema.ts` has changes with no committed migration, and a red suite blocks the deploy (`.github/workflows/deploy.yml`).
 
 ## API documentation
 

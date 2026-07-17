@@ -162,6 +162,12 @@ The limiter previously early-returned on `APP_ENV === 'test'`, so it had **zero 
 
 **Fixed:** generated `drizzle/0000_hard_caretaker.sql` and switched the `CMD` to `drizzle-kit migrate`, which applies versioned SQL tracked in a `__drizzle_migrations` ledger (each migration runs once; re-deploys are no-ops). Confirmed safe to adopt because production has not been deployed yet (no data to baseline around). Validated by migrating a scratch database from empty and diffing `information_schema.columns` against the push-built schema: **62 columns, identical**, and a second `migrate` run is a clean no-op. README documents the generate→review→commit flow and warns off `push`.
 
+**Follow-up found while revalidating (same day) — the first version of this fix had a hole.** `scripts/setup-test-db.ts` built the test schema with `drizzle-kit push`, i.e. straight from `schema.ts`, while production ran `migrate`. So a developer who edited `schema.ts` and forgot `npm run db:generate` would get a **green suite and a broken production deploy** — the CI gate added in §5.C could not have caught it. Demonstrated by adding a column to `schema.ts` without generating: `push` silently created it in the test database.
+
+Closed two ways: `test:setup` now runs `migrate` (tests execute exactly the path production does — re-running the same demonstration, the test database correctly *lacks* the un-migrated column), and CI runs `drizzle-kit generate` and fails if it produces anything, which catches drift even for a column no test touches yet. Both verified: in-sync → `No schema changes, nothing to migrate` and a clean tree; drifted → new migration file appears and the check fails.
+
+This is the §1.3/§1.5 lesson again, one level up: the *fix* was verified, but the *test infrastructure around the fix* was still using the old, more permissive path.
+
 ### 5.C ✅ FIXED — the deploy workflow ran no tests
 Push to `main` went straight to `git reset --hard` + rebuild, so §3.3's suite never guarded a release.
 
