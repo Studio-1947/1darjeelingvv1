@@ -11,6 +11,7 @@ Full-stack tourism + local marketplace for Darjeeling. Tourists discover spots, 
 | `frontend-admin/` | Internal admin dashboard                                                        | React 19, Vite, TypeScript, Tailwind                             |
 | `memory/`         | Product requirements doc (`PRD.md`)                                             | —                                                                |
 | `.agents/`        | AI coding-agent kit (skills/rules for assistants) — not part of the running app | —                                                                |
+| `deploy/`         | Production deploy assets + **`VPS-RUNBOOK.md`** (operating the shared VPS)      | Nginx, Docker                                                    |
 
 The API is Postgres-backed via Drizzle ORM. See **`memory/PRD.md`** for the full product overview (personas, user journeys, feature inventory, business model, data model) and **`INVESTIGATION.md`** for the repo audit (security findings, doc drift, dependency issues) — both were rewritten 2026-07-16 to match the current codebase.
 
@@ -246,6 +247,10 @@ The signature covers the **raw bytes**, so the body must be sent verbatim — th
 - [ ] Settlement account added (Dashboard → Settings → Settlements), or money sits in the Razorpay balance.
 
 ## Production deployment
+
+> Day-to-day operations — inventorying what's running on the shared VPS, diagnosing a crash-looping
+> backend, SSH/deploy failures, and what's unsafe to run on a box with other people's projects on
+> it — live in **`deploy/VPS-RUNBOOK.md`**. This section covers first-time setup only.
 
 This VPS already runs a **system-level Nginx + Certbot** in front of several other apps (each its own `sites-available` file, each with its own DuckDNS domain and Let's Encrypt cert via `certbot --nginx`). This app follows the exact same convention rather than introducing its own — it does **not** run its own Nginx/Certbot on ports 80/443.
 
