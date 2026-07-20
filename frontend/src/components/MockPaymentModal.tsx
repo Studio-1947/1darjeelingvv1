@@ -32,9 +32,9 @@ export default function MockPaymentModal({ open, onClose, amount, title = 'Compl
   return (
     <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4"
       role="dialog" aria-modal="true" data-testid="mock-payment-modal">
-      <div className="bg-white w-full sm:max-w-md sm:rounded-3xl rounded-t-3xl overflow-hidden animate-fade-up">
+      <div className="bg-white w-full sm:max-w-md sm:rounded-3xl rounded-t-3xl overflow-hidden animate-fade-up max-h-[90svh] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 md:p-5 border-b border-[var(--line)]">
+        <div className="flex items-center justify-between p-4 md:p-5 border-b border-[var(--line)] flex-shrink-0">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-pine to-pine-dark text-white grid place-items-center font-display font-extrabold">১</div>
             <div>
@@ -48,7 +48,7 @@ export default function MockPaymentModal({ open, onClose, amount, title = 'Compl
         </div>
 
         {/* Body */}
-        <div className="p-5 md:p-6">
+        <div className="p-5 md:p-6 overflow-y-auto">
           <div className="text-xs uppercase tracking-widest text-ink-soft font-bold">{title}</div>
           <div className="mt-1 flex items-baseline gap-1">
             <IndianRupee size={22} className="text-ink" />
@@ -66,7 +66,7 @@ export default function MockPaymentModal({ open, onClose, amount, title = 'Compl
                 { k: 'netbank', label: 'Net Banking' },
               ].map(({ k, label }) => (
                 <button key={k} onClick={() => setMethod(k)} data-testid={`mock-method-${k}`}
-                  className={`py-2.5 rounded-xl border font-bold text-xs ${method === k ? 'border-pine bg-pine/10 text-pine' : 'border-[var(--line)] text-ink-soft'}`}>
+                  className={`py-2.5 px-1 min-w-0 rounded-xl border font-bold text-xs leading-tight ${method === k ? 'border-pine bg-pine/10 text-pine' : 'border-[var(--line)] text-ink-soft'}`}>
                   {label}
                 </button>
               ))}

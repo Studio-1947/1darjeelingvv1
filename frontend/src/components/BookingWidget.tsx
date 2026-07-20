@@ -80,12 +80,12 @@ export default function BookingWidget() {
             key={key}
             data-testid={`booking-widget-tab-${key}`}
             onClick={() => setTab(key)}
-            className={`py-3 md:py-4 flex items-center justify-center gap-1.5 md:gap-2 text-xs md:text-sm font-bold transition-colors
+            className={`py-3 md:py-4 px-1 min-w-0 flex items-center justify-center gap-1.5 md:gap-2 text-xs md:text-sm font-bold transition-colors
               ${index === 0 ? 'rounded-tl-3xl' : ''}
               ${index === 2 ? 'rounded-tr-3xl' : ''}
               ${tab === key ? 'text-flag border-b-2 border-flag -mb-px' : 'text-ink-soft hover:text-ink'}`}
           >
-            <Icon size={16} /> {label}
+            <Icon size={16} className="flex-shrink-0" /> <span className="truncate">{label}</span>
           </button>
         ))}
       </div>

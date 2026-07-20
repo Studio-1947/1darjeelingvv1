@@ -47,7 +47,7 @@ export default function Header() {
         </Link>
 
         {/* Center search */}
-        <form onSubmit={submitSearch} className="flex-1 max-w-md flex items-center gap-2 bg-mist rounded-full px-4 py-2">
+        <form onSubmit={submitSearch} className="flex-1 min-w-0 max-w-md flex items-center gap-2 bg-mist rounded-full px-3 md:px-4 py-2">
           <Search size={16} className="text-ink-soft flex-shrink-0" />
           <input
             value={q}
@@ -59,7 +59,7 @@ export default function Header() {
         </form>
 
         {/* Right cluster: minimal */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-shrink-0">
           <LanguageSwitcher />
           {user ? (
             <div className="relative" ref={dropdownRef}>

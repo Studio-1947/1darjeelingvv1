@@ -26,10 +26,13 @@ export default function LanguageSwitcher() {
       <button
         data-testid="language-switcher"
         onClick={() => setOpen(!open)}
-        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full border border-[var(--line)] text-sm font-semibold text-ink btn-hover"
+        className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-full border border-[var(--line)] text-sm font-semibold text-ink btn-hover"
+        aria-label={current.label}
       >
-        {current.label}
-        <ChevronDown size={14} />
+        {/* Narrow screens show the code so the header search keeps its width. */}
+        <span className="sm:hidden uppercase">{current.code}</span>
+        <span className="hidden sm:inline">{current.label}</span>
+        <ChevronDown size={14} className="flex-shrink-0" />
       </button>
       {open && (
         <div className="absolute right-0 mt-2 w-40 bg-white rounded-2xl border border-[var(--line)] shadow-lg overflow-hidden z-50">

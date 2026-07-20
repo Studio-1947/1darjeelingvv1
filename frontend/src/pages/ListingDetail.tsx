@@ -230,7 +230,7 @@ export default function ListingDetail() {
         {/* Left-aligned hero content */}
         <div ref={heroContentRef} style={{ opacity: 0 }} className="absolute inset-0 flex flex-col items-start justify-center text-left px-4 md:px-8 lg:px-16">
           <span className="chip bg-white/90 capitalize">{t(`categories.${item.type}`)}</span>
-          <h1 className="mt-5 font-display font-extrabold text-5xl sm:text-6xl md:text-8xl text-white leading-[0.95] max-w-4xl"
+          <h1 className="mt-5 font-display font-extrabold text-4xl sm:text-5xl md:text-7xl lg:text-8xl text-white leading-[1.05] sm:leading-[0.95] max-w-4xl break-words"
             data-testid="listing-title">{item.title}</h1>
           <div className="mt-5 flex flex-wrap justify-start items-center gap-x-6 gap-y-2 text-white/90 text-base md:text-lg font-semibold">
             <span className="flex items-center gap-1.5"><MapPin size={18} /> {item.location}</span>
@@ -430,7 +430,7 @@ export default function ListingDetail() {
       )}
 
       {/* Sticky bottom bar (mobile) */}
-      <div className="lg:hidden fixed bottom-16 inset-x-0 z-30 px-4 pb-3">
+      <div className="lg:hidden fixed bottom-[var(--bottom-nav-h)] inset-x-0 z-30 px-4 pb-3">
         <div className="mx-auto max-w-md bg-white rounded-2xl border border-[var(--line)] shadow-[0_-8px_24px_-8px_rgba(20,32,26,0.18)] p-2.5 flex items-center gap-2">
           {item.price > 0 && (
             <div className="pl-2">
