@@ -325,6 +325,13 @@ export function contentFor(item: any): Required<Pick<ListingContent, 'about'>> &
     (item?.extras?.routes as string[] | undefined)?.length
       ? (item.extras.routes as string[])
       : c.routes;
+  // Coordinates the provider pinned on the map win over the static editorial
+  // entry, mirroring `routes` above. The listings API returns these as
+  // top-level latitude/longitude; both must be present to be usable.
+  const pinned: [number, number] | undefined =
+    typeof item?.latitude === 'number' && typeof item?.longitude === 'number'
+      ? [item.latitude, item.longitude]
+      : undefined;
   return {
     about: c.about || item?.description || '',
     gallery: c.gallery,
