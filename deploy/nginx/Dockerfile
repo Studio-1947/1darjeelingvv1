@@ -7,6 +7,9 @@ WORKDIR /app
 COPY frontend/package.json frontend/yarn.lock ./
 RUN corepack enable && corepack prepare yarn@1.22.22 --activate && yarn install --frozen-lockfile
 COPY frontend/ .
+# REACT_APP_BACKEND_URL is deliberately NOT set: the app falls back to a
+# same-origin '/api' base, which app.conf proxies to the backend. Setting it to
+# an absolute URL here would hard-code the public hostname into the bundle.
 RUN yarn build
 
 FROM node:20-slim AS admin-build
