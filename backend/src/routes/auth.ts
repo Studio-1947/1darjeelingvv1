@@ -61,13 +61,6 @@ router.post('/otp/send', rateLimiter(5, 60 * 1000, 'otp_send'), async (req: Requ
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
   const now = new Date().toISOString();
 
-  await db.insert(schema.otps)
-    .values({ phone, otp, channel, createdAt: now })
-    .onConflictDoUpdate({
-      target: schema.otps.phone,
-      set: { otp, channel, createdAt: now }
-    });
-
   // Check if the user already exists
   const [user] = await db.select().from(schema.users).where(eq(schema.users.phone, phone)).limit(1);
   const exists = !!user;
@@ -75,6 +68,12 @@ router.post('/otp/send', rateLimiter(5, 60 * 1000, 'otp_send'), async (req: Requ
   // Only a resolved send permits reporting `sent: true`. The previous version returned success
   // unconditionally, so in production every caller was told a code had been sent when nothing
   // had been dispatched at all.
+  //
+  // Delivery is attempted before the OTP is stored, not after. The upsert below replaces any
+  // still-valid code the user was previously issued for this phone; if delivery then failed,
+  // that replacement would never reach the user while the code it destroyed still would have
+  // worked. Storing only on a confirmed send means a failed resend leaves an existing, working
+  // code intact instead of leaving the user with nothing.
   try {
     await sendOtp({ phone, otp, channel });
   } catch (err) {
@@ -82,6 +81,13 @@ router.post('/otp/send', rateLimiter(5, 60 * 1000, 'otp_send'), async (req: Requ
     log.error(`[otp] delivery failed for ****${phone.slice(-4)}: ${(err as Error).message}`);
     return res.status(502).json({ detail: 'Could not send OTP, please try again' });
   }
+
+  await db.insert(schema.otps)
+    .values({ phone, otp, channel, createdAt: now })
+    .onConflictDoUpdate({
+      target: schema.otps.phone,
+      set: { otp, channel, createdAt: now }
+    });
 
   if (MOCK_OTP) {
     return res.json({

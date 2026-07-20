@@ -45,6 +45,7 @@ describe('POST /auth/otp/send delivery', () => {
 
     const res = await request(app).post('/api/auth/otp/send').send({ phone: nextPhone() });
 
+    expect(res.status).toBe(502);
     expect(JSON.stringify(res.body)).not.toContain('secret-abc');
     expect(JSON.stringify(res.body)).not.toContain('authkey');
   });
@@ -52,5 +53,25 @@ describe('POST /auth/otp/send delivery', () => {
   it('still requires a phone number', async () => {
     const res = await request(app).post('/api/auth/otp/send').send({});
     expect(res.status).toBe(400);
+  });
+
+  it('keeps a previously issued OTP valid after a resend delivery failure', async () => {
+    const phone = nextPhone();
+
+    const firstSend = await request(app).post('/api/auth/otp/send').send({ phone });
+    expect(firstSend.status).toBe(200);
+    const originalOtp = firstSend.body.mock_otp as string;
+
+    setProviderForTests(failingProvider('provider exploded'));
+
+    const resend = await request(app).post('/api/auth/otp/send').send({ phone });
+    expect(resend.status).toBe(502);
+
+    const verify = await request(app)
+      .post('/api/auth/otp/verify')
+      .send({ phone, otp: originalOtp, name: 'Resend Test User' });
+
+    expect(verify.status).toBe(200);
+    expect(verify.body.token).toBeTruthy();
   });
 });
