@@ -1,10 +1,7 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
-import api, { createPaymentOrder, completeMockPayment, payWithRazorpay } from '@/lib/api';
-import { useAuth } from '@/context/AuthContext';
+import React from 'react';
 import MockPaymentModal from '@/components/MockPaymentModal';
 import BookingConfirmation from '@/components/BookingConfirmation';
+import LocationPicker from '@/components/LocationPicker';
 
 const TYPES = ['homestay', 'driver', 'shop', 'cafe'];
 
@@ -16,6 +13,9 @@ export default function ProviderOnboard() {
     business_name: '', business_type: 'homestay', description: '',
     location: '', contact_phone: '', price_from: '', image_url: '',
   });
+  // Set once the owner interacts with the map; informal addresses often don't
+  // geocode, so the pinned coordinates are the authoritative location.
+  const [coords, setCoords] = useState<{ lat: number, lng: number } | null>(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
   const [payModal, setPayModal] = useState(null);
@@ -39,6 +39,8 @@ export default function ProviderOnboard() {
         description: form.description,
         location: form.location,
         contact_phone: form.contact_phone,
+        latitude: coords?.lat ?? null,
+        longitude: coords?.lng ?? null,
         price_from: Number(form.price_from) || 0,
         images: form.image_url ? [form.image_url] : [],
       });
@@ -68,17 +70,12 @@ export default function ProviderOnboard() {
     } finally { setBusy(false); }
   };
 
-  const finishMockPayment = async () => {
-    if (!payModal) return;
-    const res = await completeMockPayment({
-      order_id: payModal.order.id,
-      flow: 'provider_registration',
-      reference_id: payModal.providerId,
-    });
-    setPayModal(null);
-    await refresh();
-    setConfirm({ open: true, data: res.record });
-  };
+  const stepScreen =
+    o.step === 1 ? <BasicInfoStep o={o} />
+    : o.form.business_type === 'driver' ? <DriverForm o={o} />
+    : o.form.business_type === 'homestay' ? <HomestayForm o={o} />
+    : (o.form.business_type === 'cafe' || o.form.business_type === 'shop') ? <CafeShopForm o={o} />
+    : null;
 
   return (
     <div className="mx-auto max-w-3xl px-4 md:px-8 py-8 md:py-10">
@@ -120,6 +117,13 @@ export default function ProviderOnboard() {
               data-testid="provider-contact" className="mt-1 w-full px-3 py-2.5 rounded-xl border border-[var(--line)] bg-white outline-none" />
           </label>
         </div>
+        <div className="block">
+          <span className="text-xs font-semibold text-ink-soft">{t('provider.pin_location')}</span>
+          <LocationPicker
+            className="mt-1"
+            onLocationSelect={(lat, lng) => setCoords({ lat, lng })}
+          />
+        </div>
         <div className="grid md:grid-cols-2 gap-4">
           <label className="block">
             <span className="text-xs font-semibold text-ink-soft">{t('provider.price_from')}</span>
@@ -141,22 +145,21 @@ export default function ProviderOnboard() {
       </form>
 
       <MockPaymentModal
-        open={!!payModal}
-        onClose={() => setPayModal(null)}
-        amount={payModal?.amount || 0}
+        open={!!o.payModal}
+        onClose={() => o.setPayModal(null)}
+        amount={o.payModal?.amount || 0}
         title="Provider registration"
-        description={payModal?.description || ''}
-        onPay={finishMockPayment}
-        prefill={{ upi: `${(form.business_name || 'business').toLowerCase().replace(/\s+/g, '')}@ybl` }}
+        description={o.payModal?.description || ''}
+        onPay={o.finishMockPayment}
+        prefill={{ upi: `${(o.form.business_name || 'business').toLowerCase().replace(/\s+/g, '')}@ybl` }}
       />
-
       <BookingConfirmation
-        open={!!confirm?.open}
-        onClose={() => { setConfirm(null); nav('/provider/dashboard'); }}
+        open={!!o.confirm?.open}
+        onClose={() => { o.setConfirm(null); o.nav('/provider/dashboard'); }}
         mode="provider"
-        data={confirm?.data}
-        onView={() => { setConfirm(null); nav('/provider/dashboard'); }}
+        data={o.confirm?.data}
+        onView={() => { o.setConfirm(null); o.nav('/provider/dashboard'); }}
       />
-    </div>
+    </>
   );
 }

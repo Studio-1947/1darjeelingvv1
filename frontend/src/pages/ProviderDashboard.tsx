@@ -3,34 +3,13 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
-import { CheckCircle2, Clock, Wallet, CalendarCheck, Users, LayoutList, Phone, MessageCircle, ArrowRight, ExternalLink, Plus, Pencil, Trash2 } from 'lucide-react';
+import { CheckCircle2, Clock, Wallet, CalendarCheck, Users, LayoutList, Phone, MessageCircle, ArrowRight, ExternalLink, X, Upload, Plus, Trash2, Edit, Pencil } from 'lucide-react';
 import ListingFormModal from '@/components/ListingFormModal';
+import { StatCard } from '@/components/provider/dashboard/widgets';
+import BookingCard from '@/components/provider/dashboard/BookingCard';
+import EditListingModal from '@/components/provider/dashboard/EditListingModal';
 
-function StatCard({ label, value, sub, icon: Icon, tone = 'pine' }: { label: string; value: any; sub?: string; icon: any; tone?: string }) {
-  const tones = {
-    pine: 'from-pine to-pine-dark',
-    flag: 'from-flag to-[#8a1e1e]',
-    gold: 'from-gold to-[#c69108]',
-    ink: 'from-ink to-[#374a41]',
-  };
-  return (
-    <div className={`rounded-2xl p-4 md:p-5 text-white bg-gradient-to-br ${tones[tone]}`}>
-      <div className="flex items-center gap-2 opacity-90"><Icon size={16} /> <span className="text-[11px] uppercase tracking-widest font-bold">{label}</span></div>
-      <div className="mt-1 font-display font-extrabold text-2xl md:text-3xl leading-none">{value}</div>
-      {sub && <div className="mt-1 text-xs text-white/85">{sub}</div>}
-    </div>
-  );
-}
-
-function StatusPill({ status }) {
-  const map = {
-    confirmed: 'bg-pine/10 text-pine',
-    pending_payment: 'bg-gold/20 text-[#8a6b04]',
-    cancelled: 'bg-flag/10 text-flag',
-  };
-  return <span className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${map[status] || 'bg-mist text-ink-soft'}`}>{status?.replace('_', ' ')}</span>;
-}
-
+/** Provider home: booking stats, the bookings list, and business profile. */
 export default function ProviderDashboard() {
   const { t } = useTranslation();
   const { user, loading: authLoading } = useAuth();
@@ -40,6 +19,7 @@ export default function ProviderDashboard() {
   const [bookings, setBookings] = useState([]);
   const [listings, setListings] = useState([]);
   const [tab, setTab] = useState('bookings');
+  const [selectedListing, setSelectedListing] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [listingModal, setListingModal] = useState<{ open: boolean; editing: any | null }>({ open: false, editing: null });
 
@@ -54,15 +34,32 @@ export default function ProviderDashboard() {
     setListings(b.data.listings || []);
   }, []);
 
+  const loadDashboard = React.useCallback(async () => {
+    try {
+      const [p, b] = await Promise.all([
+        api.get('/providers/me'),
+        api.get('/bookings/provider'),
+      ]);
+      setProvider(p.data.provider);
+      setStats(b.data.stats || {});
+      setBookings(b.data.items || []);
+      setListings(b.data.listings || []);
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
+
   useEffect(() => {
     if (authLoading) return;
     if (!user) { nav('/login'); return; }
     (async () => {
       try {
-        await loadData();
-      } finally { setLoading(false); }
+        await loadDashboard();
+      } finally {
+        setLoading(false);
+      }
     })();
-  }, [user, authLoading, nav, loadData]);
+  }, [user, authLoading, nav, loadDashboard]);
 
   const handleSaveListing = async (values: any) => {
     if (listingModal.editing) {
@@ -70,13 +67,13 @@ export default function ProviderDashboard() {
     } else {
       await api.post('/listings', values);
     }
-    await loadData();
+    await loadDashboard();
   };
 
   const handleDeleteListing = async (listingId: string) => {
     if (!window.confirm('Delete this listing? This cannot be undone.')) return;
     await api.delete(`/listings/${listingId}`);
-    await loadData();
+    await loadDashboard();
   };
 
   if (authLoading || loading) return <div className="p-10 text-center text-ink-soft">{t('common.loading')}</div>;
@@ -127,14 +124,31 @@ export default function ProviderDashboard() {
         <StatCard label="Total bookings" value={stats.total} icon={LayoutList} tone="pine" />
         <StatCard label="Confirmed" value={stats.confirmed} sub={`${stats.pending} pending`} icon={CalendarCheck} tone="flag" />
         <StatCard label="Revenue" value={`₹${stats.revenue.toLocaleString('en-IN')}`} sub="from confirmed bookings" icon={Wallet} tone="gold" />
-        <StatCard label="Listings live" value={listings.length} icon={Users} tone="ink" />
+        {listings.length > 0 ? (
+          <button
+            onClick={() => setSelectedListing(listings[0])}
+            className="text-left w-full rounded-2xl p-4 md:p-5 text-white bg-gradient-to-br from-ink to-[#374a41] hover:shadow-lg transition-all duration-200 flex flex-col justify-between"
+            data-testid="edit-listing-stat-card"
+          >
+            <div className="flex items-center gap-2 opacity-90">
+              <Edit size={16} />
+              <span className="text-[11px] uppercase tracking-widest font-bold">Edit your listing</span>
+            </div>
+            <div className="mt-3 font-display font-extrabold text-lg md:text-xl leading-tight flex items-center justify-between w-full">
+              <span>Configure Stay</span>
+              <ArrowRight size={18} className="opacity-90" />
+            </div>
+          </button>
+        ) : (
+          <StatCard label="Listings live" value={0} icon={Users} tone="ink" />
+        )}
       </div>
 
       {/* Tabs */}
       <div className="mt-8 flex items-center gap-2 border-b border-[var(--line)]">
         {[
           { k: 'bookings', label: 'Bookings' },
-          { k: 'listings', label: 'My listings' },
+          { k: 'listings', label: 'Listings' },
           { k: 'profile', label: 'Business profile' },
         ].map(({ k, label }) => (
           <button key={k} onClick={() => setTab(k)} data-testid={`tab-${k}`}
@@ -153,39 +167,7 @@ export default function ProviderDashboard() {
             </div>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {bookings.map((b) => (
-                <article key={b.id} data-testid={`booking-${b.id}`}
-                  className="bg-white rounded-2xl border border-[var(--line)] p-4 md:p-5 flex gap-4">
-                  <div className="w-16 h-16 md:w-20 md:h-20 rounded-xl overflow-hidden bg-mist flex-shrink-0">
-                    {b.listing?.image && <img src={b.listing.image} alt="" className="w-full h-full object-cover" />}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <div className="font-display font-bold text-ink text-base leading-tight line-clamp-1">{b.listing?.title || b.listing_title}</div>
-                        <div className="text-xs text-ink-soft mt-0.5">{b.customer?.name || 'Tourist'} · {b.customer?.phone}</div>
-                      </div>
-                      <StatusPill status={b.status} />
-                    </div>
-                    <div className="mt-2 text-xs text-ink-soft space-y-0.5">
-                      {b.check_in && <div>Check-in: <b className="text-ink">{b.check_in}</b>{b.check_out && <> → <b className="text-ink">{b.check_out}</b></>}</div>}
-                      <div>Guests: <b className="text-ink">{b.guests}</b> · Placed: {new Date(b.created_at).toLocaleDateString()}</div>
-                      {b.notes && <div className="italic">“{b.notes}”</div>}
-                    </div>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <a href={`tel:${b.customer?.phone || ''}`} data-testid={`booking-call-${b.id}`}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-pine text-white font-bold text-xs btn-hover">
-                        <Phone size={12} /> Call
-                      </a>
-                      <a href={`https://wa.me/${(b.customer?.phone || '').replace(/\D/g, '')}?text=${encodeURIComponent(`Hi ${b.customer?.name || ''}, this is regarding your booking for ${b.listing?.title || ''} on 1 Darjeeling.`)}`}
-                        target="_blank" rel="noreferrer" data-testid={`booking-wa-${b.id}`}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#25D366] text-white font-bold text-xs btn-hover">
-                        <MessageCircle size={12} /> WhatsApp
-                      </a>
-                    </div>
-                  </div>
-                </article>
-              ))}
+              {bookings.map((b) => <BookingCard key={b.id} b={b} />)}
             </div>
           )}
         </div>
@@ -221,7 +203,7 @@ export default function ProviderDashboard() {
                         className="inline-flex items-center gap-1.5 text-xs font-bold text-pine">
                         View <ExternalLink size={11} />
                       </Link>
-                      <button onClick={() => setListingModal({ open: true, editing: l })} data-testid={`edit-listing-${l.id}`}
+                      <button onClick={() => setSelectedListing(l)} data-testid={`edit-listing-${l.id}`}
                         className="inline-flex items-center gap-1.5 text-xs font-bold text-ink-soft hover:text-ink">
                         <Pencil size={11} /> Edit
                       </button>
@@ -259,6 +241,14 @@ export default function ProviderDashboard() {
         </div>
       )}
 
+      {selectedListing && (
+        <EditListingModal
+          listing={selectedListing}
+          onClose={() => setSelectedListing(null)}
+          onSave={loadDashboard}
+        />
+      )}
+
       <ListingFormModal
         open={listingModal.open}
         initial={listingModal.editing || undefined}
@@ -268,3 +258,4 @@ export default function ProviderDashboard() {
     </div>
   );
 }
+

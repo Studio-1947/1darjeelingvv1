@@ -1,4 +1,4 @@
-import { pgTable, text, integer, boolean, numeric, jsonb } from 'drizzle-orm/pg-core';
+import { pgTable, text, integer, boolean, numeric, jsonb, doublePrecision } from 'drizzle-orm/pg-core';
 
 export const users = pgTable('users', {
   id: text('id').primaryKey(),
@@ -18,6 +18,8 @@ export const otps = pgTable('otps', {
   otp: text('otp').notNull(),
   channel: text('channel').notNull(),
   createdAt: text('created_at').notNull(),
+  // Wrong guesses against the current code. Reset to 0 whenever a new code is issued.
+  attempts: integer('attempts').notNull().default(0),
 });
 
 export const providers = pgTable('providers', {
@@ -27,6 +29,8 @@ export const providers = pgTable('providers', {
   businessType: text('business_type').notNull(),
   description: text('description').notNull(),
   location: text('location').notNull(),
+  latitude: doublePrecision('latitude'),
+  longitude: doublePrecision('longitude'),
   contactPhone: text('contact_phone').notNull(),
   priceFrom: integer('price_from').default(0).notNull(),
   images: jsonb('images').$type<string[]>().default([]).notNull(),
@@ -42,6 +46,8 @@ export const listings = pgTable('listings', {
   type: text('type').notNull(),
   description: text('description').notNull(),
   location: text('location').notNull(),
+  latitude: doublePrecision('latitude'),
+  longitude: doublePrecision('longitude'),
   price: integer('price').default(0).notNull(),
   image: text('image').default('').notNull(),
   tags: jsonb('tags').$type<string[]>().default([]).notNull(),

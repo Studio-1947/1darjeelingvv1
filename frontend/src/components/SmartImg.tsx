@@ -13,6 +13,7 @@ export default function SmartImg({
       src={current}
       alt={alt}
       loading="lazy"
+      decoding="async"
       className={className}
       onError={() => { if (current !== fallback) setCurrent(fallback); }}
       {...rest}

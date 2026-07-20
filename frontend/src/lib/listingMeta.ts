@@ -122,6 +122,7 @@ export function hostFor(item: any) {
     phone: e.host_phone || e.contact_phone || '',
     bio: e.host_bio || 'This home is run by a Darjeeling family who live on site and look after guests themselves.',
     languages: e.languages || ['Nepali', 'Hindi', 'English'],
+    avatar: e.host_avatar || '',
   };
 }
 
