@@ -88,8 +88,11 @@ export default function Discover() {
           setFeed(ordered);
           return ordered.length;
         };
-        const n = await load();
-        if (n === 0) { await api.post('/dev/seed'); await load(); }
+        // An empty feed is not something a visitor can fix: seeding now lives
+        // behind POST /api/admin/seed (auth + admin) and is triggered from the
+        // admin panel. The old unauthenticated /dev/seed route was removed on
+        // purpose — backend/test/admin.test.ts asserts it stays a 404.
+        await load();
       } catch (e) {
         if (process.env.NODE_ENV !== 'production') console.error(e);
       }
