@@ -199,3 +199,53 @@ The backend raced Postgres on boot, and with (B) the auto-reconcile fired at a d
 
 ### 5.H ⏳ OPEN — `backend/package.json` pins `typescript: ^7.0.2`
 TypeScript 7 (the native port) is the production build compiler, arrived at via a drifted caret range rather than a deliberate choice. `tsc --noEmit` and `npm run build` are both clean on it today, so this is a decision to make rather than a bug: pin it intentionally, or move back to a 5.x line.
+
+---
+
+## 6. Third-wave findings — 2026-07-20
+
+### 6.A ⏳ OPEN — outbound messaging was never built; two sites stub it and report success
+
+Found while designing the OTP provider layer. The backend has two places that must send a
+message to a user, and **both are stubbed with a dev-only `log.info` that does nothing in
+production while reporting success to the caller.** No SMS, WhatsApp, or email provider
+exists anywhere in `backend/`.
+
+| Site | Dev behaviour | Production behaviour |
+| --- | --- | --- |
+| `src/routes/auth.ts:69` — OTP delivery | returns the code in the response body | nothing sent; still returns `{ sent: true }` |
+| `src/routes/payments.ts:63` — booking confirmation | logs `[MOCK NOTIFY]` | nothing sent; no error, no signal |
+
+**Why this is a launch blocker, not a rough edge:**
+
+- **OTP:** production login is impossible. A user requests a code, receives nothing, and
+  `/auth/otp/verify` requires an exact DB match — the `123456` universal code is gated on
+  `!IS_PROD`. This fails visibly and would be reported on day one.
+- **Booking confirmation:** worse, because it fails *invisibly*. A tourist pays, the
+  payment settles, the booking row is written, and both dashboards render correctly — but
+  neither the tourist nor the provider is ever told. Nothing in the system indicates a
+  failure. The discovery path is a guest arriving at a homestay that was never informed.
+
+Note the contrast with payments, which has the correct shape already: `MOCK_PAYMENTS=false`
+with incomplete Razorpay configuration **refuses to boot**. The messaging sites have no
+equivalent guard, which is how both reached production-ready state unnoticed.
+
+**Action:** the OTP half is designed in
+`docs/superpowers/specs/2026-07-20-otp-provider-layer-design.md` — a provider-agnostic
+messaging layer where real delivery is a config change, a half-configured provider fails at
+boot, and the route cannot report `sent: true` without provider confirmation. That design
+deliberately scopes the *notification* half out, because it needs product decisions first
+(who is notified, on which events, in which of the four supported locales) and blocking the
+login fix on those would be the wrong trade. **Booking notifications remain open and must
+be closed before real bookings are taken.**
+
+### 6.B ⏳ OPEN — OTPs never expire and have no per-code attempt cap
+
+`otps.created_at` is written but never read by `/auth/otp/verify`, so an issued code stays
+valid indefinitely until a newer one replaces it for that phone. There is also no per-code
+attempt counter — only the 10/min per-IP route limit, which permits roughly 50 guesses per
+window against a 6-digit code.
+
+Harmless while codes are mock-only. Real the moment codes travel over SMS and linger in
+inboxes. Both are addressed in the design doc above (5-minute TTL, 5-attempt cap, one
+`attempts` column on `otps`).
