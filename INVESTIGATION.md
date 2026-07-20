@@ -204,7 +204,7 @@ TypeScript 7 (the native port) is the production build compiler, arrived at via 
 
 ## 6. Third-wave findings — 2026-07-20
 
-### 6.A ⏳ OPEN — outbound messaging was never built; two sites stub it and report success
+### 6.A 🟡 PARTIALLY RESOLVED — outbound messaging was never built; two sites stub it and report success
 
 Found while designing the OTP provider layer. The backend has two places that must send a
 message to a user, and **both are stubbed with a dev-only `log.info` that does nothing in
@@ -239,7 +239,12 @@ deliberately scopes the *notification* half out, because it needs product decisi
 login fix on those would be the wrong trade. **Booking notifications remain open and must
 be closed before real bookings are taken.**
 
-### 6.B ⏳ OPEN — OTPs never expire and have no per-code attempt cap
+**Partially resolved 2026-07-20:** the OTP half is closed — `src/messaging/` provides a
+provider-agnostic delivery layer, `/auth/otp/send` returns 502 rather than a false
+`sent: true`, and a half-configured provider fails at boot. **The booking-confirmation half
+remains open** and must be closed before real bookings are taken.
+
+### 6.B ✅ FIXED — OTPs never expired and had no per-code attempt cap
 
 `otps.created_at` is written but never read by `/auth/otp/verify`, so an issued code stays
 valid indefinitely until a newer one replaces it for that phone. There is also no per-code
@@ -249,3 +254,8 @@ window against a 6-digit code.
 Harmless while codes are mock-only. Real the moment codes travel over SMS and linger in
 inboxes. Both are addressed in the design doc above (5-minute TTL, 5-attempt cap, one
 `attempts` column on `otps`).
+
+**Resolved 2026-07-20:** `/auth/otp/verify` now enforces a 5-minute TTL (`OTP_TTL_SECONDS`)
+and a 5-attempt cap (`OTP_MAX_ATTEMPTS`) backed by a new `otps.attempts` column, reset
+whenever a code is reissued. The universal mock code is evaluated before the stored-row
+checks so it still works with no row present.

@@ -246,6 +246,39 @@ The signature covers the **raw bytes**, so the body must be sent verbatim — th
 - [ ] One real low-value transaction end-to-end, then confirm in Dashboard → Webhooks that the delivery returned **200**.
 - [ ] Settlement account added (Dashboard → Settings → Settlements), or money sits in the Razorpay balance.
 
+## OTP delivery
+
+Login OTPs go out through a provider chosen by `MESSAGING_PROVIDER`. The default, `mock`,
+delivers nothing and returns the code in the `/auth/otp/send` response — this is what lets
+local development and the test suite run with no provider account.
+
+Going live is a config change, not a code change:
+
+    MESSAGING_PROVIDER=msg91
+    MSG91_AUTH_KEY=...
+    MSG91_TEMPLATE_ID=...
+
+The selected provider validates its own credentials at startup, so a half-configured
+provider stops the process rather than failing at a user's first login attempt. A mock
+provider under `APP_ENV=production` logs a loud error, because it means the `123456`
+universal code is live and anyone can log in as anyone.
+
+`/auth/otp/send` returns **502** if the provider rejects the request or cannot be reached —
+and because delivery is attempted before the new code is stored, a failed send leaves any
+previously issued code working rather than invalidating it. It reports `sent: true` only
+when the provider has confirmed handoff.
+
+### Adding another provider
+
+1. Create `backend/src/messaging/providers/<name>.ts` exporting a factory that returns a
+   `MessagingProvider` — `init()` validates its env vars, `sendOtp()` delivers or throws
+   `MessageDeliveryError`.
+2. Add one entry to `PROVIDER_FACTORIES` in `backend/src/messaging/registry.ts`.
+3. Set `MESSAGING_PROVIDER=<name>`.
+
+Nothing else in the codebase learns the provider's name. See `backend/src/messaging/providers/msg91.ts`
+for a worked example, including why a 2xx response is not by itself treated as delivery.
+
 ## Production deployment
 
 > Day-to-day operations — inventorying what's running on the shared VPS, diagnosing a crash-looping
@@ -314,4 +347,8 @@ Once the secrets are set, just `git push` to `main` and the workflow redeploys a
 
 ## Known issues / further reading
 
-This repo carries some rough edges from a rapid AI-assisted build. See **`INVESTIGATION.md`** for the full audit — what's been fixed (stale docs, a dependency conflict, an unauthenticated seeding endpoint, the authorization and payment-binding holes, and config that used to fail open) and the **"Still open"** table of what hasn't been, including inoperative production rate limiting and `drizzle-kit push --force` auto-migrating the production database on every deploy. Read that table before any public deployment.
+This repo carries some rough edges from a rapid AI-assisted build. See **`INVESTIGATION.md`**
+for the full audit — what's been fixed and the still-open table. The most important open item
+is **§6.A: booking confirmation notifications are not implemented**, so a paid, confirmed
+booking currently notifies neither the tourist nor the provider. Read that table before any
+public deployment.
