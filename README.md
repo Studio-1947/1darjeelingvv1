@@ -178,11 +178,11 @@ Razorpay Dashboard → **Account & Settings → API Keys → Generate Key**. You
 
 Dashboard → **Settings → Webhooks → Add New Webhook**:
 
-| Field         | Value                                                        |
-| ------------- | ------------------------------------------------------------ |
-| Webhook URL   | `https://onedarjeeling.duckdns.org/api/payments/webhook`     |
-| Secret        | Any long random string you generate — **you choose this**    |
-| Active Events | `payment.captured` and `order.paid`                          |
+| Field         | Value                                                     |
+| ------------- | --------------------------------------------------------- |
+| Webhook URL   | `https://onedarjeeling.duckdns.org/api/payments/webhook`  |
+| Secret        | Any long random string you generate — **you choose this** |
+| Active Events | `payment.captured` and `order.paid`                       |
 
 The **Secret is not your key secret** — it's a separate value you invent here and paste into `RAZORPAY_WEBHOOK_SECRET`. It's what proves an incoming webhook is really from Razorpay.
 
@@ -205,12 +205,12 @@ The backend refuses to start if `MOCK_PAYMENTS=false` and any of these is missin
 
 ### 4. Test cards (Test Mode only)
 
-| Scenario     | Card                  | Details                          |
-| ------------ | --------------------- | -------------------------------- |
-| Success      | `4111 1111 1111 1111` | any future expiry, any CVV       |
-| Failure      | `4000 0000 0000 0002` | any future expiry, any CVV       |
-| UPI success  | `success@razorpay`    | —                                |
-| UPI failure  | `failure@razorpay`    | —                                |
+| Scenario    | Card                  | Details                    |
+| ----------- | --------------------- | -------------------------- |
+| Success     | `4111 1111 1111 1111` | any future expiry, any CVV |
+| Failure     | `4000 0000 0000 0002` | any future expiry, any CVV |
+| UPI success | `success@razorpay`    | —                          |
+| UPI failure | `failure@razorpay`    | —                          |
 
 Use OTP `1234` on the 3-D Secure page. Never use real card numbers in Test Mode.
 
