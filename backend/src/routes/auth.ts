@@ -4,7 +4,8 @@ import { db, schema } from '../db';
 import { eq } from 'drizzle-orm';
 import { rateLimiter } from '../middleware/rateLimiter';
 import { authenticateToken, makeToken, verifyPassword, hashPassword, needsRehash } from '../middleware/auth';
-import { IS_PROD, log, ADMIN_USERNAME, ADMIN_PASSWORD } from '../config';
+import { IS_PROD, log, ADMIN_USERNAME, ADMIN_PASSWORD, MOCK_OTP, OTP_TTL_SECONDS, OTP_MAX_ATTEMPTS } from '../config';
+import { sendOtp } from '../messaging';
 
 const router = Router();
 
@@ -44,6 +45,11 @@ const router = Router();
  *         content:
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
+ *       502:
+ *         description: The messaging provider could not be reached or rejected the request
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
  */
 // Send OTP
 router.post('/otp/send', rateLimiter(5, 60 * 1000, 'otp_send'), async (req: Request, res: Response) => {
@@ -66,8 +72,18 @@ router.post('/otp/send', rateLimiter(5, 60 * 1000, 'otp_send'), async (req: Requ
   const [user] = await db.select().from(schema.users).where(eq(schema.users.phone, phone)).limit(1);
   const exists = !!user;
 
-  if (!IS_PROD) {
-    log.info(`[MOCK OTP] phone=****${phone.slice(-4)} otp=${otp}`);
+  // Only a resolved send permits reporting `sent: true`. The previous version returned success
+  // unconditionally, so in production every caller was told a code had been sent when nothing
+  // had been dispatched at all.
+  try {
+    await sendOtp({ phone, otp, channel });
+  } catch (err) {
+    // The diagnostic can name the provider and quote its response, so it stays server-side.
+    log.error(`[otp] delivery failed for ****${phone.slice(-4)}: ${(err as Error).message}`);
+    return res.status(502).json({ detail: 'Could not send OTP, please try again' });
+  }
+
+  if (MOCK_OTP) {
     return res.json({
       sent: true,
       channel,
