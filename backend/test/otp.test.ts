@@ -3,6 +3,9 @@ import request from 'supertest';
 import { app } from '../src/app';
 import { setProviderForTests, getProvider, MessageDeliveryError } from '../src/messaging';
 import { nextPhone } from './helpers';
+import { db, schema } from '../src/db';
+import { eq } from 'drizzle-orm';
+import { OTP_MAX_ATTEMPTS } from '../src/config';
 
 const realProvider = getProvider();
 
@@ -73,5 +76,97 @@ describe('POST /auth/otp/send delivery', () => {
 
     expect(verify.status).toBe(200);
     expect(verify.body.token).toBeTruthy();
+  });
+});
+
+async function issueOtp(phone: string): Promise<string> {
+  const res = await request(app).post('/api/auth/otp/send').send({ phone });
+  return res.body.mock_otp as string;
+}
+
+describe('POST /auth/otp/verify expiry', () => {
+  it('rejects a code older than the TTL', async () => {
+    const phone = nextPhone();
+    const otp = await issueOtp(phone);
+
+    // Backdate the issue time past the 300s window.
+    const stale = new Date(Date.now() - 301 * 1000).toISOString();
+    await db.update(schema.otps).set({ createdAt: stale }).where(eq(schema.otps.phone, phone));
+
+    const res = await request(app).post('/api/auth/otp/verify').send({ phone, otp, name: 'Expired User' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.detail).toMatch(/expired/i);
+  });
+
+  it('accepts a code inside the TTL', async () => {
+    const phone = nextPhone();
+    const otp = await issueOtp(phone);
+
+    const res = await request(app).post('/api/auth/otp/verify').send({ phone, otp, name: 'Fresh User' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.token).toBeTruthy();
+  });
+});
+
+describe('POST /auth/otp/verify attempt cap', () => {
+  it('increments attempts on each wrong guess', async () => {
+    const phone = nextPhone();
+    await issueOtp(phone);
+
+    await request(app).post('/api/auth/otp/verify').send({ phone, otp: '000000' });
+    await request(app).post('/api/auth/otp/verify').send({ phone, otp: '000001' });
+
+    const [rec] = await db.select().from(schema.otps).where(eq(schema.otps.phone, phone)).limit(1);
+    expect(rec.attempts).toBe(2);
+  });
+
+  it('returns 429 once the cap is reached, even for the correct code', async () => {
+    const phone = nextPhone();
+    const otp = await issueOtp(phone);
+
+    for (let i = 0; i < OTP_MAX_ATTEMPTS; i++) {
+      await request(app).post('/api/auth/otp/verify').send({ phone, otp: '000000' });
+    }
+
+    const res = await request(app).post('/api/auth/otp/verify').send({ phone, otp, name: 'Brute User' });
+
+    expect(res.status).toBe(429);
+    expect(res.body.detail).toMatch(/too many/i);
+  });
+
+  it('resets the attempt counter when a new code is issued', async () => {
+    const phone = nextPhone();
+    await issueOtp(phone);
+    await request(app).post('/api/auth/otp/verify').send({ phone, otp: '000000' });
+
+    const fresh = await issueOtp(phone);
+    const [rec] = await db.select().from(schema.otps).where(eq(schema.otps.phone, phone)).limit(1);
+    expect(rec.attempts).toBe(0);
+
+    const res = await request(app).post('/api/auth/otp/verify').send({ phone, otp: fresh, name: 'Reset User' });
+    expect(res.status).toBe(200);
+  });
+
+  it('clears the row on successful verification', async () => {
+    const phone = nextPhone();
+    const otp = await issueOtp(phone);
+
+    await request(app).post('/api/auth/otp/verify').send({ phone, otp, name: 'Clean User' });
+
+    const rows = await db.select().from(schema.otps).where(eq(schema.otps.phone, phone));
+    expect(rows).toHaveLength(0);
+  });
+
+  it('still honours the universal code with no stored row while mocking', async () => {
+    // Regression guard for the ordering bug caught in spec review: the universal bypass must
+    // precede the stored-row checks, because test helpers log in without calling /otp/send.
+    const res = await request(app)
+      .post('/api/auth/otp/verify')
+      .send({ phone: nextPhone(), otp: '123456', name: 'Universal User' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.token).toBeTruthy();
   });
 });

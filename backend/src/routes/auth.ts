@@ -4,7 +4,7 @@ import { db, schema } from '../db';
 import { eq } from 'drizzle-orm';
 import { rateLimiter } from '../middleware/rateLimiter';
 import { authenticateToken, makeToken, verifyPassword, hashPassword, needsRehash } from '../middleware/auth';
-import { IS_PROD, log, ADMIN_USERNAME, ADMIN_PASSWORD, MOCK_OTP, OTP_TTL_SECONDS, OTP_MAX_ATTEMPTS } from '../config';
+import { log, ADMIN_USERNAME, ADMIN_PASSWORD, MOCK_OTP, OTP_TTL_SECONDS, OTP_MAX_ATTEMPTS } from '../config';
 import { sendOtp } from '../messaging';
 
 const router = Router();
@@ -83,10 +83,10 @@ router.post('/otp/send', rateLimiter(5, 60 * 1000, 'otp_send'), async (req: Requ
   }
 
   await db.insert(schema.otps)
-    .values({ phone, otp, channel, createdAt: now })
+    .values({ phone, otp, channel, createdAt: now, attempts: 0 })
     .onConflictDoUpdate({
       target: schema.otps.phone,
-      set: { otp, channel, createdAt: now }
+      set: { otp, channel, createdAt: now, attempts: 0 }
     });
 
   if (MOCK_OTP) {
@@ -135,6 +135,11 @@ router.post('/otp/send', rateLimiter(5, 60 * 1000, 'otp_send'), async (req: Requ
  *         content:
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
+ *       429:
+ *         description: Too many incorrect attempts against the current OTP
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
  */
 // Verify OTP
 router.post('/otp/verify', rateLimiter(10, 60 * 1000, 'otp_verify'), async (req: Request, res: Response) => {
@@ -144,10 +149,33 @@ router.post('/otp/verify', rateLimiter(10, 60 * 1000, 'otp_verify'), async (req:
   }
 
   const [otpRec] = await db.select().from(schema.otps).where(eq(schema.otps.phone, phone)).limit(1);
-  const universalOk = (!IS_PROD) && otp === '123456';
 
-  if (!universalOk && (!otpRec || otpRec.otp !== otp)) {
-    return res.status(400).json({ detail: 'Invalid OTP' });
+  // The universal bypass is evaluated first and deliberately: it has to work with no stored
+  // row at all, which is how the test helpers and mock-mode logins work.
+  const universalOk = MOCK_OTP && otp === '123456';
+
+  if (!universalOk) {
+    if (!otpRec) {
+      return res.status(400).json({ detail: 'Invalid OTP' });
+    }
+
+    // Checked before expiry: someone who has burned the cap should be told to request a new
+    // code regardless of whether the old one also aged out, since that is the actionable step.
+    if (otpRec.attempts >= OTP_MAX_ATTEMPTS) {
+      return res.status(429).json({ detail: 'Too many incorrect attempts. Request a new OTP.' });
+    }
+
+    const ageMs = Date.now() - new Date(otpRec.createdAt).getTime();
+    if (ageMs > OTP_TTL_SECONDS * 1000) {
+      return res.status(400).json({ detail: 'OTP expired. Request a new one.' });
+    }
+
+    if (otpRec.otp !== otp) {
+      await db.update(schema.otps)
+        .set({ attempts: otpRec.attempts + 1 })
+        .where(eq(schema.otps.phone, phone));
+      return res.status(400).json({ detail: 'Invalid OTP' });
+    }
   }
 
   let [user] = await db.select().from(schema.users).where(eq(schema.users.phone, phone)).limit(1);
