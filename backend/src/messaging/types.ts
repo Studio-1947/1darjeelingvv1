@@ -17,8 +17,11 @@ export interface MessagingProvider {
   /**
    * Resolves only on confirmed handoff to the provider. Throws MessageDeliveryError on
    * any failure — a resolved promise is what allows the route to report `sent: true`.
+   * The returned `channel` is the channel actually used for delivery, which may differ
+   * from the one requested in `msg` — the caller must report what happened, not what was
+   * asked for.
    */
-  sendOtp(msg: OtpMessage): Promise<{ ref?: string }>;
+  sendOtp(msg: OtpMessage): Promise<{ ref?: string; channel: string }>;
 }
 
 /**

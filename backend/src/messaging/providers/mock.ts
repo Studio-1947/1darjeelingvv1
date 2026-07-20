@@ -14,9 +14,11 @@ export function createMockProvider(): MessagingProvider {
       // No configuration to validate.
     },
 
-    async sendOtp({ phone, otp }: OtpMessage) {
+    async sendOtp({ phone, otp, channel }: OtpMessage) {
       log.info(`[MOCK OTP] phone=****${phone.slice(-4)} otp=${otp}`);
-      return {};
+      // Nothing is actually delivered, so the only honest answer is to echo back whatever
+      // channel was requested — there is no real channel to report.
+      return { channel };
     },
   };
 }

@@ -21,7 +21,7 @@ export function setProviderForTests(next: MessagingProvider): MessagingProvider 
   return previous;
 }
 
-export async function sendOtp(msg: OtpMessage): Promise<{ ref?: string }> {
+export async function sendOtp(msg: OtpMessage): Promise<{ ref?: string; channel: string }> {
   return provider.sendOtp(msg);
 }
 

@@ -84,7 +84,9 @@ export function createMsg91Provider(
         );
       }
 
-      return { ref: body.request_id };
+      // MSG91's v5 OTP endpoint always delivers via SMS regardless of the `channel` requested
+      // (there is no WhatsApp/voice option on this API) — report that, not the caller's ask.
+      return { ref: body.request_id, channel: 'sms' };
     },
   };
 }
