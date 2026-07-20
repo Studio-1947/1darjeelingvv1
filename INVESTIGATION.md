@@ -259,3 +259,29 @@ inboxes. Both are addressed in the design doc above (5-minute TTL, 5-attempt cap
 and a 5-attempt cap (`OTP_MAX_ATTEMPTS`) backed by a new `otps.attempts` column, reset
 whenever a code is reissued. The universal mock code is evaluated before the stored-row
 checks so it still works with no row present.
+
+### 6.C ⏳ OPEN — `/otp/send` has no per-phone limit
+
+`/otp/send` is rate-limited per IP only (5 requests/60s, see `middleware/rateLimiter.ts`).
+There is no limit keyed on the phone number itself.
+
+**Why this matters:** while `MESSAGING_PROVIDER=mock` this is latent — nothing is actually
+delivered, so there is no cost to spamming a phone number with sends. It becomes live the
+moment `MESSAGING_PROVIDER` flips to a real provider (msg91 or otherwise), at which point it
+is two distinct real problems:
+
+1. **SMS-pumping / billing abuse.** Any phone number can be sent an unbounded number of real
+   messages by spreading requests across IPs — each IP only has to stay under 5/60s. The
+   target's phone number, not the caller's IP, is the resource being attacked, and nothing
+   here limits attacks on it directly.
+2. **An attempt-cap reset lever.** Each successful send resets `otps.attempts` to 0 (see
+   §6.B). Since `/otp/send` and `/otp/verify` are rate-limited independently, a caller who
+   stays under 5 sends/60s can also stay under 10 verifies/60s while resetting the guess
+   counter on every cycle — the 5-attempt cap added in §6.B is only a 5-attempt cap between
+   sends, not a hard ceiling. This partially undercuts the protection §6.B was meant to add.
+
+**Action needed:** add a per-phone send counter, most naturally as a column (or a window
+computed from `created_at`) on the existing `otps` row, and reject sends once it is
+exceeded within a rolling window — the same shape as the existing per-IP limiter, keyed on
+phone instead of IP. Not implemented here; recorded so it is not lost before the
+`MESSAGING_PROVIDER=msg91` flip.

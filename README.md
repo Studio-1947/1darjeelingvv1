@@ -81,7 +81,7 @@ npm run dev
 
 ## Environment variables
 
-`backend/.env` — **the checked-in `.env.example` is out of date (Mongo-era)**; use this instead:
+`backend/.env` — the checked-in `.env.example` carries the current Razorpay, admin, and messaging variables; copy it and fill in real values, or use this minimal set:
 
 ```
 DATABASE_URL=postgres://postgres:postgres@localhost:5432/one_darjeeling

@@ -235,6 +235,21 @@ Going live is two independent config flips, each safe to do alone:
 
 Either flip with incomplete configuration fails at boot rather than at runtime.
 
+## Delivered differently
+
+Two deliberate departures from this design, kept visible rather than folded silently into
+the sections above:
+
+- **`MSG91_SENDER_ID` was dropped.** Listed above under Configuration as required when
+  `MESSAGING_PROVIDER=msg91`; it was not implemented. MSG91's v5 OTP API takes the sender
+  identity from the approved template (`MSG91_TEMPLATE_ID`), not from a separate parameter,
+  so there was nothing for a sender-id variable to do.
+- **`POST /auth/otp/send` sends first and stores only on success**, not store-then-send as
+  the Data flow section above describes. Storing before a confirmed send means a failed
+  delivery could overwrite (and thereby invalidate) a still-valid code the user already
+  holds, while the replacement that failed to arrive leaves them with nothing at all.
+  Sending first avoids that: a failed send now leaves the previous code intact.
+
 ## Follow-ups (out of scope)
 
 - **Booking confirmation notifications are not implemented** (`payments.ts:63`). This is a
