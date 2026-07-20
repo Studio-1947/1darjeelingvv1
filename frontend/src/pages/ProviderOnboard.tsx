@@ -7,7 +7,7 @@ const TYPES = ['homestay', 'driver', 'shop', 'cafe'];
 
 export default function ProviderOnboard() {
   const { t } = useTranslation();
-  const { user, refresh } = useAuth();
+  const { user, loading: authLoading, refresh } = useAuth();
   const nav = useNavigate();
   const [form, setForm] = useState({
     business_name: '', business_type: 'homestay', description: '',
@@ -21,9 +21,13 @@ export default function ProviderOnboard() {
   const [payModal, setPayModal] = useState(null);
   const [confirm, setConfirm] = useState(null);
 
+  // AuthContext starts every page load with user=null while GET /auth/me is in flight, so without
+  // the authLoading check this fires on the first render and bounces an already-logged-in provider
+  // to /login on any direct load or refresh. Matches the guard in ProviderDashboard.
   useEffect(() => {
-    if (!user) nav('/login');
-  }, [user, nav]);
+    if (authLoading) return;
+    if (!user) { nav('/login'); return; }
+  }, [user, authLoading, nav]);
 
   const submit = async (e) => {
     e.preventDefault();

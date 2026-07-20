@@ -27,6 +27,14 @@ services:
       - POSTGRES_DB=${POSTGRES_DB}
     volumes:
       - pg_data_prod:/var/lib/postgresql/data
+    # Lets `depends_on: condition: service_healthy` below actually mean "Postgres is accepting
+    # connections", not merely "the container was started".
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   backend:
     build:
@@ -40,8 +48,11 @@ services:
       # Computed here (not hand-duplicated in .env) so Postgres credentials
       # only ever live in one place.
       - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+    # Bare `depends_on` only waits for the container to start, not for Postgres to be ready — so
+    # the backend's schema sync could fire against a database still coming up.
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
 
   nginx:
     build:

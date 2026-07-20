@@ -3,8 +3,9 @@ import { v4 as uuidv4 } from 'uuid';
 import { db, schema } from '../db';
 import { eq } from 'drizzle-orm';
 import { rateLimiter } from '../middleware/rateLimiter';
-import { authenticateToken, makeToken, verifyPassword } from '../middleware/auth';
-import { IS_PROD, log, ADMIN_USERNAME, ADMIN_PASSWORD } from '../config';
+import { authenticateToken, makeToken, verifyPassword, hashPassword, needsRehash } from '../middleware/auth';
+import { IS_PROD, log, ADMIN_USERNAME, ADMIN_PASSWORD, MOCK_OTP, OTP_TTL_SECONDS, OTP_MAX_ATTEMPTS } from '../config';
+import { sendOtp } from '../messaging';
 
 const router = Router();
 
@@ -44,6 +45,11 @@ const router = Router();
  *         content:
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
+ *       502:
+ *         description: The messaging provider could not be reached or rejected the request
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
  */
 // Send OTP
 router.post('/otp/send', rateLimiter(5, 60 * 1000, 'otp_send'), async (req: Request, res: Response) => {
@@ -55,6 +61,27 @@ router.post('/otp/send', rateLimiter(5, 60 * 1000, 'otp_send'), async (req: Requ
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
   const now = new Date().toISOString();
 
+  // Check if the user already exists
+  const [user] = await db.select().from(schema.users).where(eq(schema.users.phone, phone)).limit(1);
+  const exists = !!user;
+
+  // Only a resolved send permits reporting `sent: true`. The previous version returned success
+  // unconditionally, so in production every caller was told a code had been sent when nothing
+  // had been dispatched at all.
+  //
+  // Delivery is attempted before the OTP is stored, not after. The upsert below replaces any
+  // still-valid code the user was previously issued for this phone; if delivery then failed,
+  // that replacement would never reach the user while the code it destroyed still would have
+  // worked. Storing only on a confirmed send means a failed resend leaves an existing, working
+  // code intact instead of leaving the user with nothing.
+  try {
+    await sendOtp({ phone, otp, channel });
+  } catch (err) {
+    // The diagnostic can name the provider and quote its response, so it stays server-side.
+    log.error(`[otp] delivery failed for ****${phone.slice(-4)}: ${(err as Error).message}`);
+    return res.status(502).json({ detail: 'Could not send OTP, please try again' });
+  }
+
   await db.insert(schema.otps)
     .values({ phone, otp, channel, createdAt: now })
     .onConflictDoUpdate({
@@ -62,12 +89,7 @@ router.post('/otp/send', rateLimiter(5, 60 * 1000, 'otp_send'), async (req: Requ
       set: { otp, channel, createdAt: now }
     });
 
-  // Check if the user already exists
-  const [user] = await db.select().from(schema.users).where(eq(schema.users.phone, phone)).limit(1);
-  const exists = !!user;
-
-  if (!IS_PROD) {
-    log.info(`[MOCK OTP] phone=****${phone.slice(-4)} otp=${otp}`);
+  if (MOCK_OTP) {
     return res.json({
       sent: true,
       channel,
@@ -248,6 +270,15 @@ router.post('/admin/login', rateLimiter(10, 60 * 1000, 'admin_login'), async (re
   const valid = verifyPassword(password, user.password);
   if (!valid) {
     return res.status(401).json({ detail: 'Invalid credentials' });
+  }
+
+  // Login is the only moment the plaintext is available, so it's the only chance to upgrade a
+  // legacy 1,000-iteration hash to the current work factor without forcing a password reset.
+  if (needsRehash(user.password)) {
+    await db.update(schema.users)
+      .set({ password: hashPassword(password) })
+      .where(eq(schema.users.id, user.id));
+    log.info(`Upgraded password hash for admin ${user.id}`);
   }
 
   const token = makeToken(user.id, user.phone, user.role);
