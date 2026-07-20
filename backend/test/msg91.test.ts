@@ -14,8 +14,19 @@ describe('msg91 adapter', () => {
     const fetchImpl = vi.fn().mockResolvedValue(jsonResponse({ type: 'success', request_id: 'req_99' }));
     const provider = createMsg91Provider(ENV, fetchImpl as unknown as typeof fetch);
 
-    await expect(provider.sendOtp(MSG)).resolves.toEqual({ ref: 'req_99' });
+    await expect(provider.sendOtp(MSG)).resolves.toEqual({ ref: 'req_99', channel: 'sms' });
     expect(fetchImpl).toHaveBeenCalledOnce();
+  });
+
+  it('reports channel "sms" even when the caller asked for whatsapp', async () => {
+    // MSG91's v5 OTP endpoint only ever delivers SMS; the route must trust what actually
+    // happened rather than echoing back what was requested.
+    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse({ type: 'success', request_id: 'req_1' }));
+    const provider = createMsg91Provider(ENV, fetchImpl as unknown as typeof fetch);
+
+    const result = await provider.sendOtp({ ...MSG, channel: 'whatsapp' });
+
+    expect(result.channel).toBe('sms');
   });
 
   it('sends the auth key as a header and normalises the phone to digits', async () => {

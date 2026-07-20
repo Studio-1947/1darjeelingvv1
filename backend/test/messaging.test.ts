@@ -31,10 +31,10 @@ describe('messaging registry', () => {
 });
 
 describe('mock provider', () => {
-  it('resolves without contacting anything', async () => {
+  it('resolves without contacting anything, echoing the requested channel', async () => {
     const provider = selectProvider('mock', {});
     await expect(provider.sendOtp({ phone: '+919999999999', otp: '123456', channel: 'whatsapp' }))
-      .resolves.toEqual({});
+      .resolves.toEqual({ channel: 'whatsapp' });
   });
 });
 
@@ -69,12 +69,12 @@ describe('messaging module singleton', () => {
     const previous = setProviderForTests({
       name: 'spy',
       init() {},
-      async sendOtp({ otp }) { calls.push(otp); return { ref: 'spy-ref' }; },
+      async sendOtp({ otp }) { calls.push(otp); return { ref: 'spy-ref', channel: 'whatsapp' }; },
     });
 
     try {
       await expect(sendOtp({ phone: '+919999999999', otp: '111111', channel: 'whatsapp' }))
-        .resolves.toEqual({ ref: 'spy-ref' });
+        .resolves.toEqual({ ref: 'spy-ref', channel: 'whatsapp' });
       expect(calls).toEqual(['111111']);
     } finally {
       setProviderForTests(previous);

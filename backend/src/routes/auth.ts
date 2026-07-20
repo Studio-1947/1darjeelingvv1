@@ -15,7 +15,7 @@ const router = Router();
  * @openapi
  * /auth/otp/send:
  *   post:
- *     summary: Send a WhatsApp OTP to a phone number (mocked outside production)
+ *     summary: Send an OTP to a phone number via the configured messaging provider (mocked when MESSAGING_PROVIDER=mock)
  *     tags: [Auth]
  *     requestBody:
  *       required: true
@@ -29,7 +29,7 @@ const router = Router();
  *               channel: { type: string, default: whatsapp }
  *     responses:
  *       200:
- *         description: OTP sent (mock_otp only present outside production)
+ *         description: OTP sent (mock_otp and hint only present when MESSAGING_PROVIDER=mock); channel reflects what was actually used for delivery, which may differ from the one requested
  *         content:
  *           application/json:
  *             schema:
@@ -74,8 +74,13 @@ router.post('/otp/send', rateLimiter(5, 60 * 1000, 'otp_send'), async (req: Requ
   // that replacement would never reach the user while the code it destroyed still would have
   // worked. Storing only on a confirmed send means a failed resend leaves an existing, working
   // code intact instead of leaving the user with nothing.
+  // The channel actually used for delivery — reported below and stored — comes from the
+  // provider's response, not the caller's request: it may differ (msg91 always delivers SMS
+  // regardless of what was asked for), and telling the caller "sent via whatsapp" when an SMS
+  // went out is the same class of untruth this layer exists to prevent.
+  let deliveredChannel: string;
   try {
-    await sendOtp({ phone, otp, channel });
+    ({ channel: deliveredChannel } = await sendOtp({ phone, otp, channel }));
   } catch (err) {
     // The diagnostic can name the provider and quote its response, so it stays server-side.
     log.error(`[otp] delivery failed for ****${phone.slice(-4)}: ${(err as Error).message}`);
@@ -83,23 +88,23 @@ router.post('/otp/send', rateLimiter(5, 60 * 1000, 'otp_send'), async (req: Requ
   }
 
   await db.insert(schema.otps)
-    .values({ phone, otp, channel, createdAt: now, attempts: 0 })
+    .values({ phone, otp, channel: deliveredChannel, createdAt: now, attempts: 0 })
     .onConflictDoUpdate({
       target: schema.otps.phone,
-      set: { otp, channel, createdAt: now, attempts: 0 }
+      set: { otp, channel: deliveredChannel, createdAt: now, attempts: 0 }
     });
 
   if (MOCK_OTP) {
     return res.json({
       sent: true,
-      channel,
+      channel: deliveredChannel,
       mock_otp: otp,
       hint: "Mock mode: use the OTP shown or 123456",
       exists
     });
   }
 
-  return res.json({ sent: true, channel, exists });
+  return res.json({ sent: true, channel: deliveredChannel, exists });
 });
 
 /**
@@ -117,7 +122,7 @@ router.post('/otp/send', rateLimiter(5, 60 * 1000, 'otp_send'), async (req: Requ
  *             required: [phone, otp]
  *             properties:
  *               phone: { type: string }
- *               otp: { type: string, description: "6-digit OTP, or '123456' universal code outside production" }
+ *               otp: { type: string, description: "6-digit OTP, or '123456' universal code when MESSAGING_PROVIDER=mock" }
  *               name: { type: string, description: "Required on first login for a new phone number" }
  *               role: { type: string, enum: [tourist, provider], default: tourist }
  *     responses:
