@@ -1,0 +1,111 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+jobs:
+  # Gate on the backend suite before anything touches the VPS. Previously deploy ran straight off
+  # the push, so the tests written as a regression net for the auth/payment fixes never actually
+  # guarded a release.
+  test:
+    name: Backend tests
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        # Without a healthcheck the job races the container and fails intermittently on connect.
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: backend
+        run: npm ci
+
+      # A schema.ts edit without a matching `npm run db:generate` would deploy a server expecting
+      # columns the migrations never create. The test DB is built by migrate too, so most such
+      # drift already fails the suite — this catches the rest (e.g. a column no test touches yet)
+      # and says plainly what to do about it.
+      - name: Verify migrations are up to date with schema.ts
+        working-directory: backend
+        run: |
+          npx drizzle-kit generate
+          if [ -n "$(git status --porcelain drizzle)" ]; then
+            echo "::error::schema.ts has changes with no committed migration. Run 'npm run db:generate' and commit the generated SQL."
+            git status --porcelain drizzle
+            exit 1
+          fi
+          echo "migrations are in sync with schema.ts"
+
+      - name: Create test database and apply migrations
+        working-directory: backend
+        run: npm run test:setup
+
+      - name: Typecheck
+        working-directory: backend
+        run: npx tsc --noEmit
+
+      - name: Run tests
+        working-directory: backend
+        run: npm test
+
+  deploy:
+    name: Deploy
+    needs: test # a red suite must stop the release
+    runs-on: ubuntu-latest
+    steps:
+      # An unset GitHub secret silently becomes an empty string, so a missing VPS_USER reaches
+      # sshd as a blank username and surfaces as "ssh: handshake failed ... [none publickey]" —
+      # which reads like a broken deploy key and sends you digging through the VPS's auth log.
+      # Name the actual problem here instead. Values are never printed, only whether they're set.
+      - name: Check required secrets are set
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+        run: |
+          missing=""
+          if [ -z "$VPS_HOST" ]; then missing="$missing VPS_HOST"; fi
+          if [ -z "$VPS_USER" ]; then missing="$missing VPS_USER"; fi
+          if [ -z "$VPS_SSH_KEY" ]; then missing="$missing VPS_SSH_KEY"; fi
+          if [ -n "$missing" ]; then
+            echo "::error::Missing repository secret(s):$missing — add them under Settings > Secrets and variables > Actions. VPS_USER should be the SSH login (e.g. 'deploy')."
+            exit 1
+          fi
+          echo "All required secrets are present."
+          echo "VPS_USER is set (${#VPS_USER} chars); VPS_SSH_KEY is set (${#VPS_SSH_KEY} chars)."
+
+      - name: SSH into VPS and redeploy
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          script: |
+            set -euo pipefail
+            cd /var/www/1darjeelingvv1
+            git fetch origin main
+            git reset --hard origin/main
+            docker compose -f docker-compose.prod.yml up -d --build --remove-orphans
+            docker image prune -f

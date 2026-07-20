@@ -1,6 +1,5 @@
 import swaggerJsdoc from 'swagger-jsdoc';
 import * as path from 'path';
-import { PORT } from './config';
 
 const options: swaggerJsdoc.Options = {
   definition: {
@@ -11,7 +10,11 @@ const options: swaggerJsdoc.Options = {
       description: 'REST API for the 1 Darjeeling tourism + local marketplace platform (auth, providers, listings, bookings, payments, admin).',
     },
     servers: [
-      { url: `http://localhost:${PORT}/api`, description: 'Local dev' },
+      // Relative URL — resolves against whichever origin actually served
+      // /api-docs, so "Try it out" hits the right host in both local dev
+      // (http://localhost:8000) and production (https://<domain>) without
+      // hardcoding either one.
+      { url: '/api', description: 'Current host' },
     ],
     components: {
       securitySchemes: {

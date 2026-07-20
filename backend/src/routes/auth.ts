@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { db, schema } from '../db';
 import { eq } from 'drizzle-orm';
 import { rateLimiter } from '../middleware/rateLimiter';
-import { authenticateToken, makeToken, verifyPassword } from '../middleware/auth';
+import { authenticateToken, makeToken, verifyPassword, hashPassword, needsRehash } from '../middleware/auth';
 import { IS_PROD, log, ADMIN_USERNAME, ADMIN_PASSWORD } from '../config';
 
 const router = Router();
@@ -248,6 +248,15 @@ router.post('/admin/login', rateLimiter(10, 60 * 1000, 'admin_login'), async (re
   const valid = verifyPassword(password, user.password);
   if (!valid) {
     return res.status(401).json({ detail: 'Invalid credentials' });
+  }
+
+  // Login is the only moment the plaintext is available, so it's the only chance to upgrade a
+  // legacy 1,000-iteration hash to the current work factor without forcing a password reset.
+  if (needsRehash(user.password)) {
+    await db.update(schema.users)
+      .set({ password: hashPassword(password) })
+      .where(eq(schema.users.id, user.id));
+    log.info(`Upgraded password hash for admin ${user.id}`);
   }
 
   const token = makeToken(user.id, user.phone, user.role);

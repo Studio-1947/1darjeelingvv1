@@ -8,8 +8,10 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
+    "test:setup": "tsx scripts/setup-test-db.ts",
     "test": "vitest run"
   },
   "keywords": [],
