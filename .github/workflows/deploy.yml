@@ -1,7 +1,14 @@
 name: Deploy to VPS
 
 on:
+  # Checks run on PRs as well as pushes. Until this was added, the gates below only ran *after* a
+  # merge reached main — so a PR could merge cleanly and break the build for everyone. Three
+  # separate faults landed that way in one day: a lockfile out of sync with package.json, a
+  # schema.ts change with no migration, and JSX that could not parse. Every one of them would
+  # have failed here first.
   push:
+    branches: [main]
+  pull_request:
     branches: [main]
   workflow_dispatch: {}
 
@@ -69,9 +76,54 @@ jobs:
         working-directory: backend
         run: npm test
 
+  # The backend suite never compiles the frontend, so JSX that cannot parse used to sail through
+  # CI and only fail inside `docker build` during the deploy — after the merge, with the site
+  # already down. This job runs the same install and build the Dockerfile does, before the merge.
+  frontend:
+    name: Frontend builds
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: yarn
+          cache-dependency-path: frontend/yarn.lock
+
+      # --frozen-lockfile matches the Dockerfile: a package.json change without a matching
+      # yarn.lock fails here rather than at image build time.
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: corepack enable && corepack prepare yarn@1.22.22 --activate && yarn install --frozen-lockfile
+
+      - name: Typecheck frontend
+        working-directory: frontend
+        run: npx tsc --noEmit
+
+      - name: Build frontend
+        working-directory: frontend
+        run: yarn build
+
+      - name: Install admin dependencies
+        working-directory: frontend-admin
+        run: npm ci
+
+      - name: Typecheck admin
+        working-directory: frontend-admin
+        run: npx tsc --noEmit
+
+      - name: Build admin
+        working-directory: frontend-admin
+        run: npm run build
+
   deploy:
     name: Deploy
-    needs: test # a red suite must stop the release
+    needs: [test, frontend] # a red suite or a broken build must stop the release
+    # Deploy only on a real push to main (or a manual dispatch). Without this guard, adding the
+    # pull_request trigger above would ship every opened PR straight to the VPS.
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
       # An unset GitHub secret silently becomes an empty string, so a missing VPS_USER reaches
