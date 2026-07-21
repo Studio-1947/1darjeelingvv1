@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '@/lib/api';
@@ -28,17 +28,6 @@ export default function ProviderDashboard() {
   const [loading, setLoading] = useState(true);
   const [listingModal, setListingModal] = useState<{ open: boolean; editing: any | null }>({ open: false, editing: null });
   const [kycProfile, setKycProfile] = useState<KycProfile | null>(null);
-
-  const loadData = useCallback(async () => {
-    const [p, b] = await Promise.all([
-      api.get('/providers/me'),
-      api.get('/bookings/provider'),
-    ]);
-    setProvider(p.data.provider);
-    setStats(b.data.stats || {});
-    setBookings(b.data.items || []);
-    setListings(b.data.listings || []);
-  }, []);
 
   const loadDashboard = React.useCallback(async () => {
     try {
@@ -71,6 +60,43 @@ export default function ProviderDashboard() {
       }
     })();
   }, [user, authLoading, nav, loadDashboard]);
+
+  // Tracks whether the component is still mounted, so a KYC refresh that resolves after
+  // unmount (e.g. the user navigated away while it was in flight) never calls setState.
+  const mountedRef = useRef(true);
+  useEffect(() => () => { mountedRef.current = false; }, []);
+
+  // A lightweight, independent refresh of just the KYC profile — used to catch up the header
+  // badge and completion card when something changed outside this tab (an admin approving a
+  // document elsewhere) without re-fetching bookings/listings. Must never break the rest of
+  // the dashboard if it fails, so failures are swallowed silently.
+  const refreshKycProfile = useCallback(async () => {
+    try {
+      const kyc = await getMyProfile();
+      if (mountedRef.current) setKycProfile(kyc);
+    } catch {
+      // Best-effort only — the badge simply stays as it was.
+    }
+  }, []);
+
+  // Re-check on: the tab/window regaining focus or becoming visible again (covers an admin
+  // approving a document while this page was open in the background), and on switching into
+  // the Business Profile tab (the one place the KYC status is actually shown in detail).
+  useEffect(() => {
+    if (!provider) return;
+    const onFocus = () => { refreshKycProfile(); };
+    const onVisibility = () => { if (document.visibilityState === 'visible') refreshKycProfile(); };
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [provider, refreshKycProfile]);
+
+  useEffect(() => {
+    if (tab === 'profile') refreshKycProfile();
+  }, [tab, refreshKycProfile]);
 
   const handleSaveListing = async (values: any) => {
     if (listingModal.editing) {
@@ -157,30 +183,41 @@ export default function ProviderDashboard() {
       </div>
 
       {/* Complete your profile */}
-      {kycProfile && kycProfile.completion_percent < 100 && (
-        <div className="mt-8 mist-panel p-5 md:p-6" data-testid="kyc-progress-card">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div className="flex-1 min-w-0">
-              <h2 className="font-display font-extrabold text-lg text-ink">{t('kyc.completeYourProfile')}</h2>
-              <p className="text-xs text-ink-soft mt-1">
-                {t('kyc.remainingItems', {
-                  count: kycProfile.checklist.filter(c => c.state === 'missing' || c.state === 'rejected').length,
-                })}
-              </p>
-              <div className="mt-3 max-w-md">
-                <ProfileCompletionBar percent={kycProfile.completion_percent} />
+      {kycProfile && kycProfile.completion_percent < 100 && (() => {
+        // Items the provider can still act on (never uploaded, or bounced back). A document
+        // sitting in `in_review` is neither of these — it contributes nothing to
+        // completion_percent yet, but there's nothing left for the provider to do either, so
+        // it must never be counted as "remaining" (that reads as an actionable checklist item
+        // when there's nothing to click).
+        const actionableCount = kycProfile.checklist.filter(c => c.state === 'missing' || c.state === 'rejected').length;
+        const hasActionable = actionableCount > 0;
+        return (
+          <div className="mt-8 mist-panel p-5 md:p-6" data-testid="kyc-progress-card">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div className="flex-1 min-w-0">
+                <h2 className="font-display font-extrabold text-lg text-ink">
+                  {hasActionable ? t('kyc.completeYourProfile') : t('kyc.underReviewTitle')}
+                </h2>
+                <p className="text-xs text-ink-soft mt-1">
+                  {hasActionable
+                    ? t('kyc.remainingItems', { count: actionableCount })
+                    : t('kyc.underReviewMessage')}
+                </p>
+                <div className="mt-3 max-w-md">
+                  <ProfileCompletionBar percent={kycProfile.completion_percent} />
+                </div>
               </div>
+              <button
+                onClick={() => setTab('profile')}
+                data-testid="kyc-complete-profile-cta"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-flag text-white font-bold text-xs btn-hover whitespace-nowrap self-start md:self-auto"
+              >
+                {hasActionable ? t('kyc.completeProfileCta') : t('kyc.viewStatusCta')} <ArrowRight size={14} />
+              </button>
             </div>
-            <button
-              onClick={() => setTab('profile')}
-              data-testid="kyc-complete-profile-cta"
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-flag text-white font-bold text-xs btn-hover whitespace-nowrap self-start md:self-auto"
-            >
-              {t('kyc.completeProfileCta')} <ArrowRight size={14} />
-            </button>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Tabs */}
       <div className="mt-8 flex items-center gap-2 border-b border-[var(--line)]">
