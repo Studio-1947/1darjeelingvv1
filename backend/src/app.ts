@@ -13,6 +13,7 @@ import bookingsRouter from './routes/bookings';
 import paymentsRouter from './routes/payments';
 import adminRouter from './routes/admin';
 import geocodeRouter from './routes/geocode';
+import kycRouter from './routes/kyc';
 
 export const app = express();
 
@@ -87,6 +88,7 @@ app.get('/api', (req: Request, res: Response) => {
 // ============ MOUNT ROUTERS ============
 app.use('/api/auth', authRouter);
 app.use('/api/users', usersRouter);
+app.use('/api/providers', kycRouter);
 app.use('/api/providers', providersRouter);
 app.use('/api/listings', listingsRouter);
 app.use('/api/bookings', bookingsRouter);
