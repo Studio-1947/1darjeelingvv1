@@ -234,12 +234,62 @@ describe('provider KYC', () => {
     expect(rows[0].status).toBe('pending');
   });
 
+  it('two concurrent re-uploads of an already-existing doc leave exactly one row and orphan no storage object', async () => {
+    // This is the exact scenario the bug was about: a docType that already has a row (and an
+    // object in storage, key0) gets re-uploaded by two concurrent requests. Both read key0,
+    // both upload their own new object, and only one write wins the row — without the
+    // transaction + row lock in kyc.ts, the *loser's* freshly-uploaded object is never
+    // referenced by the row and never deleted, leaking forever. A prior version of this test
+    // only asserted the row count, which the DB-level unique constraint already guaranteed on
+    // its own — it would have stayed green even with the object-leak bug still present.
+    const { token, providerId } = await onboardActiveProvider({ name: 'Kyc Ten', businessType: 'shop' });
+
+    const uploadPrivateMock = uploadPrivate as unknown as ReturnType<typeof vi.fn>;
+    const deletePrivateMock = deletePrivate as unknown as ReturnType<typeof vi.fn>;
+    const uploadCallsBefore = uploadPrivateMock.mock.calls.length;
+
+    // Establish the pre-existing row/object (key0) sequentially first.
+    const initial = await request(app).post('/api/providers/me/kyc').set('Authorization', `Bearer ${token}`)
+      .send({ doc_type: 'pan', file: PNG_DATA_URL, filename: 'pan-0.png' });
+    expect(initial.status).toBe(200);
+
+    const upload = (filename: string) =>
+      request(app).post('/api/providers/me/kyc').set('Authorization', `Bearer ${token}`)
+        .send({ doc_type: 'pan', file: PNG_DATA_URL, filename });
+
+    const [r1, r2] = await Promise.all([upload('pan-a.png'), upload('pan-b.png')]);
+    expect(r1.status).toBe(200);
+    expect(r2.status).toBe(200);
+
+    const rows = await db.select().from(schema.kycDocuments)
+      .where(and(eq(schema.kycDocuments.providerId, providerId), eq(schema.kycDocuments.docType, 'pan')));
+    expect(rows.length).toBe(1);
+    expect(rows[0].status).toBe('pending');
+    const survivingKey = rows[0].fileKey;
+
+    // Every object uploaded during this test (key0 plus both concurrent re-uploads) except
+    // whichever one ended up stored on the row must have had deletePrivate called on it —
+    // nothing should be orphaned in storage.
+    const uploadedKeys = uploadPrivateMock.mock.calls.slice(uploadCallsBefore).map((call: any[]) => call[1] as string);
+    expect(uploadedKeys.length).toBe(3);
+    expect(uploadedKeys).toContain(survivingKey);
+    const deletedKeys = new Set(deletePrivateMock.mock.calls.map((call: any[]) => call[0] as string));
+    for (const key of uploadedKeys) {
+      if (key === survivingKey) continue;
+      expect(deletedKeys.has(key)).toBe(true);
+    }
+  });
+
   it('best-effort deletes the just-uploaded object if the DB write fails, so nothing orphans in storage', async () => {
     const { token } = await onboardActiveProvider({ name: 'Kyc Eleven', businessType: 'shop' });
     const deletePrivateMock = deletePrivate as unknown as ReturnType<typeof vi.fn>;
     const callsBefore = deletePrivateMock.mock.calls.length;
 
-    const insertSpy = vi.spyOn(db, 'insert').mockImplementationOnce(() => {
+    // The existing-row read and the upsert now happen inside db.transaction(...) (see kyc.ts),
+    // so simulating "the DB write failed" means failing the transaction itself rather than a
+    // bare db.insert call — db.insert is invoked on a per-transaction `tx` object, not on `db`,
+    // so spying on db.insert would silently never fire.
+    const txSpy = vi.spyOn(db, 'transaction').mockImplementationOnce(() => {
       throw new Error('simulated DB failure');
     });
 
@@ -249,7 +299,7 @@ describe('provider KYC', () => {
       .send({ doc_type: 'aadhaar', file: PNG_DATA_URL, filename: 'a.png' });
 
     expect(res.status).toBe(500);
-    insertSpy.mockRestore();
+    txSpy.mockRestore();
 
     // The orphaned object (the one just uploaded, before the failed DB write) must have been
     // best-effort cleaned up.
@@ -309,6 +359,37 @@ describe('provider KYC', () => {
       .send({ doc_type: 'aadhaar', file: PDF_DATA_URL, filename: 'aadhaar.pdf' });
     expect(res.status).toBe(200);
     expect(res.body.document.doc_type).toBe('aadhaar');
+  });
+
+  it('accepts a PDF whose "%PDF" header is preceded by a UTF-8 BOM and leading whitespace', async () => {
+    // ISO 32000 permits the %PDF header anywhere in the first 1024 bytes, and some real-world
+    // scanners/tools emit a UTF-8 BOM (or stray whitespace) before it. A prior offset-0-only
+    // check would reject these as "contents do not match the declared file type" even though
+    // they are legitimate PDFs.
+    const { token } = await onboardActiveProvider({ name: 'Kyc Seventeen', businessType: 'shop' });
+    const bomAndWhitespacePrefixedPdf = Buffer.concat([
+      Buffer.from([0xef, 0xbb, 0xbf]), // UTF-8 BOM
+      Buffer.from('   \n'),
+      Buffer.from('%PDF-1.4\n%bom-prefixed mock pdf for tests\n'),
+    ]);
+    const dataUrl = 'data:application/pdf;base64,' + bomAndWhitespacePrefixedPdf.toString('base64');
+    const res = await request(app)
+      .post('/api/providers/me/kyc')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ doc_type: 'aadhaar', file: dataUrl, filename: 'aadhaar-bom.pdf' });
+    expect(res.status).toBe(200);
+    expect(res.body.document.doc_type).toBe('aadhaar');
+  });
+
+  it('still rejects a declared PDF whose bytes never contain the "%PDF" signature within the first 1024 bytes', async () => {
+    const { token } = await onboardActiveProvider({ name: 'Kyc Eighteen', businessType: 'shop' });
+    const notActuallyAPdf = Buffer.alloc(2000, 0x41); // 2000 'A' bytes, no %PDF anywhere
+    const dataUrl = 'data:application/pdf;base64,' + notActuallyAPdf.toString('base64');
+    const res = await request(app)
+      .post('/api/providers/me/kyc')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ doc_type: 'aadhaar', file: dataUrl, filename: 'not-a-pdf.pdf' });
+    expect(res.status).toBe(400);
   });
 
   it('rejects a payload declaring image/png whose bytes are actually a PDF', async () => {

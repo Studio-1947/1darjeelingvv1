@@ -27,10 +27,20 @@ const MAGIC_BYTES: Record<string, number[]> = {
   'application/pdf': [0x25, 0x50, 0x44, 0x46], // "%PDF"
 };
 
+// ISO 32000 (the PDF spec) permits the "%PDF-" header to appear anywhere within the first 1024
+// bytes of the file, not just at offset 0 — some scanners/tools prepend a UTF-8 BOM or leading
+// whitespace before it, and such files are still legitimate PDFs. JPEG and PNG signatures, by
+// contrast, are always exactly byte 0, so those keep an exact offset-0 match.
+const PDF_SIGNATURE_SEARCH_WINDOW = 1024;
+
 /** Whether `buffer`'s leading bytes match the standard signature for `mime`. */
 function matchesDeclaredType(buffer: Buffer, mime: string): boolean {
   const signature = MAGIC_BYTES[mime];
   if (!signature) return false;
+  if (mime === 'application/pdf') {
+    const window = buffer.subarray(0, PDF_SIGNATURE_SEARCH_WINDOW);
+    return window.indexOf(Buffer.from(signature)) !== -1;
+  }
   if (buffer.length < signature.length) return false;
   return signature.every((byte, i) => buffer[i] === byte);
 }
@@ -134,12 +144,6 @@ router.post('/me/kyc', authenticateToken, async (req: Request, res: Response) =>
   const ext = path.extname(filename) || (contentType === 'application/pdf' ? '.pdf' : '.jpg');
   const key = `${provider.id}/${doc_type}/${uuidv4()}${ext}`;
 
-  // Capture the existing row's fileKey (if any) BEFORE uploading, so we know what to clean up
-  // in storage afterwards regardless of which way this request goes.
-  const [existing] = await db.select().from(schema.kycDocuments)
-    .where(and(eq(schema.kycDocuments.providerId, provider.id), eq(schema.kycDocuments.docType, doc_type)));
-  const oldFileKey = existing?.fileKey;
-
   try {
     await uploadPrivate(buffer, key, contentType);
   } catch (err: any) {
@@ -152,26 +156,32 @@ router.post('/me/kyc', authenticateToken, async (req: Request, res: Response) =>
 
   const uploadedAt = new Date().toISOString();
   let doc: typeof schema.kycDocuments.$inferSelect;
+  let oldFileKey: string | undefined;
   try {
-    // One row per (provider, docType), enforced by a DB-level unique index: a single atomic
-    // upsert avoids the select→delete→insert race where two concurrent uploads of the same
-    // docType could both pass a prior existence check and both insert.
-    const [row] = await db.insert(schema.kycDocuments)
-      .values({
-        id: uuidv4(),
-        providerId: provider.id,
-        docType: doc_type,
-        fileKey: key,
-        contentType,
-        status: 'pending',
-        rejectionReason: null,
-        uploadedAt,
-        reviewedAt: null,
-        reviewedBy: null,
-      })
-      .onConflictDoUpdate({
-        target: [schema.kycDocuments.providerId, schema.kycDocuments.docType],
-        set: {
+    // The read of the existing row and the upsert happen inside one transaction, with the read
+    // taking a row lock (`FOR UPDATE`) so concurrent uploads of the same (providerId, docType)
+    // serialize on that row. Without the lock, two concurrent requests can both read the same
+    // pre-existing fileKey outside any transaction, both upload their own new object, and then
+    // race to write the row — whichever write loses that race has its own freshly-uploaded
+    // object referenced by nobody, an orphan that persists forever (the DB row only remembers
+    // one fileKey, the winner's). Locking the row means the second request to actually run its
+    // upsert necessarily observes the first request's already-committed fileKey as "the previous
+    // one", so each request cleans up exactly the object its own write replaced — never the
+    // object that ends up live in the row.
+    doc = await db.transaction(async (tx) => {
+      const [existing] = await tx.select().from(schema.kycDocuments)
+        .where(and(eq(schema.kycDocuments.providerId, provider.id), eq(schema.kycDocuments.docType, doc_type)))
+        .for('update');
+      oldFileKey = existing?.fileKey;
+
+      // One row per (provider, docType), enforced by a DB-level unique index: a single atomic
+      // upsert avoids the select→delete→insert race where two concurrent uploads of the same
+      // docType could both pass a prior existence check and both insert.
+      const [row] = await tx.insert(schema.kycDocuments)
+        .values({
+          id: uuidv4(),
+          providerId: provider.id,
+          docType: doc_type,
           fileKey: key,
           contentType,
           status: 'pending',
@@ -179,10 +189,22 @@ router.post('/me/kyc', authenticateToken, async (req: Request, res: Response) =>
           uploadedAt,
           reviewedAt: null,
           reviewedBy: null,
-        },
-      })
-      .returning();
-    doc = row;
+        })
+        .onConflictDoUpdate({
+          target: [schema.kycDocuments.providerId, schema.kycDocuments.docType],
+          set: {
+            fileKey: key,
+            contentType,
+            status: 'pending',
+            rejectionReason: null,
+            uploadedAt,
+            reviewedAt: null,
+            reviewedBy: null,
+          },
+        })
+        .returning();
+      return row;
+    });
   } catch (err) {
     // The DB write failed — the object we just uploaded is now orphaned (unreferenced by any
     // row). Best-effort clean it up before propagating, so failed writes don't leak storage.
@@ -194,7 +216,10 @@ router.post('/me/kyc', authenticateToken, async (req: Request, res: Response) =>
     throw err;
   }
 
-  // Best-effort cleanup of the previous object now that the new row is committed.
+  // Best-effort cleanup of the previous object now that the new row is committed. Kept outside
+  // the transaction (and using the value observed *inside* it) so a slow or unavailable storage
+  // backend can't hold the row lock open, while still deleting the object this request's write
+  // actually replaced rather than a value read before the transaction serialized.
   if (oldFileKey && oldFileKey !== key) {
     try {
       await deletePrivate(oldFileKey);
