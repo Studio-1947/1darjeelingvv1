@@ -4,7 +4,8 @@ import { db, schema } from '../db';
 import { eq } from 'drizzle-orm';
 import { rateLimiter } from '../middleware/rateLimiter';
 import { authenticateToken, makeToken, verifyPassword, hashPassword, needsRehash } from '../middleware/auth';
-import { IS_PROD, log, ADMIN_USERNAME, ADMIN_PASSWORD } from '../config';
+import { log, ADMIN_USERNAME, ADMIN_PASSWORD, MOCK_OTP, OTP_TTL_SECONDS, OTP_MAX_ATTEMPTS } from '../config';
+import { sendOtp } from '../messaging';
 
 const router = Router();
 
@@ -14,7 +15,7 @@ const router = Router();
  * @openapi
  * /auth/otp/send:
  *   post:
- *     summary: Send a WhatsApp OTP to a phone number (mocked outside production)
+ *     summary: Send an OTP to a phone number via the configured messaging provider (mocked when MESSAGING_PROVIDER=mock)
  *     tags: [Auth]
  *     requestBody:
  *       required: true
@@ -28,7 +29,7 @@ const router = Router();
  *               channel: { type: string, default: whatsapp }
  *     responses:
  *       200:
- *         description: OTP sent (mock_otp only present outside production)
+ *         description: OTP sent (mock_otp and hint only present when MESSAGING_PROVIDER=mock); channel reflects what was actually used for delivery, which may differ from the one requested
  *         content:
  *           application/json:
  *             schema:
@@ -44,6 +45,11 @@ const router = Router();
  *         content:
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
+ *       502:
+ *         description: The messaging provider could not be reached or rejected the request
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
  */
 // Send OTP
 router.post('/otp/send', rateLimiter(5, 60 * 1000, 'otp_send'), async (req: Request, res: Response) => {
@@ -55,29 +61,50 @@ router.post('/otp/send', rateLimiter(5, 60 * 1000, 'otp_send'), async (req: Requ
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
   const now = new Date().toISOString();
 
-  await db.insert(schema.otps)
-    .values({ phone, otp, channel, createdAt: now })
-    .onConflictDoUpdate({
-      target: schema.otps.phone,
-      set: { otp, channel, createdAt: now }
-    });
-
   // Check if the user already exists
   const [user] = await db.select().from(schema.users).where(eq(schema.users.phone, phone)).limit(1);
   const exists = !!user;
 
-  if (!IS_PROD) {
-    log.info(`[MOCK OTP] phone=****${phone.slice(-4)} otp=${otp}`);
+  // Only a resolved send permits reporting `sent: true`. The previous version returned success
+  // unconditionally, so in production every caller was told a code had been sent when nothing
+  // had been dispatched at all.
+  //
+  // Delivery is attempted before the OTP is stored, not after. The upsert below replaces any
+  // still-valid code the user was previously issued for this phone; if delivery then failed,
+  // that replacement would never reach the user while the code it destroyed still would have
+  // worked. Storing only on a confirmed send means a failed resend leaves an existing, working
+  // code intact instead of leaving the user with nothing.
+  // The channel actually used for delivery — reported below and stored — comes from the
+  // provider's response, not the caller's request: it may differ (msg91 always delivers SMS
+  // regardless of what was asked for), and telling the caller "sent via whatsapp" when an SMS
+  // went out is the same class of untruth this layer exists to prevent.
+  let deliveredChannel: string;
+  try {
+    ({ channel: deliveredChannel } = await sendOtp({ phone, otp, channel }));
+  } catch (err) {
+    // The diagnostic can name the provider and quote its response, so it stays server-side.
+    log.error(`[otp] delivery failed for ****${phone.slice(-4)}: ${(err as Error).message}`);
+    return res.status(502).json({ detail: 'Could not send OTP, please try again' });
+  }
+
+  await db.insert(schema.otps)
+    .values({ phone, otp, channel: deliveredChannel, createdAt: now, attempts: 0 })
+    .onConflictDoUpdate({
+      target: schema.otps.phone,
+      set: { otp, channel: deliveredChannel, createdAt: now, attempts: 0 }
+    });
+
+  if (MOCK_OTP) {
     return res.json({
       sent: true,
-      channel,
+      channel: deliveredChannel,
       mock_otp: otp,
       hint: "Mock mode: use the OTP shown or 123456",
       exists
     });
   }
 
-  return res.json({ sent: true, channel, exists });
+  return res.json({ sent: true, channel: deliveredChannel, exists });
 });
 
 /**
@@ -95,7 +122,7 @@ router.post('/otp/send', rateLimiter(5, 60 * 1000, 'otp_send'), async (req: Requ
  *             required: [phone, otp]
  *             properties:
  *               phone: { type: string }
- *               otp: { type: string, description: "6-digit OTP, or '123456' universal code outside production" }
+ *               otp: { type: string, description: "6-digit OTP, or '123456' universal code when MESSAGING_PROVIDER=mock" }
  *               name: { type: string, description: "Required on first login for a new phone number" }
  *               role: { type: string, enum: [tourist, provider], default: tourist }
  *     responses:
@@ -113,6 +140,11 @@ router.post('/otp/send', rateLimiter(5, 60 * 1000, 'otp_send'), async (req: Requ
  *         content:
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
+ *       429:
+ *         description: Too many incorrect attempts against the current OTP
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
  */
 // Verify OTP
 router.post('/otp/verify', rateLimiter(10, 60 * 1000, 'otp_verify'), async (req: Request, res: Response) => {
@@ -122,10 +154,33 @@ router.post('/otp/verify', rateLimiter(10, 60 * 1000, 'otp_verify'), async (req:
   }
 
   const [otpRec] = await db.select().from(schema.otps).where(eq(schema.otps.phone, phone)).limit(1);
-  const universalOk = (!IS_PROD) && otp === '123456';
 
-  if (!universalOk && (!otpRec || otpRec.otp !== otp)) {
-    return res.status(400).json({ detail: 'Invalid OTP' });
+  // The universal bypass is evaluated first and deliberately: it has to work with no stored
+  // row at all, which is how the test helpers and mock-mode logins work.
+  const universalOk = MOCK_OTP && otp === '123456';
+
+  if (!universalOk) {
+    if (!otpRec) {
+      return res.status(400).json({ detail: 'Invalid OTP' });
+    }
+
+    // Checked before expiry: someone who has burned the cap should be told to request a new
+    // code regardless of whether the old one also aged out, since that is the actionable step.
+    if (otpRec.attempts >= OTP_MAX_ATTEMPTS) {
+      return res.status(429).json({ detail: 'Too many incorrect attempts. Request a new OTP.' });
+    }
+
+    const ageMs = Date.now() - new Date(otpRec.createdAt).getTime();
+    if (ageMs > OTP_TTL_SECONDS * 1000) {
+      return res.status(400).json({ detail: 'OTP expired. Request a new one.' });
+    }
+
+    if (otpRec.otp !== otp) {
+      await db.update(schema.otps)
+        .set({ attempts: otpRec.attempts + 1 })
+        .where(eq(schema.otps.phone, phone));
+      return res.status(400).json({ detail: 'Invalid OTP' });
+    }
   }
 
   let [user] = await db.select().from(schema.users).where(eq(schema.users.phone, phone)).limit(1);

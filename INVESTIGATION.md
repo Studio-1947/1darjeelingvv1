@@ -199,3 +199,89 @@ The backend raced Postgres on boot, and with (B) the auto-reconcile fired at a d
 
 ### 5.H ⏳ OPEN — `backend/package.json` pins `typescript: ^7.0.2`
 TypeScript 7 (the native port) is the production build compiler, arrived at via a drifted caret range rather than a deliberate choice. `tsc --noEmit` and `npm run build` are both clean on it today, so this is a decision to make rather than a bug: pin it intentionally, or move back to a 5.x line.
+
+---
+
+## 6. Third-wave findings — 2026-07-20
+
+### 6.A 🟡 PARTIALLY RESOLVED — outbound messaging was never built; two sites stub it and report success
+
+Found while designing the OTP provider layer. The backend has two places that must send a
+message to a user, and **both are stubbed with a dev-only `log.info` that does nothing in
+production while reporting success to the caller.** No SMS, WhatsApp, or email provider
+exists anywhere in `backend/`.
+
+| Site | Dev behaviour | Production behaviour |
+| --- | --- | --- |
+| `src/routes/auth.ts:69` — OTP delivery | returns the code in the response body | nothing sent; still returns `{ sent: true }` |
+| `src/routes/payments.ts:63` — booking confirmation | logs `[MOCK NOTIFY]` | nothing sent; no error, no signal |
+
+**Why this is a launch blocker, not a rough edge:**
+
+- **OTP:** production login is impossible. A user requests a code, receives nothing, and
+  `/auth/otp/verify` requires an exact DB match — the `123456` universal code is gated on
+  `!IS_PROD`. This fails visibly and would be reported on day one.
+- **Booking confirmation:** worse, because it fails *invisibly*. A tourist pays, the
+  payment settles, the booking row is written, and both dashboards render correctly — but
+  neither the tourist nor the provider is ever told. Nothing in the system indicates a
+  failure. The discovery path is a guest arriving at a homestay that was never informed.
+
+Note the contrast with payments, which has the correct shape already: `MOCK_PAYMENTS=false`
+with incomplete Razorpay configuration **refuses to boot**. The messaging sites have no
+equivalent guard, which is how both reached production-ready state unnoticed.
+
+**Action:** the OTP half is designed in
+`docs/superpowers/specs/2026-07-20-otp-provider-layer-design.md` — a provider-agnostic
+messaging layer where real delivery is a config change, a half-configured provider fails at
+boot, and the route cannot report `sent: true` without provider confirmation. That design
+deliberately scopes the *notification* half out, because it needs product decisions first
+(who is notified, on which events, in which of the four supported locales) and blocking the
+login fix on those would be the wrong trade. **Booking notifications remain open and must
+be closed before real bookings are taken.**
+
+**Partially resolved 2026-07-20:** the OTP half is closed — `src/messaging/` provides a
+provider-agnostic delivery layer, `/auth/otp/send` returns 502 rather than a false
+`sent: true`, and a half-configured provider fails at boot. **The booking-confirmation half
+remains open** and must be closed before real bookings are taken.
+
+### 6.B ✅ FIXED — OTPs never expired and had no per-code attempt cap
+
+`otps.created_at` is written but never read by `/auth/otp/verify`, so an issued code stays
+valid indefinitely until a newer one replaces it for that phone. There is also no per-code
+attempt counter — only the 10/min per-IP route limit, which permits roughly 50 guesses per
+window against a 6-digit code.
+
+Harmless while codes are mock-only. Real the moment codes travel over SMS and linger in
+inboxes. Both are addressed in the design doc above (5-minute TTL, 5-attempt cap, one
+`attempts` column on `otps`).
+
+**Resolved 2026-07-20:** `/auth/otp/verify` now enforces a 5-minute TTL (`OTP_TTL_SECONDS`)
+and a 5-attempt cap (`OTP_MAX_ATTEMPTS`) backed by a new `otps.attempts` column, reset
+whenever a code is reissued. The universal mock code is evaluated before the stored-row
+checks so it still works with no row present.
+
+### 6.C ⏳ OPEN — `/otp/send` has no per-phone limit
+
+`/otp/send` is rate-limited per IP only (5 requests/60s, see `middleware/rateLimiter.ts`).
+There is no limit keyed on the phone number itself.
+
+**Why this matters:** while `MESSAGING_PROVIDER=mock` this is latent — nothing is actually
+delivered, so there is no cost to spamming a phone number with sends. It becomes live the
+moment `MESSAGING_PROVIDER` flips to a real provider (msg91 or otherwise), at which point it
+is two distinct real problems:
+
+1. **SMS-pumping / billing abuse.** Any phone number can be sent an unbounded number of real
+   messages by spreading requests across IPs — each IP only has to stay under 5/60s. The
+   target's phone number, not the caller's IP, is the resource being attacked, and nothing
+   here limits attacks on it directly.
+2. **An attempt-cap reset lever.** Each successful send resets `otps.attempts` to 0 (see
+   §6.B). Since `/otp/send` and `/otp/verify` are rate-limited independently, a caller who
+   stays under 5 sends/60s can also stay under 10 verifies/60s while resetting the guess
+   counter on every cycle — the 5-attempt cap added in §6.B is only a 5-attempt cap between
+   sends, not a hard ceiling. This partially undercuts the protection §6.B was meant to add.
+
+**Action needed:** add a per-phone send counter, most naturally as a column (or a window
+computed from `created_at`) on the existing `otps` row, and reject sends once it is
+exceeded within a rolling window — the same shape as the existing per-IP limiter, keyed on
+phone instead of IP. Not implemented here; recorded so it is not lost before the
+`MESSAGING_PROVIDER=msg91` flip.
