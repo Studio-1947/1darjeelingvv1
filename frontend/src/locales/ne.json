@@ -75,6 +75,27 @@
     "pending": "भुक्तानी बाँकी", "dashboard_title": "प्रदायक ड्यासबोर्ड",
     "pin_location": "आफ्नो सही स्थान पिन गर्नुहोस्"
   },
+  "kyc": {
+    "profileCompletion": "प्रोफाइल पूर्णता",
+    "completeYourListing": "आफ्नो लिस्टिङ पूरा गर्नुहोस्",
+    "verification": "प्रमाणीकरण (KYC)",
+    "verificationHelp": "वैकल्पिक — प्रमाणित ब्याज पाउन यी अपलोड गर्नुहोस्। JPEG, PNG वा PDF, बढीमा 5 MB।",
+    "verified": "प्रमाणित",
+    "inReview": "समीक्षामा",
+    "rejected": "अस्वीकृत",
+    "missing": "हराएको",
+    "upload": "अपलोड",
+    "uploading": "अपलोड हुँदै…",
+    "replace": "बदल्नुहोस्",
+    "remove": "हटाउनुहोस्",
+    "optional": "वैकल्पिक",
+    "loading": "लोड हुँदै…",
+    "loadError": "तपाईंको प्रोफाइल लोड गर्न सकिएन",
+    "uploadFailed": "अपलोड असफल भयो",
+    "removeFailed": "कागजात हटाउन सकिएन",
+    "uploadAriaLabel": "{{label}} अपलोड गर्नुहोस्",
+    "rejectionReason": "कारण: {{reason}}। कृपया फेरि अपलोड गर्नुहोस्।"
+  },
   "locationPicker": {
     "search_placeholder": "ठेगाना वा ल्यान्डमार्क खोज्नुहोस्…",
     "hint": "सही स्थान सेट गर्न पिन तान्नुहोस् वा नक्सामा ट्याप गर्नुहोस्।",

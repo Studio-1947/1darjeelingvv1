@@ -116,6 +116,27 @@
     "dashboard_title": "পরিষেবা প্রদানকারী ড্যাশবোর্ড",
     "pin_location": "আপনার সঠিক অবস্থান পিন করুন"
   },
+  "kyc": {
+    "profileCompletion": "প্রোফাইল সম্পূর্ণতা",
+    "completeYourListing": "আপনার তালিকা সম্পূর্ণ করুন",
+    "verification": "যাচাইকরণ (KYC)",
+    "verificationHelp": "ঐচ্ছিক — যাচাইকৃত ব্যাজ পেতে এগুলো আপলোড করুন। JPEG, PNG বা PDF, সর্বোচ্চ 5 MB।",
+    "verified": "যাচাইকৃত",
+    "inReview": "পর্যালোচনাধীন",
+    "rejected": "প্রত্যাখ্যাত",
+    "missing": "অনুপস্থিত",
+    "upload": "আপলোড",
+    "uploading": "আপলোড হচ্ছে…",
+    "replace": "প্রতিস্থাপন",
+    "remove": "সরান",
+    "optional": "ঐচ্ছিক",
+    "loading": "লোড হচ্ছে…",
+    "loadError": "আপনার প্রোফাইল লোড করা যায়নি",
+    "uploadFailed": "আপলোড ব্যর্থ হয়েছে",
+    "removeFailed": "নথি সরানো যায়নি",
+    "uploadAriaLabel": "{{label}} আপলোড করুন",
+    "rejectionReason": "কারণ: {{reason}}। অনুগ্রহ করে পুনরায় আপলোড করুন।"
+  },
   "locationPicker": {
     "search_placeholder": "ঠিকানা বা ল্যান্ডমার্ক খুঁজুন…",
     "hint": "সঠিক অবস্থান সেট করতে পিন টানুন বা মানচিত্রে ট্যাপ করুন।",

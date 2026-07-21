@@ -116,6 +116,27 @@
     "dashboard_title": "Provider dashboard",
     "pin_location": "Pin your exact location"
   },
+  "kyc": {
+    "profileCompletion": "Profile completion",
+    "completeYourListing": "Complete your listing",
+    "verification": "Verification (KYC)",
+    "verificationHelp": "Optional — upload these to earn a Verified badge. JPEG, PNG, or PDF, up to 5 MB.",
+    "verified": "Verified",
+    "inReview": "In review",
+    "rejected": "Rejected",
+    "missing": "Missing",
+    "upload": "Upload",
+    "uploading": "Uploading…",
+    "replace": "Replace",
+    "remove": "Remove",
+    "optional": "optional",
+    "loading": "Loading…",
+    "loadError": "Could not load your profile",
+    "uploadFailed": "Upload failed",
+    "removeFailed": "Could not remove the document",
+    "uploadAriaLabel": "Upload {{label}}",
+    "rejectionReason": "Reason: {{reason}}. Please re-upload."
+  },
   "locationPicker": {
     "search_placeholder": "Search address or landmark…",
     "hint": "Drag the pin or tap the map to set your exact location.",

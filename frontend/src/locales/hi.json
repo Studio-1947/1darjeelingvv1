@@ -84,6 +84,27 @@
     "pending": "भुगतान बाकी", "dashboard_title": "प्रदाता डैशबोर्ड",
     "pin_location": "अपना सटीक स्थान पिन करें"
   },
+  "kyc": {
+    "profileCompletion": "प्रोफ़ाइल पूर्णता",
+    "completeYourListing": "अपनी लिस्टिंग पूरी करें",
+    "verification": "सत्यापन (KYC)",
+    "verificationHelp": "वैकल्पिक — सत्यापित बैज पाने के लिए इन्हें अपलोड करें। JPEG, PNG या PDF, अधिकतम 5 MB।",
+    "verified": "सत्यापित",
+    "inReview": "समीक्षा में",
+    "rejected": "अस्वीकृत",
+    "missing": "गुम",
+    "upload": "अपलोड",
+    "uploading": "अपलोड हो रहा है…",
+    "replace": "बदलें",
+    "remove": "हटाएं",
+    "optional": "वैकल्पिक",
+    "loading": "लोड हो रहा है…",
+    "loadError": "आपकी प्रोफ़ाइल लोड नहीं हो सकी",
+    "uploadFailed": "अपलोड विफल",
+    "removeFailed": "दस्तावेज़ हटाया नहीं जा सका",
+    "uploadAriaLabel": "{{label}} अपलोड करें",
+    "rejectionReason": "कारण: {{reason}}। कृपया दोबारा अपलोड करें।"
+  },
   "locationPicker": {
     "search_placeholder": "पता या लैंडमार्क खोजें…",
     "hint": "सटीक स्थान सेट करने के लिए पिन खींचें या नक़्शे पर टैप करें।",

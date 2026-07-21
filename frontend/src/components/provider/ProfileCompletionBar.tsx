@@ -1,12 +1,14 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 
 /** A pine-green progress bar with a percentage label. */
 export default function ProfileCompletionBar({ percent }: { percent: number }) {
+  const { t } = useTranslation();
   const clamped = Math.max(0, Math.min(100, Math.round(percent)));
   return (
     <div className="w-full">
       <div className="flex items-center justify-between mb-1">
-        <span className="text-xs font-bold text-ink-soft">Profile completion</span>
+        <span className="text-xs font-bold text-ink-soft">{t('kyc.profileCompletion')}</span>
         <span className="text-xs font-bold text-pine">{clamped}%</span>
       </div>
       <div className="h-2.5 w-full rounded-full bg-[var(--line)] overflow-hidden">

@@ -1,19 +1,21 @@
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Upload, CheckCircle2, Clock, XCircle, Circle } from 'lucide-react';
 import { getMyProfile, uploadKycDoc, deleteKycDoc, KycProfile, ChecklistItem } from '@/lib/kyc';
 import ProfileCompletionBar from '../ProfileCompletionBar';
 
-const stateMeta: Record<ChecklistItem['state'], { icon: React.ReactNode; label: string; cls: string }> = {
-  done: { icon: <CheckCircle2 size={16} />, label: 'Verified', cls: 'text-pine' },
-  in_review: { icon: <Clock size={16} />, label: 'In review', cls: 'text-gold' },
-  rejected: { icon: <XCircle size={16} />, label: 'Rejected', cls: 'text-flag' },
-  missing: { icon: <Circle size={16} />, label: 'Missing', cls: 'text-ink-soft' },
-};
-
 export default function KycSection({ onProfileChange }: { onProfileChange?: (p: KycProfile) => void }) {
+  const { t } = useTranslation();
   const [profile, setProfile] = useState<KycProfile | null>(null);
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const stateMeta: Record<ChecklistItem['state'], { icon: React.ReactNode; label: string; cls: string }> = {
+    done: { icon: <CheckCircle2 size={16} />, label: t('kyc.verified'), cls: 'text-pine' },
+    in_review: { icon: <Clock size={16} />, label: t('kyc.inReview'), cls: 'text-gold' },
+    rejected: { icon: <XCircle size={16} />, label: t('kyc.rejected'), cls: 'text-flag' },
+    missing: { icon: <Circle size={16} />, label: t('kyc.missing'), cls: 'text-ink-soft' },
+  };
 
   const load = async () => {
     const p = await getMyProfile();
@@ -21,7 +23,7 @@ export default function KycSection({ onProfileChange }: { onProfileChange?: (p: 
     onProfileChange?.(p);
   };
   useEffect(() => {
-    load().catch(() => setError('Could not load your profile'));
+    load().catch(() => setError(t('kyc.loadError')));
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: load once on mount only
   }, []);
 
@@ -33,7 +35,7 @@ export default function KycSection({ onProfileChange }: { onProfileChange?: (p: 
       await uploadKycDoc(docType, file);
       await load();
     } catch (e) {
-      setError(typeof e === 'string' ? e : 'Upload failed');
+      setError(typeof e === 'string' ? e : t('kyc.uploadFailed'));
     } finally {
       setBusyKey(prev => (prev === docType ? null : prev));
     }
@@ -46,13 +48,13 @@ export default function KycSection({ onProfileChange }: { onProfileChange?: (p: 
       await deleteKycDoc(docType);
       await load();
     } catch (e) {
-      setError(typeof e === 'string' ? e : 'Could not remove the document');
+      setError(typeof e === 'string' ? e : t('kyc.removeFailed'));
     } finally {
       setBusyKey(prev => (prev === docType ? null : prev));
     }
   };
 
-  if (!profile) return <div className="text-sm text-ink-soft">Loading…</div>;
+  if (!profile) return <div className="text-sm text-ink-soft">{t('kyc.loading')}</div>;
 
   const kycItems = profile.checklist.filter(c => c.kind === 'kyc');
   const profileItems = profile.checklist.filter(c => c.kind === 'profile');
@@ -63,7 +65,7 @@ export default function KycSection({ onProfileChange }: { onProfileChange?: (p: 
       {error && <div className="text-sm text-flag font-semibold">{error}</div>}
 
       <div>
-        <h3 className="font-bold text-ink mb-2">Complete your listing</h3>
+        <h3 className="font-bold text-ink mb-2">{t('kyc.completeYourListing')}</h3>
         <ul className="space-y-2">
           {profileItems.map(item => {
             const m = stateMeta[item.state];
@@ -78,8 +80,8 @@ export default function KycSection({ onProfileChange }: { onProfileChange?: (p: 
       </div>
 
       <div>
-        <h3 className="font-bold text-ink mb-1">Verification (KYC)</h3>
-        <p className="text-xs text-ink-soft mb-3">Optional — upload these to earn a Verified badge. JPEG, PNG, or PDF, up to 5&nbsp;MB.</p>
+        <h3 className="font-bold text-ink mb-1">{t('kyc.verification')}</h3>
+        <p className="text-xs text-ink-soft mb-3">{t('kyc.verificationHelp')}</p>
         <ul className="space-y-3">
           {kycItems.map(item => {
             const m = stateMeta[item.state];
@@ -91,32 +93,32 @@ export default function KycSection({ onProfileChange }: { onProfileChange?: (p: 
                     <span className={m.cls}>{m.icon}</span>
                     <div>
                       <div className="text-sm font-semibold text-ink">
-                        {item.label}{!item.required && <span className="text-ink-soft font-normal"> (optional)</span>}
+                        {item.label}{!item.required && <span className="text-ink-soft font-normal"> ({t('kyc.optional')})</span>}
                       </div>
                       <div className={`text-xs ${m.cls}`}>{m.label}</div>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <label className="inline-flex items-center gap-1 text-xs font-bold text-pine cursor-pointer">
-                      <Upload size={12} /> {busyKey === item.key ? 'Uploading…' : (item.state === 'missing' ? 'Upload' : 'Replace')}
+                      <Upload size={12} /> {busyKey === item.key ? t('kyc.uploading') : (item.state === 'missing' ? t('kyc.upload') : t('kyc.replace'))}
                       <input
                         type="file"
                         accept="image/jpeg,image/png,application/pdf"
                         className="sr-only"
-                        aria-label={`Upload ${item.label}`}
+                        aria-label={t('kyc.uploadAriaLabel', { label: item.label })}
                         disabled={busyKey === item.key}
                         onChange={e => onPick(item.key, e.target.files?.[0])}
                       />
                     </label>
                     {doc && (
                       <button className="text-xs text-flag font-semibold" onClick={() => onDelete(item.key)} disabled={busyKey === item.key}>
-                        Remove
+                        {t('kyc.remove')}
                       </button>
                     )}
                   </div>
                 </div>
                 {item.state === 'rejected' && doc?.rejection_reason && (
-                  <div className="mt-2 text-xs text-flag">Reason: {doc.rejection_reason}. Please re-upload.</div>
+                  <div className="mt-2 text-xs text-flag">{t('kyc.rejectionReason', { reason: doc.rejection_reason })}</div>
                 )}
               </li>
             );
