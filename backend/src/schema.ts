@@ -1,4 +1,4 @@
-import { pgTable, text, integer, boolean, numeric, jsonb, doublePrecision } from 'drizzle-orm/pg-core';
+import { pgTable, text, integer, boolean, numeric, jsonb, doublePrecision, uniqueIndex } from 'drizzle-orm/pg-core';
 
 export const users = pgTable('users', {
   id: text('id').primaryKey(),
@@ -98,4 +98,9 @@ export const kycDocuments = pgTable('kyc_documents', {
   uploadedAt: text('uploaded_at').notNull(),
   reviewedAt: text('reviewed_at'),
   reviewedBy: text('reviewed_by'),
-});
+}, (t) => ({
+  // Exactly one row per (provider, docType) — enforced at the DB level so concurrent uploads
+  // of the same docType can't both insert, which previously let approved/pending duplicates
+  // coexist and made the Verified badge flap depending on unordered row read order.
+  providerDocTypeUnique: uniqueIndex('kyc_documents_provider_doc_type_unique').on(t.providerId, t.docType),
+}));

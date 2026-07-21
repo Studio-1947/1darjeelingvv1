@@ -111,35 +111,70 @@ router.post('/me/kyc', authenticateToken, async (req: Request, res: Response) =>
 
   const ext = path.extname(filename) || (contentType === 'application/pdf' ? '.pdf' : '.jpg');
   const key = `${provider.id}/${doc_type}/${uuidv4()}${ext}`;
+
+  // Capture the existing row's fileKey (if any) BEFORE uploading, so we know what to clean up
+  // in storage afterwards regardless of which way this request goes.
+  const [existing] = await db.select().from(schema.kycDocuments)
+    .where(and(eq(schema.kycDocuments.providerId, provider.id), eq(schema.kycDocuments.docType, doc_type)));
+  const oldFileKey = existing?.fileKey;
+
   await uploadPrivate(buffer, key, contentType);
 
-  // One row per (provider, docType): replace any existing row, resetting to pending.
-  const existing = await db.select().from(schema.kycDocuments)
-    .where(and(eq(schema.kycDocuments.providerId, provider.id), eq(schema.kycDocuments.docType, doc_type)));
-  for (const row of existing) {
-    await db.delete(schema.kycDocuments).where(eq(schema.kycDocuments.id, row.id));
+  const uploadedAt = new Date().toISOString();
+  let doc: typeof schema.kycDocuments.$inferSelect;
+  try {
+    // One row per (provider, docType), enforced by a DB-level unique index: a single atomic
+    // upsert avoids the select→delete→insert race where two concurrent uploads of the same
+    // docType could both pass a prior existence check and both insert.
+    const [row] = await db.insert(schema.kycDocuments)
+      .values({
+        id: uuidv4(),
+        providerId: provider.id,
+        docType: doc_type,
+        fileKey: key,
+        contentType,
+        status: 'pending',
+        rejectionReason: null,
+        uploadedAt,
+        reviewedAt: null,
+        reviewedBy: null,
+      })
+      .onConflictDoUpdate({
+        target: [schema.kycDocuments.providerId, schema.kycDocuments.docType],
+        set: {
+          fileKey: key,
+          contentType,
+          status: 'pending',
+          rejectionReason: null,
+          uploadedAt,
+          reviewedAt: null,
+          reviewedBy: null,
+        },
+      })
+      .returning();
+    doc = row;
+  } catch (err) {
+    // The DB write failed — the object we just uploaded is now orphaned (unreferenced by any
+    // row). Best-effort clean it up before propagating, so failed writes don't leak storage.
     try {
-      await deletePrivate(row.fileKey);
+      await deletePrivate(key);
+    } catch (cleanupErr: any) {
+      log.error(`Failed to delete orphaned KYC object ${key} after failed DB write: ${cleanupErr?.message || cleanupErr}`);
+    }
+    throw err;
+  }
+
+  // Best-effort cleanup of the previous object now that the new row is committed.
+  if (oldFileKey && oldFileKey !== key) {
+    try {
+      await deletePrivate(oldFileKey);
     } catch (err: any) {
-      log.error(`Failed to delete replaced KYC object ${row.fileKey}: ${err?.message || err}`);
+      log.error(`Failed to delete replaced KYC object ${oldFileKey}: ${err?.message || err}`);
     }
   }
 
-  const doc = {
-    id: uuidv4(),
-    providerId: provider.id,
-    docType: doc_type,
-    fileKey: key,
-    contentType,
-    status: 'pending',
-    rejectionReason: null,
-    uploadedAt: new Date().toISOString(),
-    reviewedAt: null,
-    reviewedBy: null,
-  };
-  await db.insert(schema.kycDocuments).values(doc);
   await recomputeKycStatus(provider.id);
-  res.json({ document: docOut(doc as any) });
+  res.json({ document: docOut(doc) });
 });
 
 // DELETE /providers/me/kyc/:docType — owner removes a doc

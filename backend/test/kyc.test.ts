@@ -11,6 +11,9 @@ vi.mock('../src/lib/s3', () => ({
 }));
 
 import { app } from '../src/app';
+import { db, schema } from '../src/db';
+import { and, eq } from 'drizzle-orm';
+import { deletePrivate } from '../src/lib/s3';
 import { onboardActiveProvider, registerUser, loginAdmin } from './helpers';
 
 // 1x1 transparent PNG as a data URL
@@ -166,5 +169,49 @@ describe('provider KYC', () => {
       .set('Authorization', `Bearer ${token}`)
       .send({ doc_type: 'aadhaar', file: mediumDataUrl, filename: 'medium.png' });
     expect(res.status).toBe(200);
+  });
+
+  it('two concurrent uploads of the same docType leave exactly one row (unique constraint + atomic upsert)', async () => {
+    const { token, providerId } = await onboardActiveProvider({ name: 'Kyc Ten', businessType: 'shop' });
+    const upload = (filename: string) =>
+      request(app).post('/api/providers/me/kyc').set('Authorization', `Bearer ${token}`)
+        .send({ doc_type: 'pan', file: PNG_DATA_URL, filename });
+
+    const [r1, r2] = await Promise.all([upload('pan-a.png'), upload('pan-b.png')]);
+    expect(r1.status).toBe(200);
+    expect(r2.status).toBe(200);
+
+    const rows = await db.select().from(schema.kycDocuments)
+      .where(and(eq(schema.kycDocuments.providerId, providerId), eq(schema.kycDocuments.docType, 'pan')));
+    expect(rows.length).toBe(1);
+    expect(rows[0].status).toBe('pending');
+  });
+
+  it('best-effort deletes the just-uploaded object if the DB write fails, so nothing orphans in storage', async () => {
+    const { token } = await onboardActiveProvider({ name: 'Kyc Eleven', businessType: 'shop' });
+    const deletePrivateMock = deletePrivate as unknown as ReturnType<typeof vi.fn>;
+    const callsBefore = deletePrivateMock.mock.calls.length;
+
+    const insertSpy = vi.spyOn(db, 'insert').mockImplementationOnce(() => {
+      throw new Error('simulated DB failure');
+    });
+
+    const res = await request(app)
+      .post('/api/providers/me/kyc')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ doc_type: 'aadhaar', file: PNG_DATA_URL, filename: 'a.png' });
+
+    expect(res.status).toBe(500);
+    insertSpy.mockRestore();
+
+    // The orphaned object (the one just uploaded, before the failed DB write) must have been
+    // best-effort cleaned up.
+    expect(deletePrivateMock.mock.calls.length).toBe(callsBefore + 1);
+    const [deletedKey] = deletePrivateMock.mock.calls[deletePrivateMock.mock.calls.length - 1];
+    expect(deletedKey).toMatch(/\/aadhaar\//);
+
+    // No row should exist for this doc, since the insert never committed.
+    const list = await request(app).get('/api/providers/me/kyc').set('Authorization', `Bearer ${token}`);
+    expect(list.body.documents.find((d: any) => d.doc_type === 'aadhaar')).toBeUndefined();
   });
 });
