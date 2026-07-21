@@ -16,6 +16,25 @@ const MAX_BYTES = 5 * 1024 * 1024;
 // The 8mb JSON body limit for this path is applied in app.ts (mounted before the global
 // express.json(), which would otherwise consume the stream at its 100kb default).
 
+const STORAGE_UNAVAILABLE_DETAIL = 'Document storage is temporarily unavailable. Please try again shortly.';
+
+// Standard magic-byte signatures for the allow-listed mime types, so the declared
+// `data:<type>;base64,` prefix from the client can be verified against the actual bytes
+// rather than trusted blindly.
+const MAGIC_BYTES: Record<string, number[]> = {
+  'image/jpeg': [0xff, 0xd8, 0xff],
+  'image/png': [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a],
+  'application/pdf': [0x25, 0x50, 0x44, 0x46], // "%PDF"
+};
+
+/** Whether `buffer`'s leading bytes match the standard signature for `mime`. */
+function matchesDeclaredType(buffer: Buffer, mime: string): boolean {
+  const signature = MAGIC_BYTES[mime];
+  if (!signature) return false;
+  if (buffer.length < signature.length) return false;
+  return signature.every((byte, i) => buffer[i] === byte);
+}
+
 async function ownActiveProvider(userId: string) {
   const rows = await db.select().from(schema.providers).where(eq(schema.providers.userId, userId));
   return rows.find(p => p.status === 'active') || null;
@@ -108,6 +127,9 @@ router.post('/me/kyc', authenticateToken, async (req: Request, res: Response) =>
   const buffer = Buffer.from(base64Data, 'base64');
   if (buffer.length === 0) return res.status(400).json({ detail: 'Empty file' });
   if (buffer.length > MAX_BYTES) return res.status(400).json({ detail: 'File exceeds 5 MB limit' });
+  if (!matchesDeclaredType(buffer, contentType)) {
+    return res.status(400).json({ detail: 'File contents do not match the declared file type' });
+  }
 
   const ext = path.extname(filename) || (contentType === 'application/pdf' ? '.pdf' : '.jpg');
   const key = `${provider.id}/${doc_type}/${uuidv4()}${ext}`;
@@ -118,7 +140,15 @@ router.post('/me/kyc', authenticateToken, async (req: Request, res: Response) =>
     .where(and(eq(schema.kycDocuments.providerId, provider.id), eq(schema.kycDocuments.docType, doc_type)));
   const oldFileKey = existing?.fileKey;
 
-  await uploadPrivate(buffer, key, contentType);
+  try {
+    await uploadPrivate(buffer, key, contentType);
+  } catch (err: any) {
+    // The storage backend (MinIO) being down/misconfigured is not the provider's fault — a
+    // bare 500 here would read on the frontend as "your file was rejected". Log the real
+    // cause server-side and answer with a 503 that says so, without leaking internals.
+    log.error(`KYC storage upload failed for provider ${provider.id}, doc_type ${doc_type}: ${err?.message || err}`);
+    return res.status(503).json({ detail: STORAGE_UNAVAILABLE_DETAIL });
+  }
 
   const uploadedAt = new Date().toISOString();
   let doc: typeof schema.kycDocuments.$inferSelect;
@@ -208,7 +238,14 @@ router.get('/kyc/:id/file', authenticateToken, async (req: Request, res: Respons
   }
   if (!allowed) return res.status(403).json({ detail: 'Forbidden' });
 
-  const { stream, contentType } = await getPrivateObject(doc.fileKey);
+  let stream: Awaited<ReturnType<typeof getPrivateObject>>['stream'];
+  let contentType: string | undefined;
+  try {
+    ({ stream, contentType } = await getPrivateObject(doc.fileKey));
+  } catch (err: any) {
+    log.error(`KYC storage fetch failed for doc ${doc.id}: ${err?.message || err}`);
+    return res.status(503).json({ detail: STORAGE_UNAVAILABLE_DETAIL });
+  }
   const resolvedType = contentType || doc.contentType;
   res.setHeader('Content-Type', resolvedType);
   res.setHeader('Cache-Control', 'private, no-store');

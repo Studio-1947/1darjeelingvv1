@@ -13,12 +13,16 @@ vi.mock('../src/lib/s3', () => ({
 import { app } from '../src/app';
 import { db, schema } from '../src/db';
 import { and, eq } from 'drizzle-orm';
-import { deletePrivate } from '../src/lib/s3';
+import { deletePrivate, uploadPrivate, getPrivateObject } from '../src/lib/s3';
 import { onboardActiveProvider, registerUser, loginAdmin } from './helpers';
 
 // 1x1 transparent PNG as a data URL
 const PNG_DATA_URL =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+
+// A minimal, structurally valid PDF (starts with the "%PDF" signature).
+const PDF_DATA_URL =
+  'data:application/pdf;base64,' + Buffer.from('%PDF-1.4\n%mock pdf for tests\n').toString('base64');
 
 describe('provider KYC', () => {
   it('provider can upload an allowed doc; it starts pending', async () => {
@@ -161,9 +165,15 @@ describe('provider KYC', () => {
 
   it('accepts an upload just over the old 100 KB body-parser limit (regression guard)', async () => {
     const { token } = await onboardActiveProvider({ name: 'Kyc Nine', businessType: 'shop' });
-    // ~200 KB of base64 payload — well over body-parser's 100kb default, well under the 5 MB
-    // MAX_BYTES / 8mb JSON limit. Catches a regression to the global 100kb express.json() default.
-    const mediumDataUrl = 'data:image/png;base64,' + 'A'.repeat(200_000);
+    // ~200 KB payload — well over body-parser's 100kb default, well under the 5 MB MAX_BYTES /
+    // 8mb JSON limit. Catches a regression to the global 100kb express.json() default. Must
+    // start with a real PNG signature (0x89 0x50 0x4E 0x47 0x0D 0x0A 0x1A 0x0A) so it also
+    // clears the magic-byte content-type check — the padding after that is arbitrary.
+    const mediumBuffer = Buffer.concat([
+      Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+      Buffer.alloc(200_000, 0x00),
+    ]);
+    const mediumDataUrl = 'data:image/png;base64,' + mediumBuffer.toString('base64');
     const res = await request(app)
       .post('/api/providers/me/kyc')
       .set('Authorization', `Bearer ${token}`)
@@ -213,5 +223,74 @@ describe('provider KYC', () => {
     // No row should exist for this doc, since the insert never committed.
     const list = await request(app).get('/api/providers/me/kyc').set('Authorization', `Bearer ${token}`);
     expect(list.body.documents.find((d: any) => d.doc_type === 'aadhaar')).toBeUndefined();
+  });
+
+  it('answers with 503 (not a bare 500) when storage is unavailable during upload, without leaking internals', async () => {
+    const { token } = await onboardActiveProvider({ name: 'Kyc Twelve', businessType: 'shop' });
+    const uploadPrivateMock = uploadPrivate as unknown as ReturnType<typeof vi.fn>;
+    uploadPrivateMock.mockRejectedValueOnce(new Error('connect ECONNREFUSED 127.0.0.1:9000 - internal-secret-detail'));
+
+    const res = await request(app)
+      .post('/api/providers/me/kyc')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ doc_type: 'aadhaar', file: PNG_DATA_URL, filename: 'a.png' });
+
+    expect(res.status).toBe(503);
+    expect(typeof res.body.detail).toBe('string');
+    const bodyStr = JSON.stringify(res.body);
+    expect(bodyStr).not.toMatch(/ECONNREFUSED/);
+    expect(bodyStr).not.toMatch(/internal-secret-detail/);
+
+    // No row should exist for this doc, since the upload never made it to storage.
+    const list = await request(app).get('/api/providers/me/kyc').set('Authorization', `Bearer ${token}`);
+    expect(list.body.documents.find((d: any) => d.doc_type === 'aadhaar')).toBeUndefined();
+  });
+
+  it('answers with 503 (not a bare 500) when storage is unavailable while streaming a file, without leaking internals', async () => {
+    const { token } = await onboardActiveProvider({ name: 'Kyc Thirteen', businessType: 'shop' });
+    const up = await request(app).post('/api/providers/me/kyc').set('Authorization', `Bearer ${token}`)
+      .send({ doc_type: 'aadhaar', file: PNG_DATA_URL, filename: 'a.png' });
+    const docId = up.body.document.id;
+
+    const getPrivateObjectMock = getPrivateObject as unknown as ReturnType<typeof vi.fn>;
+    getPrivateObjectMock.mockRejectedValueOnce(new Error('internal-storage-outage-detail'));
+
+    const res = await request(app)
+      .get(`/api/providers/kyc/${docId}/file`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(503);
+    const bodyStr = JSON.stringify(res.body);
+    expect(bodyStr).not.toMatch(/internal-storage-outage-detail/);
+  });
+
+  it('accepts a document whose bytes match the declared PDF type', async () => {
+    const { token } = await onboardActiveProvider({ name: 'Kyc Fourteen', businessType: 'shop' });
+    const res = await request(app)
+      .post('/api/providers/me/kyc')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ doc_type: 'aadhaar', file: PDF_DATA_URL, filename: 'aadhaar.pdf' });
+    expect(res.status).toBe(200);
+    expect(res.body.document.doc_type).toBe('aadhaar');
+  });
+
+  it('rejects a payload declaring image/png whose bytes are actually a PDF', async () => {
+    const { token } = await onboardActiveProvider({ name: 'Kyc Fifteen', businessType: 'shop' });
+    const mismatchedDataUrl = 'data:image/png;base64,' + Buffer.from('%PDF-1.4\nnot a png').toString('base64');
+    const res = await request(app)
+      .post('/api/providers/me/kyc')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ doc_type: 'aadhaar', file: mismatchedDataUrl, filename: 'fake.png' });
+    expect(res.status).toBe(400);
+  });
+
+  it('rejects a payload declaring image/png whose bytes are random junk', async () => {
+    const { token } = await onboardActiveProvider({ name: 'Kyc Sixteen', businessType: 'shop' });
+    const junkDataUrl = 'data:image/png;base64,' + Buffer.from('just some random junk bytes, not an image').toString('base64');
+    const res = await request(app)
+      .post('/api/providers/me/kyc')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ doc_type: 'aadhaar', file: junkDataUrl, filename: 'junk.png' });
+    expect(res.status).toBe(400);
   });
 });
