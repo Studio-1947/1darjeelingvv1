@@ -8,6 +8,9 @@ import ListingFormModal from '@/components/ListingFormModal';
 import { StatCard } from '@/components/provider/dashboard/widgets';
 import BookingCard from '@/components/provider/dashboard/BookingCard';
 import EditListingModal from '@/components/provider/dashboard/EditListingModal';
+import KycSection from '@/components/provider/dashboard/KycSection';
+import VerifiedBadge from '@/components/provider/VerifiedBadge';
+import type { KycProfile } from '@/lib/kyc';
 
 /** Provider home: booking stats, the bookings list, and business profile. */
 export default function ProviderDashboard() {
@@ -22,6 +25,7 @@ export default function ProviderDashboard() {
   const [selectedListing, setSelectedListing] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [listingModal, setListingModal] = useState<{ open: boolean; editing: any | null }>({ open: false, editing: null });
+  const [kycProfile, setKycProfile] = useState<KycProfile | null>(null);
 
   const loadData = useCallback(async () => {
     const [p, b] = await Promise.all([
@@ -116,6 +120,7 @@ export default function ProviderDashboard() {
             data-testid="provider-status">
             {active ? <CheckCircle2 size={14} /> : <Clock size={14} />} {active ? t('provider.active') : t('provider.pending')}
           </span>
+          {kycProfile?.kyc_status === 'verified' && <VerifiedBadge size="md" />}
         </div>
       </div>
 
@@ -222,21 +227,26 @@ export default function ProviderDashboard() {
 
       {/* Profile */}
       {tab === 'profile' && (
-        <div className="mt-6 mist-panel p-5 md:p-6">
-          <div className="grid md:grid-cols-2 gap-6">
-            <div>
-              <div className="text-xs uppercase tracking-widest text-ink-soft">Business</div>
-              <div className="mt-1 font-display font-extrabold text-2xl text-ink">{provider.business_name}</div>
-              <div className="text-sm text-ink-soft capitalize">{provider.business_type} · {provider.location}</div>
-            </div>
-            <div>
-              <div className="text-xs uppercase tracking-widest text-ink-soft">Contact</div>
-              <div className="mt-1 font-display font-extrabold text-2xl text-ink">{provider.contact_phone}</div>
-            </div>
+        <div className="mt-6">
+          <div className="mist-panel p-5 md:p-6 mb-6">
+            <KycSection onProfileChange={setKycProfile} />
           </div>
-          <div className="mt-6">
-            <div className="text-xs uppercase tracking-widest text-ink-soft">Description</div>
-            <p className="mt-1 text-ink leading-relaxed">{provider.description}</p>
+          <div className="mist-panel p-5 md:p-6">
+            <div className="grid md:grid-cols-2 gap-6">
+              <div>
+                <div className="text-xs uppercase tracking-widest text-ink-soft">Business</div>
+                <div className="mt-1 font-display font-extrabold text-2xl text-ink">{provider.business_name}</div>
+                <div className="text-sm text-ink-soft capitalize">{provider.business_type} · {provider.location}</div>
+              </div>
+              <div>
+                <div className="text-xs uppercase tracking-widest text-ink-soft">Contact</div>
+                <div className="mt-1 font-display font-extrabold text-2xl text-ink">{provider.contact_phone}</div>
+              </div>
+            </div>
+            <div className="mt-6">
+              <div className="text-xs uppercase tracking-widest text-ink-soft">Description</div>
+              <p className="mt-1 text-ink leading-relaxed">{provider.description}</p>
+            </div>
           </div>
         </div>
       )}
