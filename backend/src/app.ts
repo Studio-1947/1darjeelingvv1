@@ -28,6 +28,11 @@ app.set('trust proxy', TRUST_PROXY_HOPS);
 // express.json() then skips this request because express.raw() has already marked the body read.
 app.use('/api/payments/webhook', express.raw({ type: '*/*' }));
 
+// KYC uploads carry a base64 file (~33% larger than the raw bytes), so this path needs a
+// bigger body limit than the global default. Must be mounted before express.json() below,
+// which would otherwise consume the stream at its 100kb default.
+app.use('/api/providers/me/kyc', express.json({ limit: '8mb' }));
+
 app.use(express.json());
 
 app.use(cors({

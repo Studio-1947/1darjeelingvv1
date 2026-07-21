@@ -5,6 +5,7 @@ import {
   PutBucketPolicyCommand,
   PutObjectCommand,
   GetObjectCommand,
+  DeleteObjectCommand,
 } from '@aws-sdk/client-s3';
 import { Readable } from 'stream';
 import {
@@ -136,4 +137,10 @@ export async function getPrivateObject(key: string): Promise<{ stream: Readable;
   await bootstrapKycBucket();
   const out = await s3Client.send(new GetObjectCommand({ Bucket: MINIO_KYC_BUCKET, Key: key }));
   return { stream: out.Body as Readable, contentType: out.ContentType };
+}
+
+/** Deletes a private KYC object (e.g. on re-upload or removal). Callers should tolerate failure. */
+export async function deletePrivate(key: string): Promise<void> {
+  await bootstrapKycBucket();
+  await s3Client.send(new DeleteObjectCommand({ Bucket: MINIO_KYC_BUCKET, Key: key }));
 }

@@ -7,10 +7,11 @@ vi.mock('../src/lib/s3', () => ({
     const { Readable } = await import('stream');
     return { stream: Readable.from([Buffer.from('test-file-bytes')]), contentType: 'image/png' };
   }),
+  deletePrivate: vi.fn(async () => {}),
 }));
 
 import { app } from '../src/app';
-import { onboardActiveProvider, registerUser } from './helpers';
+import { onboardActiveProvider, registerUser, loginAdmin } from './helpers';
 
 // 1x1 transparent PNG as a data URL
 const PNG_DATA_URL =
@@ -100,5 +101,70 @@ describe('provider KYC', () => {
     expect(del.status).toBe(200);
     const list = await request(app).get('/api/providers/me/kyc').set('Authorization', `Bearer ${token}`);
     expect(list.body.documents.find((d: any) => d.doc_type === 'aadhaar')).toBeUndefined();
+  });
+
+  it('an admin can fetch another provider\'s KYC file', async () => {
+    const a = await onboardActiveProvider({ name: 'Owner C', businessType: 'shop' });
+    const up = await request(app).post('/api/providers/me/kyc').set('Authorization', `Bearer ${a.token}`)
+      .send({ doc_type: 'aadhaar', file: PNG_DATA_URL, filename: 'a.png' });
+    const docId = up.body.document.id;
+
+    const adminToken = await loginAdmin();
+    const adminFetch = await request(app)
+      .get(`/api/providers/kyc/${docId}/file`)
+      .set('Authorization', `Bearer ${adminToken}`);
+    expect(adminFetch.status).toBe(200);
+  });
+
+  it('an unauthenticated request to fetch a KYC file gets 401', async () => {
+    const a = await onboardActiveProvider({ name: 'Owner D', businessType: 'shop' });
+    const up = await request(app).post('/api/providers/me/kyc').set('Authorization', `Bearer ${a.token}`)
+      .send({ doc_type: 'aadhaar', file: PNG_DATA_URL, filename: 'a.png' });
+    const docId = up.body.document.id;
+
+    const res = await request(app).get(`/api/providers/kyc/${docId}/file`);
+    expect(res.status).toBe(401);
+  });
+
+  it('never leaks the file key or a storage URL in upload/list responses', async () => {
+    const { token } = await onboardActiveProvider({ name: 'Kyc Seven', businessType: 'shop' });
+    const up = await request(app).post('/api/providers/me/kyc').set('Authorization', `Bearer ${token}`)
+      .send({ doc_type: 'aadhaar', file: PNG_DATA_URL, filename: 'a.png' });
+    expect(up.status).toBe(200);
+    expect(up.body.document).not.toHaveProperty('file_key');
+    const upStr = JSON.stringify(up.body);
+    expect(upStr).not.toMatch(/one-darjeeling/);
+    expect(upStr).not.toMatch(/http/i);
+
+    const list = await request(app).get('/api/providers/me/kyc').set('Authorization', `Bearer ${token}`);
+    expect(list.status).toBe(200);
+    for (const doc of list.body.documents) {
+      expect(doc).not.toHaveProperty('file_key');
+    }
+    const listStr = JSON.stringify(list.body);
+    expect(listStr).not.toMatch(/one-darjeeling/);
+    expect(listStr).not.toMatch(/http/i);
+  });
+
+  it('rejects a file whose decoded size exceeds the 5 MB limit', async () => {
+    const { token } = await onboardActiveProvider({ name: 'Kyc Eight', businessType: 'shop' });
+    const oversizeDataUrl = 'data:image/png;base64,' + 'A'.repeat(7_000_000); // ~5.25 MB decoded
+    const res = await request(app)
+      .post('/api/providers/me/kyc')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ doc_type: 'aadhaar', file: oversizeDataUrl, filename: 'big.png' });
+    expect(res.status).toBe(400);
+  });
+
+  it('accepts an upload just over the old 100 KB body-parser limit (regression guard)', async () => {
+    const { token } = await onboardActiveProvider({ name: 'Kyc Nine', businessType: 'shop' });
+    // ~200 KB of base64 payload — well over body-parser's 100kb default, well under the 5 MB
+    // MAX_BYTES / 8mb JSON limit. Catches a regression to the global 100kb express.json() default.
+    const mediumDataUrl = 'data:image/png;base64,' + 'A'.repeat(200_000);
+    const res = await request(app)
+      .post('/api/providers/me/kyc')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ doc_type: 'aadhaar', file: mediumDataUrl, filename: 'medium.png' });
+    expect(res.status).toBe(200);
   });
 });

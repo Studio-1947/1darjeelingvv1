@@ -1,5 +1,4 @@
 import { Router, Request, Response } from 'express';
-import express from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import path from 'path';
 import { db, schema } from '../db';
@@ -7,14 +6,15 @@ import { eq, and } from 'drizzle-orm';
 import { authenticateToken } from '../middleware/auth';
 import { isAllowedDocType } from '../lib/kycRequirements';
 import { computeCompletion } from '../lib/profileCompletion';
-import { uploadPrivate, getPrivateObject } from '../lib/s3';
+import { uploadPrivate, getPrivateObject, deletePrivate } from '../lib/s3';
+import { log } from '../config';
 
 const router = Router();
 
 const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'application/pdf']);
 const MAX_BYTES = 5 * 1024 * 1024;
-// KYC uploads carry a base64 file, which is ~33% larger than the raw bytes.
-const kycJson = express.json({ limit: '8mb' });
+// The 8mb JSON body limit for this path is applied in app.ts (mounted before the global
+// express.json(), which would otherwise consume the stream at its 100kb default).
 
 async function ownActiveProvider(userId: string) {
   const rows = await db.select().from(schema.providers).where(eq(schema.providers.userId, userId));
@@ -87,7 +87,7 @@ router.get('/me/kyc', authenticateToken, async (req: Request, res: Response) => 
 });
 
 // POST /providers/me/kyc — upload/replace a doc
-router.post('/me/kyc', authenticateToken, kycJson, async (req: Request, res: Response) => {
+router.post('/me/kyc', authenticateToken, async (req: Request, res: Response) => {
   const provider = await ownActiveProvider(req.user.id);
   if (!provider) return res.status(403).json({ detail: 'Only active providers can upload KYC documents' });
 
@@ -118,6 +118,11 @@ router.post('/me/kyc', authenticateToken, kycJson, async (req: Request, res: Res
     .where(and(eq(schema.kycDocuments.providerId, provider.id), eq(schema.kycDocuments.docType, doc_type)));
   for (const row of existing) {
     await db.delete(schema.kycDocuments).where(eq(schema.kycDocuments.id, row.id));
+    try {
+      await deletePrivate(row.fileKey);
+    } catch (err: any) {
+      log.error(`Failed to delete replaced KYC object ${row.fileKey}: ${err?.message || err}`);
+    }
   }
 
   const doc = {
@@ -141,8 +146,17 @@ router.post('/me/kyc', authenticateToken, kycJson, async (req: Request, res: Res
 router.delete('/me/kyc/:docType', authenticateToken, async (req: Request, res: Response) => {
   const provider = await ownActiveProvider(req.user.id);
   if (!provider) return res.status(403).json({ detail: 'Only active providers can manage KYC documents' });
+  const removed = await db.select().from(schema.kycDocuments)
+    .where(and(eq(schema.kycDocuments.providerId, provider.id), eq(schema.kycDocuments.docType, req.params.docType as any)));
   await db.delete(schema.kycDocuments)
     .where(and(eq(schema.kycDocuments.providerId, provider.id), eq(schema.kycDocuments.docType, req.params.docType as any)));
+  for (const row of removed) {
+    try {
+      await deletePrivate(row.fileKey);
+    } catch (err: any) {
+      log.error(`Failed to delete removed KYC object ${row.fileKey}: ${err?.message || err}`);
+    }
+  }
   await recomputeKycStatus(provider.id);
   res.json({ ok: true });
 });
@@ -162,6 +176,11 @@ router.get('/kyc/:id/file', authenticateToken, async (req: Request, res: Respons
   const { stream, contentType } = await getPrivateObject(doc.fileKey);
   res.setHeader('Content-Type', contentType || doc.contentType);
   res.setHeader('Cache-Control', 'private, no-store');
+  stream.on('error', (err: any) => {
+    log.error(`KYC file stream failed for ${doc.id}: ${err?.message || err}`);
+    res.destroy(err);
+  });
+  res.on('close', () => stream.destroy());
   stream.pipe(res);
 });
 
