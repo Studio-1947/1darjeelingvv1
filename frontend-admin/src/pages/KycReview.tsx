@@ -9,6 +9,7 @@ interface AdminKycDoc {
   status: string;
   rejection_reason: string | null;
   uploaded_at: string;
+  reviewed_at: string | null;
   business_name: string | null;
   business_type: string | null;
   owner_name: string | null;
@@ -55,17 +56,24 @@ export default function KycReview() {
   // needed, instead of leaking blob memory for every document viewed.
   const pendingObjectUrls = useRef<Set<string>>(new Set());
 
-  const load = useCallback(async () => {
+  // Returns the fetched page (or null on failure) so callers that need to react to what came
+  // back — e.g. `review()` deciding whether the current page just became empty — don't have to
+  // read `docs`/`total` state right after calling this, which wouldn't yet reflect the update.
+  const load = useCallback(async (): Promise<{ documents: AdminKycDoc[]; total: number } | null> => {
     setLoading(true);
     setLoadError('');
     try {
       const params: Record<string, string | number> = { limit: PAGE_SIZE, offset };
       if (statusFilter !== 'all') params.status = statusFilter;
       const { data } = await api.get('/admin/kyc', { params });
-      setDocs(data.documents || []);
-      setTotal(typeof data.total === 'number' ? data.total : (data.documents || []).length);
+      const documents: AdminKycDoc[] = data.documents || [];
+      const total = typeof data.total === 'number' ? data.total : documents.length;
+      setDocs(documents);
+      setTotal(total);
+      return { documents, total };
     } catch (e: any) {
       setLoadError(e?.response?.data?.detail || 'Failed to load the KYC queue.');
+      return null;
     } finally {
       setLoading(false);
     }
@@ -126,7 +134,14 @@ export default function KycReview() {
     try {
       await api.post(`/admin/kyc/${doc.id}/review`, { decision, reason });
       setReviewError(null);
-      await load();
+      const result = await load();
+      // Reviewing the only remaining item on a non-first page (e.g. approving the last pending
+      // doc while filtered to "Pending") moves it out of the current filter, leaving `offset`
+      // past the new `total` and the page empty. Step back a page rather than stranding the
+      // admin looking at nothing.
+      if (result && result.documents.length === 0 && offset > 0 && offset >= result.total) {
+        setOffset((o) => Math.max(0, o - PAGE_SIZE));
+      }
     } catch (e: any) {
       setReviewError(e?.response?.data?.detail || `Could not ${decision} that document. Please try again.`);
     } finally {
