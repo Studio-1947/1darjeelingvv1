@@ -35,8 +35,10 @@ export const KYC_REQUIREMENTS: Record<string, DocRequirement[]> = {
   ],
 };
 
-export function requirementsFor(businessType: string): DocRequirement[] {
-  return KYC_REQUIREMENTS[businessType] ?? [];
+export function requirementsFor(businessType: string): readonly DocRequirement[] {
+  // Defensive copy — the array in KYC_REQUIREMENTS is the shared, single source of truth for
+  // every consumer; a caller mutating what we return here must never corrupt it for the rest.
+  return [...(KYC_REQUIREMENTS[businessType] ?? [])];
 }
 
 export function isAllowedDocType(businessType: string, docType: string): boolean {
