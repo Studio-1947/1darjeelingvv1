@@ -142,14 +142,14 @@ router.delete('/me/kyc/:docType', authenticateToken, async (req: Request, res: R
   const provider = await ownActiveProvider(req.user.id);
   if (!provider) return res.status(403).json({ detail: 'Only active providers can manage KYC documents' });
   await db.delete(schema.kycDocuments)
-    .where(and(eq(schema.kycDocuments.providerId, provider.id), eq(schema.kycDocuments.docType, req.params.docType)));
+    .where(and(eq(schema.kycDocuments.providerId, provider.id), eq(schema.kycDocuments.docType, req.params.docType as any)));
   await recomputeKycStatus(provider.id);
   res.json({ ok: true });
 });
 
 // GET /providers/kyc/:id/file — stream a private doc to owner or admin
 router.get('/kyc/:id/file', authenticateToken, async (req: Request, res: Response) => {
-  const [doc] = await db.select().from(schema.kycDocuments).where(eq(schema.kycDocuments.id, req.params.id)).limit(1);
+  const [doc] = await db.select().from(schema.kycDocuments).where(eq(schema.kycDocuments.id, req.params.id as any)).limit(1);
   if (!doc) return res.status(404).json({ detail: 'Not found' });
 
   let allowed = req.user.role === 'admin';
