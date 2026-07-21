@@ -174,8 +174,15 @@ router.get('/kyc/:id/file', authenticateToken, async (req: Request, res: Respons
   if (!allowed) return res.status(403).json({ detail: 'Forbidden' });
 
   const { stream, contentType } = await getPrivateObject(doc.fileKey);
-  res.setHeader('Content-Type', contentType || doc.contentType);
+  const resolvedType = contentType || doc.contentType;
+  res.setHeader('Content-Type', resolvedType);
   res.setHeader('Cache-Control', 'private, no-store');
+  // The content type is ultimately sourced from the uploader's own data-URL prefix, so a
+  // browser must never be allowed to sniff/reinterpret it (e.g. as HTML) — and it must never
+  // render inline as a top-level navigation target for arbitrary content, only as an asset.
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  const ext = path.extname(doc.fileKey) || (resolvedType === 'application/pdf' ? '.pdf' : '');
+  res.setHeader('Content-Disposition', `inline; filename="${doc.docType}${ext}"`);
   stream.on('error', (err: any) => {
     log.error(`KYC file stream failed for ${doc.id}: ${err?.message || err}`);
     res.destroy(err);

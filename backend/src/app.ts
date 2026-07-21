@@ -14,6 +14,7 @@ import paymentsRouter from './routes/payments';
 import adminRouter from './routes/admin';
 import geocodeRouter from './routes/geocode';
 import kycRouter from './routes/kyc';
+import { rateLimiter } from './middleware/rateLimiter';
 
 export const app = express();
 
@@ -27,6 +28,12 @@ app.set('trust proxy', TRUST_PROXY_HOPS);
 // only a parsed object — re-serialising that yields different bytes and the HMAC never matches.
 // express.json() then skips this request because express.raw() has already marked the body read.
 app.use('/api/payments/webhook', express.raw({ type: '*/*' }));
+
+// Rate limit the KYC upload path before the 8mb JSON parser below buffers anything, so an
+// unauthenticated caller looping requests gets a 429 instead of the server repeatedly
+// allocating up to 8MB per request. 20/min/IP mirrors geocode's search limit — generous for a
+// human uploading a handful of documents, tight enough to blunt an automated flood.
+app.use('/api/providers/me/kyc', rateLimiter(20, 60 * 1000, 'kyc_upload'));
 
 // KYC uploads carry a base64 file (~33% larger than the raw bytes), so this path needs a
 // bigger body limit than the global default. Must be mounted before express.json() below,
