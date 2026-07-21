@@ -22,9 +22,9 @@ export default function BookingConfirmation({ open, onClose, mode = 'booking', d
   return (
     <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4"
       role="dialog" aria-modal="true" data-testid="booking-confirmation-modal">
-      <div className="bg-white w-full sm:max-w-md sm:rounded-3xl rounded-t-3xl overflow-hidden animate-fade-up">
+      <div className="bg-white w-full sm:max-w-md sm:rounded-3xl rounded-t-3xl overflow-hidden animate-fade-up max-h-[90svh] flex flex-col">
         {/* Success header */}
-        <div className="relative bg-gradient-to-br from-pine to-pine-dark text-white px-5 pt-6 pb-8">
+        <div className="relative bg-gradient-to-br from-pine to-pine-dark text-white px-5 pt-6 pb-8 flex-shrink-0">
           <button onClick={onClose} data-testid="confirm-close" className="absolute top-4 right-4 p-1.5 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur">
             <X size={16} />
           </button>
@@ -43,7 +43,7 @@ export default function BookingConfirmation({ open, onClose, mode = 'booking', d
         </div>
 
         {/* Body */}
-        <div className="p-5 md:p-6 space-y-4">
+        <div className="p-5 md:p-6 space-y-4 overflow-y-auto">
           {isBooking && (
             <>
               {/* Listing summary */}

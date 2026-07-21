@@ -17,6 +17,9 @@
   --flag: #C42E2E;
   --gold: #F0B90B;
   --mist: #EEF2ED;
+  /* Height of the mobile BottomNav, including the home-indicator inset.
+     Anything fixed above the nav must offset by this, not a hardcoded 4rem. */
+  --bottom-nav-h: calc(3.25rem + env(safe-area-inset-bottom, 0px));
 }
 
 @layer base {
@@ -111,11 +114,6 @@ html[lang="ne"] h1, html[lang="ne"] h2, html[lang="ne"] h3, html[lang="ne"] h4 {
   overflow: hidden; transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
 .card-shell:hover { transform: translateY(-4px); box-shadow: 0 24px 40px -20px rgba(20,32,26,0.18); }
-
-.headline-mark {
-  background: linear-gradient(180deg, transparent 62%, #F0B90B 62%);
-  padding: 0 4px;
-}
 
 .mist-panel {
   background: linear-gradient(180deg, #FFFFFF 0%, #EEF2ED 100%);
