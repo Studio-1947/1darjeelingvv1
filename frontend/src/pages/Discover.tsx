@@ -114,13 +114,21 @@ export default function Discover() {
       {/* HERO / Booking widget */}
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 z-0">
+          {/* Still fallback shown when the visitor prefers reduced motion. */}
+          <img
+            src={sizedImage(HERO_POSTER, 1200)}
+            alt=""
+            className="absolute inset-0 w-full h-full object-cover hidden motion-reduce:block"
+          />
           <video
             ref={heroVideoRef}
             autoPlay
             loop
             muted
             playsInline
-            className="w-full h-full object-cover"
+            preload="metadata"
+            poster={sizedImage(HERO_POSTER, 1200)}
+            className="w-full h-full object-cover motion-reduce:hidden"
           >
             <source src="https://res.cloudinary.com/drgb8w8ak/video/upload/v1783579758/S_47_July_26_web_cover_video_e1wiyd.mp4" type="video/mp4" />
           </video>

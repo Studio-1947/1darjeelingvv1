@@ -1,6 +1,8 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Home, Compass, Sparkles, Bookmark, User } from 'lucide-react';
+import { Home, Compass, User } from 'lucide-react';
+import TeaLeaf from '@/components/icons/TeaLeaf';
+import Binoculars from '@/components/icons/Binoculars';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/context/AuthContext';
 
@@ -12,10 +14,10 @@ export default function BottomNav() {
   const { user } = useAuth();
 
   const items = [
-    { to: '/', label: t('nav.discover'), Icon: Home, testid: 'bottom-nav-home', end: true },
+    { to: '/', label: t('nav.discover'), Icon: Binoculars, testid: 'bottom-nav-home', end: true },
     { to: '/spots', label: t('nav.spots'), Icon: Compass, testid: 'bottom-nav-explore' },
-    { to: '/homestays', label: t('nav.homestays'), Icon: Sparkles, testid: 'bottom-nav-book' },
-    { to: '/responsible', label: 'Green', Icon: Bookmark, testid: 'bottom-nav-saved' },
+    { to: '/homestays', label: t('nav.homestays'), Icon: Home, testid: 'bottom-nav-book' },
+    { to: '/responsible', label: 'Green', Icon: TeaLeaf, testid: 'bottom-nav-saved' },
     { to: user ? (user.role === 'provider' ? '/provider/dashboard' : '/dashboard') : '/login', label: user ? (user.name?.split(' ')[0] || 'Me') : t('nav.login'), Icon: User, testid: 'bottom-nav-profile' },
   ];
 
