@@ -94,7 +94,13 @@
     "uploadFailed": "अपलोड असफल भयो",
     "removeFailed": "कागजात हटाउन सकिएन",
     "uploadAriaLabel": "{{label}} अपलोड गर्नुहोस्",
-    "rejectionReason": "कारण: {{reason}}। कृपया फेरि अपलोड गर्नुहोस्।"
+    "rejectionReason": "कारण: {{reason}}। कृपया फेरि अपलोड गर्नुहोस्।",
+    "completeYourProfile": "आफ्नो प्रोफाइल पूरा गर्नुहोस्",
+    "remainingItems": "{{count}} वस्तु बाँकी छन्",
+    "completeProfileCta": "प्रोफाइल पूरा गर्नुहोस्",
+    "verifiedTooltip": "१ डार्जिलिङ द्वारा KYC प्रमाणित",
+    "fileTooLarge": "फाइल धेरै ठूलो छ। कृपया 5 MB भन्दा सानो फाइल अपलोड गर्नुहोस्।",
+    "reloadFailed": "कागजात अपलोड भयो, तर प्रोफाइल रिफ्रेस गर्न सकिएन। अपडेट हेर्न पृष्ठ पुनः लोड गर्नुहोस्।"
   },
   "locationPicker": {
     "search_placeholder": "ठेगाना वा ल्यान्डमार्क खोज्नुहोस्…",

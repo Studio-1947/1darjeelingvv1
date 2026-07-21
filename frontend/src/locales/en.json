@@ -135,7 +135,13 @@
     "uploadFailed": "Upload failed",
     "removeFailed": "Could not remove the document",
     "uploadAriaLabel": "Upload {{label}}",
-    "rejectionReason": "Reason: {{reason}}. Please re-upload."
+    "rejectionReason": "Reason: {{reason}}. Please re-upload.",
+    "completeYourProfile": "Complete your profile",
+    "remainingItems": "{{count}} items remaining",
+    "completeProfileCta": "Complete profile",
+    "verifiedTooltip": "KYC verified by 1 Darjeeling",
+    "fileTooLarge": "File is too large. Please upload a file under 5 MB.",
+    "reloadFailed": "Document uploaded, but refreshing your profile failed. Reload the page to see the update."
   },
   "locationPicker": {
     "search_placeholder": "Search address or landmark…",

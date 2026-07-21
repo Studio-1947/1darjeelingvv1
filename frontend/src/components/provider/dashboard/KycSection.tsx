@@ -33,9 +33,18 @@ export default function KycSection({ onProfileChange }: { onProfileChange?: (p: 
     setError(null);
     try {
       await uploadKycDoc(docType, file);
-      await load();
     } catch (e) {
       setError(typeof e === 'string' ? e : t('kyc.uploadFailed'));
+      setBusyKey(prev => (prev === docType ? null : prev));
+      return;
+    }
+    // The upload itself succeeded — a failure past this point is a reload problem, not an
+    // upload problem, and must not be reported as "Upload failed" (that would invite a
+    // needless duplicate upload of a document that's already saved).
+    try {
+      await load();
+    } catch (e) {
+      setError(t('kyc.reloadFailed'));
     } finally {
       setBusyKey(prev => (prev === docType ? null : prev));
     }
@@ -107,7 +116,14 @@ export default function KycSection({ onProfileChange }: { onProfileChange?: (p: 
                         className="sr-only"
                         aria-label={t('kyc.uploadAriaLabel', { label: item.label })}
                         disabled={busyKey === item.key}
-                        onChange={e => onPick(item.key, e.target.files?.[0])}
+                        onChange={e => {
+                          const file = e.target.files?.[0];
+                          // Reset so re-picking the identical file still fires onChange —
+                          // otherwise retrying the same document after a failed upload does
+                          // nothing, silently.
+                          e.target.value = '';
+                          onPick(item.key, file);
+                        }}
                       />
                     </label>
                     {doc && (

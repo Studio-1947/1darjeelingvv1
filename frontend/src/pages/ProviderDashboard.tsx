@@ -10,6 +10,8 @@ import BookingCard from '@/components/provider/dashboard/BookingCard';
 import EditListingModal from '@/components/provider/dashboard/EditListingModal';
 import KycSection from '@/components/provider/dashboard/KycSection';
 import VerifiedBadge from '@/components/provider/VerifiedBadge';
+import ProfileCompletionBar from '@/components/provider/ProfileCompletionBar';
+import { getMyProfile } from '@/lib/kyc';
 import type { KycProfile } from '@/lib/kyc';
 
 /** Provider home: booking stats, the bookings list, and business profile. */
@@ -40,14 +42,19 @@ export default function ProviderDashboard() {
 
   const loadDashboard = React.useCallback(async () => {
     try {
-      const [p, b] = await Promise.all([
+      const [p, b, kyc] = await Promise.all([
         api.get('/providers/me'),
         api.get('/bookings/provider'),
+        // The provider may not have an active profile yet (or the request may simply fail) —
+        // that must never take down the rest of the dashboard, so it's caught independently
+        // and just leaves the "Complete your profile" card and header badge unrendered.
+        getMyProfile().catch(() => null),
       ]);
       setProvider(p.data.provider);
       setStats(b.data.stats || {});
       setBookings(b.data.items || []);
       setListings(b.data.listings || []);
+      setKycProfile(kyc);
     } catch (e) {
       console.error(e);
     }
@@ -148,6 +155,32 @@ export default function ProviderDashboard() {
           <StatCard label="Listings live" value={0} icon={Users} tone="ink" />
         )}
       </div>
+
+      {/* Complete your profile */}
+      {kycProfile && kycProfile.completion_percent < 100 && (
+        <div className="mt-8 mist-panel p-5 md:p-6" data-testid="kyc-progress-card">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div className="flex-1 min-w-0">
+              <h2 className="font-display font-extrabold text-lg text-ink">{t('kyc.completeYourProfile')}</h2>
+              <p className="text-xs text-ink-soft mt-1">
+                {t('kyc.remainingItems', {
+                  count: kycProfile.checklist.filter(c => c.state === 'missing' || c.state === 'rejected').length,
+                })}
+              </p>
+              <div className="mt-3 max-w-md">
+                <ProfileCompletionBar percent={kycProfile.completion_percent} />
+              </div>
+            </div>
+            <button
+              onClick={() => setTab('profile')}
+              data-testid="kyc-complete-profile-cta"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-flag text-white font-bold text-xs btn-hover whitespace-nowrap self-start md:self-auto"
+            >
+              {t('kyc.completeProfileCta')} <ArrowRight size={14} />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="mt-8 flex items-center gap-2 border-b border-[var(--line)]">

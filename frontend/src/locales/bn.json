@@ -135,7 +135,13 @@
     "uploadFailed": "আপলোড ব্যর্থ হয়েছে",
     "removeFailed": "নথি সরানো যায়নি",
     "uploadAriaLabel": "{{label}} আপলোড করুন",
-    "rejectionReason": "কারণ: {{reason}}। অনুগ্রহ করে পুনরায় আপলোড করুন।"
+    "rejectionReason": "কারণ: {{reason}}। অনুগ্রহ করে পুনরায় আপলোড করুন।",
+    "completeYourProfile": "আপনার প্রোফাইল সম্পূর্ণ করুন",
+    "remainingItems": "{{count}}টি আইটেম বাকি আছে",
+    "completeProfileCta": "প্রোফাইল সম্পূর্ণ করুন",
+    "verifiedTooltip": "১ দার্জিলিং দ্বারা KYC যাচাইকৃত",
+    "fileTooLarge": "ফাইলটি খুব বড়। অনুগ্রহ করে 5 MB-এর কম ফাইল আপলোড করুন।",
+    "reloadFailed": "নথি আপলোড হয়েছে, কিন্তু প্রোফাইল রিফ্রেশ করা যায়নি। আপডেট দেখতে পৃষ্ঠাটি রিলোড করুন।"
   },
   "locationPicker": {
     "search_placeholder": "ঠিকানা বা ল্যান্ডমার্ক খুঁজুন…",

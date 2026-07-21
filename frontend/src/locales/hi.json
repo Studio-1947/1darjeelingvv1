@@ -103,7 +103,13 @@
     "uploadFailed": "अपलोड विफल",
     "removeFailed": "दस्तावेज़ हटाया नहीं जा सका",
     "uploadAriaLabel": "{{label}} अपलोड करें",
-    "rejectionReason": "कारण: {{reason}}। कृपया दोबारा अपलोड करें।"
+    "rejectionReason": "कारण: {{reason}}। कृपया दोबारा अपलोड करें।",
+    "completeYourProfile": "अपनी प्रोफ़ाइल पूरी करें",
+    "remainingItems": "{{count}} आइटम शेष हैं",
+    "completeProfileCta": "प्रोफ़ाइल पूरी करें",
+    "verifiedTooltip": "1 दार्जिलिंग द्वारा KYC सत्यापित",
+    "fileTooLarge": "फ़ाइल बहुत बड़ी है। कृपया 5 MB से छोटी फ़ाइल अपलोड करें।",
+    "reloadFailed": "दस्तावेज़ अपलोड हो गया, लेकिन प्रोफ़ाइल रीफ़्रेश नहीं हो सकी। अपडेट देखने के लिए पेज रीलोड करें।"
   },
   "locationPicker": {
     "search_placeholder": "पता या लैंडमार्क खोजें…",

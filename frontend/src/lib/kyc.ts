@@ -1,4 +1,7 @@
 import api from '@/lib/api';
+import i18n from '@/i18n';
+
+const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 
 export type DocState = 'missing' | 'in_review' | 'done' | 'rejected';
 export interface ChecklistItem {
@@ -40,6 +43,12 @@ export async function getMyProfile(): Promise<KycProfile> {
 }
 
 export async function uploadKycDoc(docType: string, file: File): Promise<KycDoc> {
+  // The backend caps stored files at 5 MB and answers an 8 MB overage with a bare 413 (no
+  // `detail` body), which the caller can only show as the generic "Upload failed". Catch it
+  // here instead so the provider gets an accurate, localized reason before we even upload.
+  if (file.size > MAX_UPLOAD_BYTES) {
+    throw i18n.t('kyc.fileTooLarge');
+  }
   const dataUrl = await toDataUrl(file);
   try {
     const { data } = await api.post('/providers/me/kyc', { doc_type: docType, file: dataUrl, filename: file.name });
