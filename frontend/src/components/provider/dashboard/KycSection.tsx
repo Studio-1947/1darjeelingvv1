@@ -159,7 +159,13 @@ export default function KycSection({ onProfileChange }: { onProfileChange?: (p: 
                         type="file"
                         accept="image/jpeg,image/png,application/pdf"
                         className="sr-only"
-                        aria-label={t('kyc.uploadAriaLabel', { label: item.label })}
+                        aria-label={
+                          busyKey === item.key
+                            ? t('kyc.uploadingAriaLabel', { label: item.label })
+                            : item.state === 'missing'
+                              ? t('kyc.uploadAriaLabel', { label: item.label })
+                              : t('kyc.replaceAriaLabel', { label: item.label })
+                        }
                         disabled={busyKey === item.key}
                         onChange={e => {
                           const file = e.target.files?.[0];
