@@ -1,0 +1,119 @@
+import React, { useEffect, useRef, useState } from 'react';
+import { Upload, CheckCircle2, Clock, XCircle, Circle } from 'lucide-react';
+import { getMyProfile, uploadKycDoc, deleteKycDoc, KycProfile, ChecklistItem } from '@/lib/kyc';
+import ProfileCompletionBar from '../ProfileCompletionBar';
+
+const stateMeta: Record<ChecklistItem['state'], { icon: React.ReactNode; label: string; cls: string }> = {
+  done: { icon: <CheckCircle2 size={16} />, label: 'Verified', cls: 'text-pine' },
+  in_review: { icon: <Clock size={16} />, label: 'In review', cls: 'text-gold' },
+  rejected: { icon: <XCircle size={16} />, label: 'Rejected', cls: 'text-flag' },
+  missing: { icon: <Circle size={16} />, label: 'Missing', cls: 'text-ink-soft' },
+};
+
+export default function KycSection({ onProfileChange }: { onProfileChange?: (p: KycProfile) => void }) {
+  const [profile, setProfile] = useState<KycProfile | null>(null);
+  const [busyKey, setBusyKey] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const fileInputs = useRef<Record<string, HTMLInputElement | null>>({});
+
+  const load = async () => {
+    const p = await getMyProfile();
+    setProfile(p);
+    onProfileChange?.(p);
+  };
+  useEffect(() => { load().catch(() => setError('Could not load your profile')); }, []);
+
+  const onPick = async (docType: string, file?: File) => {
+    if (!file) return;
+    setBusyKey(docType);
+    setError(null);
+    try {
+      await uploadKycDoc(docType, file);
+      await load();
+    } catch (e) {
+      setError(typeof e === 'string' ? e : 'Upload failed');
+    } finally {
+      setBusyKey(null);
+    }
+  };
+
+  const onDelete = async (docType: string) => {
+    setBusyKey(docType);
+    try { await deleteKycDoc(docType); await load(); }
+    finally { setBusyKey(null); }
+  };
+
+  if (!profile) return <div className="text-sm text-ink-soft">Loading…</div>;
+
+  const kycItems = profile.checklist.filter(c => c.kind === 'kyc');
+  const profileItems = profile.checklist.filter(c => c.kind === 'profile');
+
+  return (
+    <div className="space-y-6">
+      <ProfileCompletionBar percent={profile.completion_percent} />
+      {error && <div className="text-sm text-flag font-semibold">{error}</div>}
+
+      <div>
+        <h3 className="font-bold text-ink mb-2">Complete your listing</h3>
+        <ul className="space-y-2">
+          {profileItems.map(item => {
+            const m = stateMeta[item.state];
+            return (
+              <li key={item.key} className="flex items-center gap-2 text-sm">
+                <span className={m.cls}>{m.icon}</span>
+                <span className={item.state === 'done' ? 'text-ink-soft line-through' : 'text-ink'}>{item.label}</span>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+
+      <div>
+        <h3 className="font-bold text-ink mb-1">Verification (KYC)</h3>
+        <p className="text-xs text-ink-soft mb-3">Optional — upload these to earn a Verified badge. JPEG, PNG, or PDF, up to 5&nbsp;MB.</p>
+        <ul className="space-y-3">
+          {kycItems.map(item => {
+            const m = stateMeta[item.state];
+            const doc = profile.documents.find(d => d.doc_type === item.key);
+            return (
+              <li key={item.key} className="rounded-2xl border border-[var(--line)] p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className={m.cls}>{m.icon}</span>
+                    <div>
+                      <div className="text-sm font-semibold text-ink">
+                        {item.label}{!item.required && <span className="text-ink-soft font-normal"> (optional)</span>}
+                      </div>
+                      <div className={`text-xs ${m.cls}`}>{m.label}</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label className="inline-flex items-center gap-1 text-xs font-bold text-pine cursor-pointer">
+                      <Upload size={12} /> {busyKey === item.key ? 'Uploading…' : (item.state === 'missing' ? 'Upload' : 'Replace')}
+                      <input
+                        ref={el => { fileInputs.current[item.key] = el; }}
+                        type="file"
+                        accept="image/jpeg,image/png,application/pdf"
+                        className="hidden"
+                        disabled={busyKey === item.key}
+                        onChange={e => onPick(item.key, e.target.files?.[0])}
+                      />
+                    </label>
+                    {doc && (
+                      <button className="text-xs text-flag font-semibold" onClick={() => onDelete(item.key)} disabled={busyKey === item.key}>
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                </div>
+                {item.state === 'rejected' && doc?.rejection_reason && (
+                  <div className="mt-2 text-xs text-flag">Reason: {doc.rejection_reason}. Please re-upload.</div>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    </div>
+  );
+}
