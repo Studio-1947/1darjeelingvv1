@@ -117,4 +117,68 @@ describe('admin KYC review', () => {
       .set('Authorization', `Bearer ${prov.token}`).send({ decision: 'approve' });
     expect(res.status).toBe(403);
   });
+
+  describe('pagination', () => {
+    it('defaults to a bounded page and reports total/limit/offset', async () => {
+      const prov = await onboardActiveProvider({ name: 'Prov Page A', businessType: 'shop' });
+      await uploadAllShopDocs(prov.token);
+      const admin = await loginAdmin();
+      const res = await request(app).get('/api/admin/kyc').set('Authorization', `Bearer ${admin}`);
+      expect(res.status).toBe(200);
+      expect(typeof res.body.total).toBe('number');
+      expect(res.body.limit).toBe(50);
+      expect(res.body.offset).toBe(0);
+      expect(res.body.documents.length).toBeLessThanOrEqual(res.body.limit);
+      expect(res.body.total).toBeGreaterThanOrEqual(4);
+    });
+
+    it('limit and offset page through results without overlap, and status is filtered server-side', async () => {
+      const prov = await onboardActiveProvider({ name: 'Prov Page B', businessType: 'shop' });
+      await uploadAllShopDocs(prov.token);
+      const admin = await loginAdmin();
+
+      const all = await request(app)
+        .get('/api/admin/kyc')
+        .query({ status: 'pending', limit: 100 })
+        .set('Authorization', `Bearer ${admin}`);
+      const mine = all.body.documents.filter((d: any) => d.provider_id === prov.providerId);
+      expect(mine.length).toBe(4);
+
+      const page1 = await request(app)
+        .get('/api/admin/kyc')
+        .query({ status: 'pending', limit: 2, offset: 0 })
+        .set('Authorization', `Bearer ${admin}`);
+      const page2 = await request(app)
+        .get('/api/admin/kyc')
+        .query({ status: 'pending', limit: 2, offset: 2 })
+        .set('Authorization', `Bearer ${admin}`);
+
+      expect(page1.body.documents.length).toBe(2);
+      expect(page2.body.documents.length).toBe(2);
+      expect(page1.body.documents.every((d: any) => d.status === 'pending')).toBe(true);
+      const page1Ids = page1.body.documents.map((d: any) => d.id);
+      const page2Ids = page2.body.documents.map((d: any) => d.id);
+      expect(page1Ids.some((id: string) => page2Ids.includes(id))).toBe(false);
+    });
+
+    it('caps an oversized limit at the server maximum instead of honouring it', async () => {
+      const admin = await loginAdmin();
+      const res = await request(app)
+        .get('/api/admin/kyc')
+        .query({ limit: 999999 })
+        .set('Authorization', `Bearer ${admin}`);
+      expect(res.status).toBe(200);
+      expect(res.body.limit).toBe(200);
+    });
+
+    it('falls back to the default limit for a non-positive or non-numeric limit', async () => {
+      const admin = await loginAdmin();
+      const res = await request(app)
+        .get('/api/admin/kyc')
+        .query({ limit: 'not-a-number' })
+        .set('Authorization', `Bearer ${admin}`);
+      expect(res.status).toBe(200);
+      expect(res.body.limit).toBe(50);
+    });
+  });
 });

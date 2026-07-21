@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { db } from '../db';
 import * as schema from '../schema';
-import { eq, and, count } from 'drizzle-orm';
+import { eq, and, count, inArray, desc } from 'drizzle-orm';
 import { SEED_LISTINGS } from '../seed_data';
 import { authenticateToken, requireAdmin, hashPassword } from '../middleware/auth';
 import { rateLimiter } from '../middleware/rateLimiter';
@@ -415,34 +415,73 @@ router.get('/admin/payments', authenticateToken, requireAdmin, async (req: Reque
   res.json({ items });
 });
 
-// GET /admin/kyc?status=pending — list KYC documents with provider/user context
+// GET /admin/kyc?status=pending&limit=50&offset=0 — page through KYC documents with
+// provider/user context. `status` is optional (omit for all statuses); `limit`/`offset`
+// default to a sane page size and are capped so a caller can't force an unbounded scan.
+const KYC_LIST_DEFAULT_LIMIT = 50;
+const KYC_LIST_MAX_LIMIT = 200;
+
+/** Parses a paging query param, falling back for anything non-positive or non-numeric. */
+function parsePositiveInt(raw: unknown, fallback: number, max?: number): number {
+  const n = parseInt(String(raw), 10);
+  if (!Number.isFinite(n) || n <= 0) return fallback;
+  return max != null ? Math.min(n, max) : n;
+}
+
+/** Parses an offset query param — unlike limit, 0 is a valid, meaningful value. */
+function parseNonNegativeInt(raw: unknown, fallback: number): number {
+  const n = parseInt(String(raw), 10);
+  if (!Number.isFinite(n) || n < 0) return fallback;
+  return n;
+}
+
 router.get('/admin/kyc', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
   const statusFilter = typeof req.query.status === 'string' ? req.query.status : undefined;
-  const rows = await db.select().from(schema.kycDocuments);
-  const providers = await db.select().from(schema.providers);
-  const users = await db.select().from(schema.users);
+  const limit = req.query.limit != null
+    ? parsePositiveInt(req.query.limit, KYC_LIST_DEFAULT_LIMIT, KYC_LIST_MAX_LIMIT)
+    : KYC_LIST_DEFAULT_LIMIT;
+  const offset = req.query.offset != null ? parseNonNegativeInt(req.query.offset, 0) : 0;
+
+  const whereClause = statusFilter ? eq(schema.kycDocuments.status, statusFilter) : undefined;
+
+  // Ordered explicitly (newest upload first) so that paging is stable and non-overlapping
+  // across requests — without an ORDER BY, row order across separate queries is not
+  // guaranteed, which would make limit/offset paging unreliable.
+  const [rows, totalRows] = await Promise.all([
+    db.select().from(schema.kycDocuments).where(whereClause).orderBy(desc(schema.kycDocuments.uploadedAt), schema.kycDocuments.id).limit(limit).offset(offset),
+    db.select({ value: count() }).from(schema.kycDocuments).where(whereClause),
+  ]);
+  const total = totalRows[0]?.value || 0;
+
+  const providerIds = [...new Set(rows.map(d => d.providerId))];
+  const providers = providerIds.length
+    ? await db.select().from(schema.providers).where(inArray(schema.providers.id, providerIds))
+    : [];
   const pById = new Map(providers.map(p => [p.id, p]));
+  const userIds = [...new Set(providers.map(p => p.userId))];
+  const users = userIds.length
+    ? await db.select().from(schema.users).where(inArray(schema.users.id, userIds))
+    : [];
   const uById = new Map(users.map(u => [u.id, u]));
 
-  const documents = rows
-    .filter(d => !statusFilter || d.status === statusFilter)
-    .map(d => {
-      const p = pById.get(d.providerId);
-      const u = p ? uById.get(p.userId) : undefined;
-      return {
-        id: d.id,
-        provider_id: d.providerId,
-        doc_type: d.docType,
-        status: d.status,
-        rejection_reason: d.rejectionReason,
-        uploaded_at: d.uploadedAt,
-        business_name: p?.businessName || null,
-        business_type: p?.businessType || null,
-        owner_name: u?.name || null,
-        file_url: `/api/providers/kyc/${d.id}/file`,
-      };
-    });
-  res.json({ documents });
+  const documents = rows.map(d => {
+    const p = pById.get(d.providerId);
+    const u = p ? uById.get(p.userId) : undefined;
+    return {
+      id: d.id,
+      provider_id: d.providerId,
+      doc_type: d.docType,
+      status: d.status,
+      rejection_reason: d.rejectionReason,
+      uploaded_at: d.uploadedAt,
+      reviewed_at: d.reviewedAt,
+      business_name: p?.businessName || null,
+      business_type: p?.businessType || null,
+      owner_name: u?.name || null,
+      file_url: `/api/providers/kyc/${d.id}/file`,
+    };
+  });
+  res.json({ documents, total, limit, offset });
 });
 
 // POST /admin/kyc/:id/review — approve or reject a document
