@@ -220,6 +220,42 @@ describe('listings read endpoints', () => {
     expect(found.provider_verified).toBe(false);
   });
 
+  // The real admin suspend path (frontend-admin's Admin.tsx sends exactly 'suspended', not
+  // 'pending_payment') must drop the Verified badge the same way the test above covers for
+  // pending_payment — the display rule is `status === 'active'`, so any non-active status,
+  // including the one the UI actually sends, must flip it off.
+  it('suspending a verified provider (active -> suspended) drops provider_verified on their listings, on both routes', async () => {
+    const { token, providerId } = await onboardVerifiedShopProvider('Suspended Verified Owner');
+    const createRes = await request(app)
+      .post('/api/listings')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ title: 'Suspended Owner Listing', type: 'shop', description: 'x', location: 'Darjeeling' });
+    expect(createRes.status).toBe(200);
+    const listingId = createRes.body.item.id;
+
+    // Confirm it starts verified.
+    const before = await request(app).get(`/api/listings/${listingId}`);
+    expect(before.body.item.provider_verified).toBe(true);
+
+    // Admin suspends the provider using the exact status string the admin UI sends.
+    const admin = await loginAdmin();
+    const statusRes = await request(app)
+      .put(`/api/admin/providers/${providerId}/status`)
+      .set('Authorization', `Bearer ${admin}`)
+      .send({ status: 'suspended' });
+    expect(statusRes.status).toBe(200);
+
+    const afterSingle = await request(app).get(`/api/listings/${listingId}`);
+    expect(afterSingle.status).toBe(200);
+    expect(afterSingle.body.item.provider_verified).toBe(false);
+
+    const afterList = await request(app).get('/api/listings').query({ q: 'Suspended Owner Listing' });
+    expect(afterList.status).toBe(200);
+    const found = afterList.body.items.find((i: any) => i.id === listingId);
+    expect(found).toBeDefined();
+    expect(found.provider_verified).toBe(false);
+  });
+
   // Looks up the (approved) doc id for a given provider/docType so a test can act on it via the
   // admin review route without re-deriving it through another list call.
   async function approvedDocId(providerId: string, docType: string): Promise<string> {

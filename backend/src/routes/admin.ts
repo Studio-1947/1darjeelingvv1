@@ -333,7 +333,7 @@ router.delete('/admin/users/:id', authenticateToken, requireAdmin, async (req: R
  *             type: object
  *             required: [status]
  *             properties:
- *               status: { type: string, enum: [pending_payment, active] }
+ *               status: { type: string, enum: [pending_payment, active, suspended] }
  *     responses:
  *       200:
  *         description: Updated
@@ -349,7 +349,11 @@ router.delete('/admin/users/:id', authenticateToken, requireAdmin, async (req: R
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
  */
-const ALLOWED_PROVIDER_STATUSES = ['pending_payment', 'active'] as const;
+// The real provider lifecycle: pending_payment (onboarded, awaiting the ₹99 registration
+// payment) -> active (paid, listings publish, KYC uploads accepted) -> suspended (an admin
+// has pulled the provider — the frontend's suspend action (Admin.tsx) sends exactly this
+// value). All three must be allowed here or the admin console's suspend/reinstate actions 400.
+const ALLOWED_PROVIDER_STATUSES = ['pending_payment', 'active', 'suspended'] as const;
 
 // Admin Providers status update
 router.put('/admin/providers/:id/status', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
