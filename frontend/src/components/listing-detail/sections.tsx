@@ -111,7 +111,9 @@ export function DriverSection({ item, about, personSrc, initial }: { item: any; 
         <Avatar photo={personSrc} initial={initial} />
         <div className="mt-6 flex items-center justify-center gap-2 flex-wrap">
           <span className="font-display font-extrabold text-2xl md:text-3xl text-ink">{item.title}</span>
-          <span className="chip bg-white"><BadgeCheck size={12} className="mr-1" /> {t('detail.verified')}</span>
+          {item.provider_verified && (
+            <span className="chip bg-white"><BadgeCheck size={12} className="mr-1" /> {t('detail.verified')}</span>
+          )}
         </div>
         <p className="mt-6 text-lg text-ink leading-relaxed">{about}</p>
       </div>
