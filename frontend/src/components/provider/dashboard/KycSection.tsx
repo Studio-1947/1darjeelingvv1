@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Upload, CheckCircle2, Clock, XCircle, Circle } from 'lucide-react';
 import { getMyProfile, uploadKycDoc, deleteKycDoc, KycProfile, ChecklistItem } from '@/lib/kyc';
 import ProfileCompletionBar from '../ProfileCompletionBar';
@@ -14,14 +14,16 @@ export default function KycSection({ onProfileChange }: { onProfileChange?: (p: 
   const [profile, setProfile] = useState<KycProfile | null>(null);
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const fileInputs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const load = async () => {
     const p = await getMyProfile();
     setProfile(p);
     onProfileChange?.(p);
   };
-  useEffect(() => { load().catch(() => setError('Could not load your profile')); }, []);
+  useEffect(() => {
+    load().catch(() => setError('Could not load your profile'));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: load once on mount only
+  }, []);
 
   const onPick = async (docType: string, file?: File) => {
     if (!file) return;
@@ -33,14 +35,21 @@ export default function KycSection({ onProfileChange }: { onProfileChange?: (p: 
     } catch (e) {
       setError(typeof e === 'string' ? e : 'Upload failed');
     } finally {
-      setBusyKey(null);
+      setBusyKey(prev => (prev === docType ? null : prev));
     }
   };
 
   const onDelete = async (docType: string) => {
     setBusyKey(docType);
-    try { await deleteKycDoc(docType); await load(); }
-    finally { setBusyKey(null); }
+    setError(null);
+    try {
+      await deleteKycDoc(docType);
+      await load();
+    } catch (e) {
+      setError(typeof e === 'string' ? e : 'Could not remove the document');
+    } finally {
+      setBusyKey(prev => (prev === docType ? null : prev));
+    }
   };
 
   if (!profile) return <div className="text-sm text-ink-soft">Loading…</div>;
@@ -91,10 +100,10 @@ export default function KycSection({ onProfileChange }: { onProfileChange?: (p: 
                     <label className="inline-flex items-center gap-1 text-xs font-bold text-pine cursor-pointer">
                       <Upload size={12} /> {busyKey === item.key ? 'Uploading…' : (item.state === 'missing' ? 'Upload' : 'Replace')}
                       <input
-                        ref={el => { fileInputs.current[item.key] = el; }}
                         type="file"
                         accept="image/jpeg,image/png,application/pdf"
-                        className="hidden"
+                        className="sr-only"
+                        aria-label={`Upload ${item.label}`}
                         disabled={busyKey === item.key}
                         onChange={e => onPick(item.key, e.target.files?.[0])}
                       />
