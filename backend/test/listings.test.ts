@@ -1,7 +1,59 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import request from 'supertest';
+
+vi.mock('../src/lib/s3', () => ({
+  uploadPrivate: vi.fn(async (_buffer: Buffer, key: string) => key),
+  getPrivateObject: vi.fn(async () => {
+    const { Readable } = await import('stream');
+    return { stream: Readable.from([Buffer.from('test-file-bytes')]), contentType: 'image/png' };
+  }),
+  deletePrivate: vi.fn(async () => {}),
+}));
+
 import { app } from '../src/app';
 import { registerUser, onboardActiveProvider, loginAdmin, createListing } from './helpers';
+
+// 1x1 transparent PNG as a data URL
+const PNG_DATA_URL =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+
+const SHOP_REQUIRED_DOC_TYPES = ['aadhaar', 'pan', 'owner_photo', 'trade_license'];
+
+// Fully onboards a 'shop' provider, uploads and admin-approves every required KYC
+// doc for that business type, leaving the provider's kycStatus === 'verified'.
+async function onboardVerifiedShopProvider(name: string) {
+  const { token, providerId } = await onboardActiveProvider({ name, businessType: 'shop' });
+
+  for (const doc_type of SHOP_REQUIRED_DOC_TYPES) {
+    const up = await request(app)
+      .post('/api/providers/me/kyc')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ doc_type, file: PNG_DATA_URL, filename: `${doc_type}.png` });
+    if (up.status !== 200) {
+      throw new Error(`kyc upload failed for ${doc_type}: ${up.status} ${JSON.stringify(up.body)}`);
+    }
+  }
+
+  const adminToken = await loginAdmin();
+  const pending = await request(app)
+    .get('/api/admin/kyc')
+    .query({ status: 'pending' })
+    .set('Authorization', `Bearer ${adminToken}`);
+  const docsForProvider = pending.body.documents.filter((d: any) => d.provider_id === providerId);
+  expect(docsForProvider.length).toBe(SHOP_REQUIRED_DOC_TYPES.length);
+
+  for (const doc of docsForProvider) {
+    const review = await request(app)
+      .post(`/api/admin/kyc/${doc.id}/review`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ decision: 'approve' });
+    if (review.status !== 200) {
+      throw new Error(`kyc review failed for ${doc.id}: ${review.status} ${JSON.stringify(review.body)}`);
+    }
+  }
+
+  return { token, providerId };
+}
 
 describe('listings authorization', () => {
   it('rejects a plain tourist trying to create a listing', async () => {
@@ -88,6 +140,50 @@ describe('listings read endpoints', () => {
     const res = await request(app).get(`/api/listings/${listing.id}`);
     expect(res.status).toBe(200);
     expect(res.body.item).toHaveProperty('provider_verified');
+  });
+
+  it('provider_verified is true for a listing owned by a KYC-verified provider, on both single and list routes', async () => {
+    const { token, providerId } = await onboardVerifiedShopProvider('Verified Shop Owner');
+    const createRes = await request(app)
+      .post('/api/listings')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ title: 'Verified Provider Listing', type: 'shop', description: 'x', location: 'Darjeeling' });
+    expect(createRes.status).toBe(200);
+    expect(createRes.body.item.provider_id).toBe(providerId);
+    const listingId = createRes.body.item.id;
+
+    const singleRes = await request(app).get(`/api/listings/${listingId}`);
+    expect(singleRes.status).toBe(200);
+    expect(singleRes.body.item.provider_verified).toBe(true);
+
+    const listRes = await request(app).get('/api/listings').query({ q: 'Verified Provider Listing' });
+    expect(listRes.status).toBe(200);
+    const found = listRes.body.items.find((i: any) => i.id === listingId);
+    expect(found).toBeDefined();
+    expect(found.provider_verified).toBe(true);
+  });
+
+  it('provider_verified is false for a listing owned by a provider with no approved KYC docs, on both single and list routes', async () => {
+    // A freshly onboarded provider (active, but zero approved KYC docs) still owns a listing
+    // (created automatically on activation). Its provider_verified must read false, not true.
+    const { token, providerId } = await onboardActiveProvider({ name: 'Unverified Provider Owner' });
+    const createRes = await request(app)
+      .post('/api/listings')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ title: 'Unverified Provider Listing', type: 'homestay', description: 'x', location: 'y' });
+    expect(createRes.status).toBe(200);
+    expect(createRes.body.item.provider_id).toBe(providerId);
+    const listingId = createRes.body.item.id;
+
+    const singleRes = await request(app).get(`/api/listings/${listingId}`);
+    expect(singleRes.status).toBe(200);
+    expect(singleRes.body.item.provider_verified).toBe(false);
+
+    const listRes = await request(app).get('/api/listings').query({ q: 'Unverified Provider Listing' });
+    expect(listRes.status).toBe(200);
+    const found = listRes.body.items.find((i: any) => i.id === listingId);
+    expect(found).toBeDefined();
+    expect(found.provider_verified).toBe(false);
   });
 });
 
