@@ -10,6 +10,7 @@ import BookingWidget from '@/components/BookingWidget';
 import { Mountain, Home as HomeIcon, Car, Store, Coffee, PartyPopper, Leaf, ArrowRight, Sparkles, TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const RED_PANDA = 'https://images.unsplash.com/photo-1542880941-1abfea46bba6';
+const HERO_POSTER = 'https://images.unsplash.com/photo-1544735716-392fe2489ffa';
 
 const STORIES = [
   { key: 'spot', to: '/spots', Icon: Mountain },
