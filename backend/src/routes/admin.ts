@@ -7,6 +7,7 @@ import { SEED_LISTINGS } from '../seed_data';
 import { authenticateToken, requireAdmin, hashPassword } from '../middleware/auth';
 import { rateLimiter } from '../middleware/rateLimiter';
 import { ADMIN_BOOTSTRAP_SECRET } from '../config';
+import { recomputeKycStatus } from './kyc';
 
 const router = Router();
 
@@ -407,6 +408,60 @@ router.get('/admin/bookings', authenticateToken, requireAdmin, async (req: Reque
 router.get('/admin/payments', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
   const items = await db.select().from(schema.payments);
   res.json({ items });
+});
+
+// GET /admin/kyc?status=pending — list KYC documents with provider/user context
+router.get('/admin/kyc', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
+  const statusFilter = typeof req.query.status === 'string' ? req.query.status : undefined;
+  const rows = await db.select().from(schema.kycDocuments);
+  const providers = await db.select().from(schema.providers);
+  const users = await db.select().from(schema.users);
+  const pById = new Map(providers.map(p => [p.id, p]));
+  const uById = new Map(users.map(u => [u.id, u]));
+
+  const documents = rows
+    .filter(d => !statusFilter || d.status === statusFilter)
+    .map(d => {
+      const p = pById.get(d.providerId);
+      const u = p ? uById.get(p.userId) : undefined;
+      return {
+        id: d.id,
+        provider_id: d.providerId,
+        doc_type: d.docType,
+        status: d.status,
+        rejection_reason: d.rejectionReason,
+        uploaded_at: d.uploadedAt,
+        business_name: p?.businessName || null,
+        business_type: p?.businessType || null,
+        owner_name: u?.name || null,
+        file_url: `/api/providers/kyc/${d.id}/file`,
+      };
+    });
+  res.json({ documents });
+});
+
+// POST /admin/kyc/:id/review — approve or reject a document
+router.post('/admin/kyc/:id/review', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
+  const { decision, reason } = req.body || {};
+  if (decision !== 'approve' && decision !== 'reject') {
+    return res.status(400).json({ detail: "decision must be 'approve' or 'reject'" });
+  }
+  const [doc] = await db.select().from(schema.kycDocuments).where(eq(schema.kycDocuments.id, req.params.id as any)).limit(1);
+  if (!doc) return res.status(404).json({ detail: 'Not found' });
+
+  const status = decision === 'approve' ? 'approved' : 'rejected';
+  await db.update(schema.kycDocuments).set({
+    status,
+    rejectionReason: decision === 'reject' ? (reason || null) : null,
+    reviewedAt: new Date().toISOString(),
+    reviewedBy: req.user.id,
+  }).where(eq(schema.kycDocuments.id, doc.id));
+
+  const kycStatus = await recomputeKycStatus(doc.providerId);
+  res.json({
+    document: { id: doc.id, doc_type: doc.docType, status, rejection_reason: decision === 'reject' ? (reason || null) : null },
+    provider_kyc_status: kycStatus,
+  });
 });
 
 export default router;
