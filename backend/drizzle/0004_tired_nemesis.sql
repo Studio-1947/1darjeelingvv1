@@ -3,6 +3,11 @@
 -- uploads of the same (provider_id, doc_type) both insert, leaving duplicate rows. A unique
 -- index will fail to apply while duplicates exist, so keep only the newest row (by uploaded_at)
 -- per (provider_id, doc_type) and drop the rest first.
+--
+-- NOTE: this DELETE does not clean up the private-bucket storage objects the discarded rows'
+-- file_key columns pointed at — those objects are orphaned (unreferenced by any row) by this
+-- one-shot migration. Acceptable here since this runs once against pre-fix data, but it is a
+-- real storage leak; tracked as a cleanup chore in INVESTIGATION.md.
 DELETE FROM "kyc_documents"
 WHERE "id" NOT IN (
 	SELECT DISTINCT ON (provider_id, doc_type) id
