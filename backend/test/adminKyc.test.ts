@@ -70,6 +70,42 @@ describe('admin KYC review', () => {
     expect(r.body.document.rejection_reason).toBe('Blurry scan');
   });
 
+  it('rejects a non-string reason on review', async () => {
+    const prov = await onboardActiveProvider({ name: 'Prov U', businessType: 'shop' });
+    await request(app).post('/api/providers/me/kyc').set('Authorization', `Bearer ${prov.token}`)
+      .send({ doc_type: 'aadhaar', file: PNG_DATA_URL, filename: 'a.png' });
+    const admin = await loginAdmin();
+    const list = await request(app).get('/api/admin/kyc?status=pending').set('Authorization', `Bearer ${admin}`);
+    const doc = list.body.documents.find((d: any) => d.provider_id === prov.providerId);
+    const res = await request(app).post(`/api/admin/kyc/${doc.id}/review`)
+      .set('Authorization', `Bearer ${admin}`).send({ decision: 'reject', reason: { not: 'a string' } });
+    expect(res.status).toBe(400);
+  });
+
+  it('rejects a reason over 500 characters', async () => {
+    const prov = await onboardActiveProvider({ name: 'Prov V', businessType: 'shop' });
+    await request(app).post('/api/providers/me/kyc').set('Authorization', `Bearer ${prov.token}`)
+      .send({ doc_type: 'aadhaar', file: PNG_DATA_URL, filename: 'a.png' });
+    const admin = await loginAdmin();
+    const list = await request(app).get('/api/admin/kyc?status=pending').set('Authorization', `Bearer ${admin}`);
+    const doc = list.body.documents.find((d: any) => d.provider_id === prov.providerId);
+    const res = await request(app).post(`/api/admin/kyc/${doc.id}/review`)
+      .set('Authorization', `Bearer ${admin}`).send({ decision: 'reject', reason: 'x'.repeat(501) });
+    expect(res.status).toBe(400);
+  });
+
+  it('allows approve without a reason (reason stays optional)', async () => {
+    const prov = await onboardActiveProvider({ name: 'Prov W', businessType: 'shop' });
+    await request(app).post('/api/providers/me/kyc').set('Authorization', `Bearer ${prov.token}`)
+      .send({ doc_type: 'aadhaar', file: PNG_DATA_URL, filename: 'a.png' });
+    const admin = await loginAdmin();
+    const list = await request(app).get('/api/admin/kyc?status=pending').set('Authorization', `Bearer ${admin}`);
+    const doc = list.body.documents.find((d: any) => d.provider_id === prov.providerId);
+    const res = await request(app).post(`/api/admin/kyc/${doc.id}/review`)
+      .set('Authorization', `Bearer ${admin}`).send({ decision: 'approve' });
+    expect(res.status).toBe(200);
+  });
+
   it('non-admin cannot review KYC documents', async () => {
     const prov = await onboardActiveProvider({ name: 'Prov T', businessType: 'shop' });
     await request(app).post('/api/providers/me/kyc').set('Authorization', `Bearer ${prov.token}`)

@@ -118,28 +118,33 @@ router.get('/', async (req: Request, res: Response) => {
 
   const providerIds = [...new Set(items.map(item => item.providerId))];
   const providerRows = providerIds.length > 0
-    ? await db.select({ id: schema.providers.id, kycStatus: schema.providers.kycStatus })
+    ? await db.select({ id: schema.providers.id, kycStatus: schema.providers.kycStatus, status: schema.providers.status })
         .from(schema.providers)
         .where(inArray(schema.providers.id, providerIds))
     : [];
-  const kycStatusByProviderId = new Map(providerRows.map(p => [p.id, p.kycStatus]));
+  const providerById = new Map(providerRows.map(p => [p.id, p]));
 
-  const itemsReturn = items.map(item => ({
-    id: item.id,
-    title: item.title,
-    type: item.type,
-    description: item.description,
-    location: item.location,
-    latitude: item.latitude,
-    longitude: item.longitude,
-    price: item.price,
-    image: item.image,
-    tags: item.tags,
-    provider_id: item.providerId,
-    extras: item.extras,
-    created_at: item.createdAt,
-    provider_verified: kycStatusByProviderId.get(item.providerId) === 'verified'
-  }));
+  const itemsReturn = items.map(item => {
+    const provider = providerById.get(item.providerId);
+    return {
+      id: item.id,
+      title: item.title,
+      type: item.type,
+      description: item.description,
+      location: item.location,
+      latitude: item.latitude,
+      longitude: item.longitude,
+      price: item.price,
+      image: item.image,
+      tags: item.tags,
+      provider_id: item.providerId,
+      extras: item.extras,
+      created_at: item.createdAt,
+      // Verified badge must never show for a provider an admin has suspended (flipped off
+      // "active"), even if their kycStatus was previously computed as "verified".
+      provider_verified: provider?.kycStatus === 'verified' && provider?.status === 'active'
+    };
+  });
 
   res.json({ items: itemsReturn });
 });
@@ -177,7 +182,7 @@ router.get('/:id', async (req: Request, res: Response) => {
     return res.status(404).json({ detail: 'Not found' });
   }
 
-  const [provider] = await db.select({ kycStatus: schema.providers.kycStatus })
+  const [provider] = await db.select({ kycStatus: schema.providers.kycStatus, status: schema.providers.status })
     .from(schema.providers)
     .where(eq(schema.providers.id, item.providerId))
     .limit(1);
@@ -196,7 +201,9 @@ router.get('/:id', async (req: Request, res: Response) => {
     provider_id: item.providerId,
     extras: item.extras,
     created_at: item.createdAt,
-    provider_verified: provider?.kycStatus === 'verified'
+    // Verified badge must never show for a provider an admin has suspended (flipped off
+    // "active"), even if their kycStatus was previously computed as "verified".
+    provider_verified: provider?.kycStatus === 'verified' && provider?.status === 'active'
   };
 
   res.json({ item: itemReturn });

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import request from 'supertest';
 import { app } from '../src/app';
-import { registerUser, loginAdmin } from './helpers';
+import { registerUser, loginAdmin, onboardActiveProvider } from './helpers';
 
 describe('admin routes', () => {
   it('no longer exposes the old unauthenticated /dev/seed route', async () => {
@@ -36,5 +36,28 @@ describe('admin routes', () => {
     const res = await request(app).get('/api/admin/stats').set('Authorization', `Bearer ${admin}`);
     expect(res.status).toBe(200);
     expect(res.body.users).toBeGreaterThanOrEqual(1);
+  });
+});
+
+describe('admin provider status update', () => {
+  it('rejects a status outside the allowed set', async () => {
+    const { providerId } = await onboardActiveProvider({ name: 'Status Guard Provider' });
+    const admin = await loginAdmin();
+    const res = await request(app)
+      .put(`/api/admin/providers/${providerId}/status`)
+      .set('Authorization', `Bearer ${admin}`)
+      .send({ status: 'banned' });
+    expect(res.status).toBe(400);
+    expect(res.body.detail).toBeTruthy();
+  });
+
+  it('accepts a valid status transition to pending_payment', async () => {
+    const { providerId } = await onboardActiveProvider({ name: 'Status Valid Provider' });
+    const admin = await loginAdmin();
+    const res = await request(app)
+      .put(`/api/admin/providers/${providerId}/status`)
+      .set('Authorization', `Bearer ${admin}`)
+      .send({ status: 'pending_payment' });
+    expect(res.status).toBe(200);
   });
 });

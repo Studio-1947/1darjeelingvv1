@@ -349,12 +349,17 @@ router.delete('/admin/users/:id', authenticateToken, requireAdmin, async (req: R
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
  */
+const ALLOWED_PROVIDER_STATUSES = ['pending_payment', 'active'] as const;
+
 // Admin Providers status update
 router.put('/admin/providers/:id/status', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
   const { id } = req.params;
   const { status } = req.body;
   if (!status) {
     return res.status(400).json({ detail: 'Status is required' });
+  }
+  if (!ALLOWED_PROVIDER_STATUSES.includes(status)) {
+    return res.status(400).json({ detail: `Status must be one of: ${ALLOWED_PROVIDER_STATUSES.join(', ')}` });
   }
   await db.update(schema.providers).set({ status }).where(eq(schema.providers.id, id as any));
   res.json({ ok: true });
@@ -445,6 +450,14 @@ router.post('/admin/kyc/:id/review', authenticateToken, requireAdmin, async (req
   const { decision, reason } = req.body || {};
   if (decision !== 'approve' && decision !== 'reject') {
     return res.status(400).json({ detail: "decision must be 'approve' or 'reject'" });
+  }
+  if (reason !== undefined && reason !== null) {
+    if (typeof reason !== 'string') {
+      return res.status(400).json({ detail: 'reason must be a string' });
+    }
+    if (reason.length > 500) {
+      return res.status(400).json({ detail: 'reason must be 500 characters or fewer' });
+    }
   }
   const [doc] = await db.select().from(schema.kycDocuments).where(eq(schema.kycDocuments.id, req.params.id as any)).limit(1);
   if (!doc) return res.status(404).json({ detail: 'Not found' });

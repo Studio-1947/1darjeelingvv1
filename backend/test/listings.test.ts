@@ -185,6 +185,38 @@ describe('listings read endpoints', () => {
     expect(found).toBeDefined();
     expect(found.provider_verified).toBe(false);
   });
+
+  it('deactivating a verified provider (active -> pending_payment) drops provider_verified on their listings, on both routes', async () => {
+    const { token, providerId } = await onboardVerifiedShopProvider('Suspendable Verified Owner');
+    const createRes = await request(app)
+      .post('/api/listings')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ title: 'Suspendable Owner Listing', type: 'shop', description: 'x', location: 'Darjeeling' });
+    expect(createRes.status).toBe(200);
+    const listingId = createRes.body.item.id;
+
+    // Confirm it starts verified.
+    const before = await request(app).get(`/api/listings/${listingId}`);
+    expect(before.body.item.provider_verified).toBe(true);
+
+    // Admin suspends the provider (flips them off "active").
+    const admin = await loginAdmin();
+    const statusRes = await request(app)
+      .put(`/api/admin/providers/${providerId}/status`)
+      .set('Authorization', `Bearer ${admin}`)
+      .send({ status: 'pending_payment' });
+    expect(statusRes.status).toBe(200);
+
+    const afterSingle = await request(app).get(`/api/listings/${listingId}`);
+    expect(afterSingle.status).toBe(200);
+    expect(afterSingle.body.item.provider_verified).toBe(false);
+
+    const afterList = await request(app).get('/api/listings').query({ q: 'Suspendable Owner Listing' });
+    expect(afterList.status).toBe(200);
+    const found = afterList.body.items.find((i: any) => i.id === listingId);
+    expect(found).toBeDefined();
+    expect(found.provider_verified).toBe(false);
+  });
 });
 
 describe('provider can manage multiple listings', () => {
