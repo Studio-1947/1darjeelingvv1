@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { ShieldCheck, FileText, CheckCircle2, XCircle, RefreshCw, Loader2 } from 'lucide-react';
 import api from '@/lib/api';
-import { useAuth } from '@/context/AuthContext';
 
 interface AdminKycDoc {
   id: string;
@@ -27,14 +25,12 @@ const API_ORIGIN = (import.meta.env.VITE_API_URL || 'http://localhost:8000/api')
 const OBJECT_URL_TTL_MS = 60_000;
 
 export default function KycReview() {
-  const { user, loading: authLoading } = useAuth();
-  const nav = useNavigate();
-
   const [docs, setDocs] = useState<AdminKycDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
   const [fileError, setFileError] = useState('');
+  const [reviewError, setReviewError] = useState<string | null>(null);
 
   // Tracks object URLs we've created so they can be revoked once no longer
   // needed, instead of leaking blob memory for every document viewed.
@@ -54,13 +50,8 @@ export default function KycReview() {
   }, []);
 
   useEffect(() => {
-    if (authLoading) return;
-    if (!user) {
-      nav('/login');
-      return;
-    }
     load();
-  }, [authLoading, user, nav, load]);
+  }, [load]);
 
   // Revoke any object URLs still outstanding when the page unmounts.
   useEffect(() => {
@@ -71,17 +62,25 @@ export default function KycReview() {
   }, []);
 
   const review = async (id: string, decision: 'approve' | 'reject') => {
+    setReviewError(null);
+
     let reason: string | undefined;
     if (decision === 'reject') {
-      reason = window.prompt('Reason for rejection?') || '';
-      if (!reason) return;
+      const input = window.prompt('Reason for rejection? The provider will see this.');
+      if (input === null) return; // cancelled — abort silently
+      reason = input.trim();
+      if (!reason) {
+        setReviewError('A rejection reason is required — the provider needs to know what to fix.');
+        return;
+      }
     }
     setBusy(id);
     try {
       await api.post(`/admin/kyc/${id}/review`, { decision, reason });
+      setReviewError(null);
       await load();
     } catch (e: any) {
-      setLoadError(e?.response?.data?.detail || 'Failed to submit the review decision.');
+      setReviewError(e?.response?.data?.detail || `Could not ${decision} that document. Please try again.`);
     } finally {
       setBusy(null);
     }
@@ -116,7 +115,7 @@ export default function KycReview() {
     }
   };
 
-  if (authLoading || loading) {
+  if (loading) {
     return <div className="p-16 text-center text-ink-soft">Loading KYC queue...</div>;
   }
 
@@ -155,6 +154,19 @@ export default function KycReview() {
       {fileError && (
         <div className="mb-6 p-4 rounded-xl bg-flag/10 border border-flag/20 text-sm text-flag font-semibold text-center">
           {fileError}
+        </div>
+      )}
+
+      {reviewError && (
+        <div className="mb-6 p-4 rounded-xl bg-flag/10 border border-flag/20 text-sm text-flag font-semibold flex items-center justify-between gap-4">
+          <span>{reviewError}</span>
+          <button
+            onClick={() => setReviewError(null)}
+            className="shrink-0 text-flag/70 hover:text-flag font-bold"
+            aria-label="Dismiss"
+          >
+            &times;
+          </button>
         </div>
       )}
 
