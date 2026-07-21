@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '@/lib/api';
@@ -8,6 +8,11 @@ import ListingFormModal from '@/components/ListingFormModal';
 import { StatCard } from '@/components/provider/dashboard/widgets';
 import BookingCard from '@/components/provider/dashboard/BookingCard';
 import EditListingModal from '@/components/provider/dashboard/EditListingModal';
+import KycSection from '@/components/provider/dashboard/KycSection';
+import VerifiedBadge from '@/components/provider/VerifiedBadge';
+import ProfileCompletionBar from '@/components/provider/ProfileCompletionBar';
+import { getMyProfile } from '@/lib/kyc';
+import type { KycProfile } from '@/lib/kyc';
 
 /** Provider home: booking stats, the bookings list, and business profile. */
 export default function ProviderDashboard() {
@@ -22,28 +27,23 @@ export default function ProviderDashboard() {
   const [selectedListing, setSelectedListing] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [listingModal, setListingModal] = useState<{ open: boolean; editing: any | null }>({ open: false, editing: null });
-
-  const loadData = useCallback(async () => {
-    const [p, b] = await Promise.all([
-      api.get('/providers/me'),
-      api.get('/bookings/provider'),
-    ]);
-    setProvider(p.data.provider);
-    setStats(b.data.stats || {});
-    setBookings(b.data.items || []);
-    setListings(b.data.listings || []);
-  }, []);
+  const [kycProfile, setKycProfile] = useState<KycProfile | null>(null);
 
   const loadDashboard = React.useCallback(async () => {
     try {
-      const [p, b] = await Promise.all([
+      const [p, b, kyc] = await Promise.all([
         api.get('/providers/me'),
         api.get('/bookings/provider'),
+        // The provider may not have an active profile yet (or the request may simply fail) —
+        // that must never take down the rest of the dashboard, so it's caught independently
+        // and just leaves the "Complete your profile" card and header badge unrendered.
+        getMyProfile().catch(() => null),
       ]);
       setProvider(p.data.provider);
       setStats(b.data.stats || {});
       setBookings(b.data.items || []);
       setListings(b.data.listings || []);
+      setKycProfile(kyc);
     } catch (e) {
       console.error(e);
     }
@@ -60,6 +60,43 @@ export default function ProviderDashboard() {
       }
     })();
   }, [user, authLoading, nav, loadDashboard]);
+
+  // Tracks whether the component is still mounted, so a KYC refresh that resolves after
+  // unmount (e.g. the user navigated away while it was in flight) never calls setState.
+  const mountedRef = useRef(true);
+  useEffect(() => () => { mountedRef.current = false; }, []);
+
+  // A lightweight, independent refresh of just the KYC profile — used to catch up the header
+  // badge and completion card when something changed outside this tab (an admin approving a
+  // document elsewhere) without re-fetching bookings/listings. Must never break the rest of
+  // the dashboard if it fails, so failures are swallowed silently.
+  const refreshKycProfile = useCallback(async () => {
+    try {
+      const kyc = await getMyProfile();
+      if (mountedRef.current) setKycProfile(kyc);
+    } catch {
+      // Best-effort only — the badge simply stays as it was.
+    }
+  }, []);
+
+  // Re-check on: the tab/window regaining focus or becoming visible again (covers an admin
+  // approving a document while this page was open in the background), and on switching into
+  // the Business Profile tab (the one place the KYC status is actually shown in detail).
+  useEffect(() => {
+    if (!provider) return;
+    const onFocus = () => { refreshKycProfile(); };
+    const onVisibility = () => { if (document.visibilityState === 'visible') refreshKycProfile(); };
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [provider, refreshKycProfile]);
+
+  useEffect(() => {
+    if (tab === 'profile') refreshKycProfile();
+  }, [tab, refreshKycProfile]);
 
   const handleSaveListing = async (values: any) => {
     if (listingModal.editing) {
@@ -116,6 +153,7 @@ export default function ProviderDashboard() {
             data-testid="provider-status">
             {active ? <CheckCircle2 size={14} /> : <Clock size={14} />} {active ? t('provider.active') : t('provider.pending')}
           </span>
+          {kycProfile?.kyc_status === 'verified' && <VerifiedBadge size="md" />}
         </div>
       </div>
 
@@ -143,6 +181,43 @@ export default function ProviderDashboard() {
           <StatCard label="Listings live" value={0} icon={Users} tone="ink" />
         )}
       </div>
+
+      {/* Complete your profile */}
+      {kycProfile && kycProfile.completion_percent < 100 && (() => {
+        // Items the provider can still act on (never uploaded, or bounced back). A document
+        // sitting in `in_review` is neither of these — it contributes nothing to
+        // completion_percent yet, but there's nothing left for the provider to do either, so
+        // it must never be counted as "remaining" (that reads as an actionable checklist item
+        // when there's nothing to click).
+        const actionableCount = kycProfile.checklist.filter(c => c.state === 'missing' || c.state === 'rejected').length;
+        const hasActionable = actionableCount > 0;
+        return (
+          <div className="mt-8 mist-panel p-5 md:p-6" data-testid="kyc-progress-card">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div className="flex-1 min-w-0">
+                <h2 className="font-display font-extrabold text-lg text-ink">
+                  {hasActionable ? t('kyc.completeYourProfile') : t('kyc.underReviewTitle')}
+                </h2>
+                <p className="text-xs text-ink-soft mt-1">
+                  {hasActionable
+                    ? t('kyc.remainingItems', { count: actionableCount })
+                    : t('kyc.underReviewMessage')}
+                </p>
+                <div className="mt-3 max-w-md">
+                  <ProfileCompletionBar percent={kycProfile.completion_percent} />
+                </div>
+              </div>
+              <button
+                onClick={() => setTab('profile')}
+                data-testid="kyc-complete-profile-cta"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-flag text-white font-bold text-xs btn-hover whitespace-nowrap self-start md:self-auto"
+              >
+                {hasActionable ? t('kyc.completeProfileCta') : t('kyc.viewStatusCta')} <ArrowRight size={14} />
+              </button>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Tabs */}
       <div className="mt-8 flex items-center gap-2 border-b border-[var(--line)]">
@@ -222,21 +297,26 @@ export default function ProviderDashboard() {
 
       {/* Profile */}
       {tab === 'profile' && (
-        <div className="mt-6 mist-panel p-5 md:p-6">
-          <div className="grid md:grid-cols-2 gap-6">
-            <div>
-              <div className="text-xs uppercase tracking-widest text-ink-soft">Business</div>
-              <div className="mt-1 font-display font-extrabold text-2xl text-ink">{provider.business_name}</div>
-              <div className="text-sm text-ink-soft capitalize">{provider.business_type} · {provider.location}</div>
-            </div>
-            <div>
-              <div className="text-xs uppercase tracking-widest text-ink-soft">Contact</div>
-              <div className="mt-1 font-display font-extrabold text-2xl text-ink">{provider.contact_phone}</div>
-            </div>
+        <div className="mt-6">
+          <div className="mist-panel p-5 md:p-6 mb-6">
+            <KycSection onProfileChange={setKycProfile} />
           </div>
-          <div className="mt-6">
-            <div className="text-xs uppercase tracking-widest text-ink-soft">Description</div>
-            <p className="mt-1 text-ink leading-relaxed">{provider.description}</p>
+          <div className="mist-panel p-5 md:p-6">
+            <div className="grid md:grid-cols-2 gap-6">
+              <div>
+                <div className="text-xs uppercase tracking-widest text-ink-soft">Business</div>
+                <div className="mt-1 font-display font-extrabold text-2xl text-ink">{provider.business_name}</div>
+                <div className="text-sm text-ink-soft capitalize">{provider.business_type} · {provider.location}</div>
+              </div>
+              <div>
+                <div className="text-xs uppercase tracking-widest text-ink-soft">Contact</div>
+                <div className="mt-1 font-display font-extrabold text-2xl text-ink">{provider.contact_phone}</div>
+              </div>
+            </div>
+            <div className="mt-6">
+              <div className="text-xs uppercase tracking-widest text-ink-soft">Description</div>
+              <p className="mt-1 text-ink leading-relaxed">{provider.description}</p>
+            </div>
           </div>
         </div>
       )}

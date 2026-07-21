@@ -149,6 +149,7 @@ export const MINIO_ACCESS_KEY = process.env.MINIO_ACCESS_KEY || 'minioadmin';
 export const MINIO_SECRET_KEY = process.env.MINIO_SECRET_KEY || 'minioadminpassword';
 export const MINIO_BUCKET = process.env.MINIO_BUCKET || 'one-darjeeling';
 export const MINIO_PUBLIC_URL = process.env.MINIO_PUBLIC_URL || 'http://localhost:9000';
+export const MINIO_KYC_BUCKET = process.env.MINIO_KYC_BUCKET || 'one-darjeeling-kyc';
 
 export const rzpClient = RAZORPAY_KEY_SECRET ? new Razorpay({
   key_id: RAZORPAY_KEY_ID,

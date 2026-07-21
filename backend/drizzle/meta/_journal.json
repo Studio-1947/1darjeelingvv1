@@ -22,6 +22,27 @@
       "when": 1784546671465,
       "tag": "0002_handy_talon",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1784608561473,
+      "tag": "0003_loving_terrax",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1784624151534,
+      "tag": "0004_tired_nemesis",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1784632248217,
+      "tag": "0005_chief_firelord",
+      "breakpoints": true
     }
   ]
 }

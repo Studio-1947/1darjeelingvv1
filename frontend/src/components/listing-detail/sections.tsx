@@ -3,10 +3,11 @@ import { useTranslation } from 'react-i18next';
 import SmartImg from '@/components/SmartImg';
 import MapEmbed from '@/components/MapEmbed';
 import {
-  MapPin, Tag, Navigation, ArrowRight, BadgeCheck, Languages,
+  MapPin, Tag, Navigation, ArrowRight, Languages,
   CalendarClock, Route, Crosshair,
 } from 'lucide-react';
 import { Screen, SectionHead, Avatar } from './primitives';
+import VerifiedBadge from '@/components/provider/VerifiedBadge';
 
 // One component per full-screen section of the listing detail page. The page
 // decides which sections a listing type gets; each section only renders it.
@@ -87,9 +88,7 @@ export function HostSection({ item, host, personSrc }: { item: any; host: any; p
         <Avatar photo={personSrc} initial={host.initial} />
         <div className="mt-6 flex items-center justify-center gap-2 flex-wrap">
           <span className="font-display font-extrabold text-2xl md:text-3xl text-ink">{host.name}</span>
-          {host.verified && (
-            <span className="chip bg-white"><BadgeCheck size={12} className="mr-1" /> {t('detail.verified')}</span>
-          )}
+          {host.verified && <VerifiedBadge size="sm" />}
         </div>
         <p className="mt-2 text-sm text-ink-soft flex items-center justify-center gap-1.5"><MapPin size={13} /> {item.location}</p>
         <p className="mt-6 text-lg text-ink leading-relaxed">{host.bio}</p>
@@ -111,7 +110,7 @@ export function DriverSection({ item, about, personSrc, initial }: { item: any; 
         <Avatar photo={personSrc} initial={initial} />
         <div className="mt-6 flex items-center justify-center gap-2 flex-wrap">
           <span className="font-display font-extrabold text-2xl md:text-3xl text-ink">{item.title}</span>
-          <span className="chip bg-white"><BadgeCheck size={12} className="mr-1" /> {t('detail.verified')}</span>
+          {item.provider_verified && <VerifiedBadge size="sm" />}
         </div>
         <p className="mt-6 text-lg text-ink leading-relaxed">{about}</p>
       </div>
