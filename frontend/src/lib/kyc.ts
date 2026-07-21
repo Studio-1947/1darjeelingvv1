@@ -28,6 +28,27 @@ export interface KycProfile {
   documents: KycDoc[];
 }
 
+/**
+ * Typed error thrown by every function in this module. Carries the server's own `detail`
+ * message when one was given, plus the HTTP status so callers can special-case things like a
+ * 404 ("no active provider profile yet") or a 503 ("storage temporarily unavailable")
+ * differently from a generic failure, instead of matching on string content.
+ */
+export class KycApiError extends Error {
+  status?: number;
+  constructor(message: string, status?: number) {
+    super(message);
+    this.name = 'KycApiError';
+    this.status = status;
+  }
+}
+
+function toKycApiError(err: any, fallbackMessage: string): KycApiError {
+  const status = err?.response?.status;
+  const detail = err?.response?.data?.detail;
+  return new KycApiError(detail || fallbackMessage, status);
+}
+
 function toDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -38,8 +59,12 @@ function toDataUrl(file: File): Promise<string> {
 }
 
 export async function getMyProfile(): Promise<KycProfile> {
-  const { data } = await api.get('/providers/me/profile');
-  return data;
+  try {
+    const { data } = await api.get('/providers/me/profile');
+    return data;
+  } catch (err: any) {
+    throw toKycApiError(err, i18n.t('kyc.loadError'));
+  }
 }
 
 export async function uploadKycDoc(docType: string, file: File): Promise<KycDoc> {
@@ -47,17 +72,21 @@ export async function uploadKycDoc(docType: string, file: File): Promise<KycDoc>
   // `detail` body), which the caller can only show as the generic "Upload failed". Catch it
   // here instead so the provider gets an accurate, localized reason before we even upload.
   if (file.size > MAX_UPLOAD_BYTES) {
-    throw i18n.t('kyc.fileTooLarge');
+    throw new KycApiError(i18n.t('kyc.fileTooLarge'));
   }
   const dataUrl = await toDataUrl(file);
   try {
     const { data } = await api.post('/providers/me/kyc', { doc_type: docType, file: dataUrl, filename: file.name });
     return data.document;
   } catch (err: any) {
-    throw err?.response?.data?.detail || 'Upload failed';
+    throw toKycApiError(err, i18n.t('kyc.uploadFailed'));
   }
 }
 
 export async function deleteKycDoc(docType: string): Promise<void> {
-  await api.delete(`/providers/me/kyc/${docType}`);
+  try {
+    await api.delete(`/providers/me/kyc/${docType}`);
+  } catch (err: any) {
+    throw toKycApiError(err, i18n.t('kyc.removeFailed'));
+  }
 }
