@@ -36,6 +36,7 @@ export const providers = pgTable('providers', {
   images: jsonb('images').$type<string[]>().default([]).notNull(),
   extras: jsonb('extras').$type<Record<string, any>>().default({}).notNull(),
   status: text('status').notNull(),
+  kycStatus: text('kyc_status').default('none').notNull(),
   createdAt: text('created_at').notNull(),
   activatedAt: text('activated_at'),
 });
@@ -84,4 +85,17 @@ export const payments = pgTable('payments', {
   mock: boolean('mock').default(false).notNull(),
   createdAt: text('created_at').notNull(),
   paidAt: text('paid_at'),
+});
+
+export const kycDocuments = pgTable('kyc_documents', {
+  id: text('id').primaryKey(),
+  providerId: text('provider_id').references(() => providers.id, { onDelete: 'cascade' }).notNull(),
+  docType: text('doc_type').notNull(),
+  fileKey: text('file_key').notNull(),        // object key in the PRIVATE bucket — never a public URL
+  contentType: text('content_type').notNull(),
+  status: text('status').notNull(),           // 'pending' | 'approved' | 'rejected'
+  rejectionReason: text('rejection_reason'),
+  uploadedAt: text('uploaded_at').notNull(),
+  reviewedAt: text('reviewed_at'),
+  reviewedBy: text('reviewed_by'),
 });
