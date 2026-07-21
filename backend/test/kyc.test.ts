@@ -24,6 +24,43 @@ const PNG_DATA_URL =
 const PDF_DATA_URL =
   'data:application/pdf;base64,' + Buffer.from('%PDF-1.4\n%mock pdf for tests\n').toString('base64');
 
+const SHOP_REQUIRED_DOC_TYPES = ['aadhaar', 'pan', 'owner_photo', 'trade_license'];
+
+// Uploads and admin-approves every required shop doc for `providerId`, leaving the provider
+// verified. Used by the revocation/downgrade tests, which all need to start from "verified".
+async function verifyShopProvider(token: string, providerId: string) {
+  for (const t of SHOP_REQUIRED_DOC_TYPES) {
+    const up = await request(app).post('/api/providers/me/kyc').set('Authorization', `Bearer ${token}`)
+      .send({ doc_type: t, file: PNG_DATA_URL, filename: `${t}.png` });
+    if (up.status !== 200) throw new Error(`upload failed for ${t}: ${up.status} ${JSON.stringify(up.body)}`);
+  }
+  const adminToken = await loginAdmin();
+  const list = await request(app).get('/api/admin/kyc?status=pending').set('Authorization', `Bearer ${adminToken}`);
+  const mine = list.body.documents.filter((d: any) => d.provider_id === providerId);
+  for (const d of mine) {
+    const r = await request(app).post(`/api/admin/kyc/${d.id}/review`)
+      .set('Authorization', `Bearer ${adminToken}`).send({ decision: 'approve' });
+    if (r.status !== 200) throw new Error(`approve failed for ${d.doc_type}: ${r.status} ${JSON.stringify(r.body)}`);
+  }
+}
+
+// Recursively scans a serialized response for values shaped like a storage object key
+// (`<providerId>/<docType>/<uuid>.<ext>`), catching a leak anywhere in the payload — not just
+// at a hardcoded top-level property name.
+const STORAGE_KEY_SHAPE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/[a-zA-Z0-9_]+\/[0-9a-f-]{8,}\.[a-zA-Z0-9]+/i;
+function findLeakedKeys(value: unknown, path = '$'): string[] {
+  if (typeof value === 'string') {
+    return STORAGE_KEY_SHAPE.test(value) ? [`${path}: ${value}`] : [];
+  }
+  if (Array.isArray(value)) {
+    return value.flatMap((v, i) => findLeakedKeys(v, `${path}[${i}]`));
+  }
+  if (value && typeof value === 'object') {
+    return Object.entries(value as Record<string, unknown>).flatMap(([k, v]) => findLeakedKeys(v, `${path}.${k}`));
+  }
+  return [];
+}
+
 describe('provider KYC', () => {
   it('provider can upload an allowed doc; it starts pending', async () => {
     const { token } = await onboardActiveProvider({ name: 'Kyc One', businessType: 'shop' });
@@ -292,5 +329,158 @@ describe('provider KYC', () => {
       .set('Authorization', `Bearer ${token}`)
       .send({ doc_type: 'aadhaar', file: junkDataUrl, filename: 'junk.png' });
     expect(res.status).toBe(400);
+  });
+
+  describe('revocation / downgrade', () => {
+    it('provider deleting an approved required doc revokes verified status', async () => {
+      const { token, providerId } = await onboardActiveProvider({ name: 'Kyc Revoke Delete', businessType: 'shop' });
+      await verifyShopProvider(token, providerId);
+
+      const before = await request(app).get('/api/providers/me/profile').set('Authorization', `Bearer ${token}`);
+      expect(before.body.kyc_status).toBe('verified');
+
+      const del = await request(app).delete('/api/providers/me/kyc/aadhaar').set('Authorization', `Bearer ${token}`);
+      expect(del.status).toBe(200);
+
+      const after = await request(app).get('/api/providers/me/profile').set('Authorization', `Bearer ${token}`);
+      expect(after.body.kyc_status).not.toBe('verified');
+    });
+
+    it('provider re-uploading an approved required doc resets it to pending and revokes verified status', async () => {
+      const { token, providerId } = await onboardActiveProvider({ name: 'Kyc Revoke Reupload', businessType: 'shop' });
+      await verifyShopProvider(token, providerId);
+
+      const before = await request(app).get('/api/providers/me/profile').set('Authorization', `Bearer ${token}`);
+      expect(before.body.kyc_status).toBe('verified');
+
+      const reupload = await request(app).post('/api/providers/me/kyc').set('Authorization', `Bearer ${token}`)
+        .send({ doc_type: 'pan', file: PNG_DATA_URL, filename: 'pan-v2.png' });
+      expect(reupload.status).toBe(200);
+      expect(reupload.body.document.status).toBe('pending');
+
+      const after = await request(app).get('/api/providers/me/profile').set('Authorization', `Bearer ${token}`);
+      expect(after.body.kyc_status).not.toBe('verified');
+    });
+  });
+
+  describe('edge states', () => {
+    it('a pending_payment provider (onboarded, never paid) gets 404 from GET /me/profile, 404 from GET /me/kyc, and 403 from POST /me/kyc', async () => {
+      const { token, phone } = await registerUser({ name: 'Pending Payment Provider', role: 'provider' });
+      const onboardRes = await request(app)
+        .post('/api/providers/onboard')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          business_name: "Pending Payment Provider's Business",
+          business_type: 'shop',
+          description: 'A shop awaiting payment',
+          location: 'Darjeeling',
+          contact_phone: phone,
+        });
+      expect(onboardRes.status).toBe(200);
+      expect(onboardRes.body.provider.status).toBe('pending_payment');
+
+      const profile = await request(app).get('/api/providers/me/profile').set('Authorization', `Bearer ${token}`);
+      expect(profile.status).toBe(404);
+
+      const list = await request(app).get('/api/providers/me/kyc').set('Authorization', `Bearer ${token}`);
+      expect(list.status).toBe(404);
+
+      const upload = await request(app).post('/api/providers/me/kyc').set('Authorization', `Bearer ${token}`)
+        .send({ doc_type: 'aadhaar', file: PNG_DATA_URL, filename: 'a.png' });
+      expect(upload.status).toBe(403);
+    });
+
+    it('a plain tourist with no provider row at all gets 404 from GET /me/profile', async () => {
+      const { token } = await registerUser({ name: 'Tourist No Provider Row', role: 'tourist' });
+      const res = await request(app).get('/api/providers/me/profile').set('Authorization', `Bearer ${token}`);
+      expect(res.status).toBe(404);
+    });
+
+    it('deleting a docType the provider never uploaded is a no-op: 200, no deletePrivate call, other docs unaffected', async () => {
+      const { token } = await onboardActiveProvider({ name: 'Kyc Never Uploaded', businessType: 'shop' });
+      await request(app).post('/api/providers/me/kyc').set('Authorization', `Bearer ${token}`)
+        .send({ doc_type: 'pan', file: PNG_DATA_URL, filename: 'pan.png' });
+
+      const deletePrivateMock = deletePrivate as unknown as ReturnType<typeof vi.fn>;
+      const callsBefore = deletePrivateMock.mock.calls.length;
+
+      const del = await request(app).delete('/api/providers/me/kyc/aadhaar').set('Authorization', `Bearer ${token}`);
+      expect(del.status).toBe(200);
+      expect(del.body.ok).toBe(true);
+      expect(deletePrivateMock.mock.calls.length).toBe(callsBefore);
+
+      const list = await request(app).get('/api/providers/me/kyc').set('Authorization', `Bearer ${token}`);
+      const panDocs = list.body.documents.filter((d: any) => d.doc_type === 'pan');
+      expect(panDocs.length).toBe(1);
+      expect(list.body.documents.find((d: any) => d.doc_type === 'aadhaar')).toBeUndefined();
+    });
+  });
+
+  describe('deletePrivate assertion strength', () => {
+    it('re-uploading an existing doc calls deletePrivate with the OLD fileKey, not the new one', async () => {
+      const { token, providerId } = await onboardActiveProvider({ name: 'Kyc Old Key', businessType: 'shop' });
+      await request(app).post('/api/providers/me/kyc').set('Authorization', `Bearer ${token}`)
+        .send({ doc_type: 'pan', file: PNG_DATA_URL, filename: 'pan-v1.png' });
+
+      const [rowBefore] = await db.select().from(schema.kycDocuments)
+        .where(and(eq(schema.kycDocuments.providerId, providerId), eq(schema.kycDocuments.docType, 'pan')));
+      const oldKey = rowBefore.fileKey;
+
+      const deletePrivateMock = deletePrivate as unknown as ReturnType<typeof vi.fn>;
+      const callsBefore = deletePrivateMock.mock.calls.length;
+
+      const reupload = await request(app).post('/api/providers/me/kyc').set('Authorization', `Bearer ${token}`)
+        .send({ doc_type: 'pan', file: PNG_DATA_URL, filename: 'pan-v2.png' });
+      expect(reupload.status).toBe(200);
+
+      const [rowAfter] = await db.select().from(schema.kycDocuments)
+        .where(and(eq(schema.kycDocuments.providerId, providerId), eq(schema.kycDocuments.docType, 'pan')));
+      const newKey = rowAfter.fileKey;
+      expect(newKey).not.toBe(oldKey);
+
+      expect(deletePrivateMock.mock.calls.length).toBe(callsBefore + 1);
+      const [deletedKey] = deletePrivateMock.mock.calls[deletePrivateMock.mock.calls.length - 1];
+      expect(deletedKey).toBe(oldKey);
+      expect(deletedKey).not.toBe(newKey);
+    });
+
+    it('deleting a doc calls deletePrivate with that document\'s exact fileKey', async () => {
+      const { token, providerId } = await onboardActiveProvider({ name: 'Kyc Delete Key', businessType: 'shop' });
+      await request(app).post('/api/providers/me/kyc').set('Authorization', `Bearer ${token}`)
+        .send({ doc_type: 'aadhaar', file: PNG_DATA_URL, filename: 'a.png' });
+
+      const [row] = await db.select().from(schema.kycDocuments)
+        .where(and(eq(schema.kycDocuments.providerId, providerId), eq(schema.kycDocuments.docType, 'aadhaar')));
+      const key = row.fileKey;
+
+      const deletePrivateMock = deletePrivate as unknown as ReturnType<typeof vi.fn>;
+      const callsBefore = deletePrivateMock.mock.calls.length;
+
+      const del = await request(app).delete('/api/providers/me/kyc/aadhaar').set('Authorization', `Bearer ${token}`);
+      expect(del.status).toBe(200);
+
+      expect(deletePrivateMock.mock.calls.length).toBe(callsBefore + 1);
+      const [deletedKey] = deletePrivateMock.mock.calls[deletePrivateMock.mock.calls.length - 1];
+      expect(deletedKey).toBe(key);
+    });
+  });
+
+  it('recursively scans upload, list, and profile responses for storage-key-shaped strings (not just file_key/bucket/http)', async () => {
+    const { token } = await onboardActiveProvider({ name: 'Kyc Key Scan', businessType: 'shop' });
+
+    const up = await request(app).post('/api/providers/me/kyc').set('Authorization', `Bearer ${token}`)
+      .send({ doc_type: 'aadhaar', file: PNG_DATA_URL, filename: 'a.png' });
+    expect(up.status).toBe(200);
+    expect(findLeakedKeys(up.body)).toEqual([]);
+
+    const list = await request(app).get('/api/providers/me/kyc').set('Authorization', `Bearer ${token}`);
+    expect(list.status).toBe(200);
+    expect(findLeakedKeys(list.body)).toEqual([]);
+
+    const profile = await request(app).get('/api/providers/me/profile').set('Authorization', `Bearer ${token}`);
+    expect(profile.status).toBe(200);
+    expect(Array.isArray(profile.body.documents)).toBe(true);
+    expect(profile.body.documents.length).toBeGreaterThan(0);
+    expect(findLeakedKeys(profile.body)).toEqual([]);
   });
 });

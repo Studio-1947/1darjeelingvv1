@@ -11,6 +11,8 @@ vi.mock('../src/lib/s3', () => ({
 }));
 
 import { app } from '../src/app';
+import { db, schema } from '../src/db';
+import { and, eq } from 'drizzle-orm';
 import { registerUser, onboardActiveProvider, loginAdmin, createListing } from './helpers';
 
 // 1x1 transparent PNG as a data URL
@@ -213,6 +215,99 @@ describe('listings read endpoints', () => {
 
     const afterList = await request(app).get('/api/listings').query({ q: 'Suspendable Owner Listing' });
     expect(afterList.status).toBe(200);
+    const found = afterList.body.items.find((i: any) => i.id === listingId);
+    expect(found).toBeDefined();
+    expect(found.provider_verified).toBe(false);
+  });
+
+  // Looks up the (approved) doc id for a given provider/docType so a test can act on it via the
+  // admin review route without re-deriving it through another list call.
+  async function approvedDocId(providerId: string, docType: string): Promise<string> {
+    const [row] = await db.select().from(schema.kycDocuments)
+      .where(and(eq(schema.kycDocuments.providerId, providerId), eq(schema.kycDocuments.docType, docType)));
+    if (!row) throw new Error(`no kyc doc row for provider ${providerId} docType ${docType}`);
+    return row.id;
+  }
+
+  it('admin rejecting a previously-approved required doc drops provider_verified on both listing routes (was true before)', async () => {
+    const { token, providerId } = await onboardVerifiedShopProvider('Reject Downgrade Owner');
+    const createRes = await request(app)
+      .post('/api/listings')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ title: 'Reject Downgrade Listing', type: 'shop', description: 'x', location: 'Darjeeling' });
+    expect(createRes.status).toBe(200);
+    const listingId = createRes.body.item.id;
+
+    const before = await request(app).get(`/api/listings/${listingId}`);
+    expect(before.body.item.provider_verified).toBe(true);
+
+    const docId = await approvedDocId(providerId, 'aadhaar');
+    const admin = await loginAdmin();
+    const reject = await request(app)
+      .post(`/api/admin/kyc/${docId}/review`)
+      .set('Authorization', `Bearer ${admin}`)
+      .send({ decision: 'reject', reason: 'Document expired' });
+    expect(reject.status).toBe(200);
+
+    const afterSingle = await request(app).get(`/api/listings/${listingId}`);
+    expect(afterSingle.status).toBe(200);
+    expect(afterSingle.body.item.provider_verified).toBe(false);
+
+    const afterList = await request(app).get('/api/listings').query({ q: 'Reject Downgrade Listing' });
+    const found = afterList.body.items.find((i: any) => i.id === listingId);
+    expect(found).toBeDefined();
+    expect(found.provider_verified).toBe(false);
+  });
+
+  it('provider deleting an approved required doc drops provider_verified on both listing routes (was true before)', async () => {
+    const { token } = await onboardVerifiedShopProvider('Delete Downgrade Owner');
+    const createRes = await request(app)
+      .post('/api/listings')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ title: 'Delete Downgrade Listing', type: 'shop', description: 'x', location: 'Darjeeling' });
+    expect(createRes.status).toBe(200);
+    const listingId = createRes.body.item.id;
+
+    const before = await request(app).get(`/api/listings/${listingId}`);
+    expect(before.body.item.provider_verified).toBe(true);
+
+    const del = await request(app).delete('/api/providers/me/kyc/pan').set('Authorization', `Bearer ${token}`);
+    expect(del.status).toBe(200);
+
+    const afterSingle = await request(app).get(`/api/listings/${listingId}`);
+    expect(afterSingle.status).toBe(200);
+    expect(afterSingle.body.item.provider_verified).toBe(false);
+
+    const afterList = await request(app).get('/api/listings').query({ q: 'Delete Downgrade Listing' });
+    const found = afterList.body.items.find((i: any) => i.id === listingId);
+    expect(found).toBeDefined();
+    expect(found.provider_verified).toBe(false);
+  });
+
+  it('provider re-uploading an approved required doc (resetting it to pending) drops provider_verified on both listing routes (was true before)', async () => {
+    const { token } = await onboardVerifiedShopProvider('Reupload Downgrade Owner');
+    const createRes = await request(app)
+      .post('/api/listings')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ title: 'Reupload Downgrade Listing', type: 'shop', description: 'x', location: 'Darjeeling' });
+    expect(createRes.status).toBe(200);
+    const listingId = createRes.body.item.id;
+
+    const before = await request(app).get(`/api/listings/${listingId}`);
+    expect(before.body.item.provider_verified).toBe(true);
+
+    const reupload = await request(app)
+      .post('/api/providers/me/kyc')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ doc_type: 'owner_photo', file: PNG_DATA_URL, filename: 'owner_photo-new.png' });
+    expect(reupload.status).toBe(200);
+    expect(reupload.body.document.status).toBe('pending');
+
+    const afterSingle = await request(app).get(`/api/listings/${listingId}`);
+    expect(afterSingle.status).toBe(200);
+    expect(afterSingle.body.item.provider_verified).toBe(false);
+
+    const afterList = await request(app).get('/api/listings').query({ q: 'Reupload Downgrade Listing' });
     const found = afterList.body.items.find((i: any) => i.id === listingId);
     expect(found).toBeDefined();
     expect(found.provider_verified).toBe(false);
