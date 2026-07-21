@@ -39,7 +39,15 @@ export const providers = pgTable('providers', {
   kycStatus: text('kyc_status').default('none').notNull(),
   createdAt: text('created_at').notNull(),
   activatedAt: text('activated_at'),
-});
+}, (t) => ({
+  // At most one provider row per user, ever — enforced at the DB level so the onboard route's
+  // read-then-write conflict check can't lose a race (two concurrent onboards both reading "no
+  // existing row" and both inserting). Also closes the status hole where only 'active' and
+  // 'pending_payment' were checked in app code: a 'suspended' provider could otherwise create a
+  // second row, reintroducing the nondeterministic-attribution problem this index exists to
+  // prevent.
+  userIdUnique: uniqueIndex('providers_user_id_unique').on(t.userId),
+}));
 
 export const listings = pgTable('listings', {
   id: text('id').primaryKey(),

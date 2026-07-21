@@ -36,6 +36,13 @@
       "when": 1784624151534,
       "tag": "0004_tired_nemesis",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1784632248217,
+      "tag": "0005_chief_firelord",
+      "breakpoints": true
     }
   ]
 }

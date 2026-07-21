@@ -37,7 +37,10 @@ const router = Router();
  *               extras: { type: object }
  *     responses:
  *       200:
- *         description: Provider profile created
+ *         description: Provider profile created, or (if the caller already had a pending_payment
+ *           row) that same row updated in place with the newly submitted details — onboarding is
+ *           idempotent for a user resuming after abandoning payment, so this can be a create or
+ *           an update.
  *         content:
  *           application/json:
  *             schema:
@@ -50,7 +53,8 @@ const router = Router();
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
  *       409:
- *         description: Caller already has an active or pending_payment provider profile
+ *         description: Caller already has an active or suspended provider profile (a pending_payment
+ *           profile is resumed instead of rejected — see the 200 response above)
  *         content:
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
@@ -72,34 +76,76 @@ router.post('/onboard', authenticateToken, async (req: Request, res: Response) =
     });
   }
 
-  // A user with an existing active or pending_payment provider row must not be able to onboard
-  // a second one — multiple call sites pick "the" provider for a user without an ORDER BY, so a
-  // second row makes KYC/listing attribution nondeterministic between requests.
-  const existingProviders = await db.select().from(schema.providers).where(eq(schema.providers.userId, req.user.id));
-  const conflicting = existingProviders.find(p => p.status === 'active' || p.status === 'pending_payment');
-  if (conflicting) {
+  // A DB-level unique index on providers.user_id (see drizzle/0005) means each user has at most
+  // one provider row, ever — enforced by Postgres, not just this read-then-write check. That
+  // collapses what to do with an existing row to three cases:
+  //   - pending_payment: the caller onboarded but never finished paying. Rejecting this with 409
+  //     used to strand them — the frontend only creates a payment order from a *successful*
+  //     onboard response, so there was no way back in. Instead, treat this as a resume: update
+  //     the row in place with the newly submitted details and return 200 in the normal shape, so
+  //     the existing frontend flow proceeds straight to creating the payment order.
+  //   - active: a real second onboard attempt. Genuinely conflicting — 409.
+  //   - suspended: an admin pulled this provider. Also conflicting, but with a distinct message
+  //     since "onboard again" is not a fix here.
+  //   - anything else (shouldn't occur, but not trusted to be exhaustive): treated as
+  //     conflicting rather than silently allowed through as a fresh insert would attempt (and
+  //     the unique index would then reject anyway).
+  const [existing] = await db.select().from(schema.providers).where(eq(schema.providers.userId, req.user.id)).limit(1);
+
+  if (existing && existing.status === 'active') {
+    return res.status(409).json({ detail: 'You already have a provider profile. Only one provider profile is allowed per user.' });
+  }
+  if (existing && existing.status === 'suspended') {
+    return res.status(409).json({ detail: 'Your provider profile has been suspended. Contact support to resolve this before onboarding again.' });
+  }
+  if (existing && existing.status !== 'pending_payment') {
     return res.status(409).json({ detail: 'You already have a provider profile. Only one provider profile is allowed per user.' });
   }
 
-  const provider = {
-    id: uuidv4(),
-    userId: req.user.id,
-    businessName: business_name,
-    businessType: business_type,
-    description,
-    location,
-    latitude: typeof latitude === 'number' ? latitude : null,
-    longitude: typeof longitude === 'number' ? longitude : null,
-    contactPhone: contact_phone,
-    priceFrom: price_from,
-    images: images,
-    extras: extras,
-    status: 'pending_payment',
-    createdAt: new Date().toISOString(),
-    activatedAt: null
-  };
+  const normalizedLatitude = typeof latitude === 'number' ? latitude : null;
+  const normalizedLongitude = typeof longitude === 'number' ? longitude : null;
 
-  await db.insert(schema.providers).values(provider);
+  let provider: typeof schema.providers.$inferSelect;
+  if (existing) {
+    // Resume: update the caller's own pending_payment row in place rather than creating a
+    // second one (which the unique index would reject anyway).
+    const [updated] = await db.update(schema.providers)
+      .set({
+        businessName: business_name,
+        businessType: business_type,
+        description,
+        location,
+        latitude: normalizedLatitude,
+        longitude: normalizedLongitude,
+        contactPhone: contact_phone,
+        priceFrom: price_from,
+        images,
+        extras,
+      })
+      .where(eq(schema.providers.id, existing.id))
+      .returning();
+    provider = updated;
+  } else {
+    const [inserted] = await db.insert(schema.providers).values({
+      id: uuidv4(),
+      userId: req.user.id,
+      businessName: business_name,
+      businessType: business_type,
+      description,
+      location,
+      latitude: normalizedLatitude,
+      longitude: normalizedLongitude,
+      contactPhone: contact_phone,
+      priceFrom: price_from,
+      images,
+      extras,
+      status: 'pending_payment',
+      createdAt: new Date().toISOString(),
+      activatedAt: null,
+    }).returning();
+    provider = inserted;
+  }
+
   await db.update(schema.users).set({ role: 'provider' }).where(eq(schema.users.id, req.user.id));
 
   const providerReturn = {
