@@ -69,4 +69,16 @@ describe('admin KYC review', () => {
     expect(r.body.document.status).toBe('rejected');
     expect(r.body.document.rejection_reason).toBe('Blurry scan');
   });
+
+  it('non-admin cannot review KYC documents', async () => {
+    const prov = await onboardActiveProvider({ name: 'Prov T', businessType: 'shop' });
+    await request(app).post('/api/providers/me/kyc').set('Authorization', `Bearer ${prov.token}`)
+      .send({ doc_type: 'aadhaar', file: PNG_DATA_URL, filename: 'a.png' });
+    const admin = await loginAdmin();
+    const list = await request(app).get('/api/admin/kyc?status=pending').set('Authorization', `Bearer ${admin}`);
+    const doc = list.body.documents.find((d: any) => d.provider_id === prov.providerId);
+    const res = await request(app).post(`/api/admin/kyc/${doc.id}/review`)
+      .set('Authorization', `Bearer ${prov.token}`).send({ decision: 'approve' });
+    expect(res.status).toBe(403);
+  });
 });
