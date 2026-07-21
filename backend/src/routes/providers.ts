@@ -3,6 +3,9 @@ import { v4 as uuidv4 } from 'uuid';
 import { db, schema } from '../db';
 import { eq } from 'drizzle-orm';
 import { authenticateToken } from '../middleware/auth';
+import { KYC_REQUIREMENTS } from '../lib/kycRequirements';
+
+const SELF_ONBOARDABLE_BUSINESS_TYPES = Object.keys(KYC_REQUIREMENTS);
 
 const router = Router();
 
@@ -25,7 +28,7 @@ const router = Router();
  *             required: [business_name, business_type, description, location, contact_phone]
  *             properties:
  *               business_name: { type: string }
- *               business_type: { type: string, enum: [homestay, driver, shop, cafe, event, spot, biodiversity] }
+ *               business_type: { type: string, enum: [homestay, driver, shop, cafe], description: "Self-onboardable types only — admin-seeded types (spot, event, biodiversity) are rejected here." }
  *               description: { type: string }
  *               location: { type: string }
  *               contact_phone: { type: string }
@@ -42,7 +45,12 @@ const router = Router();
  *               properties:
  *                 provider: { $ref: '#/components/schemas/Provider' }
  *       400:
- *         description: Missing required fields
+ *         description: Missing required fields, or business_type outside the self-onboardable set
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ *       409:
+ *         description: Caller already has an active or pending_payment provider profile
  *         content:
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
@@ -53,6 +61,24 @@ router.post('/onboard', authenticateToken, async (req: Request, res: Response) =
 
   if (!business_name || !business_name.trim() || !business_type || !description || !description.trim() || !location || !location.trim() || !contact_phone || !contact_phone.trim()) {
     return res.status(400).json({ detail: 'Business name, type, description, location, and contact phone are required' });
+  }
+
+  // business_type gates the KYC matrix (requirementsFor). Anything outside the self-onboardable
+  // set falls through to requirementsFor() returning [], which awards the full KYC weight for
+  // free and silently renders an empty KYC checklist — so validate against the same matrix.
+  if (!SELF_ONBOARDABLE_BUSINESS_TYPES.includes(business_type)) {
+    return res.status(400).json({
+      detail: `business_type must be one of: ${SELF_ONBOARDABLE_BUSINESS_TYPES.join(', ')}`,
+    });
+  }
+
+  // A user with an existing active or pending_payment provider row must not be able to onboard
+  // a second one — multiple call sites pick "the" provider for a user without an ORDER BY, so a
+  // second row makes KYC/listing attribution nondeterministic between requests.
+  const existingProviders = await db.select().from(schema.providers).where(eq(schema.providers.userId, req.user.id));
+  const conflicting = existingProviders.find(p => p.status === 'active' || p.status === 'pending_payment');
+  if (conflicting) {
+    return res.status(409).json({ detail: 'You already have a provider profile. Only one provider profile is allowed per user.' });
   }
 
   const provider = {
