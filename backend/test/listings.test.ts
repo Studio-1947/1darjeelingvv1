@@ -82,6 +82,13 @@ describe('listings read endpoints', () => {
     const missingRes = await request(app).get('/api/listings/does-not-exist');
     expect(missingRes.status).toBe(404);
   });
+
+  it('listing payload includes provider_verified flag', async () => {
+    const listing = await createListing({ title: 'Verified flag listing' });
+    const res = await request(app).get(`/api/listings/${listing.id}`);
+    expect(res.status).toBe(200);
+    expect(res.body.item).toHaveProperty('provider_verified');
+  });
 });
 
 describe('provider can manage multiple listings', () => {

@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { db, schema } from '../db';
-import { eq, or, and, ilike } from 'drizzle-orm';
+import { eq, or, and, ilike, inArray } from 'drizzle-orm';
 import { authenticateToken } from '../middleware/auth';
 import fs from 'fs';
 import path from 'path';
@@ -116,6 +116,14 @@ router.get('/', async (req: Request, res: Response) => {
     .where(conditions.length > 0 ? and(...conditions) : undefined)
     .limit(limit);
 
+  const providerIds = [...new Set(items.map(item => item.providerId))];
+  const providerRows = providerIds.length > 0
+    ? await db.select({ id: schema.providers.id, kycStatus: schema.providers.kycStatus })
+        .from(schema.providers)
+        .where(inArray(schema.providers.id, providerIds))
+    : [];
+  const kycStatusByProviderId = new Map(providerRows.map(p => [p.id, p.kycStatus]));
+
   const itemsReturn = items.map(item => ({
     id: item.id,
     title: item.title,
@@ -129,7 +137,8 @@ router.get('/', async (req: Request, res: Response) => {
     tags: item.tags,
     provider_id: item.providerId,
     extras: item.extras,
-    created_at: item.createdAt
+    created_at: item.createdAt,
+    provider_verified: kycStatusByProviderId.get(item.providerId) === 'verified'
   }));
 
   res.json({ items: itemsReturn });
@@ -168,6 +177,11 @@ router.get('/:id', async (req: Request, res: Response) => {
     return res.status(404).json({ detail: 'Not found' });
   }
 
+  const [provider] = await db.select({ kycStatus: schema.providers.kycStatus })
+    .from(schema.providers)
+    .where(eq(schema.providers.id, item.providerId))
+    .limit(1);
+
   const itemReturn = {
     id: item.id,
     title: item.title,
@@ -181,7 +195,8 @@ router.get('/:id', async (req: Request, res: Response) => {
     tags: item.tags,
     provider_id: item.providerId,
     extras: item.extras,
-    created_at: item.createdAt
+    created_at: item.createdAt,
+    provider_verified: provider?.kycStatus === 'verified'
   };
 
   res.json({ item: itemReturn });

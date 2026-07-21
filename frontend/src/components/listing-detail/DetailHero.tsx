@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import gsap from 'gsap';
 import SmartImg from '@/components/SmartImg';
 import { listingImage, fallbackFor } from '@/lib/listingContent';
+import VerifiedBadge from '@/components/provider/VerifiedBadge';
 import { MapPin, ArrowLeft, Share2, Heart, ChevronDown } from 'lucide-react';
 import { SCREEN_H } from './primitives';
 
@@ -62,6 +63,11 @@ export default function DetailHero({ item, unit, onShare }: {
         <span className="chip bg-white/90 capitalize">{t(`categories.${item.type}`)}</span>
         <h1 className="mt-5 font-display font-extrabold text-5xl sm:text-6xl md:text-8xl text-white leading-[0.95] max-w-4xl"
           data-testid="listing-title">{item.title}</h1>
+        {item.provider_verified && (
+          <span className="mt-3 inline-flex rounded-full bg-white/90 backdrop-blur p-0.5">
+            <VerifiedBadge size="md" />
+          </span>
+        )}
         <div className="mt-5 flex flex-wrap justify-start items-center gap-x-6 gap-y-2 text-white/90 text-base md:text-lg font-semibold">
           <span className="flex items-center gap-1.5"><MapPin size={18} /> {item.location}</span>
           {item.price > 0 && (
