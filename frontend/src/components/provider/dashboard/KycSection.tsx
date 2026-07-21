@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Upload, CheckCircle2, Clock, XCircle, Circle } from 'lucide-react';
-import { getMyProfile, uploadKycDoc, deleteKycDoc, KycProfile, ChecklistItem } from '@/lib/kyc';
+import { getMyProfile, uploadKycDoc, deleteKycDoc, KycApiError, KycProfile, ChecklistItem } from '@/lib/kyc';
 import ProfileCompletionBar from '../ProfileCompletionBar';
 
 export default function KycSection({ onProfileChange }: { onProfileChange?: (p: KycProfile) => void }) {
@@ -9,6 +9,12 @@ export default function KycSection({ onProfileChange }: { onProfileChange?: (p: 
   const [profile, setProfile] = useState<KycProfile | null>(null);
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Initial-load state is tracked explicitly rather than inferred from `!profile`, so a
+  // failed first load can render a proper error (or "not active yet") panel instead of
+  // being indistinguishable from "still loading" forever.
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<{ status?: number; message: string } | null>(null);
 
   const stateMeta: Record<ChecklistItem['state'], { icon: React.ReactNode; label: string; cls: string }> = {
     done: { icon: <CheckCircle2 size={16} />, label: t('kyc.verified'), cls: 'text-pine' },
@@ -22,9 +28,23 @@ export default function KycSection({ onProfileChange }: { onProfileChange?: (p: 
     setProfile(p);
     onProfileChange?.(p);
   };
+
+  const loadInitial = async () => {
+    setLoading(true);
+    setLoadError(null);
+    try {
+      await load();
+    } catch (e) {
+      const err = e as KycApiError;
+      setLoadError({ status: err?.status, message: err?.message || t('kyc.loadError') });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    load().catch(() => setError(t('kyc.loadError')));
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: load once on mount only
+    loadInitial();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: load once on mount; "Try again" re-runs it explicitly
   }, []);
 
   const onPick = async (docType: string, file?: File) => {
@@ -34,7 +54,8 @@ export default function KycSection({ onProfileChange }: { onProfileChange?: (p: 
     try {
       await uploadKycDoc(docType, file);
     } catch (e) {
-      setError(typeof e === 'string' ? e : t('kyc.uploadFailed'));
+      const err = e as KycApiError;
+      setError(err?.message || t('kyc.uploadFailed'));
       setBusyKey(prev => (prev === docType ? null : prev));
       return;
     }
@@ -57,13 +78,37 @@ export default function KycSection({ onProfileChange }: { onProfileChange?: (p: 
       await deleteKycDoc(docType);
       await load();
     } catch (e) {
-      setError(typeof e === 'string' ? e : t('kyc.removeFailed'));
+      const err = e as KycApiError;
+      setError(err?.message || t('kyc.removeFailed'));
     } finally {
       setBusyKey(prev => (prev === docType ? null : prev));
     }
   };
 
-  if (!profile) return <div className="text-sm text-ink-soft">{t('kyc.loading')}</div>;
+  if (loading) return <div className="text-sm text-ink-soft">{t('kyc.loading')}</div>;
+
+  if (loadError) {
+    // A 404 here means "no active provider profile yet" — completely normal for a provider
+    // who onboarded but hasn't paid/activated yet. That's not a failure, so it gets a plain
+    // explanatory message rather than the alarming error panel + retry button.
+    if (loadError.status === 404) {
+      return (
+        <div className="mist-panel rounded-2xl border border-[var(--line)] p-4 text-sm text-ink-soft">
+          {t('kyc.notActiveYet')}
+        </div>
+      );
+    }
+    return (
+      <div className="mist-panel rounded-2xl border border-[var(--line)] p-4 space-y-3">
+        <div className="text-sm text-flag font-semibold">{loadError.message}</div>
+        <button type="button" className="text-xs font-bold text-pine" onClick={loadInitial}>
+          {t('kyc.tryAgain')}
+        </button>
+      </div>
+    );
+  }
+
+  if (!profile) return null;
 
   const kycItems = profile.checklist.filter(c => c.kind === 'kyc');
   const profileItems = profile.checklist.filter(c => c.kind === 'profile');

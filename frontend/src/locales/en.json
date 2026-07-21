@@ -141,7 +141,9 @@
     "completeProfileCta": "Complete profile",
     "verifiedTooltip": "KYC verified by 1 Darjeeling",
     "fileTooLarge": "File is too large. Please upload a file under 5 MB.",
-    "reloadFailed": "Document uploaded, but refreshing your profile failed. Reload the page to see the update."
+    "reloadFailed": "Document uploaded, but refreshing your profile failed. Reload the page to see the update.",
+    "tryAgain": "Try again",
+    "notActiveYet": "KYC verification becomes available once your business registration is complete and active. Finish onboarding to unlock this section."
   },
   "locationPicker": {
     "search_placeholder": "Search address or landmark…",
