@@ -113,6 +113,11 @@ export default function ProviderDashboard() {
     await loadDashboard();
   };
 
+  const handleCancelBooking = async (bookingId: string) => {
+    await api.patch(`/bookings/${bookingId}/cancel`);
+    await loadDashboard();
+  };
+
   if (authLoading || loading) return <div className="p-10 text-center text-ink-soft">{t('common.loading')}</div>;
 
   if (!provider) {
@@ -242,7 +247,7 @@ export default function ProviderDashboard() {
             </div>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {bookings.map((b) => <BookingCard key={b.id} b={b} />)}
+              {bookings.map((b) => <BookingCard key={b.id} b={b} onCancel={handleCancelBooking} />)}
             </div>
           )}
         </div>

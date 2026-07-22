@@ -1,4 +1,4 @@
-import { pgTable, text, integer, boolean, numeric, jsonb, doublePrecision, uniqueIndex } from 'drizzle-orm/pg-core';
+import { pgTable, text, integer, boolean, numeric, jsonb, doublePrecision, uniqueIndex, index } from 'drizzle-orm/pg-core';
 
 export const users = pgTable('users', {
   id: text('id').primaryKey(),
@@ -89,6 +89,22 @@ export const favorites = pgTable('favorites', {
   // A user can favorite a listing at most once — enforced at the DB level so a double-tap or two
   // concurrent POSTs can't create duplicate rows (the add route relies on this via onConflictDoNothing).
   userListingUnique: uniqueIndex('favorites_user_id_listing_id_unique').on(t.userId, t.listingId),
+}));
+
+export const reviews = pgTable('reviews', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  listingId: text('listing_id').references(() => listings.id, { onDelete: 'cascade' }).notNull(),
+  rating: integer('rating').notNull(), // 1..5, validated in the route
+  comment: text('comment').default('').notNull(),
+  authorName: text('author_name').notNull(), // snapshot of the reviewer's name at write time
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at'),
+}, (t) => ({
+  // One review per (user, listing) — a second submit edits the first (upsert) instead of stacking.
+  userListingUnique: uniqueIndex('reviews_user_id_listing_id_unique').on(t.userId, t.listingId),
+  // Listing detail and the rating aggregates both read reviews by listing, so index that lookup.
+  listingIdx: index('reviews_listing_id_idx').on(t.listingId),
 }));
 
 export const payments = pgTable('payments', {

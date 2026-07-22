@@ -98,6 +98,26 @@ const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
  */
+/** Rating summary (count + 1-decimal average) per listing id, for the ids given. */
+async function ratingsForListings(listingIds: string[]): Promise<Map<string, { count: number; average: number }>> {
+  const out = new Map<string, { count: number; average: number }>();
+  if (listingIds.length === 0) return out;
+  const rows = await db.select({ listingId: schema.reviews.listingId, rating: schema.reviews.rating })
+    .from(schema.reviews)
+    .where(inArray(schema.reviews.listingId, listingIds));
+  const acc = new Map<string, { sum: number; count: number }>();
+  for (const r of rows) {
+    const a = acc.get(r.listingId) || { sum: 0, count: 0 };
+    a.sum += r.rating;
+    a.count += 1;
+    acc.set(r.listingId, a);
+  }
+  for (const [id, a] of acc) {
+    out.set(id, { count: a.count, average: Math.round((a.sum / a.count) * 10) / 10 });
+  }
+  return out;
+}
+
 // Get list of listings with filter
 router.get('/', async (req: Request, res: Response) => {
   const type = req.query.type as string | undefined;
@@ -130,9 +150,11 @@ router.get('/', async (req: Request, res: Response) => {
         .where(inArray(schema.providers.id, providerIds))
     : [];
   const providerById = new Map(providerRows.map(p => [p.id, p]));
+  const ratingByListing = await ratingsForListings(items.map(i => i.id));
 
   const itemsReturn = items.map(item => {
     const provider = providerById.get(item.providerId);
+    const rating = ratingByListing.get(item.id);
     return {
       id: item.id,
       title: item.title,
@@ -147,6 +169,8 @@ router.get('/', async (req: Request, res: Response) => {
       provider_id: item.providerId,
       extras: item.extras,
       created_at: item.createdAt,
+      rating: rating?.average ?? 0,
+      review_count: rating?.count ?? 0,
       // Verified badge must never show for a provider an admin has suspended (flipped off
       // "active"), even if their kycStatus was previously computed as "verified".
       provider_verified: provider?.kycStatus === 'verified' && provider?.status === 'active'
@@ -189,10 +213,16 @@ router.get('/:id', async (req: Request, res: Response) => {
     return res.status(404).json({ detail: 'Not found' });
   }
 
-  const [provider] = await db.select({ kycStatus: schema.providers.kycStatus, status: schema.providers.status })
+  const [provider] = await db.select({
+      kycStatus: schema.providers.kycStatus,
+      status: schema.providers.status,
+      contactPhone: schema.providers.contactPhone,
+    })
     .from(schema.providers)
     .where(eq(schema.providers.id, item.providerId))
     .limit(1);
+
+  const rating = (await ratingsForListings([item.id])).get(item.id);
 
   const itemReturn = {
     id: item.id,
@@ -208,6 +238,11 @@ router.get('/:id', async (req: Request, res: Response) => {
     provider_id: item.providerId,
     extras: item.extras,
     created_at: item.createdAt,
+    rating: rating?.average ?? 0,
+    review_count: rating?.count ?? 0,
+    // The provider's public contact line, so the detail page can offer call/WhatsApp for listings
+    // that aren't booked online (shops, cafes, events). Only present when a provider row matches.
+    provider_phone: provider?.contactPhone ?? null,
     // Verified badge must never show for a provider an admin has suspended (flipped off
     // "active"), even if their kycStatus was previously computed as "verified".
     provider_verified: provider?.kycStatus === 'verified' && provider?.status === 'active'

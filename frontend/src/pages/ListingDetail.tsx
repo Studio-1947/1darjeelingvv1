@@ -12,6 +12,8 @@ import {
   HostSection, DriverSection, BestTimeSection, RoutesSection, LocationSection,
 } from '@/components/listing-detail/sections';
 import { ReserveSection, MobileStickyBar } from '@/components/listing-detail/ReserveSection';
+import ContactSection from '@/components/listing-detail/ContactSection';
+import ReviewsSection from '@/components/listing-detail/ReviewsSection';
 import { ctaFor } from '@/components/listing-detail/cta';
 import { useBookingFlow } from '@/components/listing-detail/useBookingFlow';
 
@@ -65,8 +67,9 @@ export default function ListingDetail() {
   if (!item) return <div className="mx-auto max-w-5xl p-10">Not found.</div>;
 
   const bookable = item.type === 'homestay' || item.type === 'driver';
-  // Types that trade — everything else (spots, events, biodiversity) is informational.
-  const commercial = ['homestay', 'driver', 'shop', 'cafe'].includes(item.type);
+  // Booked online (homestay/driver) get the reserve form; shops, cafes and events instead get a
+  // direct-contact/action screen. Spots and biodiversity stay purely informational.
+  const contactable = ['shop', 'cafe', 'event'].includes(item.type);
 
   const unit = item.type === 'homestay' ? t('common.per_night') : item.type === 'driver' ? t('common.per_day') : '';
   const cta = ctaFor(item.type);
@@ -104,9 +107,13 @@ export default function ListingDetail() {
         <LocationSection item={item} coords={c.coords} spotted={c.spotted} onOpenMaps={openMaps} />
       )}
 
-      {commercial && (
+      {bookable && (
         <ReserveSection item={item} unit={unit} bookable={bookable} cta={cta} booking={booking} onOpenMaps={openMaps} />
       )}
+
+      {contactable && <ContactSection item={item} onOpenMaps={openMaps} />}
+
+      <ReviewsSection item={item} />
 
       <MobileStickyBar item={item} unit={unit} bookable={bookable} cta={cta} busy={booking.busy}
         onBook={booking.doBook} onOpenMaps={openMaps} />
