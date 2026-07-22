@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import api from '@/lib/api';
@@ -7,10 +7,24 @@ import { Phone, KeyRound } from 'lucide-react';
 
 export default function Login() {
   const { t } = useTranslation();
-  const { login } = useAuth();
+  const { login, user } = useAuth();
   const nav = useNavigate();
   const [sp] = useSearchParams();
   const next = sp.get('next') || '/';
+
+  useEffect(() => {
+    if (user) {
+      if (user.role === 'provider') {
+        if (user.providerPaid) {
+          nav('/provider/dashboard');
+        } else {
+          nav('/provider/onboard');
+        }
+      } else {
+        nav(next);
+      }
+    }
+  }, [user, nav, next]);
 
   const [step, setStep] = useState(1);
   const [phone, setPhone] = useState('');

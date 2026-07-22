@@ -71,6 +71,33 @@ if (!Number.isInteger(TRUST_PROXY_HOPS) || TRUST_PROXY_HOPS < 0) {
 export const RATE_LIMIT_ENABLED = process.env.RATE_LIMIT_ENABLED
   ? process.env.RATE_LIMIT_ENABLED.toLowerCase() === 'true'
   : APP_ENV !== 'test';
+
+// Which messaging provider delivers OTPs. `mock` delivers nothing and is the default, so
+// development and the test suite work with no configuration. The selected provider validates
+// its own credentials at startup — see src/messaging/registry.ts.
+export const MESSAGING_PROVIDER = process.env.MESSAGING_PROVIDER?.trim() || 'mock';
+
+// True when OTPs are not actually delivered. Gates both the mock_otp field in the /otp/send
+// response and the 123456 universal code. Deliberately keyed to the provider rather than to
+// APP_ENV, so a production-configured staging deployment stays usable while still being able
+// to switch to real delivery with one variable.
+export const MOCK_OTP = MESSAGING_PROVIDER === 'mock';
+
+function requirePositiveInt(name: string, raw: string | undefined, fallback: number): number {
+  const trimmed = raw?.trim();
+  if (!trimmed) return fallback;
+  const parsed = Number(trimmed);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    throw new Error(`[config] ${name} must be a positive integer, got "${raw}".`);
+  }
+  return parsed;
+}
+
+// How long an issued OTP stays valid, and how many wrong guesses it tolerates before it must
+// be reissued. Enforced in routes/auth.ts.
+export const OTP_TTL_SECONDS = requirePositiveInt('OTP_TTL_SECONDS', process.env.OTP_TTL_SECONDS, 300);
+export const OTP_MAX_ATTEMPTS = requirePositiveInt('OTP_MAX_ATTEMPTS', process.env.OTP_MAX_ATTEMPTS, 5);
+
 export const JWT_SECRET = requireRealValueInProd('JWT_SECRET', process.env.JWT_SECRET, 'dev_only_insecure_jwt_secret');
 export const MOCK_PAYMENTS = process.env.MOCK_PAYMENTS ? process.env.MOCK_PAYMENTS.toLowerCase() === 'true' : true;
 export const CORS_ORIGINS = process.env.CORS_ORIGINS
@@ -92,6 +119,13 @@ if (IS_PROD) {
   if (MOCK_PAYMENTS) {
     log.error('[config] MOCK_PAYMENTS=true with APP_ENV=production — payments are simulated and no money will be charged.');
   }
+  if (MOCK_OTP) {
+    log.error(
+      '[config] MESSAGING_PROVIDER=mock with APP_ENV=production — OTPs are not delivered and ' +
+      'the 123456 universal code is active, so anyone can log in as any phone number. ' +
+      'Set MESSAGING_PROVIDER to a real provider before taking real users.'
+    );
+  }
 }
 
 // Once real money is involved, a missing key is not something to discover at checkout in front of
@@ -109,6 +143,12 @@ if (!MOCK_PAYMENTS) {
     throw new Error('[config] RAZORPAY_WEBHOOK_SECRET is required when MOCK_PAYMENTS=false. See README "Razorpay setup".');
   }
 }
+
+export const MINIO_ENDPOINT = process.env.MINIO_ENDPOINT || 'http://localhost:9000';
+export const MINIO_ACCESS_KEY = process.env.MINIO_ACCESS_KEY || 'minioadmin';
+export const MINIO_SECRET_KEY = process.env.MINIO_SECRET_KEY || 'minioadminpassword';
+export const MINIO_BUCKET = process.env.MINIO_BUCKET || 'one-darjeeling';
+export const MINIO_PUBLIC_URL = process.env.MINIO_PUBLIC_URL || 'http://localhost:9000';
 
 export const rzpClient = RAZORPAY_KEY_SECRET ? new Razorpay({
   key_id: RAZORPAY_KEY_ID,

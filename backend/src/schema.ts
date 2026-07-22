@@ -18,6 +18,8 @@ export const otps = pgTable('otps', {
   otp: text('otp').notNull(),
   channel: text('channel').notNull(),
   createdAt: text('created_at').notNull(),
+  // Wrong guesses against the current code. Reset to 0 whenever a new code is issued.
+  attempts: integer('attempts').notNull().default(0),
 });
 
 export const providers = pgTable('providers', {
