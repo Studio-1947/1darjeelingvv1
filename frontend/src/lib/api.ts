@@ -50,6 +50,11 @@ export default api;
 export interface PaymentOrderParams {
   flow: string;
   reference_id: string;
+  /**
+   * Paise. Only meaningful for flow='donation', where the giver chooses. Every other flow's price
+   * is fixed server-side and this field is ignored — sending it does not change what is charged.
+   */
+  amount?: number;
 }
 
 export interface MockPaymentParams {
@@ -71,8 +76,12 @@ export interface RazorpayPaymentParams {
 /**
  * Creates an order on the backend. Returns { mock, key_id, order, amount }.
  */
-export async function createPaymentOrder({ flow, reference_id }: PaymentOrderParams) {
-  const { data } = await api.post('/payments/order', { flow, reference_id });
+export async function createPaymentOrder({ flow, reference_id, amount }: PaymentOrderParams) {
+  // `amount` is sent only when supplied. The server decides what is actually charged — for every
+  // flow but `donation` it reads its own price map and ignores whatever arrives here.
+  const body: Record<string, unknown> = { flow, reference_id };
+  if (amount !== undefined) body.amount = amount;
+  const { data } = await api.post('/payments/order', body);
   return data;
 }
 

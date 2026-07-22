@@ -7,6 +7,7 @@ import { FavoritesProvider } from '@/context/FavoritesContext';
 import Layout from '@/components/Layout';
 import SupportGate from '@/components/SupportGate';
 import Support from '@/pages/Support';
+import Donate from '@/pages/Donate';
 import Discover from '@/pages/Discover';
 import Category from '@/pages/Category';
 import ListingDetail from '@/pages/ListingDetail';
@@ -38,6 +39,7 @@ export default function App() {
                 <Route path="/listing/:id" element={<ListingDetail />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/support" element={<Support />} />
+                <Route path="/donate" element={<Donate />} />
                 <Route path="/provider/onboard" element={<ProviderOnboard />} />
                 <Route path="/provider/dashboard" element={<ProviderDashboard />} />
                 <Route path="/dashboard" element={<TouristDashboard />} />
