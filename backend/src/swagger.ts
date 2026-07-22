@@ -52,7 +52,7 @@ const options: swaggerJsdoc.Options = {
             price_from: { type: 'integer' },
             images: { type: 'array', items: { type: 'string' } },
             extras: { type: 'object' },
-            status: { type: 'string', enum: ['pending_payment', 'active'] },
+            status: { type: 'string', enum: ['pending_payment', 'active', 'suspended'] },
             created_at: { type: 'string', format: 'date-time' },
             activated_at: { type: 'string', format: 'date-time', nullable: true },
           },

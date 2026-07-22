@@ -13,6 +13,10 @@ import bookingsRouter from './routes/bookings';
 import paymentsRouter from './routes/payments';
 import adminRouter from './routes/admin';
 import geocodeRouter from './routes/geocode';
+import kycRouter from './routes/kyc';
+import favoritesRouter from './routes/favorites';
+import reviewsRouter from './routes/reviews';
+import { rateLimiter } from './middleware/rateLimiter';
 
 export const app = express();
 
@@ -26,6 +30,26 @@ app.set('trust proxy', TRUST_PROXY_HOPS);
 // only a parsed object — re-serialising that yields different bytes and the HMAC never matches.
 // express.json() then skips this request because express.raw() has already marked the body read.
 app.use('/api/payments/webhook', express.raw({ type: '*/*' }));
+
+// Rate limit the KYC upload path before the 8mb JSON parser below buffers anything, so an
+// unauthenticated caller looping requests gets a 429 instead of the server repeatedly
+// allocating up to 8MB per request. 20/min/IP mirrors geocode's search limit — generous for a
+// human uploading a handful of documents, tight enough to blunt an automated flood.
+app.use('/api/providers/me/kyc', rateLimiter(20, 60 * 1000, 'kyc_upload'));
+
+// KYC uploads carry a base64 file (~33% larger than the raw bytes), so this path needs a
+// bigger body limit than the global default. Must be mounted before express.json() below,
+// which would otherwise consume the stream at its 100kb default.
+app.use('/api/providers/me/kyc', express.json({ limit: '8mb' }));
+
+// Listing image uploads (POST /api/listings/upload) also carry a base64 data URL, but were never
+// given a raised limit — so they fell through to the global express.json() default of 100kb and
+// answered any real photo with a bare 413 `request entity too large`. Mirror the KYC path: rate
+// limit first (so a flood gets a 429 instead of the server buffering the body), then parse with a
+// limit sized to admit a 20MB image after base64 inflation (~27MB) plus the small JSON envelope.
+// Kept in sync with the 20MB hard cap in routes/listings.ts and nginx's client_max_body_size.
+app.use('/api/listings/upload', rateLimiter(20, 60 * 1000, 'listing_upload'));
+app.use('/api/listings/upload', express.json({ limit: '28mb' }));
 
 app.use(express.json());
 
@@ -87,9 +111,12 @@ app.get('/api', (req: Request, res: Response) => {
 // ============ MOUNT ROUTERS ============
 app.use('/api/auth', authRouter);
 app.use('/api/users', usersRouter);
+app.use('/api/providers', kycRouter);
 app.use('/api/providers', providersRouter);
 app.use('/api/listings', listingsRouter);
 app.use('/api/bookings', bookingsRouter);
+app.use('/api/favorites', favoritesRouter);
+app.use('/api/reviews', reviewsRouter);
 app.use('/api/payments', paymentsRouter);
 app.use('/api/geocode', geocodeRouter);
 app.use('/api', adminRouter); // Mount admin routes directly under /api (e.g. /api/admin/seed, /api/admin/stats)

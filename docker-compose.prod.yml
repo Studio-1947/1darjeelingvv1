@@ -48,11 +48,37 @@ services:
       # Computed here (not hand-duplicated in .env) so Postgres credentials
       # only ever live in one place.
       - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
-    # Bare `depends_on` only waits for the container to start, not for Postgres to be ready — so
-    # the backend's schema sync could fire against a database still coming up.
+    # Bare `depends_on` only waits for the container to start, not for Postgres/MinIO to be ready —
+    # so the backend's schema sync or first bucket bootstrap could fire before either is up.
     depends_on:
       postgres:
         condition: service_healthy
+      minio:
+        condition: service_healthy
+
+  minio:
+    image: minio/minio:latest
+    container_name: 1darjeeling_prod_minio
+    restart: unless-stopped
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
+    # No `ports:` here on purpose. The backend reaches MinIO over the internal compose network
+    # (MINIO_ENDPOINT=http://minio:9000 in .env); publishing 9000/9001 to the host would put the
+    # object store directly on the internet. The PUBLIC bucket is instead served through the nginx
+    # container (see deploy/nginx/app.conf), and the PRIVATE KYC bucket is never exposed at all —
+    # it's reachable only via the backend's own authorized proxy route.
+    volumes:
+      - minio_data_prod:/data
+    command: server /data --console-address ":9001"
+    # MinIO exposes a liveness probe on its API port; used so `depends_on: condition:
+    # service_healthy` above means "MinIO is actually accepting S3 calls", not just "started".
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   nginx:
     build:
@@ -67,6 +93,8 @@ services:
       - "127.0.0.1:8091:80"
     depends_on:
       - backend
+      - minio
 
 volumes:
   pg_data_prod:
+  minio_data_prod:

@@ -103,6 +103,18 @@ ADMIN_PASSWORD=<change me>
 REACT_APP_BACKEND_URL=http://localhost:8000
 ```
 
+`backend/.env` also accepts MinIO/S3 object-storage variables. All are optional in dev — unset, they default to exactly what `docker-compose.yml`'s `minio` service already provides, so `docker compose up -d minio` + the defaults below is enough to exercise uploads locally with no extra config:
+
+| Var | Default | Purpose |
+| --- | --- | --- |
+| `MINIO_ENDPOINT` | `http://localhost:9000` | S3-compatible endpoint the backend talks to |
+| `MINIO_ACCESS_KEY` / `MINIO_SECRET_KEY` | `minioadmin` / `minioadminpassword` | Credentials for that endpoint |
+| `MINIO_BUCKET` | `one-darjeeling` | **Public** bucket for listing images — bootstrapped on first upload with a public-read policy so the browser loads images directly from MinIO |
+| `MINIO_PUBLIC_URL` | `http://localhost:9000` | Base URL returned to the browser for objects in the public bucket |
+| `MINIO_KYC_BUCKET` | `one-darjeeling-kyc` | **Private** bucket for provider KYC documents (Aadhaar/PAN/business licences) — a separate bucket from `MINIO_BUCKET`, bootstrapped with *no* public-read policy. KYC objects are never returned as a direct URL; the only way to fetch one is the token-authenticated `GET /api/providers/kyc/:id/file` proxy, which allows only the owning provider or an admin |
+
+Both buckets are created automatically by the backend the first time something is uploaded to them — no manual `mc`/console setup needed for local dev.
+
 `APP_ENV` is **required** — the backend refuses to start without it (it must be `development`, `test`, or `production`). It is deliberately not defaulted, because assuming `development` in production would silently enable the mock-OTP bypass. When `APP_ENV=production`, the backend also refuses to start if `JWT_SECRET`, `ADMIN_PASSWORD`, or `ADMIN_BOOTSTRAP_SECRET` is unset, left at a dev default, or still a `change_me_*` placeholder, or if `CORS_ORIGINS` is `*`. In development all of those fall back to insecure-but-convenient defaults.
 
 `frontend-admin` reads `VITE_API_URL` (defaults to `http://localhost:8000/api` if unset — no `.env` needed for local dev).
@@ -178,11 +190,11 @@ Razorpay Dashboard → **Account & Settings → API Keys → Generate Key**. You
 
 Dashboard → **Settings → Webhooks → Add New Webhook**:
 
-| Field         | Value                                                        |
-| ------------- | ------------------------------------------------------------ |
-| Webhook URL   | `https://onedarjeeling.duckdns.org/api/payments/webhook`     |
-| Secret        | Any long random string you generate — **you choose this**    |
-| Active Events | `payment.captured` and `order.paid`                          |
+| Field         | Value                                                     |
+| ------------- | --------------------------------------------------------- |
+| Webhook URL   | `https://onedarjeeling.duckdns.org/api/payments/webhook`  |
+| Secret        | Any long random string you generate — **you choose this** |
+| Active Events | `payment.captured` and `order.paid`                       |
 
 The **Secret is not your key secret** — it's a separate value you invent here and paste into `RAZORPAY_WEBHOOK_SECRET`. It's what proves an incoming webhook is really from Razorpay.
 
@@ -205,12 +217,12 @@ The backend refuses to start if `MOCK_PAYMENTS=false` and any of these is missin
 
 ### 4. Test cards (Test Mode only)
 
-| Scenario     | Card                  | Details                          |
-| ------------ | --------------------- | -------------------------------- |
-| Success      | `4111 1111 1111 1111` | any future expiry, any CVV       |
-| Failure      | `4000 0000 0000 0002` | any future expiry, any CVV       |
-| UPI success  | `success@razorpay`    | —                                |
-| UPI failure  | `failure@razorpay`    | —                                |
+| Scenario    | Card                  | Details                    |
+| ----------- | --------------------- | -------------------------- |
+| Success     | `4111 1111 1111 1111` | any future expiry, any CVV |
+| Failure     | `4000 0000 0000 0002` | any future expiry, any CVV |
+| UPI success | `success@razorpay`    | —                          |
+| UPI failure | `failure@razorpay`    | —                          |
 
 Use OTP `1234` on the 3-D Secure page. Never use real card numbers in Test Mode.
 

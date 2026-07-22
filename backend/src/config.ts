@@ -145,10 +145,24 @@ if (!MOCK_PAYMENTS) {
 }
 
 export const MINIO_ENDPOINT = process.env.MINIO_ENDPOINT || 'http://localhost:9000';
-export const MINIO_ACCESS_KEY = process.env.MINIO_ACCESS_KEY || 'minioadmin';
-export const MINIO_SECRET_KEY = process.env.MINIO_SECRET_KEY || 'minioadminpassword';
+// Plain `||` fallbacks here would let production silently run on the well-known
+// minioadmin/minioadminpassword dev credentials if the env vars were ever left unset — same class
+// of mistake requireRealValueInProd already guards against for JWT_SECRET/ADMIN_PASSWORD/etc.
+export const MINIO_ACCESS_KEY = requireRealValueInProd('MINIO_ACCESS_KEY', process.env.MINIO_ACCESS_KEY, 'minioadmin');
+export const MINIO_SECRET_KEY = requireRealValueInProd('MINIO_SECRET_KEY', process.env.MINIO_SECRET_KEY, 'minioadminpassword');
 export const MINIO_BUCKET = process.env.MINIO_BUCKET || 'one-darjeeling';
 export const MINIO_PUBLIC_URL = process.env.MINIO_PUBLIC_URL || 'http://localhost:9000';
+export const MINIO_KYC_BUCKET = process.env.MINIO_KYC_BUCKET || 'one-darjeeling-kyc';
+
+// A localhost/127.0.0.1 MINIO_PUBLIC_URL in production means every uploaded listing image
+// (uploadToMinIO() bakes this straight into the URL it returns) is unreachable to real users —
+// it would only ever resolve on the server itself. Catch it at boot rather than after launch.
+if (IS_PROD && /^https?:\/\/(localhost|127\.0\.0\.1)([:/]|$)/i.test(MINIO_PUBLIC_URL)) {
+  throw new Error(
+    `[config] MINIO_PUBLIC_URL is set to a localhost URL ("${MINIO_PUBLIC_URL}") but APP_ENV=production. ` +
+    `Set it to the real public site origin (e.g. https://your-domain.tld) — see .env.production.example.`
+  );
+}
 
 export const rzpClient = RAZORPAY_KEY_SECRET ? new Razorpay({
   key_id: RAZORPAY_KEY_ID,

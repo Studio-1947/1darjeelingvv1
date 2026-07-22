@@ -33,6 +33,7 @@ services:
       - MINIO_SECRET_KEY=minioadminpassword
       - MINIO_BUCKET=one-darjeeling
       - MINIO_PUBLIC_URL=http://localhost:9000
+      - MINIO_KYC_BUCKET=one-darjeeling-kyc
     depends_on:
       - postgres
       - minio

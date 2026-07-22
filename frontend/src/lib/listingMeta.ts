@@ -118,7 +118,9 @@ export function hostFor(item: any) {
   return {
     name,
     initial: name.trim().charAt(0).toUpperCase(),
-    verified: isRealProvider,
+    // The "Verified" chip must reflect the real KYC signal, not merely "has a provider row" —
+    // isRealProvider stays in use above for the name fallback, which is a separate concern.
+    verified: !!item?.provider_verified,
     phone: e.host_phone || e.contact_phone || '',
     bio: e.host_bio || 'This home is run by a Darjeeling family who live on site and look after guests themselves.',
     languages: e.languages || ['Nepali', 'Hindi', 'English'],
