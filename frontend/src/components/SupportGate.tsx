@@ -16,6 +16,14 @@ import { needsSupport } from '@/lib/support';
  */
 const ALWAYS_ALLOWED = ['/support', '/login', '/privacy', '/provider/onboard'];
 
+// react-router matches routes case-insensitively and treats a trailing slash as equivalent to
+// none (no caseSensitive prop is set in App.tsx), so /Provider/Onboard/ renders the same route
+// as /provider/onboard while failing a strict string-equality check. Normalise before comparing.
+function normalizePath(pathname: string): string {
+  const lower = pathname.toLowerCase();
+  return lower === '/' ? lower : lower.replace(/\/+$/, '');
+}
+
 export default function SupportGate({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const location = useLocation();
@@ -25,7 +33,7 @@ export default function SupportGate({ children }: { children: React.ReactNode })
   if (loading) return null;
 
   if (!needsSupport(user)) return <>{children}</>;
-  if (ALWAYS_ALLOWED.includes(location.pathname)) return <>{children}</>;
+  if (ALWAYS_ALLOWED.includes(normalizePath(location.pathname))) return <>{children}</>;
 
   return <Navigate to="/support" replace state={{ from: location }} />;
 }

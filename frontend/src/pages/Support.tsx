@@ -16,8 +16,13 @@ export default function Support() {
   const [err, setErr] = useState('');
   const [payModal, setPayModal] = useState<any>(null);
 
-  // Where SupportGate intercepted them. Falling back to the feed keeps a direct visit sensible.
-  const destination = (location.state as any)?.from?.pathname || '/';
+  // Where SupportGate intercepted them. Rebuilt from pathname + search + hash so a query-bearing
+  // URL like /search?q=momo survives the round trip; falling back to the feed keeps a direct
+  // visit sensible.
+  const from = (location.state as any)?.from;
+  const destination = from?.pathname
+    ? `${from.pathname}${from.search || ''}${from.hash || ''}`
+    : '/';
 
   if (!user) return <Navigate to="/login" replace />;
 
