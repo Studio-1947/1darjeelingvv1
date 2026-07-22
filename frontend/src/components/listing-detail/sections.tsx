@@ -106,6 +106,9 @@ export function HostSection({ item, host, personSrc }: { item: any; host: any; p
 /** "Meet your driver" (drivers). */
 export function DriverSection({ item, about, personSrc, initial }: { item: any; about?: string; personSrc?: string; initial: string }) {
   const { t } = useTranslation();
+  const carModel = item.extras?.car_model;
+  const vehicleType = item.extras?.vehicle_type;
+  const gender = item.extras?.gender;
   return (
     <Screen tone="bg" testid="detail-driver">
       <SectionHead label={t('detail.meet_driver')} title={t('detail.meet_driver')} />
@@ -114,6 +117,23 @@ export function DriverSection({ item, about, personSrc, initial }: { item: any; 
         <div className="mt-6 flex items-center justify-center gap-2 flex-wrap">
           <span className="font-display font-extrabold text-2xl md:text-3xl text-ink">{item.title}</span>
           {item.provider_verified && <VerifiedBadge size="sm" />}
+        </div>
+        <div className="mt-3 flex items-center justify-center gap-2 flex-wrap">
+          {carModel && (
+            <span className="chip bg-white border border-[var(--line)] text-ink font-bold text-xs">
+              🚘 {carModel}
+            </span>
+          )}
+          {vehicleType && (
+            <span className="chip bg-white border border-[var(--line)] text-pine font-bold text-xs capitalize">
+              {vehicleType}
+            </span>
+          )}
+          {gender && (
+            <span className="chip bg-white border border-[var(--line)] text-ink-soft font-semibold text-xs capitalize">
+              {gender}
+            </span>
+          )}
         </div>
         <p className="mt-6 text-lg text-ink leading-relaxed whitespace-pre-line">{about}</p>
       </div>
@@ -140,7 +160,7 @@ export function RoutesSection({ routes }: { routes: string[] }) {
   const { t } = useTranslation();
   return (
     <Screen tone="mist" testid="detail-routes">
-      <SectionHead label={t('detail.routes')} title={t('detail.routes')} note={t('detail.routes_note')} />
+      <SectionHead label="Routes & Trips Covered" title="Routes (Where to - From)" note={t('detail.routes_note')} />
       <div className="mt-10 mx-auto max-w-2xl space-y-3">
         {routes.map((r, i) => (
           <div key={i} className="flex items-start gap-4 p-5 rounded-2xl border border-[var(--line)] bg-white text-left">
@@ -153,7 +173,7 @@ export function RoutesSection({ routes }: { routes: string[] }) {
   );
 }
 
-/** Where you'll be / spotted locations — a real map with a directions CTA. */
+/** Where you'll be / spotted locations - a real map with a directions CTA. */
 export function LocationSection({ item, coords, spotted, onOpenMaps }: {
   item: any;
   coords?: [number, number];
@@ -188,7 +208,7 @@ export function LocationSection({ item, coords, spotted, onOpenMaps }: {
           <div className="mt-6 flex justify-center">
             <button onClick={onOpenMaps} data-testid="detail-open-maps"
               className="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-white border border-[var(--line)] text-ink font-bold btn-hover">
-              <Navigation size={16} /> {t('cta.get_directions')} <ArrowRight size={15} />
+              {t('cta.get_directions')} <ArrowRight size={15} />
             </button>
           </div>
         </div>

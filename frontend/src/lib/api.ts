@@ -56,7 +56,7 @@ export async function completeMockPayment({ order_id, flow, reference_id }: Mock
   return data;
 }
 
-// Real Razorpay checkout (unchanged from before) — kept for prod use
+// Real Razorpay checkout (unchanged from before) - kept for prod use
 export const loadRazorpay = () =>
   new Promise((resolve) => {
     if ((window as any).Razorpay) return resolve(true);

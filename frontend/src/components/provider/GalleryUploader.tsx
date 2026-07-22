@@ -3,7 +3,7 @@ import { Upload, Plus, X } from 'lucide-react';
 
 /**
  * Photo grid with a dashed "add" tile and remove buttons on each image.
- * Presentational — the caller owns the upload (see lib/uploadImage).
+ * Presentational - the caller owns the upload (see lib/uploadImage).
  * `compact` uses the tighter sizing of the dashboard edit modal.
  */
 export default function GalleryUploader({ images, uploading, onFilesSelected, onRemove, compact = false }: {

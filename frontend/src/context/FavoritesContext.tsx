@@ -6,7 +6,7 @@ interface FavoritesValue {
   /** Set of listing ids the current user has saved. */
   ids: Set<string>;
   isFavorite: (listingId: string) => boolean;
-  /** Add/remove a listing from favorites. Assumes the user is logged in — callers gate on that. */
+  /** Add/remove a listing from favorites. Assumes the user is logged in - callers gate on that. */
   toggle: (listingId: string) => Promise<void>;
   refresh: () => void;
   loading: boolean;
@@ -17,7 +17,7 @@ const FavoritesCtx = createContext<FavoritesValue | null>(null);
 /**
  * Holds the current user's set of saved listing ids so every save button on a page can reflect
  * its state from one fetch, and toggles it optimistically (reverting on error). Cleared on logout.
- * Mount inside AuthProvider — it keys off the authenticated user.
+ * Mount inside AuthProvider - it keys off the authenticated user.
  */
 export function FavoritesProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
@@ -25,7 +25,7 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(false);
 
   // A ref mirror so `toggle` can read the latest set without being torn down/recreated on every
-  // change (and without a stale closure) — updaters stay pure, which keeps StrictMode double-invoke safe.
+  // change (and without a stale closure) - updaters stay pure, which keeps StrictMode double-invoke safe.
   const idsRef = useRef(ids);
   useEffect(() => { idsRef.current = ids; }, [ids]);
 

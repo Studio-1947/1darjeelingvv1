@@ -6,7 +6,7 @@ import { Heart, Mail } from 'lucide-react';
 export default function Footer() {
   const { t } = useTranslation();
   return (
-    <footer className="mt-16 md:mt-24 border-t border-[var(--line)] bg-white" data-testid="site-footer">
+    <footer className="mt-16 md:mt-24 border-t border-[var(--line)] bg-white pb-20 lg:pb-0" data-testid="site-footer">
       <div className="mx-auto max-w-7xl px-4 md:px-8 py-10 md:py-14 grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-10">
         <div className="col-span-2 md:col-span-1">
           <div className="flex items-center gap-2 mb-3">
@@ -31,6 +31,7 @@ export default function Footer() {
             <li><Link to="/events">{t('nav.events')}</Link></li>
             <li><Link to="/biodiversity">{t('nav.biodiversity')}</Link></li>
             <li><Link to="/responsible">{t('nav.responsible')}</Link></li>
+            <li><Link to="/about">{t('nav.about')}</Link></li>
             <li><Link to="/provider/onboard">{t('nav.provider')}</Link></li>
           </ul>
         </div>

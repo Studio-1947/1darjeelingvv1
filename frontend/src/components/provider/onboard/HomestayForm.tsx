@@ -9,7 +9,7 @@ import OnboardHero from './OnboardHero';
 import PriceSubmitScreen from './PriceSubmitScreen';
 import { OnboardState } from './useProviderOnboard';
 
-/** Step 2 for homestays — a live replica of the public listing page to fill in. */
+/** Step 2 for homestays - a live replica of the public listing page to fill in. */
 export default function HomestayForm({ o }: { o: OnboardState }) {
   const { form, update } = o;
   return (

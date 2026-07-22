@@ -5,7 +5,7 @@ import { Screen, SectionHead } from './primitives';
 
 /**
  * A Google Calendar "add event" link, but only when the listing carries a real ISO date in
- * extras.event_date / extras.date — never a guessed one, so we don't add wrong dates to calendars.
+ * extras.event_date / extras.date - never a guessed one, so we don't add wrong dates to calendars.
  */
 function googleCalendarUrl(item: any): string | null {
   const raw = item.extras?.event_date || item.extras?.date;
@@ -24,7 +24,7 @@ function googleCalendarUrl(item: any): string | null {
   return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }
 
-/** Action screen for listings you don't book online — shops, cafes, and events. */
+/** Action screen for listings you don't book online - shops, cafes, and events. */
 export default function ContactSection({ item, onOpenMaps }: { item: any; onOpenMaps: () => void }) {
   const { t } = useTranslation();
   const phone: string | null = item.provider_phone || null;
@@ -59,7 +59,7 @@ export default function ContactSection({ item, onOpenMaps }: { item: any; onOpen
             </>
           ) : (
             <p className="text-center text-sm text-ink-soft">
-              No direct contact listed — use directions below to visit in person.
+              No direct contact listed - use directions below to visit in person.
             </p>
           )}
 

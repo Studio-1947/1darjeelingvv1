@@ -40,6 +40,8 @@ export default function EditListingModal({ listing, onClose, onSave }: {
   // Driver-specific
   const [driverAvatar, setDriverAvatar] = useState(listing.extras?.host_avatar || '');
   const [uploadingDriverPic, setUploadingDriverPic] = useState(false);
+  const [carModel, setCarModel] = useState(listing.extras?.car_model || '');
+  const [gender, setGender] = useState<'male' | 'female' | 'other'>(listing.extras?.gender || 'male');
   const [vehicleType, setVehicleType] = useState(listing.extras?.vehicle_type || '');
   const [routes, setRoutes] = useState<string[]>(listing.extras?.routes || []);
 
@@ -86,6 +88,8 @@ export default function EditListingModal({ listing, onClose, onSave }: {
             ...listing.extras,
             images: gallery,
             host_avatar: driverAvatar,
+            car_model: carModel,
+            gender,
             vehicle_type: vehicleType,
             routes,
           }
@@ -95,6 +99,7 @@ export default function EditListingModal({ listing, onClose, onSave }: {
             host_name: hostName,
             host_bio: hostBio,
             host_avatar: hostAvatar,
+            gender,
             address,
             amenities: selectedAmenities,
             tags: selectedTags,
@@ -168,6 +173,16 @@ export default function EditListingModal({ listing, onClose, onSave }: {
           {isDriver && (
             <>
               <div>
+                <label className="block mb-3">
+                  <span className="text-xs font-semibold text-ink-soft uppercase block mb-1">Car Model / Vehicle Name</span>
+                  <input
+                    type="text"
+                    value={carModel}
+                    onChange={(e) => setCarModel(e.target.value)}
+                    placeholder="e.g. Mahindra Bolero, Swift Dzire"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--line)] bg-white outline-none text-sm font-semibold text-ink"
+                  />
+                </label>
                 <span className="text-xs font-semibold text-ink-soft uppercase block mb-2">Vehicle Type</span>
                 <ChipToggleGroup
                   options={VEHICLE_TYPES}

@@ -10,7 +10,7 @@ import CafeShopForm from '@/components/provider/onboard/CafeShopForm';
 /**
  * Provider onboarding. Step 1 collects the business basics; step 2 is a
  * type-specific "design your listing" flow. All state and the payment flow
- * live in useProviderOnboard — the step components are layout over it.
+ * live in useProviderOnboard - the step components are layout over it.
  */
 export default function ProviderOnboard() {
   const o = useProviderOnboard();

@@ -1,7 +1,7 @@
 import React from 'react';
 
 /**
- * Real, interactive map via OpenStreetMap's embed — no API key required.
+ * Real, interactive map via OpenStreetMap's embed - no API key required.
  * Centres on [lat, lng] with a marker.
  */
 export default function MapEmbed({ coords, title = 'Map', className = '' }: { coords: [number, number], title?: string, className?: string }) {

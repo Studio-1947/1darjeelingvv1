@@ -94,7 +94,7 @@ export default function Discover() {
         // An empty feed is not something a visitor can fix: seeding now lives
         // behind POST /api/admin/seed (auth + admin) and is triggered from the
         // admin panel. The old unauthenticated /dev/seed route was removed on
-        // purpose — backend/test/admin.test.ts asserts it stays a 404.
+        // purpose - backend/test/admin.test.ts asserts it stays a 404.
         await load();
       } catch (e) {
         if (process.env.NODE_ENV !== 'production') console.error(e);
@@ -182,7 +182,7 @@ export default function Discover() {
         </div>
       </section>
 
-      {/* Featured Spots — horizontal scroll (MMT style) */}
+      {/* Featured Spots - horizontal scroll (MMT style) */}
       <section className="mx-auto max-w-6xl px-4 md:px-6 pt-8 md:pt-10">
         <div className="flex items-end justify-between mb-4">
           <div>

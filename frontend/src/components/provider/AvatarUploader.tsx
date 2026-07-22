@@ -3,7 +3,7 @@ import { Upload } from 'lucide-react';
 
 /**
  * Round avatar (photo, or a branded initial while there is none) with an
- * upload button. Presentational — the caller owns the upload. Pass a flex
+ * upload button. Presentational - the caller owns the upload. Pass a flex
  * `className` to arrange the button beside (row) or under (column) the photo.
  */
 export default function AvatarUploader({

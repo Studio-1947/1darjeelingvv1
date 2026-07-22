@@ -15,7 +15,7 @@ export default function Header() {
   const nav = useNavigate();
   const { pathname } = useLocation();
   const goBack = useGoBack();
-  // The landing page is the root of the mobile tab bar — nothing to go back to.
+  // The landing page is the root of the mobile tab bar - nothing to go back to.
   const showBack = pathname !== '/';
   // Sign-in and the onboarding form are single-task pages; a search box there
   // only invites the visitor to abandon what they came to do.
@@ -46,7 +46,7 @@ export default function Header() {
   return (
     <header className="sticky top-0 z-40 bg-white border-b border-[var(--line)]" data-testid="site-header">
       <div className="mx-auto max-w-6xl px-4 md:px-6 h-14 md:h-16 flex items-center gap-3 md:gap-5">
-        {/* Back — mobile/tablet only; desktop keeps the brand plus in-page controls */}
+        {/* Back - mobile/tablet only; desktop keeps the brand plus in-page controls */}
         {showBack && (
           <button
             onClick={goBack}
@@ -58,7 +58,7 @@ export default function Header() {
           </button>
         )}
 
-        {/* Brand — yields its spot to the back button on small screens */}
+        {/* Brand - yields its spot to the back button on small screens */}
         <Link
           to="/"
           className={`${showBack ? 'hidden lg:flex' : 'flex'} items-center gap-2 flex-shrink-0`}

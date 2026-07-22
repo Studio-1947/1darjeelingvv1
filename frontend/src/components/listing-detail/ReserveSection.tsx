@@ -53,7 +53,7 @@ export function ReserveSection({ item, unit, bookable, cta, booking, onOpenMaps 
 
               <button onClick={doBook} disabled={busy} data-testid="booking-submit"
                 className={`w-full py-4 rounded-full font-bold btn-hover disabled:opacity-60 inline-flex items-center justify-center gap-2 ${cta.color}`}>
-                <CtaIcon size={18} /> {busy ? t('common.loading') : (item.type === 'driver' ? t('cta.talk_to_driver') : t('cta.book_now'))}
+                {busy ? t('common.loading') : (item.type === 'driver' ? t('cta.talk_to_driver') : t('cta.book_now'))} <CtaIcon size={18} />
               </button>
               {msg && <p data-testid="booking-msg" className="text-sm text-center text-pine font-semibold">{msg}</p>}
             </div>

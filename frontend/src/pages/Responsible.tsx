@@ -36,7 +36,7 @@ export default function Responsible() {
 
       <div className="mt-10 md:mt-14 mist-panel p-6 md:p-10 text-center">
         <h3 className="font-display font-extrabold text-xl md:text-2xl text-ink">Every booking supports local families.</h3>
-        <p className="mt-2 text-sm md:text-base text-ink-soft">1 Darjeeling directs tourism revenue to Darjeeling-owned businesses — homestays, drivers, tea houses and artisans.</p>
+        <p className="mt-2 text-sm md:text-base text-ink-soft">1 Darjeeling directs tourism revenue to Darjeeling-owned businesses - homestays, drivers, tea houses and artisans.</p>
       </div>
     </div>
   );

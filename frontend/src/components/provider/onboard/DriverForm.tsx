@@ -10,7 +10,7 @@ import OnboardHero from './OnboardHero';
 import PriceSubmitScreen from './PriceSubmitScreen';
 import { OnboardState } from './useProviderOnboard';
 
-/** Step 2 for drivers — profile, vehicle, routes, trip gallery, and price. */
+/** Step 2 for drivers - profile, vehicle, routes, trip gallery, and price. */
 export default function DriverForm({ o }: { o: OnboardState }) {
   const { form, update } = o;
   return (
@@ -71,7 +71,18 @@ export default function DriverForm({ o }: { o: OnboardState }) {
               />
             </div>
             <div>
-              <span className="text-xs font-semibold text-ink-soft uppercase block mb-2">Vehicle Type</span>
+              <span className="text-xs font-semibold text-ink-soft uppercase block mb-1">Car Model / Vehicle Name</span>
+              <input
+                required
+                type="text"
+                value={o.carModel}
+                onChange={(e) => o.setCarModel(e.target.value)}
+                placeholder="e.g. Mahindra Bolero, Innova Crysta, Swift Dzire"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--line)] bg-white outline-none text-sm font-semibold text-ink"
+              />
+            </div>
+            <div>
+              <span className="text-xs font-semibold text-ink-soft uppercase block mb-2">Vehicle Category</span>
               <ChipToggleGroup
                 options={VEHICLE_TYPES}
                 selected={o.vehicleType ? [o.vehicleType] : []}
@@ -82,7 +93,7 @@ export default function DriverForm({ o }: { o: OnboardState }) {
         </div>
       </Screen>
 
-      {/* MEET YOUR DRIVER — photo & name */}
+      {/* MEET YOUR DRIVER - photo & name */}
       <Screen tone="mist">
         <Eyebrow n="02">Meet your driver</Eyebrow>
         <div className="mt-8 grid lg:grid-cols-5 gap-10 lg:gap-16 items-center">
@@ -112,6 +123,33 @@ export default function DriverForm({ o }: { o: OnboardState }) {
               />
             </div>
             <div className="flex flex-col gap-1">
+              <span className="text-xs font-semibold text-ink-soft uppercase">Gender</span>
+              <div className="flex items-center gap-3">
+                <label className="inline-flex items-center gap-2 text-sm font-semibold text-ink cursor-pointer">
+                  <input
+                    type="radio"
+                    name="gender"
+                    value="male"
+                    checked={o.gender === 'male'}
+                    onChange={() => o.setGender('male')}
+                    className="accent-pine"
+                  />
+                  Male
+                </label>
+                <label className="inline-flex items-center gap-2 text-sm font-semibold text-ink cursor-pointer">
+                  <input
+                    type="radio"
+                    name="gender"
+                    value="female"
+                    checked={o.gender === 'female'}
+                    onChange={() => o.setGender('female')}
+                    className="accent-pine"
+                  />
+                  Female
+                </label>
+              </div>
+            </div>
+            <div className="flex flex-col gap-1">
               <span className="text-xs font-semibold text-ink-soft uppercase">Languages Spoken</span>
               <input
                 type="text"
@@ -127,11 +165,11 @@ export default function DriverForm({ o }: { o: OnboardState }) {
 
       {/* ROUTES COVERED */}
       <Screen tone="white">
-        <Eyebrow n="03">Routes covered</Eyebrow>
+        <Eyebrow n="03">Pin your routes</Eyebrow>
         <div className="mt-8 grid lg:grid-cols-5 gap-10 lg:gap-16 items-start">
           <div className="lg:col-span-3">
-            <h2 className="font-display font-extrabold text-2xl md:text-3xl text-ink">What Trips Do You Operate?</h2>
-            <p className="text-sm text-ink-soft mt-2 mb-6">Add the routes and trips you offer. Travellers will see these directly on your listing page.</p>
+            <h2 className="font-display font-extrabold text-2xl md:text-3xl text-ink">Route Configuration (Where to / From)</h2>
+            <p className="text-sm text-ink-soft mt-2 mb-6">Pin the exact routes and trips you operate (From - To). Travellers see these directly on your driver profile page.</p>
             <RouteListEditor
               routes={o.routes}
               onChange={o.setRoutes}

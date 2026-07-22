@@ -14,6 +14,7 @@ import ProviderDashboard from '@/pages/ProviderDashboard';
 import TouristDashboard from '@/pages/TouristDashboard';
 import Saved from '@/pages/Saved';
 import Responsible from '@/pages/Responsible';
+import About from '@/pages/About';
 import Privacy from '@/pages/Privacy';
 
 export default function App() {
@@ -39,6 +40,7 @@ export default function App() {
               <Route path="/dashboard" element={<TouristDashboard />} />
               <Route path="/saved" element={<Saved />} />
               <Route path="/responsible" element={<Responsible />} />
+              <Route path="/about" element={<About />} />
               <Route path="/privacy" element={<Privacy />} />
             </Routes>
           </Layout>

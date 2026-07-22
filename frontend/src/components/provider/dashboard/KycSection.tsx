@@ -59,7 +59,7 @@ export default function KycSection({ onProfileChange }: { onProfileChange?: (p: 
       setBusyKey(prev => (prev === docType ? null : prev));
       return;
     }
-    // The upload itself succeeded — a failure past this point is a reload problem, not an
+    // The upload itself succeeded - a failure past this point is a reload problem, not an
     // upload problem, and must not be reported as "Upload failed" (that would invite a
     // needless duplicate upload of a document that's already saved).
     try {
@@ -88,7 +88,7 @@ export default function KycSection({ onProfileChange }: { onProfileChange?: (p: 
   if (loading) return <div className="text-sm text-ink-soft">{t('kyc.loading')}</div>;
 
   if (loadError) {
-    // A 404 here means "no active provider profile yet" — completely normal for a provider
+    // A 404 here means "no active provider profile yet" - completely normal for a provider
     // who onboarded but hasn't paid/activated yet. That's not a failure, so it gets a plain
     // explanatory message rather than the alarming error panel + retry button.
     if (loadError.status === 404) {
@@ -169,7 +169,7 @@ export default function KycSection({ onProfileChange }: { onProfileChange?: (p: 
                         disabled={busyKey === item.key}
                         onChange={e => {
                           const file = e.target.files?.[0];
-                          // Reset so re-picking the identical file still fires onChange —
+                          // Reset so re-picking the identical file still fires onChange -
                           // otherwise retrying the same document after a failed upload does
                           // nothing, silently.
                           e.target.value = '';

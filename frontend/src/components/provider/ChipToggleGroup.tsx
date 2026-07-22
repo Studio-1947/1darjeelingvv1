@@ -27,7 +27,7 @@ export default function ChipToggleGroup({ options, selected, onToggle }: {
   );
 }
 
-/** Immutable toggle of a value in a string list — for multi-select chips. */
+/** Immutable toggle of a value in a string list - for multi-select chips. */
 export function toggleIn(list: string[], value: string): string[] {
   return list.includes(value) ? list.filter((x) => x !== value) : [...list, value];
 }

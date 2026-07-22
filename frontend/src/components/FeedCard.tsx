@@ -39,7 +39,7 @@ export default function FeedCard({ item, priority = false }) {
     toggle(item.id).catch(() => {});
   };
 
-  // Share this listing — native share sheet where available, clipboard fallback with a brief
+  // Share this listing - native share sheet where available, clipboard fallback with a brief
   // "copied" confirmation on the icon. Mirrors the detail page's share.
   const handleShare = async () => {
     const url = `${window.location.origin}/listing/${item.id}`;
@@ -48,7 +48,7 @@ export default function FeedCard({ item, priority = false }) {
         await navigator.share({ title: item.title, text: item.description, url });
         return;
       } catch (e: any) {
-        if (e?.name === 'AbortError') return; // user dismissed the sheet — not a failure
+        if (e?.name === 'AbortError') return; // user dismissed the sheet - not a failure
       }
     }
     try {

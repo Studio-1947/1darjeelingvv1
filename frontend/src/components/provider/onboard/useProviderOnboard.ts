@@ -36,11 +36,13 @@ export function useProviderOnboard() {
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
-  // Driver-specific
+  // Driver & Host profile fields
+  const [carModel, setCarModel] = useState('');
+  const [gender, setGender] = useState<'male' | 'female' | 'other'>('male');
   const [vehicleType, setVehicleType] = useState('');
   const [routes, setRoutes] = useState<string[]>([]);
 
-  // Extra photos — only one gallery exists per business type
+  // Extra photos - only one gallery exists per business type
   // (driver trips, or cafe/shop interiors; homestays add theirs post-launch).
   const [gallery, setGallery] = useState<string[]>([]);
 
@@ -120,6 +122,8 @@ export function useProviderOnboard() {
           ? {
               host_avatar: form.host_avatar || '',
               vehicle_type: vehicleType,
+              car_model: carModel,
+              gender,
               routes,
               images: gallery,
               contact_phone: form.contact_phone || user.phone,
@@ -127,6 +131,7 @@ export function useProviderOnboard() {
           : (form.business_type === 'cafe' || form.business_type === 'shop')
           ? {
               address: form.address || '',
+              gender,
               amenities: selectedAmenities,
               tags: selectedTags,
               images: gallery,
@@ -136,6 +141,7 @@ export function useProviderOnboard() {
               host_name: form.host_name || form.business_name.split(' ')[0] || 'Host',
               host_bio: form.host_bio || 'Your local host welcomes you to Darjeeling.',
               languages: form.languages.split(',').map((s) => s.trim()).filter(Boolean),
+              gender,
               contact_phone: form.contact_phone || user.phone,
               host_avatar: form.host_avatar || '',
               address: form.address || '',
@@ -192,6 +198,8 @@ export function useProviderOnboard() {
     confirm, setConfirm,
     selectedAmenities, setSelectedAmenities,
     selectedTags, setSelectedTags,
+    carModel, setCarModel,
+    gender, setGender,
     vehicleType, setVehicleType,
     routes, setRoutes,
     gallery, setGallery,

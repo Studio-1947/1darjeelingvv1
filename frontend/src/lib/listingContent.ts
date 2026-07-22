@@ -5,7 +5,7 @@
 // coordinates, driver routes, festival timing, wildlife spotting sites) is
 // filled from this module. Entries are keyed by the exact seed listing title.
 // Anything not found here falls back to type-level defaults, so user-created
-// listings still render — just with less editorial depth.
+// listings still render - just with less editorial depth.
 
 // Verified images already shipping in the app (see backend/src/seed_data.ts).
 // Used as the safe fallback when a keyword photo fails to load.
@@ -39,7 +39,7 @@ export function stockPhoto(query: string, w = 1600, h = 1000, seed = 1): string 
 
 /**
  * Bare Unsplash/Pexels URLs (as stored in seed data) serve the full-resolution
- * original — several MB per photo, which janks scrolling while cards decode.
+ * original - several MB per photo, which janks scrolling while cards decode.
  * Both CDNs resize on the fly via query params; other hosts pass through as-is.
  */
 export function sizedImage(url: string, w = 800): string {
@@ -54,12 +54,12 @@ export function sizedImage(url: string, w = 800): string {
 }
 
 // The five shared seed images (see backend/src/seed_data.ts). A listing whose
-// image is one of these is using a default, not a real photo of itself — so we
+// image is one of these is using a default, not a real photo of itself - so we
 // swap in a distinct per-listing image. Anything else is a genuine
 // provider-uploaded URL and is kept as-is.
 const SEED_IMAGE_SET = new Set<string>(Object.values(FALLBACK));
 
-/** Stable numeric hash of a string — gives each listing its own image seed. */
+/** Stable numeric hash of a string - gives each listing its own image seed. */
 export function seedFor(s = ''): number {
   let h = 0;
   for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
@@ -71,13 +71,13 @@ export interface ListingContent {
   hero?: string;               // curated hero photo URL, overrides the listing's own
   gallery?: string[];          // photo URLs, or keyword queries for stock photos
   coords?: [number, number];   // [lat, lng] for the map embed
-  bestTime?: string;           // festivals — when to go
-  routes?: string[];           // drivers — routes operated
-  spotted?: string[];          // biodiversity — where it's seen
+  bestTime?: string;           // festivals - when to go
+  routes?: string[];           // drivers - routes operated
+  spotted?: string[];          // biodiversity - where it's seen
   personPhoto?: string;        // host / driver portrait keyword
 }
 
-// Approx. centre of Darjeeling town — fallback map location.
+// Approx. centre of Darjeeling town - fallback map location.
 export const DARJEELING: [number, number] = [27.041, 88.263];
 
 /**
@@ -97,13 +97,13 @@ export const CONTENT: Record<string, ListingContent> = {
   // ---------------- Tourism spots ----------------
   'Tiger Hill Sunrise': {
     about:
-      'Tiger Hill, at roughly 2,590 m, is the highest point around Darjeeling and the region’s most famous sunrise viewpoint. On a clear morning the first light strikes Kanchenjunga — the world’s third-highest peak — turning it gold and pink, and on exceptional days Everest is visible far to the west. Visitors set out well before dawn to reach the summit, where an observation tower offers tiered viewing.',
+      'Tiger Hill, at roughly 2,590 m, is the highest point around Darjeeling and the region’s most famous sunrise viewpoint. On a clear morning the first light strikes Kanchenjunga - the world’s third-highest peak - turning it gold and pink, and on exceptional days Everest is visible far to the west. Visitors set out well before dawn to reach the summit, where an observation tower offers tiered viewing.',
     gallery: ['kanchenjunga sunrise', 'himalaya dawn mountains', 'darjeeling sunrise'],
     coords: [27.0028, 88.267],
   },
   'Batasia Loop & War Memorial': {
     about:
-      'The Batasia Loop is a spiral railway track built in 1919 that lets the Darjeeling Himalayan Railway — the UNESCO-listed “toy train” — descend a steep gradient by looping over itself. At its centre sits a landscaped garden and the Gorkha War Memorial, honouring Gorkha soldiers who died since Indian independence. The site gives a sweeping 360° panorama of Darjeeling town and the Kanchenjunga range.',
+      'The Batasia Loop is a spiral railway track built in 1919 that lets the Darjeeling Himalayan Railway - the UNESCO-listed “toy train” - descend a steep gradient by looping over itself. At its centre sits a landscaped garden and the Gorkha War Memorial, honouring Gorkha soldiers who died since Indian independence. The site gives a sweeping 360° panorama of Darjeeling town and the Kanchenjunga range.',
     gallery: [
       'https://thumbs.dreamstime.com/b/poster-famous-batasia-loop-year-old-circular-train-track-encircled-spectacular-mountain-vista-most-picturesque-446553234.jpg',
       // Direct S3 original rather than the backpackersunited.in Next.js proxy,
@@ -148,7 +148,7 @@ export const CONTENT: Record<string, ListingContent> = {
   },
   'Ghum Monastery (Yiga Choeling)': {
     about:
-      'Yiga Choeling, established in 1850 and rebuilt in 1909, is the oldest Tibetan Buddhist monastery of the Gelug (Yellow Hat) school in the Darjeeling area. It is best known for its 5 m statue of the Maitreya (Future) Buddha and a collection of rare handwritten Buddhist manuscripts and antique thangkas. Sitting near Ghum — one of the highest railway stations in the world — it remains an active place of worship.',
+      'Yiga Choeling, established in 1850 and rebuilt in 1909, is the oldest Tibetan Buddhist monastery of the Gelug (Yellow Hat) school in the Darjeeling area. It is best known for its 5 m statue of the Maitreya (Future) Buddha and a collection of rare handwritten Buddhist manuscripts and antique thangkas. Sitting near Ghum - one of the highest railway stations in the world - it remains an active place of worship.',
     gallery: [
       'https://d3gw4aml0lneeh.cloudfront.net/assets/locations/13712/Qn4fDURNCHPP.jpg',
       'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/09/61/c0/9d/yiga-choling-gompa.jpg?w=700&h=400&s=1',
@@ -190,7 +190,7 @@ export const CONTENT: Record<string, ListingContent> = {
   // ---------------- Drivers ----------------
   'Tenzing - Local Taxi Driver': {
     about:
-      'Tenzing is a licensed local driver with years of experience guiding full-day sightseeing trips around Darjeeling. He knows the best timing for each viewpoint — when to leave for Tiger Hill, when the light is right at Batasia Loop — and speaks English, Nepali, Hindi and Bengali, so nothing gets lost along the way.',
+      'Tenzing is a licensed local driver with years of experience guiding full-day sightseeing trips around Darjeeling. He knows the best timing for each viewpoint - when to leave for Tiger Hill, when the light is right at Batasia Loop - and speaks English, Nepali, Hindi and Bengali, so nothing gets lost along the way.',
     gallery: ['himalayan taxi', 'mountain road darjeeling', 'driver portrait'],
     routes: [
       'Full-day Darjeeling sightseeing: Tiger Hill → Batasia Loop → Ghum Monastery',
@@ -259,13 +259,13 @@ export const CONTENT: Record<string, ListingContent> = {
   // ---------------- Cafes ----------------
   "Sonam's Kitchen": {
     about:
-      'A tiny, beloved breakfast spot where locals and travellers squeeze in for pancakes, fresh coffee and hearty plates. Arrive early — the wait is part of the ritual.',
+      'A tiny, beloved breakfast spot where locals and travellers squeeze in for pancakes, fresh coffee and hearty plates. Arrive early - the wait is part of the ritual.',
     gallery: ['cozy cafe breakfast', 'pancakes coffee', 'himalayan cafe'],
     coords: [27.041, 88.2625],
   },
   "Glenary's Bakery & Cafe": {
     about:
-      'A heritage colonial-era bakery on Nehru Road, Glenary’s is famous for fresh pastries, breads and a sit-down cafe with mountain views. Downstairs bakery, upstairs restaurant — both worth the stop.',
+      'A heritage colonial-era bakery on Nehru Road, Glenary’s is famous for fresh pastries, breads and a sit-down cafe with mountain views. Downstairs bakery, upstairs restaurant - both worth the stop.',
     gallery: ['heritage bakery', 'pastries cafe', 'darjeeling nehru road'],
     coords: [27.0405, 88.2645],
   },
@@ -309,7 +309,7 @@ export const CONTENT: Record<string, ListingContent> = {
   // ---------------- Biodiversity ----------------
   'Red Panda': {
     about:
-      'The red panda (Ailurus fulgens) is Darjeeling’s state animal and one of the eastern Himalayas’ most iconic — and elusive — residents. Roughly cat-sized with rust-red fur and a ringed tail, it lives in temperate bamboo forests between about 2,200 and 4,800 m, feeding mainly on bamboo. Classified as Endangered, it is the focus of a dedicated captive-breeding and rewilding programme at the Padmaja Naidu Zoo.',
+      'The red panda (Ailurus fulgens) is Darjeeling’s state animal and one of the eastern Himalayas’ most iconic - and elusive - residents. Roughly cat-sized with rust-red fur and a ringed tail, it lives in temperate bamboo forests between about 2,200 and 4,800 m, feeding mainly on bamboo. Classified as Endangered, it is the focus of a dedicated captive-breeding and rewilding programme at the Padmaja Naidu Zoo.',
     gallery: ['red panda', 'red panda bamboo forest', 'red panda tree'],
     coords: [27.15, 88.0],
     spotted: ['Singalila National Park', 'Neora Valley National Park', 'Barsey Rhododendron Sanctuary', 'Padmaja Naidu Zoo (breeding centre)'],
@@ -361,7 +361,7 @@ export function listingImage(item: any, w = 1200, h = 900): string {
 
 /**
  * The gallery photos for a listing, each distinct across listings. A gallery
- * entry may be a real photo URL — used as-is — or a keyword, which resolves to
+ * entry may be a real photo URL - used as-is - or a keyword, which resolves to
  * a per-listing stock photo.
  */
 export function galleryImagesFor(item: any, w = 900, h = 700): string[] {

@@ -48,7 +48,7 @@ export function useBookingFlow(item: any, id: string) {
         setPayModal({
           amount: orderRes.amount,
           order: orderRes.order,
-          description: `platform fee — ${item.title}`,
+          description: `platform fee - ${item.title}`,
           bookingId,
         });
       } else {
@@ -57,7 +57,7 @@ export function useBookingFlow(item: any, id: string) {
           key_id: orderRes.key_id,
           flow: 'booking_commission',
           reference_id: bookingId,
-          description: `₹1 platform fee — ${item.title}`,
+          description: `₹1 platform fee - ${item.title}`,
           prefill: { contact: user.phone, name: user.name },
         });
         setMsg(t('booking.success'));

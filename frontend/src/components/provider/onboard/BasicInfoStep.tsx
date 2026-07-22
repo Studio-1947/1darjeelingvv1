@@ -2,7 +2,7 @@ import React from 'react';
 import { BUSINESS_TYPES } from '@/constants/listingOptions';
 import { OnboardState } from './useProviderOnboard';
 
-/** Step 1 — business name and type. */
+/** Step 1 - business name and type. */
 export default function BasicInfoStep({ o }: { o: OnboardState }) {
   const { form, update, msg, startDesignStep } = o;
   return (

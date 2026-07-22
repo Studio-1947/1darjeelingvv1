@@ -39,7 +39,7 @@ export default function DetailHero({ item, unit, onShare }: {
     toggle(item.id).catch(() => {});
   };
 
-  // `nav(-1)` goes nowhere when this is the first entry in the SPA's history — i.e. the visitor
+  // `nav(-1)` goes nowhere when this is the first entry in the SPA's history - i.e. the visitor
   // landed here directly via a shared link, a new tab, or a refresh (React Router marks that entry
   // with key 'default'). In that case send them to the home feed instead of leaving them on a dead
   // button (or bouncing them off the site entirely).
@@ -80,7 +80,7 @@ export default function DetailHero({ item, unit, onShare }: {
       <SmartImg src={heroSrc} fallback={fallbackImg} alt={item.title} className="absolute inset-0 w-full h-full object-cover" />
       <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/45" />
 
-      {/* Below lg the sticky header supplies the back control — avoid two. */}
+      {/* Below lg the sticky header supplies the back control - avoid two. */}
       <button onClick={goBack} data-testid="detail-back"
         className="absolute top-4 left-4 md:top-6 md:left-8 hidden lg:inline-flex items-center gap-2 pl-3 pr-4 py-2.5 rounded-full bg-white/95 backdrop-blur text-sm font-bold text-ink btn-hover">
         <ArrowLeft size={16} /> {t('common.back')}

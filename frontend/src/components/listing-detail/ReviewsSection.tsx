@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Star, Loader2, Trash2 } from 'lucide-react';
+import { Star, Loader2, Trash2, Camera, Image as ImageIcon, X } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { fetchReviews, postReview, deleteReview, Review, ReviewSummary } from '@/lib/reviews';
+import { uploadImages } from '@/lib/uploadImage';
 
 /** Read-only row of five stars for a given rating (supports halves via rounding). */
 function Stars({ value, size = 16 }: { value: number; size?: number }) {
@@ -49,6 +50,8 @@ export default function ReviewsSection({ item }: { item: any }) {
 
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
+  const [photos, setPhotos] = useState<string[]>([]);
+  const [uploadingPhotos, setUploadingPhotos] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -67,21 +70,35 @@ export default function ReviewsSection({ item }: { item: any }) {
 
   useEffect(() => { load(); }, [load]);
 
-  // Prefill the form from the user's existing review once loaded (so submitting edits it). Keyed on
-  // myReview's identity, which only changes when the reviews list reloads — never mid-typing.
   useEffect(() => {
     if (myReview) {
       setRating(myReview.rating);
       setComment(myReview.comment);
+      setPhotos(myReview.photos || []);
     }
   }, [myReview]);
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    setUploadingPhotos(true);
+    setError('');
+    try {
+      const urls = await uploadImages(files);
+      setPhotos((prev) => [...prev, ...urls]);
+    } catch (err: any) {
+      setError(err?.message || 'Failed to upload review photos.');
+    } finally {
+      setUploadingPhotos(false);
+    }
+  };
 
   const submit = async () => {
     if (rating < 1) { setError('Please pick a star rating.'); return; }
     setSubmitting(true);
     setError('');
     try {
-      await postReview(item.id, rating, comment.trim());
+      await postReview(item.id, rating, comment.trim(), photos);
       await load();
     } catch (e: any) {
       setError(e?.response?.data?.detail || 'Could not save your review. Please try again.');
@@ -97,6 +114,7 @@ export default function ReviewsSection({ item }: { item: any }) {
       await deleteReview(myReview.id);
       setRating(0);
       setComment('');
+      setPhotos([]);
       await load();
     } finally {
       setSubmitting(false);
@@ -114,7 +132,7 @@ export default function ReviewsSection({ item }: { item: any }) {
           <div className="mt-4 flex items-center justify-center gap-3">
             <Stars value={summary.average} size={20} />
             <span className="text-ink font-bold text-lg">
-              {summary.count > 0 ? summary.average.toFixed(1) : '—'}
+              {summary.count > 0 ? summary.average.toFixed(1) : '-'}
             </span>
             <span className="text-ink-soft text-sm">
               {summary.count} review{summary.count === 1 ? '' : 's'}
@@ -146,9 +164,47 @@ export default function ReviewsSection({ item }: { item: any }) {
                 placeholder="Share a little about your experience (optional)"
                 className="mt-3 w-full px-3 py-2.5 rounded-xl border border-[var(--line)] bg-white outline-none text-ink text-sm resize-none focus:ring-2 focus:ring-pine/20 transition-all"
               />
+
+              {/* Photo Upload Section */}
+              <div className="mt-4">
+                <span className="text-xs font-semibold text-ink-soft uppercase block mb-2">Upload Photos (Optional)</span>
+                <div className="flex flex-wrap items-center gap-3">
+                  {photos.map((p, idx) => (
+                    <div key={idx} className="relative w-16 h-16 rounded-xl overflow-hidden border border-[var(--line)] group">
+                      <img src={p} alt="Review attachment" className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => setPhotos(photos.filter((_, i) => i !== idx))}
+                        className="absolute top-1 right-1 bg-black/60 text-white rounded-full p-0.5 hover:bg-flag transition-colors"
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  ))}
+                  <label className="w-16 h-16 rounded-xl border-2 border-dashed border-[var(--line)] hover:border-pine grid place-items-center cursor-pointer bg-white text-ink-soft hover:text-pine transition-colors">
+                    {uploadingPhotos ? (
+                      <Loader2 size={18} className="animate-spin" />
+                    ) : (
+                      <div className="flex flex-col items-center gap-0.5">
+                        <Camera size={18} />
+                        <span className="text-[9px] font-bold">Add Photo</span>
+                      </div>
+                    )}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handlePhotoUpload}
+                      disabled={uploadingPhotos || submitting}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+              </div>
+
               {error && <p className="mt-2 text-sm text-flag font-semibold">{error}</p>}
-              <button onClick={submit} disabled={submitting} data-testid="review-submit"
-                className="mt-3 inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-pine text-white font-bold btn-hover disabled:opacity-60">
+              <button onClick={submit} disabled={submitting || uploadingPhotos} data-testid="review-submit"
+                className="mt-4 inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-pine text-white font-bold btn-hover disabled:opacity-60">
                 {submitting ? <Loader2 size={15} className="animate-spin" /> : null}
                 {myReview ? 'Update review' : 'Post review'}
               </button>
@@ -169,7 +225,7 @@ export default function ReviewsSection({ item }: { item: any }) {
           {loading ? (
             <p className="text-ink-soft text-center">Loading reviews…</p>
           ) : reviews.length === 0 ? (
-            <p className="text-ink-soft text-center">No reviews yet — be the first to leave one.</p>
+            <p className="text-ink-soft text-center">No reviews yet - be the first to leave one.</p>
           ) : (
             reviews.map((r) => (
               <div key={r.id} data-testid={`review-${r.id}`} className="rounded-2xl border border-[var(--line)] p-4 md:p-5 bg-white">
@@ -186,6 +242,15 @@ export default function ReviewsSection({ item }: { item: any }) {
                   <Stars value={r.rating} />
                 </div>
                 {r.comment && <p className="mt-3 text-ink leading-relaxed text-sm">{r.comment}</p>}
+                {r.photos && r.photos.length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {r.photos.map((p, idx) => (
+                      <a key={idx} href={p} target="_blank" rel="noopener noreferrer" className="block w-20 h-20 rounded-xl overflow-hidden border border-[var(--line)] hover:opacity-90 transition-opacity">
+                        <img src={p} alt="Review attachment" className="w-full h-full object-cover" />
+                      </a>
+                    ))}
+                  </div>
+                )}
               </div>
             ))
           )}

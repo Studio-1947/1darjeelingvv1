@@ -36,7 +36,7 @@ export function SectionHead({ label, title, note }: { label: string; title: stri
   );
 }
 
-/** Real photo if it loads, otherwise the branded initial — never a broken face. */
+/** Real photo if it loads, otherwise the branded initial - never a broken face. */
 export function Avatar({ photo, initial }: { photo?: string; initial: string }) {
   const [failed, setFailed] = useState(false);
   const base = 'w-36 h-36 md:w-44 md:h-44 rounded-full overflow-hidden mx-auto shadow-lg ring-4 ring-white';

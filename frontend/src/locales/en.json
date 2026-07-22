@@ -16,13 +16,14 @@
     "login": "Log in",
     "logout": "Log out",
     "dashboard": "Dashboard",
-    "admin": "Admin"
+    "admin": "Admin",
+    "about": "About"
   },
   "hero": {
     "eyebrow": "Under the shadow of Kanchenjunga",
     "title_1": "One Darjeeling.",
     "title_2": "Every experience.",
-    "subtitle": "Homestays, drivers, tea gardens, cafes, cultural festivals and Himalayan biodiversity — in a single app.",
+    "subtitle": "Homestays, drivers, tea gardens, cafes, cultural festivals and Himalayan biodiversity - in a single app.",
     "cta_explore": "Start exploring",
     "cta_provider": "List your service"
   },
@@ -35,7 +36,9 @@
     "event": "Festivals",
     "biodiversity": "Biodiversity"
   },
-  "search": { "placeholder": "Search — place, shop or event" },
+  "search": {
+    "placeholder": "Search - place, shop or event"
+  },
   "common": {
     "book_now": "Reserve now",
     "view_details": "View details",
@@ -121,7 +124,7 @@
     "profileCompletion": "Profile completion",
     "completeYourListing": "Complete your listing",
     "verification": "Verification (KYC)",
-    "verificationHelp": "Optional — upload these to earn a Verified badge. JPEG, PNG, or PDF, up to 5 MB.",
+    "verificationHelp": "Optional - upload these to earn a Verified badge. JPEG, PNG, or PDF, up to 5 MB.",
     "verified": "Verified",
     "inReview": "In review",
     "rejected": "Rejected",
@@ -144,7 +147,7 @@
     "remainingItems_other": "{{count}} items remaining",
     "completeProfileCta": "Complete profile",
     "underReviewTitle": "Verification in progress",
-    "underReviewMessage": "Your documents are under review — no action is needed right now.",
+    "underReviewMessage": "Your documents are under review - no action is needed right now.",
     "viewStatusCta": "View status",
     "verifiedTooltip": "KYC verified by 1 Darjeeling",
     "fileTooLarge": "File is too large. Please upload a file under 5 MB.",
@@ -155,8 +158,8 @@
   "locationPicker": {
     "search_placeholder": "Search address or landmark…",
     "hint": "Drag the pin or tap the map to set your exact location.",
-    "no_results": "No matches — drag the pin instead.",
-    "search_failed": "Search unavailable — drag the pin instead.",
+    "no_results": "No matches - drag the pin instead.",
+    "search_failed": "Search unavailable - drag the pin instead.",
     "popular": "Popular places",
     "results": "Search results"
   },
@@ -173,26 +176,98 @@
     "title": "Responsible Tourism",
     "lead": "Darjeeling is a fragile Himalayan ecosystem. Let's protect it together.",
     "principles": [
-      { "t": "Say no to plastic", "d": "Carry reusable bottles, bags and cups. Refill at local shops." },
-      { "t": "Stay local", "d": "Choose homestays over chains. Your money reaches local families." },
-      { "t": "Respect wildlife", "d": "Do not feed or chase wild animals. Observe from a distance." },
-      { "t": "Save the tea gardens", "d": "Walk marked trails only. Don't trample undergrowth." },
-      { "t": "Honour culture", "d": "Ask permission before photographing monasteries and people." },
-      { "t": "Keep it quiet", "d": "Keep noise low — the hills and their creatures prefer it that way." }
+      {
+        "t": "Say no to plastic",
+        "d": "Carry reusable bottles, bags and cups. Refill at local shops."
+      },
+      {
+        "t": "Stay local",
+        "d": "Choose homestays over chains. Your money reaches local families."
+      },
+      {
+        "t": "Respect wildlife",
+        "d": "Do not feed or chase wild animals. Observe from a distance."
+      },
+      {
+        "t": "Save the tea gardens",
+        "d": "Walk marked trails only. Don't trample undergrowth."
+      },
+      {
+        "t": "Honour culture",
+        "d": "Ask permission before photographing monasteries and people."
+      },
+      {
+        "t": "Keep it quiet",
+        "d": "Keep noise low - the hills and their creatures prefer it that way."
+      }
     ]
   },
   "privacy": {
     "title": "Privacy Policy",
     "updated": "Last updated: January 2026",
     "sections": [
-      { "h": "What we collect", "p": "Name, phone, email and booking details — only to deliver our service." },
-      { "h": "How we use data", "p": "To process bookings, connect you with providers, and improve the platform." },
-      { "h": "Your rights", "p": "You may request deletion or export of your data at any time." },
-      { "h": "Contact", "p": "Questions? privacy@1darjeeling.in" }
+      {
+        "h": "What we collect",
+        "p": "Name, phone, email and booking details - only to deliver our service."
+      },
+      {
+        "h": "How we use data",
+        "p": "To process bookings, connect you with providers, and improve the platform."
+      },
+      {
+        "h": "Your rights",
+        "p": "You may request deletion or export of your data at any time."
+      },
+      {
+        "h": "Contact",
+        "p": "Questions? privacy@1darjeeling.in"
+      }
     ]
   },
   "footer": {
     "made": "Made in Darjeeling, for Darjeeling",
     "rights": "All rights reserved"
+  },
+  "about": {
+    "eyebrow": "Our story",
+    "title": "Built in Darjeeling, for Darjeeling.",
+    "lead": "The hills already have everything a traveller needs. 1 Darjeeling simply puts it in one place, and makes sure the people who live here are the ones who benefit.",
+    "mission_title": "Why we built this",
+    "mission_body": "Visitors arrive in Darjeeling and end up booking through agents who have never walked these ridges. The homestay owner, the driver who knows every switchback, the shop weaving shawls upstairs, the cafe that has served the same breakfast since 1911 - they are hard to find online, and harder to book.\n\nWe put them on one map. No middlemen deciding who gets seen, no commission quietly taken out of a family's earnings.",
+    "pillars": [
+      {
+        "t": "Local first",
+        "d": "Every listing belongs to someone who lives and works in Darjeeling. Providers write their own descriptions, set their own prices and keep what they earn."
+      },
+      {
+        "t": "The whole hill, one place",
+        "d": "Homestays, drivers, tea houses, cafes, festivals and Himalayan wildlife - all in one app, instead of scattered across a dozen sites and phone numbers."
+      },
+      {
+        "t": "In your language",
+        "d": "The entire site works in English, Nepali, Hindi and Bengali, so a provider in Ghum can list a room as easily as a visitor from Kolkata can book it."
+      },
+      {
+        "t": "Honest pricing",
+        "d": "The price a provider sets is the price you see. Nothing is inflated to cover a commission you were never told about."
+      }
+    ],
+    "how_title": "How it works",
+    "steps": [
+      {
+        "t": "Find",
+        "d": "Browse stays, drivers, shops, cafes, festivals and biodiversity across Darjeeling and the hills around it."
+      },
+      {
+        "t": "Book or visit",
+        "d": "Reserve a homestay or a driver online. For shops, cafes and events, get directions and go."
+      },
+      {
+        "t": "Travel gently",
+        "d": "Follow the community pledge - the hills are a fragile ecosystem, and they stay beautiful only if visitors help."
+      }
+    ],
+    "providers_title": "Run something in Darjeeling?",
+    "providers_body": "If you host guests, drive visitors, pour tea or make things by hand, your work belongs here. Listing takes a few minutes and puts you in front of every visitor using the app."
   }
 }

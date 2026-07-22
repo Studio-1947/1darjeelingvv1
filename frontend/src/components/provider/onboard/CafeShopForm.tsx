@@ -9,7 +9,7 @@ import OnboardHero from './OnboardHero';
 import PriceSubmitScreen from './PriceSubmitScreen';
 import { OnboardState } from './useProviderOnboard';
 
-/** Step 2 for cafés and shops — one flow, with type-specific copy and presets. */
+/** Step 2 for cafés and shops - one flow, with type-specific copy and presets. */
 export default function CafeShopForm({ o }: { o: OnboardState }) {
   const { form, update } = o;
   const isCafe = form.business_type === 'cafe';
@@ -49,8 +49,8 @@ export default function CafeShopForm({ o }: { o: OnboardState }) {
               value={form.description}
               onChange={(e) => update({ description: e.target.value })}
               placeholder={isCafe
-                ? 'Tell visitors about your café — the vibe, menu highlights, seating, and what makes it special...'
-                : 'Tell visitors about your shop — what you sell, your story, unique products, and why they should visit...'}
+                ? 'Tell visitors about your café - the vibe, menu highlights, seating, and what makes it special...'
+                : 'Tell visitors about your shop - what you sell, your story, unique products, and why they should visit...'}
               className="w-full px-4 py-3.5 rounded-2xl border border-[var(--line)] bg-white outline-none text-sm text-ink leading-relaxed"
             />
           </div>

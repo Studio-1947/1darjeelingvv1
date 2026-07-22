@@ -14,6 +14,10 @@ import ProfileCompletionBar from '@/components/provider/ProfileCompletionBar';
 import { getMyProfile } from '@/lib/kyc';
 import type { KycProfile } from '@/lib/kyc';
 
+import LanguageSwitcher from '@/components/LanguageSwitcher';
+import AvatarUploader from '@/components/provider/AvatarUploader';
+import { uploadImage } from '@/lib/uploadImage';
+
 /** Provider home: booking stats, the bookings list, and business profile. */
 export default function ProviderDashboard() {
   const { t } = useTranslation();
@@ -34,7 +38,7 @@ export default function ProviderDashboard() {
       const [p, b, kyc] = await Promise.all([
         api.get('/providers/me'),
         api.get('/bookings/provider'),
-        // The provider may not have an active profile yet (or the request may simply fail) —
+        // The provider may not have an active profile yet (or the request may simply fail) -
         // that must never take down the rest of the dashboard, so it's caught independently
         // and just leaves the "Complete your profile" card and header badge unrendered.
         getMyProfile().catch(() => null),
@@ -66,7 +70,7 @@ export default function ProviderDashboard() {
   const mountedRef = useRef(true);
   useEffect(() => () => { mountedRef.current = false; }, []);
 
-  // A lightweight, independent refresh of just the KYC profile — used to catch up the header
+  // A lightweight, independent refresh of just the KYC profile - used to catch up the header
   // badge and completion card when something changed outside this tab (an admin approving a
   // document elsewhere) without re-fetching bookings/listings. Must never break the rest of
   // the dashboard if it fails, so failures are swallowed silently.
@@ -75,7 +79,7 @@ export default function ProviderDashboard() {
       const kyc = await getMyProfile();
       if (mountedRef.current) setKycProfile(kyc);
     } catch {
-      // Best-effort only — the badge simply stays as it was.
+      // Best-effort only - the badge simply stays as it was.
     }
   }, []);
 
@@ -144,7 +148,8 @@ export default function ProviderDashboard() {
           <h1 className="mt-1 font-display font-extrabold text-3xl sm:text-4xl md:text-5xl text-ink leading-tight">{provider.business_name}</h1>
           <p className="text-sm text-ink-soft mt-1 capitalize">{provider.business_type} · {provider.location}</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          <LanguageSwitcher />
           <button
             onClick={() => {
               localStorage.setItem(`unlocked_traveller_${user.id}`, 'true');
@@ -190,7 +195,7 @@ export default function ProviderDashboard() {
       {/* Complete your profile */}
       {kycProfile && kycProfile.completion_percent < 100 && (() => {
         // Items the provider can still act on (never uploaded, or bounced back). A document
-        // sitting in `in_review` is neither of these — it contributes nothing to
+        // sitting in `in_review` is neither of these - it contributes nothing to
         // completion_percent yet, but there's nothing left for the provider to do either, so
         // it must never be counted as "remaining" (that reads as an actionable checklist item
         // when there's nothing to click).
