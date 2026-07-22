@@ -285,3 +285,30 @@ computed from `created_at`) on the existing `otps` row, and reject sends once it
 exceeded within a rolling window — the same shape as the existing per-IP limiter, keyed on
 phone instead of IP. Not implemented here; recorded so it is not lost before the
 `MESSAGING_PROVIDER=msg91` flip.
+
+---
+
+## 7. Fourth-wave findings — 2026-07-21 (KYC/provider-lifecycle hardening pass)
+
+### 7.A ⏳ OPEN — one-shot dedupe migrations leave orphaned private-bucket objects (chore)
+
+Two migrations delete duplicate rows whose `file_key` pointed at objects in the private
+storage bucket, and neither cleans up the object itself:
+
+- `backend/drizzle/0004_tired_nemesis.sql` — dedupes `kyc_documents` down to one row per
+  `(provider_id, doc_type)` before adding that unique index.
+- `backend/drizzle/0005_chief_firelord.sql` — dedupes `providers` down to one row per
+  `user_id` before adding *that* unique index. Since `kyc_documents.provider_id` has an
+  `ON DELETE CASCADE` FK, deleting a duplicate provider row also cascades into deleting its
+  `kyc_documents` rows (and, transitively, their storage objects go unreferenced too).
+
+Both are one-shot, run-once-against-existing-data migrations, so leaving the storage side
+as a manual/deferred cleanup is an acceptable trade-off for shipping the DB-level
+correctness fix now rather than blocking it on wiring up a bucket-listing cleanup job. It is
+a real leak, though (unreferenced objects sit in the private bucket indefinitely, at
+whatever the storage cost is), and each migration file now carries a comment saying so.
+
+**Action needed:** a one-off cleanup script (or a documented manual step) that lists the
+private bucket, diffs against `file_key` values still referenced by `kyc_documents`, and
+deletes what's left over — run once against any environment that has actually applied
+0004/0005 against pre-fix data. Not implemented here; recorded so it isn't lost.

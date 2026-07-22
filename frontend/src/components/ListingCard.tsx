@@ -4,8 +4,9 @@ import { useTranslation } from 'react-i18next';
 import { MapPin } from 'lucide-react';
 import SmartImg from '@/components/SmartImg';
 import { listingImage, fallbackFor } from '@/lib/listingContent';
+import VerifiedBadge from '@/components/provider/VerifiedBadge';
 
-export default function ListingCard({ item, badge }) {
+export default function ListingCard({ item, badge = null }) {
   const { t } = useTranslation();
   const unit = item.type === 'homestay' ? t('common.per_night') : item.type === 'driver' ? t('common.per_day') : '';
   return (
@@ -20,7 +21,10 @@ export default function ListingCard({ item, badge }) {
         )}
       </div>
       <div className="p-5">
-        <h3 className="font-display font-bold text-lg text-ink line-clamp-1">{item.title}</h3>
+        <div className="flex items-center gap-1.5">
+          <h3 className="font-display font-bold text-lg text-ink line-clamp-1 min-w-0">{item.title}</h3>
+          {item.provider_verified && <span className="flex-shrink-0"><VerifiedBadge /></span>}
+        </div>
         <p className="text-xs text-ink-soft mt-1 flex items-center gap-1"><MapPin size={12} /> {item.location}</p>
         <p className="text-sm text-ink-soft mt-3 line-clamp-2">{item.description}</p>
       </div>

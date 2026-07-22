@@ -6,13 +6,14 @@ import { amenitiesFor, hostFor } from '@/lib/listingMeta';
 import { contentFor, listingImage, galleryImagesFor, personImageFor, fallbackFor } from '@/lib/listingContent';
 import MockPaymentModal from '@/components/MockPaymentModal';
 import BookingConfirmation from '@/components/BookingConfirmation';
-import useGoBack from '@/hooks/useGoBack';
-import DetailHero from '@/components/listing-detail/DetailHero';
+import DetailHero, { ShareOutcome } from '@/components/listing-detail/DetailHero';
 import {
   AboutSection, PhotosSection, OffersSection, StayGallerySection,
   HostSection, DriverSection, BestTimeSection, RoutesSection, LocationSection,
 } from '@/components/listing-detail/sections';
 import { ReserveSection, MobileStickyBar } from '@/components/listing-detail/ReserveSection';
+import ContactSection from '@/components/listing-detail/ContactSection';
+import ReviewsSection from '@/components/listing-detail/ReviewsSection';
 import { ctaFor } from '@/components/listing-detail/cta';
 import { useBookingFlow } from '@/components/listing-detail/useBookingFlow';
 
@@ -40,26 +41,36 @@ export default function ListingDetail() {
     window.open(`https://www.google.com/maps/search/?api=1&query=${q}`, '_blank');
   };
 
-  const shareIt = async () => {
-    if (!item) return;
+  const shareIt = async (): Promise<ShareOutcome> => {
+    if (!item) return 'failed';
     const url = window.location.href;
     if (navigator.share) {
-      try { await navigator.share({ title: item.title, text: item.description, url }); return; } catch (e) { console.warn('share failed', e); }
+      try {
+        await navigator.share({ title: item.title, text: item.description, url });
+        return 'shared';
+      } catch (e: any) {
+        // The user dismissing the native share sheet throws AbortError — that's a deliberate
+        // cancel, not a failure, so don't silently fall back to copying the link behind their back.
+        if (e?.name === 'AbortError') return 'shared';
+        console.warn('share failed', e);
+      }
     }
-    try { await navigator.clipboard.writeText(url); booking.setMsg('Link copied!'); setTimeout(() => booking.setMsg(''), 1500); } catch (e) { console.warn('clipboard failed', e); }
+    try {
+      await navigator.clipboard.writeText(url);
+      return 'copied';
+    } catch (e) {
+      console.warn('clipboard failed', e);
+      return 'failed';
+    }
   };
 
   if (loading) return <div className="mx-auto max-w-5xl p-10 text-ink-soft">{t('common.loading')}</div>;
   if (!item) return <div className="mx-auto max-w-5xl p-10">Not found.</div>;
 
-  // Without a published price there is nothing to charge, so such listings fall
-  // back to directions rather than offering a booking flow.
-  const bookable = (item.type === 'homestay' || item.type === 'driver') && item.price > 0;
-  // Types that trade — everything else (spots, events, biodiversity) is informational.
-  // `extras.no_reserve` opts a single listing out: a weekly haat has nothing to
-  // reserve even though it is a shop.
-  const commercial = ['homestay', 'driver', 'shop', 'cafe'].includes(item.type)
-    && !item.extras?.no_reserve;
+  const bookable = item.type === 'homestay' || item.type === 'driver';
+  // Booked online (homestay/driver) get the reserve form; shops, cafes and events instead get a
+  // direct-contact/action screen. Spots and biodiversity stay purely informational.
+  const contactable = ['shop', 'cafe', 'event'].includes(item.type);
 
   const unit = item.type === 'homestay' ? t('common.per_night') : item.type === 'driver' ? t('common.per_day') : '';
   const cta = ctaFor(item.type);
@@ -111,9 +122,13 @@ export default function ListingDetail() {
         <LocationSection item={item} coords={c.coords} spotted={c.spotted} onOpenMaps={openMaps} />
       )}
 
-      {commercial && (
+      {bookable && (
         <ReserveSection item={item} unit={unit} bookable={bookable} cta={cta} booking={booking} onOpenMaps={openMaps} />
       )}
+
+      {contactable && <ContactSection item={item} onOpenMaps={openMaps} />}
+
+      <ReviewsSection item={item} />
 
       <MobileStickyBar item={item} unit={unit} bookable={bookable} cta={cta} busy={booking.busy}
         onBook={booking.doBook} onOpenMaps={openMaps} />

@@ -34,9 +34,10 @@ internet → system Nginx (:80/:443, TLS) → 127.0.0.1:<port> → app's own ngi
 
 | Container | Role | Ports |
 | --------- | ---- | ----- |
-| `1darjeeling_prod_nginx` | serves both frontend builds, proxies `/api` + `/api-docs` to backend | `127.0.0.1:8091->80` |
+| `1darjeeling_prod_nginx` | serves both frontend builds, proxies `/api` + `/api-docs` to backend, and proxies the public MinIO bucket path (see §8) | `127.0.0.1:8091->80` |
 | `1darjeeling_prod_backend` | Express API | internal only |
 | `1darjeeling_prod_postgres` | database (volume `pg_data_prod`) | internal only |
+| `1darjeeling_prod_minio` | object storage: public listing images + private KYC documents (volume `minio_data_prod`) | internal only — no published host port, by design (see §8) |
 
 ---
 
@@ -118,6 +119,7 @@ wrong. All of these are fixed by editing `/var/www/1darjeelingvv1/.env` and re-r
 | `RAZORPAY_WEBHOOK_SECRET is required when MOCK_PAYMENTS=false` | No webhook secret | See README → "Razorpay setup" |
 | `RAZORPAY_KEY_ID is a test key (rzp_test_*) but APP_ENV=production` | Test key in production | Use `rzp_live_*` keys |
 | `DATABASE_URL environment variable is required` | Compose didn't compute it | Check `POSTGRES_USER`/`PASSWORD`/`DB` are all set in `.env` |
+| `MINIO_PUBLIC_URL is set to a localhost URL … but APP_ENV=production` | `MINIO_PUBLIC_URL` still points at `localhost`/`127.0.0.1` | Set it to the real public site origin, e.g. `https://onedarjeeling.duckdns.org` — see §8 |
 | `MOCK_PAYMENTS=true with APP_ENV=production` | **Warning, not fatal** | Expected before go-live; payments are simulated |
 
 **Database connection refused after changing `POSTGRES_PASSWORD`:** the Postgres volume initialises
@@ -207,6 +209,93 @@ Observed while inventorying; none are caused by this app, and all are outside th
 | **Stale SSH deploy keys** | `deploy`'s `authorized_keys` holds three keys all commented `github-actions-deploy` (one duplicated), so none can be safely revoked — you can't tell what each is for | Identify each from its project's deploy log fingerprint, drop the duplicate and any orphan |
 | **No database backups** | `pg_data_prod` (and every other project's volume) has no backup | Add a `pg_dump` cron before there's real data to lose |
 | **Untracked directories** | `/var/www/app` (1020M) and `/var/www/Raj-kamal-mono-repo` (78M) have no running compose project | Confirm whether they're live, archive if not |
+
+---
+
+## 8. Object storage (MinIO)
+
+The prod stack runs a `minio` service alongside postgres/backend/nginx, with its data on a
+persistent named volume, **`minio_data_prod`** (same durability story as `pg_data_prod` — it
+survives `docker compose down`, but not `down -v`). It holds two buckets with very different
+sensitivity:
+
+| Bucket | Env var | Visibility | Served by |
+| ------ | ------- | ---------- | --------- |
+| `one-darjeeling` (default) | `MINIO_BUCKET` | **Public** — listing images | nginx, via `location /one-darjeeling/` in `deploy/nginx/app.conf`, proxying to MinIO |
+| `one-darjeeling-kyc` (default) | `MINIO_KYC_BUCKET` | **Private** — Aadhaar/PAN/licence scans | Only the backend's authenticated `GET /api/providers/kyc/:id/file` route |
+
+**⚠️ The KYC bucket holds government identity documents.** It has no public-read policy, and
+nginx has no route to it — `app.conf` carries both a comment explaining why and an explicit
+`return 404` on that path prefix as defense-in-depth. Never publish MinIO's port to work around
+this, never add an nginx location for the KYC bucket "for consistency" with the public one, and
+treat any backup of `minio_data_prod` as containing sensitive personal data (see backup guidance
+below).
+
+MinIO deliberately has **no published host port** (unlike dev, which exposes 9000/9001) — the
+backend reaches it over the internal compose network only, and the public bucket is reached
+through nginx, not MinIO directly. This is the same "internal only" pattern postgres already
+uses in this file.
+
+### Reaching the MinIO console without publishing a port
+
+For occasional debugging (browsing objects, checking bucket policies), don't add a `ports:` entry
+to `docker-compose.prod.yml` — that's a permanent hole. Use one of these instead, and close it
+when you're done:
+
+**Quickest — shell straight into the container**, which already sits on `localhost:9000`/`:9001`
+from its own point of view:
+
+```sh
+# On the VPS:
+docker exec -it 1darjeeling_prod_minio sh
+# From inside the container, curl the API or use `mc` (MinIO's CLI) against localhost:9000.
+```
+
+**For the web console in a browser**, tunnel to the container's IP on Docker's bridge network —
+reachable from the VPS host even though nothing is published, because the host always has a route
+to its own bridge subnets. No host port is ever bound, and the tunnel closes when you disconnect:
+
+```sh
+# On the VPS: find the container's address on the compose network.
+docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' 1darjeeling_prod_minio
+# => e.g. 172.20.0.4
+
+# From your local machine — replace <vps-host> and the IP from above:
+ssh -L 9001:172.20.0.4:9001 deploy@<vps-host>
+# Then browse http://localhost:9001 on your machine. Ctrl-C the ssh command when done.
+```
+
+Whichever method you use, never bind a MinIO port to `0.0.0.0` — that puts the object store,
+including the KYC bucket, directly on the internet.
+
+### Backup and restore
+
+Same shape as a Postgres volume backup — stop the container so no writes land mid-copy, tar the
+volume via a throwaway container, then restart:
+
+```sh
+# Backup — run from anywhere with docker access to the VPS:
+docker compose -f docker-compose.prod.yml stop minio
+docker run --rm -v 1darjeeling-prod_minio_data_prod:/data -v "$PWD":/backup alpine \
+  tar czf /backup/minio_data_prod_$(date +%Y%m%d).tar.gz -C /data .
+docker compose -f docker-compose.prod.yml start minio
+```
+
+```sh
+# Restore (into a fresh/empty volume) — DESTROYS whatever is currently in the volume:
+docker compose -f docker-compose.prod.yml stop minio
+docker run --rm -v 1darjeeling-prod_minio_data_prod:/data -v "$PWD":/backup alpine \
+  sh -c "rm -rf /data/* && tar xzf /backup/minio_data_prod_YYYYMMDD.tar.gz -C /data"
+docker compose -f docker-compose.prod.yml start minio
+```
+
+**Handle these archives as sensitive personal data.** The tarball contains both bucket's raw
+files — including every Aadhaar/PAN/licence scan ever uploaded. Encrypt it at rest (e.g.
+`gpg -c` before it leaves the VPS) and off the box, restrict who can read it, and don't attach it
+to a ticket or chat unencrypted. This is the same class of data a Postgres backup of the `kyc_documents`
+table would contain, if that table stored file bytes instead of object keys — it doesn't, precisely
+so backups of the database and backups of the object store are each incomplete on their own; you
+need to protect both.
 
 ---
 

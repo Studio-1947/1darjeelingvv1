@@ -1,4 +1,4 @@
-import { pgTable, text, integer, boolean, numeric, jsonb, doublePrecision } from 'drizzle-orm/pg-core';
+import { pgTable, text, integer, boolean, numeric, jsonb, doublePrecision, uniqueIndex, index } from 'drizzle-orm/pg-core';
 
 export const users = pgTable('users', {
   id: text('id').primaryKey(),
@@ -36,9 +36,18 @@ export const providers = pgTable('providers', {
   images: jsonb('images').$type<string[]>().default([]).notNull(),
   extras: jsonb('extras').$type<Record<string, any>>().default({}).notNull(),
   status: text('status').notNull(),
+  kycStatus: text('kyc_status').default('none').notNull(),
   createdAt: text('created_at').notNull(),
   activatedAt: text('activated_at'),
-});
+}, (t) => ({
+  // At most one provider row per user, ever — enforced at the DB level so the onboard route's
+  // read-then-write conflict check can't lose a race (two concurrent onboards both reading "no
+  // existing row" and both inserting). Also closes the status hole where only 'active' and
+  // 'pending_payment' were checked in app code: a 'suspended' provider could otherwise create a
+  // second row, reintroducing the nondeterministic-attribution problem this index exists to
+  // prevent.
+  userIdUnique: uniqueIndex('providers_user_id_unique').on(t.userId),
+}));
 
 export const listings = pgTable('listings', {
   id: text('id').primaryKey(),
@@ -71,6 +80,33 @@ export const bookings = pgTable('bookings', {
   confirmedAt: text('confirmed_at'),
 });
 
+export const favorites = pgTable('favorites', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  listingId: text('listing_id').references(() => listings.id, { onDelete: 'cascade' }).notNull(),
+  createdAt: text('created_at').notNull(),
+}, (t) => ({
+  // A user can favorite a listing at most once — enforced at the DB level so a double-tap or two
+  // concurrent POSTs can't create duplicate rows (the add route relies on this via onConflictDoNothing).
+  userListingUnique: uniqueIndex('favorites_user_id_listing_id_unique').on(t.userId, t.listingId),
+}));
+
+export const reviews = pgTable('reviews', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  listingId: text('listing_id').references(() => listings.id, { onDelete: 'cascade' }).notNull(),
+  rating: integer('rating').notNull(), // 1..5, validated in the route
+  comment: text('comment').default('').notNull(),
+  authorName: text('author_name').notNull(), // snapshot of the reviewer's name at write time
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at'),
+}, (t) => ({
+  // One review per (user, listing) — a second submit edits the first (upsert) instead of stacking.
+  userListingUnique: uniqueIndex('reviews_user_id_listing_id_unique').on(t.userId, t.listingId),
+  // Listing detail and the rating aggregates both read reviews by listing, so index that lookup.
+  listingIdx: index('reviews_listing_id_idx').on(t.listingId),
+}));
+
 export const payments = pgTable('payments', {
   id: text('id').primaryKey(),
   userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
@@ -85,3 +121,21 @@ export const payments = pgTable('payments', {
   createdAt: text('created_at').notNull(),
   paidAt: text('paid_at'),
 });
+
+export const kycDocuments = pgTable('kyc_documents', {
+  id: text('id').primaryKey(),
+  providerId: text('provider_id').references(() => providers.id, { onDelete: 'cascade' }).notNull(),
+  docType: text('doc_type').notNull(),
+  fileKey: text('file_key').notNull(),        // object key in the PRIVATE bucket — never a public URL
+  contentType: text('content_type').notNull(),
+  status: text('status').notNull(),           // 'pending' | 'approved' | 'rejected'
+  rejectionReason: text('rejection_reason'),
+  uploadedAt: text('uploaded_at').notNull(),
+  reviewedAt: text('reviewed_at'),
+  reviewedBy: text('reviewed_by'),
+}, (t) => ({
+  // Exactly one row per (provider, docType) — enforced at the DB level so concurrent uploads
+  // of the same docType can't both insert, which previously let approved/pending duplicates
+  // coexist and made the Verified badge flap depending on unordered row read order.
+  providerDocTypeUnique: uniqueIndex('kyc_documents_provider_doc_type_unique').on(t.providerId, t.docType),
+}));

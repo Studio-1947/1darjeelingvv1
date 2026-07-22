@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
-import { LogOut, Store, Compass, Phone, ArrowRight, Ticket, Calendar, Sparkles } from 'lucide-react';
+import { LogOut, Store, Compass, Phone, ArrowRight, Ticket, Calendar, Sparkles, XCircle, Loader2 } from 'lucide-react';
 
 function StatusPill({ status }) {
   const map = {
@@ -20,12 +20,27 @@ export default function TouristDashboard() {
   const nav = useNavigate();
   const [bookings, setBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [confirmingId, setConfirmingId] = useState<string | null>(null); // booking awaiting cancel confirmation
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  const loadBookings = useCallback(() => api.get('/bookings/me').then((r) => setBookings(r.data.items || [])), []);
 
   useEffect(() => {
     if (authLoading) return;
     if (!user) { nav('/login?next=/dashboard'); return; }
-    api.get('/bookings/me').then((r) => setBookings(r.data.items || [])).finally(() => setLoading(false));
-  }, [user, authLoading, nav]);
+    loadBookings().finally(() => setLoading(false));
+  }, [user, authLoading, nav, loadBookings]);
+
+  const cancelBooking = async (id: string) => {
+    setBusyId(id);
+    try {
+      await api.patch(`/bookings/${id}/cancel`);
+      await loadBookings();
+      setConfirmingId(null);
+    } finally {
+      setBusyId(null);
+    }
+  };
 
   if (authLoading || loading || !user) return <div className="p-10 text-center text-ink-soft">{t('common.loading')}</div>;
 
@@ -103,11 +118,28 @@ export default function TouristDashboard() {
                     {b.check_in && <div>Check-in: <b className="text-ink">{b.check_in}</b>{b.check_out && <> → <b className="text-ink">{b.check_out}</b></>}</div>}
                     <div>Guests: <b className="text-ink">{b.guests}</b> · Booked: {new Date(b.created_at).toLocaleDateString()}</div>
                   </div>
-                  <div className="mt-3">
+                  <div className="mt-3 flex items-center justify-between gap-2">
                     <Link to={`/listing/${b.listing_id}`} data-testid={`revisit-${b.id}`}
                       className="inline-flex items-center gap-1.5 text-xs font-bold text-pine">
                       View listing <ArrowRight size={12} />
                     </Link>
+                    {b.status !== 'cancelled' && (
+                      confirmingId === b.id ? (
+                        <span className="inline-flex items-center gap-2 text-xs">
+                          <span className="text-ink-soft">Cancel this?</span>
+                          <button onClick={() => cancelBooking(b.id)} disabled={busyId === b.id}
+                            data-testid={`confirm-cancel-${b.id}`} className="inline-flex items-center gap-1 font-bold text-flag disabled:opacity-50">
+                            {busyId === b.id ? <Loader2 size={12} className="animate-spin" /> : null} Yes
+                          </button>
+                          <button onClick={() => setConfirmingId(null)} className="font-bold text-ink-soft">No</button>
+                        </span>
+                      ) : (
+                        <button onClick={() => setConfirmingId(b.id)} data-testid={`cancel-booking-${b.id}`}
+                          className="inline-flex items-center gap-1 text-xs font-bold text-flag hover:text-[#8a1e1e]">
+                          <XCircle size={12} /> Cancel
+                        </button>
+                      )
+                    )}
                   </div>
                 </div>
               </article>

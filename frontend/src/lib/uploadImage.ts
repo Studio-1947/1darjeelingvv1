@@ -1,10 +1,19 @@
 import api from '@/lib/api';
 
+// Backend caps a stored image at 20 MB and answers an oversize with a 413 the caller can only show
+// as a generic "Upload failed". Catch it here so the user gets an accurate reason before we spend
+// time reading and base64-encoding a file that's going to be rejected anyway. Keep in sync with
+// MAX_UPLOAD_BYTES in backend/src/routes/listings.ts.
+const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
+
 /**
  * Read a file into a data URL and push it to the listings upload endpoint.
  * Rejects with a display-ready message string so callers can show it as-is.
  */
 export async function uploadImage(file: File): Promise<string> {
+  if (file.size > MAX_UPLOAD_BYTES) {
+    throw 'Image is larger than 20 MB. Please choose a smaller photo.';
+  }
   const dataUrl = await new Promise<string | ArrayBuffer | null>((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result);

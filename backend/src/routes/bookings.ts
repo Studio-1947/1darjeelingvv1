@@ -316,4 +316,67 @@ router.get('/provider', authenticateToken, async (req: Request, res: Response) =
   });
 });
 
+/**
+ * @openapi
+ * /bookings/{id}/cancel:
+ *   patch:
+ *     summary: Cancel a booking (by the traveller who made it, the provider who owns the listing, or an admin)
+ *     tags: [Bookings]
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: The cancelled booking (idempotent if already cancelled) }
+ *       403: { description: Caller may not cancel this booking }
+ *       404: { description: Booking not found }
+ */
+// Cancel a booking. A traveller can cancel their own; a provider can decline/cancel one on a
+// listing they own; an admin can cancel any. Only ever transitions to 'cancelled' (no un-cancel).
+router.patch('/:id/cancel', authenticateToken, async (req: Request, res: Response) => {
+  const [booking] = await db.select().from(schema.bookings).where(eq(schema.bookings.id, req.params.id as any)).limit(1);
+  if (!booking) return res.status(404).json({ detail: 'Booking not found' });
+
+  let allowed = booking.userId === req.user.id || req.user.role === 'admin';
+  if (!allowed) {
+    // Provider path: the listing's providerId can be a provider id or a bare user id (admin-created
+    // listings), so accept either the caller's user id or any of their provider ids.
+    const [listing] = await db.select({ providerId: schema.listings.providerId })
+      .from(schema.listings).where(eq(schema.listings.id, booking.listingId)).limit(1);
+    if (listing) {
+      const providersList = await db.select({ id: schema.providers.id })
+        .from(schema.providers).where(eq(schema.providers.userId, req.user.id));
+      const ownIds = new Set<string>([req.user.id, ...providersList.map(p => p.id)]);
+      allowed = ownIds.has(listing.providerId);
+    }
+  }
+  if (!allowed) return res.status(403).json({ detail: 'You do not have permission to cancel this booking' });
+
+  const shape = (b: typeof schema.bookings.$inferSelect) => ({
+    id: b.id,
+    user_id: b.userId,
+    listing_id: b.listingId,
+    listing_type: b.listingType,
+    listing_title: b.listingTitle,
+    check_in: b.checkIn,
+    check_out: b.checkOut,
+    guests: b.guests,
+    notes: b.notes,
+    status: b.status,
+    created_at: b.createdAt,
+    confirmed_at: b.confirmedAt,
+  });
+
+  // Idempotent: cancelling an already-cancelled booking just echoes it back.
+  if (booking.status === 'cancelled') return res.json({ booking: shape(booking) });
+
+  const [updated] = await db.update(schema.bookings)
+    .set({ status: 'cancelled' })
+    .where(eq(schema.bookings.id, booking.id))
+    .returning();
+  res.json({ booking: shape(updated) });
+});
+
 export default router;

@@ -29,7 +29,8 @@ export async function loginAdmin() {
   return res.body.token as string;
 }
 
-export async function onboardActiveProvider(opts: { name: string }) {
+export async function onboardActiveProvider(opts: { name: string; businessType?: string }) {
+  const businessType = opts.businessType || 'homestay';
   const { token, phone } = await registerUser({ name: opts.name, role: 'provider' });
 
   const onboardRes = await request(app)
@@ -37,7 +38,7 @@ export async function onboardActiveProvider(opts: { name: string }) {
     .set('Authorization', `Bearer ${token}`)
     .send({
       business_name: `${opts.name}'s Business`,
-      business_type: 'homestay',
+      business_type: businessType,
       description: 'A lovely place to stay',
       location: 'Darjeeling',
       contact_phone: phone,

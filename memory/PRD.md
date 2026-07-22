@@ -39,11 +39,14 @@ Darjeeling tourism today is fragmented across informal channels — WhatsApp gro
 1. From the Discover page banner or bottom nav, goes to **Provider Onboarding** (`/provider/onboard`) — submits business name, type (homestay/driver/shop/cafe), description, location, contact phone, starting price, one image URL.
 2. Provider profile is created as `pending_payment`, the user's `role` flips to `provider`.
 3. Pays the **₹99 one-time registration fee** → profile flips to `active`, activation also **auto-creates a listing** from the provider profile so it's immediately discoverable.
-4. Manages everything from the **Provider Dashboard** (`/provider/dashboard`) — status badge, 4 stat cards (total bookings, confirmed, revenue, live listings), tabs for Bookings / My Listings / Business Profile. Each booking row shows the customer, dates, notes, and Call/WhatsApp quick actions.
+4. On the dashboard's **Business Profile** tab, sees a server-computed **profile completion bar** — a blend of profile richness (40%: description length, a photo, a starting price, a pinned map location) and KYC document approval (60%, required-doc types only, varying by business type — see §8). Optionally uploads KYC documents (Aadhaar/PAN/owner photo plus business-type-specific licences, e.g. driving licence + RC for drivers, FSSAI for cafes/shops) for admin review. This is entirely **optional and blocks nothing** — it never gates onboarding, activation, or listing visibility.
+5. Once an admin approves every *required* document for the business type, `kycStatus` flips to `verified` and a **"Verified" badge** appears on the provider's dashboard and on all of that provider's public listings (`ListingCard`/listing detail).
+6. Manages everything from the **Provider Dashboard** (`/provider/dashboard`) — status badge, 4 stat cards (total bookings, confirmed, revenue, live listings), tabs for Bookings / My Listings / Business Profile. Each booking row shows the customer, dates, notes, and Call/WhatsApp quick actions.
 
 ### Admin
 1. Logs in at the separate **admin app** (`frontend-admin`, port 5173 in dev) via username/password (`/auth/admin/login`), or bootstraps the very first DB-backed admin via a one-time secret (`/admin/bootstrap`).
 2. From the **Admin** page: sees platform stats (users/providers/listings/bookings/paid-payments counts), can seed the 27 sample listings, list/delete users (except other admins) and listings, change a provider's status, and browse all bookings/payments.
+3. From the **KYC review** page: lists submitted documents (filterable by status), opens each one — the image/PDF streams through the token-authenticated backend proxy, never a direct bucket URL — and approves or rejects with an optional reason. Approving every required document for a provider's business type flips that provider to `verified` (§4).
 
 ## 5. Feature inventory (as implemented today)
 
@@ -64,11 +67,12 @@ Darjeeling tourism today is fragmented across informal channels — WhatsApp gro
 | Mobile bottom nav (5 tabs) | ✅ Done | Home / Explore(spots) / Book(homestays) / Green(responsible tourism) / Profile |
 | Listing editing/multi-listing per provider | ✅ Done | Providers can add/edit/delete their own listings (ownership-checked); admins can manage any listing |
 | Homestay double-booking prevention | ✅ Done | Overlapping date ranges against already-*confirmed* bookings on the same listing are rejected (409); overlapping *pending_payment* bookings are allowed to co-exist since they have no expiry and the first to actually pay wins the slot |
+| Provider profile completion + KYC verification | ✅ Done | Server-computed 40/60 blended completion bar; optional document upload (Aadhaar/PAN/owner photo + business-type-specific licences) to a **private** MinIO bucket; admin approves/rejects via `frontend-admin`'s KYC page; all-required-approved → `kycStatus: verified` → "Verified" badge on dashboard + public listings. Purely additive — no gating of onboarding, activation, or listing creation; no third-party KYC/identity-verification integration, verification is manual by an admin |
 | Reviews & ratings | ❌ Not implemented | |
 | In-app messaging | ❌ Not implemented | Contact is via Call/WhatsApp deep links only |
 | Real WhatsApp/SMS OTP delivery | ❌ Not implemented | Mock only |
 | Full local-shop checkout (cart, pay full order value) | ❌ Not implemented | Shops are discovery-only; no cart/order flow |
-| Automated tests | ✅ Done | 45 Vitest + Supertest tests against an isolated Postgres test DB, covering auth, listings, bookings, payments, admin |
+| Automated tests | ✅ Done | 147 Vitest + Supertest tests against an isolated Postgres test DB, covering auth, listings, bookings, payments, admin, provider profile completion, and KYC upload/review |
 
 ## 6. Auth model
 
@@ -94,19 +98,26 @@ Postgres tables (`backend/src/schema.ts`, Drizzle ORM):
 
 - **`users`** — `id, phone (unique), name, role, providerPaid, email, language, avatar, createdAt, password`. `password` is only ever set for DB-backed admins (via bootstrap).
 - **`otps`** — `phone (PK), otp, channel, createdAt`. One row per phone; each new OTP request overwrites the previous.
-- **`providers`** — `id, userId (FK→users, cascade), businessName, businessType, description, location, contactPhone, priceFrom, images (jsonb), extras (jsonb), status (pending_payment|active), createdAt, activatedAt`.
+- **`providers`** — `id, userId (FK→users, cascade), businessName, businessType, description, location, latitude, longitude, contactPhone, priceFrom, images (jsonb), extras (jsonb), status (pending_payment|active), kycStatus (none|partial|submitted|verified, default none), createdAt, activatedAt`. `kycStatus` is recomputed server-side (`recomputeKycStatus`) every time a document is uploaded, deleted, or reviewed — never set directly by a client.
+- **`kyc_documents`** — `id, providerId (FK→providers, cascade), docType, fileKey (object key in the private KYC bucket — never returned to a client), contentType, status (pending|approved|rejected), rejectionReason, uploadedAt, reviewedAt, reviewedBy`. One row per `(providerId, docType)`: re-uploading a doc type deletes the previous row (and its MinIO object) and replaces it, resetting status to `pending`. Required doc types vary by `businessType` — see `backend/src/lib/kycRequirements.ts`.
 - **`listings`** — `id, title, type, description, location, price, image, tags (jsonb), providerId, extras (jsonb), createdAt`. `providerId` is a loose text reference (matches either a `providers.id` or, for seed data, the sentinel `admin-seed-provider`) — not an FK.
 - **`bookings`** — `id, userId (FK→users, cascade), listingId (FK→listings, cascade), listingType, listingTitle, checkIn, checkOut, guests, notes, status (pending_payment|confirmed), createdAt, confirmedAt`.
 - **`payments`** — `id, userId (FK→users, cascade), flow, referenceId, amount, orderId (unique), status (created|paid), paymentId, signature, mock, createdAt, paidAt`.
 
 ## 9. API surface
 
-26 REST endpoints under `/api`, grouped as `auth`, `users`, `providers`, `listings`, `bookings`, `payments`, `admin`. **Full interactive documentation — request/response shapes, auth requirements, status codes — is served live at `http://localhost:8000/api-docs`** (Swagger UI, generated from `@openapi` JSDoc comments on each route; raw spec at `/api-docs.json`). This PRD intentionally doesn't duplicate that reference.
+40 REST endpoints under `/api`, grouped as `auth`, `users`, `providers`, `listings`, `bookings`, `payments`, `admin`. **Full interactive documentation — request/response shapes, auth requirements, status codes — is served live at `http://localhost:8000/api-docs`** (Swagger UI, generated from `@openapi` JSDoc comments on each route; raw spec at `/api-docs.json`). This PRD intentionally doesn't duplicate that reference.
 
 Authorization notes worth knowing at a glance (enforced as of 2026-07-16, see `INVESTIGATION.md` for history):
 - Creating a listing (`POST /listings`) requires being an **active provider** (forced to your own `provider_id`) or an **admin**.
 - Completing a payment (`/payments/mock/complete`, `/payments/verify`) requires the payment to belong to the calling user.
 - All `/admin/*` routes require an admin JWT; there is no unauthenticated seeding route.
+
+**KYC / profile-completion endpoints** (under the `providers` and `admin` groups, added alongside the feature in §4/§8):
+- `GET /providers/me/profile` — completion percent, checklist, `kycStatus`, and the caller's own documents (own active provider only).
+- `GET /providers/me/kyc` / `POST /providers/me/kyc` / `DELETE /providers/me/kyc/:docType` — list, upload (base64 data URL, JPEG/PNG/PDF, 5 MB cap), or remove the caller's own documents.
+- `GET /providers/kyc/:id/file` — streams a document's bytes from the **private** MinIO bucket; only the owning provider or an admin may call it (401 with no token, 403 for anyone else), and nothing else in the API ever returns a direct bucket URL or object key for a KYC file.
+- `GET /admin/kyc?status=` / `POST /admin/kyc/:id/review` (admin-only) — list documents (optionally filtered by status) and approve/reject one, which recomputes the owning provider's `kycStatus`.
 
 ## 10. Tech stack & architecture
 
@@ -132,7 +143,7 @@ See root `README.md` for local setup and `INVESTIGATION.md` for known dependency
 - **i18n**: 4 languages shipped (`en`, `bn`, `hi`, `ne`) via `react-i18next`, translation files in `frontend/src/locales/`.
 - **PWA**: installable (manifest present, standalone display, themed), and now has a real offline app shell — a Workbox service worker (only registered in production builds, never in `yarn start` dev mode) precaches the built JS/CSS/HTML and remote listing images, with an SPA navigation fallback so client-side routing keeps working offline. API data itself is deliberately *not* cached (offline shell, not offline data — full cached-listings support is still P2, see §13).
 - **Security posture**: tracked separately and in more depth in `INVESTIGATION.md` at the repo root — that document is the living record of what's been fixed and what's still open (as of this writing: authorization gaps on listings/payments/seeding have been fixed; stale `.env.example`/dependency issues remain open).
-- **Automated backend test suite** exists (Vitest + Supertest, isolated test database) covering auth, listings, bookings, payments, and admin — 45 tests as of this writing. No frontend automated tests yet.
+- **Automated backend test suite** exists (Vitest + Supertest, isolated test database) covering auth, listings, bookings, payments, admin, provider profile completion, and KYC upload/review — 147 tests as of this writing. No frontend automated tests yet.
 
 ## 13. Backlog / next actions
 

@@ -2,11 +2,12 @@ import { Router, Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { db } from '../db';
 import * as schema from '../schema';
-import { eq, and, count } from 'drizzle-orm';
+import { eq, and, count, inArray, desc } from 'drizzle-orm';
 import { SEED_LISTINGS } from '../seed_data';
 import { authenticateToken, requireAdmin, hashPassword } from '../middleware/auth';
 import { rateLimiter } from '../middleware/rateLimiter';
 import { ADMIN_BOOTSTRAP_SECRET } from '../config';
+import { recomputeKycStatus } from './kyc';
 
 const router = Router();
 
@@ -332,7 +333,7 @@ router.delete('/admin/users/:id', authenticateToken, requireAdmin, async (req: R
  *             type: object
  *             required: [status]
  *             properties:
- *               status: { type: string, enum: [pending_payment, active] }
+ *               status: { type: string, enum: [pending_payment, active, suspended] }
  *     responses:
  *       200:
  *         description: Updated
@@ -348,12 +349,21 @@ router.delete('/admin/users/:id', authenticateToken, requireAdmin, async (req: R
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
  */
+// The real provider lifecycle: pending_payment (onboarded, awaiting the ₹99 registration
+// payment) -> active (paid, listings publish, KYC uploads accepted) -> suspended (an admin
+// has pulled the provider — the frontend's suspend action (Admin.tsx) sends exactly this
+// value). All three must be allowed here or the admin console's suspend/reinstate actions 400.
+const ALLOWED_PROVIDER_STATUSES = ['pending_payment', 'active', 'suspended'] as const;
+
 // Admin Providers status update
 router.put('/admin/providers/:id/status', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
   const { id } = req.params;
   const { status } = req.body;
   if (!status) {
     return res.status(400).json({ detail: 'Status is required' });
+  }
+  if (!ALLOWED_PROVIDER_STATUSES.includes(status)) {
+    return res.status(400).json({ detail: `Status must be one of: ${ALLOWED_PROVIDER_STATUSES.join(', ')}` });
   }
   await db.update(schema.providers).set({ status }).where(eq(schema.providers.id, id as any));
   res.json({ ok: true });
@@ -407,6 +417,107 @@ router.get('/admin/bookings', authenticateToken, requireAdmin, async (req: Reque
 router.get('/admin/payments', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
   const items = await db.select().from(schema.payments);
   res.json({ items });
+});
+
+// GET /admin/kyc?status=pending&limit=50&offset=0 — page through KYC documents with
+// provider/user context. `status` is optional (omit for all statuses); `limit`/`offset`
+// default to a sane page size and are capped so a caller can't force an unbounded scan.
+const KYC_LIST_DEFAULT_LIMIT = 50;
+const KYC_LIST_MAX_LIMIT = 200;
+
+/** Parses a paging query param, falling back for anything non-positive or non-numeric. */
+function parsePositiveInt(raw: unknown, fallback: number, max?: number): number {
+  const n = parseInt(String(raw), 10);
+  if (!Number.isFinite(n) || n <= 0) return fallback;
+  return max != null ? Math.min(n, max) : n;
+}
+
+/** Parses an offset query param — unlike limit, 0 is a valid, meaningful value. */
+function parseNonNegativeInt(raw: unknown, fallback: number): number {
+  const n = parseInt(String(raw), 10);
+  if (!Number.isFinite(n) || n < 0) return fallback;
+  return n;
+}
+
+router.get('/admin/kyc', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
+  const statusFilter = typeof req.query.status === 'string' ? req.query.status : undefined;
+  const limit = req.query.limit != null
+    ? parsePositiveInt(req.query.limit, KYC_LIST_DEFAULT_LIMIT, KYC_LIST_MAX_LIMIT)
+    : KYC_LIST_DEFAULT_LIMIT;
+  const offset = req.query.offset != null ? parseNonNegativeInt(req.query.offset, 0) : 0;
+
+  const whereClause = statusFilter ? eq(schema.kycDocuments.status, statusFilter) : undefined;
+
+  // Ordered explicitly (newest upload first) so that paging is stable and non-overlapping
+  // across requests — without an ORDER BY, row order across separate queries is not
+  // guaranteed, which would make limit/offset paging unreliable.
+  const [rows, totalRows] = await Promise.all([
+    db.select().from(schema.kycDocuments).where(whereClause).orderBy(desc(schema.kycDocuments.uploadedAt), schema.kycDocuments.id).limit(limit).offset(offset),
+    db.select({ value: count() }).from(schema.kycDocuments).where(whereClause),
+  ]);
+  const total = totalRows[0]?.value || 0;
+
+  const providerIds = [...new Set(rows.map(d => d.providerId))];
+  const providers = providerIds.length
+    ? await db.select().from(schema.providers).where(inArray(schema.providers.id, providerIds))
+    : [];
+  const pById = new Map(providers.map(p => [p.id, p]));
+  const userIds = [...new Set(providers.map(p => p.userId))];
+  const users = userIds.length
+    ? await db.select().from(schema.users).where(inArray(schema.users.id, userIds))
+    : [];
+  const uById = new Map(users.map(u => [u.id, u]));
+
+  const documents = rows.map(d => {
+    const p = pById.get(d.providerId);
+    const u = p ? uById.get(p.userId) : undefined;
+    return {
+      id: d.id,
+      provider_id: d.providerId,
+      doc_type: d.docType,
+      status: d.status,
+      rejection_reason: d.rejectionReason,
+      uploaded_at: d.uploadedAt,
+      reviewed_at: d.reviewedAt,
+      business_name: p?.businessName || null,
+      business_type: p?.businessType || null,
+      owner_name: u?.name || null,
+      file_url: `/api/providers/kyc/${d.id}/file`,
+    };
+  });
+  res.json({ documents, total, limit, offset });
+});
+
+// POST /admin/kyc/:id/review — approve or reject a document
+router.post('/admin/kyc/:id/review', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
+  const { decision, reason } = req.body || {};
+  if (decision !== 'approve' && decision !== 'reject') {
+    return res.status(400).json({ detail: "decision must be 'approve' or 'reject'" });
+  }
+  if (reason !== undefined && reason !== null) {
+    if (typeof reason !== 'string') {
+      return res.status(400).json({ detail: 'reason must be a string' });
+    }
+    if (reason.length > 500) {
+      return res.status(400).json({ detail: 'reason must be 500 characters or fewer' });
+    }
+  }
+  const [doc] = await db.select().from(schema.kycDocuments).where(eq(schema.kycDocuments.id, req.params.id as any)).limit(1);
+  if (!doc) return res.status(404).json({ detail: 'Not found' });
+
+  const status = decision === 'approve' ? 'approved' : 'rejected';
+  await db.update(schema.kycDocuments).set({
+    status,
+    rejectionReason: decision === 'reject' ? (reason || null) : null,
+    reviewedAt: new Date().toISOString(),
+    reviewedBy: req.user.id,
+  }).where(eq(schema.kycDocuments.id, doc.id));
+
+  const kycStatus = await recomputeKycStatus(doc.providerId);
+  res.json({
+    document: { id: doc.id, doc_type: doc.docType, status, rejection_reason: decision === 'reject' ? (reason || null) : null },
+    provider_kyc_status: kycStatus,
+  });
 });
 
 export default router;
