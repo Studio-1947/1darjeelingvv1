@@ -27,11 +27,16 @@ export function isSupportRequiredError(error: any): boolean {
 // or a second tab holding an older user object. A 402 is the server's authoritative answer, so
 // honour it. A full navigation rather than a router push, because axios has no router access —
 // acceptable for a path that should be rare.
+//
+// This is a full page load, so router state (the `state.from` SupportGate uses) cannot travel
+// with it. Carry the current path + query as a `next` query param instead, so Support.tsx can
+// still send the user back to what they were doing (e.g. booking a listing) after paying.
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (isSupportRequiredError(error) && window.location.pathname !== SUPPORT_ROUTE) {
-      window.location.assign(SUPPORT_ROUTE);
+      const next = encodeURIComponent(`${window.location.pathname}${window.location.search}`);
+      window.location.assign(`${SUPPORT_ROUTE}?next=${next}`);
     }
     return Promise.reject(error);
   }

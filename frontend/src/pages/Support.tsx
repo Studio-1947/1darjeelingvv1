@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation, Navigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { HeartHandshake, Check } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { createPaymentOrder, completeMockPayment, payWithRazorpay } from '@/lib/api';
+import { needsSupport } from '@/lib/support';
 import MockPaymentModal from '@/components/MockPaymentModal';
 
 export default function Support() {
@@ -20,11 +21,37 @@ export default function Support() {
   // URL like /search?q=momo survives the round trip; falling back to the feed keeps a direct
   // visit sensible.
   const from = (location.state as any)?.from;
+
+  // The 402 interceptor (frontend/src/lib/api.ts) has no router access — it does a full page
+  // navigation — so it can't carry state.from and instead appends the destination as a `next`
+  // query param. Unlike state.from (which only this app's own SupportGate produces), `next` is
+  // attacker-suppliable: anyone can send a link to /support?next=.... Only accept it if it is a
+  // same-origin relative path — starting with a single '/' and NOT with '//' or '/\', both of
+  // which a browser/URL parser treats as protocol-relative and resolves to a different host.
+  // Anything else is rejected and we fall back to '/'.
+  const rawNext = new URLSearchParams(location.search).get('next');
+  const next =
+    rawNext && rawNext.startsWith('/') && !rawNext.startsWith('//') && !rawNext.startsWith('/\\')
+      ? rawNext
+      : null;
+
   const destination = from?.pathname
     ? `${from.pathname}${from.search || ''}${from.hash || ''}`
-    : '/';
+    : next || '/';
+
+  // A year settled by the Razorpay webhook while the user was away (e.g. modal.ondismiss fired
+  // after capture but before the success handler ran) needs to be reflected here on arrival,
+  // otherwise the pay button stays live and invites a second charge. `refresh` has a stable
+  // identity (useCallback with no deps in AuthContext), so this runs exactly once on mount.
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
 
   if (!user) return <Navigate to="/login" replace />;
+
+  // Fee already active (paid just now in another tab, settled by webhook while away, etc.) —
+  // don't show the pay screen again, just send them on to where they were headed.
+  if (!needsSupport(user)) return <Navigate to={destination} replace />;
 
   const finish = async () => {
     await refresh();
@@ -50,6 +77,11 @@ export default function Support() {
         await finish();
       }
     } catch (e: any) {
+      // A rejection here (e.g. modal.ondismiss firing after Razorpay captured the payment but
+      // before our handler ran) may actually be a success on the server. Re-sync first so the
+      // needsSupport guard above can catch it on the next render instead of leaving the Pay
+      // button live and inviting a second charge.
+      await refresh();
       setErr(e?.response?.data?.detail || t('support.error'));
     } finally {
       setBusy(false);
@@ -66,6 +98,9 @@ export default function Support() {
       setPayModal(null);
       await finish();
     } catch (e: any) {
+      // Same reasoning as startPayment's catch: re-sync before surfacing the error in case the
+      // payment actually went through.
+      await refresh();
       setErr(e?.response?.data?.detail || t('support.error'));
       setPayModal(null);
     }
