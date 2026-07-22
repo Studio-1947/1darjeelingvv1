@@ -1175,6 +1175,8 @@ Add a top-level `"support"` key to `frontend/src/locales/en.json`, as a sibling 
     "reassurance": "Valid for one year. Nothing auto-charges — we'll ask you again next year.",
     "skip": "Not now — browse without an account",
     "modal_title": "Platform support fee",
+    "modal_duration": "· 1 year",
+    "privacy_link": "privacy policy",
     "error": "Payment could not be completed. Please try again."
   },
 ```
@@ -1192,6 +1194,8 @@ Add the same key to `frontend/src/locales/hi.json`:
     "reassurance": "एक वर्ष के लिए मान्य। कोई स्वतः शुल्क नहीं कटेगा — हम अगले साल फिर पूछेंगे।",
     "skip": "अभी नहीं — बिना खाते के देखें",
     "modal_title": "प्लेटफ़ॉर्म सहयोग शुल्क",
+    "modal_duration": "· 1 वर्ष",
+    "privacy_link": "गोपनीयता नीति",
     "error": "भुगतान पूरा नहीं हो सका। कृपया पुनः प्रयास करें।"
   },
 ```
@@ -1209,6 +1213,8 @@ Add the same key to `frontend/src/locales/bn.json`:
     "reassurance": "এক বছরের জন্য বৈধ। স্বয়ংক্রিয়ভাবে কোনো টাকা কাটা হবে না — আগামী বছর আবার জিজ্ঞাসা করব।",
     "skip": "এখন নয় — অ্যাকাউন্ট ছাড়াই দেখুন",
     "modal_title": "প্ল্যাটফর্ম সহায়তা ফি",
+    "modal_duration": "· ১ বছর",
+    "privacy_link": "গোপনীয়তা নীতি",
     "error": "পেমেন্ট সম্পূর্ণ করা যায়নি। আবার চেষ্টা করুন।"
   },
 ```
@@ -1226,6 +1232,8 @@ Add the same key to `frontend/src/locales/ne.json`:
     "reassurance": "एक वर्षका लागि मान्य। स्वतः कुनै शुल्क कटिँदैन — अर्को वर्ष फेरि सोध्नेछौं।",
     "skip": "अहिले होइन — खाता बिना हेर्नुहोस्",
     "modal_title": "प्लेटफर्म सहयोग शुल्क",
+    "modal_duration": "· १ वर्ष",
+    "privacy_link": "गोपनीयता नीति",
     "error": "भुक्तानी पूरा हुन सकेन। कृपया फेरि प्रयास गर्नुहोस्।"
   },
 ```
@@ -1240,7 +1248,7 @@ cd frontend/src/locales && for f in en hi bn ne; do node -e "
 ```
 
 Expected: four identical key lists —
-`amount_line,body,cta,error,modal_title,reassurance,skip,title`
+`amount_line,body,cta,error,modal_duration,modal_title,privacy_link,reassurance,skip,title`
 
 - [ ] **Step 6: Commit**
 
@@ -1379,7 +1387,7 @@ export default function Support() {
         </button>
 
         <p className="mt-6 text-xs text-center text-ink-soft">
-          <Link to="/privacy" className="underline">privacy policy</Link>
+          <Link to="/privacy" className="underline">{t('support.privacy_link')}</Link>
         </p>
       </div>
 
@@ -1388,7 +1396,7 @@ export default function Support() {
         onClose={() => setPayModal(null)}
         amount={payModal?.amount || 0}
         title={t('support.modal_title')}
-        description="· 1 year"
+        description={t('support.modal_duration')}
         onPay={finishMockPayment}
         prefill={{ upi: `${(user.name || 'traveller').toLowerCase().replace(/\s+/g, '')}@ybl` }}
       />
