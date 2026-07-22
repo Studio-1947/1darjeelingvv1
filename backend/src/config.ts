@@ -173,3 +173,7 @@ export const AMOUNTS: Record<string, number> = {
   provider_registration: 9900,
   booking_commission: 100
 };
+
+// Tourist platform support & convenience fee window, in days.
+// See docs/superpowers/specs/2026-07-22-tourist-platform-support-fee-design.md
+export const SUPPORT_DURATION_DAYS = 365;
