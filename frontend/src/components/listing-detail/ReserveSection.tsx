@@ -20,7 +20,7 @@ export function ReserveSection({ item, unit, bookable, cta, booking, onOpenMaps 
     <Screen tone="white" testid="detail-reserve">
       <SectionHead label={t('detail.reserve')}
         title={item.price > 0 ? `₹${item.price}${unit}` : t('detail.reserve')}
-        note={bookable ? t('booking.fee_note') : t('detail.walk_in_note')} />
+        note={bookable ? undefined : t('detail.walk_in_note')} />
 
       <div className="mt-10 mx-auto max-w-xl">
         <div className="mist-panel p-6 md:p-8">

@@ -5,7 +5,7 @@
     "discover": "खोज्नुहोस्", "spots": "पर्यटन स्थल", "homestays": "होमस्टे",
     "drivers": "चालक", "shops": "स्थानीय पसल", "cafes": "क्याफे",
     "events": "सांस्कृतिक कार्यक्रम", "biodiversity": "जैविक विविधता",
-    "responsible": "जिम्मेवार पर्यटन", "privacy": "गोपनीयता नीति",
+    "responsible": "जिम्मेवारीपूर्वक यात्रा", "privacy": "गोपनीयता नीति",
     "provider": "सेवा प्रदायक", "login": "लगइन", "logout": "लगआउट",
     "dashboard": "ड्यासबोर्ड", "admin": "एडमिन"
   },
@@ -23,14 +23,14 @@
   },
   "search": { "placeholder": "खोज्नुहोस् — ठाउँ, पसल वा कार्यक्रम" },
   "common": {
-    "book_now": "अहिले बुक गर्नुहोस्", "view_details": "विवरण हेर्नुहोस्", "explore": "अन्वेषण",
+    "book_now": "अहिले रिजर्भ गर्नुहोस्", "view_details": "विवरण हेर्नुहोस्", "explore": "अन्वेषण",
     "starting_from": "बाट", "per_night": "/ रात", "per_day": "/ दिन",
     "loading": "लोड हुँदै…", "explore_all": "सबै हेर्नुहोस्",
     "back": "फर्कनुहोस्", "save": "बचत", "cancel": "रद्द",
     "continue": "जारी राख्नुहोस्", "yes": "हो", "no": "होइन"
   },
   "cta": {
-    "book_now": "अहिले बुक गर्नुहोस्", "explore": "अन्वेषण", "view": "हेर्नुहोस्",
+    "book_now": "अहिले रिजर्भ गर्नुहोस्", "explore": "अन्वेषण", "view": "हेर्नुहोस्",
     "talk_to_driver": "चालकसँग कुरा गर्नुहोस्", "contact_shop": "पसल हेर्नुहोस्",
     "visit_cafe": "क्याफे हेर्नुहोस्", "join_event": "सामेल हुनुहोस्",
     "learn_more": "थप जान्नुहोस्", "get_directions": "बाटो",

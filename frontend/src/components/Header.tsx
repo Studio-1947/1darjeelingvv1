@@ -17,6 +17,9 @@ export default function Header() {
   const goBack = useGoBack();
   // The landing page is the root of the mobile tab bar — nothing to go back to.
   const showBack = pathname !== '/';
+  // Sign-in and the onboarding form are single-task pages; a search box there
+  // only invites the visitor to abandon what they came to do.
+  const showSearch = !['/login', '/provider/onboard'].includes(pathname);
 
   React.useEffect(() => {
     if (!dropdownOpen) return;
@@ -41,7 +44,7 @@ export default function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-[var(--line)]" data-testid="site-header">
+    <header className="sticky top-0 z-40 bg-white border-b border-[var(--line)]" data-testid="site-header">
       <div className="mx-auto max-w-6xl px-4 md:px-6 h-14 md:h-16 flex items-center gap-3 md:gap-5">
         {/* Back — mobile/tablet only; desktop keeps the brand plus in-page controls */}
         {showBack && (
@@ -68,16 +71,21 @@ export default function Header() {
         </Link>
 
         {/* Center search */}
-        <form onSubmit={submitSearch} className="flex-1 min-w-0 max-w-md flex items-center gap-2 bg-mist rounded-full px-3 md:px-4 py-2">
-          <Search size={16} className="text-ink-soft flex-shrink-0" />
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder={t('search.placeholder')}
-            data-testid="header-search"
-            className="flex-1 min-w-0 bg-transparent outline-none text-sm text-ink placeholder:text-ink-soft"
-          />
-        </form>
+        {showSearch ? (
+          <form onSubmit={submitSearch} className="flex-1 min-w-0 max-w-md flex items-center gap-2 bg-mist rounded-full px-3 md:px-4 py-2">
+            <Search size={16} className="text-ink-soft flex-shrink-0" />
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder={t('search.placeholder')}
+              data-testid="header-search"
+              className="flex-1 min-w-0 bg-transparent outline-none text-sm text-ink placeholder:text-ink-soft"
+            />
+          </form>
+        ) : (
+          // Keeps the right-hand cluster pinned to the edge where the search sat.
+          <div className="flex-1" />
+        )}
 
         {/* Right cluster: minimal */}
         <div className="flex items-center gap-2 flex-shrink-0">

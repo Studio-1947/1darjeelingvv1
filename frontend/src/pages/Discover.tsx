@@ -22,10 +22,12 @@ const STORIES = [
   { key: 'biodiversity', to: '/biodiversity', Icon: Leaf },
 ];
 
+// Each deal sits on a real photo of what it sells rather than a flat colour
+// block; the gradient stays underneath as the fallback while the image loads.
 const DEALS = [
-  { key: 'monsoon', title: 'Monsoon escapes', sub: 'Homestays from ₹1,200', tag: '25% OFF', color: 'from-pine to-pine-dark', to: '/homestays' },
-  { key: 'sunrise', title: 'Sunrise at Tiger Hill', sub: 'Full day cab + guide', tag: 'BEST SELLER', color: 'from-flag to-[#8a1e1e]', to: '/drivers' },
-  { key: 'tea', title: 'Tea garden tours', sub: 'Live tasting sessions', tag: 'NEW', color: 'from-gold to-[#c69108]', to: '/spots' },
+  { key: 'monsoon', title: 'Monsoon escapes', sub: 'Homestays from ₹1,200', tag: '25% OFF', color: 'from-pine to-pine-dark', to: '/homestays', image: 'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05' },
+  { key: 'sunrise', title: 'Sunrise at Tiger Hill', sub: 'Full day cab + guide', tag: 'BEST SELLER', color: 'from-flag to-[#8a1e1e]', to: '/drivers', image: 'https://images.unsplash.com/photo-1544735716-392fe2489ffa' },
+  { key: 'tea', title: 'Tea garden tours', sub: 'Live tasting sessions', tag: 'NEW', color: 'from-gold to-[#c69108]', to: '/spots', image: 'https://images.pexels.com/photos/103875/pexels-photo-103875.jpeg' },
 ];
 
 export default function Discover() {
@@ -165,8 +167,12 @@ export default function Discover() {
           {DEALS.map((d) => (
             <Link key={d.key} to={d.to} data-testid={`deal-${d.key}`}
               className={`relative overflow-hidden rounded-2xl p-4 md:p-5 text-white bg-gradient-to-br ${d.color} btn-hover min-h-[110px] flex flex-col justify-between`}>
-              <span className="inline-block w-fit px-2 py-0.5 rounded-full bg-white/25 backdrop-blur text-[10px] font-extrabold tracking-wider">{d.tag}</span>
-              <div>
+              <img src={sizedImage(d.image, 600)} alt="" aria-hidden="true" loading="lazy"
+                className="absolute inset-0 w-full h-full object-cover" />
+              {/* Keeps the title and tag legible over whatever the photo does. */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/35 to-black/20" />
+              <span className="relative inline-block w-fit px-2 py-0.5 rounded-full bg-white/25 backdrop-blur text-[10px] font-extrabold tracking-wider">{d.tag}</span>
+              <div className="relative">
                 <div className="font-display font-extrabold text-xl md:text-2xl leading-tight">{d.title}</div>
                 <div className="text-sm text-white/90 mt-0.5">{d.sub}</div>
               </div>

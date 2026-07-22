@@ -10,7 +10,7 @@
     "cafes": "Cafes",
     "events": "Events",
     "biodiversity": "Biodiversity",
-    "responsible": "Responsible Travel",
+    "responsible": "Travel Responsibly",
     "privacy": "Privacy",
     "provider": "For Providers",
     "login": "Log in",
@@ -37,7 +37,7 @@
   },
   "search": { "placeholder": "Search — place, shop or event" },
   "common": {
-    "book_now": "Book now",
+    "book_now": "Reserve now",
     "view_details": "View details",
     "explore": "Explore",
     "starting_from": "From",
@@ -53,7 +53,7 @@
     "no": "No"
   },
   "cta": {
-    "book_now": "Book Now",
+    "book_now": "Reserve Now",
     "explore": "Explore",
     "view": "View",
     "talk_to_driver": "Talk to Driver",

@@ -61,7 +61,6 @@ export default function BookingWidget() {
   const tabs = [
     { key: 'stay', label: t('nav.homestays'), Icon: HomeIcon, target: '/homestays' },
     { key: 'driver', label: t('nav.drivers'), Icon: Car, target: '/drivers' },
-    { key: 'exp', label: t('nav.spots'), Icon: Sparkles, target: '/spots' },
   ];
 
   const submit = (e) => {
@@ -74,7 +73,7 @@ export default function BookingWidget() {
   return (
     <div className="bg-white rounded-3xl border border-[var(--line)] shadow-[0_20px_50px_-30px_rgba(20,32,26,0.35)]" data-testid="booking-widget">
       {/* Tabs */}
-      <div className="grid grid-cols-3 border-b border-[var(--line)]">
+      <div className="grid grid-cols-2 border-b border-[var(--line)]">
         {tabs.map(({ key, label, Icon }, index) => (
           <button
             key={key}
@@ -82,7 +81,7 @@ export default function BookingWidget() {
             onClick={() => setTab(key)}
             className={`py-3 md:py-4 px-1 min-w-0 flex items-center justify-center gap-1.5 md:gap-2 text-xs md:text-sm font-bold transition-colors
               ${index === 0 ? 'rounded-tl-3xl' : ''}
-              ${index === 2 ? 'rounded-tr-3xl' : ''}
+              ${index === tabs.length - 1 ? 'rounded-tr-3xl' : ''}
               ${tab === key ? 'text-flag border-b-2 border-flag -mb-px' : 'text-ink-soft hover:text-ink'}`}
           >
             <Icon size={16} className="flex-shrink-0" /> <span className="truncate">{label}</span>

@@ -41,7 +41,7 @@ export default function BasicInfoStep({ o }: { o: OnboardState }) {
         </label>
 
         <button onClick={startDesignStep} className="w-full py-3 rounded-full bg-flag text-white font-bold btn-hover">
-          Next: Design Profile
+          Next: Update Profile
         </button>
         {msg && <p className="text-xs text-center text-flag font-semibold">{msg}</p>}
       </div>

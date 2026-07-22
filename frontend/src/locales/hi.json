@@ -10,7 +10,7 @@
     "cafes": "कैफे",
     "events": "सांस्कृतिक उत्सव",
     "biodiversity": "जैव विविधता",
-    "responsible": "जिम्मेदार पर्यटन",
+    "responsible": "जिम्मेदारी से यात्रा",
     "privacy": "गोपनीयता नीति",
     "provider": "सेवा प्रदाता",
     "login": "लॉग इन",
@@ -32,14 +32,14 @@
   },
   "search": { "placeholder": "खोजें — जगह, दुकान या उत्सव" },
   "common": {
-    "book_now": "अभी बुक करें", "view_details": "विवरण देखें", "explore": "खोजें",
+    "book_now": "अभी रिज़र्व करें", "view_details": "विवरण देखें", "explore": "खोजें",
     "starting_from": "से", "per_night": "/ रात", "per_day": "/ दिन",
     "loading": "लोड हो रहा है…", "explore_all": "सब देखें",
     "back": "वापस", "save": "सहेजें", "cancel": "रद्द", "continue": "जारी रखें",
     "yes": "हाँ", "no": "नहीं"
   },
   "cta": {
-    "book_now": "अभी बुक करें", "explore": "खोजें", "view": "देखें",
+    "book_now": "अभी रिज़र्व करें", "explore": "खोजें", "view": "देखें",
     "talk_to_driver": "ड्राइवर से बात करें", "contact_shop": "दुकान देखें",
     "visit_cafe": "कैफे देखें", "join_event": "शामिल हों",
     "learn_more": "और जानें", "get_directions": "रास्ता",

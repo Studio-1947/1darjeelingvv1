@@ -24,7 +24,7 @@ export default function BottomNav() {
   return (
     <nav
       data-testid="bottom-nav"
-      className="lg:hidden fixed bottom-0 inset-x-0 z-30 bg-white/95 backdrop-blur border-t border-[var(--line)]"
+      className="lg:hidden fixed bottom-0 inset-x-0 z-30 bg-white border-t border-[var(--line)]"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
       <div className="grid grid-cols-5">
