@@ -10,6 +10,8 @@ import BookingWidget from '@/components/BookingWidget';
 import { Mountain, Home as HomeIcon, Car, Store, Coffee, PartyPopper, Leaf, ArrowRight, Sparkles, TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const RED_PANDA = 'https://images.unsplash.com/photo-1542880941-1abfea46bba6';
+// Still image behind the hero video: the poster while it loads, and the
+// fallback shown outright when the visitor prefers reduced motion.
 const HERO_POSTER = 'https://images.unsplash.com/photo-1544735716-392fe2489ffa';
 
 const STORIES = [
@@ -186,7 +188,7 @@ export default function Discover() {
           {/* Left Navigation Arrow */}
           <button
             onClick={() => scrollSpots('left')}
-            className="absolute left-1 xl:-left-5 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-white shadow-lg border border-[var(--line)] text-ink flex items-center justify-center transition-all hover:bg-mist active:scale-95 hidden md:flex"
+            className="absolute -left-5 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-white shadow-lg border border-[var(--line)] text-ink flex items-center justify-center transition-all hover:bg-mist active:scale-95 hidden md:flex"
             aria-label="Scroll left"
           >
             <ChevronLeft size={20} className="text-ink" />
@@ -218,7 +220,7 @@ export default function Discover() {
           {/* Right Navigation Arrow */}
           <button
             onClick={() => scrollSpots('right')}
-            className="absolute right-1 xl:-right-5 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-white shadow-lg border border-[var(--line)] text-ink flex items-center justify-center transition-all hover:bg-mist active:scale-95 hidden md:flex"
+            className="absolute -right-5 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-white shadow-lg border border-[var(--line)] text-ink flex items-center justify-center transition-all hover:bg-mist active:scale-95 hidden md:flex"
             aria-label="Scroll right"
           >
             <ChevronRight size={20} className="text-ink" />
