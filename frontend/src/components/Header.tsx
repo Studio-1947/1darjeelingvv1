@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/context/AuthContext';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
-import { Search, User, Heart } from 'lucide-react';
+import { Search, User, Heart, HeartHandshake } from 'lucide-react';
 
 export default function Header() {
   const { t } = useTranslation();
@@ -60,6 +60,15 @@ export default function Header() {
 
         {/* Right cluster: minimal */}
         <div className="flex items-center gap-2 flex-shrink-0">
+          {/* Shown to everyone, signed in or not — Donate.tsx routes anonymous visitors through
+              login and back. Hiding it from logged-out browsers would hide it from most of them. */}
+          <Link to="/donate" data-testid="header-donate" aria-label={t('donate.title')} title={t('donate.title')}
+            className="h-9 px-2.5 sm:px-3 rounded-full grid place-items-center text-flag hover:bg-flag/10 btn-hover">
+            <span className="flex items-center gap-1.5">
+              <HeartHandshake size={18} />
+              <span className="hidden md:inline text-xs font-bold">{t('donate.title')}</span>
+            </span>
+          </Link>
           <LanguageSwitcher />
           {user && (
             <Link to="/saved" data-testid="header-saved" aria-label="Saved"

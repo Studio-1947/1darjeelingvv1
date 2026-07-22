@@ -198,6 +198,7 @@ router.post('/otp/verify', rateLimiter(10, 60 * 1000, 'otp_verify'), async (req:
       language: null,
       avatar: null,
       createdAt: new Date().toISOString(),
+      supportExpiresAt: null,
       password: null
     };
     await db.insert(schema.users).values(user);

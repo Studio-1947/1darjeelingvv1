@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { SUPPORT_ROUTE } from './support';
 
 // Empty by default so the API is called same-origin ('/api') and nginx proxies it
 // to the backend. Without the fallback, CRA inlines a missing var as the literal
@@ -14,6 +15,33 @@ api.interceptors.request.use((cfg) => {
   return cfg;
 });
 
+/**
+ * True when the server is telling us the caller's support fee is not active. The status alone is
+ * not enough — 402 could mean something else later — so the machine-readable code decides.
+ */
+export function isSupportRequiredError(error: any): boolean {
+  return error?.response?.status === 402 && error?.response?.data?.code === 'support_required';
+}
+
+// SupportGate is the primary gate, but client state goes stale: a window that lapsed mid-session,
+// or a second tab holding an older user object. A 402 is the server's authoritative answer, so
+// honour it. A full navigation rather than a router push, because axios has no router access —
+// acceptable for a path that should be rare.
+//
+// This is a full page load, so router state (the `state.from` SupportGate uses) cannot travel
+// with it. Carry the current path + query as a `next` query param instead, so Support.tsx can
+// still send the user back to what they were doing (e.g. booking a listing) after paying.
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (isSupportRequiredError(error) && window.location.pathname !== SUPPORT_ROUTE) {
+      const next = encodeURIComponent(`${window.location.pathname}${window.location.search}`);
+      window.location.assign(`${SUPPORT_ROUTE}?next=${next}`);
+    }
+    return Promise.reject(error);
+  }
+);
+
 export default api;
 
 // -------- Payment helpers (mock + Razorpay) --------
@@ -22,6 +50,11 @@ export default api;
 export interface PaymentOrderParams {
   flow: string;
   reference_id: string;
+  /**
+   * Paise. Only meaningful for flow='donation', where the giver chooses. Every other flow's price
+   * is fixed server-side and this field is ignored — sending it does not change what is charged.
+   */
+  amount?: number;
 }
 
 export interface MockPaymentParams {
@@ -43,8 +76,12 @@ export interface RazorpayPaymentParams {
 /**
  * Creates an order on the backend. Returns { mock, key_id, order, amount }.
  */
-export async function createPaymentOrder({ flow, reference_id }: PaymentOrderParams) {
-  const { data } = await api.post('/payments/order', { flow, reference_id });
+export async function createPaymentOrder({ flow, reference_id, amount }: PaymentOrderParams) {
+  // `amount` is sent only when supplied. The server decides what is actually charged — for every
+  // flow but `donation` it reads its own price map and ignores whatever arrives here.
+  const body: Record<string, unknown> = { flow, reference_id };
+  if (amount !== undefined) body.amount = amount;
+  const { data } = await api.post('/payments/order', body);
   return data;
 }
 
