@@ -185,11 +185,18 @@ export const rzpClient = RAZORPAY_KEY_SECRET ? new Razorpay({
   key_secret: RAZORPAY_KEY_SECRET
 }) : null;
 
+// Fixed prices, in paise. `donation` is deliberately absent: its presence here would imply a
+// fixed price, and the whole point of a donation is that the giver chooses. See lib/payments.ts.
 export const AMOUNTS: Record<string, number> = {
   provider_registration: 9900,
   booking_commission: 100,
   platform_support: 1200
 };
+
+// Bounds on a donation, in paise. The floor stops dust-spam orders; the ceiling is a sanity guard
+// so a fat-fingered extra zero is refused here rather than reaching the gateway.
+export const DONATION_MIN_PAISE = 1000;        // ₹10
+export const DONATION_MAX_PAISE = 10_000_000;  // ₹1,00,000
 
 // Tourist platform support & convenience fee window, in days.
 // See docs/superpowers/specs/2026-07-22-tourist-platform-support-fee-design.md
