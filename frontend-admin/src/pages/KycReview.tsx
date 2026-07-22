@@ -41,6 +41,149 @@ function statusBadgeClass(status: string): string {
   return 'bg-gold/20 text-[#8a6b04]'; // pending
 }
 
+type Decision = 'approve' | 'reject';
+interface ReviewTarget {
+  doc: AdminKycDoc;
+  decision: Decision;
+}
+
+/**
+ * In-app replacement for the browser's native prompt()/confirm() the reject flow used to use.
+ * Collects the rejection reason (when rejecting) and, for a decision that overturns an existing
+ * one, folds the "are you sure" confirmation into the same step instead of stacking two native
+ * dialogs. Self-contained: owns the reason input, focus, Escape-to-cancel, and backdrop-dismiss.
+ */
+function ReviewDialog({ target, busy, error, onCancel, onConfirm }: {
+  target: ReviewTarget;
+  busy: boolean;
+  error: string | null;
+  onCancel: () => void;
+  onConfirm: (reason?: string) => void;
+}) {
+  const { doc, decision } = target;
+  const needsReason = decision === 'reject';
+  const isRevoke = decision === 'reject' && doc.status === 'approved';
+  const isCorrective = doc.status !== 'pending';
+
+  const [reason, setReason] = useState('');
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const confirmRef = useRef<HTMLButtonElement>(null);
+
+  // Focus the primary control on open — the reason box when there is one, otherwise the confirm
+  // button so Enter/Escape work immediately for a pure confirmation.
+  useEffect(() => {
+    (needsReason ? textareaRef.current : confirmRef.current)?.focus();
+  }, [needsReason]);
+
+  // Escape cancels, but never mid-request (that would strand the admin unsure whether it landed).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !busy) onCancel();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [busy, onCancel]);
+
+  const reasonMissing = needsReason && !reason.trim();
+  const isReject = decision === 'reject';
+
+  const title = isRevoke ? 'Revoke approval' : isReject ? 'Reject document' : 'Approve document';
+  const confirmLabel = isRevoke ? 'Revoke approval' : isReject ? 'Reject' : 'Approve';
+
+  const submit = () => {
+    if (busy || reasonMissing) return;
+    onConfirm(needsReason ? reason.trim() : undefined);
+  };
+
+  return (
+    <div
+      className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink/40 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="review-dialog-title"
+      data-testid="kyc-review-dialog"
+      // Dismiss when the click starts on the backdrop itself (not on the panel), and never mid-request.
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget && !busy) onCancel();
+      }}
+    >
+      <div className={`modal-panel mist-panel w-full max-w-md p-6 shadow-2xl border-t-4 ${isReject ? 'border-flag' : 'border-pine'}`}>
+        <h2 id="review-dialog-title" className="font-display font-extrabold text-2xl text-ink">
+          {title}
+        </h2>
+        <p className="mt-1 text-sm text-ink-soft">
+          {doc.business_name || 'Unnamed business'} — {doc.doc_type}
+        </p>
+
+        {isCorrective && (
+          <div className="mt-4 p-3 rounded-xl bg-gold/15 border border-gold/40 text-sm text-[#8a6b04]">
+            This document is currently <span className="font-bold">{doc.status}</span>.{' '}
+            {isRevoke
+              ? "Revoking withdraws the provider's Verified status for it until they re-upload and it's approved again."
+              : 'This overrides the existing decision.'}
+          </div>
+        )}
+
+        {needsReason && (
+          <label className="block mt-4">
+            <span className="text-xs font-semibold text-ink-soft">Reason — the provider will see this</span>
+            <textarea
+              ref={textareaRef}
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              rows={3}
+              data-testid="kyc-review-reason"
+              placeholder="e.g. The document is blurry — please re-upload a clearer scan."
+              className="mt-1 w-full px-3 py-2.5 rounded-xl border border-[var(--line)] bg-white outline-none text-ink text-sm resize-none focus:ring-2 focus:ring-flag/20 transition-all"
+              // Ctrl/Cmd+Enter submits, matching the muscle memory of most comment boxes.
+              onKeyDown={(e) => {
+                if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') submit();
+              }}
+            />
+            <span className="mt-1 block text-[11px] text-ink-soft">
+              Required — the provider needs to know what to fix.
+            </span>
+          </label>
+        )}
+
+        {error && (
+          <div
+            className="mt-4 p-3 rounded-xl bg-flag/10 border border-flag/20 text-sm text-flag font-semibold"
+            data-testid="kyc-review-dialog-error"
+          >
+            {error}
+          </div>
+        )}
+
+        <div className="mt-6 flex items-center justify-end gap-3">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={busy}
+            data-testid="kyc-review-cancel"
+            className="px-4 py-2 rounded-full text-sm font-bold text-ink-soft hover:bg-mist disabled:opacity-50 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            ref={confirmRef}
+            type="button"
+            onClick={submit}
+            disabled={busy || reasonMissing}
+            data-testid="kyc-review-confirm"
+            className={`inline-flex items-center gap-1.5 px-5 py-2 rounded-full text-white text-sm font-bold btn-hover disabled:opacity-50 disabled:cursor-not-allowed ${
+              isReject ? 'bg-flag' : 'bg-pine'
+            }`}
+          >
+            {busy ? <Loader2 size={14} className="animate-spin" /> : null}
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function KycReview() {
   const [docs, setDocs] = useState<AdminKycDoc[]>([]);
   const [total, setTotal] = useState(0);
@@ -51,6 +194,10 @@ export default function KycReview() {
   const [busy, setBusy] = useState<string | null>(null);
   const [fileError, setFileError] = useState('');
   const [reviewError, setReviewError] = useState<string | null>(null);
+  // The document + decision currently being confirmed in the in-app dialog (null = dialog closed),
+  // and any error from the dialog's own submit so it can be shown in-context and the dialog kept open.
+  const [reviewTarget, setReviewTarget] = useState<ReviewTarget | null>(null);
+  const [dialogError, setDialogError] = useState<string | null>(null);
 
   // Tracks object URLs we've created so they can be revoked once no longer
   // needed, instead of leaking blob memory for every document viewed.
@@ -97,43 +244,17 @@ export default function KycReview() {
     setOffset(0); // a new filter starts back at page 1
   };
 
-  const review = async (doc: AdminKycDoc, decision: 'approve' | 'reject') => {
-    setReviewError(null);
-
-    // Anything other than reviewing a still-`pending` document is a corrective decision —
-    // overturning a call that was already made. Those get an explicit confirmation, on top of
-    // (for rejections) the existing reason prompt, since undoing them means the provider has
-    // to re-upload or waits on a second re-review.
-    const isCorrective = doc.status !== 'pending';
-    const isRevoke = decision === 'reject' && doc.status === 'approved';
-
-    let reason: string | undefined;
-    if (decision === 'reject') {
-      const promptLabel = isRevoke
-        ? 'Reason for revoking this approval? The provider will see this.'
-        : 'Reason for rejection? The provider will see this.';
-      const input = window.prompt(promptLabel);
-      if (input === null) return; // cancelled — abort silently
-      reason = input.trim();
-      if (!reason) {
-        setReviewError('A rejection reason is required — the provider needs to know what to fix.');
-        return;
-      }
-    }
-
-    if (isCorrective) {
-      const verb = isRevoke ? 'revoke the approval of' : decision === 'approve' ? 'approve' : 'reject';
-      const extra = isRevoke ? ' This withdraws the provider\'s Verified status for this document.' : '';
-      const confirmed = window.confirm(
-        `This document is currently "${doc.status}". Are you sure you want to ${verb} it?${extra}`
-      );
-      if (!confirmed) return;
-    }
-
+  // Posts the decision to the API and refreshes the page. Returns an error message on failure
+  // (rather than setting state itself) so each caller can decide where to surface it — the page
+  // banner for the frictionless immediate-approve path, or inside the dialog for everything else.
+  const submitReview = async (
+    doc: AdminKycDoc,
+    decision: Decision,
+    reason: string | undefined
+  ): Promise<string | null> => {
     setBusy(doc.id);
     try {
       await api.post(`/admin/kyc/${doc.id}/review`, { decision, reason });
-      setReviewError(null);
       const result = await load();
       // Reviewing the only remaining item on a non-first page (e.g. approving the last pending
       // doc while filtered to "Pending") moves it out of the current filter, leaving `offset`
@@ -142,10 +263,42 @@ export default function KycReview() {
       if (result && result.documents.length === 0 && offset > 0 && offset >= result.total) {
         setOffset((o) => Math.max(0, o - PAGE_SIZE));
       }
+      return null;
     } catch (e: any) {
-      setReviewError(e?.response?.data?.detail || `Could not ${decision} that document. Please try again.`);
+      return e?.response?.data?.detail || `Could not ${decision} that document. Please try again.`;
     } finally {
       setBusy(null);
+    }
+  };
+
+  const review = async (doc: AdminKycDoc, decision: Decision) => {
+    setReviewError(null);
+
+    // Approving a still-`pending` document is the one no-friction path: nothing to collect, nothing
+    // being overturned — so it submits straight away, as it always did. Everything else (any
+    // rejection, or any decision that overturns an existing one) opens the in-app dialog to gather
+    // a reason and/or confirm the override, replacing the old native prompt()/confirm() pair.
+    const isCorrective = doc.status !== 'pending';
+    if (decision === 'approve' && !isCorrective) {
+      const err = await submitReview(doc, decision, undefined);
+      if (err) setReviewError(err);
+      return;
+    }
+
+    setDialogError(null);
+    setReviewTarget({ doc, decision });
+  };
+
+  // Confirm handler for the dialog: run the decision, close on success, or keep the dialog open
+  // with the error shown in-context so the admin can retry without losing their typed reason.
+  const confirmReview = async (reason?: string) => {
+    if (!reviewTarget) return;
+    const err = await submitReview(reviewTarget.doc, reviewTarget.decision, reason);
+    if (err) {
+      setDialogError(err);
+    } else {
+      setReviewTarget(null);
+      setDialogError(null);
     }
   };
 
@@ -360,6 +513,19 @@ export default function KycReview() {
           </div>
         )}
       </div>
+
+      {reviewTarget && (
+        <ReviewDialog
+          target={reviewTarget}
+          busy={busy === reviewTarget.doc.id}
+          error={dialogError}
+          onCancel={() => {
+            setReviewTarget(null);
+            setDialogError(null);
+          }}
+          onConfirm={confirmReview}
+        />
+      )}
     </div>
   );
 }
