@@ -52,13 +52,18 @@ export default function Support() {
   };
 
   const finishMockPayment = async () => {
-    await completeMockPayment({
-      order_id: payModal.order.id,
-      flow: 'platform_support',
-      reference_id: user.id,
-    });
-    setPayModal(null);
-    await finish();
+    try {
+      await completeMockPayment({
+        order_id: payModal.order.id,
+        flow: 'platform_support',
+        reference_id: user.id,
+      });
+      setPayModal(null);
+      await finish();
+    } catch (e: any) {
+      setErr(e?.response?.data?.detail || t('support.error'));
+      setPayModal(null);
+    }
   };
 
   // The escape hatch. A hard gate on a logged-in user with no way out is a trap: they cannot
