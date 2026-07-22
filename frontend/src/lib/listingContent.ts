@@ -68,7 +68,8 @@ export function seedFor(s = ''): number {
 
 export interface ListingContent {
   about?: string;              // detailed, factual description
-  gallery?: string[];          // Unsplash keyword queries
+  hero?: string;               // curated hero photo URL, overrides the listing's own
+  gallery?: string[];          // photo URLs, or keyword queries for stock photos
   coords?: [number, number];   // [lat, lng] for the map embed
   bestTime?: string;           // festivals — when to go
   routes?: string[];           // drivers — routes operated
@@ -78,6 +79,19 @@ export interface ListingContent {
 
 // Approx. centre of Darjeeling town — fallback map location.
 export const DARJEELING: [number, number] = [27.041, 88.263];
+
+/**
+ * Curated photos shared by every listing of a type, including provider-created
+ * ones that have no CONTENT entry. A listing whose own gallery holds real photo
+ * URLs keeps those instead; keyword galleries defer to these.
+ */
+export const TYPE_GALLERY: Record<string, string[]> = {
+  homestay: [
+    'https://www.thebrokebackpacker.com/wp-content/uploads/2020/06/airbnb-peru-room-by-the-beach.jpg',
+    'https://cf.bstatic.com/xdata/images/hotel/square600/779368925.webp?k=f69db55f893f656a09bdd175d69844193a2f438c699f9101a4981781e923f808&o=',
+    'https://dynamic-media.tacdn.com/media/vr-ha-splice-j/10/85/9b/58.jpg?w=800&h=-1',
+  ],
+};
 
 export const CONTENT: Record<string, ListingContent> = {
   // ---------------- Tourism spots ----------------
@@ -90,31 +104,56 @@ export const CONTENT: Record<string, ListingContent> = {
   'Batasia Loop & War Memorial': {
     about:
       'The Batasia Loop is a spiral railway track built in 1919 that lets the Darjeeling Himalayan Railway — the UNESCO-listed “toy train” — descend a steep gradient by looping over itself. At its centre sits a landscaped garden and the Gorkha War Memorial, honouring Gorkha soldiers who died since Indian independence. The site gives a sweeping 360° panorama of Darjeeling town and the Kanchenjunga range.',
-    gallery: ['darjeeling toy train', 'batasia loop', 'himalayan railway'],
+    gallery: [
+      'https://thumbs.dreamstime.com/b/poster-famous-batasia-loop-year-old-circular-train-track-encircled-spectacular-mountain-vista-most-picturesque-446553234.jpg',
+      // Direct S3 original rather than the backpackersunited.in Next.js proxy,
+      // which only serves its own origin.
+      'https://bpu-images-v1.s3.eu-north-1.amazonaws.com/uploads/1721797693793_vineet-singh-GJ-hhgE-9tI-unsplash.jpg',
+      'https://thewhistlestop.in/images/home_attractions.jpg',
+    ],
     coords: [27.0163, 88.2586],
   },
   'Happy Valley Tea Estate': {
     about:
       'Founded in 1854, Happy Valley is the second-oldest tea estate in Darjeeling and the closest to the town centre. Its steep, mist-fed slopes produce prized first- and second-flush Darjeeling tea, still hand-plucked and processed in a Victorian-era factory. Guided walks through the gardens and factory end with a tasting of the estate’s single-origin brews.',
-    gallery: ['darjeeling tea garden', 'tea plantation hills', 'tea leaves picking'],
+    // Origin scene7 image rather than the Brave search-cache copy, which is a
+    // transient 860px-wide proxy.
+    hero: 'https://s7ap1.scene7.com/is/image/incredibleindia/happy-valley-tea-estate-darjeeling-west%20bengal-darjeelin-1?qlt=82&ts=1726643146287',
+    gallery: [
+      'https://i.imgur.com/p3zhsGZ.jpg',
+      'https://media-cdn.tripadvisor.com/media/photo-o/19/64/4c/b5/happy-valley-tea-estate.jpg',
+      'https://www.darjeeling-tourism.com/darj_i00004c.jpg',
+    ],
     coords: [27.055, 88.256],
   },
   'Padmaja Naidu Himalayan Zoological Park': {
     about:
       'India’s largest high-altitude zoo, opened in 1958 and set at around 2,130 m, specialises in breeding endangered Himalayan species. It runs internationally recognised conservation programmes for the red panda and snow leopard, and also houses Tibetan wolves, Himalayan black bears and the Himalayan Mountaineering Institute next door. Its terraced enclosures wind through natural pine forest.',
-    gallery: ['red panda', 'snow leopard', 'himalayan wildlife'],
+    gallery: [
+      'https://hblimg.mmtcdn.com/content/hubble/img/darjeeling/mmt/activities/m_activities_Darjeeling_Padmaja%20Naidu%20Himalayan%20Zoological%20Park_l_400_640.jpg',
+      'https://s7ap1.scene7.com/is/image/incredibleindia/padmaja-naidu-himalayan-zoological-park-darjeeling-west-bengal-1-attr-hero?qlt=82&ts=1726643354434',
+      'https://captureatrip-cms-storage.s3.ap-south-1.amazonaws.com/Padmaja_Naidu_Himalayan_Zoological_Park_in_Summer_March_to_June_5a625ce2cf.webp',
+    ],
     coords: [27.048, 88.257],
   },
   'Peace Pagoda': {
     about:
       'The Darjeeling Peace Pagoda, completed in 1992 on the slopes of Jalapahar, is one of many Nipponzan-Myōhōji stupas built worldwide to promote peace. Its white dome carries four gilded avatars of the Buddha, and the surrounding terrace offers a calm, panoramic view over the town and the mountains. A drum ceremony is held at the adjoining Japanese temple each morning and evening.',
-    gallery: ['peace pagoda', 'buddhist stupa', 'darjeeling hills'],
+    gallery: [
+      'https://d3gw4aml0lneeh.cloudfront.net/assets/locations/13692/2o2gc2xlpijt.jpg',
+      'https://superbcollections.com/wp-content/uploads/2023/09/Buddhist_Temple_Peace_Pagoda_Darjeeling_West_Bengal_India_5-600x800.jpg',
+      'https://chalbanjare.com/crmnew/img_master/thumb/darjeeling-japanese-templejpgimgw12801280_17828148130.webp',
+    ],
     coords: [27.0333, 88.2606],
   },
   'Ghum Monastery (Yiga Choeling)': {
     about:
       'Yiga Choeling, established in 1850 and rebuilt in 1909, is the oldest Tibetan Buddhist monastery of the Gelug (Yellow Hat) school in the Darjeeling area. It is best known for its 5 m statue of the Maitreya (Future) Buddha and a collection of rare handwritten Buddhist manuscripts and antique thangkas. Sitting near Ghum — one of the highest railway stations in the world — it remains an active place of worship.',
-    gallery: ['tibetan monastery', 'buddhist monastery interior', 'prayer flags himalaya'],
+    gallery: [
+      'https://d3gw4aml0lneeh.cloudfront.net/assets/locations/13712/Qn4fDURNCHPP.jpg',
+      'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/09/61/c0/9d/yiga-choling-gompa.jpg?w=700&h=400&s=1',
+      'https://media.istockphoto.com/id/2223969191/photo/beautiful-view-of-interior-of-ghum-monastery-image-taken-with-permission-peaceful-calm-and.jpg?s=612x612&w=0&k=20&c=O58kI1GMpxKf_xSq_3lPC1EpIBfoF4geCPLXWOAXyKs=',
+    ],
     coords: [27.006, 88.254],
   },
 
@@ -194,14 +233,27 @@ export const CONTENT: Record<string, ListingContent> = {
   'Hayden Hall Craft Store': {
     about:
       'Hayden Hall is a social enterprise whose store sells handwoven shawls, bags and crafts made by local women’s cooperatives, with proceeds supporting community welfare programmes. Every piece is handmade in Darjeeling.',
-    gallery: ['handwoven shawl', 'himalayan crafts', 'wool weaving'],
+    // Origin TripAdvisor media URLs rather than the Brave search-cache copies,
+    // which are transient 860px-wide proxies.
+    gallery: [
+      'https://media-cdn.tripadvisor.com/media/photo-o/12/73/9d/7a/hayden-hall.jpg',
+      'https://media-cdn.tripadvisor.com/media/photo-o/12/73/9d/8a/hayden-hall.jpg',
+      'https://media-cdn.tripadvisor.com/media/photo-o/12/73/9d/6d/hayden-hall.jpg',
+    ],
     coords: [27.0398, 88.2632],
   },
-  'Life & Leaf Wooden Toys': {
+  'Gorkhey Haat': {
     about:
-      'A small Chowrasta workshop-store selling artisan wooden toys, fridge magnets and prayer wheels, all made by local craftspeople — the kind of souvenir that carries a bit of the hills home with it.',
-    gallery: ['wooden toys handmade', 'artisan crafts', 'souvenir shop'],
-    coords: [27.0425, 88.2665],
+      'Gorkhey Haat (also known as Gorkha Haat) is a weekly open-air market in Darjeeling, typically held on Thursdays along HD Lama Road and JP Sharma Road in the heart of town.\n\n' +
+      'Revived by the Gorkha Haat Samuha in 2024, it celebrates the traditional haat culture of the hills and serves as a social and economic hub for local artisans, farmers and vendors. It is best known for authentic regional cooking  momos filled with iskus and sisnu, sel roti, sekuwa, laphing, dhido and wachiba laphing  alongside handmade crafts, organic foods and herbal goods.\n\n' +
+      'Note that it is distinct from Gorkhey, the remote Singalila village near the Sikkim border reachable only on foot; in town, "Gorkhey Haat" means this revived market tradition.',
+    hero: 'https://miro.medium.com/v2/resize:fit:1100/format:webp/1*3FXYRuN6fc-JOVbhIDrJ2g.jpeg',
+    gallery: [
+      'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT8nOrCHL6lzQ41ls0fQoYLNl-LZlqL0HwRnLWBmwDjy1WoKu4rwV9yqsGP&s=10',
+      'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTFZSAYOgIq-9GoP3BV37QRoQlxTe3sigGOPt4_MspTIY86YndCyNjlkRf9&s=10',
+      'https://miro.medium.com/v2/resize:fit:1400/1*sPXOjw_rDjYZIJdvmKpCAg.jpeg',
+    ],
+    coords: [27.0388, 88.2617],
   },
 
   // ---------------- Cafes ----------------
@@ -288,7 +340,9 @@ export const CONTENT: Record<string, ListingContent> = {
 /** Primary keyword used to fetch a listing's own photo. */
 function primaryKeyword(item: any): string {
   const c = CONTENT[item?.title] || {};
-  if (c.gallery?.length) return c.gallery[0];
+  // Gallery entries may be real URLs; only a keyword can seed a stock search.
+  const keyword = c.gallery?.find((g) => !/^https?:\/\//.test(g));
+  if (keyword) return keyword;
   // No curated entry (e.g. a provider-created listing): build from its own data.
   return `${item?.title || ''} ${item?.location || 'Darjeeling'}`.trim();
 }
@@ -299,15 +353,29 @@ function primaryKeyword(item: any): string {
  * two listings share the same picture across cards and the detail hero.
  */
 export function listingImage(item: any, w = 1200, h = 900): string {
+  const curatedHero = CONTENT[item?.title]?.hero;
+  if (curatedHero) return sizedImage(curatedHero, w);
   if (item?.image && !SEED_IMAGE_SET.has(item.image)) return sizedImage(item.image, w);
   return stockPhoto(primaryKeyword(item), w, h, seedFor(item?.title));
 }
 
-/** The gallery photos for a listing, each distinct across listings. */
+/**
+ * The gallery photos for a listing, each distinct across listings. A gallery
+ * entry may be a real photo URL — used as-is — or a keyword, which resolves to
+ * a per-listing stock photo.
+ */
 export function galleryImagesFor(item: any, w = 900, h = 700): string[] {
   const c = CONTENT[item?.title] || {};
+  const isUrl = (s: string) => /^https?:\/\//.test(s);
+
+  // A type-wide photo set stands in unless this listing has its own real photos.
+  const typeGallery = TYPE_GALLERY[item?.type];
+  if (typeGallery && !c.gallery?.some(isUrl)) return typeGallery.map((u) => sizedImage(u, w));
+
   const base = seedFor(item?.title);
-  return (c.gallery || []).map((kw, i) => stockPhoto(kw, w, h, base + i + 1));
+  return (c.gallery || []).map((entry, i) =>
+    isUrl(entry) ? sizedImage(entry, w) : stockPhoto(entry, w, h, base + i + 1)
+  );
 }
 
 /** Host / driver portrait, or undefined when there's no curated keyword. */

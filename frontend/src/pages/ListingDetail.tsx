@@ -10,6 +10,7 @@ import SmartImg from '@/components/SmartImg';
 import MapEmbed from '@/components/MapEmbed';
 import MockPaymentModal from '@/components/MockPaymentModal';
 import BookingConfirmation from '@/components/BookingConfirmation';
+import useGoBack from '@/hooks/useGoBack';
 import {
   MapPin, Tag, ArrowLeft, Phone, Share2, Heart, Store, Coffee, Ticket,
   Leaf, Mountain, Navigation, ArrowRight, BadgeCheck, Languages, ChevronDown,
@@ -34,9 +35,13 @@ function Screen({ tone = 'bg', wide = false, children, testid }: { tone?: 'bg' |
 function SectionHead({ label, title, note }: { label: string, title: string, note?: string }) {
   return (
     <div className="text-left max-w-3xl">
-      <div className="inline-flex items-center gap-3 text-xs font-bold uppercase tracking-widest text-ink-soft">
-        {label}
-      </div>
+      {/* Several sections use the same string for both; showing it twice just
+          reads as a stutter, so the eyebrow drops out when it repeats. */}
+      {label !== title && (
+        <div className="inline-flex items-center gap-3 text-xs font-bold uppercase tracking-widest text-ink-soft">
+          {label}
+        </div>
+      )}
       <h2 className="mt-5 font-display font-extrabold text-3xl sm:text-4xl md:text-5xl text-ink leading-tight">{title}</h2>
       {note && <p className="mt-3 text-ink-soft">{note}</p>}
     </div>
@@ -62,6 +67,7 @@ export default function ListingDetail() {
   const { t } = useTranslation();
   const { user } = useAuth();
   const nav = useNavigate();
+  const handleBack = useGoBack();
   const [item, setItem] = useState(null);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ check_in: '', check_out: '', guests: 1, notes: '' });
@@ -91,9 +97,14 @@ export default function ListingDetail() {
     return () => ctx.revert();
   }, [loading, item]);
 
-  const bookable = item && (item.type === 'homestay' || item.type === 'driver');
+  // Without a published price there is nothing to charge, so such listings fall
+  // back to directions rather than offering a booking flow.
+  const bookable = item && (item.type === 'homestay' || item.type === 'driver') && item.price > 0;
   // Types that trade — everything else (spots, events, biodiversity) is informational.
-  const commercial = item && ['homestay', 'driver', 'shop', 'cafe'].includes(item.type);
+  // `extras.no_reserve` opts a single listing out: a weekly haat has nothing to
+  // reserve even though it is a shop.
+  const commercial = item && ['homestay', 'driver', 'shop', 'cafe'].includes(item.type)
+    && !item.extras?.no_reserve;
 
   // Contextual CTA config per listing type
   const CTA_CONFIG = {
@@ -192,17 +203,17 @@ export default function ListingDetail() {
   const c = contentFor(item);
   const initial = (item.title || '?').trim().charAt(0).toUpperCase();
   const fallbackImg = fallbackFor(item.type);
-  const handleBack = () => {
-    if (window.history.state && window.history.state.idx > 0) {
-      nav(-1);
-    } else {
-      nav('/');
-    }
-  };
 
   const heroSrc = listingImage(item, 2000, 1200);
   const gallery = galleryImagesFor(item);
   const personSrc = personImageFor(item);
+  const driverSrc = listingImage(item, 600, 600);
+  // Driver titles read "Tenzing - Local Taxi Driver"; the heading wants the
+  // person, not the role, so keep only what precedes the dash.
+  const driverName = (item.title || '').split(/\s+[-–—]\s+/)[0].trim();
+  const offersTitle = item.type === 'driver' && driverName
+    ? t('detail.offers_by', { name: driverName })
+    : t('detail.offers');
 
   return (
     <div className="pb-28 lg:pb-0">
@@ -211,8 +222,9 @@ export default function ListingDetail() {
         <SmartImg src={heroSrc} fallback={fallbackImg} alt={item.title} className="absolute inset-0 w-full h-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/45" />
 
+        {/* Below lg the sticky header supplies the back control — avoid two. */}
         <button onClick={handleBack} data-testid="detail-back"
-          className="absolute top-4 left-4 md:top-6 md:left-8 inline-flex items-center gap-2 pl-3 pr-4 py-2.5 rounded-full bg-white/95 backdrop-blur text-sm font-bold text-ink btn-hover">
+          className="absolute top-4 left-4 md:top-6 md:left-8 hidden lg:inline-flex items-center gap-2 pl-3 pr-4 py-2.5 rounded-full bg-white/95 backdrop-blur text-sm font-bold text-ink btn-hover">
           <ArrowLeft size={16} /> {t('common.back')}
         </button>
 
@@ -249,8 +261,10 @@ export default function ListingDetail() {
 
       {/* ============ ABOUT — detailed ============ */}
       <Screen tone="bg" testid="detail-about">
-        <SectionHead label={t('detail.about')} title={item.title} />
-        <p className="mt-8 text-lg md:text-xl text-ink leading-relaxed max-w-3xl">{c.about}</p>
+        <SectionHead label={item.type === 'driver' ? t('detail.about_driver') : t('detail.about')} title={item.title} />
+        {/* whitespace-pre-line so an `about` written as multiple paragraphs
+            (separated by blank lines) keeps its breaks instead of collapsing. */}
+        <p className="mt-8 text-lg md:text-xl text-ink leading-relaxed max-w-3xl whitespace-pre-line">{c.about}</p>
         {item.tags?.length > 0 && (
           <div className="mt-8 flex flex-wrap justify-start gap-2">
             {item.tags.map((tg: string) => <span key={tg} className="chip"><Tag size={11} className="mr-1" /> {tg}</span>)}
@@ -258,8 +272,8 @@ export default function ListingDetail() {
         )}
       </Screen>
 
-      {/* ============ PHOTOS — gallery ============ */}
-      {gallery.length > 0 && (
+      {/* ============ PHOTOS — gallery (not for drivers) ============ */}
+      {item.type !== 'driver' && gallery.length > 0 && (
         <Screen tone="white" wide testid="detail-photos">
           <SectionHead label={t('detail.photos')} title={t('detail.photos')} note={t('detail.gallery_note')} />
           <div className="mt-10 grid sm:grid-cols-3 gap-4 md:gap-5">
@@ -274,7 +288,7 @@ export default function ListingDetail() {
       {/* ============ WHAT THIS PLACE OFFERS (not for wildlife/flora) ============ */}
       {item.type !== 'biodiversity' && amenities.length > 0 && (
         <Screen tone="mist" wide testid="detail-offers">
-          <SectionHead label={t('detail.offers')} title={t('detail.offers')} />
+          <SectionHead label={offersTitle} title={offersTitle} />
           <div className="mt-10 grid sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5 max-w-4xl mx-auto">
             {amenities.map(({ Icon, label }) => (
               <div key={label} className="flex items-center gap-4 p-5 rounded-2xl border border-[var(--line)] bg-white">
@@ -297,7 +311,7 @@ export default function ListingDetail() {
               <span className="chip bg-white"><BadgeCheck size={12} className="mr-1" /> {t('detail.verified')}</span>
             </div>
             <p className="mt-2 text-sm text-ink-soft flex items-center justify-start gap-1.5"><MapPin size={13} /> {item.location}</p>
-            <p className="mt-6 text-lg text-ink leading-relaxed">{c.about}</p>
+            <p className="mt-6 text-lg text-ink leading-relaxed whitespace-pre-line">{c.about}</p>
             <p className="mt-5 text-ink-soft flex items-center justify-start gap-2">
               <Languages size={18} className="text-pine" /> {t('detail.speaks')}: Nepali, Hindi, English
             </p>
@@ -310,12 +324,14 @@ export default function ListingDetail() {
         <Screen tone="bg" testid="detail-driver">
           <SectionHead label={t('detail.meet_driver')} title={t('detail.meet_driver')} />
           <div className="mt-10 text-left max-w-2xl">
-            <Avatar photo={personSrc} initial={initial} />
+            {/* Drivers show the same photo here as the hero, so the face you
+                scrolled past is the face you meet — no second stock person. */}
+            <Avatar photo={driverSrc} initial={initial} />
             <div className="mt-6 flex items-center justify-start gap-2 flex-wrap">
               <span className="font-display font-extrabold text-2xl md:text-3xl text-ink">{item.title}</span>
               <span className="chip bg-white"><BadgeCheck size={12} className="mr-1" /> {t('detail.verified')}</span>
             </div>
-            <p className="mt-6 text-lg text-ink leading-relaxed">{c.about}</p>
+            <p className="mt-6 text-lg text-ink leading-relaxed whitespace-pre-line">{c.about}</p>
           </div>
         </Screen>
       )}
@@ -431,7 +447,13 @@ export default function ListingDetail() {
 
       {/* Sticky bottom bar (mobile) */}
       <div className="lg:hidden fixed bottom-[var(--bottom-nav-h)] inset-x-0 z-30 px-4 pb-3">
-        <div className="mx-auto max-w-md bg-white rounded-2xl border border-[var(--line)] shadow-[0_-8px_24px_-8px_rgba(20,32,26,0.18)] p-2.5 flex items-center gap-2">
+        {/* The white card exists to seat the price alongside the CTA; with no
+            price there is nothing to seat, so the button floats on its own. */}
+        <div className={`mx-auto max-w-md flex items-center gap-2 ${
+          item.price > 0
+            ? 'bg-white rounded-2xl border border-[var(--line)] shadow-[0_-8px_24px_-8px_rgba(20,32,26,0.18)] p-2.5'
+            : ''
+        }`}>
           {item.price > 0 && (
             <div className="pl-2">
               <div className="text-[10px] font-bold uppercase tracking-widest text-ink-soft leading-none">{t('common.starting_from')}</div>
@@ -442,7 +464,7 @@ export default function ListingDetail() {
             onClick={bookable ? doBook : openMaps}
             disabled={busy}
             data-testid="mobile-sticky-cta"
-            className={`ml-auto flex-shrink-0 inline-flex items-center gap-2 px-5 py-3 rounded-full font-extrabold btn-hover ${bookable ? cta.color : 'bg-pine text-white'}`}
+            className={`ml-auto flex-shrink-0 inline-flex items-center gap-2 px-5 py-3 rounded-full font-extrabold btn-hover ${bookable ? cta.color : 'bg-pine text-white'} ${item.price > 0 ? '' : 'shadow-[0_8px_24px_-8px_rgba(20,32,26,0.45)]'}`}
           >
             {bookable
               ? <><CtaIcon size={16} /> {item.type === 'driver' ? t('cta.talk_to_driver') : t('cta.book_now')}</>

@@ -68,7 +68,9 @@
   },
   "detail": {
     "about": "About this place",
+    "about_driver": "About this driver",
     "offers": "What this place offers",
+    "offers_by": "What {{name}} offers",
     "host": "Meet your host",
     "location": "Where you'll be",
     "verified": "Verified provider",

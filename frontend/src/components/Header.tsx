@@ -1,9 +1,10 @@
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/context/AuthContext';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
-import { Search, User } from 'lucide-react';
+import useGoBack from '@/hooks/useGoBack';
+import { Search, User, ArrowLeft } from 'lucide-react';
 
 export default function Header() {
   const { t } = useTranslation();
@@ -12,6 +13,10 @@ export default function Header() {
   const [dropdownOpen, setDropdownOpen] = React.useState(false);
   const dropdownRef = React.useRef(null);
   const nav = useNavigate();
+  const { pathname } = useLocation();
+  const goBack = useGoBack();
+  // The landing page is the root of the mobile tab bar — nothing to go back to.
+  const showBack = pathname !== '/';
 
   React.useEffect(() => {
     if (!dropdownOpen) return;
@@ -38,8 +43,24 @@ export default function Header() {
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-[var(--line)]" data-testid="site-header">
       <div className="mx-auto max-w-6xl px-4 md:px-6 h-14 md:h-16 flex items-center gap-3 md:gap-5">
-        {/* Brand */}
-        <Link to="/" className="flex items-center gap-2 flex-shrink-0" data-testid="brand-link">
+        {/* Back — mobile/tablet only; desktop keeps the brand plus in-page controls */}
+        {showBack && (
+          <button
+            onClick={goBack}
+            data-testid="header-back"
+            aria-label={t('common.back')}
+            className="lg:hidden w-9 h-9 -ml-1 rounded-full grid place-items-center text-ink hover:bg-mist flex-shrink-0 btn-hover"
+          >
+            <ArrowLeft size={20} />
+          </button>
+        )}
+
+        {/* Brand — yields its spot to the back button on small screens */}
+        <Link
+          to="/"
+          className={`${showBack ? 'hidden lg:flex' : 'flex'} items-center gap-2 flex-shrink-0`}
+          data-testid="brand-link"
+        >
           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-pine to-pine-dark text-white grid place-items-center font-display font-extrabold text-lg leading-none">১</div>
           <div className="hidden sm:block leading-none">
             <div className="font-display font-extrabold text-lg text-ink">1 Darjeeling</div>
