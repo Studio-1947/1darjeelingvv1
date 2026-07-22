@@ -35,3 +35,25 @@ describe('API_BASE', () => {
     expect(loadApiBase()).toBe('http://localhost:8000/api');
   });
 });
+
+describe('isSupportRequiredError', () => {
+  const { isSupportRequiredError } = require('./api');
+
+  it('recognises the support-required 402', () => {
+    expect(isSupportRequiredError({
+      response: { status: 402, data: { code: 'support_required' } },
+    })).toBe(true);
+  });
+
+  it('ignores a 402 that is not about support', () => {
+    expect(isSupportRequiredError({
+      response: { status: 402, data: { code: 'something_else' } },
+    })).toBe(false);
+  });
+
+  it('ignores other statuses and malformed errors', () => {
+    expect(isSupportRequiredError({ response: { status: 403, data: { code: 'support_required' } } })).toBe(false);
+    expect(isSupportRequiredError({})).toBe(false);
+    expect(isSupportRequiredError(null)).toBe(false);
+  });
+});

@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { SUPPORT_ROUTE } from './support';
 
 // Empty by default so the API is called same-origin ('/api') and nginx proxies it
 // to the backend. Without the fallback, CRA inlines a missing var as the literal
@@ -13,6 +14,28 @@ api.interceptors.request.use((cfg) => {
   if (t) cfg.headers.Authorization = `Bearer ${t}`;
   return cfg;
 });
+
+/**
+ * True when the server is telling us the caller's support fee is not active. The status alone is
+ * not enough — 402 could mean something else later — so the machine-readable code decides.
+ */
+export function isSupportRequiredError(error: any): boolean {
+  return error?.response?.status === 402 && error?.response?.data?.code === 'support_required';
+}
+
+// SupportGate is the primary gate, but client state goes stale: a window that lapsed mid-session,
+// or a second tab holding an older user object. A 402 is the server's authoritative answer, so
+// honour it. A full navigation rather than a router push, because axios has no router access —
+// acceptable for a path that should be rare.
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (isSupportRequiredError(error) && window.location.pathname !== SUPPORT_ROUTE) {
+      window.location.assign(SUPPORT_ROUTE);
+    }
+    return Promise.reject(error);
+  }
+);
 
 export default api;
 
