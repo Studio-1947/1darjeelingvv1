@@ -99,6 +99,22 @@ export const OTP_TTL_SECONDS = requirePositiveInt('OTP_TTL_SECONDS', process.env
 export const OTP_MAX_ATTEMPTS = requirePositiveInt('OTP_MAX_ATTEMPTS', process.env.OTP_MAX_ATTEMPTS, 5);
 
 export const JWT_SECRET = requireRealValueInProd('JWT_SECRET', process.env.JWT_SECRET, 'dev_only_insecure_jwt_secret');
+// Defaulting to true is right in dev and wrong in production, for the same reason APP_ENV refuses
+// to default above: an absent variable is an operator mistake, not a request for simulated
+// payments. Left as a silent default, one forgotten line in an env file lets any authenticated
+// caller settle their own order through /payments/mock/complete — granting themselves the ₹12
+// support fee, or activating a provider for ₹0.
+//
+// An EXPLICIT MOCK_PAYMENTS=true still boots in production, with the warning below. That is a
+// documented pre-go-live state (see .env.production.example and deploy/VPS-RUNBOOK.md) and stays
+// supported — the operator said what they meant. Only silence is refused.
+if (IS_PROD && !process.env.MOCK_PAYMENTS?.trim()) {
+  throw new Error(
+    '[config] MOCK_PAYMENTS must be set explicitly when APP_ENV=production. ' +
+    'Set MOCK_PAYMENTS=false to charge real money, or MOCK_PAYMENTS=true to keep payments ' +
+    'simulated before go-live — it is not assumed.'
+  );
+}
 export const MOCK_PAYMENTS = process.env.MOCK_PAYMENTS ? process.env.MOCK_PAYMENTS.toLowerCase() === 'true' : true;
 export const CORS_ORIGINS = process.env.CORS_ORIGINS
   ? process.env.CORS_ORIGINS.split(',').map(o => o.trim())
