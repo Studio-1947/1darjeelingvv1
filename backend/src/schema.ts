@@ -80,6 +80,17 @@ export const bookings = pgTable('bookings', {
   confirmedAt: text('confirmed_at'),
 });
 
+export const favorites = pgTable('favorites', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  listingId: text('listing_id').references(() => listings.id, { onDelete: 'cascade' }).notNull(),
+  createdAt: text('created_at').notNull(),
+}, (t) => ({
+  // A user can favorite a listing at most once — enforced at the DB level so a double-tap or two
+  // concurrent POSTs can't create duplicate rows (the add route relies on this via onConflictDoNothing).
+  userListingUnique: uniqueIndex('favorites_user_id_listing_id_unique').on(t.userId, t.listingId),
+}));
+
 export const payments = pgTable('payments', {
   id: text('id').primaryKey(),
   userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),

@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Heart, MapPin, Share2, Bookmark, Star, ArrowRight, Phone, Store, Coffee, Ticket, Leaf, Mountain } from 'lucide-react';
 import SmartImg from '@/components/SmartImg';
 import { listingImage, fallbackFor } from '@/lib/listingContent';
+import { useAuth } from '@/context/AuthContext';
+import { useFavorites } from '@/context/FavoritesContext';
 
 const CTA_MAP = {
   homestay: { key: 'book_now', Icon: ArrowRight, color: 'bg-flag text-white' },
@@ -20,10 +22,24 @@ const CTA_MAP = {
  */
 export default function FeedCard({ item, priority = false }) {
   const { t } = useTranslation();
+  const nav = useNavigate();
+  const loc = useLocation();
+  const { user } = useAuth();
+  const { isFavorite, toggle } = useFavorites();
+  const saved = isFavorite(item.id);
   const [liked, setLiked] = useState(false);
-  const [saved, setSaved] = useState(false);
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
+
+  // The bookmark persists the listing to the user's Saved page. Logged-out visitors are routed to
+  // sign in and returned to the exact feed they were browsing.
+  const handleSave = () => {
+    if (!user) {
+      nav(`/login?next=${encodeURIComponent(loc.pathname + loc.search)}`);
+      return;
+    }
+    toggle(item.id).catch(() => {});
+  };
   const unit = item.type === 'homestay' ? t('common.per_night') : item.type === 'driver' ? t('common.per_day') : '';
   const cat = t(`categories.${item.type}`);
   const cta = CTA_MAP[item.type] || CTA_MAP.spot;
@@ -92,7 +108,7 @@ export default function FeedCard({ item, priority = false }) {
             );
           })}
         </div>
-        <button onClick={() => setSaved(!saved)} data-testid={`feed-save-${item.id}`} className="ml-auto btn-hover" aria-label="Save">
+        <button onClick={handleSave} data-testid={`feed-save-${item.id}`} className="ml-auto btn-hover" aria-label="Save" aria-pressed={saved}>
           <Bookmark size={22} className={saved ? 'fill-pine text-pine' : 'text-ink'} />
         </button>
       </div>

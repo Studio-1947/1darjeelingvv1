@@ -14,6 +14,7 @@ import paymentsRouter from './routes/payments';
 import adminRouter from './routes/admin';
 import geocodeRouter from './routes/geocode';
 import kycRouter from './routes/kyc';
+import favoritesRouter from './routes/favorites';
 import { rateLimiter } from './middleware/rateLimiter';
 
 export const app = express();
@@ -113,6 +114,7 @@ app.use('/api/providers', kycRouter);
 app.use('/api/providers', providersRouter);
 app.use('/api/listings', listingsRouter);
 app.use('/api/bookings', bookingsRouter);
+app.use('/api/favorites', favoritesRouter);
 app.use('/api/payments', paymentsRouter);
 app.use('/api/geocode', geocodeRouter);
 app.use('/api', adminRouter); // Mount admin routes directly under /api (e.g. /api/admin/seed, /api/admin/stats)

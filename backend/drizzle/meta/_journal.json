@@ -43,6 +43,13 @@
       "when": 1784632248217,
       "tag": "0005_chief_firelord",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1784694358780,
+      "tag": "0006_tan_nitro",
+      "breakpoints": true
     }
   ]
 }

@@ -6,7 +6,7 @@ import { amenitiesFor, hostFor } from '@/lib/listingMeta';
 import { contentFor, galleryImagesFor, personImageFor, fallbackFor } from '@/lib/listingContent';
 import MockPaymentModal from '@/components/MockPaymentModal';
 import BookingConfirmation from '@/components/BookingConfirmation';
-import DetailHero from '@/components/listing-detail/DetailHero';
+import DetailHero, { ShareOutcome } from '@/components/listing-detail/DetailHero';
 import {
   AboutSection, PhotosSection, OffersSection, StayGallerySection,
   HostSection, DriverSection, BestTimeSection, RoutesSection, LocationSection,
@@ -38,13 +38,27 @@ export default function ListingDetail() {
     window.open(`https://www.google.com/maps/search/?api=1&query=${q}`, '_blank');
   };
 
-  const shareIt = async () => {
-    if (!item) return;
+  const shareIt = async (): Promise<ShareOutcome> => {
+    if (!item) return 'failed';
     const url = window.location.href;
     if (navigator.share) {
-      try { await navigator.share({ title: item.title, text: item.description, url }); return; } catch (e) { console.warn('share failed', e); }
+      try {
+        await navigator.share({ title: item.title, text: item.description, url });
+        return 'shared';
+      } catch (e: any) {
+        // The user dismissing the native share sheet throws AbortError — that's a deliberate
+        // cancel, not a failure, so don't silently fall back to copying the link behind their back.
+        if (e?.name === 'AbortError') return 'shared';
+        console.warn('share failed', e);
+      }
     }
-    try { await navigator.clipboard.writeText(url); booking.setMsg('Link copied!'); setTimeout(() => booking.setMsg(''), 1500); } catch (e) { console.warn('clipboard failed', e); }
+    try {
+      await navigator.clipboard.writeText(url);
+      return 'copied';
+    } catch (e) {
+      console.warn('clipboard failed', e);
+      return 'failed';
+    }
   };
 
   if (loading) return <div className="mx-auto max-w-5xl p-10 text-ink-soft">{t('common.loading')}</div>;
