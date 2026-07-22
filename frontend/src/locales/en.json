@@ -18,6 +18,18 @@
     "dashboard": "Dashboard",
     "admin": "Admin"
   },
+  "support": {
+    "title": "A small token to keep 1 Darjeeling running",
+    "amount_line": "₹12 for the year — a one-time platform support & convenience fee that goes toward maintenance, hosting and building costs.",
+    "body": "That's ₹1 a month. It keeps the app running for travellers and keeps listings free for the small homestays, drivers and cafés on it.",
+    "cta": "Pay ₹12 · valid 1 year",
+    "reassurance": "Valid for one year. Nothing auto-charges — we'll ask you again next year.",
+    "skip": "Not now — browse without an account",
+    "modal_title": "Platform support fee",
+    "modal_duration": "· 1 year",
+    "privacy_link": "privacy policy",
+    "error": "Payment could not be completed. Please try again."
+  },
   "hero": {
     "eyebrow": "Under the shadow of Kanchenjunga",
     "title_1": "One Darjeeling.",
