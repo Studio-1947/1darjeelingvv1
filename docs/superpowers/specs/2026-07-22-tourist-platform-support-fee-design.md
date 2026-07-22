@@ -158,12 +158,12 @@ All strings go through i18n (`frontend/src/locales/`), consistent with the exist
 >
 > **[ Pay ₹12 · valid 1 year ]**
 >
-> Renews once a year. Not a subscription — nothing auto-charges.
+> Valid for one year. Nothing auto-charges — we'll ask you again next year.
 
 Two constraints on this copy:
 
 - The button states the amount plainly.
-- "Not a subscription — nothing auto-charges" is stated because it is **true** (no Razorpay mandate or token is created) and it is the first concern of a user paying online. If auto-renewal is ever added, this line must be removed in the same change.
+- The reassurance is **"nothing auto-charges"**, not "this isn't a subscription". Mechanically this *is* a recurring annual charge; "support fee" is the framing, and it is an accurate one, since the money genuinely covers hosting and maintenance. But the claim we put on screen has to be the one that survives scrutiny. No Razorpay mandate or token is created, so "nothing auto-charges" is verifiably true and addresses the actual fear — a silent debit. If auto-renewal is ever added, this line must be removed in the same change.
 
 ## 8. Error handling
 
