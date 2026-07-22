@@ -40,6 +40,15 @@ app.use('/api/providers/me/kyc', rateLimiter(20, 60 * 1000, 'kyc_upload'));
 // which would otherwise consume the stream at its 100kb default.
 app.use('/api/providers/me/kyc', express.json({ limit: '8mb' }));
 
+// Listing image uploads (POST /api/listings/upload) also carry a base64 data URL, but were never
+// given a raised limit — so they fell through to the global express.json() default of 100kb and
+// answered any real photo with a bare 413 `request entity too large`. Mirror the KYC path: rate
+// limit first (so a flood gets a 429 instead of the server buffering the body), then parse with a
+// limit sized to admit a 20MB image after base64 inflation (~27MB) plus the small JSON envelope.
+// Kept in sync with the 20MB hard cap in routes/listings.ts and nginx's client_max_body_size.
+app.use('/api/listings/upload', rateLimiter(20, 60 * 1000, 'listing_upload'));
+app.use('/api/listings/upload', express.json({ limit: '28mb' }));
+
 app.use(express.json());
 
 app.use(cors({

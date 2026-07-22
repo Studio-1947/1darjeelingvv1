@@ -15,6 +15,13 @@ async function resolveOwnProviderId(userId: string): Promise<string | null> {
 
 const router = Router();
 
+// Hard cap on an uploaded listing image, enforced on the decoded bytes. Kept in sync with the
+// express.json('28mb') limit for this path in app.ts (base64 inflates ~33%, so 20MB of raw bytes
+// is ~27MB on the wire) and nginx's client_max_body_size. The parser limit exists so an oversized
+// body is rejected before it's fully buffered; this check gives a clean, specific 400 for anything
+// that squeaks under the parser but is still over the real ceiling.
+const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
+
 // ============ LISTINGS ============
 
 /**
@@ -282,6 +289,8 @@ router.post('/upload', authenticateToken, async (req: Request, res: Response) =>
     // Decode base64 file data
     const base64Data = file.replace(/^data:image\/\w+;base64,/, "");
     const buffer = Buffer.from(base64Data, 'base64');
+    if (buffer.length === 0) return res.status(400).json({ detail: 'Empty file' });
+    if (buffer.length > MAX_UPLOAD_BYTES) return res.status(400).json({ detail: 'Image exceeds the 20 MB limit' });
 
     // Create unique key
     const ext = path.extname(filename) || '.jpg';
