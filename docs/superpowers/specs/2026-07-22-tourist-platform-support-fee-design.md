@@ -95,10 +95,17 @@ Unpaid providers are not stranded by this: `Login.tsx` already routes them to `/
 | `backend/src/routes/payments.ts` | `assertOwnsReference`: `platform_support` branch requiring `referenceId === userId` |
 | `backend/src/routes/payments.ts` | `handlePaymentSuccess`: `platform_support` branch applying the expiry arithmetic |
 | `backend/src/middleware/support.ts` *(new)* | `requireActiveSupport` |
-| `backend/src/routes/bookings.ts` | apply middleware to booking create + cancel |
-| `backend/src/routes/favorites.ts` | apply middleware to writes |
-| `backend/src/routes/reviews.ts` | apply middleware to review create |
+| `backend/src/routes/bookings.ts` | apply middleware to booking **create** only |
+| `backend/src/routes/favorites.ts` | apply middleware to favorite **create** only |
+| `backend/src/routes/reviews.ts` | apply middleware to review **create** only |
 | `backend/src/swagger.ts` | document the new flow and the 402 response |
+
+### Withdrawal is not gated
+
+Booking cancel, un-favourite, and review delete stay open to lapsed accounts. The gate exists to
+stop unpaid accounts consuming value, not to trap users in commitments or hold their content
+hostage — a lapsed user who cannot cancel simply no-shows, which is worse for the provider than
+the cancellation would have been.
 
 ### `assertOwnsReference` — `platform_support`
 

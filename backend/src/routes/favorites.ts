@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { db, schema } from '../db';
 import { eq, and, desc, inArray } from 'drizzle-orm';
 import { authenticateToken } from '../middleware/auth';
+import { requireActiveSupport } from '../middleware/support';
 
 const router = Router();
 
@@ -36,6 +37,11 @@ const router = Router();
  *               listing_id: { type: string }
  *     responses:
  *       200: { description: Saved (idempotent — saving an already-saved listing is a no-op) }
+ *       402:
+ *         description: The caller's annual platform support fee is not active
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
  *       404: { description: Listing not found }
  */
 // List the caller's saved listings, shaped like GET /listings items so the frontend's ListingCard
@@ -109,7 +115,7 @@ router.get('/ids', authenticateToken, async (req: Request, res: Response) => {
 
 // Save a listing. Idempotent: onConflictDoNothing means re-saving an already-saved listing is a
 // no-op success rather than a unique-violation error.
-router.post('/', authenticateToken, async (req: Request, res: Response) => {
+router.post('/', authenticateToken, requireActiveSupport, async (req: Request, res: Response) => {
   const { listing_id } = req.body || {};
   if (!listing_id) return res.status(400).json({ detail: 'listing_id is required' });
 

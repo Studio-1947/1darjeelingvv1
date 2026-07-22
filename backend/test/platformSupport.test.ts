@@ -1,7 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import request from 'supertest';
+import { eq } from 'drizzle-orm';
 import { app } from '../src/app';
-import { nextPhone, registerUser } from './helpers';
+import { db, schema } from '../src/db';
+import { nextPhone, registerUser, createListing, onboardActiveProvider } from './helpers';
 
 describe('support column', () => {
   // Registers through the raw endpoint rather than the registerUser helper on purpose: a later
@@ -104,5 +106,91 @@ describe('platform_support payment flow', () => {
     expect(replay.status).toBe(200);
     expect(replay.body.already).toBe(true);
     expect((await me(token)).supportExpiresAt).toBe(afterFirst);
+  });
+});
+
+describe('support gate on tourist creates', () => {
+  it('402s a tourist who has not paid', async () => {
+    const { token } = await registerUser({ name: 'Unpaid Tourist', paySupport: false });
+    const listing = await createListing();
+
+    const res = await request(app)
+      .post('/api/favorites')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ listing_id: listing.id });
+
+    expect(res.status).toBe(402);
+    expect(res.body.code).toBe('support_required');
+  });
+
+  it('lets a tourist through once the fee is paid', async () => {
+    const { token, user } = await registerUser({ name: 'Paid Tourist', paySupport: false });
+    const listing = await createListing();
+    await paySupport(token, user.id);
+
+    const res = await request(app)
+      .post('/api/favorites')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ listing_id: listing.id });
+
+    expect(res.status).toBe(200);
+  });
+
+  it('402s a provider who has not paid the registration fee', async () => {
+    // role is already 'provider' but providerPaid is false — the loophole the exemption
+    // rule exists to close.
+    const { token } = await registerUser({ name: 'Unpaid Provider', role: 'provider' });
+    const listing = await createListing();
+
+    const res = await request(app)
+      .post('/api/favorites')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ listing_id: listing.id });
+
+    expect(res.status).toBe(402);
+  });
+
+  it('lets an active provider through without paying the support fee', async () => {
+    const { token } = await onboardActiveProvider({ name: 'Paid Provider' });
+    const listing = await createListing();
+
+    const res = await request(app)
+      .post('/api/favorites')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ listing_id: listing.id });
+
+    expect(res.status).toBe(200);
+  });
+
+  it('still lets a tourist whose window has lapsed remove their own data', async () => {
+    // Withdrawal is deliberately not gated: trapping a lapsed user in a booking they cannot
+    // cancel is worse for the provider than the cancellation would have been.
+    const { token, user } = await registerUser({ name: 'Lapser' });
+    const listing = await createListing();
+
+    await request(app)
+      .post('/api/favorites')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ listing_id: listing.id });
+
+    // Expire them. There is no API for this — the fee only ever moves the expiry forward — so
+    // the test reaches into the DB directly, which is the only way to exercise a lapse without
+    // waiting a year.
+    await db.update(schema.users)
+      .set({ supportExpiresAt: new Date(Date.now() - DAY_MS).toISOString() })
+      .where(eq(schema.users.id, user.id));
+
+    // Confirm the lapse actually took effect, so a silent no-op cannot make this test vacuous.
+    const blocked = await request(app)
+      .post('/api/favorites')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ listing_id: listing.id });
+    expect(blocked.status).toBe(402);
+
+    const res = await request(app)
+      .delete(`/api/favorites/${listing.id}`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
   });
 });
