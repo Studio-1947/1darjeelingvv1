@@ -26,7 +26,6 @@ export default function ListingDetail() {
   const { id } = useParams();
   const { t } = useTranslation();
   const nav = useNavigate();
-  const handleBack = useGoBack();
   const [item, setItem] = useState(null);
   const [loading, setLoading] = useState(true);
   const booking = useBookingFlow(item, id);
@@ -94,7 +93,7 @@ export default function ListingDetail() {
 
   return (
     <div className="pb-28 lg:pb-0">
-      <DetailHero item={item} unit={unit} onShare={shareIt} onBack={handleBack} />
+      <DetailHero item={item} unit={unit} onShare={shareIt} />
 
       <AboutSection item={item} about={c.about}
         label={item.type === 'driver' ? t('detail.about_driver') : t('detail.about')} />

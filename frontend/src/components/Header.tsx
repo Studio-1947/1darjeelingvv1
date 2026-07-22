@@ -3,7 +3,8 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/context/AuthContext';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
-import { Search, User, Heart } from 'lucide-react';
+import useGoBack from '@/hooks/useGoBack';
+import { Search, User, Heart, ArrowLeft } from 'lucide-react';
 
 export default function Header() {
   const { t } = useTranslation();

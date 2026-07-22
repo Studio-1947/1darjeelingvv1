@@ -14,7 +14,7 @@ import { useFavorites } from '@/context/FavoritesContext';
 export type ShareOutcome = 'shared' | 'copied' | 'failed';
 
 /** Full-screen hero: cover image, back/like/share, and the title block. */
-export default function DetailHero({ item, unit, onShare, onBack }: {
+export default function DetailHero({ item, unit, onShare }: {
   item: any;
   unit: string;
   onShare: () => Promise<ShareOutcome>;
@@ -80,8 +80,9 @@ export default function DetailHero({ item, unit, onShare, onBack }: {
       <SmartImg src={heroSrc} fallback={fallbackImg} alt={item.title} className="absolute inset-0 w-full h-full object-cover" />
       <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/45" />
 
+      {/* Below lg the sticky header supplies the back control — avoid two. */}
       <button onClick={goBack} data-testid="detail-back"
-        className="absolute top-4 left-4 md:top-6 md:left-8 inline-flex items-center gap-2 pl-3 pr-4 py-2.5 rounded-full bg-white/95 backdrop-blur text-sm font-bold text-ink btn-hover">
+        className="absolute top-4 left-4 md:top-6 md:left-8 hidden lg:inline-flex items-center gap-2 pl-3 pr-4 py-2.5 rounded-full bg-white/95 backdrop-blur text-sm font-bold text-ink btn-hover">
         <ArrowLeft size={16} /> {t('common.back')}
       </button>
 
