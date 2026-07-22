@@ -6,6 +6,7 @@ import { eq, and, ne } from 'drizzle-orm';
 import { authenticateToken } from '../middleware/auth';
 import { rateLimiter } from '../middleware/rateLimiter';
 import { AMOUNTS, MOCK_PAYMENTS, rzpClient, RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, RAZORPAY_WEBHOOK_SECRET, IS_PROD, log } from '../config';
+import { computeSupportExpiry } from '../lib/support';
 
 const router = Router();
 
@@ -73,6 +74,20 @@ async function handlePaymentSuccess(flow: string, referenceId: string, userId: s
         provider: providerInfo
       };
     }
+  } else if (flow === 'platform_support') {
+    // Read-then-write rather than a single UPDATE ... GREATEST(...) expression. Two DIFFERENT
+    // orders settling for the same user in the same instant could each read the same starting
+    // value, costing the user one of the two years. At ₹12 a year and with settlement already
+    // serialised per order by settlePaymentOnce, that race is not worth the untestable SQL.
+    const [u] = await db.select().from(schema.users).where(eq(schema.users.id, userId)).limit(1);
+    if (!u) return null;
+
+    const supportExpiresAt = computeSupportExpiry(u.supportExpiresAt);
+    await db.update(schema.users)
+      .set({ supportExpiresAt })
+      .where(eq(schema.users.id, userId));
+
+    return { supportExpiresAt };
   }
   return null;
 }
@@ -106,6 +121,15 @@ async function assertOwnsReference(
     }
     if (booking.userId !== userId) {
       return { status: 403, detail: 'You can only pay for your own booking' };
+    }
+    return null;
+  }
+
+  if (flow === 'platform_support') {
+    // The reference is the payer themselves — there is no other entity to own. Requiring the
+    // match is what stops someone creating a ₹12 order that credits a different account.
+    if (referenceId !== userId) {
+      return { status: 403, detail: 'You can only pay the support fee for your own account' };
     }
     return null;
   }
@@ -161,8 +185,8 @@ async function settlePaymentOnce(payment: PaymentRow, gatewayPaymentId: string) 
  *             type: object
  *             required: [flow, reference_id]
  *             properties:
- *               flow: { type: string, enum: [provider_registration, booking_commission] }
- *               reference_id: { type: string, description: "Provider id (provider_registration) or booking id (booking_commission)" }
+ *               flow: { type: string, enum: [provider_registration, booking_commission, platform_support] }
+ *               reference_id: { type: string, description: "Provider id (provider_registration), booking id (booking_commission), or the caller's own user id (platform_support)" }
  *     responses:
  *       200:
  *         description: Order created
@@ -297,7 +321,7 @@ router.post('/order', authenticateToken, async (req: Request, res: Response) => 
  *             required: [order_id, flow, reference_id]
  *             properties:
  *               order_id: { type: string }
- *               flow: { type: string, enum: [provider_registration, booking_commission] }
+ *               flow: { type: string, enum: [provider_registration, booking_commission, platform_support] }
  *               reference_id: { type: string }
  *     responses:
  *       200:
@@ -385,7 +409,7 @@ router.post('/mock/complete', authenticateToken, rateLimiter(10, 60 * 1000, 'moc
  *               razorpay_order_id: { type: string }
  *               razorpay_payment_id: { type: string }
  *               razorpay_signature: { type: string }
- *               flow: { type: string, enum: [provider_registration, booking_commission] }
+ *               flow: { type: string, enum: [provider_registration, booking_commission, platform_support] }
  *               reference_id: { type: string }
  *     responses:
  *       200:

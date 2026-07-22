@@ -171,7 +171,8 @@ export const rzpClient = RAZORPAY_KEY_SECRET ? new Razorpay({
 
 export const AMOUNTS: Record<string, number> = {
   provider_registration: 9900,
-  booking_commission: 100
+  booking_commission: 100,
+  platform_support: 1200
 };
 
 // Tourist platform support & convenience fee window, in days.
