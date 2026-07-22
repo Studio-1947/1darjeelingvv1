@@ -1,9 +1,22 @@
-import React from 'react';
-import { Phone, MessageCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import { Phone, MessageCircle, XCircle, Loader2 } from 'lucide-react';
 import { StatusPill } from './widgets';
 
-/** One booking in the provider's list: guest, dates, and contact actions. */
-export default function BookingCard({ b }: { b: any }) {
+/** One booking in the provider's list: guest, dates, and contact + cancel actions. */
+export default function BookingCard({ b, onCancel }: { b: any; onCancel?: (id: string) => Promise<void> | void }) {
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  const doCancel = async () => {
+    setBusy(true);
+    try {
+      await onCancel?.(b.id);
+    } finally {
+      setBusy(false);
+      setConfirming(false);
+    }
+  };
+
   return (
     <article
       key={b.id}
@@ -43,6 +56,23 @@ export default function BookingCard({ b }: { b: any }) {
           >
             <MessageCircle size={12} /> WhatsApp
           </a>
+          {onCancel && b.status !== 'cancelled' && (
+            confirming ? (
+              <span className="inline-flex items-center gap-2 text-xs pl-1">
+                <span className="text-ink-soft">Cancel this booking?</span>
+                <button onClick={doCancel} disabled={busy} data-testid={`booking-cancel-yes-${b.id}`}
+                  className="inline-flex items-center gap-1 font-bold text-flag disabled:opacity-50">
+                  {busy ? <Loader2 size={12} className="animate-spin" /> : null} Yes
+                </button>
+                <button onClick={() => setConfirming(false)} className="font-bold text-ink-soft">No</button>
+              </span>
+            ) : (
+              <button onClick={() => setConfirming(true)} data-testid={`booking-cancel-${b.id}`}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-flag/40 text-flag font-bold text-xs btn-hover">
+                <XCircle size={12} /> Decline
+              </button>
+            )
+          )}
         </div>
       </div>
     </article>

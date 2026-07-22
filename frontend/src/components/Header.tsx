@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/context/AuthContext';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
-import { Search, User } from 'lucide-react';
+import { Search, User, Heart } from 'lucide-react';
 
 export default function Header() {
   const { t } = useTranslation();
@@ -61,6 +61,12 @@ export default function Header() {
         {/* Right cluster: minimal */}
         <div className="flex items-center gap-2 flex-shrink-0">
           <LanguageSwitcher />
+          {user && (
+            <Link to="/saved" data-testid="header-saved" aria-label="Saved"
+              className="w-9 h-9 rounded-full grid place-items-center text-ink hover:bg-mist btn-hover">
+              <Heart size={18} />
+            </Link>
+          )}
           {user ? (
             <div className="relative" ref={dropdownRef}>
               <button onClick={() => setDropdownOpen(!dropdownOpen)} data-testid="header-profile"
@@ -101,6 +107,12 @@ export default function Header() {
                     </button>
                   )}
                   
+                  <button onClick={() => { setDropdownOpen(false); nav('/saved'); }}
+                    data-testid="header-dropdown-saved"
+                    className="w-full text-left px-4 py-2.5 text-sm text-ink hover:bg-mist font-semibold transition-colors flex items-center gap-2">
+                    <Heart size={14} /> Saved
+                  </button>
+
                   <button onClick={() => { setDropdownOpen(false); nav('/login'); logout(); }}
                     className="w-full text-left px-4 py-2.5 text-sm text-flag hover:bg-mist font-bold border-t border-[var(--line)] transition-colors">
                     {t('nav.logout') || 'Log out'}

@@ -6,7 +6,7 @@ import SmartImg from '@/components/SmartImg';
 import { listingImage, fallbackFor } from '@/lib/listingContent';
 import VerifiedBadge from '@/components/provider/VerifiedBadge';
 
-export default function ListingCard({ item, badge }) {
+export default function ListingCard({ item, badge = null }) {
   const { t } = useTranslation();
   const unit = item.type === 'homestay' ? t('common.per_night') : item.type === 'driver' ? t('common.per_day') : '';
   return (

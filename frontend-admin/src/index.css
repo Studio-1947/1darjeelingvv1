@@ -30,3 +30,30 @@ body {
   transform: translateY(-1px);
   filter: brightness(0.95);
 }
+
+/* Modal entrance — a soft fade for the backdrop and a small pop for the panel, so the
+   in-app review dialog feels intentional rather than snapping into place. */
+@keyframes modal-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modal-pop-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+
+.modal-backdrop {
+  animation: modal-fade-in 0.15s ease-out;
+}
+
+.modal-panel {
+  animation: modal-pop-in 0.18s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .modal-backdrop,
+  .modal-panel {
+    animation: none;
+  }
+}

@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Heart, MapPin, Share2, Bookmark, Star, ArrowRight, Phone, Store, Coffee, Ticket, Leaf, Mountain } from 'lucide-react';
+import { MapPin, Share2, Bookmark, Star, ArrowRight, Phone, Store, Coffee, Ticket, Leaf, Mountain, Check } from 'lucide-react';
 import SmartImg from '@/components/SmartImg';
 import { listingImage, fallbackFor } from '@/lib/listingContent';
+import { useAuth } from '@/context/AuthContext';
+import { useFavorites } from '@/context/FavoritesContext';
 
 const CTA_MAP = {
   homestay: { key: 'book_now', Icon: ArrowRight, color: 'bg-flag text-white' },
@@ -20,10 +22,43 @@ const CTA_MAP = {
  */
 export default function FeedCard({ item, priority = false }) {
   const { t } = useTranslation();
-  const [liked, setLiked] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [rating, setRating] = useState(0);
-  const [hoverRating, setHoverRating] = useState(0);
+  const nav = useNavigate();
+  const loc = useLocation();
+  const { user } = useAuth();
+  const { isFavorite, toggle } = useFavorites();
+  const saved = isFavorite(item.id);
+  const [shared, setShared] = useState(false);
+
+  // The bookmark persists the listing to the user's Saved page. Logged-out visitors are routed to
+  // sign in and returned to the exact feed they were browsing.
+  const handleSave = () => {
+    if (!user) {
+      nav(`/login?next=${encodeURIComponent(loc.pathname + loc.search)}`);
+      return;
+    }
+    toggle(item.id).catch(() => {});
+  };
+
+  // Share this listing — native share sheet where available, clipboard fallback with a brief
+  // "copied" confirmation on the icon. Mirrors the detail page's share.
+  const handleShare = async () => {
+    const url = `${window.location.origin}/listing/${item.id}`;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: item.title, text: item.description, url });
+        return;
+      } catch (e: any) {
+        if (e?.name === 'AbortError') return; // user dismissed the sheet — not a failure
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      setShared(true);
+      setTimeout(() => setShared(false), 1500);
+    } catch (e) {
+      console.warn('share failed', e);
+    }
+  };
   const unit = item.type === 'homestay' ? t('common.per_night') : item.type === 'driver' ? t('common.per_day') : '';
   const cat = t(`categories.${item.type}`);
   const cta = CTA_MAP[item.type] || CTA_MAP.spot;
@@ -62,37 +97,26 @@ export default function FeedCard({ item, priority = false }) {
 
       {/* Actions */}
       <div className="flex items-center gap-4 px-3.5 pt-3 flex-shrink-0">
-        <button onClick={() => setLiked(!liked)} data-testid={`feed-like-${item.id}`} className="btn-hover">
-          <Heart size={22} className={liked ? 'fill-flag text-flag' : 'text-ink'} />
+        <button onClick={handleShare} data-testid={`feed-share-${item.id}`} className="btn-hover" aria-label="Share">
+          {shared ? <Check size={20} className="text-pine" /> : <Share2 size={20} className="text-ink" />}
         </button>
-        <button className="btn-hover" aria-label="Share"><Share2 size={20} className="text-ink" /></button>
-        <div
-          className="flex items-center gap-0.5"
-          role="radiogroup"
-          aria-label="Rate this listing"
-          onMouseLeave={() => setHoverRating(0)}
+        {/* Read-only average rating from real reviews; tapping jumps to the reviews on the detail page. */}
+        <Link
+          to={`/listing/${item.id}#reviews`}
           data-testid={`feed-rating-${item.id}`}
+          className="flex items-center gap-1 text-sm btn-hover"
+          aria-label={item.review_count > 0 ? `Rated ${item.rating} out of 5 from ${item.review_count} reviews` : 'No reviews yet'}
         >
-          {[1, 2, 3, 4, 5].map((star) => {
-            const filled = star <= (hoverRating || rating);
-            return (
-              <button
-                key={star}
-                type="button"
-                role="radio"
-                aria-checked={rating === star}
-                aria-label={`${star} star${star > 1 ? 's' : ''}`}
-                data-testid={`feed-rating-${item.id}-${star}`}
-                onMouseEnter={() => setHoverRating(star)}
-                onClick={() => setRating(star)}
-                className="btn-hover"
-              >
-                <Star size={18} className={filled ? 'fill-gold text-gold' : 'text-ink-soft'} />
-              </button>
-            );
-          })}
-        </div>
-        <button onClick={() => setSaved(!saved)} data-testid={`feed-save-${item.id}`} className="ml-auto btn-hover" aria-label="Save">
+          <Star size={18} className={item.review_count > 0 ? 'fill-gold text-gold' : 'text-ink-soft'} />
+          {item.review_count > 0 ? (
+            <span className="font-bold text-ink">{Number(item.rating).toFixed(1)}
+              <span className="font-normal text-ink-soft"> ({item.review_count})</span>
+            </span>
+          ) : (
+            <span className="text-ink-soft text-xs font-semibold">No reviews</span>
+          )}
+        </Link>
+        <button onClick={handleSave} data-testid={`feed-save-${item.id}`} className="ml-auto btn-hover" aria-label="Save" aria-pressed={saved}>
           <Bookmark size={22} className={saved ? 'fill-pine text-pine' : 'text-ink'} />
         </button>
       </div>
