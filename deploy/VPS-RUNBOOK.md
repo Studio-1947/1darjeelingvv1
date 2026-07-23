@@ -378,7 +378,7 @@ access, delete temporaries when done. Never publish a MinIO port to do this.
 # 1. Create the in stack's volumes by bringing it up once, then stop it:
 cd /var/www/1darjeeling-in
 docker compose -f docker-compose.in.yml up -d --build
-docker compose -f docker-compose.in.yml stop postgres minio
+docker compose -f docker-compose.in.yml stop backend postgres minio nginx
 
 # 2. Stop the SOURCE stack's postgres + minio for a consistent snapshot
 #    (brief downtime on onedarjeeling.duckdns.org):
@@ -399,7 +399,7 @@ docker run --rm \
 
 # 4. Restart the source stack (site back up), then start the in stack on the copied data:
 cd /var/www/1darjeelingvv1 && docker compose -f docker-compose.prod.yml start postgres minio
-cd /var/www/1darjeeling-in && docker compose -f docker-compose.in.yml start postgres minio
+cd /var/www/1darjeeling-in && docker compose -f docker-compose.in.yml up -d
 ```
 
 **Method B — no source downtime (`pg_dump` + `mc mirror`):**
@@ -414,6 +414,25 @@ docker exec 1darjeeling_prod_postgres pg_dump -U "$SRC_USER" -d "$SRC_DB" --no-o
 # aliased to each MinIO's internal endpoint. Mirror the PUBLIC and PRIVATE buckets separately;
 # never expose either port to do it.
 ```
+
+### 9.3.1 Rewrite stored image URLs to the new domain (required after copying)
+
+`uploadToMinIO()` stores **absolute** image URLs (`${MINIO_PUBLIC_URL}/${MINIO_BUCKET}/<key>`, see `backend/src/lib/s3.ts`), so every listing/provider/user row copied from the source stack still points its images at the **source** domain. After the DB copy, rewrite them to `1darjeeling.in` so images load from this stack (whose nginx serves `/one-darjeeling/` from the copied MinIO objects). Run once, inside the `in` Postgres, replacing the source domain (`onedarjeeling.duckdns.org` — or whatever the source stack's `MINIO_PUBLIC_URL` is) with `1darjeeling.in`:
+
+```sh
+docker exec -i 1darjeeling_in_postgres psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" <<'SQL'
+UPDATE listings SET image = replace(image, 'https://onedarjeeling.duckdns.org/', 'https://1darjeeling.in/')
+  WHERE image LIKE 'https://onedarjeeling.duckdns.org/%';
+UPDATE providers SET images = replace(images::text, 'https://onedarjeeling.duckdns.org/', 'https://1darjeeling.in/')::jsonb
+  WHERE images::text LIKE '%onedarjeeling.duckdns.org%';
+UPDATE users SET avatar = replace(avatar, 'https://onedarjeeling.duckdns.org/', 'https://1darjeeling.in/')
+  WHERE avatar LIKE 'https://onedarjeeling.duckdns.org/%';
+SQL
+```
+
+The `WHERE` guards make each statement a safe no-op for rows that don't hold a source-domain URL. KYC documents are unaffected — they are stored as object keys (not URLs) and served only through the authenticated backend route.
+
+> Alternative: if you deliberately want images to keep loading from the source domain while both are live, you may skip this and leave the URLs as-is — but that couples `1darjeeling.in` to `onedarjeeling.duckdns.org` staying up, so the rewrite above is the recommended path for an independent stack.
 
 ### 9.4 DNS (not yet pointed)
 
