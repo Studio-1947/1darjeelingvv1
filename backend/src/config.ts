@@ -99,6 +99,22 @@ export const OTP_TTL_SECONDS = requirePositiveInt('OTP_TTL_SECONDS', process.env
 export const OTP_MAX_ATTEMPTS = requirePositiveInt('OTP_MAX_ATTEMPTS', process.env.OTP_MAX_ATTEMPTS, 5);
 
 export const JWT_SECRET = requireRealValueInProd('JWT_SECRET', process.env.JWT_SECRET, 'dev_only_insecure_jwt_secret');
+// Defaulting to true is right in dev and wrong in production, for the same reason APP_ENV refuses
+// to default above: an absent variable is an operator mistake, not a request for simulated
+// payments. Left as a silent default, one forgotten line in an env file lets any authenticated
+// caller settle their own order through /payments/mock/complete — granting themselves the ₹12
+// support fee, or activating a provider for ₹0.
+//
+// An EXPLICIT MOCK_PAYMENTS=true still boots in production, with the warning below. That is a
+// documented pre-go-live state (see .env.production.example and deploy/VPS-RUNBOOK.md) and stays
+// supported — the operator said what they meant. Only silence is refused.
+if (IS_PROD && !process.env.MOCK_PAYMENTS?.trim()) {
+  throw new Error(
+    '[config] MOCK_PAYMENTS must be set explicitly when APP_ENV=production. ' +
+    'Set MOCK_PAYMENTS=false to charge real money, or MOCK_PAYMENTS=true to keep payments ' +
+    'simulated before go-live — it is not assumed.'
+  );
+}
 export const MOCK_PAYMENTS = process.env.MOCK_PAYMENTS ? process.env.MOCK_PAYMENTS.toLowerCase() === 'true' : true;
 export const CORS_ORIGINS = process.env.CORS_ORIGINS
   ? process.env.CORS_ORIGINS.split(',').map(o => o.trim())
@@ -169,7 +185,19 @@ export const rzpClient = RAZORPAY_KEY_SECRET ? new Razorpay({
   key_secret: RAZORPAY_KEY_SECRET
 }) : null;
 
+// Fixed prices, in paise. `donation` is deliberately absent: its presence here would imply a
+// fixed price, and the whole point of a donation is that the giver chooses. See lib/payments.ts.
 export const AMOUNTS: Record<string, number> = {
   provider_registration: 9900,
-  booking_commission: 100
+  booking_commission: 100,
+  platform_support: 1200
 };
+
+// Bounds on a donation, in paise. The floor stops dust-spam orders; the ceiling is a sanity guard
+// so a fat-fingered extra zero is refused here rather than reaching the gateway.
+export const DONATION_MIN_PAISE = 1000;        // ₹10
+export const DONATION_MAX_PAISE = 10_000_000;  // ₹1,00,000
+
+// Tourist platform support & convenience fee window, in days.
+// See docs/superpowers/specs/2026-07-22-tourist-platform-support-fee-design.md
+export const SUPPORT_DURATION_DAYS = 365;

@@ -86,7 +86,7 @@ export default function DetailHero({ item, unit, onShare }: {
         <ArrowLeft size={16} /> {t('common.back')}
       </button>
 
-      <div className="absolute top-4 right-4 md:top-6 md:right-8 flex flex-col items-end gap-2">
+      <div className="absolute z-10 top-4 right-4 md:top-6 md:right-8 flex flex-col items-end gap-2">
         <div className="flex gap-2">
           <button onClick={handleLike} data-testid="detail-like"
             aria-label={t('common.save')} aria-pressed={liked}

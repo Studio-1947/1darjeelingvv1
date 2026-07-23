@@ -6,11 +6,13 @@ import { eq, and, ne } from 'drizzle-orm';
 import { authenticateToken } from '../middleware/auth';
 import { rateLimiter } from '../middleware/rateLimiter';
 import { AMOUNTS, MOCK_PAYMENTS, rzpClient, RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, RAZORPAY_WEBHOOK_SECRET, IS_PROD, log } from '../config';
+import { computeSupportExpiry } from '../lib/support';
+import { resolveAmount } from '../lib/payments';
 
 const router = Router();
 
 // Common after-payment trigger side effects function
-async function handlePaymentSuccess(flow: string, referenceId: string, userId: string) {
+async function handlePaymentSuccess(flow: string, referenceId: string, userId: string, amount: number) {
   if (flow === 'provider_registration') {
     await db.update(schema.providers)
       .set({ status: 'active', activatedAt: new Date().toISOString() })
@@ -73,6 +75,26 @@ async function handlePaymentSuccess(flow: string, referenceId: string, userId: s
         provider: providerInfo
       };
     }
+  } else if (flow === 'platform_support') {
+    // Read-then-write rather than a single UPDATE ... GREATEST(...) expression. Two DIFFERENT
+    // orders settling for the same user in the same instant could each read the same starting
+    // value, costing the user one of the two years. At ₹12 a year and with settlement already
+    // serialised per order by settlePaymentOnce, that race is not worth the untestable SQL.
+    const [u] = await db.select().from(schema.users).where(eq(schema.users.id, userId)).limit(1);
+    if (!u) return null;
+
+    const supportExpiresAt = computeSupportExpiry(u.supportExpiresAt);
+    await db.update(schema.users)
+      .set({ supportExpiresAt })
+      .where(eq(schema.users.id, userId));
+
+    return { supportExpiresAt };
+  } else if (flow === 'donation') {
+    // Deliberately grants nothing. No expiry, no listing, no booking, no entitlement of any kind
+    // — a donation is a gift, and giving one must never become a way to buy access. The amount
+    // is returned only so the thank-you screen can name the figure; the authoritative record is
+    // the payments row settlePaymentOnce has already marked paid.
+    return { amount };
   }
   return null;
 }
@@ -110,6 +132,25 @@ async function assertOwnsReference(
     return null;
   }
 
+  if (flow === 'platform_support') {
+    // The reference is the payer themselves — there is no other entity to own. Requiring the
+    // match is what stops someone creating a ₹12 order that credits a different account.
+    if (referenceId !== userId) {
+      return { status: 403, detail: 'You can only pay the support fee for your own account' };
+    }
+    return null;
+  }
+
+  if (flow === 'donation') {
+    // Same shape as platform_support: a gift has no entity behind it, so the payer is the
+    // reference. It grants nothing, so a mismatch is not exploitable for access — but an order
+    // attributed to the wrong account would still corrupt the record of who gave what.
+    if (referenceId !== userId) {
+      return { status: 403, detail: 'You can only donate from your own account' };
+    }
+    return null;
+  }
+
   // Unknown flows are rejected by the AMOUNTS lookup before this is reached; refuse by default
   // rather than silently allowing any future flow added without an ownership rule.
   return { status: 400, detail: 'Invalid payment flow' };
@@ -136,7 +177,15 @@ async function settlePaymentOnce(payment: PaymentRow, gatewayPaymentId: string) 
     return { alreadySettled: true as const, record: null };
   }
 
-  const record = await handlePaymentSuccess(payment.flow, payment.referenceId, payment.userId);
+  // Every argument comes from the STORED row, never from caller input — see the note above and
+  // INVESTIGATION.md §1.5. That includes the amount: echoing a client-supplied figure back as
+  // "thank you for ₹X" would let anyone fake a receipt for a sum they never paid.
+  const record = await handlePaymentSuccess(
+    payment.flow,
+    payment.referenceId,
+    payment.userId,
+    payment.amount
+  );
   return { alreadySettled: false as const, record };
 }
 
@@ -161,8 +210,9 @@ async function settlePaymentOnce(payment: PaymentRow, gatewayPaymentId: string) 
  *             type: object
  *             required: [flow, reference_id]
  *             properties:
- *               flow: { type: string, enum: [provider_registration, booking_commission] }
- *               reference_id: { type: string, description: "Provider id (provider_registration) or booking id (booking_commission)" }
+ *               flow: { type: string, enum: [provider_registration, booking_commission, platform_support, donation] }
+ *               reference_id: { type: string, description: "Provider id (provider_registration), booking id (booking_commission), or the caller's own user id (platform_support, donation)" }
+ *               amount: { type: integer, description: "Amount in paise. ONLY read for flow=donation, where it must be an integer between 1000 (₹10) and 10000000 (₹1,00,000). Ignored for every other flow, whose price is fixed server-side." }
  *     responses:
  *       200:
  *         description: Order created
@@ -203,10 +253,15 @@ router.post('/order', authenticateToken, async (req: Request, res: Response) => 
     return res.status(400).json({ detail: 'Flow and reference ID are required' });
   }
 
-  const amount = AMOUNTS[flow];
-  if (!amount) {
-    return res.status(400).json({ detail: 'Invalid payment flow' });
+  // resolveAmount owns this decision for every flow. Fixed flows read the server-side map and
+  // ignore the body; `donation` is the only branch permitted to read a client-supplied amount,
+  // and it validates the range before returning. Keeping it in one function means "can a client
+  // name its own price?" has a single, auditable answer.
+  const resolved = resolveAmount(flow, req.body);
+  if ('error' in resolved) {
+    return res.status(resolved.error.status).json({ detail: resolved.error.detail });
   }
+  const { amount } = resolved;
 
   // Bind the reference to the caller at the point it enters the system. §1.5 stopped an order
   // being *redeemed* against someone else's reference, but without this an attacker could simply
@@ -297,7 +352,7 @@ router.post('/order', authenticateToken, async (req: Request, res: Response) => 
  *             required: [order_id, flow, reference_id]
  *             properties:
  *               order_id: { type: string }
- *               flow: { type: string, enum: [provider_registration, booking_commission] }
+ *               flow: { type: string, enum: [provider_registration, booking_commission, platform_support, donation] }
  *               reference_id: { type: string }
  *     responses:
  *       200:
@@ -385,7 +440,7 @@ router.post('/mock/complete', authenticateToken, rateLimiter(10, 60 * 1000, 'moc
  *               razorpay_order_id: { type: string }
  *               razorpay_payment_id: { type: string }
  *               razorpay_signature: { type: string }
- *               flow: { type: string, enum: [provider_registration, booking_commission] }
+ *               flow: { type: string, enum: [provider_registration, booking_commission, platform_support, donation] }
  *               reference_id: { type: string }
  *     responses:
  *       200:

@@ -10,6 +10,8 @@ export const users = pgTable('users', {
   language: text('language'),
   avatar: text('avatar'),
   createdAt: text('created_at').notNull(),
+  // Tourist platform support & convenience fee. null = never paid. Active while > now().
+  supportExpiresAt: text('support_expires_at'),
   password: text('password'),
 });
 

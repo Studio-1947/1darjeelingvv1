@@ -81,6 +81,22 @@ export default function Header() {
 
         {/* Right cluster: minimal */}
         <div className="flex items-center gap-2 flex-shrink-0">
+          {/* DONATE ENTRY POINT — TEMPORARILY DISABLED (2026-07-22, at the owner's request).
+              Uncomment this block and the HeartHandshake import above to bring it back; nothing
+              else needs changing. The /donate route, the page and the backend `donation` flow are
+              all still live and tested, so re-enabling is exactly this one edit.
+
+              Note: /donate remains reachable by direct URL while this is commented out. If it
+              should be unreachable too, the route in App.tsx needs commenting as well.
+
+          <Link to="/donate" data-testid="header-donate" aria-label={t('donate.title')} title={t('donate.title')}
+            className="h-9 px-2.5 sm:px-3 rounded-full grid place-items-center text-flag hover:bg-flag/10 btn-hover">
+            <span className="flex items-center gap-1.5">
+              <HeartHandshake size={18} />
+              <span className="hidden md:inline text-xs font-bold">{t('donate.title')}</span>
+            </span>
+          </Link>
+          */}
           <LanguageSwitcher />
           {user && (
             <Link to="/saved" data-testid="header-saved" aria-label="Saved"
