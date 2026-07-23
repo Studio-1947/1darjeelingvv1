@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Upload, Plus, X } from 'lucide-react';
 
 /**
@@ -13,6 +14,7 @@ export default function GalleryUploader({ images, uploading, onFilesSelected, on
   onRemove: (index: number) => void;
   compact?: boolean;
 }) {
+  const { t } = useTranslation();
   return (
     <>
       <div className={compact ? 'grid grid-cols-3 sm:grid-cols-4 gap-3' : 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4'}>
@@ -23,7 +25,7 @@ export default function GalleryUploader({ images, uploading, onFilesSelected, on
               compact ? 'rounded-xl bg-mist' : 'rounded-2xl bg-white shadow-sm'
             }`}
           >
-            <img src={url} alt={`Photo ${i + 1}`} className="w-full h-full object-cover" />
+            <img src={url} alt={t('widgets.photo_alt', { index: i + 1 })} className="w-full h-full object-cover" />
             <button
               type="button"
               onClick={() => onRemove(i)}
@@ -46,12 +48,12 @@ export default function GalleryUploader({ images, uploading, onFilesSelected, on
           {uploading ? (
             <>
               <Upload size={compact ? 20 : 22} className="animate-pulse" />
-              <span className={`font-bold ${compact ? 'text-[10px]' : 'text-xs'}`}>Uploading...</span>
+              <span className={`font-bold ${compact ? 'text-[10px]' : 'text-xs'}`}>{t('common.uploading')}</span>
             </>
           ) : (
             <>
               <Plus size={compact ? 20 : 22} />
-              <span className={`font-bold ${compact ? 'text-[10px]' : 'text-xs'}`}>Add Photos</span>
+              <span className={`font-bold ${compact ? 'text-[10px]' : 'text-xs'}`}>{t('widgets.add_photos')}</span>
             </>
           )}
           <input type="file" accept="image/*" multiple onChange={onFilesSelected} disabled={uploading} className="hidden" />
@@ -60,7 +62,7 @@ export default function GalleryUploader({ images, uploading, onFilesSelected, on
 
       {!compact && images.length > 0 && (
         <p className="mt-4 text-xs text-ink-soft">
-          {images.length} photo{images.length !== 1 ? 's' : ''} added. Hover any photo to remove it.
+          {t('widgets.photos_added', { count: images.length })}
         </p>
       )}
     </>

@@ -2,6 +2,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import SmartImg from '@/components/SmartImg';
 import MapEmbed from '@/components/MapEmbed';
+import { optionLabel } from '@/lib/optionLabel';
 import {
   MapPin, Tag, Navigation, ArrowRight, Languages,
   CalendarClock, Route, Crosshair,
@@ -23,7 +24,7 @@ export function AboutSection({ item, about, label }: { item: any; about?: string
       <p className="mt-8 text-lg md:text-xl text-ink leading-relaxed text-center max-w-3xl mx-auto whitespace-pre-line">{about}</p>
       {item.tags?.length > 0 && (
         <div className="mt-8 flex flex-wrap justify-center gap-2">
-          {item.tags.map((tg: string) => <span key={tg} className="chip"><Tag size={11} className="mr-1" /> {tg}</span>)}
+          {item.tags.map((tg: string) => <span key={tg} className="chip"><Tag size={11} className="mr-1" /> {optionLabel(t, tg)}</span>)}
         </div>
       )}
     </Screen>
@@ -57,7 +58,8 @@ export function OffersSection({ amenities, title }: { amenities: { Icon: any; la
         {amenities.map(({ Icon, label }) => (
           <div key={label} className="flex items-center gap-4 p-5 rounded-2xl border border-[var(--line)] bg-white">
             <Icon size={24} className="text-pine flex-shrink-0" />
-            <span className="text-ink font-semibold">{label}</span>
+            {/* Amenities are stored in English; only the display is localised. */}
+            <span className="text-ink font-semibold">{optionLabel(t, label)}</span>
           </div>
         ))}
       </div>
@@ -67,13 +69,14 @@ export function OffersSection({ amenities, title }: { amenities: { Icon: any; la
 
 /** Provider-uploaded photo gallery (homestays). */
 export function StayGallerySection({ images }: { images: string[] }) {
+  const { t } = useTranslation();
   return (
     <Screen tone="white" testid="detail-gallery">
-      <SectionHead label="Photos" title="Explore the Stay" />
+      <SectionHead label={t('detail.photos')} title={t('detail.stay_gallery_title')} />
       <div className="mt-10 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {images.map((url, index) => (
           <div key={index} className="aspect-[4/3] rounded-3xl overflow-hidden border border-[var(--line)] bg-mist shadow-md hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
-            <img src={url} alt={`Gallery ${index + 1}`} className="w-full h-full object-cover" />
+            <img src={url} alt={t('detail.gallery_alt', { index: index + 1 })} className="w-full h-full object-cover" />
           </div>
         ))}
       </div>
@@ -160,12 +163,12 @@ export function RoutesSection({ routes }: { routes: string[] }) {
   const { t } = useTranslation();
   return (
     <Screen tone="mist" testid="detail-routes">
-      <SectionHead label="Routes & Trips Covered" title="Routes (Where to - From)" note={t('detail.routes_note')} />
+      <SectionHead label={t('detail.routes_label')} title={t('detail.routes_title')} note={t('detail.routes_note')} />
       <div className="mt-10 mx-auto max-w-2xl space-y-3">
         {routes.map((r, i) => (
           <div key={i} className="flex items-start gap-4 p-5 rounded-2xl border border-[var(--line)] bg-white text-left">
             <Route size={22} className="text-pine flex-shrink-0 mt-0.5" />
-            <span className="text-ink font-semibold">{r}</span>
+            <span className="text-ink font-semibold">{optionLabel(t, r)}</span>
           </div>
         ))}
       </div>

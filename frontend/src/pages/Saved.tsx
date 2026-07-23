@@ -22,7 +22,7 @@ export default function Saved() {
   // Share modal state
   const [showPlanModal, setShowPlanModal] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [tripTitle, setTripTitle] = useState('My Darjeeling Trip Plan');
+  const [tripTitle, setTripTitle] = useState(() => t('saved.default_trip_name'));
 
   const sharedPlanParam = searchParams.get('plan');
 
@@ -60,7 +60,7 @@ export default function Saved() {
 
   const handleWhatsAppShare = () => {
     const url = getShareableUrl();
-    const text = `Check out my Darjeeling trip plan on 1 Darjeeling:\n\n${url}`;
+    const text = `${t('saved.wa_message')}\n\n${url}`;
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
   };
 
@@ -79,12 +79,12 @@ export default function Saved() {
       <div className="flex flex-wrap items-end justify-between gap-4 mb-6">
         <div>
           <div className="text-[11px] font-bold uppercase tracking-widest text-flag flex items-center gap-1.5">
-            <Heart size={14} /> {sharedPlanParam ? 'Shared Trip Plan' : 'Saved'}
+            <Heart size={14} /> {sharedPlanParam ? t('saved.shared_label') : t('saved.label')}
           </div>
           <h1 className="font-display font-extrabold text-3xl sm:text-4xl md:text-5xl text-ink leading-tight">
-            {sharedPlanParam ? 'Darjeeling Itinerary' : 'Your saved places'}
+            {sharedPlanParam ? t('saved.shared_title') : t('saved.title')}
           </h1>
-          <p className="mt-1 text-sm text-ink-soft">{items.length} saved place{items.length === 1 ? '' : 's'} in your itinerary</p>
+          <p className="mt-1 text-sm text-ink-soft">{t('saved.count', { count: items.length })}</p>
         </div>
 
         {items.length > 0 && (
@@ -93,7 +93,7 @@ export default function Saved() {
             data-testid="plan-trip-cta"
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-pine text-white font-bold text-sm btn-hover shadow-sm"
           >
-            <Sparkles size={16} /> Plan & Share Trip
+            <Sparkles size={16} /> {t('saved.plan_cta')}
           </button>
         )}
       </div>
@@ -101,7 +101,7 @@ export default function Saved() {
       {items.length === 0 ? (
         <div className="mist-panel p-8 md:p-10 text-center">
           <Heart size={28} className="mx-auto text-ink-soft/50" />
-          <p className="mt-3 text-ink-soft">Nothing saved yet. Tap the heart on any place to save it here.</p>
+          <p className="mt-3 text-ink-soft">{t('saved.empty')}</p>
         </div>
       ) : (
         <div className="space-y-8">
@@ -123,16 +123,16 @@ export default function Saved() {
             </button>
 
             <div className="flex items-center gap-2 text-pine font-extrabold text-xs uppercase tracking-wider mb-1">
-              <Map size={16} /> Shareable Itinerary
+              <Map size={16} /> {t('saved.modal_label')}
             </div>
-            <h2 className="font-display font-extrabold text-2xl text-ink">Share Your Darjeeling Trip</h2>
+            <h2 className="font-display font-extrabold text-2xl text-ink">{t('saved.modal_title')}</h2>
             <p className="text-sm text-ink-soft mt-1">
-              Anyone with this link can view your saved stays, drivers, and local spots.
+              {t('saved.modal_note')}
             </p>
 
             <div className="mt-5 space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-ink-soft uppercase mb-1">Trip Name</label>
+                <label className="block text-xs font-semibold text-ink-soft uppercase mb-1">{t('saved.trip_name')}</label>
                 <input
                   type="text"
                   value={tripTitle}
@@ -143,13 +143,13 @@ export default function Saved() {
 
               {/* Summary breakdown */}
               <div className="mist-panel p-4 space-y-2 text-xs font-semibold text-ink">
-                {homestays.length > 0 && <div>🏡 Stays: {homestays.map(h => h.title).join(', ')}</div>}
-                {drivers.length > 0 && <div>🚗 Drivers: {drivers.map(d => d.title).join(', ')}</div>}
-                {spotsAndCafes.length > 0 && <div>📍 Spots & Cafes: {spotsAndCafes.map(s => s.title).join(', ')}</div>}
+                {homestays.length > 0 && <div>🏡 {t('saved.stays')}: {homestays.map(h => h.title).join(', ')}</div>}
+                {drivers.length > 0 && <div>🚗 {t('saved.drivers')}: {drivers.map(d => d.title).join(', ')}</div>}
+                {spotsAndCafes.length > 0 && <div>📍 {t('saved.spots_cafes')}: {spotsAndCafes.map(s => s.title).join(', ')}</div>}
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-ink-soft uppercase mb-1">Share Link</label>
+                <label className="block text-xs font-semibold text-ink-soft uppercase mb-1">{t('saved.share_link')}</label>
                 <div className="flex items-center gap-2">
                   <input
                     readOnly
@@ -162,7 +162,7 @@ export default function Saved() {
                     className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-ink text-white font-bold text-xs btn-hover whitespace-nowrap"
                   >
                     {copied ? <Check size={14} className="text-pine" /> : <Copy size={14} />}
-                    {copied ? 'Copied!' : 'Copy'}
+                    {copied ? t('saved.copied') : t('saved.copy')}
                   </button>
                 </div>
               </div>
@@ -172,7 +172,7 @@ export default function Saved() {
                   onClick={handleWhatsAppShare}
                   className="flex-1 py-3 rounded-full bg-[#25D366] text-white font-bold text-sm btn-hover inline-flex items-center justify-center gap-2 shadow-sm"
                 >
-                  <Share2 size={16} /> Share on WhatsApp
+                  <Share2 size={16} /> {t('saved.share_whatsapp')}
                 </button>
               </div>
             </div>

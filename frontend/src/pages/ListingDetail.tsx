@@ -136,7 +136,7 @@ export default function ListingDetail() {
         open={!!booking.payModal}
         onClose={() => booking.setPayModal(null)}
         amount={booking.payModal?.amount || 0}
-        title="Confirm booking payment"
+        title={t('booking.pay_confirm')}
         description={booking.payModal?.description || ''}
         onPay={booking.finishMockPayment}
         prefill={{ upi: `${(booking.user?.name || 'traveller').toLowerCase().replace(/\s+/g, '')}@ybl` }}

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Star, Loader2, Trash2, Camera, Image as ImageIcon, X } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { fetchReviews, postReview, deleteReview, Review, ReviewSummary } from '@/lib/reviews';
@@ -7,8 +8,9 @@ import { uploadImages } from '@/lib/uploadImage';
 
 /** Read-only row of five stars for a given rating (supports halves via rounding). */
 function Stars({ value, size = 16 }: { value: number; size?: number }) {
+  const { t } = useTranslation();
   return (
-    <span className="inline-flex items-center gap-0.5" aria-label={`${value} out of 5`}>
+    <span className="inline-flex items-center gap-0.5" aria-label={t('reviews.out_of_5', { value })}>
       {[1, 2, 3, 4, 5].map((s) => (
         <Star key={s} size={size} className={s <= Math.round(value) ? 'fill-gold text-gold' : 'text-ink-soft/40'} />
       ))}
@@ -18,16 +20,17 @@ function Stars({ value, size = 16 }: { value: number; size?: number }) {
 
 /** Clickable 1–5 star picker for composing a review. */
 function StarPicker({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  const { t } = useTranslation();
   const [hover, setHover] = useState(0);
   return (
-    <div className="flex items-center gap-1" role="radiogroup" aria-label="Your rating" onMouseLeave={() => setHover(0)}>
+    <div className="flex items-center gap-1" role="radiogroup" aria-label={t('reviews.your_rating')} onMouseLeave={() => setHover(0)}>
       {[1, 2, 3, 4, 5].map((s) => (
         <button
           key={s}
           type="button"
           role="radio"
           aria-checked={value === s}
-          aria-label={`${s} star${s > 1 ? 's' : ''}`}
+          aria-label={t('reviews.star_aria', { count: s })}
           data-testid={`review-star-${s}`}
           onMouseEnter={() => setHover(s)}
           onClick={() => onChange(s)}
@@ -42,6 +45,7 @@ function StarPicker({ value, onChange }: { value: number; onChange: (v: number) 
 
 /** Reviews + rating summary for a listing, with an add/edit form for the signed-in user. */
 export default function ReviewsSection({ item }: { item: any }) {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const loc = useLocation();
   const [summary, setSummary] = useState<ReviewSummary>({ count: 0, average: 0 });
@@ -87,21 +91,21 @@ export default function ReviewsSection({ item }: { item: any }) {
       const urls = await uploadImages(files);
       setPhotos((prev) => [...prev, ...urls]);
     } catch (err: any) {
-      setError(err?.message || 'Failed to upload review photos.');
+      setError(err?.message || t('reviews.upload_failed'));
     } finally {
       setUploadingPhotos(false);
     }
   };
 
   const submit = async () => {
-    if (rating < 1) { setError('Please pick a star rating.'); return; }
+    if (rating < 1) { setError(t('reviews.pick_rating')); return; }
     setSubmitting(true);
     setError('');
     try {
       await postReview(item.id, rating, comment.trim(), photos);
       await load();
     } catch (e: any) {
-      setError(e?.response?.data?.detail || 'Could not save your review. Please try again.');
+      setError(e?.response?.data?.detail || t('reviews.save_failed'));
     } finally {
       setSubmitting(false);
     }
@@ -125,9 +129,9 @@ export default function ReviewsSection({ item }: { item: any }) {
     <section id="reviews" data-testid="detail-reviews" className="bg-white scroll-mt-20">
       <div className="mx-auto w-full max-w-4xl px-4 md:px-8 py-16 md:py-24">
         <div className="text-center max-w-3xl mx-auto">
-          <div className="inline-flex items-center gap-3 text-xs font-bold uppercase tracking-widest text-ink-soft">Reviews</div>
+          <div className="inline-flex items-center gap-3 text-xs font-bold uppercase tracking-widest text-ink-soft">{t('reviews.label')}</div>
           <h2 className="mt-5 font-display font-extrabold text-3xl sm:text-4xl md:text-5xl text-ink leading-tight">
-            What guests say
+            {t('reviews.title')}
           </h2>
           <div className="mt-4 flex items-center justify-center gap-3">
             <Stars value={summary.average} size={20} />
@@ -135,7 +139,7 @@ export default function ReviewsSection({ item }: { item: any }) {
               {summary.count > 0 ? summary.average.toFixed(1) : '-'}
             </span>
             <span className="text-ink-soft text-sm">
-              {summary.count} review{summary.count === 1 ? '' : 's'}
+              {t('reviews.count', { count: summary.count })}
             </span>
           </div>
         </div>
@@ -146,12 +150,12 @@ export default function ReviewsSection({ item }: { item: any }) {
             <div>
               <div className="flex items-center justify-between gap-3 flex-wrap">
                 <h3 className="font-display font-bold text-lg text-ink">
-                  {myReview ? 'Update your review' : 'Write a review'}
+                  {myReview ? t('reviews.update_title') : t('reviews.write')}
                 </h3>
                 {myReview && (
                   <button onClick={removeMine} disabled={submitting} data-testid="review-delete"
                     className="inline-flex items-center gap-1.5 text-xs font-bold text-flag hover:text-[#8a1e1e] disabled:opacity-50">
-                    <Trash2 size={13} /> Remove
+                    <Trash2 size={13} /> {t('reviews.remove')}
                   </button>
                 )}
               </div>
@@ -161,17 +165,17 @@ export default function ReviewsSection({ item }: { item: any }) {
                 onChange={(e) => setComment(e.target.value)}
                 rows={3}
                 data-testid="review-comment"
-                placeholder="Share a little about your experience (optional)"
+                placeholder={t('reviews.comment_placeholder')}
                 className="mt-3 w-full px-3 py-2.5 rounded-xl border border-[var(--line)] bg-white outline-none text-ink text-sm resize-none focus:ring-2 focus:ring-pine/20 transition-all"
               />
 
               {/* Photo Upload Section */}
               <div className="mt-4">
-                <span className="text-xs font-semibold text-ink-soft uppercase block mb-2">Upload Photos (Optional)</span>
+                <span className="text-xs font-semibold text-ink-soft uppercase block mb-2">{t('reviews.upload_photos')}</span>
                 <div className="flex flex-wrap items-center gap-3">
                   {photos.map((p, idx) => (
                     <div key={idx} className="relative w-16 h-16 rounded-xl overflow-hidden border border-[var(--line)] group">
-                      <img src={p} alt="Review attachment" className="w-full h-full object-cover" />
+                      <img src={p} alt={t('reviews.attachment_alt')} className="w-full h-full object-cover" />
                       <button
                         type="button"
                         onClick={() => setPhotos(photos.filter((_, i) => i !== idx))}
@@ -187,7 +191,7 @@ export default function ReviewsSection({ item }: { item: any }) {
                     ) : (
                       <div className="flex flex-col items-center gap-0.5">
                         <Camera size={18} />
-                        <span className="text-[9px] font-bold">Add Photo</span>
+                        <span className="text-[9px] font-bold">{t('reviews.add_photo')}</span>
                       </div>
                     )}
                     <input
@@ -206,15 +210,15 @@ export default function ReviewsSection({ item }: { item: any }) {
               <button onClick={submit} disabled={submitting || uploadingPhotos} data-testid="review-submit"
                 className="mt-4 inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-pine text-white font-bold btn-hover disabled:opacity-60">
                 {submitting ? <Loader2 size={15} className="animate-spin" /> : null}
-                {myReview ? 'Update review' : 'Post review'}
+                {myReview ? t('reviews.update_cta') : t('reviews.post')}
               </button>
             </div>
           ) : (
             <div className="text-center">
-              <p className="text-ink-soft">Been here? Sign in to share your rating and review.</p>
+              <p className="text-ink-soft">{t('reviews.signed_out')}</p>
               <Link to={`/login?next=${encodeURIComponent(loc.pathname + '#reviews')}`}
                 className="mt-4 inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-flag text-white font-bold btn-hover">
-                Sign in to review
+                {t('reviews.sign_in_cta')}
               </Link>
             </div>
           )}
@@ -223,9 +227,9 @@ export default function ReviewsSection({ item }: { item: any }) {
         {/* Existing reviews */}
         <div className="mt-8 space-y-4">
           {loading ? (
-            <p className="text-ink-soft text-center">Loading reviews…</p>
+            <p className="text-ink-soft text-center">{t('reviews.loading')}</p>
           ) : reviews.length === 0 ? (
-            <p className="text-ink-soft text-center">No reviews yet - be the first to leave one.</p>
+            <p className="text-ink-soft text-center">{t('reviews.empty')}</p>
           ) : (
             reviews.map((r) => (
               <div key={r.id} data-testid={`review-${r.id}`} className="rounded-2xl border border-[var(--line)] p-4 md:p-5 bg-white">
@@ -246,7 +250,7 @@ export default function ReviewsSection({ item }: { item: any }) {
                   <div className="mt-3 flex flex-wrap gap-2">
                     {r.photos.map((p, idx) => (
                       <a key={idx} href={p} target="_blank" rel="noopener noreferrer" className="block w-20 h-20 rounded-xl overflow-hidden border border-[var(--line)] hover:opacity-90 transition-opacity">
-                        <img src={p} alt="Review attachment" className="w-full h-full object-cover" />
+                        <img src={p} alt={t('reviews.attachment_alt')} className="w-full h-full object-cover" />
                       </a>
                     ))}
                   </div>

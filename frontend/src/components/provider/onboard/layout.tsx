@@ -1,8 +1,9 @@
 import React from 'react';
 
-// The site header is sticky (h-14 mobile / h-16 desktop), so a "full screen"
-// section is the viewport minus that, or each one would sit past the fold.
-export const SCREEN_H = 'min-h-[calc(100svh-3.5rem)] md:min-h-[calc(100svh-4rem)]';
+// The site header is sticky, so a "full screen" section is the viewport minus
+// its height, or each one would sit past the fold. --header-h tracks the real
+// height (the header carries the circular category rail).
+export const SCREEN_H = 'min-h-[calc(100svh-var(--header-h))]';
 
 /** Full-viewport onboarding section: centred column, soft background, divider. */
 export function Screen({ tone = 'bg', children }: { tone?: 'bg' | 'white' | 'mist'; children: React.ReactNode }) {

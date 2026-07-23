@@ -112,7 +112,7 @@ export default function ProviderDashboard() {
   };
 
   const handleDeleteListing = async (listingId: string) => {
-    if (!window.confirm('Delete this listing? This cannot be undone.')) return;
+    if (!window.confirm(t('pd.delete_confirm'))) return;
     await api.delete(`/listings/${listingId}`);
     await loadDashboard();
   };
@@ -127,8 +127,8 @@ export default function ProviderDashboard() {
   if (!provider) {
     return (
       <div className="mx-auto max-w-2xl p-10 text-center">
-        <h1 className="font-display font-extrabold text-3xl text-ink">No business yet</h1>
-        <p className="text-ink-soft mt-2">Onboard your business to start receiving bookings.</p>
+        <h1 className="font-display font-extrabold text-3xl text-ink">{t('pd.no_business_title')}</h1>
+        <p className="text-ink-soft mt-2">{t('pd.no_business_note')}</p>
         <button onClick={() => nav('/provider/onboard')} data-testid="onboard-cta"
           className="mt-6 inline-flex items-center gap-2 px-6 py-3 rounded-full bg-flag text-white font-bold btn-hover">
           {t('provider.onboard_title')} <ArrowRight size={16} />
@@ -146,7 +146,7 @@ export default function ProviderDashboard() {
         <div>
           <div className="text-[11px] font-bold uppercase tracking-widest text-flag">{t('provider.dashboard_title')}</div>
           <h1 className="mt-1 font-display font-extrabold text-3xl sm:text-4xl md:text-5xl text-ink leading-tight">{provider.business_name}</h1>
-          <p className="text-sm text-ink-soft mt-1 capitalize">{provider.business_type} · {provider.location}</p>
+          <p className="text-sm text-ink-soft mt-1">{t(`categories.${provider.business_type}`, { defaultValue: provider.business_type })} · {provider.location}</p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
           <LanguageSwitcher />
@@ -157,7 +157,7 @@ export default function ProviderDashboard() {
             }}
             className="inline-flex items-center gap-1.5 text-xs font-semibold text-pine border border-pine/30 rounded-full px-3.5 py-1.5 hover:bg-pine/5 transition-colors"
           >
-            Switch to Traveller
+            {t('pd.switch_traveller')}
           </button>
           <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full font-bold text-xs ${active ? 'bg-pine/10 text-pine' : 'bg-gold/20 text-[#8a6b04]'}`}
             data-testid="provider-status">
@@ -169,9 +169,9 @@ export default function ProviderDashboard() {
 
       {/* Stats grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-        <StatCard label="Total bookings" value={stats.total} icon={LayoutList} tone="pine" />
-        <StatCard label="Confirmed" value={stats.confirmed} sub={`${stats.pending} pending`} icon={CalendarCheck} tone="flag" />
-        <StatCard label="Revenue" value={`₹${stats.revenue.toLocaleString('en-IN')}`} sub="from confirmed bookings" icon={Wallet} tone="gold" />
+        <StatCard label={t('pd.total_bookings')} value={stats.total} icon={LayoutList} tone="pine" />
+        <StatCard label={t('pd.confirmed')} value={stats.confirmed} sub={t('pd.pending_sub', { count: stats.pending })} icon={CalendarCheck} tone="flag" />
+        <StatCard label={t('pd.revenue')} value={`₹${stats.revenue.toLocaleString('en-IN')}`} sub={t('pd.revenue_sub')} icon={Wallet} tone="gold" />
         {listings.length > 0 ? (
           <button
             onClick={() => setSelectedListing(listings[0])}
@@ -180,15 +180,15 @@ export default function ProviderDashboard() {
           >
             <div className="flex items-center gap-2 opacity-90">
               <Edit size={16} />
-              <span className="text-[11px] uppercase tracking-widest font-bold">Edit your listing</span>
+              <span className="text-[11px] uppercase tracking-widest font-bold">{t('pd.edit_your_listing')}</span>
             </div>
             <div className="mt-3 font-display font-extrabold text-lg md:text-xl leading-tight flex items-center justify-between w-full">
-              <span>Configure Stay</span>
+              <span>{t('pd.configure_stay')}</span>
               <ArrowRight size={18} className="opacity-90" />
             </div>
           </button>
         ) : (
-          <StatCard label="Listings live" value={0} icon={Users} tone="ink" />
+          <StatCard label={t('pd.listings_live')} value={0} icon={Users} tone="ink" />
         )}
       </div>
 
@@ -232,9 +232,9 @@ export default function ProviderDashboard() {
       {/* Tabs */}
       <div className="mt-8 flex items-center gap-2 border-b border-[var(--line)]">
         {[
-          { k: 'bookings', label: 'Bookings' },
-          { k: 'listings', label: 'Listings' },
-          { k: 'profile', label: 'Business profile' },
+          { k: 'bookings', label: t('pd.tab_bookings') },
+          { k: 'listings', label: t('pd.tab_listings') },
+          { k: 'profile', label: t('pd.tab_profile') },
         ].map(({ k, label }) => (
           <button key={k} onClick={() => setTab(k)} data-testid={`tab-${k}`}
             className={`px-4 py-2.5 font-bold text-sm ${tab === k ? 'text-flag border-b-2 border-flag -mb-px' : 'text-ink-soft hover:text-ink'}`}>
@@ -248,7 +248,7 @@ export default function ProviderDashboard() {
         <div className="mt-6">
           {bookings.length === 0 ? (
             <div className="mist-panel p-8 md:p-10 text-center">
-              <p className="text-ink-soft">No bookings yet. Share your listing links to get your first booking.</p>
+              <p className="text-ink-soft">{t('pd.no_bookings')}</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -267,11 +267,11 @@ export default function ProviderDashboard() {
               data-testid="add-listing-cta"
               className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-flag text-white font-bold text-xs btn-hover"
             >
-              <Plus size={14} /> Add listing
+              <Plus size={14} /> {t('pd.add_listing')}
             </button>
           </div>
           {listings.length === 0 ? (
-            <div className="mist-panel p-8 text-center text-ink-soft">You have no active listings.</div>
+            <div className="mist-panel p-8 text-center text-ink-soft">{t('pd.no_listings')}</div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {listings.map((l) => (
@@ -281,20 +281,20 @@ export default function ProviderDashboard() {
                   </div>
                   <div className="p-4">
                     <div className="font-display font-bold text-ink line-clamp-1">{l.title}</div>
-                    <div className="text-xs text-ink-soft mt-0.5 capitalize">{l.type} · {l.location}</div>
+                    <div className="text-xs text-ink-soft mt-0.5">{t(`categories.${l.type}`, { defaultValue: l.type })} · {l.location}</div>
                     {l.price > 0 && <div className="mt-2 font-extrabold text-pine">₹{l.price}</div>}
                     <div className="mt-3 flex items-center gap-3">
                       <Link to={`/listing/${l.id}`} data-testid={`view-listing-${l.id}`}
                         className="inline-flex items-center gap-1.5 text-xs font-bold text-pine">
-                        View <ExternalLink size={11} />
+                        {t('common.view')} <ExternalLink size={11} />
                       </Link>
                       <button onClick={() => setSelectedListing(l)} data-testid={`edit-listing-${l.id}`}
                         className="inline-flex items-center gap-1.5 text-xs font-bold text-ink-soft hover:text-ink">
-                        <Pencil size={11} /> Edit
+                        <Pencil size={11} /> {t('common.edit')}
                       </button>
                       <button onClick={() => handleDeleteListing(l.id)} data-testid={`delete-listing-${l.id}`}
                         className="inline-flex items-center gap-1.5 text-xs font-bold text-flag hover:text-[#8a1e1e]">
-                        <Trash2 size={11} /> Delete
+                        <Trash2 size={11} /> {t('common.delete')}
                       </button>
                     </div>
                   </div>
@@ -314,17 +314,17 @@ export default function ProviderDashboard() {
           <div className="mist-panel p-5 md:p-6">
             <div className="grid md:grid-cols-2 gap-6">
               <div>
-                <div className="text-xs uppercase tracking-widest text-ink-soft">Business</div>
+                <div className="text-xs uppercase tracking-widest text-ink-soft">{t('pd.business')}</div>
                 <div className="mt-1 font-display font-extrabold text-2xl text-ink">{provider.business_name}</div>
-                <div className="text-sm text-ink-soft capitalize">{provider.business_type} · {provider.location}</div>
+                <div className="text-sm text-ink-soft">{t(`categories.${provider.business_type}`, { defaultValue: provider.business_type })} · {provider.location}</div>
               </div>
               <div>
-                <div className="text-xs uppercase tracking-widest text-ink-soft">Contact</div>
+                <div className="text-xs uppercase tracking-widest text-ink-soft">{t('pd.contact')}</div>
                 <div className="mt-1 font-display font-extrabold text-2xl text-ink">{provider.contact_phone}</div>
               </div>
             </div>
             <div className="mt-6">
-              <div className="text-xs uppercase tracking-widest text-ink-soft">Description</div>
+              <div className="text-xs uppercase tracking-widest text-ink-soft">{t('pd.description')}</div>
               <p className="mt-1 text-ink leading-relaxed">{provider.description}</p>
             </div>
           </div>

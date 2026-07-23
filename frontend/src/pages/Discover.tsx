@@ -1,33 +1,23 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { motion } from 'framer-motion';
 import api from '@/lib/api';
 import { sizedImage } from '@/lib/listingContent';
 import FeedCard from '@/components/FeedCard';
-import StoryCircle from '@/components/StoryCircle';
 import BookingWidget from '@/components/BookingWidget';
-import { Mountain, Home as HomeIcon, Car, Store, Coffee, PartyPopper, Leaf, ArrowRight, Sparkles, TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Mountain, ArrowRight, Sparkles, TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const RED_PANDA = 'https://images.unsplash.com/photo-1542880941-1abfea46bba6';
 const HERO_POSTER = 'https://images.unsplash.com/photo-1544735716-392fe2489ffa';
 
-const STORIES = [
-  { key: 'spot', to: '/spots', Icon: Mountain },
-  { key: 'homestay', to: '/homestays', Icon: HomeIcon },
-  { key: 'driver', to: '/drivers', Icon: Car },
-  { key: 'shop', to: '/shops', Icon: Store },
-  { key: 'cafe', to: '/cafes', Icon: Coffee },
-  { key: 'event', to: '/events', Icon: PartyPopper },
-  { key: 'biodiversity', to: '/biodiversity', Icon: Leaf },
-];
-
 // Each deal sits on a real photo of what it sells rather than a flat colour
 // block; the gradient stays underneath as the fallback while the image loads.
+// Copy lives in the locale files under home.deals.<key> - resolved at render so
+// it follows the language switcher.
 const DEALS = [
-  { key: 'monsoon', title: 'Monsoon escapes', sub: 'Homestays from ₹1,200', tag: '25% OFF', color: 'from-pine to-pine-dark', to: '/homestays', image: 'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05' },
-  { key: 'sunrise', title: 'Sunrise at Tiger Hill', sub: 'Full day cab + guide', tag: 'BEST SELLER', color: 'from-flag to-[#8a1e1e]', to: '/drivers', image: 'https://images.unsplash.com/photo-1544735716-392fe2489ffa' },
-  { key: 'tea', title: 'Tea garden tours', sub: 'Live tasting sessions', tag: 'NEW', color: 'from-gold to-[#c69108]', to: '/spots', image: 'https://images.pexels.com/photos/103875/pexels-photo-103875.jpeg' },
+  { key: 'monsoon', color: 'from-pine to-pine-dark', to: '/homestays', image: 'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05' },
+  { key: 'sunrise', color: 'from-flag to-[#8a1e1e]', to: '/drivers', image: 'https://images.unsplash.com/photo-1544735716-392fe2489ffa' },
+  { key: 'tea', color: 'from-gold to-[#c69108]', to: '/spots', image: 'https://images.pexels.com/photos/103875/pexels-photo-103875.jpeg' },
 ];
 
 export default function Discover() {
@@ -104,21 +94,9 @@ export default function Discover() {
 
   return (
     <div>
-      {/* Stories row (Instagram style) */}
-      <section className="border-b border-[var(--line)] bg-white sticky top-14 md:top-16 z-20">
-        <div className="mx-auto max-w-6xl px-3 md:px-6 py-3 overflow-x-auto no-scrollbar">
-          <div className="flex items-start gap-3 md:gap-4">
-            {STORIES.map((s, i) => (
-              <motion.div key={s.key} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
-                <StoryCircle to={s.to} label={t(`categories.${s.key}`)} image={null} icon={s.Icon} active={i === 0} />
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* HERO / Booking widget */}
-      <section className="relative overflow-hidden">
+      {/* HERO / Booking widget - starts at y=0 and carries the header height as
+          padding, since the bar is drawn on top of the video. */}
+      <section className="relative overflow-hidden" data-hero>
         <div className="absolute inset-0 z-0">
           {/* Still fallback shown when the visitor prefers reduced motion. */}
           <img
@@ -143,7 +121,7 @@ export default function Discover() {
           {/* Short bottom fade-to-white transition */}
           <div className="absolute bottom-0 inset-x-0 h-16 bg-gradient-to-t from-[var(--bg)] to-transparent" />
         </div>
-        <div className="relative z-10 mx-auto max-w-6xl px-4 md:px-6 pt-20 md:pt-36 pb-20 md:pb-32">
+        <div className="relative z-10 mx-auto max-w-6xl px-4 md:px-6 pt-[calc(var(--header-h)+5rem)] md:pt-[calc(var(--header-h)+9rem)] pb-20 md:pb-32">
           <div className="text-white max-w-2xl">
             <span className="chip bg-white/20 !text-black backdrop-blur border border-white/30">{t('hero.eyebrow')}</span>
             <h1 className="mt-4 font-display font-extrabold text-[2.3rem] leading-[1.05] sm:text-5xl md:text-6xl tracking-tight drop-shadow-lg">
@@ -161,7 +139,7 @@ export default function Discover() {
       <section className="mx-auto max-w-6xl px-4 md:px-6 pt-6 md:pt-8">
         <div className="flex items-center gap-2 mb-3">
           <TrendingUp size={18} className="text-flag" />
-          <h2 className="font-display font-extrabold text-lg md:text-xl text-ink">Trending in Darjeeling</h2>
+          <h2 className="font-display font-extrabold text-lg md:text-xl text-ink">{t('home.trending')}</h2>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
           {DEALS.map((d) => (
@@ -171,10 +149,10 @@ export default function Discover() {
                 className="absolute inset-0 w-full h-full object-cover" />
               {/* Keeps the title and tag legible over whatever the photo does. */}
               <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/35 to-black/20" />
-              <span className="relative inline-block w-fit px-2 py-0.5 rounded-full bg-white/25 backdrop-blur text-[10px] font-extrabold tracking-wider">{d.tag}</span>
+              <span className="relative inline-block w-fit px-2 py-0.5 rounded-full bg-white/25 backdrop-blur text-[10px] font-extrabold tracking-wider">{t(`home.deals.${d.key}.tag`)}</span>
               <div className="relative">
-                <div className="font-display font-extrabold text-xl md:text-2xl leading-tight">{d.title}</div>
-                <div className="text-sm text-white/90 mt-0.5">{d.sub}</div>
+                <div className="font-display font-extrabold text-xl md:text-2xl leading-tight">{t(`home.deals.${d.key}.title`)}</div>
+                <div className="text-sm text-white/90 mt-0.5">{t(`home.deals.${d.key}.sub`)}</div>
               </div>
               <ArrowRight size={18} className="absolute top-4 right-4 opacity-80" />
             </Link>
@@ -186,17 +164,17 @@ export default function Discover() {
       <section className="mx-auto max-w-6xl px-4 md:px-6 pt-8 md:pt-10">
         <div className="flex items-end justify-between mb-4">
           <div>
-            <div className="text-[11px] font-bold uppercase tracking-widest text-flag">Must visit</div>
+            <div className="text-[11px] font-bold uppercase tracking-widest text-flag">{t('home.must_visit')}</div>
             <h2 className="font-display font-extrabold text-2xl md:text-3xl text-ink mt-0.5">{t('categories.spot')}</h2>
           </div>
-          <Link to="/spots" className="text-sm font-bold text-pine whitespace-nowrap">See all →</Link>
+          <Link to="/spots" className="text-sm font-bold text-pine whitespace-nowrap">{t('home.see_all')} →</Link>
         </div>
         <div className="relative group">
           {/* Left Navigation Arrow */}
           <button
             onClick={() => scrollSpots('left')}
             className="absolute -left-5 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-white shadow-lg border border-[var(--line)] text-ink flex items-center justify-center transition-all hover:bg-mist active:scale-95 hidden md:flex"
-            aria-label="Scroll left"
+            aria-label={t('home.scroll_left')}
           >
             <ChevronLeft size={20} className="text-ink" />
           </button>
@@ -228,7 +206,7 @@ export default function Discover() {
           <button
             onClick={() => scrollSpots('right')}
             className="absolute -right-5 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-white shadow-lg border border-[var(--line)] text-ink flex items-center justify-center transition-all hover:bg-mist active:scale-95 hidden md:flex"
-            aria-label="Scroll right"
+            aria-label={t('home.scroll_right')}
           >
             <ChevronRight size={20} className="text-ink" />
           </button>
@@ -239,10 +217,10 @@ export default function Discover() {
       <section className="mx-auto max-w-6xl px-4 md:px-6 pt-8 md:pt-10">
         <div className="flex items-end justify-between mb-4">
           <div>
-            <div className="text-[11px] font-bold uppercase tracking-widest text-flag">Stay local</div>
+            <div className="text-[11px] font-bold uppercase tracking-widest text-flag">{t('home.stay_local')}</div>
             <h2 className="font-display font-extrabold text-2xl md:text-3xl text-ink mt-0.5">{t('categories.homestay')}</h2>
           </div>
-          <Link to="/homestays" className="text-sm font-bold text-pine whitespace-nowrap">See all →</Link>
+          <Link to="/homestays" className="text-sm font-bold text-pine whitespace-nowrap">{t('home.see_all')} →</Link>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
           {homestays.slice(0, 4).map((h) => (
@@ -255,7 +233,7 @@ export default function Discover() {
                 <div className="text-[11px] text-ink-soft line-clamp-1 mt-0.5">{h.location}</div>
                 <div className="mt-1.5 flex items-baseline gap-1">
                   <span className="font-extrabold text-pine text-sm md:text-base">₹{h.price}</span>
-                  <span className="text-[10px] text-ink-soft">/night</span>
+                  <span className="text-[10px] text-ink-soft">{t('common.per_night')}</span>
                 </div>
                 <Link to={`/listing/${h.id}`} data-testid={`stay-book-${h.id}`}
                   className="mt-3 inline-flex items-center justify-center gap-1.5 py-2 rounded-full bg-flag text-white font-bold text-xs btn-hover">
@@ -271,7 +249,7 @@ export default function Discover() {
       <section className="mx-auto max-w-6xl px-4 md:px-6 pt-10 md:pt-14">
         <div className="flex items-center gap-2 mb-4">
           <Sparkles size={18} className="text-flag" />
-          <h2 className="font-display font-extrabold text-2xl md:text-3xl text-ink">Explore Darjeeling</h2>
+          <h2 className="font-display font-extrabold text-2xl md:text-3xl text-ink">{t('home.explore_darjeeling')}</h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
           {feed.map((it, idx) => (
@@ -284,7 +262,7 @@ export default function Discover() {
       <section className="mx-auto max-w-6xl px-4 md:px-6 pt-10 md:pt-14">
         <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-pine to-pine-dark text-white p-6 md:p-10">
           <div className="max-w-lg relative z-10">
-            <span className="chip bg-white/15 !text-black backdrop-blur">₹99 · one-time</span>
+            <span className="chip bg-white/15 !text-black backdrop-blur">{t('home.one_time_fee')}</span>
             <h3 className="mt-3 font-display font-extrabold text-2xl sm:text-3xl md:text-4xl leading-tight">{t('provider.onboard_title')}</h3>
             <p className="mt-2 text-white/90 text-sm md:text-base">{t('provider.onboard_sub')}</p>
             <Link to="/provider/onboard" data-testid="banner-provider-cta" className="mt-5 inline-flex items-center gap-2 px-5 py-3 rounded-full bg-white text-pine font-extrabold btn-hover">

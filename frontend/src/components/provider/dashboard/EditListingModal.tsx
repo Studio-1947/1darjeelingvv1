@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { X, Upload } from 'lucide-react';
 import api from '@/lib/api';
 import { uploadImage, uploadImages } from '@/lib/uploadImage';
@@ -15,6 +16,7 @@ export default function EditListingModal({ listing, onClose, onSave }: {
   onClose: () => void;
   onSave: () => void;
 }) {
+  const { t } = useTranslation();
   const isHomestay = listing.type === 'homestay';
   const isDriver = listing.type === 'driver';
 
@@ -117,7 +119,7 @@ export default function EditListingModal({ listing, onClose, onSave }: {
       onSave();
       onClose();
     } catch (err: any) {
-      setError(err?.response?.data?.detail || 'Save failed');
+      setError(err?.response?.data?.detail || t('common.save_failed'));
     } finally {
       setSaving(false);
     }
@@ -128,7 +130,7 @@ export default function EditListingModal({ listing, onClose, onSave }: {
       <div className="bg-white rounded-3xl w-full max-w-2xl border border-[var(--line)] overflow-hidden shadow-2xl animate-fade-up">
         {/* Header */}
         <div className="flex justify-between items-center px-6 py-5 border-b border-[var(--line)]">
-          <h2 className="font-display font-extrabold text-2xl text-ink">Edit Listing Details & Images</h2>
+          <h2 className="font-display font-extrabold text-2xl text-ink">{t('el.title')}</h2>
           <button type="button" onClick={onClose} className="p-1 rounded-full hover:bg-mist text-ink-soft transition-colors" data-testid="close-edit-modal">
             <X size={20} />
           </button>
@@ -138,12 +140,12 @@ export default function EditListingModal({ listing, onClose, onSave }: {
         <form onSubmit={handleSave} className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
           <div className="grid md:grid-cols-2 gap-4">
             <label className="block">
-              <span className="text-xs font-semibold text-ink-soft">Title</span>
+              <span className="text-xs font-semibold text-ink-soft">{t('lf.title')}</span>
               <input required type="text" value={title} onChange={(e) => setTitle(e.target.value)}
                 className="mt-1 w-full px-3.5 py-2.5 rounded-xl border border-[var(--line)] bg-white outline-none text-sm text-ink font-semibold" />
             </label>
             <label className="block">
-              <span className="text-xs font-semibold text-ink-soft">Price (₹ starting from)</span>
+              <span className="text-xs font-semibold text-ink-soft">{t('el.price')}</span>
               <input required type="number" min="0" value={price} onChange={(e) => setPrice(Number(e.target.value) || 0)}
                 className="mt-1 w-full px-3.5 py-2.5 rounded-xl border border-[var(--line)] bg-white outline-none text-sm text-ink font-semibold" />
             </label>
@@ -151,20 +153,20 @@ export default function EditListingModal({ listing, onClose, onSave }: {
 
           <div className="grid md:grid-cols-2 gap-4">
             <label className="block">
-              <span className="text-xs font-semibold text-ink-soft">Location</span>
+              <span className="text-xs font-semibold text-ink-soft">{t('lf.location')}</span>
               <input required type="text" value={location} onChange={(e) => setLocation(e.target.value)}
                 className="mt-1 w-full px-3.5 py-2.5 rounded-xl border border-[var(--line)] bg-white outline-none text-sm text-ink font-semibold" />
             </label>
             <label className="block">
-              <span className="text-xs font-semibold text-ink-soft">Full Address</span>
+              <span className="text-xs font-semibold text-ink-soft">{t('el.address')}</span>
               <input type="text" value={address} onChange={(e) => setAddress(e.target.value)}
-                placeholder="e.g. 15 Gandhi Road"
+                placeholder={t('el.address_ph')}
                 className="mt-1 w-full px-3.5 py-2.5 rounded-xl border border-[var(--line)] bg-white outline-none text-sm text-ink font-semibold" />
             </label>
           </div>
 
           <label className="block">
-            <span className="text-xs font-semibold text-ink-soft">{isDriver ? 'Driver Bio / About' : 'Description'}</span>
+            <span className="text-xs font-semibold text-ink-soft">{isDriver ? t('el.driver_bio') : t('pd.description')}</span>
             <textarea required value={description} onChange={(e) => setDescription(e.target.value)} rows={4}
               className="mt-1 w-full px-3.5 py-2.5 rounded-xl border border-[var(--line)] bg-white outline-none text-sm text-ink" />
           </label>
@@ -174,16 +176,16 @@ export default function EditListingModal({ listing, onClose, onSave }: {
             <>
               <div>
                 <label className="block mb-3">
-                  <span className="text-xs font-semibold text-ink-soft uppercase block mb-1">Car Model / Vehicle Name</span>
+                  <span className="text-xs font-semibold text-ink-soft uppercase block mb-1">{t('el.car_model')}</span>
                   <input
                     type="text"
                     value={carModel}
                     onChange={(e) => setCarModel(e.target.value)}
-                    placeholder="e.g. Mahindra Bolero, Swift Dzire"
+                    placeholder={t('el.car_model_ph')}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--line)] bg-white outline-none text-sm font-semibold text-ink"
                   />
                 </label>
-                <span className="text-xs font-semibold text-ink-soft uppercase block mb-2">Vehicle Type</span>
+                <span className="text-xs font-semibold text-ink-soft uppercase block mb-2">{t('el.vehicle_type')}</span>
                 <ChipToggleGroup
                   options={VEHICLE_TYPES}
                   selected={vehicleType ? [vehicleType] : []}
@@ -192,20 +194,20 @@ export default function EditListingModal({ listing, onClose, onSave }: {
               </div>
 
               <div className="border-t border-[var(--line)] pt-5">
-                <span className="text-xs font-extrabold uppercase tracking-widest text-ink-soft block mb-3">Driver Photo</span>
+                <span className="text-xs font-extrabold uppercase tracking-widest text-ink-soft block mb-3">{t('el.driver_photo')}</span>
                 <AvatarUploader
                   src={driverAvatar}
                   initial={title || 'D'}
                   size="sm"
                   uploading={uploadingDriverPic}
                   onFileSelected={(e) => uploadOne(e, setUploadingDriverPic, setDriverAvatar)}
-                  label="Upload Driver Photo"
+                  label={t('el.upload_driver_photo')}
                 />
               </div>
 
               <div className="border-t border-[var(--line)] pt-5">
-                <span className="text-xs font-extrabold uppercase tracking-widest text-ink-soft block mb-1">Routes Covered</span>
-                <p className="text-xs text-ink-soft mb-3">List the trips and routes you operate. These appear on your public listing page.</p>
+                <span className="text-xs font-extrabold uppercase tracking-widest text-ink-soft block mb-1">{t('el.routes_covered')}</span>
+                <p className="text-xs text-ink-soft mb-3">{t('el.routes_note')}</p>
                 <RouteListEditor routes={routes} onChange={setRoutes} compact />
               </div>
             </>
@@ -213,7 +215,7 @@ export default function EditListingModal({ listing, onClose, onSave }: {
 
           {isHomestay && (
             <div className="pt-2">
-              <span className="text-xs font-semibold text-ink-soft uppercase block mb-2">Listing Tags</span>
+              <span className="text-xs font-semibold text-ink-soft uppercase block mb-2">{t('el.listing_tags')}</span>
               <ChipToggleGroup
                 options={HOMESTAY_TAGS}
                 selected={selectedTags}
@@ -224,20 +226,20 @@ export default function EditListingModal({ listing, onClose, onSave }: {
 
           {/* Hero Image Section */}
           <div className="border-t border-[var(--line)] pt-5">
-            <span className="text-xs font-extrabold uppercase tracking-widest text-ink-soft block mb-3">Main Cover Image</span>
+            <span className="text-xs font-extrabold uppercase tracking-widest text-ink-soft block mb-3">{t('el.cover_image')}</span>
             <div className="flex flex-col md:flex-row gap-4 items-start">
               <div className="w-full md:w-48 h-32 rounded-xl bg-mist overflow-hidden border border-[var(--line)] flex-shrink-0 relative">
                 {image ? (
                   <img src={image} alt="" className="w-full h-full object-cover" />
                 ) : (
-                  <div className="w-full h-full grid place-items-center text-xs text-ink-soft">No Cover Image</div>
+                  <div className="w-full h-full grid place-items-center text-xs text-ink-soft">{t('el.no_cover')}</div>
                 )}
-                {uploading && <div className="absolute inset-0 bg-black/40 grid place-items-center text-xs text-white">Uploading...</div>}
+                {uploading && <div className="absolute inset-0 bg-black/40 grid place-items-center text-xs text-white">{t('common.uploading')}</div>}
               </div>
               <div className="flex-1">
-                <p className="text-xs text-ink-soft mb-3">This is the large cover background image shown at the top of your details page.</p>
+                <p className="text-xs text-ink-soft mb-3">{t('el.cover_note')}</p>
                 <label className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-white border border-[var(--line)] text-ink font-bold text-xs btn-hover cursor-pointer">
-                  <Upload size={14} /> Choose Cover Image
+                  <Upload size={14} /> {t('el.choose_cover')}
                   <input type="file" accept="image/*" onChange={(e) => uploadOne(e, setUploading, setImage)} className="hidden" />
                 </label>
               </div>
@@ -246,8 +248,8 @@ export default function EditListingModal({ listing, onClose, onSave }: {
 
           {/* Gallery Images Section */}
           <div className="border-t border-[var(--line)] pt-5">
-            <span className="text-xs font-extrabold uppercase tracking-widest text-ink-soft block mb-1">Photo Gallery</span>
-            <p className="text-xs text-ink-soft mb-4">Add photos of your rooms, bathrooms, surroundings, and amenities. These will render as a beautiful gallery inside your public listing page.</p>
+            <span className="text-xs font-extrabold uppercase tracking-widest text-ink-soft block mb-1">{t('el.photo_gallery')}</span>
+            <p className="text-xs text-ink-soft mb-4">{t('el.gallery_note')}</p>
             <GalleryUploader
               images={gallery}
               uploading={uploading}
@@ -260,7 +262,7 @@ export default function EditListingModal({ listing, onClose, onSave }: {
           {/* Amenities Section */}
           {isHomestay && (
             <div className="border-t border-[var(--line)] pt-5 space-y-4">
-              <span className="text-xs font-extrabold uppercase tracking-widest text-ink-soft block mb-1">What this place offers (Amenities)</span>
+              <span className="text-xs font-extrabold uppercase tracking-widest text-ink-soft block mb-1">{t('el.amenities')}</span>
               <AmenityPicker
                 presets={HOMESTAY_AMENITIES}
                 selected={selectedAmenities}
@@ -273,7 +275,7 @@ export default function EditListingModal({ listing, onClose, onSave }: {
           {/* Host Settings */}
           {isHomestay && (
             <div className="border-t border-[var(--line)] pt-5 space-y-4">
-              <span className="text-xs font-extrabold uppercase tracking-widest text-ink-soft block mb-1">Host Information</span>
+              <span className="text-xs font-extrabold uppercase tracking-widest text-ink-soft block mb-1">{t('el.host_info')}</span>
 
               <div className="flex flex-col md:flex-row gap-4 items-start">
                 <div className="w-20 h-20 rounded-full bg-gradient-to-br from-pine to-pine-dark text-white overflow-hidden shadow-md flex items-center justify-center font-display font-extrabold text-2xl flex-shrink-0 relative">
@@ -286,20 +288,20 @@ export default function EditListingModal({ listing, onClose, onSave }: {
                 </div>
                 <div className="flex-1 space-y-3 w-full">
                   <label className="block">
-                    <span className="text-xs font-semibold text-ink-soft">Host Name</span>
+                    <span className="text-xs font-semibold text-ink-soft">{t('el.host_name')}</span>
                     <input type="text" value={hostName} onChange={(e) => setHostName(e.target.value)}
                       className="mt-1 w-full px-3 py-2 rounded-xl border border-[var(--line)] bg-white outline-none text-sm font-semibold text-ink" />
                   </label>
 
                   <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-[var(--line)] text-ink font-bold text-xs btn-hover cursor-pointer">
-                    <Upload size={12} /> {uploadingHostPic ? 'Uploading...' : 'Upload Host Photo'}
+                    <Upload size={12} /> {uploadingHostPic ? t('common.uploading') : t('el.upload_host_photo')}
                     <input type="file" accept="image/*" onChange={(e) => uploadOne(e, setUploadingHostPic, setHostAvatar)} className="hidden" />
                   </label>
                 </div>
               </div>
 
               <label className="block">
-                <span className="text-xs font-semibold text-ink-soft">Host Bio</span>
+                <span className="text-xs font-semibold text-ink-soft">{t('el.host_bio')}</span>
                 <textarea rows={3} value={hostBio} onChange={(e) => setHostBio(e.target.value)}
                   className="mt-1 w-full px-3.5 py-2.5 rounded-xl border border-[var(--line)] bg-white outline-none text-sm text-ink leading-relaxed" />
               </label>
@@ -319,7 +321,7 @@ export default function EditListingModal({ listing, onClose, onSave }: {
               onClick={onClose}
               className="px-5 py-2.5 rounded-full border border-[var(--line)] text-ink font-bold text-sm btn-hover"
             >
-              Cancel
+              {t('common.cancel')}
             </button>
             <button
               type="submit"
@@ -327,7 +329,7 @@ export default function EditListingModal({ listing, onClose, onSave }: {
               data-testid="save-edit-listing"
               className="px-6 py-2.5 rounded-full bg-flag text-white font-bold text-sm btn-hover disabled:opacity-60"
             >
-              {saving ? 'Saving...' : 'Save Changes'}
+              {saving ? t('common.saving') : t('common.save_changes')}
             </button>
           </div>
         </form>

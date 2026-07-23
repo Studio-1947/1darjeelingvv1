@@ -23,11 +23,11 @@ export function useBookingFlow(item: any, id: string) {
     if (!user) { nav('/login?next=' + encodeURIComponent(`/listing/${id}`)); return; }
     if (item.type === 'homestay') {
       if (!form.check_in || !form.check_out) {
-        setMsg('Check-in and check-out dates are required');
+        setMsg(t('booking.dates_required'));
         return;
       }
       if (new Date(form.check_out) <= new Date(form.check_in)) {
-        setMsg('Check-out date must be after check-in date');
+        setMsg(t('booking.dates_order'));
         return;
       }
     }
@@ -64,7 +64,7 @@ export function useBookingFlow(item: any, id: string) {
         setTimeout(() => nav('/dashboard'), 1200);
       }
     } catch (e) {
-      setMsg(e?.response?.data?.detail || e.message || 'Failed');
+      setMsg(e?.response?.data?.detail || e.message || t('booking.failed'));
     } finally {
       setBusy(false);
     }

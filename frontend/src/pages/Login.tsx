@@ -50,7 +50,7 @@ export default function Login() {
       setMockOtp(data.mock_otp);
       setUserExists(!!data.exists);
       setStep(2);
-    } catch (e) { setErr(e?.response?.data?.detail || 'Failed to send OTP'); }
+    } catch (e) { setErr(e?.response?.data?.detail || t('auth.send_failed')); }
     finally { setBusy(false); }
   };
 
@@ -74,7 +74,7 @@ export default function Login() {
           nav(next);
         }
       }
-    } catch (e) { setErr(e?.response?.data?.detail || 'Invalid OTP'); }
+    } catch (e) { setErr(e?.response?.data?.detail || t('auth.invalid_otp')); }
     finally { setBusy(false); }
   };
 
@@ -121,7 +121,7 @@ export default function Login() {
           <form onSubmit={verify} className="space-y-4" data-testid="login-step-2">
             {mockOtp && (
               <div className="rounded-xl bg-gold/20 border border-gold/40 px-4 py-3 text-sm text-ink">
-                <span className="font-bold">Mock OTP:</span> {mockOtp}
+                <span className="font-bold">{t('auth.mock_otp')}</span> {mockOtp}
                 <div className="text-xs text-ink-soft mt-1">{t('auth.mock_note')}</div>
               </div>
             )}
@@ -136,9 +136,9 @@ export default function Login() {
             </label>
             {!userExists && (
               <label className="block">
-                <span className="text-xs font-semibold text-ink-soft">Name</span>
+                <span className="text-xs font-semibold text-ink-soft">{t('auth.name')}</span>
                 <input value={name} onChange={(e) => setName(e.target.value)} required={!userExists}
-                  data-testid="login-name" placeholder="Your name"
+                  data-testid="login-name" placeholder={t('auth.name_placeholder')}
                   className="mt-1 w-full px-3 py-2.5 rounded-xl border border-[var(--line)] bg-white outline-none" />
               </label>
             )}
@@ -147,17 +147,17 @@ export default function Login() {
               className="w-full py-3 rounded-full bg-pine text-white font-bold btn-hover disabled:opacity-60">
               {busy ? t('common.loading') : t('auth.verify')}
             </button>
-            <button type="button" onClick={() => setStep(1)} className="w-full text-xs text-ink-soft">← change number</button>
+            <button type="button" onClick={() => setStep(1)} className="w-full text-xs text-ink-soft">← {t('auth.change_number')}</button>
           </form>
         )}
 
         {showConfirmSwitch && verificationData && (
           <div className="space-y-6" data-testid="login-confirm-switch">
             <p className="text-sm text-ink-soft">
-              You already have a registered **service provider** profile with this WhatsApp number.
+              {t('auth.provider_exists')}
             </p>
             <p className="text-sm text-ink font-semibold">
-              Which dashboard would you like to open?
+              {t('auth.which_dashboard')}
             </p>
             <div className="space-y-3">
               <button
@@ -170,7 +170,7 @@ export default function Login() {
                 className="w-full py-3 rounded-full border border-pine text-pine font-bold hover:bg-pine/5 transition-colors"
                 data-testid="choose-traveller"
               >
-                Go to Traveler Dashboard
+                {t('auth.go_traveller')}
               </button>
               <button
                 type="button"
@@ -185,7 +185,7 @@ export default function Login() {
                 className="w-full py-3 rounded-full bg-pine text-white font-bold btn-hover"
                 data-testid="choose-provider"
               >
-                Go to Business Dashboard
+                {t('auth.go_business')}
               </button>
             </div>
             <button
@@ -197,7 +197,7 @@ export default function Login() {
               }}
               className="w-full text-xs text-ink-soft mt-4 text-center"
             >
-              Cancel and change number
+              {t('auth.cancel_change_number')}
             </button>
           </div>
         )}
@@ -205,7 +205,7 @@ export default function Login() {
         {err && <p data-testid="login-error" className="mt-4 text-sm text-flag font-semibold text-center">{err}</p>}
 
         <p className="mt-6 text-xs text-center text-ink-soft">
-          By continuing you agree to our <Link to="/privacy" className="underline">privacy policy</Link>.
+          {t('auth.terms_prefix')} <Link to="/privacy" className="underline">{t('auth.terms_link')}</Link>{t('auth.terms_suffix')}
         </p>
       </div>
     </div>

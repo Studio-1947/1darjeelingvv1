@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { CheckCircle2, MapPin, Calendar, Users, Phone, MessageCircle, ArrowRight, X, Copy, ExternalLink } from 'lucide-react';
 
 /**
@@ -7,6 +8,7 @@ import { CheckCircle2, MapPin, Calendar, Users, Phone, MessageCircle, ArrowRight
  * Shows details for both sides: tourist sees provider contact, provider sees business active.
  */
 export default function BookingConfirmation({ open, onClose, mode = 'booking', data = {} as any, onView }: { open: boolean, onClose: () => void, mode?: string, data?: any, onView?: () => void }) {
+  const { t } = useTranslation();
   if (!open) return null;
 
   const isBooking = mode === 'booking';
@@ -31,14 +33,17 @@ export default function BookingConfirmation({ open, onClose, mode = 'booking', d
           <div className="w-14 h-14 rounded-full bg-white/20 grid place-items-center backdrop-blur mb-3">
             <CheckCircle2 size={30} className="text-white" />
           </div>
-          <div className="text-[11px] uppercase tracking-widest opacity-90 font-bold">{isBooking ? 'Booking confirmed' : 'You’re live!'}</div>
+          <div className="text-[11px] uppercase tracking-widest opacity-90 font-bold">{isBooking ? t('bc.booking_confirmed') : t('bc.youre_live')}</div>
           <h2 className="mt-1 font-display font-extrabold text-3xl leading-tight">
-            {isBooking ? `Trip locked in` : `Welcome to 1 Darjeeling`}
+            {isBooking ? t('bc.trip_locked') : t('bc.welcome')}
           </h2>
           <p className="mt-1 text-sm text-white/90">
             {isBooking
-              ? `Your ${listing.type || 'booking'} at ${listing.title || 'the property'} is confirmed. The host has been notified.`
-              : `Your business is now listed and searchable by travellers.`}
+              ? t('bc.booking_note', {
+                  type: t(`categories.${listing.type}`, { defaultValue: listing.type || '' }),
+                  title: listing.title || '',
+                })
+              : t('bc.provider_note')}
           </p>
         </div>
 
@@ -59,35 +64,35 @@ export default function BookingConfirmation({ open, onClose, mode = 'booking', d
                       <Calendar size={11} /> {booking.check_in}{booking.check_out ? ` → ${booking.check_out}` : ''}
                     </div>
                   )}
-                  <div className="text-xs text-ink-soft flex items-center gap-1 mt-0.5"><Users size={11} /> {booking.guests || 1} guest(s)</div>
+                  <div className="text-xs text-ink-soft flex items-center gap-1 mt-0.5"><Users size={11} /> {t('bc.guests', { count: booking.guests || 1 })}</div>
                 </div>
               </div>
 
               {/* Booking id */}
               <div className="flex items-center justify-between p-3 rounded-xl bg-mist">
                 <div>
-                  <div className="text-[10px] uppercase tracking-widest text-ink-soft font-bold">Booking ID</div>
+                  <div className="text-[10px] uppercase tracking-widest text-ink-soft font-bold">{t('bc.booking_id')}</div>
                   <div className="font-mono text-xs text-ink mt-0.5">{(booking.id || '').slice(0, 12)}…</div>
                 </div>
-                <button onClick={copyId} data-testid="copy-booking-id" className="text-xs font-bold text-pine inline-flex items-center gap-1"><Copy size={12} /> Copy</button>
+                <button onClick={copyId} data-testid="copy-booking-id" className="text-xs font-bold text-pine inline-flex items-center gap-1"><Copy size={12} /> {t('saved.copy')}</button>
               </div>
 
               {/* Provider contact */}
               {(provider.business_name || provider.name) && (
                 <div className="p-3 rounded-xl border border-[var(--line)]">
-                  <div className="text-[10px] uppercase tracking-widest text-ink-soft font-bold">Your host</div>
+                  <div className="text-[10px] uppercase tracking-widest text-ink-soft font-bold">{t('bc.your_host')}</div>
                   <div className="mt-1 font-display font-bold text-ink">{provider.business_name || provider.name}</div>
                   {providerPhone && <div className="text-xs text-ink-soft">{providerPhone}</div>}
                   {providerPhone && (
                     <div className="mt-2 flex gap-2">
                       <a href={`tel:${providerPhone}`} data-testid="confirm-call"
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-pine text-white font-bold text-xs btn-hover">
-                        <Phone size={12} /> Call host
+                        <Phone size={12} /> {t('bc.call_host')}
                       </a>
-                      <a href={`https://wa.me/${providerPhone.replace(/\D/g, '')}?text=${encodeURIComponent(`Hi! I just booked ${listing.title || 'your listing'} on 1 Darjeeling. Booking ID: ${booking.id}`)}`}
+                      <a href={`https://wa.me/${providerPhone.replace(/\D/g, '')}?text=${encodeURIComponent(t('bc.wa_message', { title: listing.title || '', id: booking.id }))}`}
                         target="_blank" rel="noreferrer" data-testid="confirm-wa"
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#25D366] text-white font-bold text-xs btn-hover">
-                        <MessageCircle size={12} /> WhatsApp
+                        <MessageCircle size={12} /> {t('contact.whatsapp')}
                       </a>
                     </div>
                   )}
@@ -100,10 +105,10 @@ export default function BookingConfirmation({ open, onClose, mode = 'booking', d
             <>
               <div className="p-4 rounded-2xl bg-mist">
                 <div className="font-display font-extrabold text-2xl text-ink">{data.business_name}</div>
-                <div className="text-sm text-ink-soft capitalize">{data.business_type} · {data.location}</div>
+                <div className="text-sm text-ink-soft">{t(`categories.${data.business_type}`, { defaultValue: data.business_type })} · {data.location}</div>
               </div>
               <p className="text-sm text-ink-soft">
-                Tourists can now discover you in the {data.business_type || 'listings'} category. You&apos;ll receive bookings in your dashboard.
+                {t('bc.provider_body', { type: t(`categories.${data.business_type}`, { defaultValue: data.business_type || '' }) })}
               </p>
             </>
           )}
@@ -113,13 +118,13 @@ export default function BookingConfirmation({ open, onClose, mode = 'booking', d
             {onView && (
               <button onClick={onView} data-testid="confirm-view"
                 className="flex-1 inline-flex items-center justify-center gap-2 py-3 rounded-full bg-flag text-white font-extrabold btn-hover">
-                {isBooking ? 'View my bookings' : 'Go to dashboard'} <ArrowRight size={16} />
+                {isBooking ? t('bc.view_bookings') : t('bc.go_dashboard')} <ArrowRight size={16} />
               </button>
             )}
             {isBooking && listing.id && (
               <Link to={`/listing/${listing.id}`} data-testid="confirm-view-listing"
                 className="flex-1 inline-flex items-center justify-center gap-2 py-3 rounded-full bg-white border border-[var(--line)] text-ink font-bold btn-hover">
-                View listing <ExternalLink size={14} />
+                {t('dashboard.view_listing')} <ExternalLink size={14} />
               </Link>
             )}
           </div>

@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Plus, X } from 'lucide-react';
+import { optionLabel } from '@/lib/optionLabel';
 import { ROUTE_SUGGESTIONS } from '@/constants/listingOptions';
 
 /** List of routes with remove buttons plus an add-on-Enter input row. */
@@ -9,6 +11,7 @@ export function RouteListEditor({ routes, onChange, compact = false, emptyNote }
   compact?: boolean;
   emptyNote?: string;
 }) {
+  const { t } = useTranslation();
   const [input, setInput] = useState('');
 
   const add = () => {
@@ -23,7 +26,7 @@ export function RouteListEditor({ routes, onChange, compact = false, emptyNote }
       <div className={`space-y-2 ${compact ? 'mb-3' : 'mb-4'}`}>
         {routes.map((r, i) => (
           <div key={i} className={`flex items-center rounded-xl bg-mist border border-[var(--line)] ${compact ? 'gap-2 p-3' : 'gap-3 p-4'}`}>
-            <span className={`flex-1 text-ink font-semibold ${compact ? 'text-xs' : 'text-sm'}`}>{r}</span>
+            <span className={`flex-1 text-ink font-semibold ${compact ? 'text-xs' : 'text-sm'}`}>{optionLabel(t, r)}</span>
             <button
               type="button"
               onClick={() => onChange(routes.filter((_, idx) => idx !== i))}
@@ -47,7 +50,7 @@ export function RouteListEditor({ routes, onChange, compact = false, emptyNote }
               add();
             }
           }}
-          placeholder="e.g. Darjeeling ↔ Gangtok (Sikkim)"
+          placeholder={t('widgets.route_ph')}
           className={`flex-1 rounded-xl border border-[var(--line)] bg-white outline-none font-semibold text-ink ${
             compact ? 'px-3 py-2 text-xs' : 'px-3.5 py-2.5 text-sm'
           }`}
@@ -59,7 +62,7 @@ export function RouteListEditor({ routes, onChange, compact = false, emptyNote }
             compact ? 'px-3.5 py-2 text-xs' : 'px-4 py-2.5 text-sm inline-flex items-center gap-1'
           }`}
         >
-          {compact ? <Plus size={14} /> : <><Plus size={16} /> Add</>}
+          {compact ? <Plus size={14} /> : <><Plus size={16} /> {t('common.add')}</>}
         </button>
       </div>
     </>
@@ -68,9 +71,10 @@ export function RouteListEditor({ routes, onChange, compact = false, emptyNote }
 
 /** Tappable panel of common Darjeeling routes; adds any not already picked. */
 export function RouteSuggestions({ routes, onChange }: { routes: string[]; onChange: (next: string[]) => void }) {
+  const { t } = useTranslation();
   return (
     <div className="mist-panel p-5 bg-white space-y-2">
-      <p className="text-xs font-extrabold uppercase tracking-widest text-ink-soft mb-3">Common Routes</p>
+      <p className="text-xs font-extrabold uppercase tracking-widest text-ink-soft mb-3">{t('widgets.common_routes')}</p>
       {ROUTE_SUGGESTIONS.map((suggestion) => {
         const added = routes.includes(suggestion);
         return (
@@ -86,7 +90,7 @@ export function RouteSuggestions({ routes, onChange }: { routes: string[]; onCha
                 : 'bg-white text-ink-soft border-[var(--line)] hover:border-pine/40 hover:text-ink'
             }`}
           >
-            {added ? '✓ ' : '+ '}{suggestion}
+            {added ? '✓ ' : '+ '}{optionLabel(t, suggestion)}
           </button>
         );
       })}

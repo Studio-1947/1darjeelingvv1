@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Screen, Eyebrow } from './layout';
 
 /** Final onboarding screen: starting price, the ₹99 fee note, submit + back. */
@@ -33,6 +34,7 @@ export default function PriceSubmitScreen({
   disabled: boolean;
   msg: string;
 }) {
+  const { t } = useTranslation();
   return (
     <Screen tone={tone}>
       <Eyebrow n={n}>{heading}</Eyebrow>
@@ -62,14 +64,14 @@ export default function PriceSubmitScreen({
               disabled={disabled}
               className="w-full py-4 rounded-full bg-flag text-white font-extrabold text-base btn-hover disabled:opacity-60"
             >
-              {busy ? 'Processing...' : 'Submit & Pay ₹99'}
+              {busy ? t('common.processing') : t('ob.submit_pay')}
             </button>
             <button
               type="button"
               onClick={onBack}
               className="w-full py-3 rounded-full border border-[var(--line)] text-ink font-bold text-sm btn-hover"
             >
-              Back to Basic Info
+              {t('ob.back_basic')}
             </button>
             {msg && <p className="text-sm text-center text-flag font-semibold">{msg}</p>}
           </div>

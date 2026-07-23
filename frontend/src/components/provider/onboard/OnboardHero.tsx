@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Upload } from 'lucide-react';
 import { SCREEN_H } from './layout';
 
@@ -16,20 +17,21 @@ export default function OnboardHero({ typeLabel, name, onName, placeholder, imag
   onUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   meta: React.ReactNode;
 }) {
+  const { t } = useTranslation();
   return (
     <section className={`relative ${SCREEN_H} w-full overflow-hidden bg-mist border-b border-[var(--line)]`}>
       {image ? (
         <img src={image} alt="" className="absolute inset-0 w-full h-full object-cover" />
       ) : (
         <div className="absolute inset-0 bg-slate-200 grid place-items-center text-slate-400">
-          No Cover Photo Uploaded (Click Top Right)
+          {t('ob.no_cover_photo')}
         </div>
       )}
       <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-black/45" />
 
       <div className="absolute top-6 right-6 z-10">
         <label className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/95 backdrop-blur text-ink font-bold text-xs btn-hover cursor-pointer shadow-lg">
-          <Upload size={14} /> {uploading ? 'Uploading...' : 'Upload Cover Photo'}
+          <Upload size={14} /> {uploading ? t('common.uploading') : t('ob.upload_cover')}
           <input type="file" accept="image/*" onChange={onUpload} className="hidden" />
         </label>
       </div>

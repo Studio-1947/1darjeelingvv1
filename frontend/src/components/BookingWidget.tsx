@@ -7,7 +7,7 @@ import { Search, MapPin, Calendar, Users, Home as HomeIcon, Car, Sparkles } from
  * MakeMyTrip-inspired booking widget with tabs.
  */
 export default function BookingWidget() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const nav = useNavigate();
   const [tab, setTab] = useState('stay');
   const [q, setQ] = useState('');
@@ -34,27 +34,29 @@ export default function BookingWidget() {
   }, []);
 
   const formatDates = () => {
-    if (!checkIn && !checkOut) return 'Any dates';
-    
+    if (!checkIn && !checkOut) return t('widget.any_dates');
+
+    // Month names follow the chosen language, not a hardcoded en-US locale.
+    const locale = i18n.language || 'en';
     const formatDateStr = (dateStr) => {
       if (!dateStr) return '';
       const d = new Date(dateStr);
       if (isNaN(d.getTime())) return dateStr;
-      return d.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
+      return d.toLocaleDateString(locale, { day: 'numeric', month: 'short' });
     };
 
-    if (checkIn && !checkOut) return `From ${formatDateStr(checkIn)}`;
-    if (!checkIn && checkOut) return `Until ${formatDateStr(checkOut)}`;
-    
+    if (checkIn && !checkOut) return t('widget.from_date', { date: formatDateStr(checkIn) });
+    if (!checkIn && checkOut) return t('widget.until_date', { date: formatDateStr(checkOut) });
+
     const d1 = new Date(checkIn);
     const d2 = new Date(checkOut);
     if (!isNaN(d1.getTime()) && !isNaN(d2.getTime())) {
       if (d1.getMonth() === d2.getMonth() && d1.getFullYear() === d2.getFullYear()) {
-        const monthStr = d1.toLocaleDateString('en-US', { month: 'short' });
+        const monthStr = d1.toLocaleDateString(locale, { month: 'short' });
         return `${d1.getDate()} - ${d2.getDate()} ${monthStr}`;
       }
     }
-    
+
     return `${formatDateStr(checkIn)} - ${formatDateStr(checkOut)}`;
   };
 
@@ -92,13 +94,13 @@ export default function BookingWidget() {
       {/* Form */}
       <form onSubmit={submit} className="p-4 md:p-5 space-y-3 md:space-y-0 md:grid md:grid-cols-12 md:gap-3 md:items-end">
         <label className="block md:col-span-5">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-ink-soft">Destination</span>
+          <span className="text-[11px] font-bold uppercase tracking-wider text-ink-soft">{t('widget.destination')}</span>
           <div className="mt-1 flex items-center gap-2 border border-[var(--line)] rounded-2xl px-3 py-2.5 md:py-3">
             <MapPin size={16} className="text-ink-soft flex-shrink-0" />
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Darjeeling, Ghum, Tiger Hill…"
+              placeholder={t('widget.destination_placeholder')}
               data-testid="booking-widget-destination"
               className="flex-1 min-w-0 bg-transparent outline-none text-sm md:text-base"
             />
@@ -107,7 +109,7 @@ export default function BookingWidget() {
 
         {tab === 'stay' && (
           <div ref={dateRef} className="block md:col-span-4 relative">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-ink-soft">When</span>
+            <span className="text-[11px] font-bold uppercase tracking-wider text-ink-soft">{t('widget.when')}</span>
             <div 
               className="mt-1 flex items-center gap-2 border border-[var(--line)] rounded-2xl px-3 py-2.5 md:py-3 bg-white"
             >
@@ -120,7 +122,7 @@ export default function BookingWidget() {
               <div className="absolute left-0 right-0 bottom-full mb-2 p-4 bg-white border border-[var(--line)] rounded-2xl shadow-xl z-50 flex flex-col gap-3">
                 <div className="flex gap-2">
                   <div className="flex-1">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-ink-soft">Check-in</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-ink-soft">{t('booking.checkin')}</span>
                     <input 
                       type="date" 
                       value={checkIn} 
@@ -130,7 +132,7 @@ export default function BookingWidget() {
                     />
                   </div>
                   <div className="flex-1">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-ink-soft">Check-out</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-ink-soft">{t('booking.checkout')}</span>
                     <input 
                       type="date" 
                       value={checkOut} 
@@ -145,7 +147,7 @@ export default function BookingWidget() {
                   onClick={() => setShowDatePicker(false)}
                   className="w-full py-1.5 bg-flag text-white font-bold text-xs rounded-xl hover:opacity-90 transition-opacity"
                 >
-                  Done
+                  {t('widget.done')}
                 </button>
               </div>
             )}
@@ -154,7 +156,7 @@ export default function BookingWidget() {
 
         {tab === 'driver' && (
           <label className="block md:col-span-4">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-ink-soft">Date</span>
+            <span className="text-[11px] font-bold uppercase tracking-wider text-ink-soft">{t('widget.date')}</span>
             <div className="mt-1 flex items-center gap-2 border border-[var(--line)] rounded-2xl px-3 py-2.5 md:py-3">
               <Calendar size={16} className="text-ink-soft flex-shrink-0" />
               <input type="date" value={checkIn} onChange={(e) => setCheckIn(e.target.value)}
@@ -166,7 +168,7 @@ export default function BookingWidget() {
 
         {tab === 'exp' && (
           <label className="block md:col-span-4">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-ink-soft">When</span>
+            <span className="text-[11px] font-bold uppercase tracking-wider text-ink-soft">{t('widget.when')}</span>
             <div className="mt-1 flex items-center gap-2 border border-[var(--line)] rounded-2xl px-3 py-2.5 md:py-3">
               <Calendar size={16} className="text-ink-soft flex-shrink-0" />
               <input type="date" value={checkIn} onChange={(e) => setCheckIn(e.target.value)}
@@ -176,19 +178,19 @@ export default function BookingWidget() {
         )}
 
         <div ref={guestsRef} className="block md:col-span-2 relative">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-ink-soft">Guests</span>
+          <span className="text-[11px] font-bold uppercase tracking-wider text-ink-soft">{t('widget.guests')}</span>
           <div 
             onClick={() => setShowGuestsPicker(!showGuestsPicker)}
             className="mt-1 flex items-center gap-2 border border-[var(--line)] rounded-2xl px-3 py-2.5 md:py-3 cursor-pointer bg-white"
           >
             <Users size={16} className="text-ink-soft flex-shrink-0" />
             <div className="flex-1 min-w-0 text-sm md:text-base text-ink select-none">
-              {guests} Guest{guests > 1 ? 's' : ''}
+              {t('widget.guest_count', { count: guests })}
             </div>
           </div>
           {showGuestsPicker && (
             <div className="absolute right-0 bottom-full mb-2 p-4 bg-white border border-[var(--line)] rounded-2xl shadow-xl z-50 w-44 flex flex-col gap-2">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-ink-soft">Number of Guests</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-ink-soft">{t('widget.number_of_guests')}</span>
               <input 
                 type="number" 
                 min="1" 
@@ -203,7 +205,7 @@ export default function BookingWidget() {
 
         <button type="submit" data-testid="booking-widget-search"
           className="w-full md:col-span-1 py-3 md:py-3.5 rounded-2xl bg-flag text-white font-extrabold btn-hover flex items-center justify-center gap-2">
-          <Search size={16} /> <span className="md:hidden">Search</span>
+          <Search size={16} /> <span className="md:hidden">{t('widget.search')}</span>
         </button>
       </form>
     </div>

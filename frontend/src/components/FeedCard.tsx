@@ -97,7 +97,7 @@ export default function FeedCard({ item, priority = false }) {
 
       {/* Actions */}
       <div className="flex items-center gap-4 px-3.5 pt-3 flex-shrink-0">
-        <button onClick={handleShare} data-testid={`feed-share-${item.id}`} className="btn-hover" aria-label="Share">
+        <button onClick={handleShare} data-testid={`feed-share-${item.id}`} className="btn-hover" aria-label={t('feed.share')}>
           {shared ? <Check size={20} className="text-pine" /> : <Share2 size={20} className="text-ink" />}
         </button>
         {/* Read-only average rating from real reviews; tapping jumps to the reviews on the detail page. */}
@@ -105,7 +105,9 @@ export default function FeedCard({ item, priority = false }) {
           to={`/listing/${item.id}#reviews`}
           data-testid={`feed-rating-${item.id}`}
           className="flex items-center gap-1 text-sm btn-hover"
-          aria-label={item.review_count > 0 ? `Rated ${item.rating} out of 5 from ${item.review_count} reviews` : 'No reviews yet'}
+          aria-label={item.review_count > 0
+            ? t('feed.rated_aria', { rating: item.rating, count: item.review_count })
+            : t('feed.no_reviews_aria')}
         >
           <Star size={18} className={item.review_count > 0 ? 'fill-gold text-gold' : 'text-ink-soft'} />
           {item.review_count > 0 ? (
@@ -113,10 +115,10 @@ export default function FeedCard({ item, priority = false }) {
               <span className="font-normal text-ink-soft"> ({item.review_count})</span>
             </span>
           ) : (
-            <span className="text-ink-soft text-xs font-semibold">No reviews</span>
+            <span className="text-ink-soft text-xs font-semibold">{t('feed.no_reviews')}</span>
           )}
         </Link>
-        <button onClick={handleSave} data-testid={`feed-save-${item.id}`} className="ml-auto btn-hover" aria-label="Save" aria-pressed={saved}>
+        <button onClick={handleSave} data-testid={`feed-save-${item.id}`} className="ml-auto btn-hover" aria-label={t('common.save')} aria-pressed={saved}>
           <Bookmark size={22} className={saved ? 'fill-pine text-pine' : 'text-ink'} />
         </button>
       </div>
