@@ -24,6 +24,7 @@ internet → system Nginx (:80/:443, TLS) → 127.0.0.1:<port> → app's own ngi
 | Domain | → Port | Compose project | Source directory |
 | ------ | ------ | --------------- | ---------------- |
 | `onedarjeeling.duckdns.org` | 8091 | `1darjeeling-prod` | `/var/www/1darjeelingvv1` |
+| `1darjeeling.in` | 8092 | `1darjeeling-in` | `/var/www/1darjeeling-in` |
 | `dev.doptor.in` | 3000 | `doptor-super-app-monorepo` | `/var/www/Doptor-super-app-monorepo` |
 | `api.dev.doptor.in` | 5000 | `doptor-super-app-monorepo` | `/var/www/Doptor-super-app-monorepo` |
 | `s47-task.duckdns.org` | 8080 | `task-tracker-s47` | `/var/www/task-tracker-s47` |
@@ -38,6 +39,18 @@ internet → system Nginx (:80/:443, TLS) → 127.0.0.1:<port> → app's own ngi
 | `1darjeeling_prod_backend` | Express API | internal only |
 | `1darjeeling_prod_postgres` | database (volume `pg_data_prod`) | internal only |
 | `1darjeeling_prod_minio` | object storage: public listing images + private KYC documents (volume `minio_data_prod`) | internal only — no published host port, by design (see §8) |
+
+### This app's second stack — 1darjeeling.in (`1darjeeling-in`)
+
+Same shape as the table above, isolated from it (separate project, containers, volumes,
+port). Deployed from the `prod` branch by `.github/workflows/deploy-prod.yml`.
+
+| Container | Role | Ports |
+| --------- | ---- | ----- |
+| `1darjeeling_in_nginx` | serves both frontend builds, proxies `/api` + `/api-docs` to backend, proxies the public MinIO bucket path | `127.0.0.1:8092->80` |
+| `1darjeeling_in_backend` | Express API | internal only |
+| `1darjeeling_in_postgres` | database (volume `pg_data_in`) | internal only |
+| `1darjeeling_in_minio` | object storage: public listing images + private KYC documents (volume `minio_data_in`) | internal only — no published host port, by design (see §8) |
 
 ---
 
@@ -76,6 +89,19 @@ domain. That mapping is also how you check a port is free before assigning one t
 
 Routine deploys are automatic: push to `main` → GitHub Actions runs the backend test suite → on
 green, it SSHes in and rebuilds this app's containers only. See `.github/workflows/deploy.yml`.
+
+There are now **two** independent auto-deploy paths, one per stack:
+
+| Branch | Workflow | Stack | Compose file | Domain |
+| ------ | -------- | ----- | ------------ | ------ |
+| `main` | `deploy.yml` | `1darjeeling-prod` | `docker-compose.prod.yml` | `onedarjeeling.duckdns.org` |
+| `prod` | `deploy-prod.yml` | `1darjeeling-in` | `docker-compose.in.yml` | `1darjeeling.in` |
+
+A push to `main` deploys the first stack and never touches the second; a push (or a
+`main` → `prod` merge) to `prod` deploys the second and never touches the first.
+**For the `1darjeeling.in` stack always pass `-f docker-compose.in.yml`** — a bare
+`docker compose` in `/var/www/1darjeeling-in` would pick up the dev file, and
+`-f docker-compose.prod.yml` is the OTHER stack.
 
 Manual deploy (from `/var/www/1darjeelingvv1`):
 
@@ -297,6 +323,154 @@ to a ticket or chat unencrypted. This is the same class of data a Postgres backu
 table would contain, if that table stored file bytes instead of object keys — it doesn't, precisely
 so backups of the database and backups of the object store are each incomplete on their own; you
 need to protect both.
+
+---
+
+## 9. Bringing up the 1darjeeling.in (prod) stack — one-time
+
+The `deploy-prod.yml` workflow assumes the clone and `.env` already exist at
+`/var/www/1darjeeling-in`, exactly as `deploy.yml` assumes `/var/www/1darjeelingvv1`
+does. These are the one-time steps to create them and go live. **Every step here is
+additive — none of it touches the existing `1darjeeling-prod` stack or its volumes.**
+
+### 9.1 Verify the port is free
+
+```sh
+sudo ss -tlnp | grep 8092   # prints nothing if free
+```
+If 8092 is taken, pick another loopback port and change it in **both** `docker-compose.in.yml`
+(nginx `ports:`) and the system-Nginx site (`proxy_pass`).
+
+### 9.2 Bootstrap the checkout and .env
+
+```sh
+sudo git clone git@github.com:Studio-1947/1darjeelingvv1.git /var/www/1darjeeling-in
+cd /var/www/1darjeeling-in
+git checkout prod
+cp .env.production.example .env
+# Then edit .env — the 1darjeeling.in stack has its OWN .env, distinct from the other
+# stack's. Set at minimum:
+#   APP_ENV=production
+#   CORS_ORIGINS=https://1darjeeling.in
+#   MINIO_PUBLIC_URL=https://1darjeeling.in
+#   MOCK_PAYMENTS / MESSAGING_PROVIDER — real values when going truly live
+# See §4 for the backend's startup refusals if a value is missing or left at a placeholder.
+```
+
+> **If you will copy data over (§9.3) via the volume method**, set `POSTGRES_USER`,
+> `POSTGRES_PASSWORD`, and `POSTGRES_DB` in this `.env` to the SAME values the source
+> stack's Postgres volume was initialised with. Postgres reads its password from the
+> volume only on first init, so a copied volume keeps the source's password; a mismatched
+> `.env` then can't connect (same failure mode as §4's "Database connection refused").
+
+### 9.3 Copy data from the existing stack (one-time cutover)
+
+Two methods. The **volume tar-copy** is exact (both stacks run identical Postgres 15 /
+MinIO images) and is recommended; the **`pg_dump` + `mc mirror`** method avoids stopping
+the source but has more moving parts.
+
+**⚠️ The MinIO copy includes the PRIVATE KYC bucket (Aadhaar/PAN/licence scans).** Treat
+every archive and volume as sensitive personal data per §8 — encrypt at rest, restrict
+access, delete temporaries when done. Never publish a MinIO port to do this.
+
+**Method A — volume tar-copy (recommended; brief source downtime):**
+```sh
+# 1. Create the in stack's volumes by bringing it up once, then stop it:
+cd /var/www/1darjeeling-in
+docker compose -f docker-compose.in.yml up -d --build
+docker compose -f docker-compose.in.yml stop backend postgres minio nginx
+
+# 2. Stop the SOURCE stack's postgres + minio for a consistent snapshot
+#    (brief downtime on onedarjeeling.duckdns.org):
+cd /var/www/1darjeelingvv1
+docker compose -f docker-compose.prod.yml stop postgres minio
+
+# 3. Overwrite the in volumes with the source data (clears the empty freshly-migrated
+#    data first). Source volumes: 1darjeeling-prod_*; target volumes: 1darjeeling-in_*.
+docker run --rm \
+  -v 1darjeeling-prod_pg_data_prod:/from:ro \
+  -v 1darjeeling-in_pg_data_in:/to \
+  alpine sh -c 'rm -rf /to/* /to/..?* /to/.[!.]* 2>/dev/null; cd /from && tar cf - . | (cd /to && tar xf -)'
+
+docker run --rm \
+  -v 1darjeeling-prod_minio_data_prod:/from:ro \
+  -v 1darjeeling-in_minio_data_in:/to \
+  alpine sh -c 'rm -rf /to/* /to/..?* /to/.[!.]* 2>/dev/null; cd /from && tar cf - . | (cd /to && tar xf -)'
+
+# 4. Restart the source stack (site back up), then start the in stack on the copied data:
+cd /var/www/1darjeelingvv1 && docker compose -f docker-compose.prod.yml start postgres minio
+cd /var/www/1darjeeling-in && docker compose -f docker-compose.in.yml up -d
+```
+
+**Method B — no source downtime (`pg_dump` + `mc mirror`):**
+```sh
+# Postgres: dump the live source DB, restore into a freshly-migrated in DB.
+# (Bring the in stack up first so migrations create the schema, then load data.)
+docker exec 1darjeeling_prod_postgres pg_dump -U "$SRC_USER" -d "$SRC_DB" --no-owner --format=custom > /tmp/src.dump
+# copy /tmp/src.dump to the in DB and restore with pg_restore --clean --if-exists inside
+# 1darjeeling_in_postgres. Handle the KYC-adjacent data as sensitive; delete /tmp/src.dump after.
+#
+# MinIO: mirror both buckets from source to target using `mc` inside a throwaway container
+# aliased to each MinIO's internal endpoint. Mirror the PUBLIC and PRIVATE buckets separately;
+# never expose either port to do it.
+```
+
+### 9.3.1 Rewrite stored image URLs to the new domain (required after copying)
+
+`uploadToMinIO()` stores **absolute** image URLs (`${MINIO_PUBLIC_URL}/${MINIO_BUCKET}/<key>`, see `backend/src/lib/s3.ts`), so every listing/provider/user row copied from the source stack still points its images at the **source** domain. After the DB copy, rewrite them to `1darjeeling.in` so images load from this stack (whose nginx serves `/one-darjeeling/` from the copied MinIO objects). Run once, inside the `in` Postgres, replacing the source domain (`onedarjeeling.duckdns.org` — or whatever the source stack's `MINIO_PUBLIC_URL` is) with `1darjeeling.in`:
+
+```sh
+docker exec -i 1darjeeling_in_postgres psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" <<'SQL'
+UPDATE listings SET image = replace(image, 'https://onedarjeeling.duckdns.org/', 'https://1darjeeling.in/')
+  WHERE image LIKE 'https://onedarjeeling.duckdns.org/%';
+UPDATE providers SET images = replace(images::text, 'https://onedarjeeling.duckdns.org/', 'https://1darjeeling.in/')::jsonb
+  WHERE images::text LIKE '%onedarjeeling.duckdns.org%';
+UPDATE users SET avatar = replace(avatar, 'https://onedarjeeling.duckdns.org/', 'https://1darjeeling.in/')
+  WHERE avatar LIKE 'https://onedarjeeling.duckdns.org/%';
+SQL
+```
+
+The `WHERE` guards make each statement a safe no-op for rows that don't hold a source-domain URL. KYC documents are unaffected — they are stored as object keys (not URLs) and served only through the authenticated backend route.
+
+> Alternative: if you deliberately want images to keep loading from the source domain while both are live, you may skip this and leave the URLs as-is — but that couples `1darjeeling.in` to `onedarjeeling.duckdns.org` staying up, so the rewrite above is the recommended path for an independent stack.
+
+### 9.4 DNS (not yet pointed)
+
+Add A records at your DNS provider:
+```
+1darjeeling.in.      A   <VPS_PUBLIC_IP>
+www.1darjeeling.in.  A   <VPS_PUBLIC_IP>
+```
+Confirm before running Certbot:
+```sh
+dig +short 1darjeeling.in
+dig +short www.1darjeeling.in
+```
+Containers can be up before DNS resolves — only TLS issuance waits on it.
+
+### 9.5 System Nginx + TLS
+
+```sh
+sudo cp /var/www/1darjeeling-in/deploy/host-nginx-site.in.conf.example \
+        /etc/nginx/sites-available/1darjeeling.in
+sudo ln -s /etc/nginx/sites-available/1darjeeling.in /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx     # nginx -t MUST say "syntax is ok" first
+sudo certbot --nginx -d 1darjeeling.in -d www.1darjeeling.in
+```
+Certbot rewrites the site in place for TLS + redirect; the shared renewal timer covers it.
+
+### 9.6 First deploy and verify
+
+```sh
+# If you did NOT already bring it up in §9.3, do it now:
+cd /var/www/1darjeeling-in && docker compose -f docker-compose.in.yml up -d --build
+
+docker compose -f docker-compose.in.yml ps
+curl -I http://127.0.0.1:8092/                 # 200 straight from the container
+curl -s https://1darjeeling.in/api             # {"app":"1 Darjeeling","status":"ok"} through the whole chain
+```
+If the first works and the second doesn't, the fault is system Nginx or DNS, not this app.
+From here on, merging into `prod` auto-deploys this stack via `deploy-prod.yml`.
 
 ---
 

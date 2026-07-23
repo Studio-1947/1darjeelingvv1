@@ -1,0 +1,153 @@
+name: Deploy to VPS (prod → 1darjeeling.in)
+
+# Parallel to deploy.yml, for the SECOND production stack. A push to `prod` runs the
+# same gates as main, then deploys the 1darjeeling-in stack (docker-compose.in.yml)
+# to 1darjeeling.in. The main → onedarjeeling.duckdns.org pipeline (deploy.yml) is a
+# separate workflow and is unaffected by anything here. This workflow triggers ONLY on
+# the `prod` branch, so it sits inert on main.
+on:
+  push:
+    branches: [prod]
+  pull_request:
+    branches: [prod]
+  workflow_dispatch: {}
+
+jobs:
+  # Identical gate to deploy.yml's `test` job: a red backend suite or schema/migration
+  # drift must stop the release before anything touches the VPS.
+  test:
+    name: Backend tests
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: backend
+        run: npm ci
+
+      - name: Verify migrations are up to date with schema.ts
+        working-directory: backend
+        run: |
+          npx drizzle-kit generate
+          if [ -n "$(git status --porcelain drizzle)" ]; then
+            echo "::error::schema.ts has changes with no committed migration. Run 'npm run db:generate' and commit the generated SQL."
+            git status --porcelain drizzle
+            exit 1
+          fi
+          echo "migrations are in sync with schema.ts"
+
+      - name: Create test database and apply migrations
+        working-directory: backend
+        run: npm run test:setup
+
+      - name: Typecheck
+        working-directory: backend
+        run: npx tsc --noEmit
+
+      - name: Run tests
+        working-directory: backend
+        run: npm test
+
+  # Identical gate to deploy.yml's `frontend` job: JSX/type errors and lockfile drift
+  # must fail here, before the merge, not inside `docker build` during the deploy.
+  frontend:
+    name: Frontend builds
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: yarn
+          cache-dependency-path: frontend/yarn.lock
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: corepack enable && corepack prepare yarn@1.22.22 --activate && yarn install --frozen-lockfile
+
+      - name: Typecheck frontend
+        working-directory: frontend
+        run: npx tsc --noEmit
+
+      - name: Build frontend
+        working-directory: frontend
+        run: yarn build
+
+      - name: Install admin dependencies
+        working-directory: frontend-admin
+        run: npm ci
+
+      - name: Typecheck admin
+        working-directory: frontend-admin
+        run: npx tsc --noEmit
+
+      - name: Build admin
+        working-directory: frontend-admin
+        run: npm run build
+
+  deploy:
+    name: Deploy
+    needs: [test, frontend] # a red suite or a broken build must stop the release
+    # Deploy only on a real push to prod (or a manual dispatch). Without this guard the
+    # pull_request trigger above would ship every opened PR straight to the VPS.
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      # An unset GitHub secret silently becomes an empty string, so a missing VPS_USER
+      # reaches sshd as a blank username and surfaces as a broken-key error. Name the
+      # actual problem here. Values are never printed, only whether they're set.
+      - name: Check required secrets are set
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+        run: |
+          missing=""
+          if [ -z "$VPS_HOST" ]; then missing="$missing VPS_HOST"; fi
+          if [ -z "$VPS_USER" ]; then missing="$missing VPS_USER"; fi
+          if [ -z "$VPS_SSH_KEY" ]; then missing="$missing VPS_SSH_KEY"; fi
+          if [ -n "$missing" ]; then
+            echo "::error::Missing repository secret(s):$missing — add them under Settings > Secrets and variables > Actions. VPS_USER should be the SSH login (e.g. 'deploy')."
+            exit 1
+          fi
+          echo "All required secrets are present."
+          echo "VPS_USER is set (${#VPS_USER} chars); VPS_SSH_KEY is set (${#VPS_SSH_KEY} chars)."
+
+      - name: SSH into VPS and redeploy the 1darjeeling.in stack
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          script: |
+            set -euo pipefail
+            cd /var/www/1darjeeling-in
+            git fetch origin prod
+            git reset --hard origin/prod
+            docker compose -f docker-compose.in.yml up -d --build --remove-orphans
+            docker image prune -f
