@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { Phone, KeyRound } from 'lucide-react';
+import Logo from '@/components/Logo';
 
 export default function Login() {
   const { t } = useTranslation();
@@ -82,7 +83,7 @@ export default function Login() {
     <div className="mx-auto max-w-md px-4 md:px-8 py-8 md:py-14">
       <div className="mist-panel p-6 md:p-8">
         <div className="text-center mb-6">
-          <div className="mx-auto w-14 h-14 rounded-2xl bg-pine text-white grid place-items-center font-display font-extrabold text-2xl">১</div>
+          <Logo className="mx-auto w-16 h-16" />
           <h1 className="mt-4 font-display font-extrabold text-3xl text-ink">{t('auth.welcome')}</h1>
           <p className="text-sm text-ink-soft mt-1">{t('brand_tagline')}</p>
         </div>

@@ -7,6 +7,8 @@
 // Anything not found here falls back to type-level defaults, so user-created
 // listings still render - just with less editorial depth.
 
+import { normalizeRoutes, RouteFare } from './routeFares';
+
 // Verified images already shipping in the app (see backend/src/seed_data.ts).
 // Used as the safe fallback when a keyword photo fails to load.
 export const FALLBACK = {
@@ -390,13 +392,17 @@ export function personImageFor(item: any, w = 600, h = 600): string | undefined 
 }
 
 /** Content for a listing, with type-level fallbacks so every listing renders. */
-export function contentFor(item: any): Required<Pick<ListingContent, 'about'>> & ListingContent {
+export function contentFor(
+  item: any
+): Required<Pick<ListingContent, 'about'>> & Omit<ListingContent, 'routes'> & { routes?: RouteFare[] } {
   const c = CONTENT[item?.title] || {};
-  // extras.routes set by provider takes priority over the static editorial map
-  const routes: string[] | undefined =
-    (item?.extras?.routes as string[] | undefined)?.length
-      ? (item.extras.routes as string[])
-      : c.routes;
+  // extras.routes set by provider takes priority over the static editorial map.
+  // Both are normalized to priced rows - provider routes carry their own fare,
+  // editorial ones come through unpriced and simply render without a price.
+  const rawRoutes = (item?.extras?.routes as unknown[] | undefined)?.length
+    ? item.extras.routes
+    : c.routes;
+  const routes = rawRoutes ? normalizeRoutes(rawRoutes) : undefined;
   // Coordinates the provider pinned on the map win over the static editorial
   // entry, mirroring `routes` above. The listings API returns these as
   // top-level latitude/longitude; both must be present to be usable.

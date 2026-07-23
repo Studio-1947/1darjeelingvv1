@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/context/AuthContext';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import StoryCircle from '@/components/StoryCircle';
+import Logo from '@/components/Logo';
 import useGoBack from '@/hooks/useGoBack';
 import useHeroOverlay from '@/hooks/useHeroOverlay';
 import { CATEGORIES } from '@/constants/categories';
@@ -83,8 +84,11 @@ export default function Header() {
           to="/"
           className={`${showBack ? 'hidden lg:flex' : 'flex'} items-center gap-2 flex-shrink-0`}
           data-testid="brand-link"
+          aria-label="1 Darjeeling"
         >
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-pine to-pine-dark text-white grid place-items-center font-display font-extrabold text-lg leading-none">১</div>
+          {/* Background is keyed out, so the mark sits directly on the bar with
+              no tile. Scales with --header-h (3.75/4.75/5rem). */}
+          <Logo className="w-11 h-11 sm:w-14 sm:h-14 lg:w-16 lg:h-16 flex-shrink-0" />
           {/* The wordmark is the widest thing the rail competes with; below lg
               the tile alone carries the brand so all seven tiles still fit. */}
           <div className="hidden lg:block leading-none">

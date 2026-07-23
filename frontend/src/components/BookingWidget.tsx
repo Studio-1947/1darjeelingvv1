@@ -73,26 +73,42 @@ export default function BookingWidget() {
   };
 
   return (
-    <div className="bg-white rounded-3xl border border-[var(--line)] shadow-[0_20px_50px_-30px_rgba(20,32,26,0.35)]" data-testid="booking-widget">
-      {/* Tabs */}
-      <div className="grid grid-cols-2 border-b border-[var(--line)]">
-        {tabs.map(({ key, label, Icon }, index) => (
+    <div data-testid="booking-widget">
+      {/* Tabs sit above the panel as raised folder tabs rather than inside it.
+          They share the panel's white and butt straight up against its top
+          edge, so the active one reads as continuous with the form below.
+          Full-width halves on phones, content-width from md so they don't
+          stretch across the whole widget on desktop. */}
+      <div className="flex items-end gap-1 md:gap-1.5" role="tablist">
+        {tabs.map(({ key, label, Icon }) => (
           <button
             key={key}
+            role="tab"
+            aria-selected={tab === key}
             data-testid={`booking-widget-tab-${key}`}
             onClick={() => setTab(key)}
-            className={`py-3 md:py-4 px-1 min-w-0 flex items-center justify-center gap-1.5 md:gap-2 text-xs md:text-sm font-bold transition-colors
-              ${index === 0 ? 'rounded-tl-3xl' : ''}
-              ${index === tabs.length - 1 ? 'rounded-tr-3xl' : ''}
-              ${tab === key ? 'text-flag border-b-2 border-flag -mb-px' : 'text-ink-soft hover:text-ink'}`}
+            className={`relative flex-1 md:flex-none md:px-14 rounded-t-2xl px-3 py-2.5 md:py-3.5 min-w-0
+              flex items-center justify-center gap-1.5 md:gap-2 text-xs md:text-sm font-bold
+              transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-flag
+              ${tab === key
+                ? 'bg-white text-flag'
+                : 'bg-white/80 text-ink-soft hover:bg-white hover:text-ink'}`}
           >
             <Icon size={16} className="flex-shrink-0" /> <span className="truncate">{label}</span>
+            {/* Absolutely positioned rather than a border, so marking a tab
+                active can't make it 2px taller than its sibling. */}
+            {tab === key && <span className="absolute inset-x-0 bottom-0 h-0.5 bg-flag" />}
           </button>
         ))}
       </div>
 
-      {/* Form */}
-      <form onSubmit={submit} className="p-4 md:p-5 space-y-3 md:space-y-0 md:grid md:grid-cols-12 md:gap-3 md:items-end">
+      {/* Form - top-left stays square so the first tab merges into the panel */}
+      <form
+        onSubmit={submit}
+        className="bg-white rounded-3xl rounded-tl-none rounded-tr-none md:rounded-tr-3xl
+                   shadow-[0_20px_50px_-30px_rgba(20,32,26,0.35)]
+                   p-4 md:p-5 space-y-3 md:space-y-0 md:grid md:grid-cols-12 md:gap-3 md:items-end"
+      >
         <label className="block md:col-span-5">
           <span className="text-[11px] font-bold uppercase tracking-wider text-ink-soft">{t('widget.destination')}</span>
           <div className="mt-1 flex items-center gap-2 border border-[var(--line)] rounded-2xl px-3 py-2.5 md:py-3">

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import api, { createPaymentOrder, completeMockPayment, payWithRazorpay } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { uploadImage, uploadImages } from '@/lib/uploadImage';
+import { RouteFare, startingPriceFrom } from '@/lib/routeFares';
 
 /**
  * All state and side effects for provider onboarding: the multi-step form,
@@ -42,7 +43,10 @@ export function useProviderOnboard() {
   const [carModel, setCarModel] = useState('');
   const [gender, setGender] = useState<'male' | 'female' | 'other'>('male');
   const [vehicleType, setVehicleType] = useState('');
-  const [routes, setRoutes] = useState<string[]>([]);
+  // Drivers price each route separately (an airport transfer is a flat fare, a
+  // sightseeing circuit a day rate), so there is no single rate field for them -
+  // `price_from` is derived as the cheapest quoted route.
+  const [routes, setRoutes] = useState<RouteFare[]>([]);
 
   // Extra photos - only one gallery exists per business type
   // (driver trips, or cafe/shop interiors; homestays add theirs post-launch).
@@ -111,6 +115,9 @@ export function useProviderOnboard() {
     setBusy(true);
     setMsg('');
     const isDriver = form.business_type === 'driver';
+    // A driver's headline price is whatever their cheapest route costs, so the
+    // public "₹X onwards" can never drift from the per-route fares they set.
+    const priceFrom = isDriver ? startingPriceFrom(routes) : Number(form.price_from) || 0;
     try {
       const { data } = await api.post('/providers/onboard', {
         business_name: form.business_name,
@@ -120,7 +127,7 @@ export function useProviderOnboard() {
         latitude: form.latitude,
         longitude: form.longitude,
         contact_phone: form.contact_phone || user.phone,
-        price_from: Number(form.price_from) || 0,
+        price_from: priceFrom,
         images: form.image_url ? [form.image_url] : [],
         extras: isDriver
           ? {
@@ -207,6 +214,7 @@ export function useProviderOnboard() {
     gender, setGender,
     vehicleType, setVehicleType,
     routes, setRoutes,
+    routeStartingPrice: startingPriceFrom(routes),
     gallery, setGallery,
     uploading, uploadingHostPic, uploadingGallery,
     handleCoverUpload, handleHostAvatarUpload, handleGalleryUpload,

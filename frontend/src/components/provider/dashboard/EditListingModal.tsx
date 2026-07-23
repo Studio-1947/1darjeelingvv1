@@ -8,7 +8,8 @@ import ChipToggleGroup, { toggleIn } from '../ChipToggleGroup';
 import AmenityPicker from '../AmenityPicker';
 import AvatarUploader from '../AvatarUploader';
 import GalleryUploader from '../GalleryUploader';
-import { RouteListEditor } from '../RouteEditor';
+import { RouteListEditor, RouteFareTable } from '../RouteEditor';
+import { normalizeRoutes, startingPriceFrom } from '@/lib/routeFares';
 
 /** Dashboard modal to edit a live listing's details, images, and extras. */
 export default function EditListingModal({ listing, onClose, onSave }: {
@@ -45,7 +46,9 @@ export default function EditListingModal({ listing, onClose, onSave }: {
   const [carModel, setCarModel] = useState(listing.extras?.car_model || '');
   const [gender, setGender] = useState<'male' | 'female' | 'other'>(listing.extras?.gender || 'male');
   const [vehicleType, setVehicleType] = useState(listing.extras?.vehicle_type || '');
-  const [routes, setRoutes] = useState<string[]>(listing.extras?.routes || []);
+  // Legacy listings stored routes as bare strings; normalize so old rows load
+  // with an unpriced fare row rather than breaking the editor.
+  const [routes, setRoutes] = useState(() => normalizeRoutes(listing.extras?.routes));
 
   const uploadOne = async (
     e: React.ChangeEvent<HTMLInputElement>,
@@ -107,9 +110,12 @@ export default function EditListingModal({ listing, onClose, onSave }: {
             tags: selectedTags,
           };
 
+      // A driver's headline price tracks their cheapest route, so it can't drift
+      // from the per-route fares. Other types keep the manual price field.
+      const routeStart = startingPriceFrom(routes);
       await api.put(`/listings/${listing.id}`, {
         title,
-        price: Number(price),
+        price: isDriver && routeStart > 0 ? routeStart : Number(price),
         location,
         description,
         image,
@@ -144,11 +150,24 @@ export default function EditListingModal({ listing, onClose, onSave }: {
               <input required type="text" value={title} onChange={(e) => setTitle(e.target.value)}
                 className="mt-1 w-full px-3.5 py-2.5 rounded-xl border border-[var(--line)] bg-white outline-none text-sm text-ink font-semibold" />
             </label>
-            <label className="block">
-              <span className="text-xs font-semibold text-ink-soft">{t('el.price')}</span>
-              <input required type="number" min="0" value={price} onChange={(e) => setPrice(Number(e.target.value) || 0)}
-                className="mt-1 w-full px-3.5 py-2.5 rounded-xl border border-[var(--line)] bg-white outline-none text-sm text-ink font-semibold" />
-            </label>
+            {/* Drivers don't get a single price - theirs is derived from the
+                cheapest route rate below, so showing an editable field here
+                would just be a second, losing source of truth. */}
+            {isDriver ? (
+              <div className="block">
+                <span className="text-xs font-semibold text-ink-soft">{t('el.starting_price')}</span>
+                <div className="mt-1 w-full px-3.5 py-2.5 rounded-xl border border-[var(--line)] bg-mist text-sm text-ink font-semibold">
+                  {startingPriceFrom(routes) > 0 ? `₹${startingPriceFrom(routes)}` : '—'}
+                  <span className="text-ink-soft font-normal"> · {t('el.starting_price_note')}</span>
+                </div>
+              </div>
+            ) : (
+              <label className="block">
+                <span className="text-xs font-semibold text-ink-soft">{t('el.price')}</span>
+                <input required type="number" min="0" value={price} onChange={(e) => setPrice(Number(e.target.value) || 0)}
+                  className="mt-1 w-full px-3.5 py-2.5 rounded-xl border border-[var(--line)] bg-white outline-none text-sm text-ink font-semibold" />
+              </label>
+            )}
           </div>
 
           <div className="grid md:grid-cols-2 gap-4">
@@ -209,6 +228,12 @@ export default function EditListingModal({ listing, onClose, onSave }: {
                 <span className="text-xs font-extrabold uppercase tracking-widest text-ink-soft block mb-1">{t('el.routes_covered')}</span>
                 <p className="text-xs text-ink-soft mb-3">{t('el.routes_note')}</p>
                 <RouteListEditor routes={routes} onChange={setRoutes} compact />
+              </div>
+
+              <div className="border-t border-[var(--line)] pt-5">
+                <span className="text-xs font-extrabold uppercase tracking-widest text-ink-soft block mb-1">{t('el.route_rates')}</span>
+                <p className="text-xs text-ink-soft mb-3">{t('el.route_rates_note')}</p>
+                <RouteFareTable routes={routes} onChange={setRoutes} compact emptyNote={t('el.route_rates_empty')} />
               </div>
             </>
           )}

@@ -18,6 +18,16 @@ import LanguageSwitcher from '@/components/LanguageSwitcher';
 import AvatarUploader from '@/components/provider/AvatarUploader';
 import { uploadImage } from '@/lib/uploadImage';
 
+// The edit-listing tile names what the provider is actually configuring. Only
+// a homestay has a "stay"; a driver's listing is a profile of themselves, their
+// vehicle and routes, and a cafe/shop is the venue itself. Homestay is the
+// unlisted default, so an unknown type falls back to it.
+const CONFIGURE_LABEL_KEY: Record<string, string> = {
+  driver: 'pd.configure_profile',
+  cafe: 'pd.configure_cafe',
+  shop: 'pd.configure_shop',
+};
+
 /** Provider home: booking stats, the bookings list, and business profile. */
 export default function ProviderDashboard() {
   const { t } = useTranslation();
@@ -183,7 +193,7 @@ export default function ProviderDashboard() {
               <span className="text-[11px] uppercase tracking-widest font-bold">{t('pd.edit_your_listing')}</span>
             </div>
             <div className="mt-3 font-display font-extrabold text-lg md:text-xl leading-tight flex items-center justify-between w-full">
-              <span>{t('pd.configure_stay')}</span>
+              <span>{t(CONFIGURE_LABEL_KEY[provider.business_type] || 'pd.configure_stay')}</span>
               <ArrowRight size={18} className="opacity-90" />
             </div>
           </button>

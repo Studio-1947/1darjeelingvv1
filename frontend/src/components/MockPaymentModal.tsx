@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { X, Shield, Lock, CheckCircle2, IndianRupee, Loader2 } from 'lucide-react';
+import Logo from '@/components/Logo';
 
 /**
  * Dummy payment gateway modal - mimics a real Razorpay-style checkout
@@ -38,7 +39,7 @@ export default function MockPaymentModal({ open, onClose, amount, title, descrip
         {/* Header */}
         <div className="flex items-center justify-between p-4 md:p-5 border-b border-[var(--line)] flex-shrink-0">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-pine to-pine-dark text-white grid place-items-center font-display font-extrabold">১</div>
+            <Logo className="w-8 h-8" />
             <div>
               <div className="font-display font-bold text-sm text-ink leading-none">{t('pay.secure')}</div>
               <div className="text-[10px] text-ink-soft flex items-center gap-1 mt-0.5"><Shield size={10} /> {t('pay.sandbox')}</div>

@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Heart, Mail } from 'lucide-react';
+import Logo from '@/components/Logo';
 
 export default function Footer() {
   const { t } = useTranslation();
@@ -10,7 +11,7 @@ export default function Footer() {
       <div className="mx-auto max-w-7xl px-4 md:px-8 py-10 md:py-14 grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-10">
         <div className="col-span-2 md:col-span-1">
           <div className="flex items-center gap-2 mb-3">
-            <div className="w-9 h-9 rounded-xl bg-pine text-white grid place-items-center font-display font-extrabold">১</div>
+            <Logo className="w-9 h-9" />
             <div className="font-display font-extrabold text-lg text-ink">{t('brand')}</div>
           </div>
           <p className="text-sm text-ink-soft leading-relaxed">{t('brand_tagline')}</p>

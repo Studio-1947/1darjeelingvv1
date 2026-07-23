@@ -491,7 +491,12 @@
     "custom_amenity_ph": "e.g. Bonfire, Pet allowed",
     "selected": "Selected",
     "common_routes": "Common Routes",
-    "route_ph": "e.g. Darjeeling ↔ Gangtok (Sikkim)"
+    "route_ph": "e.g. Darjeeling ↔ Gangtok (Sikkim)",
+    "per_trip": "per trip",
+    "per_day": "per day",
+    "rate_ph": "0",
+    "rate_for_route": "Rate for {{route}}",
+    "remove_route": "Remove {{route}}"
   },
   "pd": {
     "no_business_title": "No business yet",
@@ -520,7 +525,10 @@
     "call": "Call",
     "cancel_booking_confirm": "Cancel this booking?",
     "decline": "Decline",
-    "wa_guest_message": "Hi {{name}}, this is regarding your booking for {{listing}} on 1 Darjeeling."
+    "wa_guest_message": "Hi {{name}}, this is regarding your booking for {{listing}} on 1 Darjeeling.",
+    "configure_profile": "Configure Profile",
+    "configure_cafe": "Configure Cafe",
+    "configure_shop": "Configure Shop"
   },
   "lf": {
     "edit_title": "Edit listing",
@@ -556,7 +564,12 @@
     "host_info": "Host Information",
     "host_name": "Host Name",
     "upload_host_photo": "Upload Host Photo",
-    "host_bio": "Host Bio"
+    "host_bio": "Host Bio",
+    "route_rates": "Route Rates",
+    "route_rates_note": "Set a fare for each route. Your listing price shows the cheapest one.",
+    "route_rates_empty": "Add a route above to set its rate.",
+    "starting_price": "Starting Price (₹)",
+    "starting_price_note": "from your cheapest route"
   },
   "ob": {
     "fee_chip": "₹99 · One-time fee",
@@ -643,7 +656,12 @@
       "complete": "Complete & go live",
       "price_label": "Starting Rate (₹/Day)",
       "price_suffix": "/ day onwards",
-      "fee_note": "A one-time platform fee of ₹99 is charged to list your driver profile live on the 1 Darjeeling directory."
+      "fee_note": "A one-time platform fee of ₹99 is charged to list your driver profile live on the 1 Darjeeling directory.",
+      "rates_label": "Your Route Rates",
+      "rates_note": "Set a fare for each route you operate. Travellers see these on your profile, and the lowest becomes your public starting rate.",
+      "rates_empty": "No routes yet — add the routes you operate in step 03 above, then price them here.",
+      "starting_rate": "Starting rate",
+      "onwards": "onwards"
     },
     "cs": {
       "cafe_label": "Café",

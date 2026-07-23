@@ -5,7 +5,8 @@ import { VEHICLE_TYPES } from '@/constants/listingOptions';
 import ChipToggleGroup from '../ChipToggleGroup';
 import AvatarUploader from '../AvatarUploader';
 import GalleryUploader from '../GalleryUploader';
-import { RouteListEditor, RouteSuggestions } from '../RouteEditor';
+import { RouteListEditor, RouteSuggestions, RouteFareTable, StartingRateSummary } from '../RouteEditor';
+import { allRoutesPriced } from '@/lib/routeFares';
 import { Screen, Eyebrow } from './layout';
 import OnboardHero from './OnboardHero';
 import PriceSubmitScreen from './PriceSubmitScreen';
@@ -28,7 +29,7 @@ export default function DriverForm({ o }: { o: OnboardState }) {
         meta={
           <>
             <span className="flex items-center gap-1.5"><MapPin size={16} /> {form.location || t('ob.dr.default_location')}</span>
-            <span className="flex items-center gap-1.5">₹{form.price_from || '2500'}<span className="font-normal text-white/75">{t('ob.dr.per_day_starting')}</span></span>
+            <span className="flex items-center gap-1.5">₹{o.routeStartingPrice || '2500'}<span className="font-normal text-white/75">{t('ob.dr.onwards')}</span></span>
           </>
         }
       />
@@ -203,17 +204,21 @@ export default function DriverForm({ o }: { o: OnboardState }) {
       <PriceSubmitScreen
         tone="bg"
         n="05"
+        wide
         heading={t('ob.dr.complete')}
-        priceLabel={t('ob.dr.price_label')}
-        pricePlaceholder="2500"
-        priceSuffix={t('ob.dr.price_suffix')}
+        priceLabel={t('ob.dr.rates_label')}
         feeNote={t('ob.dr.fee_note')}
-        price={form.price_from}
-        onPrice={(v) => update({ price_from: v })}
+        priceEditor={
+          <div className="space-y-4">
+            <p className="text-sm text-ink-soft">{t('ob.dr.rates_note')}</p>
+            <RouteFareTable routes={o.routes} onChange={o.setRoutes} emptyNote={t('ob.dr.rates_empty')} />
+            <StartingRateSummary routes={o.routes} />
+          </div>
+        }
         onSubmit={() => o.submit()}
         onBack={() => o.setStep(1)}
         busy={o.busy}
-        disabled={o.busy || o.uploading || !form.price_from || !form.description || !form.location}
+        disabled={o.busy || o.uploading || !allRoutesPriced(o.routes) || !form.description || !form.location}
         msg={o.msg}
       />
     </div>
