@@ -38,7 +38,7 @@ function reviewOut(r: typeof schema.reviews.$inferSelect) {
  *         required: true
  *         schema: { type: string }
  *     responses:
- *       200: { description: Reviews (newest first) and a { count, average } summary }
+ *       200: { description: 'Reviews (newest first) and a { count, average } summary' }
  */
 router.get('/listing/:listingId', async (req: Request, res: Response) => {
   const rows = await db.select()

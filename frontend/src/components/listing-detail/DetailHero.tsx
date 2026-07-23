@@ -80,12 +80,14 @@ export default function DetailHero({ item, unit, onShare }: {
       <SmartImg src={heroSrc} fallback={fallbackImg} alt={item.title} className="absolute inset-0 w-full h-full object-cover" />
       <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/45" />
 
+      {/* The title block below is `inset-0` and comes later in the DOM, so without a z-index these
+          controls would paint underneath it and every click would land on that overlay instead. */}
       <button onClick={goBack} data-testid="detail-back"
-        className="absolute top-4 left-4 md:top-6 md:left-8 inline-flex items-center gap-2 pl-3 pr-4 py-2.5 rounded-full bg-white/95 backdrop-blur text-sm font-bold text-ink btn-hover">
+        className="absolute z-10 top-4 left-4 md:top-6 md:left-8 inline-flex items-center gap-2 pl-3 pr-4 py-2.5 rounded-full bg-white/95 backdrop-blur text-sm font-bold text-ink btn-hover">
         <ArrowLeft size={16} /> {t('common.back')}
       </button>
 
-      <div className="absolute top-4 right-4 md:top-6 md:right-8 flex flex-col items-end gap-2">
+      <div className="absolute z-10 top-4 right-4 md:top-6 md:right-8 flex flex-col items-end gap-2">
         <div className="flex gap-2">
           <button onClick={handleLike} data-testid="detail-like"
             aria-label={t('common.save')} aria-pressed={liked}
