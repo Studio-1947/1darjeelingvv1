@@ -5,6 +5,8 @@ import { HOMESTAY_AMENITIES, HOMESTAY_TAGS } from '@/constants/listingOptions';
 import ChipToggleGroup, { toggleIn } from '../ChipToggleGroup';
 import AmenityPicker from '../AmenityPicker';
 import AvatarUploader from '../AvatarUploader';
+import GalleryUploader from '../GalleryUploader';
+import LocationPicker from '@/components/LocationPicker';
 import { Screen, Eyebrow } from './layout';
 import OnboardHero from './OnboardHero';
 import PriceSubmitScreen from './PriceSubmitScreen';
@@ -46,19 +48,35 @@ export default function HomestayForm({ o }: { o: OnboardState }) {
               placeholder={t('ob.hs.describe_ph')}
               className="w-full px-4 py-3.5 rounded-2xl border border-[var(--line)] bg-white outline-none text-sm text-ink leading-relaxed"
             />
+
+            <div className="pt-4 space-y-3">
+              <span className="text-xs font-semibold text-ink-soft uppercase tracking-wider block">
+                {t('ob.hs.photos_title', { defaultValue: 'Property Photos' })}
+              </span>
+              <p className="text-xs text-ink-soft">
+                {t('ob.hs.photos_note', { defaultValue: 'Add photos of your homestay, rooms, views, and surroundings to show on your public listing page.' })}
+              </p>
+              <GalleryUploader
+                images={o.gallery}
+                uploading={o.uploadingGallery}
+                onFilesSelected={o.handleGalleryUpload}
+                onRemove={(i) => o.setGallery(o.gallery.filter((_, idx) => idx !== i))}
+              />
+            </div>
           </div>
 
           <div className="lg:col-span-2 mist-panel p-5 md:p-6 w-full space-y-4 bg-white">
             <div>
               <span className="text-xs font-semibold text-ink-soft uppercase">{t('ob.location_area')}</span>
-              <input
-                required
-                type="text"
-                value={form.location}
-                onChange={(e) => update({ location: e.target.value })}
-                placeholder={t('ob.hs.location_ph')}
-                className="mt-1 w-full px-3.5 py-2.5 rounded-xl border border-[var(--line)] bg-white outline-none text-sm font-semibold text-ink"
-              />
+              <div className="mt-2">
+                <LocationPicker
+                  initialLat={form.latitude}
+                  initialLng={form.longitude}
+                  onLocationSelect={(lat, lng, name) =>
+                    update({ latitude: lat, longitude: lng, ...(name ? { location: name } : {}) })
+                  }
+                />
+              </div>
             </div>
             <div>
               <span className="text-xs font-semibold text-ink-soft uppercase">{t('ob.full_address')}</span>
@@ -171,6 +189,17 @@ export default function HomestayForm({ o }: { o: OnboardState }) {
         feeNote={t('ob.hs.fee_note')}
         price={form.price_from}
         onPrice={(v) => update({ price_from: v })}
+        showBreakfastOption
+        breakfastIncluded={o.selectedAmenities.includes('Breakfast Included')}
+        onBreakfastChange={(inc) => {
+          if (inc) {
+            if (!o.selectedAmenities.includes('Breakfast Included')) {
+              o.setSelectedAmenities([...o.selectedAmenities, 'Breakfast Included']);
+            }
+          } else {
+            o.setSelectedAmenities(o.selectedAmenities.filter((a) => a !== 'Breakfast Included'));
+          }
+        }}
         onSubmit={() => o.submit()}
         onBack={() => o.setStep(1)}
         busy={o.busy}

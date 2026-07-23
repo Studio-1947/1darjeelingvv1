@@ -54,7 +54,7 @@ interface SearchResult {
 interface LocationPickerProps {
   initialLat?: number | null;
   initialLng?: number | null;
-  onLocationSelect: (lat: number, lng: number) => void;
+  onLocationSelect: (lat: number, lng: number, placeName?: string) => void;
   className?: string;
 }
 
@@ -95,9 +95,9 @@ export default function LocationPicker({ initialLat, initialLng, onLocationSelec
   // after a result is picked - otherwise the dropdown immediately reopens.
   const pickedRef = useRef(false);
 
-  const place = (lat: number, lng: number, recenter = false) => {
+  const place = (lat: number, lng: number, recenter = false, placeName?: string) => {
     setPos([lat, lng]);
-    onLocationSelect(lat, lng);
+    onLocationSelect(lat, lng, placeName);
     if (recenter) mapRef.current?.flyTo([lat, lng], Math.max(mapRef.current.getZoom(), PICK_ZOOM));
   };
 
@@ -129,7 +129,7 @@ export default function LocationPicker({ initialLat, initialLng, onLocationSelec
     setQuery(r.display_name);
     setResults([]);
     setOpen(false);
-    place(r.lat, r.lon, true);
+    place(r.lat, r.lon, true, r.display_name);
   };
 
   return (

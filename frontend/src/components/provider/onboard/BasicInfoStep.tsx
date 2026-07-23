@@ -7,6 +7,8 @@ import { OnboardState } from './useProviderOnboard';
 export default function BasicInfoStep({ o }: { o: OnboardState }) {
   const { t } = useTranslation();
   const { form, update, msg, startDesignStep } = o;
+  const typeKey = form.business_type || 'homestay';
+
   return (
     <div className="mx-auto max-w-md px-4 py-16 md:py-24">
       <div className="text-center mb-8">
@@ -16,17 +18,6 @@ export default function BasicInfoStep({ o }: { o: OnboardState }) {
       </div>
 
       <div className="mist-panel p-6 space-y-5">
-        <label className="block">
-          <span className="text-xs font-semibold text-ink-soft">{t('ob.business_name')}</span>
-          <input
-            required
-            value={form.business_name}
-            onChange={(e) => update({ business_name: e.target.value })}
-            placeholder={t('ob.business_name_ph')}
-            className="mt-1 w-full px-3.5 py-2.5 rounded-xl border border-[var(--line)] bg-white outline-none font-semibold text-sm text-ink"
-          />
-        </label>
-
         <label className="block">
           <span className="text-xs font-semibold text-ink-soft">{t('ob.business_type')}</span>
           <select
@@ -40,6 +31,19 @@ export default function BasicInfoStep({ o }: { o: OnboardState }) {
               </option>
             ))}
           </select>
+        </label>
+
+        <label className="block">
+          <span className="text-xs font-semibold text-ink-soft">
+            {t(`ob.name_label_${typeKey}`, { defaultValue: t('ob.business_name') })}
+          </span>
+          <input
+            required
+            value={form.business_name}
+            onChange={(e) => update({ business_name: e.target.value })}
+            placeholder={t(`ob.name_ph_${typeKey}`, { defaultValue: t('ob.business_name_ph') })}
+            className="mt-1 w-full px-3.5 py-2.5 rounded-xl border border-[var(--line)] bg-white outline-none font-semibold text-sm text-ink"
+          />
         </label>
 
         <button onClick={startDesignStep} className="w-full py-3 rounded-full bg-flag text-white font-bold btn-hover">

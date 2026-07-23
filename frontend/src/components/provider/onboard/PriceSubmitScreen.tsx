@@ -13,6 +13,9 @@ export default function PriceSubmitScreen({
   feeNote,
   price,
   onPrice,
+  showBreakfastOption = false,
+  breakfastIncluded = true,
+  onBreakfastChange,
   onSubmit,
   onBack,
   busy,
@@ -28,6 +31,9 @@ export default function PriceSubmitScreen({
   feeNote: string;
   price: string;
   onPrice: (value: string) => void;
+  showBreakfastOption?: boolean;
+  breakfastIncluded?: boolean;
+  onBreakfastChange?: (included: boolean) => void;
   onSubmit: () => void;
   onBack: () => void;
   busy: boolean;
@@ -54,6 +60,37 @@ export default function PriceSubmitScreen({
             />
             <span className="text-sm font-semibold text-ink-soft">{priceSuffix}</span>
           </div>
+
+          {showBreakfastOption && (
+            <div className="mt-5 p-4 rounded-2xl border border-[var(--line)] bg-mist/60 space-y-2">
+              <span className="text-xs font-bold text-ink-soft uppercase block">
+                {t('ob.hs.breakfast_question', { defaultValue: 'Is Breakfast Included in this price?' })}
+              </span>
+              <div className="flex flex-col sm:flex-row gap-3 pt-1">
+                <label className={`flex-1 flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl border transition-all cursor-pointer ${breakfastIncluded ? 'border-pine bg-pine/5 text-pine font-bold' : 'border-[var(--line)] bg-white text-ink font-semibold'}`}>
+                  <input
+                    type="radio"
+                    name="breakfast_included_radio"
+                    checked={breakfastIncluded === true}
+                    onChange={() => onBreakfastChange?.(true)}
+                    className="accent-pine w-4 h-4"
+                  />
+                  <span className="text-sm">{t('ob.hs.breakfast_yes', { defaultValue: 'Yes, Breakfast Included' })}</span>
+                </label>
+                <label className={`flex-1 flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl border transition-all cursor-pointer ${!breakfastIncluded ? 'border-pine bg-pine/5 text-pine font-bold' : 'border-[var(--line)] bg-white text-ink font-semibold'}`}>
+                  <input
+                    type="radio"
+                    name="breakfast_included_radio"
+                    checked={breakfastIncluded === false}
+                    onChange={() => onBreakfastChange?.(false)}
+                    className="accent-pine w-4 h-4"
+                  />
+                  <span className="text-sm">{t('ob.hs.breakfast_no', { defaultValue: 'No, Breakfast Extra / Not Included' })}</span>
+                </label>
+              </div>
+            </div>
+          )}
+
           <p className="mt-5 text-xs text-ink-soft leading-relaxed">{feeNote}</p>
         </div>
 

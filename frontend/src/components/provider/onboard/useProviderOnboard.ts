@@ -19,6 +19,8 @@ export function useProviderOnboard() {
     business_type: 'homestay',
     description: '',
     location: '',
+    latitude: null as number | null,
+    longitude: null as number | null,
     contact_phone: '',
     price_from: '',
     image_url: '',
@@ -115,6 +117,8 @@ export function useProviderOnboard() {
         business_type: form.business_type,
         description: form.description || `Welcome to ${form.business_name}`,
         location: form.location || 'Darjeeling',
+        latitude: form.latitude,
+        longitude: form.longitude,
         contact_phone: form.contact_phone || user.phone,
         price_from: Number(form.price_from) || 0,
         images: form.image_url ? [form.image_url] : [],
@@ -147,6 +151,7 @@ export function useProviderOnboard() {
               address: form.address || '',
               amenities: selectedAmenities,
               tags: selectedTags,
+              images: gallery,
             },
       });
       const providerId = data.provider.id;

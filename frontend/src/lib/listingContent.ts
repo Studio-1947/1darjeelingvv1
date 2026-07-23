@@ -365,6 +365,10 @@ export function listingImage(item: any, w = 1200, h = 900): string {
  * a per-listing stock photo.
  */
 export function galleryImagesFor(item: any, w = 900, h = 700): string[] {
+  if (Array.isArray(item?.extras?.images) && item.extras.images.length > 0) {
+    return item.extras.images.map((u: string) => sizedImage(u, w));
+  }
+
   const c = CONTENT[item?.title] || {};
   const isUrl = (s: string) => /^https?:\/\//.test(s);
 

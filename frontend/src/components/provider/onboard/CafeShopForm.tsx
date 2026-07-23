@@ -5,6 +5,7 @@ import { CAFE_AMENITIES, SHOP_AMENITIES, CAFE_TAGS, SHOP_TAGS } from '@/constant
 import ChipToggleGroup, { toggleIn } from '../ChipToggleGroup';
 import AmenityPicker from '../AmenityPicker';
 import GalleryUploader from '../GalleryUploader';
+import LocationPicker from '@/components/LocationPicker';
 import { Screen, Eyebrow } from './layout';
 import OnboardHero from './OnboardHero';
 import PriceSubmitScreen from './PriceSubmitScreen';
@@ -58,14 +59,15 @@ export default function CafeShopForm({ o }: { o: OnboardState }) {
           <div className="lg:col-span-2 mist-panel p-5 md:p-6 w-full space-y-4 bg-white">
             <div>
               <span className="text-xs font-semibold text-ink-soft uppercase">{t('ob.location_area')}</span>
-              <input
-                required
-                type="text"
-                value={form.location}
-                onChange={(e) => update({ location: e.target.value })}
-                placeholder={t('ob.cs.location_ph')}
-                className="mt-1 w-full px-3.5 py-2.5 rounded-xl border border-[var(--line)] bg-white outline-none text-sm font-semibold text-ink"
-              />
+              <div className="mt-2">
+                <LocationPicker
+                  initialLat={form.latitude}
+                  initialLng={form.longitude}
+                  onLocationSelect={(lat, lng, name) =>
+                    update({ latitude: lat, longitude: lng, ...(name ? { location: name } : {}) })
+                  }
+                />
+              </div>
             </div>
             <div>
               <span className="text-xs font-semibold text-ink-soft uppercase">{t('ob.full_address')}</span>
