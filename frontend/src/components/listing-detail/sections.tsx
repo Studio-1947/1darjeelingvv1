@@ -13,12 +13,14 @@ import VerifiedBadge from '@/components/provider/VerifiedBadge';
 // decides which sections a listing type gets; each section only renders it.
 
 /** Detailed "about" text plus the listing's tags. */
-export function AboutSection({ item, about }: { item: any; about?: string }) {
+export function AboutSection({ item, about, label }: { item: any; about?: string; label?: string }) {
   const { t } = useTranslation();
   return (
     <Screen tone="bg" testid="detail-about">
-      <SectionHead label={t('detail.about')} title={item.title} />
-      <p className="mt-8 text-lg md:text-xl text-ink leading-relaxed text-center max-w-3xl mx-auto">{about}</p>
+      <SectionHead label={label || t('detail.about')} title={item.title} />
+      {/* whitespace-pre-line so an `about` written as multiple paragraphs
+          (separated by blank lines) keeps its breaks instead of collapsing. */}
+      <p className="mt-8 text-lg md:text-xl text-ink leading-relaxed text-center max-w-3xl mx-auto whitespace-pre-line">{about}</p>
       {item.tags?.length > 0 && (
         <div className="mt-8 flex flex-wrap justify-center gap-2">
           {item.tags.map((tg: string) => <span key={tg} className="chip"><Tag size={11} className="mr-1" /> {tg}</span>)}
@@ -45,11 +47,12 @@ export function PhotosSection({ item, gallery, fallbackImg }: { item: any; galle
 }
 
 /** "What this place offers" amenity grid. */
-export function OffersSection({ amenities }: { amenities: { Icon: any; label: string }[] }) {
+export function OffersSection({ amenities, title }: { amenities: { Icon: any; label: string }[]; title?: string }) {
   const { t } = useTranslation();
+  const heading = title || t('detail.offers');
   return (
     <Screen tone="mist" wide testid="detail-offers">
-      <SectionHead label={t('detail.offers')} title={t('detail.offers')} />
+      <SectionHead label={heading} title={heading} />
       <div className="mt-10 grid sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5 max-w-4xl mx-auto">
         {amenities.map(({ Icon, label }) => (
           <div key={label} className="flex items-center gap-4 p-5 rounded-2xl border border-[var(--line)] bg-white">
@@ -91,7 +94,7 @@ export function HostSection({ item, host, personSrc }: { item: any; host: any; p
           {host.verified && <VerifiedBadge size="sm" />}
         </div>
         <p className="mt-2 text-sm text-ink-soft flex items-center justify-center gap-1.5"><MapPin size={13} /> {item.location}</p>
-        <p className="mt-6 text-lg text-ink leading-relaxed">{host.bio}</p>
+        <p className="mt-6 text-lg text-ink leading-relaxed whitespace-pre-line">{host.bio}</p>
         <p className="mt-5 text-ink-soft flex items-center justify-center gap-2">
           <Languages size={18} className="text-pine" /> {t('detail.speaks')}: {host.languages.join(', ')}
         </p>
@@ -112,7 +115,7 @@ export function DriverSection({ item, about, personSrc, initial }: { item: any; 
           <span className="font-display font-extrabold text-2xl md:text-3xl text-ink">{item.title}</span>
           {item.provider_verified && <VerifiedBadge size="sm" />}
         </div>
-        <p className="mt-6 text-lg text-ink leading-relaxed">{about}</p>
+        <p className="mt-6 text-lg text-ink leading-relaxed whitespace-pre-line">{about}</p>
       </div>
     </Screen>
   );

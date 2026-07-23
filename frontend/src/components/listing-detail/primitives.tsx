@@ -23,9 +23,13 @@ export function Screen({ tone = 'bg', wide = false, children, testid }: {
 export function SectionHead({ label, title, note }: { label: string; title: string; note?: string }) {
   return (
     <div className="text-center max-w-3xl mx-auto">
-      <div className="inline-flex items-center gap-3 text-xs font-bold uppercase tracking-widest text-ink-soft">
-        {label}
-      </div>
+      {/* Several sections use the same string for both; showing it twice just
+          reads as a stutter, so the eyebrow drops out when it repeats. */}
+      {label !== title && (
+        <div className="inline-flex items-center gap-3 text-xs font-bold uppercase tracking-widest text-ink-soft">
+          {label}
+        </div>
+      )}
       <h2 className="mt-5 font-display font-extrabold text-3xl sm:text-4xl md:text-5xl text-ink leading-tight">{title}</h2>
       {note && <p className="mt-3 text-ink-soft">{note}</p>}
     </div>

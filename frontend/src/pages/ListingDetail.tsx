@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import api from '@/lib/api';
 import { amenitiesFor, hostFor } from '@/lib/listingMeta';
-import { contentFor, galleryImagesFor, personImageFor, fallbackFor } from '@/lib/listingContent';
+import { contentFor, listingImage, galleryImagesFor, personImageFor, fallbackFor } from '@/lib/listingContent';
 import MockPaymentModal from '@/components/MockPaymentModal';
 import BookingConfirmation from '@/components/BookingConfirmation';
 import DetailHero, { ShareOutcome } from '@/components/listing-detail/DetailHero';
@@ -78,18 +78,32 @@ export default function ListingDetail() {
   const c = contentFor(item);
   const initial = (item.title || '?').trim().charAt(0).toUpperCase();
   const fallbackImg = fallbackFor(item.type);
+
   const gallery = galleryImagesFor(item);
   const personSrc = host.avatar || personImageFor(item);
+  // Drivers show the same photo here as the hero, so the face you scrolled past
+  // is the face you meet — no second stock person.
+  const driverSrc = listingImage(item, 600, 600);
+  // Driver titles read "Tenzing - Local Taxi Driver"; the heading wants the
+  // person, not the role, so keep only what precedes the dash.
+  const driverName = (item.title || '').split(/\s+[-–—]\s+/)[0].trim();
+  const offersTitle = item.type === 'driver' && driverName
+    ? t('detail.offers_by', { name: driverName })
+    : t('detail.offers');
 
   return (
     <div className="pb-28 lg:pb-0">
       <DetailHero item={item} unit={unit} onShare={shareIt} />
 
-      <AboutSection item={item} about={c.about} />
+      <AboutSection item={item} about={c.about}
+        label={item.type === 'driver' ? t('detail.about_driver') : t('detail.about')} />
 
-      {gallery.length > 0 && <PhotosSection item={item} gallery={gallery} fallbackImg={fallbackImg} />}
+      {/* Drivers get their portrait and routes instead of a place gallery. */}
+      {item.type !== 'driver' && gallery.length > 0 && (
+        <PhotosSection item={item} gallery={gallery} fallbackImg={fallbackImg} />
+      )}
 
-      {amenities.length > 0 && <OffersSection amenities={amenities} />}
+      {amenities.length > 0 && <OffersSection amenities={amenities} title={offersTitle} />}
 
       {item.type === 'homestay' && item.extras?.images && item.extras.images.length > 0 && (
         <StayGallerySection images={item.extras.images} />
@@ -97,7 +111,7 @@ export default function ListingDetail() {
 
       {item.type === 'homestay' && <HostSection item={item} host={host} personSrc={personSrc} />}
 
-      {item.type === 'driver' && <DriverSection item={item} about={c.about} personSrc={personSrc} initial={initial} />}
+      {item.type === 'driver' && <DriverSection item={item} about={c.about} personSrc={driverSrc} initial={initial} />}
 
       {item.type === 'event' && c.bestTime && <BestTimeSection bestTime={c.bestTime} />}
 
