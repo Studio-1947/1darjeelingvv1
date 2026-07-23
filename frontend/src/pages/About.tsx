@@ -1,10 +1,25 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Mountain, Users, Languages, HandCoins, ArrowRight, Mail } from 'lucide-react';
+import { Mountain, Users, Languages, HandCoins, ArrowRight, Mail, Heart } from 'lucide-react';
+import { TEAM } from '@/constants/team';
 
 // One icon per pillar, in the order the strings are listed.
 const PILLAR_ICONS = [Users, Mountain, Languages, HandCoins];
+
+/** Headshot if there is one, otherwise the member's initial - never a broken image. */
+function MemberAvatar({ name, photo }: { name: string; photo?: string }) {
+  const [failed, setFailed] = React.useState(false);
+  const base = 'w-20 h-20 md:w-24 md:h-24 rounded-full mx-auto overflow-hidden';
+  if (!photo || failed) {
+    return (
+      <div className={`${base} bg-gradient-to-br from-pine to-pine-dark text-white grid place-items-center font-display font-extrabold text-2xl md:text-3xl`}>
+        {(name || '?').trim().charAt(0).toUpperCase()}
+      </div>
+    );
+  }
+  return <img src={photo} alt="" onError={() => setFailed(true)} className={`${base} object-cover`} />;
+}
 
 /**
  * Public "about" page. All copy lives in the locale files so it translates with
@@ -64,6 +79,42 @@ export default function About() {
             </div>
           ))}
         </div>
+      </div>
+
+      {/* Who built this */}
+      <div className="mt-10 md:mt-14" data-testid="about-team">
+        <div className="text-center max-w-2xl mx-auto">
+          <h2 className="font-display font-extrabold text-2xl md:text-3xl text-ink">{t('about.team_title')}</h2>
+          <p className="mt-3 text-sm md:text-base text-ink-soft leading-relaxed">{t('about.team_lead')}</p>
+        </div>
+
+        <div className="mt-6 md:mt-8 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5">
+          {TEAM.map((m) => {
+            const card = (
+              <>
+                <MemberAvatar name={m.name} photo={m.photo} />
+                <h3 className="mt-4 font-display font-bold text-base md:text-lg text-ink">{m.name}</h3>
+                <p className="text-xs md:text-sm text-ink-soft mt-0.5">{t(`about.roles.${m.roleKey}`)}</p>
+              </>
+            );
+            // Only the members who gave a profile link become clickable.
+            return m.url ? (
+              <a key={m.name} href={m.url} target="_blank" rel="noopener noreferrer"
+                data-testid={`about-team-${m.name}`}
+                className="card-shell p-5 md:p-6 text-center btn-hover">
+                {card}
+              </a>
+            ) : (
+              <div key={m.name} data-testid={`about-team-${m.name}`} className="card-shell p-5 md:p-6 text-center">
+                {card}
+              </div>
+            );
+          })}
+        </div>
+
+        <p className="mt-6 text-center text-sm text-ink-soft flex items-center justify-center gap-1.5">
+          <Heart size={13} className="text-flag" /> {t('about.team_note')}
+        </p>
       </div>
 
       {/* Providers + contact */}

@@ -341,7 +341,16 @@
       }
     ],
     "providers_title": "Run something in Darjeeling?",
-    "providers_body": "If you host guests, drive visitors, pour tea or make things by hand, your work belongs here. Listing takes a few minutes and puts you in front of every visitor using the app."
+    "providers_body": "If you host guests, drive visitors, pour tea or make things by hand, your work belongs here. Listing takes a few minutes and puts you in front of every visitor using the app.",
+    "team_title": "Who built this",
+    "team_lead": "1 Darjeeling is designed and built by a small team at Studio 1947.",
+    "team_note": "Built in the hills, for the hills.",
+    "roles": {
+      "engineering": "Engineering",
+      "design": "Design",
+      "product": "Product",
+      "content": "Content & Community"
+    }
   },
   "home": {
     "trending": "Trending in Darjeeling",
