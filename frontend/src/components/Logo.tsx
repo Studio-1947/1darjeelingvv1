@@ -20,3 +20,4 @@ export default function Logo({ className = '', alt = '' }: { className?: string;
     />
   );
 }
+

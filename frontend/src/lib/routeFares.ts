@@ -59,3 +59,4 @@ export function startingPriceFrom(fares: RouteFare[]): number {
 export function allRoutesPriced(fares: RouteFare[]): boolean {
   return fares.length > 0 && fares.every(f => f.price > 0);
 }
+
