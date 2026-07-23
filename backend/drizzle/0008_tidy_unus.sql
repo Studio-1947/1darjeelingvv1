@@ -1,0 +1,1 @@
+ALTER TABLE "users" ADD COLUMN "support_expires_at" text;
