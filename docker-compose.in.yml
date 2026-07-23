@@ -34,7 +34,7 @@ services:
       - POSTGRES_DB=${POSTGRES_DB}
     volumes:
       - pg_data_in:/var/lib/postgresql/data
-    # Lets `depends_on: condition: service_healthy` below mean "Postgres is accepting
+    # Lets `depends_on: condition: service_healthy` below actually mean "Postgres is accepting
     # connections", not merely "the container was started".
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
@@ -52,9 +52,11 @@ services:
     env_file:
       - .env
     environment:
-      # Computed here (not hand-duplicated in .env) so Postgres credentials live in
-      # one place only.
+      # Computed here (not hand-duplicated in .env) so Postgres credentials
+      # only ever live in one place.
       - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+    # Bare `depends_on` only waits for the container to start, not for Postgres/MinIO to be ready —
+    # so the backend's schema sync or first bucket bootstrap could fire before either is up.
     depends_on:
       postgres:
         condition: service_healthy
@@ -75,6 +77,8 @@ services:
     volumes:
       - minio_data_in:/data
     command: server /data --console-address ":9001"
+    # MinIO exposes a liveness probe on its API port; used so `depends_on: condition:
+    # service_healthy` above means "MinIO is actually accepting S3 calls", not just "started".
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 10s
