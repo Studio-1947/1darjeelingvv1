@@ -453,6 +453,8 @@ curl -s https://1darjeeling.in/api             # {"app":"1 Darjeeling","status":
 If the first works and the second doesn't, the fault is system Nginx or DNS, not this app.
 From here on, merging into `prod` auto-deploys this stack via `deploy-prod.yml`.
 
+---
+
 ## See also
 
 - `README.md` — first-time VPS setup, environment variables, Razorpay setup, migrations
