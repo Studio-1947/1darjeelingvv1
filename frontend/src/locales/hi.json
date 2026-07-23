@@ -73,7 +73,6 @@
   },
   "common": {
     "book_now": "अभी बुक करें",
->>>>>>> origin/backup/UI-changes
     "view_details": "विवरण देखें",
     "explore": "खोजें",
     "starting_from": "से",
@@ -86,7 +85,6 @@
     "cancel": "रद्द",
     "continue": "जारी रखें",
     "yes": "हाँ",
-<<<<<<< HEAD
     "no": "नहीं",
     "uploading": "अपलोड हो रहा है…",
     "close": "बंद करें",
@@ -102,12 +100,6 @@
   },
   "cta": {
     "book_now": "अभी रिज़र्व करें",
-=======
-    "no": "नहीं"
-  },
-  "cta": {
-    "book_now": "अभी बुक करें",
->>>>>>> origin/backup/UI-changes
     "explore": "खोजें",
     "view": "देखें",
     "talk_to_driver": "ड्राइवर से बात करें",
@@ -159,7 +151,6 @@
     "google_soon": "जल्द आ रहा है",
     "role_tourist": "मैं पर्यटक हूँ",
     "role_provider": "मैं सेवा प्रदान करता हूँ",
-<<<<<<< HEAD
     "mock_note": "मॉक मोड: दिखाया गया OTP या 123456 इस्तेमाल करें",
     "name": "नाम",
     "name_placeholder": "आपका नाम",
@@ -175,9 +166,6 @@
     "terms_suffix": "से सहमत हैं।",
     "send_failed": "OTP भेजने में विफल",
     "invalid_otp": "अमान्य OTP"
-=======
-    "mock_note": "मॉक मोड: दिखाया गया OTP या 123456 इस्तेमाल करें"
->>>>>>> origin/backup/UI-changes
   },
   "provider": {
     "onboard_title": "अपना व्यवसाय सूचीबद्ध करें",
@@ -245,7 +233,6 @@
     "notes": "नोट्स (वैकल्पिक)",
     "fee_note": "प्रति बुकिंग ₹1 प्लेटफ़ॉर्म शुल्क।",
     "pay_confirm": "₹1 से पुष्टि करें",
-<<<<<<< HEAD
     "success": "बुकिंग की पुष्टि हुई!",
     "status": {
       "confirmed": "पुष्ट",
@@ -255,9 +242,6 @@
     "dates_required": "चेक-इन और चेक-आउट की तारीख ज़रूरी है",
     "dates_order": "चेक-आउट की तारीख चेक-इन के बाद होनी चाहिए",
     "failed": "बुकिंग विफल"
-=======
-    "success": "बुकिंग की पुष्टि हुई!"
->>>>>>> origin/backup/UI-changes
   },
   "responsible": {
     "title": "जिम्मेदार पर्यटन",
@@ -313,7 +297,6 @@
   },
   "footer": {
     "made": "दार्जिलिंग में, दार्जिलिंग के लिए बनाया गया",
-<<<<<<< HEAD
     "rights": "सर्वाधिकार सुरक्षित",
     "darjeeling": "दार्जिलिंग",
     "legal": "कानूनी"
@@ -787,8 +770,5 @@
     "observe_from_a_distance": "दूर से देखें",
     "panoramic_views": "चारों ओर का नज़ारा",
     "easy_to_reach_by_taxi": "टैक्सी से आसानी से पहुँचें"
-=======
-    "rights": "सर्वाधिकार सुरक्षित"
->>>>>>> origin/backup/UI-changes
   }
 }
