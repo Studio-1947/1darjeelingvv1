@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { db, schema } from '../db';
 import { eq, desc, inArray, and, lt, gt } from 'drizzle-orm';
 import { authenticateToken } from '../middleware/auth';
+import { requireActiveSupport } from '../middleware/support';
 
 const router = Router();
 
@@ -44,6 +45,11 @@ const router = Router();
  *         content:
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
+ *       402:
+ *         description: The caller's annual platform support fee is not active
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
  *       404:
  *         description: Listing not found
  *         content:
@@ -56,7 +62,7 @@ const router = Router();
  *             schema: { $ref: '#/components/schemas/Error' }
  */
 // Create a booking
-router.post('/', authenticateToken, async (req: Request, res: Response) => {
+router.post('/', authenticateToken, requireActiveSupport, async (req: Request, res: Response) => {
   const { listing_id, listing_type, check_in, check_out, guests = 1, notes } = req.body;
 
   if (!listing_id || !listing_type) {

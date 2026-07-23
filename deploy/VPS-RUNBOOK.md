@@ -115,6 +115,7 @@ wrong. All of these are fixed by editing `/var/www/1darjeelingvv1/.env` and re-r
 | `<VAR> must be set when APP_ENV=production` | Secret missing entirely | Set it |
 | `<VAR> is still set to its development default` | A dev default leaked into prod | Set a real value |
 | `CORS_ORIGINS must not be "*" when APP_ENV=production` | Wildcard CORS | `CORS_ORIGINS=https://onedarjeeling.duckdns.org` |
+| `MOCK_PAYMENTS must be set explicitly when APP_ENV=production` | The line is missing from `.env` entirely | Set it to `false` (charge real money) or `true` (simulate before go-live). It is refused rather than defaulted because the old default was `true`, which silently left `/api/payments/mock/complete` live — letting any logged-in user grant themselves a paid membership or activate a provider for ₹0 |
 | `RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET are required when MOCK_PAYMENTS=false` | Real payments on, no keys | Either fill the Razorpay values, or set `MOCK_PAYMENTS=true` until you're ready to charge |
 | `RAZORPAY_WEBHOOK_SECRET is required when MOCK_PAYMENTS=false` | No webhook secret | See README → "Razorpay setup" |
 | `RAZORPAY_KEY_ID is a test key (rzp_test_*) but APP_ENV=production` | Test key in production | Use `rzp_live_*` keys |

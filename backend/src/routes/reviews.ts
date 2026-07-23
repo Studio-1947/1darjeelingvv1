@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { db, schema } from '../db';
 import { eq, and, desc } from 'drizzle-orm';
 import { authenticateToken } from '../middleware/auth';
+import { requireActiveSupport } from '../middleware/support';
 
 const router = Router();
 
@@ -37,7 +38,7 @@ function reviewOut(r: typeof schema.reviews.$inferSelect) {
  *         required: true
  *         schema: { type: string }
  *     responses:
- *       200: { description: Reviews (newest first) and a { count, average } summary }
+ *       200: { description: 'Reviews (newest first) and a { count, average } summary' }
  */
 router.get('/listing/:listingId', async (req: Request, res: Response) => {
   const rows = await db.select()
@@ -72,9 +73,14 @@ router.get('/listing/:listingId', async (req: Request, res: Response) => {
  *     responses:
  *       200: { description: The saved review }
  *       400: { description: Invalid rating or comment }
+ *       402:
+ *         description: The caller's annual platform support fee is not active
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
  *       404: { description: Listing not found }
  */
-router.post('/', authenticateToken, async (req: Request, res: Response) => {
+router.post('/', authenticateToken, requireActiveSupport, async (req: Request, res: Response) => {
   const { listing_id, rating, comment } = req.body || {};
 
   if (!listing_id) return res.status(400).json({ detail: 'listing_id is required' });

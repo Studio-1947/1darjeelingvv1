@@ -8,15 +8,52 @@ export function nextPhone(): string {
   return `+9190000${String(phoneCounter).padStart(5, '0')}`;
 }
 
-export async function registerUser(opts: { name: string; role?: 'tourist' | 'provider'; phone?: string }) {
+export async function activateSupport(token: string, userId: string) {
+  const orderRes = await request(app)
+    .post('/api/payments/order')
+    .set('Authorization', `Bearer ${token}`)
+    .send({ flow: 'platform_support', reference_id: userId });
+  if (orderRes.status !== 200) {
+    throw new Error(`activateSupport order failed: ${orderRes.status} ${JSON.stringify(orderRes.body)}`);
+  }
+
+  const res = await request(app)
+    .post('/api/payments/mock/complete')
+    .set('Authorization', `Bearer ${token}`)
+    .send({ order_id: orderRes.body.order.id, flow: 'platform_support', reference_id: userId });
+  if (res.status !== 200) {
+    throw new Error(`activateSupport complete failed: ${res.status} ${JSON.stringify(res.body)}`);
+  }
+}
+
+export async function registerUser(opts: {
+  name: string;
+  role?: 'tourist' | 'provider';
+  phone?: string;
+  /** Set false to get a tourist who has NOT paid — for tests that exercise the gate itself. */
+  paySupport?: boolean;
+}) {
   const phone = opts.phone || nextPhone();
+  const role = opts.role || 'tourist';
   const res = await request(app)
     .post('/api/auth/otp/verify')
-    .send({ phone, otp: '123456', name: opts.name, role: opts.role || 'tourist' });
+    .send({ phone, otp: '123456', name: opts.name, role });
   if (res.status !== 200) {
     throw new Error(`registerUser failed: ${res.status} ${JSON.stringify(res.body)}`);
   }
-  return { token: res.body.token as string, user: res.body.user, phone };
+
+  const token = res.body.token as string;
+  const user = res.body.user;
+
+  // Once Task 5 mounts the gate, a bare tourist registration cannot book, favourite or review.
+  // Paying here keeps all ~66 existing call sites describing what they meant to describe.
+  // Providers are left alone: they become exempt only when providerPaid is true, which is what
+  // onboardActiveProvider arranges.
+  if (role === 'tourist' && opts.paySupport !== false) {
+    await activateSupport(token, user.id);
+  }
+
+  return { token, user, phone };
 }
 
 export async function loginAdmin() {
