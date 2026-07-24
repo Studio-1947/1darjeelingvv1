@@ -81,26 +81,41 @@ export function MobileStickyBar({ item, unit, bookable, cta, busy, onBook, onOpe
 }) {
   const { t } = useTranslation();
   const CtaIcon = cta.Icon;
+  // A free spot (no price, not bookable) has nothing to show but the directions
+  // action, so the white price panel would just be an empty frame around it -
+  // drop it and let the button stand on its own.
+  const bare = !bookable && !(item.price > 0);
+
   return (
     <div className="lg:hidden fixed bottom-16 inset-x-0 z-30 px-4 pb-3">
-      <div className="mx-auto max-w-md bg-white rounded-2xl border border-[var(--line)] shadow-[0_-8px_24px_-8px_rgba(20,32,26,0.18)] p-2.5 flex items-center gap-2">
-        {item.price > 0 && (
-          <div className="pl-2">
-            <div className="text-[10px] font-bold uppercase tracking-widest text-ink-soft leading-none">{t('common.starting_from')}</div>
-            <div className="font-display font-extrabold text-lg text-ink leading-tight">₹{item.price}<span className="text-[10px] text-ink-soft font-semibold">{unit}</span></div>
-          </div>
-        )}
+      {bare ? (
         <button
-          onClick={bookable ? onBook : onOpenMaps}
-          disabled={busy}
+          onClick={onOpenMaps}
           data-testid="mobile-sticky-cta"
-          className={`ml-auto flex-shrink-0 inline-flex items-center gap-2 px-5 py-3 rounded-full font-extrabold btn-hover ${bookable ? cta.color : 'bg-pine text-white'}`}
+          className="mx-auto max-w-md w-full inline-flex items-center justify-center gap-2 py-3.5 rounded-full font-extrabold bg-pine text-white shadow-[0_8px_24px_-8px_rgba(20,32,26,0.45)] btn-hover"
         >
-          {bookable
-            ? <><CtaIcon size={16} /> {item.type === 'driver' ? t('cta.talk_to_driver') : t('cta.book_now')}</>
-            : <><Navigation size={16} /> {t('cta.get_directions')}</>}
+          <Navigation size={16} /> {t('cta.get_directions')}
         </button>
-      </div>
+      ) : (
+        <div className="mx-auto max-w-md bg-white rounded-2xl border border-[var(--line)] shadow-[0_-8px_24px_-8px_rgba(20,32,26,0.18)] p-2.5 flex items-center gap-2">
+          {item.price > 0 && (
+            <div className="pl-2">
+              <div className="text-[10px] font-bold uppercase tracking-widest text-ink-soft leading-none">{t('common.starting_from')}</div>
+              <div className="font-display font-extrabold text-lg text-ink leading-tight">₹{item.price}<span className="text-[10px] text-ink-soft font-semibold">{unit}</span></div>
+            </div>
+          )}
+          <button
+            onClick={bookable ? onBook : onOpenMaps}
+            disabled={busy}
+            data-testid="mobile-sticky-cta"
+            className={`ml-auto flex-shrink-0 inline-flex items-center gap-2 px-5 py-3 rounded-full font-extrabold btn-hover ${bookable ? cta.color : 'bg-pine text-white'}`}
+          >
+            {bookable
+              ? <><CtaIcon size={16} /> {item.type === 'driver' ? t('cta.talk_to_driver') : t('cta.book_now')}</>
+              : <><Navigation size={16} /> {t('cta.get_directions')}</>}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
