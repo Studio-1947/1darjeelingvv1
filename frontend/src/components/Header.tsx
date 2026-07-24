@@ -164,22 +164,30 @@ export default function Header() {
                   
                   {user.role === 'provider' ? (
                     <>
+                      <button onClick={() => { setDropdownOpen(false); nav('/my-listings'); }}
+                        className="w-full text-left px-4 py-2.5 text-sm text-ink hover:bg-mist font-semibold transition-colors">
+                        {t('nav.my_listings') || 'My Listings'}
+                      </button>
                       <button onClick={() => { setDropdownOpen(false); nav('/provider/dashboard'); }}
                         className="w-full text-left px-4 py-2.5 text-sm text-ink hover:bg-mist font-semibold transition-colors">
                         {t('nav.business_dashboard')}
                       </button>
-                      {localStorage.getItem(`unlocked_traveller_${user.id}`) === 'true' && (
-                        <button onClick={() => { setDropdownOpen(false); nav('/dashboard'); }}
-                          className="w-full text-left px-4 py-2.5 text-sm text-ink hover:bg-mist font-semibold transition-colors">
-                          {t('nav.personal_bookings')}
-                        </button>
-                      )}
+                      <button onClick={() => { setDropdownOpen(false); nav('/my-trips'); }}
+                        className="w-full text-left px-4 py-2.5 text-sm text-ink hover:bg-mist font-semibold transition-colors">
+                        {t('nav.my_trips') || 'My Trips'}
+                      </button>
                     </>
                   ) : (
-                    <button onClick={() => { setDropdownOpen(false); goProfile(); }}
-                      className="w-full text-left px-4 py-2.5 text-sm text-ink hover:bg-mist font-semibold transition-colors">
-                      {t('nav.dashboard') || 'Dashboard'}
-                    </button>
+                    <>
+                      <button onClick={() => { setDropdownOpen(false); nav('/my-trips'); }}
+                        className="w-full text-left px-4 py-2.5 text-sm text-ink hover:bg-mist font-semibold transition-colors">
+                        {t('nav.my_trips') || 'My Trips'}
+                      </button>
+                      <button onClick={() => { setDropdownOpen(false); goProfile(); }}
+                        className="w-full text-left px-4 py-2.5 text-sm text-ink hover:bg-mist font-semibold transition-colors">
+                        {t('nav.dashboard') || 'Dashboard'}
+                      </button>
+                    </>
                   )}
                   
                   <button onClick={() => { setDropdownOpen(false); nav('/saved'); }}
@@ -203,10 +211,7 @@ export default function Header() {
           )}
         </div>
 
-        {/* Compact menu - tablet and below. Holds the language switcher and the
-            auth actions that the desktop bar shows inline. */}
-        {/* ml-auto pins this to the right edge now that the rail no longer
-            fills the row below lg. */}
+        {/* Compact menu - tablet and below */}
         <div className="relative lg:hidden flex-shrink-0 ml-auto" ref={menuRef}>
           <button
             onClick={() => setMenuOpen(!menuOpen)}
@@ -232,10 +237,33 @@ export default function Header() {
                       <p className="text-sm font-bold text-ink truncate">{user.name}</p>
                       <p className="text-[10px] uppercase tracking-wider font-bold text-ink-soft mt-0.5 capitalize">{user.role}</p>
                     </div>
-                    <button onClick={() => { setMenuOpen(false); goProfile(); }}
-                      className="w-full text-left px-2 py-2 rounded-lg text-sm text-ink hover:bg-mist font-semibold transition-colors">
-                      {user.role === 'provider' ? t('nav.business_dashboard') : t('nav.dashboard')}
-                    </button>
+                    {user.role === 'provider' ? (
+                      <>
+                        <button onClick={() => { setMenuOpen(false); nav('/my-listings'); }}
+                          className="w-full text-left px-2 py-2 rounded-lg text-sm text-ink hover:bg-mist font-semibold transition-colors">
+                          {t('nav.my_listings') || 'My Listings'}
+                        </button>
+                        <button onClick={() => { setMenuOpen(false); nav('/provider/dashboard'); }}
+                          className="w-full text-left px-2 py-2 rounded-lg text-sm text-ink hover:bg-mist font-semibold transition-colors">
+                          {t('nav.business_dashboard')}
+                        </button>
+                        <button onClick={() => { setMenuOpen(false); nav('/my-trips'); }}
+                          className="w-full text-left px-2 py-2 rounded-lg text-sm text-ink hover:bg-mist font-semibold transition-colors">
+                          {t('nav.my_trips') || 'My Trips'}
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button onClick={() => { setMenuOpen(false); nav('/my-trips'); }}
+                          className="w-full text-left px-2 py-2 rounded-lg text-sm text-ink hover:bg-mist font-semibold transition-colors">
+                          {t('nav.my_trips') || 'My Trips'}
+                        </button>
+                        <button onClick={() => { setMenuOpen(false); goProfile(); }}
+                          className="w-full text-left px-2 py-2 rounded-lg text-sm text-ink hover:bg-mist font-semibold transition-colors">
+                          {t('nav.dashboard')}
+                        </button>
+                      </>
+                    )}
                     <button onClick={() => { setMenuOpen(false); nav('/saved'); }}
                       data-testid="header-menu-saved"
                       className="w-full text-left px-2 py-2 rounded-lg text-sm text-ink hover:bg-mist font-semibold transition-colors flex items-center gap-2">

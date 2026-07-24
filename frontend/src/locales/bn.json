@@ -24,7 +24,11 @@
     "business_dashboard": "ব্যবসার ড্যাশবোর্ড",
     "personal_bookings": "ব্যক্তিগত বুকিং",
     "categories": "বিভাগ",
-    "menu": "মেনু"
+    "menu": "মেনু",
+    "home": "হোম",
+    "trips": "আমার ট্রিপ",
+    "type": "ধরন",
+    "account": "অ্যাকাউন্ট"
   },
   "support": {
     "title": "1 দার্জিলিং চালু রাখতে একটি ছোট সহযোগিতা",
