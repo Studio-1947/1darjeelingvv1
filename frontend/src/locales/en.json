@@ -357,7 +357,29 @@
       "design": "Design",
       "product": "Product",
       "content": "Content & Community"
-    }
+    },
+    "stats": [
+      {
+        "v": "0%",
+        "l": "commission taken from providers"
+      },
+      {
+        "v": "4",
+        "l": "languages, English to Nepali"
+      },
+      {
+        "v": "1",
+        "l": "map for the whole hill"
+      }
+    ],
+    "why_headline": "The hills were being booked by people who never walked them.",
+    "why_chips": [
+      "No middlemen",
+      "No hidden commission",
+      "Providers keep what they earn"
+    ],
+    "pillars_eyebrow": "What makes it different",
+    "image_caption": "Mt. Kangchenjunga"
   },
   "home": {
     "trending": "Trending in Darjeeling",
