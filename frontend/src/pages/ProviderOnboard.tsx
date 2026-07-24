@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import MockPaymentModal from '@/components/MockPaymentModal';
 import BookingConfirmation from '@/components/BookingConfirmation';
 import { useProviderOnboard } from '@/components/provider/onboard/useProviderOnboard';
@@ -10,9 +11,10 @@ import CafeShopForm from '@/components/provider/onboard/CafeShopForm';
 /**
  * Provider onboarding. Step 1 collects the business basics; step 2 is a
  * type-specific "design your listing" flow. All state and the payment flow
- * live in useProviderOnboard — the step components are layout over it.
+ * live in useProviderOnboard - the step components are layout over it.
  */
 export default function ProviderOnboard() {
+  const { t } = useTranslation();
   const o = useProviderOnboard();
 
   const stepScreen =
@@ -30,7 +32,7 @@ export default function ProviderOnboard() {
         open={!!o.payModal}
         onClose={() => o.setPayModal(null)}
         amount={o.payModal?.amount || 0}
-        title="Provider registration"
+        title={t('pay.provider_registration')}
         description={o.payModal?.description || ''}
         onPay={o.finishMockPayment}
         prefill={{ upi: `${(o.form.business_name || 'business').toLowerCase().replace(/\s+/g, '')}@ybl` }}

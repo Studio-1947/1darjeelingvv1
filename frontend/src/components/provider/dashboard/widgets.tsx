@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 
 /** Gradient stat tile for the dashboard header grid. */
 export function StatCard({ label, value, sub, icon: Icon, tone = 'pine' }: {
@@ -25,6 +26,7 @@ export function StatCard({ label, value, sub, icon: Icon, tone = 'pine' }: {
 
 /** Coloured pill for a booking status. */
 export function StatusPill({ status }) {
+  const { t } = useTranslation();
   const map = {
     confirmed: 'bg-pine/10 text-pine',
     pending_payment: 'bg-gold/20 text-[#8a6b04]',
@@ -32,7 +34,7 @@ export function StatusPill({ status }) {
   };
   return (
     <span className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${map[status] || 'bg-mist text-ink-soft'}`}>
-      {status?.replace('_', ' ')}
+      {t(`booking.status.${status}`, { defaultValue: status?.replace('_', ' ') })}
     </span>
   );
 }

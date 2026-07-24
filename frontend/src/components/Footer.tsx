@@ -2,15 +2,16 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Heart, Mail } from 'lucide-react';
+import Logo from '@/components/Logo';
 
 export default function Footer() {
   const { t } = useTranslation();
   return (
-    <footer className="mt-16 md:mt-24 border-t border-[var(--line)] bg-white" data-testid="site-footer">
+    <footer className="mt-16 md:mt-24 border-t border-[var(--line)] bg-white pb-20 lg:pb-0" data-testid="site-footer">
       <div className="mx-auto max-w-7xl px-4 md:px-8 py-10 md:py-14 grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-10">
         <div className="col-span-2 md:col-span-1">
           <div className="flex items-center gap-2 mb-3">
-            <div className="w-9 h-9 rounded-xl bg-pine text-white grid place-items-center font-display font-extrabold">১</div>
+            <Logo className="w-9 h-9" />
             <div className="font-display font-extrabold text-lg text-ink">{t('brand')}</div>
           </div>
           <p className="text-sm text-ink-soft leading-relaxed">{t('brand_tagline')}</p>
@@ -26,16 +27,17 @@ export default function Footer() {
           </ul>
         </div>
         <div>
-          <h4 className="font-display font-bold text-sm mb-3 text-ink">Darjeeling</h4>
+          <h4 className="font-display font-bold text-sm mb-3 text-ink">{t('footer.darjeeling')}</h4>
           <ul className="space-y-2 text-sm text-ink-soft">
             <li><Link to="/events">{t('nav.events')}</Link></li>
             <li><Link to="/biodiversity">{t('nav.biodiversity')}</Link></li>
             <li><Link to="/responsible">{t('nav.responsible')}</Link></li>
+            <li><Link to="/about">{t('nav.about')}</Link></li>
             <li><Link to="/provider/onboard">{t('nav.provider')}</Link></li>
           </ul>
         </div>
         <div>
-          <h4 className="font-display font-bold text-sm mb-3 text-ink">Legal</h4>
+          <h4 className="font-display font-bold text-sm mb-3 text-ink">{t('footer.legal')}</h4>
           <ul className="space-y-2 text-sm text-ink-soft">
             <li><Link to="/privacy">{t('nav.privacy')}</Link></li>
             <li className="flex items-center gap-1"><Mail size={12} /> hello@1darjeeling.in</li>

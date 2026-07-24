@@ -6,16 +6,19 @@ import { useAuth } from '@/context/AuthContext';
 import { LogOut, Store, Compass, Phone, ArrowRight, Ticket, Calendar, Sparkles, XCircle, Loader2 } from 'lucide-react';
 
 function StatusPill({ status }) {
+  const { t } = useTranslation();
   const map = {
     confirmed: 'bg-pine/10 text-pine',
     pending_payment: 'bg-gold/20 text-[#8a6b04]',
     cancelled: 'bg-flag/10 text-flag',
   };
-  return <span className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${map[status] || 'bg-mist text-ink-soft'}`}>{status?.replace('_', ' ')}</span>;
+  // Unknown statuses fall back to the raw value rather than an empty pill.
+  const label = t(`booking.status.${status}`, { defaultValue: status?.replace('_', ' ') });
+  return <span className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${map[status] || 'bg-mist text-ink-soft'}`}>{label}</span>;
 }
 
 export default function TouristDashboard() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { user, loading: authLoading, logout } = useAuth();
   const nav = useNavigate();
   const [bookings, setBookings] = useState<any[]>([]);
@@ -55,28 +58,28 @@ export default function TouristDashboard() {
           {user.name?.trim().charAt(0).toUpperCase() || 'T'}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-[11px] font-bold uppercase tracking-widest text-flag">Traveller</div>
-          <h1 className="font-display font-extrabold text-2xl sm:text-3xl md:text-4xl text-ink leading-tight">{user.name || 'Traveller'}</h1>
+          <div className="text-[11px] font-bold uppercase tracking-widest text-flag">{t('dashboard.traveller')}</div>
+          <h1 className="font-display font-extrabold text-2xl sm:text-3xl md:text-4xl text-ink leading-tight">{user.name || t('dashboard.traveller')}</h1>
           <p className="text-sm text-ink-soft mt-0.5 flex items-center gap-1"><Phone size={12} /> {user.phone}</p>
         </div>
         <button onClick={() => { logout(); nav('/'); }} data-testid="tourist-logout"
           className="hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[var(--line)] text-ink font-semibold text-sm btn-hover">
-          <LogOut size={14} /> Log out
+          <LogOut size={14} /> {t('nav.logout')}
         </button>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-3 md:gap-4 mb-8">
         <div className="rounded-2xl p-4 bg-gradient-to-br from-flag to-[#8a1e1e] text-white">
-          <div className="text-[11px] uppercase tracking-widest font-bold opacity-90">Bookings</div>
+          <div className="text-[11px] uppercase tracking-widest font-bold opacity-90">{t('dashboard.bookings')}</div>
           <div className="mt-1 font-display font-extrabold text-3xl leading-none">{bookings.length}</div>
         </div>
         <div className="rounded-2xl p-4 bg-gradient-to-br from-pine to-pine-dark text-white">
-          <div className="text-[11px] uppercase tracking-widest font-bold opacity-90">Upcoming</div>
+          <div className="text-[11px] uppercase tracking-widest font-bold opacity-90">{t('dashboard.upcoming')}</div>
           <div className="mt-1 font-display font-extrabold text-3xl leading-none">{upcoming.length}</div>
         </div>
         <div className="rounded-2xl p-4 bg-gradient-to-br from-gold to-[#c69108] text-white">
-          <div className="text-[11px] uppercase tracking-widest font-bold opacity-90">Trips taken</div>
+          <div className="text-[11px] uppercase tracking-widest font-bold opacity-90">{t('dashboard.trips_taken')}</div>
           <div className="mt-1 font-display font-extrabold text-3xl leading-none">{past.length}</div>
         </div>
       </div>
@@ -84,17 +87,17 @@ export default function TouristDashboard() {
       {/* Bookings list */}
       <div>
         <h2 className="font-display font-extrabold text-xl md:text-2xl text-ink mb-4 flex items-center gap-2">
-          <Calendar size={18} className="text-pine" /> My bookings
+          <Calendar size={18} className="text-pine" /> {t('dashboard.my_bookings')}
         </h2>
         {bookings.length === 0 ? (
           <div className="mist-panel p-8 md:p-10 text-center">
-            <p className="text-ink-soft">You have no bookings yet.</p>
+            <p className="text-ink-soft">{t('dashboard.no_bookings')}</p>
             <div className="mt-4 flex flex-wrap gap-2 justify-center">
               <Link to="/homestays" data-testid="empty-book-stay" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-flag text-white font-bold text-sm btn-hover">
-                Book a homestay <ArrowRight size={14} />
+                {t('dashboard.book_homestay')} <ArrowRight size={14} />
               </Link>
               <Link to="/drivers" data-testid="empty-book-driver" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-pine text-white font-bold text-sm btn-hover">
-                Find a driver <ArrowRight size={14} />
+                {t('dashboard.find_driver')} <ArrowRight size={14} />
               </Link>
             </div>
           </div>
@@ -115,28 +118,28 @@ export default function TouristDashboard() {
                     <StatusPill status={b.status} />
                   </div>
                   <div className="mt-2 text-xs text-ink-soft space-y-0.5">
-                    {b.check_in && <div>Check-in: <b className="text-ink">{b.check_in}</b>{b.check_out && <> → <b className="text-ink">{b.check_out}</b></>}</div>}
-                    <div>Guests: <b className="text-ink">{b.guests}</b> · Booked: {new Date(b.created_at).toLocaleDateString()}</div>
+                    {b.check_in && <div>{t('booking.checkin')}: <b className="text-ink">{b.check_in}</b>{b.check_out && <> → <b className="text-ink">{b.check_out}</b></>}</div>}
+                    <div>{t('booking.guests')}: <b className="text-ink">{b.guests}</b> · {t('dashboard.booked_on')}: {new Date(b.created_at).toLocaleDateString(i18n.language)}</div>
                   </div>
                   <div className="mt-3 flex items-center justify-between gap-2">
                     <Link to={`/listing/${b.listing_id}`} data-testid={`revisit-${b.id}`}
                       className="inline-flex items-center gap-1.5 text-xs font-bold text-pine">
-                      View listing <ArrowRight size={12} />
+                      {t('dashboard.view_listing')} <ArrowRight size={12} />
                     </Link>
                     {b.status !== 'cancelled' && (
                       confirmingId === b.id ? (
                         <span className="inline-flex items-center gap-2 text-xs">
-                          <span className="text-ink-soft">Cancel this?</span>
+                          <span className="text-ink-soft">{t('dashboard.cancel_confirm')}</span>
                           <button onClick={() => cancelBooking(b.id)} disabled={busyId === b.id}
                             data-testid={`confirm-cancel-${b.id}`} className="inline-flex items-center gap-1 font-bold text-flag disabled:opacity-50">
-                            {busyId === b.id ? <Loader2 size={12} className="animate-spin" /> : null} Yes
+                            {busyId === b.id ? <Loader2 size={12} className="animate-spin" /> : null} {t('common.yes')}
                           </button>
-                          <button onClick={() => setConfirmingId(null)} className="font-bold text-ink-soft">No</button>
+                          <button onClick={() => setConfirmingId(null)} className="font-bold text-ink-soft">{t('common.no')}</button>
                         </span>
                       ) : (
                         <button onClick={() => setConfirmingId(b.id)} data-testid={`cancel-booking-${b.id}`}
                           className="inline-flex items-center gap-1 text-xs font-bold text-flag hover:text-[#8a1e1e]">
-                          <XCircle size={12} /> Cancel
+                          <XCircle size={12} /> {t('common.cancel')}
                         </button>
                       )
                     )}
@@ -151,30 +154,30 @@ export default function TouristDashboard() {
       {/* Quick actions */}
       <div className="mt-10">
         <h2 className="font-display font-extrabold text-xl md:text-2xl text-ink mb-4 flex items-center gap-2">
-          <Sparkles size={18} className="text-flag" /> Quick actions
+          <Sparkles size={18} className="text-flag" /> {t('dashboard.quick_actions')}
         </h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <Link to="/homestays" className="rounded-2xl p-4 bg-white border border-[var(--line)] btn-hover">
             <div className="w-10 h-10 rounded-full bg-mist text-pine grid place-items-center mb-2"><Compass size={18} /></div>
-            <div className="font-display font-bold text-ink">Browse stays</div>
+            <div className="font-display font-bold text-ink">{t('dashboard.browse_stays')}</div>
           </Link>
           <Link to="/drivers" className="rounded-2xl p-4 bg-white border border-[var(--line)] btn-hover">
             <div className="w-10 h-10 rounded-full bg-mist text-pine grid place-items-center mb-2"><Phone size={18} /></div>
-            <div className="font-display font-bold text-ink">Find a driver</div>
+            <div className="font-display font-bold text-ink">{t('dashboard.find_driver')}</div>
           </Link>
           <Link to="/events" className="rounded-2xl p-4 bg-white border border-[var(--line)] btn-hover">
             <div className="w-10 h-10 rounded-full bg-mist text-pine grid place-items-center mb-2"><Ticket size={18} /></div>
-            <div className="font-display font-bold text-ink">Cultural events</div>
+            <div className="font-display font-bold text-ink">{t('dashboard.cultural_events')}</div>
           </Link>
           {user.role === 'provider' ? (
             <Link to="/provider/dashboard" className="rounded-2xl p-4 bg-gradient-to-br from-pine to-pine-dark text-white btn-hover">
               <div className="w-10 h-10 rounded-full bg-white/15 text-white grid place-items-center mb-2"><Store size={18} /></div>
-              <div className="font-display font-bold">Business Dashboard</div>
+              <div className="font-display font-bold">{t('nav.business_dashboard')}</div>
             </Link>
           ) : (
             <Link to="/provider/onboard" className="rounded-2xl p-4 bg-gradient-to-br from-pine to-pine-dark text-white btn-hover">
               <div className="w-10 h-10 rounded-full bg-white/15 text-white grid place-items-center mb-2"><Store size={18} /></div>
-              <div className="font-display font-bold">List your business</div>
+              <div className="font-display font-bold">{t('provider.onboard_title')}</div>
             </Link>
           )}
         </div>

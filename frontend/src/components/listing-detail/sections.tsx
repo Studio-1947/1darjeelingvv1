@@ -2,6 +2,8 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import SmartImg from '@/components/SmartImg';
 import MapEmbed from '@/components/MapEmbed';
+import { optionLabel } from '@/lib/optionLabel';
+import { RouteFare } from '@/lib/routeFares';
 import {
   MapPin, Tag, Navigation, ArrowRight, Languages,
   CalendarClock, Route, Crosshair,
@@ -23,7 +25,7 @@ export function AboutSection({ item, about, label }: { item: any; about?: string
       <p className="mt-8 text-lg md:text-xl text-ink leading-relaxed text-center max-w-3xl mx-auto whitespace-pre-line">{about}</p>
       {item.tags?.length > 0 && (
         <div className="mt-8 flex flex-wrap justify-center gap-2">
-          {item.tags.map((tg: string) => <span key={tg} className="chip"><Tag size={11} className="mr-1" /> {tg}</span>)}
+          {item.tags.map((tg: string) => <span key={tg} className="chip"><Tag size={11} className="mr-1" /> {optionLabel(t, tg)}</span>)}
         </div>
       )}
     </Screen>
@@ -57,7 +59,8 @@ export function OffersSection({ amenities, title }: { amenities: { Icon: any; la
         {amenities.map(({ Icon, label }) => (
           <div key={label} className="flex items-center gap-4 p-5 rounded-2xl border border-[var(--line)] bg-white">
             <Icon size={24} className="text-pine flex-shrink-0" />
-            <span className="text-ink font-semibold">{label}</span>
+            {/* Amenities are stored in English; only the display is localised. */}
+            <span className="text-ink font-semibold">{optionLabel(t, label)}</span>
           </div>
         ))}
       </div>
@@ -67,13 +70,14 @@ export function OffersSection({ amenities, title }: { amenities: { Icon: any; la
 
 /** Provider-uploaded photo gallery (homestays). */
 export function StayGallerySection({ images }: { images: string[] }) {
+  const { t } = useTranslation();
   return (
     <Screen tone="white" testid="detail-gallery">
-      <SectionHead label="Photos" title="Explore the Stay" />
+      <SectionHead label={t('detail.photos')} title={t('detail.stay_gallery_title')} />
       <div className="mt-10 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {images.map((url, index) => (
           <div key={index} className="aspect-[4/3] rounded-3xl overflow-hidden border border-[var(--line)] bg-mist shadow-md hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
-            <img src={url} alt={`Gallery ${index + 1}`} className="w-full h-full object-cover" />
+            <img src={url} alt={t('detail.gallery_alt', { index: index + 1 })} className="w-full h-full object-cover" />
           </div>
         ))}
       </div>
@@ -106,6 +110,9 @@ export function HostSection({ item, host, personSrc }: { item: any; host: any; p
 /** "Meet your driver" (drivers). */
 export function DriverSection({ item, about, personSrc, initial }: { item: any; about?: string; personSrc?: string; initial: string }) {
   const { t } = useTranslation();
+  const carModel = item.extras?.car_model;
+  const vehicleType = item.extras?.vehicle_type;
+  const gender = item.extras?.gender;
   return (
     <Screen tone="bg" testid="detail-driver">
       <SectionHead label={t('detail.meet_driver')} title={t('detail.meet_driver')} />
@@ -114,6 +121,23 @@ export function DriverSection({ item, about, personSrc, initial }: { item: any; 
         <div className="mt-6 flex items-center justify-center gap-2 flex-wrap">
           <span className="font-display font-extrabold text-2xl md:text-3xl text-ink">{item.title}</span>
           {item.provider_verified && <VerifiedBadge size="sm" />}
+        </div>
+        <div className="mt-3 flex items-center justify-center gap-2 flex-wrap">
+          {carModel && (
+            <span className="chip bg-white border border-[var(--line)] text-ink font-bold text-xs">
+              🚘 {carModel}
+            </span>
+          )}
+          {vehicleType && (
+            <span className="chip bg-white border border-[var(--line)] text-pine font-bold text-xs capitalize">
+              {vehicleType}
+            </span>
+          )}
+          {gender && (
+            <span className="chip bg-white border border-[var(--line)] text-ink-soft font-semibold text-xs capitalize">
+              {gender}
+            </span>
+          )}
         </div>
         <p className="mt-6 text-lg text-ink leading-relaxed whitespace-pre-line">{about}</p>
       </div>
@@ -135,17 +159,25 @@ export function BestTimeSection({ bestTime }: { bestTime: string }) {
   );
 }
 
-/** Routes a driver operates (shown instead of a location map). */
-export function RoutesSection({ routes }: { routes: string[] }) {
+/** Routes a driver operates, each with its own fare (shown instead of a map). */
+export function RoutesSection({ routes }: { routes: RouteFare[] }) {
   const { t } = useTranslation();
   return (
     <Screen tone="mist" testid="detail-routes">
-      <SectionHead label={t('detail.routes')} title={t('detail.routes')} note={t('detail.routes_note')} />
+      <SectionHead label={t('detail.routes_label')} title={t('detail.routes_title')} note={t('detail.routes_note')} />
       <div className="mt-10 mx-auto max-w-2xl space-y-3">
         {routes.map((r, i) => (
-          <div key={i} className="flex items-start gap-4 p-5 rounded-2xl border border-[var(--line)] bg-white text-left">
-            <Route size={22} className="text-pine flex-shrink-0 mt-0.5" />
-            <span className="text-ink font-semibold">{r}</span>
+          <div key={i} className="flex items-center gap-4 p-5 rounded-2xl border border-[var(--line)] bg-white text-left">
+            <Route size={22} className="text-pine flex-shrink-0" />
+            <span className="flex-1 text-ink font-semibold">{optionLabel(t, r.route)}</span>
+            {/* Editorial routes carry no quote, so the fare is simply omitted
+                rather than rendered as a misleading ₹0. */}
+            {r.price > 0 && (
+              <span className="flex-shrink-0 text-right">
+                <span className="font-display font-extrabold text-lg text-ink">₹{r.price}</span>
+                <span className="block text-xs font-semibold text-ink-soft">{t(`widgets.per_${r.unit}`)}</span>
+              </span>
+            )}
           </div>
         ))}
       </div>
@@ -153,7 +185,7 @@ export function RoutesSection({ routes }: { routes: string[] }) {
   );
 }
 
-/** Where you'll be / spotted locations — a real map with a directions CTA. */
+/** Where you'll be / spotted locations - a real map with a directions CTA. */
 export function LocationSection({ item, coords, spotted, onOpenMaps }: {
   item: any;
   coords?: [number, number];
@@ -188,7 +220,7 @@ export function LocationSection({ item, coords, spotted, onOpenMaps }: {
           <div className="mt-6 flex justify-center">
             <button onClick={onOpenMaps} data-testid="detail-open-maps"
               className="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-white border border-[var(--line)] text-ink font-bold btn-hover">
-              <Navigation size={16} /> {t('cta.get_directions')} <ArrowRight size={15} />
+              {t('cta.get_directions')} <ArrowRight size={15} />
             </button>
           </div>
         </div>

@@ -39,9 +39,9 @@ export default function Category({ typeOverride }) {
       {/* Sticky sub-header */}
       <div className="flex items-end justify-between mb-4 md:mb-6">
         <div>
-          {q && <div className="text-[11px] font-bold uppercase tracking-widest text-flag">Search</div>}
+          {q && <div className="text-[11px] font-bold uppercase tracking-widest text-flag">{t('category.search')}</div>}
           <h1 className="font-display font-extrabold text-3xl sm:text-4xl md:text-5xl text-ink leading-tight">{title}</h1>
-          <p className="mt-1 text-sm text-ink-soft">{items.length} results</p>
+          <p className="mt-1 text-sm text-ink-soft">{t('category.results', { count: items.length })}</p>
         </div>
         <div className="hidden sm:flex items-center gap-1 p-1 rounded-full bg-white border border-[var(--line)]">
           <button onClick={() => setView('grid')} data-testid="view-grid"
@@ -59,7 +59,7 @@ export default function Category({ typeOverride }) {
         <p className="text-ink-soft">{t('common.loading')}</p>
       ) : items.length === 0 ? (
         <div className="mist-panel p-8 md:p-10 text-center">
-          <p className="text-ink-soft">No listings yet in this category.</p>
+          <p className="text-ink-soft">{t('category.empty')}</p>
         </div>
       ) : view === 'grid' ? (
         // Instagram Explore-style grid: tight, image-first

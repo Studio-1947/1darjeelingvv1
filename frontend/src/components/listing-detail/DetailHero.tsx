@@ -39,7 +39,7 @@ export default function DetailHero({ item, unit, onShare }: {
     toggle(item.id).catch(() => {});
   };
 
-  // `nav(-1)` goes nowhere when this is the first entry in the SPA's history — i.e. the visitor
+  // `nav(-1)` goes nowhere when this is the first entry in the SPA's history - i.e. the visitor
   // landed here directly via a shared link, a new tab, or a refresh (React Router marks that entry
   // with key 'default'). In that case send them to the home feed instead of leaving them on a dead
   // button (or bouncing them off the site entirely).
@@ -76,13 +76,13 @@ export default function DetailHero({ item, unit, onShare }: {
   const fallbackImg = fallbackFor(item.type);
 
   return (
-    <section ref={heroRef} className={`relative ${SCREEN_H} h-[calc(100svh-3.5rem)] md:h-[calc(100svh-4rem)] w-full overflow-hidden bg-mist`} data-testid="detail-hero">
+    <section ref={heroRef} className={`relative ${SCREEN_H} h-[calc(100svh-var(--header-h))] w-full overflow-hidden bg-mist`} data-testid="detail-hero">
       <SmartImg src={heroSrc} fallback={fallbackImg} alt={item.title} className="absolute inset-0 w-full h-full object-cover" />
       <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/45" />
 
-      {/* Below lg the sticky header supplies the back control — avoid two. */}
+      {/* Below lg the sticky header supplies the back control - avoid two. */}
       <button onClick={goBack} data-testid="detail-back"
-        className="absolute top-4 left-4 md:top-6 md:left-8 hidden lg:inline-flex items-center gap-2 pl-3 pr-4 py-2.5 rounded-full bg-white/95 backdrop-blur text-sm font-bold text-ink btn-hover">
+        className="absolute z-10 top-4 left-4 md:top-6 md:left-8 hidden lg:inline-flex items-center gap-2 pl-3 pr-4 py-2.5 rounded-full bg-white/95 backdrop-blur text-sm font-bold text-ink btn-hover">
         <ArrowLeft size={16} /> {t('common.back')}
       </button>
 
@@ -93,7 +93,7 @@ export default function DetailHero({ item, unit, onShare }: {
             className="w-11 h-11 rounded-full bg-white/95 backdrop-blur grid place-items-center btn-hover">
             <Heart size={18} className={liked ? 'fill-flag text-flag' : 'text-ink'} />
           </button>
-          <button onClick={handleShare} data-testid="detail-share" aria-label="Share"
+          <button onClick={handleShare} data-testid="detail-share" aria-label={t('feed.share')}
             className="w-11 h-11 rounded-full bg-white/95 backdrop-blur grid place-items-center btn-hover">
             <Share2 size={18} className="text-ink" />
           </button>
@@ -106,13 +106,14 @@ export default function DetailHero({ item, unit, onShare }: {
               shareState === 'copied' ? 'bg-white/95 text-ink' : 'bg-flag text-white'
             }`}
           >
-            {shareState === 'copied' ? <><Check size={13} /> Link copied</> : 'Could not share'}
+            {shareState === 'copied' ? <><Check size={13} /> {t('detail.share_copied')}</> : t('detail.share_failed')}
           </span>
         )}
       </div>
 
-      {/* Left-aligned hero content */}
-      <div ref={heroContentRef} style={{ opacity: 0 }} className="absolute inset-0 flex flex-col items-start justify-center text-left px-4 md:px-8 lg:px-16">
+      {/* Left-aligned hero content. It spans the whole hero, so it has to stay
+          click-through or it swallows the back/like/share buttons underneath. */}
+      <div ref={heroContentRef} style={{ opacity: 0 }} className="absolute inset-0 pointer-events-none flex flex-col items-start justify-center text-left px-4 md:px-8 lg:px-16">
         <span className="chip bg-white/90 capitalize">{t(`categories.${item.type}`)}</span>
         <h1 className="mt-5 font-display font-extrabold text-5xl sm:text-6xl md:text-8xl text-white leading-[0.95] max-w-4xl"
           data-testid="listing-title">{item.title}</h1>

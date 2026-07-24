@@ -20,7 +20,7 @@ export function ReserveSection({ item, unit, bookable, cta, booking, onOpenMaps 
     <Screen tone="white" testid="detail-reserve">
       <SectionHead label={t('detail.reserve')}
         title={item.price > 0 ? `₹${item.price}${unit}` : t('detail.reserve')}
-        note={bookable ? t('booking.fee_note') : t('detail.walk_in_note')} />
+        note={bookable ? undefined : t('detail.walk_in_note')} />
 
       <div className="mt-10 mx-auto max-w-xl">
         <div className="mist-panel p-6 md:p-8">
@@ -53,7 +53,7 @@ export function ReserveSection({ item, unit, bookable, cta, booking, onOpenMaps 
 
               <button onClick={doBook} disabled={busy} data-testid="booking-submit"
                 className={`w-full py-4 rounded-full font-bold btn-hover disabled:opacity-60 inline-flex items-center justify-center gap-2 ${cta.color}`}>
-                <CtaIcon size={18} /> {busy ? t('common.loading') : (item.type === 'driver' ? t('cta.talk_to_driver') : t('cta.book_now'))}
+                {busy ? t('common.loading') : (item.type === 'driver' ? t('cta.talk_to_driver') : t('cta.book_now'))} <CtaIcon size={18} />
               </button>
               {msg && <p data-testid="booking-msg" className="text-sm text-center text-pine font-semibold">{msg}</p>}
             </div>

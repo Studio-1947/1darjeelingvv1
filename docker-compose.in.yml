@@ -1,0 +1,105 @@
+# Production stack for 1darjeeling.in — the SECOND isolated stack on this VPS,
+# running ALONGSIDE the existing 1darjeeling-prod stack (onedarjeeling.duckdns.org,
+# docker-compose.prod.yml). The two stacks share NOTHING: distinct compose project
+# name, container names, volumes, and host port. That isolation is the whole reason
+# a bad deploy of one stack cannot touch the other's data or uptime.
+#
+# Deployed automatically from the `prod` branch by .github/workflows/deploy-prod.yml.
+# ALWAYS pass `-f docker-compose.in.yml` for this stack: a bare `docker compose` in
+# this directory picks up the dev docker-compose.yml, and `-f docker-compose.prod.yml`
+# is the OTHER production stack.
+#
+# Why an explicit `name:` AND distinct container/volume names (same reasoning as
+# docker-compose.prod.yml): Compose derives a project name from the directory by
+# default, so two compose files in the same folder with a same-named service are
+# tracked as the SAME resource regardless of container_name. The `name:` below is
+# what actually keeps this stack's resources separate; the distinct container and
+# volume names are defense-in-depth on top of it. (container_name is a GLOBAL Docker
+# namespace, not project-scoped, so distinct container names are mandatory, not
+# optional.)
+#
+# Like the other stack, nginx here is bound to 127.0.0.1 only — the VPS's system
+# Nginx + Certbot terminates TLS for 1darjeeling.in and reverse-proxies to this
+# container's loopback port (8092). See deploy/VPS-RUNBOOK.md.
+name: 1darjeeling-in
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: 1darjeeling_in_postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    volumes:
+      - pg_data_in:/var/lib/postgresql/data
+    # Lets `depends_on: condition: service_healthy` below actually mean "Postgres is accepting
+    # connections", not merely "the container was started".
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: 1darjeeling_in_backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      # Computed here (not hand-duplicated in .env) so Postgres credentials
+      # only ever live in one place.
+      - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+    # Bare `depends_on` only waits for the container to start, not for Postgres/MinIO to be ready —
+    # so the backend's schema sync or first bucket bootstrap could fire before either is up.
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+
+  minio:
+    image: minio/minio:latest
+    container_name: 1darjeeling_in_minio
+    restart: unless-stopped
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
+    # No `ports:` on purpose — MinIO is internal-only. The backend reaches it over the
+    # compose network (MINIO_ENDPOINT=http://minio:9000 in .env); the PUBLIC bucket is
+    # served through nginx (deploy/nginx/app.conf), and the PRIVATE KYC bucket is never
+    # exposed. See docker-compose.prod.yml / VPS-RUNBOOK.md §8 for the full rationale.
+    volumes:
+      - minio_data_in:/data
+    command: server /data --console-address ":9001"
+    # MinIO exposes a liveness probe on its API port; used so `depends_on: condition:
+    # service_healthy` above means "MinIO is actually accepting S3 calls", not just "started".
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  nginx:
+    build:
+      context: .
+      dockerfile: deploy/nginx/Dockerfile
+    container_name: 1darjeeling_in_nginx
+    restart: unless-stopped
+    ports:
+      # Loopback-only — the VPS system Nginx proxy_passes 1darjeeling.in here.
+      # Change the host port (left of the colon) if 8092 is ever taken (verify with `sudo ss -tlnp | grep 8092`).
+      - "127.0.0.1:8092:80"
+    depends_on:
+      - backend
+      - minio
+
+volumes:
+  pg_data_in:
+  minio_data_in:

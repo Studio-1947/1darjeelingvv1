@@ -70,4 +70,43 @@ describe('computeCompletion', () => {
     const r = computeCompletion(richProfile, docs); // gst_certificate + fssai_license optional, absent
     expect(r.completionPercent).toBe(100);
   });
+
+  it('marks photos and description done when present in extras or listings', () => {
+    const r = computeCompletion(
+      {
+        businessType: 'homestay',
+        description: '',
+        images: [],
+        priceFrom: 500,
+        latitude: 27.0,
+        longitude: 88.2,
+        extras: { images: ['gallery1.jpg'], host_bio: 'A lovely homestay nestled in Darjeeling hills' },
+      },
+      []
+    );
+    expect(r.checklist.find(c => c.key === 'photos')?.state).toBe('done');
+    expect(r.checklist.find(c => c.key === 'description')?.state).toBe('done');
+  });
+
+  it('omits the map-pin item for drivers, who are never offered a location picker', () => {
+    const driver: ProfileInput = {
+      businessType: 'driver',
+      description: 'x'.repeat(60),
+      images: ['a.jpg'],
+      priceFrom: 2500,
+      latitude: null,
+      longitude: null,
+    };
+    const r = computeCompletion(driver, []);
+    expect(r.checklist.find(c => c.key === 'location')).toBeUndefined();
+    // Without the unreachable item, the three real checks are the whole
+    // profile portion, so a complete driver profile scores the full 40%.
+    expect(r.completionPercent).toBe(40);
+  });
+
+  it('keeps the map-pin item for non-driver types', () => {
+    const r = computeCompletion({ ...richProfile, latitude: null, longitude: null }, []);
+    expect(r.checklist.find(c => c.key === 'location')?.state).toBe('missing');
+    expect(r.completionPercent).toBe(30);
+  });
 });

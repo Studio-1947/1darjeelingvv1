@@ -8,7 +8,7 @@ import {
 export type Amenity = { Icon: any; label: string };
 
 /**
- * Listings only carry `tags` — there is no amenities column. We map known tags to
+ * Listings only carry `tags` - there is no amenities column. We map known tags to
  * icons and top up with type-level defaults so every listing has a filled-out
  * "what it offers" grid. Anything a listing explicitly sets in
  * `extras.amenities` (string[]) wins over both.
@@ -118,7 +118,7 @@ export function hostFor(item: any) {
   return {
     name,
     initial: name.trim().charAt(0).toUpperCase(),
-    // The "Verified" chip must reflect the real KYC signal, not merely "has a provider row" —
+    // The "Verified" chip must reflect the real KYC signal, not merely "has a provider row" -
     // isRealProvider stays in use above for the name fallback, which is a separate concern.
     verified: !!item?.provider_verified,
     phone: e.host_phone || e.contact_phone || '',
@@ -136,7 +136,7 @@ export function areaNoteFor(type: string): string {
     case 'driver':
       return 'Your driver picks you up anywhere in and around this area.';
     case 'event':
-      return 'Timings vary by year — confirm locally before you travel.';
+      return 'Timings vary by year - confirm locally before you travel.';
     case 'biodiversity':
       return 'A protected habitat. Visit with a registered guide and keep your distance.';
     default:
