@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Search, MapPin, Calendar, Users, Home as HomeIcon, Car, Sparkles } from 'lucide-react';
+import { Search, MapPin, Navigation, Calendar, Users, Home as HomeIcon, Car, Sparkles } from 'lucide-react';
 
 /**
  * MakeMyTrip-inspired booking widget with tabs.
@@ -11,6 +11,10 @@ export default function BookingWidget() {
   const nav = useNavigate();
   const [tab, setTab] = useState('stay');
   const [q, setQ] = useState('');
+  // Drivers sell a journey, not a place, so that tab asks for both ends of the
+  // route instead of a single destination.
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
   const [checkIn, setCheckIn] = useState('');
   const [checkOut, setCheckOut] = useState('');
   const [guests, setGuests] = useState(2);
@@ -68,6 +72,23 @@ export default function BookingWidget() {
   const submit = (e) => {
     e.preventDefault();
     const active = tabs.find((x) => x.key === tab);
+
+    if (tab === 'driver') {
+      const a = from.trim();
+      const b = to.trim();
+      if (!a && !b) return nav(active.target);
+      // Both ends are kept in the URL so the intent survives the navigation,
+      // but only one can actually filter today: the listings API matches a
+      // single `q` against title/description/location and never looks at
+      // extras.routes, so a true origin+destination route search needs backend
+      // support. Destination is the more useful of the two to match on.
+      const params = new URLSearchParams();
+      if (a) params.set('from', a);
+      if (b) params.set('to', b);
+      params.set('q', b || a);
+      return nav(`${active.target}?${params}`);
+    }
+
     if (q.trim()) nav(`/search?q=${encodeURIComponent(q.trim())}`);
     else nav(active.target);
   };
@@ -109,19 +130,53 @@ export default function BookingWidget() {
                    shadow-[0_20px_50px_-30px_rgba(20,32,26,0.35)]
                    p-4 md:p-5 space-y-3 md:space-y-0 md:grid md:grid-cols-12 md:gap-3 md:items-end"
       >
-        <label className="block md:col-span-5">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-ink-soft">{t('widget.destination')}</span>
-          <div className="mt-1 flex items-center gap-2 border border-[var(--line)] rounded-2xl px-3 py-2.5 md:py-3">
-            <MapPin size={16} className="text-ink-soft flex-shrink-0" />
-            <input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder={t('widget.destination_placeholder')}
-              data-testid="booking-widget-destination"
-              className="flex-1 min-w-0 bg-transparent outline-none text-sm md:text-base"
-            />
-          </div>
-        </label>
+        {tab !== 'driver' && (
+          <label className="block md:col-span-5">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-ink-soft">{t('widget.destination')}</span>
+            <div className="mt-1 flex items-center gap-2 border border-[var(--line)] rounded-2xl px-3 py-2.5 md:py-3">
+              <MapPin size={16} className="text-ink-soft flex-shrink-0" />
+              <input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder={t('widget.destination_placeholder')}
+                data-testid="booking-widget-destination"
+                className="flex-1 min-w-0 bg-transparent outline-none text-sm md:text-base"
+              />
+            </div>
+          </label>
+        )}
+
+        {tab === 'driver' && (
+          <>
+            <label className="block md:col-span-3">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-ink-soft">{t('widget.from')}</span>
+              <div className="mt-1 flex items-center gap-2 border border-[var(--line)] rounded-2xl px-3 py-2.5 md:py-3">
+                <MapPin size={16} className="text-ink-soft flex-shrink-0" />
+                <input
+                  value={from}
+                  onChange={(e) => setFrom(e.target.value)}
+                  placeholder={t('widget.from_placeholder')}
+                  data-testid="booking-widget-from"
+                  className="flex-1 min-w-0 bg-transparent outline-none text-sm md:text-base"
+                />
+              </div>
+            </label>
+
+            <label className="block md:col-span-3">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-ink-soft">{t('widget.to')}</span>
+              <div className="mt-1 flex items-center gap-2 border border-[var(--line)] rounded-2xl px-3 py-2.5 md:py-3">
+                <Navigation size={16} className="text-ink-soft flex-shrink-0" />
+                <input
+                  value={to}
+                  onChange={(e) => setTo(e.target.value)}
+                  placeholder={t('widget.to_placeholder')}
+                  data-testid="booking-widget-to"
+                  className="flex-1 min-w-0 bg-transparent outline-none text-sm md:text-base"
+                />
+              </div>
+            </label>
+          </>
+        )}
 
         {tab === 'stay' && (
           <div ref={dateRef} className="block md:col-span-4 relative">
@@ -171,7 +226,8 @@ export default function BookingWidget() {
         )}
 
         {tab === 'driver' && (
-          <label className="block md:col-span-4">
+          /* 3 + 3 (from/to) + 3 + 2 (guests) + 1 (button) = the 12-col row */
+          <label className="block md:col-span-3">
             <span className="text-[11px] font-bold uppercase tracking-wider text-ink-soft">{t('widget.date')}</span>
             <div className="mt-1 flex items-center gap-2 border border-[var(--line)] rounded-2xl px-3 py-2.5 md:py-3">
               <Calendar size={16} className="text-ink-soft flex-shrink-0" />

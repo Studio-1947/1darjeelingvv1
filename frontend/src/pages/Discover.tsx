@@ -123,8 +123,7 @@ export default function Discover() {
         </div>
         <div className="relative z-10 mx-auto max-w-6xl px-4 md:px-6 pt-[calc(var(--header-h)+5rem)] md:pt-[calc(var(--header-h)+9rem)] pb-20 md:pb-32">
           <div className="text-white max-w-2xl">
-            <span className="chip bg-white/20 !text-black backdrop-blur border border-white/30">{t('hero.eyebrow')}</span>
-            <h1 className="mt-4 font-display font-extrabold text-[2.3rem] leading-[1.05] sm:text-5xl md:text-6xl tracking-tight drop-shadow-lg">
+            <h1 className="font-display font-extrabold text-[2.3rem] leading-[1.05] sm:text-5xl md:text-6xl tracking-tight drop-shadow-lg">
               {t('hero.title_1')}<br />{t('hero.title_2')}
             </h1>
             <p className="mt-3 md:mt-4 text-white/95 text-sm md:text-lg max-w-lg drop-shadow">{t('hero.subtitle')}</p>

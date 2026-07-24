@@ -12,9 +12,9 @@ import React from 'react';
 export default function Logo({ className = '', alt = '' }: { className?: string; alt?: string }) {
   return (
     <img
-      src="/logo-mark.webp"
+      src="/logo.svg"
       alt={alt}
-      width={64}
+      width={74}
       height={64}
       className={`object-contain ${className}`}
     />
