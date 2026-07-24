@@ -392,7 +392,11 @@
     "guest_count_one": "{{count}} मेहमान",
     "guest_count_other": "{{count}} मेहमान",
     "number_of_guests": "मेहमानों की संख्या",
-    "search": "खोजें"
+    "search": "खोजें",
+    "from": "कहाँ से",
+    "to": "कहाँ तक",
+    "from_placeholder": "पिकअप स्थान",
+    "to_placeholder": "कहाँ जाना है?"
   },
   "category": {
     "search": "खोज",

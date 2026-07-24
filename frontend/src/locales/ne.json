@@ -392,7 +392,11 @@
     "guest_count_one": "{{count}} पाहुना",
     "guest_count_other": "{{count}} पाहुना",
     "number_of_guests": "पाहुनाको संख्या",
-    "search": "खोज्नुहोस्"
+    "search": "खोज्नुहोस्",
+    "from": "कहाँबाट",
+    "to": "कहाँसम्म",
+    "from_placeholder": "पिकअप स्थान",
+    "to_placeholder": "कहाँ जाने?"
   },
   "category": {
     "search": "खोज",
