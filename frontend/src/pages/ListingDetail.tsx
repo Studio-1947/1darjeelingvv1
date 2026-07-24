@@ -48,7 +48,7 @@ export default function ListingDetail() {
         await navigator.share({ title: item.title, text: item.description, url });
         return 'shared';
       } catch (e: any) {
-        // The user dismissing the native share sheet throws AbortError — that's a deliberate
+        // The user dismissing the native share sheet throws AbortError - that's a deliberate
         // cancel, not a failure, so don't silently fall back to copying the link behind their back.
         if (e?.name === 'AbortError') return 'shared';
         console.warn('share failed', e);
@@ -82,11 +82,11 @@ export default function ListingDetail() {
   const gallery = galleryImagesFor(item);
   const personSrc = host.avatar || personImageFor(item);
   // Drivers show the same photo here as the hero, so the face you scrolled past
-  // is the face you meet — no second stock person.
+  // is the face you meet - no second stock person.
   const driverSrc = listingImage(item, 600, 600);
   // Driver titles read "Tenzing - Local Taxi Driver"; the heading wants the
   // person, not the role, so keep only what precedes the dash.
-  const driverName = (item.title || '').split(/\s+[-–—]\s+/)[0].trim();
+  const driverName = (item.title || '').split(/\s+[-–-]\s+/)[0].trim();
   const offersTitle = item.type === 'driver' && driverName
     ? t('detail.offers_by', { name: driverName })
     : t('detail.offers');
@@ -136,7 +136,7 @@ export default function ListingDetail() {
         open={!!booking.payModal}
         onClose={() => booking.setPayModal(null)}
         amount={booking.payModal?.amount || 0}
-        title="Confirm booking payment"
+        title={t('booking.pay_confirm')}
         description={booking.payModal?.description || ''}
         onPay={booking.finishMockPayment}
         prefill={{ upi: `${(booking.user?.name || 'traveller').toLowerCase().replace(/\s+/g, '')}@ybl` }}

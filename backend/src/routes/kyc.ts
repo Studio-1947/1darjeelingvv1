@@ -66,6 +66,10 @@ export async function recomputeKycStatus(providerId: string): Promise<string> {
   const [provider] = await db.select().from(schema.providers).where(eq(schema.providers.id, providerId)).limit(1);
   if (!provider) return 'none';
   const docs = await db.select().from(schema.kycDocuments).where(eq(schema.kycDocuments.providerId, providerId));
+  const providerListings = await db.select().from(schema.listings).where(eq(schema.listings.providerId, providerId));
+  const hasListingImage = providerListings.some(l => !!l.image || (Array.isArray(l.extras?.images) && l.extras.images.length > 0));
+  const hasListingDescription = providerListings.some(l => !!l.description && l.description.trim().length >= 20);
+
   const { kycStatus } = computeCompletion(
     {
       businessType: provider.businessType,
@@ -74,6 +78,9 @@ export async function recomputeKycStatus(providerId: string): Promise<string> {
       priceFrom: provider.priceFrom,
       latitude: provider.latitude,
       longitude: provider.longitude,
+      extras: provider.extras,
+      hasListingImage,
+      hasListingDescription,
     },
     docs.map(d => ({ docType: d.docType, status: d.status as any }))
   );
@@ -86,6 +93,10 @@ router.get('/me/profile', authenticateToken, async (req: Request, res: Response)
   const provider = await ownActiveProvider(req.user.id);
   if (!provider) return res.status(404).json({ detail: 'No active provider profile' });
   const docs = await db.select().from(schema.kycDocuments).where(eq(schema.kycDocuments.providerId, provider.id));
+  const providerListings = await db.select().from(schema.listings).where(eq(schema.listings.providerId, provider.id));
+  const hasListingImage = providerListings.some(l => !!l.image || (Array.isArray(l.extras?.images) && l.extras.images.length > 0));
+  const hasListingDescription = providerListings.some(l => !!l.description && l.description.trim().length >= 20);
+
   const { completionPercent, checklist, kycStatus } = computeCompletion(
     {
       businessType: provider.businessType,
@@ -94,6 +105,9 @@ router.get('/me/profile', authenticateToken, async (req: Request, res: Response)
       priceFrom: provider.priceFrom,
       latitude: provider.latitude,
       longitude: provider.longitude,
+      extras: provider.extras,
+      hasListingImage,
+      hasListingDescription,
     },
     docs.map(d => ({ docType: d.docType, status: d.status as any }))
   );

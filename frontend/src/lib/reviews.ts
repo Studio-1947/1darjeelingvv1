@@ -7,6 +7,7 @@ export interface Review {
   rating: number;
   comment: string;
   author_name: string;
+  photos?: string[];
   created_at: string;
   updated_at: string | null;
 }
@@ -21,8 +22,8 @@ export async function fetchReviews(listingId: string): Promise<{ summary: Review
   return { summary: data.summary || { count: 0, average: 0 }, reviews: data.reviews || [] };
 }
 
-export async function postReview(listingId: string, rating: number, comment: string): Promise<Review> {
-  const { data } = await api.post('/reviews', { listing_id: listingId, rating, comment });
+export async function postReview(listingId: string, rating: number, comment: string, photos: string[] = []): Promise<Review> {
+  const { data } = await api.post('/reviews', { listing_id: listingId, rating, comment, photos });
   return data.review;
 }
 

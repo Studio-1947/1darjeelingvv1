@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Phone, MessageCircle, XCircle, Loader2 } from 'lucide-react';
 import { StatusPill } from './widgets';
 
 /** One booking in the provider's list: guest, dates, and contact + cancel actions. */
 export default function BookingCard({ b, onCancel }: { b: any; onCancel?: (id: string) => Promise<void> | void }) {
+  const { t, i18n } = useTranslation();
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -30,13 +32,13 @@ export default function BookingCard({ b, onCancel }: { b: any; onCancel?: (id: s
         <div className="flex items-start justify-between gap-2">
           <div>
             <div className="font-display font-bold text-ink text-base leading-tight line-clamp-1">{b.listing?.title || b.listing_title}</div>
-            <div className="text-xs text-ink-soft mt-0.5">{b.customer?.name || 'Tourist'} · {b.customer?.phone}</div>
+            <div className="text-xs text-ink-soft mt-0.5">{b.customer?.name || t('pd.guest_fallback')} · {b.customer?.phone}</div>
           </div>
           <StatusPill status={b.status} />
         </div>
         <div className="mt-2 text-xs text-ink-soft space-y-0.5">
-          {b.check_in && <div>Check-in: <b className="text-ink">{b.check_in}</b>{b.check_out && <> → <b className="text-ink">{b.check_out}</b></>}</div>}
-          <div>Guests: <b className="text-ink">{b.guests}</b> · Placed: {new Date(b.created_at).toLocaleDateString()}</div>
+          {b.check_in && <div>{t('booking.checkin')}: <b className="text-ink">{b.check_in}</b>{b.check_out && <> → <b className="text-ink">{b.check_out}</b></>}</div>}
+          <div>{t('booking.guests')}: <b className="text-ink">{b.guests}</b> · {t('pd.placed')}: {new Date(b.created_at).toLocaleDateString(i18n.language)}</div>
           {b.notes && <div className="italic">“{b.notes}”</div>}
         </div>
         <div className="mt-3 flex flex-wrap gap-2">
@@ -45,31 +47,31 @@ export default function BookingCard({ b, onCancel }: { b: any; onCancel?: (id: s
             data-testid={`booking-call-${b.id}`}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-pine text-white font-bold text-xs btn-hover"
           >
-            <Phone size={12} /> Call
+            <Phone size={12} /> {t('pd.call')}
           </a>
           <a
-            href={`https://wa.me/${(b.customer?.phone || '').replace(/\D/g, '')}?text=${encodeURIComponent(`Hi ${b.customer?.name || ''}, this is regarding your booking for ${b.listing?.title || ''} on 1 Darjeeling.`)}`}
+            href={`https://wa.me/${(b.customer?.phone || '').replace(/\D/g, '')}?text=${encodeURIComponent(t('pd.wa_guest_message', { name: b.customer?.name || '', listing: b.listing?.title || '' }))}`}
             target="_blank"
             rel="noreferrer"
             data-testid={`booking-wa-${b.id}`}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#25D366] text-white font-bold text-xs btn-hover"
           >
-            <MessageCircle size={12} /> WhatsApp
+            <MessageCircle size={12} /> {t('contact.whatsapp')}
           </a>
           {onCancel && b.status !== 'cancelled' && (
             confirming ? (
               <span className="inline-flex items-center gap-2 text-xs pl-1">
-                <span className="text-ink-soft">Cancel this booking?</span>
+                <span className="text-ink-soft">{t('pd.cancel_booking_confirm')}</span>
                 <button onClick={doCancel} disabled={busy} data-testid={`booking-cancel-yes-${b.id}`}
                   className="inline-flex items-center gap-1 font-bold text-flag disabled:opacity-50">
-                  {busy ? <Loader2 size={12} className="animate-spin" /> : null} Yes
+                  {busy ? <Loader2 size={12} className="animate-spin" /> : null} {t('common.yes')}
                 </button>
-                <button onClick={() => setConfirming(false)} className="font-bold text-ink-soft">No</button>
+                <button onClick={() => setConfirming(false)} className="font-bold text-ink-soft">{t('common.no')}</button>
               </span>
             ) : (
               <button onClick={() => setConfirming(true)} data-testid={`booking-cancel-${b.id}`}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-flag/40 text-flag font-bold text-xs btn-hover">
-                <XCircle size={12} /> Decline
+                <XCircle size={12} /> {t('pd.decline')}
               </button>
             )
           )}

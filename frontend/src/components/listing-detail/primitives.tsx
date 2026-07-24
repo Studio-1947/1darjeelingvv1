@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 
-// The site header is sticky (h-14 mobile / h-16 desktop), so a "full screen"
-// section is the viewport minus that, or each one would sit past the fold.
-export const SCREEN_H = 'min-h-[calc(100svh-3.5rem)] md:min-h-[calc(100svh-4rem)]';
+// The site header is sticky, so a "full screen" section is the viewport minus
+// its height, or each one would sit past the fold. --header-h tracks the real
+// height (the header carries the circular category rail).
+export const SCREEN_H = 'min-h-[calc(100svh-var(--header-h))]';
 
 /** Full-viewport section with a centred column. Each part gets its own screen. */
 export function Screen({ tone = 'bg', wide = false, children, testid }: {
@@ -36,7 +37,7 @@ export function SectionHead({ label, title, note }: { label: string; title: stri
   );
 }
 
-/** Real photo if it loads, otherwise the branded initial — never a broken face. */
+/** Real photo if it loads, otherwise the branded initial - never a broken face. */
 export function Avatar({ photo, initial }: { photo?: string; initial: string }) {
   const [failed, setFailed] = useState(false);
   const base = 'w-36 h-36 md:w-44 md:h-44 rounded-full overflow-hidden mx-auto shadow-lg ring-4 ring-white';
