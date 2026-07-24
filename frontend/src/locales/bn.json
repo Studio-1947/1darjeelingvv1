@@ -392,7 +392,11 @@
     "guest_count_one": "{{count}} জন অতিথি",
     "guest_count_other": "{{count}} জন অতিথি",
     "number_of_guests": "অতিথির সংখ্যা",
-    "search": "খুঁজুন"
+    "search": "খুঁজুন",
+    "from": "কোথা থেকে",
+    "to": "কোথায়",
+    "from_placeholder": "পিকআপ স্থান",
+    "to_placeholder": "কোথায় যাবেন?"
   },
   "category": {
     "search": "অনুসন্ধান",

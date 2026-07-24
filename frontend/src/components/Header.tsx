@@ -96,14 +96,13 @@ export default function Header() {
           </div>
         </Link>
 
-        {/* Category rail - the app's primary browse control, sitting inline in
-            the bar where the search box used to be. It sets the header height
-            (see --header-h); the row scrolls sideways rather than wrapping. */}
+        {/* Category rail - desktop only. Below lg the categories live in the
+            bottom tab bar instead, so the header there is just brand + menu. */}
         {showCategories ? (
           <nav
             aria-label={t('nav.categories')}
             data-testid="header-categories"
-            className="flex-1 min-w-0"
+            className="hidden lg:block flex-1 min-w-0"
           >
             {/* This element is the scroll container, so on phones the white
                 pill stays pinned to the viewport while the icons slide inside
@@ -206,7 +205,9 @@ export default function Header() {
 
         {/* Compact menu - tablet and below. Holds the language switcher and the
             auth actions that the desktop bar shows inline. */}
-        <div className="relative lg:hidden flex-shrink-0" ref={menuRef}>
+        {/* ml-auto pins this to the right edge now that the rail no longer
+            fills the row below lg. */}
+        <div className="relative lg:hidden flex-shrink-0 ml-auto" ref={menuRef}>
           <button
             onClick={() => setMenuOpen(!menuOpen)}
             data-testid="header-menu"

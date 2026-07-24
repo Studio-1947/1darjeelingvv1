@@ -1,53 +1,63 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Home, Compass, User } from 'lucide-react';
-import TeaLeaf from '@/components/icons/TeaLeaf';
-import Binoculars from '@/components/icons/Binoculars';
 import { useTranslation } from 'react-i18next';
-import { useAuth } from '@/context/AuthContext';
+import { CATEGORIES } from '@/constants/categories';
 
 /**
- * Instagram-style mobile bottom tab bar.
+ * Mobile bottom tab bar - the app's primary browse control below `lg`.
+ *
+ * The seven categories used to sit in the header rail, which forced the bar to
+ * carry a sideways-scrolling pill on phones. Down here they get a fixed grid
+ * that needs no scrolling, and the header keeps only the brand and the menu.
+ * Above `lg` this is hidden and the header rail takes over again.
+ *
+ * Labels come from `nav.*` rather than `categories.*`: at a seventh of a 360px
+ * screen the longer editorial names ("Tourism spots", "Local shops") ellipsise
+ * to nothing useful, while the short forms fit.
  */
+const NAV_LABEL_KEY: Record<string, string> = {
+  spot: 'spots',
+  homestay: 'homestays',
+  driver: 'drivers',
+  shop: 'shops',
+  cafe: 'cafes',
+  event: 'events',
+  biodiversity: 'biodiversity',
+};
+
 export default function BottomNav() {
   const { t } = useTranslation();
-  const { user } = useAuth();
-
-  const items = [
-    { to: '/', label: t('nav.discover'), Icon: Binoculars, testid: 'bottom-nav-home', end: true },
-    { to: '/spots', label: t('nav.spots'), Icon: Compass, testid: 'bottom-nav-explore' },
-    { to: '/homestays', label: t('nav.homestays'), Icon: Home, testid: 'bottom-nav-book' },
-    { to: '/responsible', label: t('nav.green'), Icon: TeaLeaf, testid: 'bottom-nav-saved' },
-    { to: user ? (user.role === 'provider' ? '/provider/dashboard' : '/dashboard') : '/login', label: user ? (user.name?.split(' ')[0] || t('nav.me')) : t('nav.login'), Icon: User, testid: 'bottom-nav-profile' },
-  ];
 
   return (
     <nav
       data-testid="bottom-nav"
+      aria-label={t('nav.categories')}
       className="lg:hidden fixed bottom-0 inset-x-0 z-30 bg-white border-t border-[var(--line)]"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
-      <div className="grid grid-cols-5">
-        {items.map(({ to, label, Icon, testid, end }) => (
-          <NavLink
-            key={testid}
-            to={to}
-            end={end}
-            data-testid={testid}
-            className={({ isActive }) =>
-              `flex flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-semibold ${
-                isActive ? 'text-flag' : 'text-ink-soft'
-              }`
-            }
-          >
-            {({ isActive }) => (
-              <>
-                <Icon size={20} strokeWidth={isActive ? 2.6 : 2} />
-                <span className="truncate max-w-[70px]">{label}</span>
-              </>
-            )}
-          </NavLink>
-        ))}
+      <div className="grid grid-cols-7">
+        {CATEGORIES.map(({ key, to, Icon }) => {
+          const label = t(`nav.${NAV_LABEL_KEY[key]}`);
+          return (
+            <NavLink
+              key={key}
+              to={to}
+              data-testid={`bottom-nav-${key}`}
+              className={({ isActive }) =>
+                `flex flex-col items-center justify-center gap-0.5 py-2 min-w-0 text-[10px] font-semibold ${
+                  isActive ? 'text-flag' : 'text-ink-soft'
+                }`
+              }
+            >
+              {({ isActive }) => (
+                <>
+                  <Icon size={20} strokeWidth={isActive ? 2.6 : 2} className="flex-shrink-0" />
+                  <span className="truncate max-w-full px-0.5">{label}</span>
+                </>
+              )}
+            </NavLink>
+          );
+        })}
       </div>
     </nav>
   );

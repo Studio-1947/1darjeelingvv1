@@ -393,7 +393,11 @@
     "guest_count_one": "{{count}} Guest",
     "guest_count_other": "{{count}} Guests",
     "number_of_guests": "Number of Guests",
-    "search": "Search"
+    "search": "Search",
+    "from": "From",
+    "to": "To",
+    "from_placeholder": "Pickup point",
+    "to_placeholder": "Where to?"
   },
   "category": {
     "search": "Search",
