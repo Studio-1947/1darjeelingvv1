@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import api, { createPaymentOrder, completeMockPayment, payWithRazorpay } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { uploadImage, uploadImages } from '@/lib/uploadImage';
+import { RouteFare, startingPriceFrom } from '@/lib/routeFares';
 
 /**
  * All state and side effects for provider onboarding: the multi-step form,
@@ -19,6 +20,8 @@ export function useProviderOnboard() {
     business_type: 'homestay',
     description: '',
     location: '',
+    latitude: null as number | null,
+    longitude: null as number | null,
     contact_phone: '',
     price_from: '',
     image_url: '',
@@ -36,11 +39,16 @@ export function useProviderOnboard() {
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
-  // Driver-specific
+  // Driver & Host profile fields
+  const [carModel, setCarModel] = useState('');
+  const [gender, setGender] = useState<'male' | 'female' | 'other'>('male');
   const [vehicleType, setVehicleType] = useState('');
-  const [routes, setRoutes] = useState<string[]>([]);
+  // Drivers price each route separately (an airport transfer is a flat fare, a
+  // sightseeing circuit a day rate), so there is no single rate field for them -
+  // `price_from` is derived as the cheapest quoted route.
+  const [routes, setRoutes] = useState<RouteFare[]>([]);
 
-  // Extra photos — only one gallery exists per business type
+  // Extra photos - only one gallery exists per business type
   // (driver trips, or cafe/shop interiors; homestays add theirs post-launch).
   const [gallery, setGallery] = useState<string[]>([]);
 
@@ -107,19 +115,26 @@ export function useProviderOnboard() {
     setBusy(true);
     setMsg('');
     const isDriver = form.business_type === 'driver';
+    // A driver's headline price is whatever their cheapest route costs, so the
+    // public "₹X onwards" can never drift from the per-route fares they set.
+    const priceFrom = isDriver ? startingPriceFrom(routes) : Number(form.price_from) || 0;
     try {
       const { data } = await api.post('/providers/onboard', {
         business_name: form.business_name,
         business_type: form.business_type,
         description: form.description || `Welcome to ${form.business_name}`,
         location: form.location || 'Darjeeling',
+        latitude: form.latitude,
+        longitude: form.longitude,
         contact_phone: form.contact_phone || user.phone,
-        price_from: Number(form.price_from) || 0,
+        price_from: priceFrom,
         images: form.image_url ? [form.image_url] : [],
         extras: isDriver
           ? {
               host_avatar: form.host_avatar || '',
               vehicle_type: vehicleType,
+              car_model: carModel,
+              gender,
               routes,
               images: gallery,
               contact_phone: form.contact_phone || user.phone,
@@ -127,6 +142,7 @@ export function useProviderOnboard() {
           : (form.business_type === 'cafe' || form.business_type === 'shop')
           ? {
               address: form.address || '',
+              gender,
               amenities: selectedAmenities,
               tags: selectedTags,
               images: gallery,
@@ -136,11 +152,13 @@ export function useProviderOnboard() {
               host_name: form.host_name || form.business_name.split(' ')[0] || 'Host',
               host_bio: form.host_bio || 'Your local host welcomes you to Darjeeling.',
               languages: form.languages.split(',').map((s) => s.trim()).filter(Boolean),
+              gender,
               contact_phone: form.contact_phone || user.phone,
               host_avatar: form.host_avatar || '',
               address: form.address || '',
               amenities: selectedAmenities,
               tags: selectedTags,
+              images: gallery,
             },
       });
       const providerId = data.provider.id;
@@ -192,8 +210,11 @@ export function useProviderOnboard() {
     confirm, setConfirm,
     selectedAmenities, setSelectedAmenities,
     selectedTags, setSelectedTags,
+    carModel, setCarModel,
+    gender, setGender,
     vehicleType, setVehicleType,
     routes, setRoutes,
+    routeStartingPrice: startingPriceFrom(routes),
     gallery, setGallery,
     uploading, uploadingHostPic, uploadingGallery,
     handleCoverUpload, handleHostAvatarUpload, handleGalleryUpload,

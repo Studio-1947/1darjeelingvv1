@@ -9,7 +9,7 @@ const LANGS = [
   { code: 'ne', label: 'नेपाली' },
 ];
 
-export default function LanguageSwitcher() {
+export default function LanguageSwitcher({ onDark = false }) {
   const { i18n } = useTranslation();
   const [open, setOpen] = React.useState(false);
   const ref = React.useRef(null);
@@ -26,7 +26,7 @@ export default function LanguageSwitcher() {
       <button
         data-testid="language-switcher"
         onClick={() => setOpen(!open)}
-        className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-full border border-[var(--line)] text-sm font-semibold text-ink btn-hover"
+        className={`inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-full border text-sm font-semibold btn-hover transition-colors ${onDark ? 'border-white/30 bg-white/10 backdrop-blur-md text-white' : 'border-[var(--line)] text-ink'}`}
         aria-label={current.label}
       >
         {/* Narrow screens show the code so the header search keeps its width. */}

@@ -11,7 +11,7 @@ const DARJEELING: [number, number] = [27.041, 88.2627];
 const PICK_ZOOM = 16;
 
 // Well-known places across the Darjeeling hills, offered as instant
-// suggestions — the geocoder often can't resolve informal addresses, so owners
+// suggestions - the geocoder often can't resolve informal addresses, so owners
 // can jump to the nearest landmark and drag the pin from there. Coordinates
 // are approximate on purpose; the pin is the source of truth.
 const LANDMARKS: Array<{ name: string; lat: number; lon: number }> = [
@@ -54,7 +54,7 @@ interface SearchResult {
 interface LocationPickerProps {
   initialLat?: number | null;
   initialLng?: number | null;
-  onLocationSelect: (lat: number, lng: number) => void;
+  onLocationSelect: (lat: number, lng: number, placeName?: string) => void;
   className?: string;
 }
 
@@ -67,7 +67,7 @@ function ClickToPlace({ onPlace }: { onPlace: (ll: LatLng) => void }) {
 /**
  * Map-based location picker for provider onboarding. Address geocoding is
  * unreliable for informal hill-town addresses, so the geocoder search is only
- * a shortcut to get close — the pin (drag, or tap the map) is the source of
+ * a shortcut to get close - the pin (drag, or tap the map) is the source of
  * truth for the exact coordinates.
  */
 export default function LocationPicker({ initialLat, initialLng, onLocationSelect, className = '' }: LocationPickerProps) {
@@ -92,12 +92,12 @@ export default function LocationPicker({ initialLat, initialLng, onLocationSelec
   const mapRef = useRef<LeafletMap | null>(null);
   const markerRef = useRef<LeafletMarker | null>(null);
   // Suppresses the debounced search when we set the input text ourselves
-  // after a result is picked — otherwise the dropdown immediately reopens.
+  // after a result is picked - otherwise the dropdown immediately reopens.
   const pickedRef = useRef(false);
 
-  const place = (lat: number, lng: number, recenter = false) => {
+  const place = (lat: number, lng: number, recenter = false, placeName?: string) => {
     setPos([lat, lng]);
-    onLocationSelect(lat, lng);
+    onLocationSelect(lat, lng, placeName);
     if (recenter) mapRef.current?.flyTo([lat, lng], Math.max(mapRef.current.getZoom(), PICK_ZOOM));
   };
 
@@ -129,12 +129,12 @@ export default function LocationPicker({ initialLat, initialLng, onLocationSelec
     setQuery(r.display_name);
     setResults([]);
     setOpen(false);
-    place(r.lat, r.lon, true);
+    place(r.lat, r.lon, true, r.display_name);
   };
 
   return (
     <div className={className}>
-      {/* Address search (approximate — the pin is what gets saved) */}
+      {/* Address search (approximate - the pin is what gets saved) */}
       <div className="relative">
         <div className="relative">
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-soft" />
@@ -187,7 +187,7 @@ export default function LocationPicker({ initialLat, initialLng, onLocationSelec
         {searchMsg && landmarkMatches.length === 0 && <p className="mt-1 text-xs text-ink-soft">{searchMsg}</p>}
       </div>
 
-      {/* Map — z-0 stacking context so Leaflet's controls stay under the site header */}
+      {/* Map - z-0 stacking context so Leaflet's controls stay under the site header */}
       <div className="relative z-0 mt-3 rounded-2xl border border-[var(--line)] overflow-hidden">
         <MapContainer
           ref={mapRef}

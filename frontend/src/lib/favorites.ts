@@ -15,7 +15,7 @@ export interface SavedListing {
   [key: string]: any;
 }
 
-/** Just the listing ids the current user has saved — used to reflect save-button state everywhere. */
+/** Just the listing ids the current user has saved - used to reflect save-button state everywhere. */
 export async function fetchFavoriteIds(): Promise<string[]> {
   const { data } = await api.get('/favorites/ids');
   return data.ids || [];

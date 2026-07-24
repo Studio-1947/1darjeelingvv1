@@ -17,14 +17,14 @@ export default function BottomNav() {
     { to: '/', label: t('nav.discover'), Icon: Binoculars, testid: 'bottom-nav-home', end: true },
     { to: '/spots', label: t('nav.spots'), Icon: Compass, testid: 'bottom-nav-explore' },
     { to: '/homestays', label: t('nav.homestays'), Icon: Home, testid: 'bottom-nav-book' },
-    { to: '/responsible', label: 'Green', Icon: TeaLeaf, testid: 'bottom-nav-saved' },
-    { to: user ? (user.role === 'provider' ? '/provider/dashboard' : '/dashboard') : '/login', label: user ? (user.name?.split(' ')[0] || 'Me') : t('nav.login'), Icon: User, testid: 'bottom-nav-profile' },
+    { to: '/responsible', label: t('nav.green'), Icon: TeaLeaf, testid: 'bottom-nav-saved' },
+    { to: user ? (user.role === 'provider' ? '/provider/dashboard' : '/dashboard') : '/login', label: user ? (user.name?.split(' ')[0] || t('nav.me')) : t('nav.login'), Icon: User, testid: 'bottom-nav-profile' },
   ];
 
   return (
     <nav
       data-testid="bottom-nav"
-      className="lg:hidden fixed bottom-0 inset-x-0 z-30 bg-white/95 backdrop-blur border-t border-[var(--line)]"
+      className="lg:hidden fixed bottom-0 inset-x-0 z-30 bg-white border-t border-[var(--line)]"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
       <div className="grid grid-cols-5">

@@ -13,7 +13,7 @@ clientsClaim();
 precacheAndRoute(self.__WB_MANIFEST);
 
 // SPA navigation fallback so client-side routes keep working offline. API
-// calls are deliberately excluded — this is an offline *app shell*, not
+// calls are deliberately excluded - this is an offline *app shell*, not
 // offline *data*; GET /api/... requests still hit the network and fail
 // normally when offline rather than silently serving stale listings/bookings.
 const fileExtensionRegexp = /\/[^/?]+\.[^/]+$/;

@@ -20,6 +20,24 @@
   /* Height of the mobile BottomNav, including the home-indicator inset.
      Anything fixed above the nav must offset by this, not a hardcoded 4rem. */
   --bottom-nav-h: calc(3.25rem + env(safe-area-inset-bottom, 0px));
+  /* Height of the site header. It carries the circular category rail, so it
+     tracks the rail's size at each breakpoint - full-screen sections and the
+     landing hero offset by this rather than a hardcoded height.
+     Phones scroll icon-only tiles inside one pill; sm+ adds a single-line
+     label under each and the whole row fits without scrolling. */
+  --header-h: 3.75rem;
+}
+
+@media (min-width: 640px) {
+  :root { --header-h: 4.75rem; }
+}
+
+@media (min-width: 1024px) {
+  :root { --header-h: 5rem; }
+}
+
+@media (min-width: 1280px) {
+  :root { --header-h: 5.25rem; }
 }
 
 @layer base {

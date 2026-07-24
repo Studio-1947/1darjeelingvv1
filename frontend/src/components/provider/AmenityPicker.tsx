@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { optionLabel } from '@/lib/optionLabel';
 import { toggleIn } from './ChipToggleGroup';
 
 /**
@@ -10,9 +12,9 @@ export default function AmenityPicker({
   presets,
   selected,
   onChange,
-  customLabel = 'Add Custom Amenity',
-  customPlaceholder = 'e.g. Bonfire, Pet allowed',
-  selectedLabel = 'Selected',
+  customLabel,
+  customPlaceholder,
+  selectedLabel,
   compact = false,
 }: {
   presets: string[];
@@ -23,7 +25,11 @@ export default function AmenityPicker({
   selectedLabel?: string;
   compact?: boolean;
 }) {
+  const { t } = useTranslation();
   const [custom, setCustom] = useState('');
+  const customLabelText = customLabel ?? t('widgets.add_custom_amenity');
+  const customPlaceholderText = customPlaceholder ?? t('widgets.custom_amenity_ph');
+  const selectedLabelText = selectedLabel ?? t('widgets.selected');
 
   const addCustom = () => {
     const value = custom.trim();
@@ -47,20 +53,20 @@ export default function AmenityPicker({
               } ${active ? 'bg-pine/10 text-pine border-pine font-bold' : 'bg-white text-ink border-[var(--line)]'}`}
             >
               <input type="checkbox" checked={active} readOnly className="rounded border-[var(--line)] text-pine focus:ring-pine" />
-              <span>{amenity}</span>
+              <span>{optionLabel(t, amenity)}</span>
             </button>
           );
         })}
       </div>
 
       <div className={compact ? 'max-w-md pt-2' : 'mt-8 max-w-md'}>
-        <span className="text-xs font-semibold text-ink-soft uppercase block mb-2">{customLabel}</span>
+        <span className="text-xs font-semibold text-ink-soft uppercase block mb-2">{customLabelText}</span>
         <div className="flex gap-2">
           <input
             type="text"
             value={custom}
             onChange={(e) => setCustom(e.target.value)}
-            placeholder={customPlaceholder}
+            placeholder={customPlaceholderText}
             className={`flex-1 rounded-xl border border-[var(--line)] bg-white outline-none font-semibold text-ink ${
               compact ? 'px-3 py-2 text-xs' : 'px-3.5 py-2.5 text-sm'
             }`}
@@ -70,7 +76,7 @@ export default function AmenityPicker({
             onClick={addCustom}
             className={`rounded-xl bg-pine text-white font-bold btn-hover ${compact ? 'px-3.5 py-2 text-xs' : 'px-4 py-2.5 text-sm'}`}
           >
-            Add
+            {t('common.add')}
           </button>
         </div>
       </div>
@@ -79,7 +85,7 @@ export default function AmenityPicker({
         <div className={compact ? 'pt-1' : 'mt-6 border-t border-[var(--line)] pt-5'}>
           {!compact && (
             <span className="text-xs font-semibold text-ink-soft uppercase block mb-3">
-              {selectedLabel} ({selected.length})
+              {selectedLabelText} ({selected.length})
             </span>
           )}
           <div className="flex flex-wrap gap-2">
@@ -90,7 +96,7 @@ export default function AmenityPicker({
                   compact ? 'px-2.5 py-1 text-[10px]' : 'px-3 py-1.5 text-xs'
                 }`}
               >
-                {amenity}
+                {optionLabel(t, amenity)}
                 <button
                   type="button"
                   onClick={() => onChange(selected.filter((x) => x !== amenity))}

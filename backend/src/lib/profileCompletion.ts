@@ -18,6 +18,9 @@ export type ProfileInput = {
   priceFrom: number;
   latitude: number | null;
   longitude: number | null;
+  extras?: Record<string, any>;
+  hasListingImage?: boolean;
+  hasListingDescription?: boolean;
 };
 
 export type DocInput = { docType: string; status: 'pending' | 'approved' | 'rejected' };
@@ -27,12 +30,35 @@ const KYC_WEIGHT = 60;
 
 // Presence checks that make up the "profile richness" portion of the bar.
 function profileChecks(p: ProfileInput): { key: string; label: string; done: boolean }[] {
-  return [
-    { key: 'description', label: 'Add a description (60+ characters)', done: p.description.trim().length >= 60 },
-    { key: 'photos', label: 'Add at least one photo', done: p.images.length >= 1 },
+  const images = [
+    ...(Array.isArray(p.images) ? p.images : []),
+    ...(Array.isArray(p.extras?.images) ? p.extras.images : []),
+    ...(p.extras?.host_avatar ? [p.extras.host_avatar] : []),
+  ].filter(Boolean);
+  const hasPhoto = images.length >= 1 || p.hasListingImage === true;
+
+  const descText = (p.description || p.extras?.host_bio || '').trim();
+  const hasDesc = descText.length >= 20 || p.hasListingDescription === true;
+
+  const checks = [
+    { key: 'description', label: 'Add a description (60+ characters)', done: hasDesc },
+    { key: 'photos', label: 'Add at least one photo', done: hasPhoto },
     { key: 'price', label: 'Set a starting price', done: p.priceFrom > 0 },
-    { key: 'location', label: 'Pin your location on the map', done: p.latitude != null && p.longitude != null },
   ];
+
+  // Drivers operate along routes rather than from a fixed address, so onboarding
+  // never offers them a map picker (LocationPicker is homestay/cafe/shop only).
+  // Listing the item for them would be permanently unachievable and would cap
+  // their bar below 100% no matter what they do.
+  if (p.businessType !== 'driver') {
+    checks.push({
+      key: 'location',
+      label: 'Pin your location on the map',
+      done: p.latitude != null && p.longitude != null,
+    });
+  }
+
+  return checks;
 }
 
 function docState(doc: DocInput | undefined): DocState {
