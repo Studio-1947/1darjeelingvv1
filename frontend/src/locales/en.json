@@ -24,7 +24,13 @@
     "business_dashboard": "Business Dashboard",
     "personal_bookings": "Personal Bookings",
     "categories": "Categories",
-    "menu": "Menu"
+    "menu": "Menu",
+    "home": "Home",
+    "trips": "My Trips",
+    "my_trips": "My Trips",
+    "my_listings": "My Listings",
+    "type": "Type",
+    "account": "Account"
   },
   "support": {
     "title": "A small token to keep 1 Darjeeling running",

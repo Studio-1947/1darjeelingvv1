@@ -15,6 +15,8 @@ import Login from '@/pages/Login';
 import ProviderOnboard from '@/pages/ProviderOnboard';
 import ProviderDashboard from '@/pages/ProviderDashboard';
 import TouristDashboard from '@/pages/TouristDashboard';
+import MyTrips from '@/pages/MyTrips';
+import MyListings from '@/pages/MyListings';
 import Saved from '@/pages/Saved';
 import Responsible from '@/pages/Responsible';
 import About from '@/pages/About';
@@ -44,6 +46,8 @@ export default function App() {
                 <Route path="/provider/onboard" element={<ProviderOnboard />} />
                 <Route path="/provider/dashboard" element={<ProviderDashboard />} />
                 <Route path="/dashboard" element={<TouristDashboard />} />
+                <Route path="/my-trips" element={<MyTrips />} />
+                <Route path="/my-listings" element={<MyListings />} />
                 <Route path="/saved" element={<Saved />} />
                 <Route path="/responsible" element={<Responsible />} />
                 <Route path="/about" element={<About />} />

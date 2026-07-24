@@ -24,7 +24,11 @@
     "business_dashboard": "व्यवसाय ड्यासबोर्ड",
     "personal_bookings": "व्यक्तिगत बुकिङ",
     "categories": "श्रेणीहरू",
-    "menu": "मेनु"
+    "menu": "मेनु",
+    "home": "गृह",
+    "trips": "मेरा यात्रा",
+    "type": "श्रेणी",
+    "account": "खाता"
   },
   "support": {
     "title": "1 दार्जिलिङ चलाइराख्न सानो सहयोग",
