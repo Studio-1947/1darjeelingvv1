@@ -84,6 +84,7 @@ export default function Login() {
       <div className="mist-panel p-6 md:p-8">
         <div className="text-center mb-6">
           <Logo className="mx-auto w-16 h-16" />
+          <div className="mt-2 font-display font-extrabold text-lg text-ink">{t('brand')}</div>
           <h1 className="mt-4 font-display font-extrabold text-3xl text-ink">{t('auth.welcome')}</h1>
           <p className="text-sm text-ink-soft mt-1">{t('brand_tagline')}</p>
         </div>

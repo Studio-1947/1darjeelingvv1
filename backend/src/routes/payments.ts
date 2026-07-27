@@ -11,6 +11,29 @@ import { resolveAmount } from '../lib/payments';
 
 const router = Router();
 
+// The DB rows are camelCase (drizzle), but every response the frontend reads is snake_case —
+// see providers.ts / bookings.ts. The confirmation record has to follow the same convention or
+// the success modal silently renders `undefined` for every renamed column.
+function serializeProvider(p: typeof schema.providers.$inferSelect) {
+  return {
+    id: p.id,
+    user_id: p.userId,
+    business_name: p.businessName,
+    business_type: p.businessType,
+    description: p.description,
+    location: p.location,
+    latitude: p.latitude,
+    longitude: p.longitude,
+    contact_phone: p.contactPhone,
+    price_from: p.priceFrom,
+    images: p.images,
+    extras: p.extras,
+    status: p.status,
+    created_at: p.createdAt,
+    activated_at: p.activatedAt,
+  };
+}
+
 // Common after-payment trigger side effects function
 async function handlePaymentSuccess(flow: string, referenceId: string, userId: string, amount: number) {
   if (flow === 'provider_registration') {
@@ -41,7 +64,7 @@ async function handlePaymentSuccess(flow: string, referenceId: string, userId: s
       };
       await db.insert(schema.listings).values(listing);
     }
-    return p;
+    return p ? serializeProvider(p) : null;
   } else if (flow === 'booking_commission') {
     await db.update(schema.bookings)
       .set({ status: 'confirmed', confirmedAt: new Date().toISOString() })
@@ -55,7 +78,7 @@ async function handlePaymentSuccess(flow: string, referenceId: string, userId: s
       if (listing) {
         const [prov] = await db.select().from(schema.providers).where(eq(schema.providers.id, listing.providerId)).limit(1);
         if (prov) {
-          providerInfo = prov;
+          providerInfo = serializeProvider(prov);
         } else {
           const [userProv] = await db.select().from(schema.users).where(eq(schema.users.id, listing.providerId)).limit(1);
           if (userProv) {
@@ -70,7 +93,18 @@ async function handlePaymentSuccess(flow: string, referenceId: string, userId: s
       }
 
       return {
-        ...booking,
+        id: booking.id,
+        user_id: booking.userId,
+        listing_id: booking.listingId,
+        listing_type: booking.listingType,
+        listing_title: booking.listingTitle,
+        check_in: booking.checkIn,
+        check_out: booking.checkOut,
+        guests: booking.guests,
+        notes: booking.notes,
+        status: booking.status,
+        created_at: booking.createdAt,
+        confirmed_at: booking.confirmedAt,
         listing,
         provider: providerInfo
       };
