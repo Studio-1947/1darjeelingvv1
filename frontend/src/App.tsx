@@ -5,6 +5,7 @@ import '@/i18n';
 import { AuthProvider } from '@/context/AuthContext';
 import { FavoritesProvider } from '@/context/FavoritesContext';
 import Layout from '@/components/Layout';
+import ScrollToTop from '@/components/ScrollToTop';
 import SupportGate from '@/components/SupportGate';
 import Support from '@/pages/Support';
 import Donate from '@/pages/Donate';
@@ -27,6 +28,7 @@ export default function App() {
     <AuthProvider>
       <FavoritesProvider>
         <BrowserRouter>
+          <ScrollToTop />
           <Layout>
             <SupportGate>
               <Routes>
