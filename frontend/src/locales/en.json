@@ -5,6 +5,7 @@
     "discover": "Discover",
     "spots": "Spots",
     "homestays": "Homestays",
+    "stays": "Stays",
     "drivers": "Drivers",
     "shops": "Shops",
     "cafes": "Cafes",
@@ -357,7 +358,29 @@
       "design": "Design",
       "product": "Product",
       "content": "Content & Community"
-    }
+    },
+    "stats": [
+      {
+        "v": "0%",
+        "l": "commission taken from providers"
+      },
+      {
+        "v": "4",
+        "l": "languages, English to Nepali"
+      },
+      {
+        "v": "1",
+        "l": "map for the whole hill"
+      }
+    ],
+    "why_headline": "The hills were being booked by people who never walked them.",
+    "why_chips": [
+      "No middlemen",
+      "No hidden commission",
+      "Providers keep what they earn"
+    ],
+    "pillars_eyebrow": "What makes it different",
+    "image_caption": "Mt. Kangchenjunga"
   },
   "home": {
     "trending": "Trending in Darjeeling",
@@ -400,6 +423,11 @@
     "guest_count_other": "{{count}} Guests",
     "number_of_guests": "Number of Guests",
     "search": "Search",
+    "search_short": "Search…",
+    "change_category": "Change category",
+    "popular": "Popular destinations",
+    "matching": "Matching listings",
+    "no_matches": "Nothing matches that yet.",
     "from": "From",
     "to": "To",
     "from_placeholder": "Pickup point",

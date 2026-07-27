@@ -96,7 +96,7 @@ export default function Discover() {
     <div>
       {/* HERO / Booking widget - starts at y=0 and carries the header height as
           padding, since the bar is drawn on top of the video. */}
-      <section className="relative overflow-hidden" data-hero>
+      <section className="relative min-h-[100dvh] flex flex-col justify-center" data-hero>
         <div className="absolute inset-0 z-0">
           {/* Still fallback shown when the visitor prefers reduced motion. */}
           <img
@@ -116,19 +116,19 @@ export default function Discover() {
           >
             <source src="https://res.cloudinary.com/drgb8w8ak/video/upload/v1783579758/S_47_July_26_web_cover_video_e1wiyd.mp4" type="video/mp4" />
           </video>
-          {/* Top dark overlay to ensure white text remains readable */}
-          <div className="absolute top-0 inset-x-0 h-4/5 bg-gradient-to-b from-black/85 via-black/40 to-transparent" />
-          {/* Short bottom fade-to-white transition */}
-          <div className="absolute bottom-0 inset-x-0 h-16 bg-gradient-to-t from-[var(--bg)] to-transparent" />
+          {/* Full-height dark gradient overlay to ensure text legibility across all screen sizes */}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/45 to-black/75" />
         </div>
-        <div className="relative z-10 mx-auto max-w-6xl px-4 md:px-6 pt-[calc(var(--header-h)+5rem)] md:pt-[calc(var(--header-h)+9rem)] pb-20 md:pb-32">
+        <div className="relative z-10 mx-auto max-w-6xl w-full px-5 md:px-8 pt-[calc(var(--header-h)+2.5rem)] pb-24 md:pt-[calc(var(--header-h)+4rem)] md:pb-28 flex-1 flex flex-col justify-center">
           <div className="text-white max-w-2xl">
-            <h1 className="font-display font-extrabold text-[2.3rem] leading-[1.05] sm:text-5xl md:text-6xl tracking-tight drop-shadow-lg">
+            <h1 className="font-display font-extrabold text-[2.4rem] leading-[1.08] sm:text-5xl md:text-6xl tracking-tight drop-shadow-lg">
               {t('hero.title_1')}<br />{t('hero.title_2')}
             </h1>
-            <p className="mt-3 md:mt-4 text-white/95 text-sm md:text-lg max-w-lg drop-shadow">{t('hero.subtitle')}</p>
+            <p className="mt-4 md:mt-5 text-white/90 text-base sm:text-lg md:text-xl max-w-xl leading-relaxed drop-shadow">
+              {t('hero.subtitle')}
+            </p>
           </div>
-          <div className="mt-6 md:mt-8">
+          <div className="mt-7 md:mt-10">
             <BookingWidget />
           </div>
         </div>
