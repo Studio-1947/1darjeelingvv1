@@ -105,7 +105,7 @@ export default function BookingConfirmation({ open, onClose, mode = 'booking', d
             <>
               <div className="p-4 rounded-2xl bg-mist">
                 <div className="font-display font-extrabold text-2xl text-ink">{data.business_name}</div>
-                <div className="text-sm text-ink-soft">{t(`categories.${data.business_type}`, { defaultValue: data.business_type })} · {data.location}</div>
+                <div className="text-sm text-ink-soft">{[t(`categories.${data.business_type}`, { defaultValue: data.business_type || '' }), data.location].filter(Boolean).join(' · ')}</div>
               </div>
               <p className="text-sm text-ink-soft">
                 {t('bc.provider_body', { type: t(`categories.${data.business_type}`, { defaultValue: data.business_type || '' }) })}
