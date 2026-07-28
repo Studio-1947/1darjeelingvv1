@@ -507,7 +507,14 @@
       }
     },
     "scroll_left": "Scroll left",
-    "scroll_right": "Scroll right"
+    "scroll_right": "Scroll right",
+    "filter_all": "All",
+    "filter_label": "Filter by type",
+    "pagination_label": "Explore Darjeeling pages",
+    "prev_page": "Previous page",
+    "next_page": "Next page",
+    "page_n": "Page {{page}}",
+    "showing_range": "Showing {{from}}-{{to}} of {{total}}"
   },
   "widget": {
     "destination": "Destination",

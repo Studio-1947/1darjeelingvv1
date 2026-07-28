@@ -383,7 +383,14 @@
       }
     },
     "scroll_left": "बाएँ स्क्रॉल करें",
-    "scroll_right": "दाएँ स्क्रॉल करें"
+    "scroll_right": "दाएँ स्क्रॉल करें",
+    "filter_all": "सभी",
+    "filter_label": "प्रकार से छाँटें",
+    "pagination_label": "दार्जिलिंग एक्सप्लोर पृष्ठ",
+    "prev_page": "पिछला पृष्ठ",
+    "next_page": "अगला पृष्ठ",
+    "page_n": "पृष्ठ {{page}}",
+    "showing_range": "{{total}} में से {{from}}-{{to}} दिखाए जा रहे हैं"
   },
   "widget": {
     "destination": "गंतव्य",
