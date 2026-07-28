@@ -43,10 +43,12 @@ describe('booking cancellation', () => {
 
   it('lets the provider who owns the listing cancel (decline) a booking on it', async () => {
     const { token: providerToken } = await onboardActiveProvider({ name: 'Declining Provider' });
+    // A homestay, not a spot: tourist spots are admin-owned curated content, so a provider
+    // cannot own one — see lib/spots.ts. The listing only has to be provider-owned here.
     const listingRes = await request(app)
       .post('/api/listings')
       .set('Authorization', `Bearer ${providerToken}`)
-      .send({ title: 'Provider Spot For Cancel', type: 'spot', description: 'x', location: 'y' });
+      .send({ title: 'Provider Homestay For Cancel', type: 'homestay', description: 'x', location: 'y' });
     const listingId = listingRes.body.item.id;
 
     const { token: tourist } = await registerUser({ name: 'Booked Tourist' });
