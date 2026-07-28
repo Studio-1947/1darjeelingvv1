@@ -6,7 +6,7 @@ import { optionLabel } from '@/lib/optionLabel';
 import { RouteFare } from '@/lib/routeFares';
 import {
   MapPin, Tag, Navigation, ArrowRight, Languages,
-  CalendarClock, Route, Crosshair,
+  CalendarClock, Route, Crosshair, Clock, Ticket, Mountain, Sparkles, Compass,
 } from 'lucide-react';
 import { Screen, SectionHead, Avatar, ALIGN_TEXT, ALIGN_ROW, ALIGN_BLOCK } from './primitives';
 import VerifiedBadge from '@/components/provider/VerifiedBadge';
@@ -29,6 +29,72 @@ export function AboutSection({ item, about, label }: { item: any; about?: string
       {item.tags?.length > 0 && (
         <div className={`mt-8 flex flex-wrap ${ALIGN_ROW} gap-2`}>
           {item.tags.map((tg: string) => <span key={tg} className="chip"><Tag size={11} className="mr-1" /> {optionLabel(t, tg)}</span>)}
+        </div>
+      )}
+    </Screen>
+  );
+}
+
+/**
+ * "Why go" bullets for a tourist spot, written by an admin in the console
+ * (extras.highlights). Renders nothing when the spot has none.
+ */
+export function HighlightsSection({ highlights }: { highlights: string[] }) {
+  const { t } = useTranslation();
+  return (
+    <Screen tone="white" testid="detail-highlights">
+      <SectionHead label={t('detail.highlights')} title={t('detail.highlights')} note={t('detail.highlights_note')} />
+      <div className={`mt-10 grid sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5 max-w-5xl ${ALIGN_BLOCK}`}>
+        {highlights.map((highlight) => (
+          <div key={highlight} className="flex items-start gap-4 p-5 rounded-2xl border border-[var(--line)] bg-[var(--bg)]">
+            <Sparkles size={22} className="text-pine flex-shrink-0 mt-0.5" />
+            <span className="text-ink font-semibold leading-snug">{highlight}</span>
+          </div>
+        ))}
+      </div>
+    </Screen>
+  );
+}
+
+/**
+ * Practical visitor information for a tourist spot — the answers people look for
+ * before setting out. Every field is optional; the section only renders when the
+ * admin has filled at least one, and each card only appears when it has a value.
+ */
+export function VisitInfoSection({ facts, howToReach }: {
+  facts: { timings?: string; entryFee?: string; bestTime?: string; altitude?: string };
+  howToReach?: string;
+}) {
+  const { t } = useTranslation();
+  const cards = [
+    { key: 'timings', Icon: Clock, label: t('detail.timings'), value: facts.timings },
+    { key: 'entry_fee', Icon: Ticket, label: t('detail.entry_fee'), value: facts.entryFee },
+    { key: 'best_time', Icon: CalendarClock, label: t('detail.best_time'), value: facts.bestTime },
+    { key: 'altitude', Icon: Mountain, label: t('detail.altitude'), value: facts.altitude },
+  ].filter((card) => !!card.value);
+
+  return (
+    <Screen tone="mist" testid="detail-visit-info">
+      <SectionHead label={t('detail.plan_visit')} title={t('detail.plan_visit')} note={t('detail.plan_visit_note')} />
+
+      {cards.length > 0 && (
+        <div className={`mt-10 grid sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5 max-w-5xl ${ALIGN_BLOCK}`}>
+          {cards.map(({ key, Icon, label, value }) => (
+            <div key={key} className="p-6 rounded-2xl border border-[var(--line)] bg-white" data-testid={`detail-fact-${key}`}>
+              <Icon size={22} className="text-pine" />
+              <div className="mt-4 text-xs font-bold uppercase tracking-widest text-ink-soft">{label}</div>
+              <div className="mt-1 font-display font-extrabold text-xl text-ink leading-snug">{value}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {howToReach && (
+        <div className={`mt-6 max-w-3xl ${ALIGN_BLOCK} p-6 md:p-8 rounded-2xl border border-[var(--line)] bg-white`} data-testid="detail-how-to-reach">
+          <div className={`flex items-center ${ALIGN_ROW} gap-2 text-xs font-bold uppercase tracking-widest text-ink-soft`}>
+            <Compass size={16} className="text-pine" /> {t('detail.how_to_reach')}
+          </div>
+          <p className={`mt-3 text-lg text-ink leading-relaxed whitespace-pre-line ${ALIGN_TEXT}`}>{howToReach}</p>
         </div>
       )}
     </Screen>

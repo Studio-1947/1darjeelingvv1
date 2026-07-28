@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Users as UsersIcon, 
-  Store, 
-  CalendarCheck, 
-  Wallet, 
-  LayoutList, 
+import {
+  Users as UsersIcon,
+  Store,
+  CalendarCheck,
+  Wallet,
+  LayoutList,
   Database,
   ShieldCheck,
+  Mountain,
   LogOut
 } from 'lucide-react';
 import api from '@/lib/api';
@@ -18,6 +19,8 @@ import StatCard from '@/components/admin/StatCard';
 import OverviewTab from '@/components/admin/OverviewTab';
 import UsersTab from '@/components/admin/UsersTab';
 import ListingsTab from '@/components/admin/ListingsTab';
+import SpotsTab, { type AdminSpot } from '@/components/admin/SpotsTab';
+import SpotFormModal, { type SpotFormPayload } from '@/components/admin/SpotFormModal';
 import BookingsTab from '@/components/admin/BookingsTab';
 import PaymentsTab from '@/components/admin/PaymentsTab';
 
@@ -29,13 +32,14 @@ export default function Admin() {
   const { user, loading: authLoading, logout } = useAuth();
   const nav = useNavigate();
 
-  // Tab state: 'overview' | 'users' | 'listings' | 'bookings' | 'payments'
+  // Tab state: 'overview' | 'users' | 'listings' | 'spots' | 'bookings' | 'payments'
   const [activeTab, setActiveTab] = useState('overview');
 
   // Database lists
   const [stats, setStats] = useState<Record<string, any> | null>(null);
   const [usersList, setUsersList] = useState<any[]>([]);
   const [listingsList, setListingsList] = useState<any[]>([]);
+  const [spotsList, setSpotsList] = useState<AdminSpot[]>([]);
   const [bookingsList, setBookingsList] = useState<any[]>([]);
   const [paymentsList, setPaymentsList] = useState<any[]>([]);
 
@@ -44,21 +48,28 @@ export default function Admin() {
   const [actionMsg, setActionMsg] = useState('');
   const [err, setErr] = useState('');
 
+  // Tourist-spot authoring: the open form (null = closed; { spot: null } = creating a new one)
+  // and the id of the spot whose row action is in flight.
+  const [spotForm, setSpotForm] = useState<{ spot: AdminSpot | null } | null>(null);
+  const [spotBusyId, setSpotBusyId] = useState<string | null>(null);
+
   // Fetch all admin tables from the backend API
   const loadAdminData = useCallback(async () => {
     setLoading(true);
     setErr('');
     try {
-      const [statsRes, usersRes, listingsRes, bookingsRes, paymentsRes] = await Promise.all([
+      const [statsRes, usersRes, listingsRes, spotsRes, bookingsRes, paymentsRes] = await Promise.all([
         api.get('/admin/stats'),
         api.get('/admin/users'),
         api.get('/admin/listings'),
+        api.get('/admin/spots'),
         api.get('/admin/bookings'),
         api.get('/admin/payments')
       ]);
       setStats(statsRes.data);
       setUsersList(usersRes.data.items || []);
       setListingsList(listingsRes.data.items || []);
+      setSpotsList(spotsRes.data.items || []);
       setBookingsList(bookingsRes.data.items || []);
       setPaymentsList(paymentsRes.data.items || []);
     } catch (e: any) {
@@ -121,6 +132,67 @@ export default function Admin() {
       loadAdminData();
     } catch (e) {
       setActionMsg('Failed to delete listing.');
+    }
+  };
+
+  // ---- Tourist spots (admin-authored content) ----------------------------------
+  // Create and edit share one handler: the form hands back a complete payload either way,
+  // and the modal only closes when this resolves, so a failed save keeps the admin's work.
+  const handleSubmitSpot = async (payload: SpotFormPayload) => {
+    const editing = spotForm?.spot;
+    const { data } = editing
+      ? await api.patch(`/admin/spots/${editing.id}`, payload)
+      : await api.post('/admin/spots', payload);
+    setActionMsg(
+      editing
+        ? `Spot "${data.item.title}" saved.`
+        : `Spot "${data.item.title}" created${data.item.published ? ' and published' : ' as a draft'}.`
+    );
+    await loadAdminData();
+  };
+
+  const handleDeleteSpot = async (spot: AdminSpot) => {
+    const warning = spot.review_count > 0
+      ? `\n\nThis will also delete its ${spot.review_count} review(s) and any saves.`
+      : '';
+    if (!confirm(`Delete the tourist spot "${spot.title}"?${warning}`)) return;
+    setSpotBusyId(spot.id);
+    try {
+      await api.delete(`/admin/spots/${spot.id}`);
+      setActionMsg(`Spot "${spot.title}" deleted.`);
+      await loadAdminData();
+    } catch (e: any) {
+      setActionMsg(e?.response?.data?.detail || 'Failed to delete that spot.');
+    } finally {
+      setSpotBusyId(null);
+    }
+  };
+
+  const handleToggleSpotPublished = async (spot: AdminSpot) => {
+    setSpotBusyId(spot.id);
+    try {
+      await api.post(`/admin/spots/${spot.id}/publish`, { published: !spot.published });
+      setActionMsg(`"${spot.title}" is now ${spot.published ? 'a draft — hidden from visitors' : 'live on the site'}.`);
+      await loadAdminData();
+    } catch (e: any) {
+      setActionMsg(e?.response?.data?.detail || 'Failed to change that spot’s visibility.');
+    } finally {
+      setSpotBusyId(null);
+    }
+  };
+
+  const handleToggleSpotFeatured = async (spot: AdminSpot) => {
+    setSpotBusyId(spot.id);
+    try {
+      // Only `featured` is sent: the backend merges it over the stored extras, so the
+      // gallery and the rest of the editorial content are untouched.
+      await api.patch(`/admin/spots/${spot.id}`, { extras: { featured: !spot.featured } });
+      setActionMsg(`"${spot.title}" ${spot.featured ? 'removed from' : 'added to'} featured spots.`);
+      await loadAdminData();
+    } catch (e: any) {
+      setActionMsg(e?.response?.data?.detail || 'Failed to update that spot.');
+    } finally {
+      setSpotBusyId(null);
     }
   };
 
@@ -191,10 +263,12 @@ export default function Admin() {
 
       {/* Stats Cards Section */}
       {stats && (
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
           <StatCard label="Total Users" value={stats.users} icon={UsersIcon} color="text-pine bg-pine/10" />
           <StatCard label="Service Providers" value={stats.providers} icon={Store} color="text-flag bg-flag/10" />
           <StatCard label="Active Services" value={stats.listings} icon={LayoutList} color="text-blue-500 bg-blue-50" />
+          {/* Live spots only — drafts aren't visible to anyone but this console. */}
+          <StatCard label="Tourist Spots" value={spotsList.filter((s) => s.published).length} icon={Mountain} color="text-emerald-600 bg-emerald-50" />
           <StatCard label="Bookings Made" value={stats.bookings} icon={CalendarCheck} color="text-orange-500 bg-orange-50" />
           <StatCard label="Paid Transactions" value={stats.payments} icon={Wallet} color="text-yellow-600 bg-yellow-50" />
         </div>
@@ -206,6 +280,7 @@ export default function Admin() {
           { id: 'overview', label: 'Overview' },
           { id: 'users', label: 'Users & Businesses' },
           { id: 'listings', label: 'Services (Listings)' },
+          { id: 'spots', label: 'Tourist Spots' },
           { id: 'bookings', label: 'Bookings' },
           { id: 'payments', label: 'Payments' }
         ].map((tab) => (
@@ -224,9 +299,31 @@ export default function Admin() {
       {/* Tab Panels */}
       {activeTab === 'overview' && <OverviewTab stats={stats} onSeed={handleSeed} />}
       {activeTab === 'users' && <UsersTab users={usersList} onDeleteUser={handleDeleteUser} onToggleProviderStatus={handleToggleProviderStatus} />}
-      {activeTab === 'listings' && <ListingsTab listings={listingsList} onDeleteListing={handleDeleteListing} />}
+      {/* Spots have their own authoring tab, so they're kept out of the provider-services table
+          rather than appearing in two places with two different sets of controls. */}
+      {activeTab === 'listings' && (
+        <ListingsTab listings={listingsList.filter((l) => l.type !== 'spot')} onDeleteListing={handleDeleteListing} />
+      )}
+      {activeTab === 'spots' && (
+        <SpotsTab
+          spots={spotsList}
+          busyId={spotBusyId}
+          onCreate={() => { setActionMsg(''); setSpotForm({ spot: null }); }}
+          onEdit={(spot) => { setActionMsg(''); setSpotForm({ spot }); }}
+          onDelete={handleDeleteSpot}
+          onTogglePublished={handleToggleSpotPublished}
+          onToggleFeatured={handleToggleSpotFeatured}
+        />
+      )}
       {activeTab === 'bookings' && <BookingsTab bookings={bookingsList} />}
       {activeTab === 'payments' && <PaymentsTab payments={paymentsList} />}
+
+      <SpotFormModal
+        open={!!spotForm}
+        spot={spotForm?.spot}
+        onClose={() => setSpotForm(null)}
+        onSubmit={handleSubmitSpot}
+      />
     </div>
   );
 }
