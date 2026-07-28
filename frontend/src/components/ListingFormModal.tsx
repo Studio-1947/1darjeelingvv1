@@ -2,7 +2,10 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { X, Loader2 } from 'lucide-react';
 
-const TYPES = ['homestay', 'driver', 'shop', 'cafe', 'spot', 'event', 'biodiversity'];
+// 'spot' is deliberately absent: tourist spots are curated content authored only in the admin
+// console, and the backend rejects a spot created by anyone but an admin (backend/src/lib/spots.ts).
+// Offering it here would just be a dead option that 403s on submit.
+const TYPES = ['homestay', 'driver', 'shop', 'cafe', 'event', 'biodiversity'];
 
 interface ListingFormValues {
   title: string;
