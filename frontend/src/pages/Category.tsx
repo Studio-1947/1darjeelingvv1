@@ -3,6 +3,7 @@ import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import api from '@/lib/api';
 import FeedCard from '@/components/FeedCard';
+import { FeedCardSkeleton, GridTileSkeleton, LoadingStatus, repeat } from '@/components/skeletons';
 import { LayoutGrid, Rows3, MapPin, ArrowRight } from 'lucide-react';
 
 const TYPE_MAP = {
@@ -41,7 +42,10 @@ export default function Category({ typeOverride }) {
         <div>
           {q && <div className="text-[11px] font-bold uppercase tracking-widest text-flag">{t('category.search')}</div>}
           <h1 className="font-display font-extrabold text-3xl sm:text-4xl md:text-5xl text-ink leading-tight">{title}</h1>
-          <p className="mt-1 text-sm text-ink-soft">{t('category.results', { count: items.length })}</p>
+          {/* A count of 0 while the request is still out reads as "nothing here". */}
+          <p className="mt-1 text-sm text-ink-soft">
+            {loading ? t('common.loading') : t('category.results', { count: items.length })}
+          </p>
         </div>
         <div className="hidden sm:flex items-center gap-1 p-1 rounded-full bg-white border border-[var(--line)]">
           <button onClick={() => setView('grid')} data-testid="view-grid"
@@ -56,7 +60,18 @@ export default function Category({ typeOverride }) {
       </div>
 
       {loading ? (
-        <p className="text-ink-soft">{t('common.loading')}</p>
+        <>
+          <LoadingStatus label={t('common.loading')} />
+          {view === 'grid' ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
+              {repeat(8, (i) => <GridTileSkeleton key={i} />)}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
+              {repeat(4, (i) => <FeedCardSkeleton key={i} />)}
+            </div>
+          )}
+        </>
       ) : items.length === 0 ? (
         <div className="mist-panel p-8 md:p-10 text-center">
           <p className="text-ink-soft">{t('category.empty')}</p>

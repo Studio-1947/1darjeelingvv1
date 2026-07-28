@@ -1,12 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import api from '@/lib/api';
+import { shareLink } from '@/lib/share';
+import { ListingDetailSkeleton, LoadingStatus } from '@/components/skeletons';
 import { amenitiesFor, hostFor } from '@/lib/listingMeta';
 import { contentFor, listingImage, galleryImagesFor, personImageFor, fallbackFor } from '@/lib/listingContent';
 import MockPaymentModal from '@/components/MockPaymentModal';
 import BookingConfirmation from '@/components/BookingConfirmation';
-import DetailHero, { ShareOutcome } from '@/components/listing-detail/DetailHero';
+import DetailHero from '@/components/listing-detail/DetailHero';
+import type { ShareOutcome } from '@/lib/share';
 import {
   AboutSection, PhotosSection, OffersSection, StayGallerySection,
   HostSection, DriverSection, BestTimeSection, RoutesSection, LocationSection,
@@ -26,13 +29,25 @@ export default function ListingDetail() {
   const { id } = useParams();
   const { t } = useTranslation();
   const nav = useNavigate();
+  const { hash } = useLocation();
   const [item, setItem] = useState(null);
   const [loading, setLoading] = useState(true);
   const booking = useBookingFlow(item, id);
 
   useEffect(() => {
+    setLoading(true);
     api.get(`/listings/${id}`).then((r) => setItem(r.data.item)).finally(() => setLoading(false));
   }, [id]);
+
+  // Arriving on /listing/:id#reviews (the star on a feed card) used to land at
+  // the top of the hero: the page renders a loading placeholder first, so at
+  // navigation time there is no #reviews element for anything to scroll to.
+  // Once the listing is in, the section exists - jump to it then.
+  useEffect(() => {
+    if (loading || !item || !hash) return;
+    const el = document.querySelector(hash);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [loading, item, hash]);
 
   const openMaps = () => {
     if (!item) return;
@@ -42,28 +57,23 @@ export default function ListingDetail() {
 
   const shareIt = async (): Promise<ShareOutcome> => {
     if (!item) return 'failed';
-    const url = window.location.href;
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: item.title, text: item.description, url });
-        return 'shared';
-      } catch (e: any) {
-        // The user dismissing the native share sheet throws AbortError - that's a deliberate
-        // cancel, not a failure, so don't silently fall back to copying the link behind their back.
-        if (e?.name === 'AbortError') return 'shared';
-        console.warn('share failed', e);
-      }
-    }
-    try {
-      await navigator.clipboard.writeText(url);
-      return 'copied';
-    } catch (e) {
-      console.warn('clipboard failed', e);
-      return 'failed';
-    }
+    // Share the canonical listing URL rather than window.location.href, which would
+    // carry an incidental #reviews hash into whatever the visitor pastes it into.
+    return shareLink({
+      title: item.title,
+      text: item.description,
+      url: `${window.location.origin}/listing/${item.id}`,
+    });
   };
 
-  if (loading) return <div className="mx-auto max-w-5xl p-10 text-ink-soft">{t('common.loading')}</div>;
+  if (loading) {
+    return (
+      <>
+        <LoadingStatus label={t('common.loading')} />
+        <ListingDetailSkeleton />
+      </>
+    );
+  }
   if (!item) return <div className="mx-auto max-w-5xl p-10">Not found.</div>;
 
   const bookable = item.type === 'homestay' || item.type === 'driver';
@@ -103,7 +113,11 @@ export default function ListingDetail() {
         <PhotosSection item={item} gallery={gallery} fallbackImg={fallbackImg} />
       )}
 
-      {amenities.length > 0 && <OffersSection amenities={amenities} title={offersTitle} />}
+      {/* Biodiversity entries are a species or habitat, not somewhere with
+          facilities - "what this place offers" has nothing to say about them. */}
+      {item.type !== 'biodiversity' && amenities.length > 0 && (
+        <OffersSection amenities={amenities} title={offersTitle} />
+      )}
 
       {item.type === 'homestay' && item.extras?.images && item.extras.images.length > 0 && (
         <StayGallerySection images={item.extras.images} />
