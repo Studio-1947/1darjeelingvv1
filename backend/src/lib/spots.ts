@@ -182,10 +182,16 @@ export function publicSpotVisibility(): SQL {
  * Public ordering for spots: featured first, then the admin's manual order, then
  * newest. `jsonb_typeof` guards the numeric cast so a legacy row with a
  * non-numeric `sort_order` sorts last instead of failing the whole query.
+ *
+ * The COALESCE on `featured` is load-bearing, not defensive noise. A row written before
+ * this module existed (the seeder's `extras: {}`) has no `featured` key, so `extras->>'featured'`
+ * is NULL and the comparison yields NULL — and Postgres `ORDER BY ... DESC` defaults to
+ * NULLS FIRST, which sorted every legacy spot *ahead* of the ones an admin actually
+ * featured. Folding NULL to 'false' first makes the expression a real boolean for every row.
  */
 export function spotOrdering(): SQL[] {
   return [
-    sql`(${schema.listings.extras} ->> 'featured' = 'true') DESC`,
+    sql`(COALESCE(${schema.listings.extras} ->> 'featured', 'false') = 'true') DESC`,
     sql`CASE WHEN jsonb_typeof(${schema.listings.extras} -> 'sort_order') = 'number'
              THEN (${schema.listings.extras} ->> 'sort_order')::numeric
              ELSE ${MAX_SORT_ORDER} END ASC`,

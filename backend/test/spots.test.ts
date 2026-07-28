@@ -13,6 +13,8 @@ vi.mock('../src/lib/s3', () => ({
 }));
 
 import { app } from '../src/app';
+import { db, schema } from '../src/db';
+import { v4 as uuidv4 } from 'uuid';
 import { registerUser, onboardActiveProvider, loginAdmin } from './helpers';
 
 const PNG_DATA_URL =
@@ -343,5 +345,45 @@ describe('tourist spots — publishing controls public visibility', () => {
     const ids = res.body.items.map((i: any) => i.id);
     expect(ids.indexOf(starred.id)).toBeLessThan(ids.indexOf(early.id));
     expect(ids.indexOf(early.id)).toBeLessThan(ids.indexOf(plain.id));
+  });
+
+  // Regression: a spot written before lib/spots.ts existed (the seeder inserts `extras: {}`)
+  // has no `featured` key, so `extras->>'featured' = 'true'` evaluates to NULL — and Postgres
+  // sorts NULLS FIRST under DESC. That put every legacy spot ahead of the genuinely featured
+  // ones on the live /spots feed. The test above missed it because all three of its rows carry
+  // the key explicitly, so their order relative to each other was still correct.
+  it('sorts a featured spot ahead of legacy rows that have no featured key at all', async () => {
+    const admin = await loginAdmin();
+
+    const legacyIds = [uuidv4(), uuidv4()];
+    for (const id of legacyIds) {
+      await db.insert(schema.listings).values({
+        id,
+        title: uniqueTitle('Legacy Seeded Spot'),
+        type: 'spot',
+        description: 'Inserted the way the seeder does it — bare extras.',
+        location: 'Darjeeling',
+        price: 0,
+        image: '',
+        tags: [],
+        providerId: 'admin-seed-provider',
+        extras: {},
+        createdAt: new Date().toISOString(),
+      });
+    }
+
+    const starred = await createSpot(admin, { extras: { featured: true, sort_order: 500 } });
+
+    const res = await request(app).get('/api/listings').query({ type: 'spot', limit: 200 });
+    expect(res.status).toBe(200);
+    const ids = res.body.items.map((i: any) => i.id);
+
+    expect(ids).toContain(starred.id);
+    for (const legacyId of legacyIds) {
+      expect(ids).toContain(legacyId);
+      expect(ids.indexOf(starred.id)).toBeLessThan(ids.indexOf(legacyId));
+    }
+    // And the featured spot is genuinely at the very front of the whole feed.
+    expect(ids[0]).toBe(starred.id);
   });
 });
