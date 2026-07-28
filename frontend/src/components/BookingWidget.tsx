@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Search, MapPin, Navigation, Calendar, Users, Home as HomeIcon, Car, ChevronDown, Loader2 } from 'lucide-react';
 import api from '@/lib/api';
+import { todayStr, addDays, isBadRange } from '@/lib/dates';
 
 // Offered the moment the field is focused, so an empty search still has
 // somewhere to go. Filtered against whatever gets typed after that.
@@ -10,6 +11,20 @@ const POPULAR = [
   'Darjeeling', 'Ghum', 'Tiger Hill', 'Mirik',
   'Kurseong', 'Lamahatta', 'Takdah', 'Lepchajagat',
 ];
+
+// Two digits is all the pill's guest segment has room for - a third pushes the
+// count into the search button and breaks the bar's layout on a phone. It is
+// also well past any real party size for a hill homestay.
+const MAX_GUESTS = 99;
+
+// `max` alone only marks a typed 250 invalid; the value still lands in state
+// and renders, so the ceiling has to be held on the way in.
+//
+// Keeping to two digits is what does that, rather than clamping the number:
+// clamping meant an empty box refilled with "1" on the very next keystroke, so
+// typing 2 then 2 built "1" -> "12" -> "122" and landed on 99. An empty string
+// is therefore a legal editing state here, resolved to 1 on blur.
+const typedGuests = (raw) => raw.replace(/\D/g, '').slice(0, String(MAX_GUESTS).length);
 
 /**
  * MakeMyTrip-inspired booking widget.
@@ -29,7 +44,10 @@ export default function BookingWidget() {
   const [to, setTo] = useState('');
   const [checkIn, setCheckIn] = useState('');
   const [checkOut, setCheckOut] = useState('');
-  const [guests, setGuests] = useState(2);
+  // Holds what's in the box, so it can legally be '' mid-edit. `guestCount` is
+  // the number every display and caller should read.
+  const [guests, setGuests] = useState('2');
+  const guestCount = parseInt(guests, 10) || 1;
 
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showGuestsPicker, setShowGuestsPicker] = useState(false);
@@ -158,6 +176,15 @@ export default function BookingWidget() {
     }
   };
 
+  const today = todayStr();
+
+  // A check-in that jumps past the chosen check-out invalidates it, so the
+  // stale half of the range is dropped instead of being left on screen.
+  const pickCheckIn = (value) => {
+    setCheckIn(value);
+    if (isBadRange(value, checkOut)) setCheckOut('');
+  };
+
   const pickPlace = (name) => {
     setTerm(name);
     setPillSearch(false);
@@ -204,16 +231,21 @@ export default function BookingWidget() {
           <input
             type="date"
             value={checkIn}
-            onChange={(e) => setCheckIn(e.target.value)}
+            min={today}
+            onChange={(e) => pickCheckIn(e.target.value)}
             className="w-full mt-1 border border-[var(--line)] rounded-xl px-2 py-1.5 text-xs outline-none bg-transparent"
             data-testid="booking-widget-checkin"
           />
         </div>
         <div className="flex-1">
           <span className="text-[10px] font-bold uppercase tracking-wider text-ink-soft">{t('booking.checkout')}</span>
+          {/* Nothing before the night after check-in is a stay, so that's where
+              the picker starts. Check-out on its own is still allowed - the
+              widget reads it as an open-ended "until" search. */}
           <input
             type="date"
             value={checkOut}
+            min={checkIn ? addDays(checkIn, 1) : today}
             onChange={(e) => setCheckOut(e.target.value)}
             className="w-full mt-1 border border-[var(--line)] rounded-xl px-2 py-1.5 text-xs outline-none bg-transparent"
             data-testid="booking-widget-checkout"
@@ -234,12 +266,19 @@ export default function BookingWidget() {
   const guestFields = (inputRef = null) => (
     <>
       <span className="text-[10px] font-bold uppercase tracking-wider text-ink-soft">{t('widget.number_of_guests')}</span>
+      {/* text + inputMode rather than type=number: a number input reports '' for
+          anything it considers invalid, which hides the digits actually typed
+          and makes a two-digit cap impossible to enforce cleanly. The numeric
+          keypad still comes up on a phone. */}
       <input
         ref={inputRef}
-        type="number"
-        min="1"
+        type="text"
+        inputMode="numeric"
+        maxLength={String(MAX_GUESTS).length}
+        aria-label={t('widget.number_of_guests')}
         value={guests}
-        onChange={(e) => setGuests(parseInt(e.target.value) || 1)}
+        onChange={(e) => setGuests(typedGuests(e.target.value))}
+        onBlur={() => setGuests(String(guestCount))}
         data-testid="booking-widget-guests"
         className="w-full border border-[var(--line)] rounded-xl px-2 py-1.5 text-xs outline-none bg-transparent"
       />
@@ -346,7 +385,9 @@ export default function BookingWidget() {
                      ${pillGuests ? 'bg-white/20 text-white' : 'text-white/85 hover:bg-white/10'}`}
         >
           <Users size={16} />
-          <span className="text-sm font-semibold text-white">{guests}</span>
+          {/* guestCount, not the raw field - the pill stays legible while the
+              box behind it is momentarily empty. */}
+          <span className="text-sm font-semibold text-white">{guestCount}</span>
         </button>
 
         <button
@@ -568,7 +609,7 @@ export default function BookingWidget() {
             <span className={fieldLabel}>{t('widget.date')}</span>
             <div className={fieldBox}>
               <Calendar size={16} className="text-ink-soft flex-shrink-0" />
-              <input type="date" value={checkIn} onChange={(e) => setCheckIn(e.target.value)}
+              <input type="date" value={checkIn} min={today} onChange={(e) => pickCheckIn(e.target.value)}
                 data-testid="booking-widget-date"
                 className="flex-1 min-w-0 bg-transparent outline-none text-sm md:text-base" />
             </div>
@@ -586,7 +627,7 @@ export default function BookingWidget() {
           >
             <Users size={16} className="text-ink-soft flex-shrink-0" />
             <span className="flex-1 min-w-0 text-sm md:text-base text-ink select-none truncate">
-              {t('widget.guest_count', { count: guests })}
+              {t('widget.guest_count', { count: guestCount })}
             </span>
           </button>
           {showGuestsPicker && (

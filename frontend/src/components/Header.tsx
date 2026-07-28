@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/context/AuthContext';
@@ -8,15 +8,13 @@ import Logo from '@/components/Logo';
 import useGoBack from '@/hooks/useGoBack';
 import useHeroOverlay from '@/hooks/useHeroOverlay';
 import { CATEGORIES } from '@/constants/categories';
-import { User, Heart, ArrowLeft, Menu, LogOut } from 'lucide-react';
+import { User, Heart, ArrowLeft } from 'lucide-react';
 
 export default function Header() {
   const { t } = useTranslation();
   const { user, logout } = useAuth();
   const [dropdownOpen, setDropdownOpen] = React.useState(false);
-  const [menuOpen, setMenuOpen] = React.useState(false);
   const dropdownRef = React.useRef(null);
-  const menuRef = React.useRef(null);
   const nav = useNavigate();
   const { pathname } = useLocation();
   const goBack = useGoBack();
@@ -41,17 +39,8 @@ export default function Header() {
     return () => window.removeEventListener('click', handler);
   }, [dropdownOpen]);
 
-  React.useEffect(() => {
-    if (!menuOpen) return;
-    const handler = (e) => {
-      if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false);
-    };
-    window.addEventListener('click', handler);
-    return () => window.removeEventListener('click', handler);
-  }, [menuOpen]);
-
-  // A route change must not leave the compact menu hanging open over the page.
-  React.useEffect(() => { setMenuOpen(false); }, [pathname]);
+  // A route change must not leave the profile menu hanging open over the page.
+  React.useEffect(() => { setDropdownOpen(false); }, [pathname]);
 
   const goProfile = () => {
     if (!user) return nav('/login');
@@ -79,20 +68,22 @@ export default function Header() {
           </button>
         )}
 
-        {/* Brand - yields its spot to the back button on small screens */}
+        {/* Brand - the mark and the name together at every width. Below lg it
+            shares the bar with a back button, so it may shrink (min-w-0 +
+            truncate) rather than push the right cluster off the edge. */}
         <Link
           to="/"
-          className={`${showBack ? 'hidden lg:flex' : 'flex'} items-center gap-2 flex-shrink-0`}
+          className="flex items-center gap-1.5 sm:gap-2 min-w-0"
           data-testid="brand-link"
           aria-label="1 Darjeeling"
         >
           {/* Background is keyed out, so the mark sits directly on the bar with
               no tile. Scales with --header-h (3.75/4.75/5rem). */}
-          <Logo className="w-11 h-11 sm:w-14 sm:h-14 lg:w-16 lg:h-16 flex-shrink-0" />
-          {/* The wordmark is the widest thing the rail competes with; below lg
-              the tile alone carries the brand so all seven tiles still fit. */}
-          <div className="hidden lg:block leading-none">
-            <div className={`font-display font-extrabold text-lg ${onVideo ? 'text-white drop-shadow' : 'text-ink'}`}>1 Darjeeling</div>
+          <Logo className="w-9 h-9 sm:w-14 sm:h-14 lg:w-16 lg:h-16 flex-shrink-0" />
+          <div className="leading-none min-w-0">
+            <div className={`font-display font-extrabold text-base sm:text-lg truncate ${onVideo ? 'text-white drop-shadow' : 'text-ink'}`}>
+              1 Darjeeling
+            </div>
           </div>
         </Link>
 
@@ -132,13 +123,17 @@ export default function Header() {
           <div className="flex-1" />
         )}
 
-        {/* Right cluster - desktop only. Below lg it collapses into the menu
-            below, so the category rail keeps the width it needs. */}
-        <div className="hidden lg:flex items-center gap-2.5 flex-shrink-0">
+        {/* Right cluster - shown at every width. The hamburger it used to hide
+            behind on phones held nothing the bottom tab bar doesn't already
+            reach, so the two controls a visitor actually looks for up here -
+            language and sign-in - now sit in the bar itself. */}
+        <div className="flex items-center gap-1.5 sm:gap-2.5 flex-shrink-0 ml-auto">
           <LanguageSwitcher onDark={onVideo} />
+          {/* Saved has its own route from the profile menu and the tab bar, so
+              below lg this shortcut only competes for the width login needs. */}
           {user && (
             <Link to="/saved" data-testid="header-saved" aria-label={t('nav.saved')}
-              className={`w-9 h-9 rounded-full grid place-items-center btn-hover ${onVideo ? 'text-white hover:bg-white/20' : 'text-ink hover:bg-mist'}`}>
+              className={`hidden lg:grid w-9 h-9 rounded-full place-items-center btn-hover ${onVideo ? 'text-white hover:bg-white/20' : 'text-ink hover:bg-mist'}`}>
               <Heart size={18} />
             </Link>
           )}
@@ -208,80 +203,6 @@ export default function Header() {
               className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-flag text-white font-semibold text-xs md:text-sm btn-hover">
               {t('nav.login')}
             </Link>
-          )}
-        </div>
-
-        {/* Compact menu - tablet and below */}
-        <div className="relative lg:hidden flex-shrink-0 ml-auto" ref={menuRef}>
-          <button
-            onClick={() => setMenuOpen(!menuOpen)}
-            data-testid="header-menu"
-            aria-label={t('nav.menu')}
-            aria-expanded={menuOpen}
-            className={`w-9 h-9 rounded-full grid place-items-center btn-hover ${onVideo ? 'text-white hover:bg-white/20' : 'text-ink hover:bg-mist'}`}
-          >
-            <Menu size={20} />
-          </button>
-
-          {menuOpen && (
-            <div
-              data-testid="header-menu-panel"
-              className="absolute right-0 mt-2 w-56 bg-white border border-[var(--line)] rounded-2xl shadow-xl p-3 z-50"
-            >
-              <LanguageSwitcher />
-
-              <div className="mt-3 pt-3 border-t border-[var(--line)] space-y-1">
-                {user ? (
-                  <>
-                    <div className="px-1 pb-1">
-                      <p className="text-sm font-bold text-ink truncate">{user.name}</p>
-                      <p className="text-[10px] uppercase tracking-wider font-bold text-ink-soft mt-0.5 capitalize">{user.role}</p>
-                    </div>
-                    {user.role === 'provider' ? (
-                      <>
-                        <button onClick={() => { setMenuOpen(false); nav('/my-listings'); }}
-                          className="w-full text-left px-2 py-2 rounded-lg text-sm text-ink hover:bg-mist font-semibold transition-colors">
-                          {t('nav.my_listings') || 'My Listings'}
-                        </button>
-                        <button onClick={() => { setMenuOpen(false); nav('/provider/dashboard'); }}
-                          className="w-full text-left px-2 py-2 rounded-lg text-sm text-ink hover:bg-mist font-semibold transition-colors">
-                          {t('nav.business_dashboard')}
-                        </button>
-                        <button onClick={() => { setMenuOpen(false); nav('/my-trips'); }}
-                          className="w-full text-left px-2 py-2 rounded-lg text-sm text-ink hover:bg-mist font-semibold transition-colors">
-                          {t('nav.my_trips') || 'My Trips'}
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <button onClick={() => { setMenuOpen(false); nav('/my-trips'); }}
-                          className="w-full text-left px-2 py-2 rounded-lg text-sm text-ink hover:bg-mist font-semibold transition-colors">
-                          {t('nav.my_trips') || 'My Trips'}
-                        </button>
-                        <button onClick={() => { setMenuOpen(false); goProfile(); }}
-                          className="w-full text-left px-2 py-2 rounded-lg text-sm text-ink hover:bg-mist font-semibold transition-colors">
-                          {t('nav.dashboard')}
-                        </button>
-                      </>
-                    )}
-                    <button onClick={() => { setMenuOpen(false); nav('/saved'); }}
-                      data-testid="header-menu-saved"
-                      className="w-full text-left px-2 py-2 rounded-lg text-sm text-ink hover:bg-mist font-semibold transition-colors flex items-center gap-2">
-                      <Heart size={14} /> {t('nav.saved')}
-                    </button>
-                    <button onClick={() => { setMenuOpen(false); nav('/login'); logout(); }}
-                      className="w-full text-left px-2 py-2 rounded-lg text-sm text-flag hover:bg-mist font-bold transition-colors flex items-center gap-2">
-                      <LogOut size={14} /> {t('nav.logout')}
-                    </button>
-                  </>
-                ) : (
-                  <Link to="/login" data-testid="header-menu-login"
-                    className="w-full inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-full bg-flag text-white font-semibold text-sm btn-hover">
-                    {t('nav.login')}
-                  </Link>
-                )}
-              </div>
-            </div>
           )}
         </div>
       </div>

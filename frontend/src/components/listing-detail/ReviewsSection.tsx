@@ -5,6 +5,8 @@ import { Star, Loader2, Trash2, Camera, Image as ImageIcon, X } from 'lucide-rea
 import { useAuth } from '@/context/AuthContext';
 import { fetchReviews, postReview, deleteReview, Review, ReviewSummary } from '@/lib/reviews';
 import { uploadImages } from '@/lib/uploadImage';
+import { ReviewSkeleton, LoadingStatus, repeat } from '@/components/skeletons';
+import { ALIGN_TEXT, ALIGN_ROW, ALIGN_BLOCK, SCREEN_COL } from './primitives';
 
 /** Read-only row of five stars for a given rating (supports halves via rounding). */
 function Stars({ value, size = 16 }: { value: number; size?: number }) {
@@ -127,13 +129,16 @@ export default function ReviewsSection({ item }: { item: any }) {
 
   return (
     <section id="reviews" data-testid="detail-reviews" className="bg-white scroll-mt-20">
-      <div className="mx-auto w-full max-w-4xl px-4 md:px-8 py-16 md:py-24">
-        <div className="text-center max-w-3xl mx-auto">
+      {/* Reviews builds its own wrapper rather than using Screen (it isn't a
+          full-height section), so it borrows the shared column to stay in line
+          with everything above it. */}
+      <div className={`${SCREEN_COL} py-16 md:py-24`}>
+        <div className={`${ALIGN_TEXT} max-w-3xl ${ALIGN_BLOCK}`}>
           <div className="inline-flex items-center gap-3 text-xs font-bold uppercase tracking-widest text-ink-soft">{t('reviews.label')}</div>
           <h2 className="mt-5 font-display font-extrabold text-3xl sm:text-4xl md:text-5xl text-ink leading-tight">
             {t('reviews.title')}
           </h2>
-          <div className="mt-4 flex items-center justify-center gap-3">
+          <div className={`mt-4 flex items-center ${ALIGN_ROW} gap-3`}>
             <Stars value={summary.average} size={20} />
             <span className="text-ink font-bold text-lg">
               {summary.count > 0 ? summary.average.toFixed(1) : '-'}
@@ -214,7 +219,7 @@ export default function ReviewsSection({ item }: { item: any }) {
               </button>
             </div>
           ) : (
-            <div className="text-center">
+            <div className={`${ALIGN_TEXT}`}>
               <p className="text-ink-soft">{t('reviews.signed_out')}</p>
               <Link to={`/login?next=${encodeURIComponent(loc.pathname + '#reviews')}`}
                 className="mt-4 inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-flag text-white font-bold btn-hover">
@@ -227,9 +232,12 @@ export default function ReviewsSection({ item }: { item: any }) {
         {/* Existing reviews */}
         <div className="mt-8 space-y-4">
           {loading ? (
-            <p className="text-ink-soft text-center">{t('reviews.loading')}</p>
+            <>
+              <LoadingStatus label={t('reviews.loading')} />
+              {repeat(3, (i) => <ReviewSkeleton key={i} />)}
+            </>
           ) : reviews.length === 0 ? (
-            <p className="text-ink-soft text-center">{t('reviews.empty')}</p>
+            <p className={`text-ink-soft ${ALIGN_TEXT}`}>{t('reviews.empty')}</p>
           ) : (
             reviews.map((r) => (
               <div key={r.id} data-testid={`review-${r.id}`} className="rounded-2xl border border-[var(--line)] p-4 md:p-5 bg-white">

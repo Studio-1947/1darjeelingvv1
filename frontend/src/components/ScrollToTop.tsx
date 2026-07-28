@@ -11,7 +11,11 @@ export default function ScrollToTop() {
     if (navigationType === 'POP') return;
 
     if (hash) {
-      const el = document.querySelector(hash);
+      // A hash isn't guaranteed to be a valid selector, and pages that load
+      // their content asynchronously won't have the target yet - both cases
+      // fall through to the top, and the page scrolls itself once it's ready.
+      let el: Element | null = null;
+      try { el = document.querySelector(hash); } catch { /* not a selector */ }
       if (el) {
         el.scrollIntoView();
         return;

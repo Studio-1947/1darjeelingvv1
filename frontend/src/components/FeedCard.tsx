@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { MapPin, Share2, Bookmark, Star, ArrowRight, Phone, Store, Coffee, Ticket, Leaf, Mountain, Check } from 'lucide-react';
+import { MapPin, Share2, Bookmark, Star, ArrowRight, Phone, Store, Coffee, Ticket, Leaf, Mountain, Check, X } from 'lucide-react';
 import SmartImg from '@/components/SmartImg';
 import { listingImage, fallbackFor } from '@/lib/listingContent';
-import { useAuth } from '@/context/AuthContext';
 import { useFavorites } from '@/context/FavoritesContext';
+import { useLoginGate } from '@/components/LoginGate';
+import { shareLink } from '@/lib/share';
 
 const CTA_MAP = {
   homestay: { key: 'book_now', Icon: ArrowRight, color: 'bg-flag text-white' },
@@ -23,41 +24,39 @@ const CTA_MAP = {
 export default function FeedCard({ item, priority = false }) {
   const { t } = useTranslation();
   const nav = useNavigate();
-  const loc = useLocation();
-  const { user } = useAuth();
   const { isFavorite, toggle } = useFavorites();
+  const { requireAuth } = useLoginGate();
   const saved = isFavorite(item.id);
-  const [shared, setShared] = useState(false);
+  const [shareState, setShareState] = useState<'idle' | 'copied' | 'failed'>('idle');
 
-  // The bookmark persists the listing to the user's Saved page. Logged-out visitors are routed to
-  // sign in and returned to the exact feed they were browsing.
+  // Saving, sharing and rating all need an account, so each one asks the gate first - it explains
+  // why and offers sign-in rather than yanking the visitor off the feed mid-scroll.
   const handleSave = () => {
-    if (!user) {
-      nav(`/login?next=${encodeURIComponent(loc.pathname + loc.search)}`);
-      return;
-    }
+    if (!requireAuth('save')) return;
     toggle(item.id).catch(() => {});
   };
 
-  // Share this listing - native share sheet where available, clipboard fallback with a brief
-  // "copied" confirmation on the icon. Mirrors the detail page's share.
+  // Native share sheet where available, clipboard otherwise; shareLink() also covers the
+  // non-HTTPS case where neither API exists, which is why this looked dead on phones.
   const handleShare = async () => {
-    const url = `${window.location.origin}/listing/${item.id}`;
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: item.title, text: item.description, url });
-        return;
-      } catch (e: any) {
-        if (e?.name === 'AbortError') return; // user dismissed the sheet - not a failure
-      }
+    if (!requireAuth('share')) return;
+    const outcome = await shareLink({
+      title: item.title,
+      text: item.description,
+      url: `${window.location.origin}/listing/${item.id}`,
+    });
+    // The native sheet gives its own feedback; only the fallbacks need a pill.
+    if (outcome === 'copied' || outcome === 'failed') {
+      setShareState(outcome);
+      setTimeout(() => setShareState('idle'), outcome === 'copied' ? 1600 : 2400);
     }
-    try {
-      await navigator.clipboard.writeText(url);
-      setShared(true);
-      setTimeout(() => setShared(false), 1500);
-    } catch (e) {
-      console.warn('share failed', e);
-    }
+  };
+
+  // Rating lives on the detail page, so this is a navigation rather than an action - but it still
+  // gates, since an anonymous visitor landing on the review form can't do anything with it.
+  const handleRate = () => {
+    if (!requireAuth('review')) return;
+    nav(`/listing/${item.id}#reviews`);
   };
   const unit = item.type === 'homestay' ? t('common.per_night') : item.type === 'driver' ? t('common.per_day') : '';
   const cat = t(`categories.${item.type}`);
@@ -98,11 +97,16 @@ export default function FeedCard({ item, priority = false }) {
       {/* Actions */}
       <div className="flex items-center gap-4 px-3.5 pt-3 flex-shrink-0">
         <button onClick={handleShare} data-testid={`feed-share-${item.id}`} className="btn-hover" aria-label={t('feed.share')}>
-          {shared ? <Check size={20} className="text-pine" /> : <Share2 size={20} className="text-ink" />}
+          {shareState === 'copied'
+            ? <Check size={20} className="text-pine" />
+            : shareState === 'failed'
+              ? <X size={20} className="text-flag" />
+              : <Share2 size={20} className="text-ink" />}
         </button>
         {/* Read-only average rating from real reviews; tapping jumps to the reviews on the detail page. */}
-        <Link
-          to={`/listing/${item.id}#reviews`}
+        <button
+          type="button"
+          onClick={handleRate}
           data-testid={`feed-rating-${item.id}`}
           className="flex items-center gap-1 text-sm btn-hover"
           aria-label={item.review_count > 0
@@ -117,11 +121,17 @@ export default function FeedCard({ item, priority = false }) {
           ) : (
             <span className="text-ink-soft text-xs font-semibold">{t('feed.no_reviews')}</span>
           )}
-        </Link>
+        </button>
         <button onClick={handleSave} data-testid={`feed-save-${item.id}`} className="ml-auto btn-hover" aria-label={t('common.save')} aria-pressed={saved}>
           <Bookmark size={22} className={saved ? 'fill-pine text-pine' : 'text-ink'} />
         </button>
       </div>
+      {shareState !== 'idle' && (
+        <p role="status" data-testid={`feed-share-msg-${item.id}`}
+          className={`px-3.5 pt-1.5 text-xs font-bold ${shareState === 'copied' ? 'text-pine' : 'text-flag'}`}>
+          {shareState === 'copied' ? t('detail.share_copied') : t('detail.share_failed')}
+        </p>
+      )}
 
       {/* Caption */}
       <div className="px-3.5 py-3 flex-1 flex flex-col">

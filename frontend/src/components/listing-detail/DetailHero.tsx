@@ -7,11 +7,9 @@ import { listingImage, fallbackFor } from '@/lib/listingContent';
 import VerifiedBadge from '@/components/provider/VerifiedBadge';
 import { MapPin, ArrowLeft, Share2, Heart, ChevronDown, Check } from 'lucide-react';
 import { SCREEN_H } from './primitives';
-import { useAuth } from '@/context/AuthContext';
 import { useFavorites } from '@/context/FavoritesContext';
-
-/** Outcome of a share attempt, so the hero can show feedback next to the button. */
-export type ShareOutcome = 'shared' | 'copied' | 'failed';
+import { useLoginGate } from '@/components/LoginGate';
+import type { ShareOutcome } from '@/lib/share';
 
 /** Full-screen hero: cover image, back/like/share, and the title block. */
 export default function DetailHero({ item, unit, onShare }: {
@@ -22,20 +20,17 @@ export default function DetailHero({ item, unit, onShare }: {
   const { t } = useTranslation();
   const nav = useNavigate();
   const loc = useLocation();
-  const { user } = useAuth();
   const { isFavorite, toggle } = useFavorites();
+  const { requireAuth } = useLoginGate();
   const liked = isFavorite(item.id);
   const [shareState, setShareState] = useState<'idle' | 'copied' | 'failed'>('idle');
   const heroRef = useRef<HTMLElement>(null);
   const heroContentRef = useRef<HTMLDivElement>(null);
 
-  // Saving requires an account (favorites are per-user). Send a logged-out visitor to sign in and
-  // bring them right back to this listing, matching how the booking flow gates on auth.
+  // Saving requires an account (favorites are per-user). The gate explains that before sending
+  // anyone to sign in, matching how the feed cards behave.
   const handleLike = () => {
-    if (!user) {
-      nav(`/login?next=${encodeURIComponent(`/listing/${item.id}`)}`);
-      return;
-    }
+    if (!requireAuth('save')) return;
     toggle(item.id).catch(() => {});
   };
 
@@ -49,6 +44,7 @@ export default function DetailHero({ item, unit, onShare }: {
   };
 
   const handleShare = async () => {
+    if (!requireAuth('share')) return;
     const outcome = await onShare();
     // A successful native share sheet gives its own feedback, so only surface a pill for the
     // clipboard-copy fallback (and for outright failure).
