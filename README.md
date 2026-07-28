@@ -158,6 +158,18 @@ The backend serves interactive Swagger UI docs (generated from JSDoc `@openapi` 
 
 Every route across auth, users, providers, listings, bookings, payments, and admin is documented there, including request bodies, auth requirements (bearer JWT), and response shapes — use it as the source of truth for integrating against the API instead of reading route source directly.
 
+## Tourist spots are admin-only content
+
+The seven browse categories are not equivalent. Homestays, drivers, shops and cafés are **businesses** a provider onboards and owns. **Tourist spots** (`/spots`) are **curated editorial content about public places** — nobody owns Tiger Hill — so only an admin can create, photograph, edit, publish or delete one.
+
+- **Where they're authored:** the admin console's **Tourist Spots** tab (`/admin`) — the only surface with a spot form. It handles the cover photo, a reorderable gallery, highlights, timings, entry fee, best time to visit, altitude, how to reach, the map pin, tags, featured/draft state and display order.
+- **Where they're stored:** rows in `listings` with `type='spot'`, so spots keep search, favourites, reviews and the public detail page. The editorial fields live in the row's `extras` jsonb, validated in `backend/src/lib/spots.ts` — the single source of truth for both the rule and the shape.
+- **How the rule is enforced:** `POST /api/listings` with `type=spot` answers **403** for every non-admin caller, and edit/delete of an existing spot is admin-only regardless of `provider_id`. `type` can never be changed on an existing listing, so a provider cannot convert one of theirs into a spot. Hiding the option in the provider UI is presentation only — the backend is what actually enforces it.
+- **Drafts:** a spot with `extras.published === false` is invisible on every public read (it is filtered out of `GET /api/listings` and 404s on `GET /api/listings/:id`) and visible only through `GET /api/admin/spots`.
+- **Ordering:** the public `/spots` feed is served featured-first, then by the admin's `sort_order`, then newest.
+
+Admin routes: `GET|POST /api/admin/spots`, `PATCH|PUT|DELETE /api/admin/spots/:id`, `POST /api/admin/spots/:id/publish`, `POST /api/admin/spots/upload`. All are behind `authenticateToken + requireAdmin`; see Swagger for payloads.
+
 ## Auth & payments in dev
 
 - OTP login is mocked: `POST /api/auth/otp/send` returns the OTP in the response body, and the universal code `123456` is always accepted (non-production only).

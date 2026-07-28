@@ -73,6 +73,56 @@ const options: swaggerJsdoc.Options = {
             created_at: { type: 'string', format: 'date-time' },
           },
         },
+        // A tourist spot is a Listing with type='spot' whose editorial fields live in
+        // `extras`. Only an admin can create or edit one (see lib/spots.ts).
+        SpotExtras: {
+          type: 'object',
+          properties: {
+            images: { type: 'array', items: { type: 'string' }, description: 'Gallery photo URLs (max 16)' },
+            highlights: { type: 'array', items: { type: 'string' }, description: 'Short "why go" bullets (max 12)' },
+            best_time: { type: 'string' },
+            timings: { type: 'string' },
+            entry_fee: { type: 'string' },
+            how_to_reach: { type: 'string' },
+            altitude: { type: 'string' },
+            address: { type: 'string' },
+            published: { type: 'boolean', description: 'false keeps the spot a draft, hidden from all public reads' },
+            featured: { type: 'boolean' },
+            sort_order: { type: 'integer' },
+          },
+        },
+        Spot: {
+          allOf: [
+            { $ref: '#/components/schemas/Listing' },
+            {
+              type: 'object',
+              properties: {
+                latitude: { type: 'number', nullable: true },
+                longitude: { type: 'number', nullable: true },
+                published: { type: 'boolean' },
+                featured: { type: 'boolean' },
+                sort_order: { type: 'integer' },
+                review_count: { type: 'integer' },
+                extras: { $ref: '#/components/schemas/SpotExtras' },
+              },
+            },
+          ],
+        },
+        SpotInput: {
+          type: 'object',
+          required: ['title', 'description', 'location'],
+          properties: {
+            title: { type: 'string' },
+            description: { type: 'string' },
+            location: { type: 'string' },
+            latitude: { type: 'number', nullable: true },
+            longitude: { type: 'number', nullable: true },
+            price: { type: 'integer', description: 'Entry fee in rupees; 0 for free' },
+            image: { type: 'string', description: 'Cover photo URL from /admin/spots/upload' },
+            tags: { type: 'array', items: { type: 'string' } },
+            extras: { $ref: '#/components/schemas/SpotExtras' },
+          },
+        },
         Booking: {
           type: 'object',
           properties: {

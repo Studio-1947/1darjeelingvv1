@@ -3,9 +3,11 @@ import { v4 as uuidv4 } from 'uuid';
 import { db, schema } from '../db';
 import { eq, or, and, ilike, inArray } from 'drizzle-orm';
 import { authenticateToken } from '../middleware/auth';
-import fs from 'fs';
-import path from 'path';
-import { uploadToMinIO } from '../lib/s3';
+import { storeBase64Image, ImageUploadError } from '../lib/imageUpload';
+import {
+  SPOT_TYPE, SPOT_FORBIDDEN_MESSAGE, canWriteSpots, parseSpotExtras,
+  isSpotPublished, publicSpotVisibility, spotOrdering, SpotValidationError,
+} from '../lib/spots';
 
 async function resolveOwnProviderId(userId: string): Promise<string | null> {
   const providersList = await db.select().from(schema.providers).where(eq(schema.providers.userId, userId));
@@ -14,13 +16,6 @@ async function resolveOwnProviderId(userId: string): Promise<string | null> {
 }
 
 const router = Router();
-
-// Hard cap on an uploaded listing image, enforced on the decoded bytes. Kept in sync with the
-// express.json('28mb') limit for this path in app.ts (base64 inflates ~33%, so 20MB of raw bytes
-// is ~27MB on the wire) and nginx's client_max_body_size. The parser limit exists so an oversized
-// body is rejected before it's fully buffered; this check gives a clean, specific 400 for anything
-// that squeaks under the parser but is still over the real ceiling.
-const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
 
 // ============ LISTINGS ============
 
@@ -58,7 +53,8 @@ const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
  *     description: >
  *       Callers must be an active provider (listing is created under their own provider id — any
  *       provider_id in the body is ignored) or an admin (may set provider_id explicitly). Other
- *       authenticated users (e.g. tourists) are rejected.
+ *       authenticated users (e.g. tourists) are rejected. `type=spot` is admin-only: tourist spots
+ *       are curated content, so a provider creating one gets a 403 — use /admin/spots instead.
  *     tags: [Listings]
  *     security: [{ bearerAuth: [] }]
  *     requestBody:
@@ -124,7 +120,9 @@ router.get('/', async (req: Request, res: Response) => {
   const q = req.query.q as string | undefined;
   const limit = parseInt(req.query.limit as string) || 60;
 
-  const conditions = [];
+  // Draft spots must never surface on a public read — this route has no auth, so the
+  // predicate is unconditional here and admins get their drafts from /admin/spots instead.
+  const conditions = [publicSpotVisibility()];
   if (type) {
     conditions.push(eq(schema.listings.type, type));
   }
@@ -134,14 +132,16 @@ router.get('/', async (req: Request, res: Response) => {
         ilike(schema.listings.title, `%${q}%`),
         ilike(schema.listings.description, `%${q}%`),
         ilike(schema.listings.location, `%${q}%`)
-      )
+      )!
     );
   }
 
-  const items = await db.select()
-    .from(schema.listings)
-    .where(conditions.length > 0 ? and(...conditions) : undefined)
-    .limit(limit);
+  // The spots feed is curated, so it follows the admin's own order (featured first, then
+  // the manual sort order). Every other type keeps the table's natural order as before.
+  const query = db.select().from(schema.listings).where(and(...conditions));
+  const items = type === SPOT_TYPE
+    ? await query.orderBy(...spotOrdering()).limit(limit)
+    : await query.limit(limit);
 
   const providerIds = [...new Set(items.map(item => item.providerId))];
   const providerRows = providerIds.length > 0
@@ -212,6 +212,11 @@ router.get('/:id', async (req: Request, res: Response) => {
   if (!item) {
     return res.status(404).json({ detail: 'Not found' });
   }
+  // A draft spot is unpublished content: it must not be reachable by guessing/keeping its id
+  // either, so it 404s here exactly as it is filtered out of the list route above.
+  if (item.type === SPOT_TYPE && !isSpotPublished(item.extras)) {
+    return res.status(404).json({ detail: 'Not found' });
+  }
 
   const [provider] = await db.select({
       kycStatus: schema.providers.kycStatus,
@@ -258,6 +263,12 @@ router.post('/', authenticateToken, async (req: Request, res: Response) => {
     return res.status(400).json({ detail: 'Title, type, description and location are required' });
   }
 
+  // Tourist spots are curated editorial content, not a business someone lists. An active
+  // provider may create every other type; only an admin may create a spot.
+  if (type === SPOT_TYPE && !canWriteSpots(req.user.role)) {
+    return res.status(403).json({ detail: SPOT_FORBIDDEN_MESSAGE });
+  }
+
   let providerId: string;
   if (req.user.role === 'admin') {
     providerId = provider_id || req.user.id;
@@ -267,6 +278,16 @@ router.post('/', authenticateToken, async (req: Request, res: Response) => {
       return res.status(403).json({ detail: 'Only active providers or admins can create listings' });
     }
     providerId = ownProviderId;
+  }
+
+  let storedExtras = extras;
+  if (type === SPOT_TYPE) {
+    try {
+      storedExtras = parseSpotExtras(extras);
+    } catch (err) {
+      if (err instanceof SpotValidationError) return res.status(400).json({ detail: err.message });
+      throw err;
+    }
   }
 
   const listing = {
@@ -281,7 +302,7 @@ router.post('/', authenticateToken, async (req: Request, res: Response) => {
     image,
     tags,
     providerId,
-    extras,
+    extras: storedExtras,
     createdAt: new Date().toISOString()
   };
 
@@ -308,36 +329,21 @@ router.post('/', authenticateToken, async (req: Request, res: Response) => {
 
 // Helper to verify listing management permissions
 async function canManageListing(req: Request, listing: typeof schema.listings.$inferSelect): Promise<boolean> {
+  // A spot is admin-owned content — a provider must not be able to edit or delete one even
+  // if a spot row somehow carries their provider id (e.g. legacy data or a seeded row).
+  if (listing.type === SPOT_TYPE) return canWriteSpots(req.user.role);
   if (req.user.role === 'admin') return true;
   const ownProviderId = await resolveOwnProviderId(req.user.id);
   return !!ownProviderId && ownProviderId === listing.providerId;
 }
 
-// Upload image (returns local server URL)
+// Upload image (returns the public MinIO URL)
 router.post('/upload', authenticateToken, async (req: Request, res: Response) => {
-  const { file, filename } = req.body;
-  if (!file || !filename) {
-    return res.status(400).json({ detail: 'File payload and filename are required' });
-  }
-
   try {
-    // Decode base64 file data
-    const base64Data = file.replace(/^data:image\/\w+;base64,/, "");
-    const buffer = Buffer.from(base64Data, 'base64');
-    if (buffer.length === 0) return res.status(400).json({ detail: 'Empty file' });
-    if (buffer.length > MAX_UPLOAD_BYTES) return res.status(400).json({ detail: 'Image exceeds the 20 MB limit' });
-
-    // Create unique key
-    const ext = path.extname(filename) || '.jpg';
-    const uniqueKey = `${uuidv4()}${ext}`;
-
-    // Get Content-Type
-    const match = file.match(/^data:(\w+\/\w+);base64,/);
-    const contentType = match ? match[1] : 'image/jpeg';
-
-    const fileUrl = await uploadToMinIO(buffer, uniqueKey, contentType);
-    res.json({ url: fileUrl });
+    const url = await storeBase64Image(req.body?.file, req.body?.filename);
+    res.json({ url });
   } catch (err: any) {
+    if (err instanceof ImageUploadError) return res.status(400).json({ detail: err.message });
     res.status(500).json({ detail: err.message || 'MinIO upload failed' });
   }
 });
@@ -349,14 +355,36 @@ const updateListingHandler = async (req: Request, res: Response) => {
     return res.status(404).json({ detail: 'Not found' });
   }
   if (!(await canManageListing(req, listing))) {
-    return res.status(403).json({ detail: 'You do not have permission to edit this listing' });
+    return res.status(403).json({
+      detail: listing.type === SPOT_TYPE
+        ? SPOT_FORBIDDEN_MESSAGE
+        : 'You do not have permission to edit this listing',
+    });
   }
 
-  const allowed = ['title', 'description', 'location', 'price', 'image', 'tags', 'extras'] as const;
+  // `type` is deliberately absent: a listing can never be re-typed, so a provider cannot
+  // convert one of their own listings into an (admin-only) spot after the fact.
+  const allowed = ['title', 'description', 'location', 'latitude', 'longitude', 'price', 'image', 'tags', 'extras'] as const;
   const updateFields: Record<string, any> = {};
   for (const key of allowed) {
     if (req.body[key] !== undefined) {
       updateFields[key] = req.body[key];
+    }
+  }
+
+  if (listing.type === SPOT_TYPE) {
+    // Merged against what's stored, so a PATCH that sends only `published` keeps the gallery.
+    try {
+      updateFields.extras = parseSpotExtras(req.body.extras ?? {}, listing.extras || {});
+    } catch (err) {
+      if (err instanceof SpotValidationError) return res.status(400).json({ detail: err.message });
+      throw err;
+    }
+  }
+
+  for (const coord of ['latitude', 'longitude'] as const) {
+    if (updateFields[coord] !== undefined && updateFields[coord] !== null && typeof updateFields[coord] !== 'number') {
+      return res.status(400).json({ detail: `${coord} must be a number` });
     }
   }
 
@@ -371,6 +399,8 @@ const updateListingHandler = async (req: Request, res: Response) => {
     type: updated.type,
     description: updated.description,
     location: updated.location,
+    latitude: updated.latitude,
+    longitude: updated.longitude,
     price: updated.price,
     image: updated.image,
     tags: updated.tags,
@@ -391,7 +421,11 @@ router.delete('/:id', authenticateToken, async (req: Request, res: Response) => 
     return res.status(404).json({ detail: 'Not found' });
   }
   if (!(await canManageListing(req, listing))) {
-    return res.status(403).json({ detail: 'You do not have permission to delete this listing' });
+    return res.status(403).json({
+      detail: listing.type === SPOT_TYPE
+        ? SPOT_FORBIDDEN_MESSAGE
+        : 'You do not have permission to delete this listing',
+    });
   }
 
   await db.delete(schema.listings).where(eq(schema.listings.id, listing.id));

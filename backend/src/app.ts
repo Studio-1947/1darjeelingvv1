@@ -12,6 +12,7 @@ import listingsRouter from './routes/listings';
 import bookingsRouter from './routes/bookings';
 import paymentsRouter from './routes/payments';
 import adminRouter from './routes/admin';
+import adminSpotsRouter from './routes/adminSpots';
 import geocodeRouter from './routes/geocode';
 import kycRouter from './routes/kyc';
 import favoritesRouter from './routes/favorites';
@@ -50,6 +51,13 @@ app.use('/api/providers/me/kyc', express.json({ limit: '8mb' }));
 // Kept in sync with the 20MB hard cap in routes/listings.ts and nginx's client_max_body_size.
 app.use('/api/listings/upload', rateLimiter(20, 60 * 1000, 'listing_upload'));
 app.use('/api/listings/upload', express.json({ limit: '28mb' }));
+
+// Tourist-spot photo uploads carry the same base64 payload as listing uploads, so they need the
+// same raised parser limit — without it every real photo the admin picks would 413 against the
+// global 100kb default. The rate limit is looser than the provider path because an admin filling
+// a spot legitimately uploads a whole gallery in one sitting.
+app.use('/api/admin/spots/upload', rateLimiter(60, 60 * 1000, 'spot_upload'));
+app.use('/api/admin/spots/upload', express.json({ limit: '28mb' }));
 
 app.use(express.json());
 
@@ -120,6 +128,7 @@ app.use('/api/reviews', reviewsRouter);
 app.use('/api/payments', paymentsRouter);
 app.use('/api/geocode', geocodeRouter);
 app.use('/api', adminRouter); // Mount admin routes directly under /api (e.g. /api/admin/seed, /api/admin/stats)
+app.use('/api', adminSpotsRouter); // Admin-only tourist-spot CRUD (e.g. /api/admin/spots)
 
 // ============ 404 + ERROR HANDLING ============
 // Must stay last: Express matches in order, so anything reaching here matched no route.
