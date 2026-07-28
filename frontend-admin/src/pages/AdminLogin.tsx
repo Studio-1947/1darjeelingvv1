@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShieldAlert, KeyRound, Phone } from 'lucide-react';
+import { ShieldAlert, KeyRound, Phone, Eye, EyeOff } from 'lucide-react';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 
@@ -10,6 +10,7 @@ export default function AdminLogin() {
 
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
 
@@ -61,13 +62,27 @@ export default function AdminLogin() {
             <div className="mt-1 flex items-center gap-2 px-3 py-2.5 rounded-xl border border-[var(--line)] bg-white focus-within:ring-2 focus-within:ring-flag/20 transition-all">
               <KeyRound size={16} className="text-ink-soft" />
               <input
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 placeholder="••••••••"
+                data-testid="admin-login-password"
                 className="flex-1 bg-transparent outline-none py-0.5 text-ink text-sm"
               />
+              {/* type="button" is essential — a bare <button> inside a form defaults to
+                  type="submit", so revealing the password would submit the login instead. */}
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                data-testid="admin-login-password-toggle"
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                aria-pressed={showPassword}
+                title={showPassword ? 'Hide password' : 'Show password'}
+                className="shrink-0 p-1 -mr-1 rounded-md text-ink-soft hover:text-ink hover:bg-mist focus:outline-none focus-visible:ring-2 focus-visible:ring-flag/30 transition-colors"
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
             </div>
           </label>
 
