@@ -5,6 +5,8 @@ import api from '@/lib/api';
 import { sizedImage } from '@/lib/listingContent';
 import FeedCard from '@/components/FeedCard';
 import BookingWidget from '@/components/BookingWidget';
+import HeroMedia from '@/components/HeroMedia';
+import { FeedCardSkeleton, SpotTileSkeleton, StayTileSkeleton, LoadingStatus, repeat } from '@/components/skeletons';
 import { Mountain, ArrowRight, Sparkles, TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const RED_PANDA = 'https://images.unsplash.com/photo-1542880941-1abfea46bba6';
@@ -25,8 +27,8 @@ export default function Discover() {
   const [feed, setFeed] = useState([]);
   const [spots, setSpots] = useState([]);
   const [homestays, setHomestays] = useState([]);
+  const [loading, setLoading] = useState(true);
   const spotsScrollRef = useRef<HTMLDivElement>(null);
-  const heroVideoRef = useRef<HTMLVideoElement>(null);
   const pointerRestoreRef = useRef<number>(undefined);
 
   const scrollSpots = (direction: 'left' | 'right') => {
@@ -42,19 +44,6 @@ export default function Discover() {
       container.scrollBy({ left: direction === 'left' ? -scrollAmount : scrollAmount, behavior: 'smooth' });
     }
   };
-
-  // The hero video keeps decoding frames even when scrolled far out of view,
-  // eating main-thread/GPU budget that the carousel animation needs.
-  useEffect(() => {
-    const v = heroVideoRef.current;
-    if (!v) return;
-    const io = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting) v.play().catch(() => {});
-      else v.pause();
-    }, { threshold: 0.05 });
-    io.observe(v);
-    return () => io.disconnect();
-  }, []);
 
   useEffect(() => {
     (async () => {
@@ -88,6 +77,8 @@ export default function Discover() {
         await load();
       } catch (e) {
         if (process.env.NODE_ENV !== 'production') console.error(e);
+      } finally {
+        setLoading(false);
       }
     })();
   }, []);
@@ -97,28 +88,7 @@ export default function Discover() {
       {/* HERO / Booking widget - starts at y=0 and carries the header height as
           padding, since the bar is drawn on top of the video. */}
       <section className="relative min-h-[100dvh] flex flex-col justify-center" data-hero>
-        <div className="absolute inset-0 z-0">
-          {/* Still fallback shown when the visitor prefers reduced motion. */}
-          <img
-            src={sizedImage(HERO_POSTER, 1200)}
-            alt=""
-            className="absolute inset-0 w-full h-full object-cover hidden motion-reduce:block"
-          />
-          <video
-            ref={heroVideoRef}
-            autoPlay
-            loop
-            muted
-            playsInline
-            preload="metadata"
-            poster={sizedImage(HERO_POSTER, 1200)}
-            className="w-full h-full object-cover motion-reduce:hidden"
-          >
-            <source src="https://res.cloudinary.com/drgb8w8ak/video/upload/v1783579758/S_47_July_26_web_cover_video_e1wiyd.mp4" type="video/mp4" />
-          </video>
-          {/* Full-height dark gradient overlay to ensure text legibility across all screen sizes */}
-          <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/45 to-black/75" />
-        </div>
+        <HeroMedia poster={HERO_POSTER} />
         <div className="relative z-10 mx-auto max-w-6xl w-full px-5 md:px-8 pt-[calc(var(--header-h)+2.5rem)] pb-24 md:pt-[calc(var(--header-h)+4rem)] md:pb-28 flex-1 flex flex-col justify-center">
           <div className="text-white max-w-2xl">
             <h1 className="font-display font-extrabold text-[2.4rem] leading-[1.08] sm:text-5xl md:text-6xl tracking-tight drop-shadow-lg">
@@ -183,6 +153,7 @@ export default function Discover() {
             ref={spotsScrollRef}
             className="flex gap-3 md:gap-4 overflow-x-auto no-scrollbar -mx-4 px-4 md:mx-0 md:px-0 pb-2"
           >
+            {loading && repeat(4, (i) => <SpotTileSkeleton key={i} />)}
             {spots.map((s) => (
               <Link key={s.id} to={`/listing/${s.id}`} data-testid={`spot-tile-${s.id}`}
                 className="flex-shrink-0 w-[70%] sm:w-[45%] md:w-[30%] rounded-2xl overflow-hidden bg-white border border-[var(--line)] btn-hover">
@@ -222,6 +193,7 @@ export default function Discover() {
           <Link to="/homestays" className="text-sm font-bold text-pine whitespace-nowrap">{t('home.see_all')} →</Link>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+          {loading && repeat(4, (i) => <StayTileSkeleton key={i} />)}
           {homestays.slice(0, 4).map((h) => (
             <div key={h.id} data-testid={`stay-tile-${h.id}`} className="flex flex-col rounded-2xl overflow-hidden bg-white border border-[var(--line)] btn-hover">
               <Link to={`/listing/${h.id}`} className="block aspect-square bg-mist overflow-hidden">
@@ -251,9 +223,16 @@ export default function Discover() {
           <h2 className="font-display font-extrabold text-2xl md:text-3xl text-ink">{t('home.explore_darjeeling')}</h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
-          {feed.map((it, idx) => (
-            <FeedCard key={it.id} item={it} priority={idx < 2} />
-          ))}
+          {loading ? (
+            <>
+              <LoadingStatus label={t('common.loading')} />
+              {repeat(4, (i) => <FeedCardSkeleton key={i} />)}
+            </>
+          ) : (
+            feed.map((it, idx) => (
+              <FeedCard key={it.id} item={it} priority={idx < 2} />
+            ))
+          )}
         </div>
       </section>
 
