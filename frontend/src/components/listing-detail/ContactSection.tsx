@@ -1,7 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Phone, MessageCircle, Navigation, CalendarPlus } from 'lucide-react';
-import { Screen, SectionHead } from './primitives';
+import { Screen, SectionHead, ALIGN_TEXT, ALIGN_BLOCK } from './primitives';
 
 /**
  * A Google Calendar "add event" link, but only when the listing carries a real ISO date in
@@ -42,7 +42,7 @@ export default function ContactSection({ item, onOpenMaps }: { item: any; onOpen
   return (
     <Screen tone="white" testid="detail-contact">
       <SectionHead label={t('detail.reserve')} title={title} note={note} />
-      <div className="mt-10 mx-auto max-w-xl">
+      <div className={`mt-10 max-w-xl ${ALIGN_BLOCK}`}>
         <div className="mist-panel p-6 md:p-8 space-y-3">
           {phone ? (
             <>
@@ -56,7 +56,7 @@ export default function ContactSection({ item, onOpenMaps }: { item: any; onOpen
               </a>
             </>
           ) : (
-            <p className="text-center text-sm text-ink-soft">
+            <p className={`${ALIGN_TEXT} text-sm text-ink-soft`}>
               {t('contact.no_contact')}
             </p>
           )}

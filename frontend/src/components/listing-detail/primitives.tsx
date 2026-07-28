@@ -5,25 +5,48 @@ import React, { useState } from 'react';
 // height (the header carries the circular category rail).
 export const SCREEN_H = 'min-h-[calc(100svh-var(--header-h))]';
 
-/** Full-viewport section with a centred column. Each part gets its own screen. */
-export function Screen({ tone = 'bg', wide = false, children, testid }: {
+/**
+ * How the detail page's sections align their content. Every section in this
+ * folder reads these rather than spelling the classes out, so the page can be
+ * re-aligned from one place.
+ *
+ * TRIAL: currently flush-left at every width. To restore centred desktop
+ * sections (mobile stays left either way), set them back to:
+ *   ALIGN_TEXT  = 'text-left md:text-center'
+ *   ALIGN_ROW   = 'justify-start md:justify-center'
+ *   ALIGN_BLOCK = 'md:mx-auto'
+ */
+export const ALIGN_TEXT = 'text-left';
+export const ALIGN_ROW = 'justify-start';
+export const ALIGN_BLOCK = '';
+
+/**
+ * Full-viewport section. Each part of the page gets its own screen.
+ *
+ * One column width for every section, so their left edges line up as the
+ * visitor scrolls. Sections used to pick between max-w-4xl and max-w-6xl, and
+ * because both are centred that showed up as content starting at two different
+ * indents down the page. Readable measure is set per block inside instead.
+ */
+export const SCREEN_COL = 'mx-auto w-full max-w-6xl px-4 md:px-8';
+
+export function Screen({ tone = 'bg', children, testid }: {
   tone?: 'bg' | 'white' | 'mist';
-  wide?: boolean;
   children: React.ReactNode;
   testid?: string;
 }) {
   const bg = tone === 'white' ? 'bg-white' : tone === 'mist' ? 'bg-mist' : 'bg-[var(--bg)]';
   return (
     <section data-testid={testid} className={`${SCREEN_H} flex items-center ${bg}`}>
-      <div className={`mx-auto w-full px-4 md:px-8 py-20 md:py-24 ${wide ? 'max-w-6xl' : 'max-w-4xl'}`}>{children}</div>
+      <div className={`${SCREEN_COL} py-20 md:py-24`}>{children}</div>
     </section>
   );
 }
 
-/** Centred section header: eyebrow, title, optional note. */
+/** Section header: eyebrow, title, optional note. Aligned via ALIGN_*. */
 export function SectionHead({ label, title, note }: { label: string; title: string; note?: string }) {
   return (
-    <div className="text-center max-w-3xl mx-auto">
+    <div className={`${ALIGN_TEXT} max-w-3xl ${ALIGN_BLOCK}`}>
       {/* Several sections use the same string for both; showing it twice just
           reads as a stutter, so the eyebrow drops out when it repeats. */}
       {label !== title && (
@@ -40,7 +63,9 @@ export function SectionHead({ label, title, note }: { label: string; title: stri
 /** Real photo if it loads, otherwise the branded initial - never a broken face. */
 export function Avatar({ photo, initial }: { photo?: string; initial: string }) {
   const [failed, setFailed] = useState(false);
-  const base = 'w-36 h-36 md:w-44 md:h-44 rounded-full overflow-hidden mx-auto shadow-lg ring-4 ring-white';
+  // Follows the text it heads - a centred portrait over a left-aligned name
+  // reads as a layout mistake.
+  const base = `w-36 h-36 md:w-44 md:h-44 rounded-full overflow-hidden ${ALIGN_BLOCK} shadow-lg ring-4 ring-white`;
   if (!photo || failed) {
     return (
       <div className={`${base} bg-gradient-to-br from-pine to-pine-dark text-white grid place-items-center font-display font-extrabold text-6xl md:text-7xl`}>

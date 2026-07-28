@@ -8,7 +8,7 @@ import {
   MapPin, Tag, Navigation, ArrowRight, Languages,
   CalendarClock, Route, Crosshair,
 } from 'lucide-react';
-import { Screen, SectionHead, Avatar } from './primitives';
+import { Screen, SectionHead, Avatar, ALIGN_TEXT, ALIGN_ROW, ALIGN_BLOCK } from './primitives';
 import VerifiedBadge from '@/components/provider/VerifiedBadge';
 
 // One component per full-screen section of the listing detail page. The page
@@ -21,10 +21,13 @@ export function AboutSection({ item, about, label }: { item: any; about?: string
     <Screen tone="bg" testid="detail-about">
       <SectionHead label={label || t('detail.about')} title={item.title} />
       {/* whitespace-pre-line so an `about` written as multiple paragraphs
-          (separated by blank lines) keeps its breaks instead of collapsing. */}
-      <p className="mt-8 text-lg md:text-xl text-ink leading-relaxed text-center max-w-3xl mx-auto whitespace-pre-line">{about}</p>
+          (separated by blank lines) keeps its breaks instead of collapsing.
+          The measure widens with the viewport rather than staying at 3xl, which
+          left a lot of empty column on a desktop screen. Phones are narrower
+          than 3xl to begin with, so the base cap is what they keep. */}
+      <p className={`mt-8 text-lg md:text-xl text-ink leading-relaxed ${ALIGN_TEXT} max-w-3xl md:max-w-4xl lg:max-w-5xl ${ALIGN_BLOCK} whitespace-pre-line`}>{about}</p>
       {item.tags?.length > 0 && (
-        <div className="mt-8 flex flex-wrap justify-center gap-2">
+        <div className={`mt-8 flex flex-wrap ${ALIGN_ROW} gap-2`}>
           {item.tags.map((tg: string) => <span key={tg} className="chip"><Tag size={11} className="mr-1" /> {optionLabel(t, tg)}</span>)}
         </div>
       )}
@@ -36,7 +39,7 @@ export function AboutSection({ item, about, label }: { item: any; about?: string
 export function PhotosSection({ item, gallery, fallbackImg }: { item: any; gallery: string[]; fallbackImg: string }) {
   const { t } = useTranslation();
   return (
-    <Screen tone="white" wide testid="detail-photos">
+    <Screen tone="white" testid="detail-photos">
       <SectionHead label={t('detail.photos')} title={t('detail.photos')} note={t('detail.gallery_note')} />
       <div className="mt-10 grid sm:grid-cols-3 gap-4 md:gap-5">
         {gallery.map((src, i) => (
@@ -53,9 +56,9 @@ export function OffersSection({ amenities, title }: { amenities: { Icon: any; la
   const { t } = useTranslation();
   const heading = title || t('detail.offers');
   return (
-    <Screen tone="mist" wide testid="detail-offers">
+    <Screen tone="mist" testid="detail-offers">
       <SectionHead label={heading} title={heading} />
-      <div className="mt-10 grid sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5 max-w-4xl mx-auto">
+      <div className={`mt-10 grid sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5 max-w-4xl ${ALIGN_BLOCK}`}>
         {amenities.map(({ Icon, label }) => (
           <div key={label} className="flex items-center gap-4 p-5 rounded-2xl border border-[var(--line)] bg-white">
             <Icon size={24} className="text-pine flex-shrink-0" />
@@ -91,16 +94,16 @@ export function HostSection({ item, host, personSrc }: { item: any; host: any; p
   return (
     <Screen tone="bg" testid="detail-host">
       <SectionHead label={t('detail.host')} title={t('detail.host')} />
-      <div className="mt-10 text-center max-w-2xl mx-auto">
+      <div className={`mt-10 ${ALIGN_TEXT} max-w-2xl ${ALIGN_BLOCK}`}>
         <Avatar photo={personSrc} initial={host.initial} />
-        <div className="mt-6 flex items-center justify-center gap-2 flex-wrap">
+        <div className={`mt-6 flex items-center ${ALIGN_ROW} gap-2 flex-wrap`}>
           <span className="font-display font-extrabold text-2xl md:text-3xl text-ink">{host.name}</span>
           {host.verified && <VerifiedBadge size="sm" />}
         </div>
-        <p className="mt-2 text-sm text-ink-soft flex items-center justify-center gap-1.5"><MapPin size={13} /> {item.location}</p>
+        <p className={`mt-2 text-sm text-ink-soft flex items-center ${ALIGN_ROW} gap-1.5`}><MapPin size={13} /> {item.location}</p>
         <p className="mt-6 text-lg text-ink leading-relaxed whitespace-pre-line">{host.bio}</p>
-        <p className="mt-5 text-ink-soft flex items-center justify-center gap-2">
-          <Languages size={18} className="text-pine" /> {t('detail.speaks')}: {host.languages.join(', ')}
+        <p className={`mt-5 text-ink-soft flex items-center ${ALIGN_ROW} gap-2`}>
+          <Languages size={18} className="text-pine flex-shrink-0" /> {t('detail.speaks')}: {host.languages.join(', ')}
         </p>
       </div>
     </Screen>
@@ -116,13 +119,13 @@ export function DriverSection({ item, about, personSrc, initial }: { item: any; 
   return (
     <Screen tone="bg" testid="detail-driver">
       <SectionHead label={t('detail.meet_driver')} title={t('detail.meet_driver')} />
-      <div className="mt-10 text-center max-w-2xl mx-auto">
+      <div className={`mt-10 ${ALIGN_TEXT} max-w-2xl ${ALIGN_BLOCK}`}>
         <Avatar photo={personSrc} initial={initial} />
-        <div className="mt-6 flex items-center justify-center gap-2 flex-wrap">
+        <div className={`mt-6 flex items-center ${ALIGN_ROW} gap-2 flex-wrap`}>
           <span className="font-display font-extrabold text-2xl md:text-3xl text-ink">{item.title}</span>
           {item.provider_verified && <VerifiedBadge size="sm" />}
         </div>
-        <div className="mt-3 flex items-center justify-center gap-2 flex-wrap">
+        <div className={`mt-3 flex items-center ${ALIGN_ROW} gap-2 flex-wrap`}>
           {carModel && (
             <span className="chip bg-white border border-[var(--line)] text-ink font-bold text-xs">
               🚘 {carModel}
@@ -151,8 +154,8 @@ export function BestTimeSection({ bestTime }: { bestTime: string }) {
   return (
     <Screen tone="white" testid="detail-besttime">
       <SectionHead label={t('detail.best_time')} title={t('detail.best_time')} />
-      <div className="mt-10 mx-auto max-w-xl rounded-3xl border border-[var(--line)] bg-[var(--bg)] p-8 text-center">
-        <CalendarClock size={40} className="text-pine mx-auto" />
+      <div className={`mt-10 max-w-xl ${ALIGN_BLOCK} rounded-3xl border border-[var(--line)] bg-[var(--bg)] p-8 ${ALIGN_TEXT}`}>
+        <CalendarClock size={40} className={`text-pine ${ALIGN_BLOCK}`} />
         <p className="mt-4 text-xl md:text-2xl font-display font-bold text-ink leading-snug">{bestTime}</p>
       </div>
     </Screen>
@@ -165,7 +168,7 @@ export function RoutesSection({ routes }: { routes: RouteFare[] }) {
   return (
     <Screen tone="mist" testid="detail-routes">
       <SectionHead label={t('detail.routes_label')} title={t('detail.routes_title')} note={t('detail.routes_note')} />
-      <div className="mt-10 mx-auto max-w-2xl space-y-3">
+      <div className={`mt-10 max-w-2xl ${ALIGN_BLOCK} space-y-3`}>
         {routes.map((r, i) => (
           <div key={i} className="flex items-center gap-4 p-5 rounded-2xl border border-[var(--line)] bg-white text-left">
             <Route size={22} className="text-pine flex-shrink-0" />
@@ -195,7 +198,7 @@ export function LocationSection({ item, coords, spotted, onOpenMaps }: {
   const { t } = useTranslation();
   const isBio = item.type === 'biodiversity';
   return (
-    <Screen tone="bg" wide testid={isBio ? 'detail-spotted' : 'detail-location'}>
+    <Screen tone="bg" testid={isBio ? 'detail-spotted' : 'detail-location'}>
       {isBio
         ? <SectionHead label={t('detail.spotted')} title={t('detail.spotted')} note={t('detail.spotted_note')} />
         : <SectionHead label={t('detail.location')} title={t('detail.location')} />}
@@ -204,20 +207,20 @@ export function LocationSection({ item, coords, spotted, onOpenMaps }: {
         <MapEmbed coords={coords!} title={item.location} className="w-full h-[42vh] min-h-[260px]" />
         <div className="p-6 md:p-8">
           {isBio && spotted && spotted.length > 0 ? (
-            <div className="flex flex-wrap justify-center gap-2">
+            <div className={`flex flex-wrap ${ALIGN_ROW} gap-2`}>
               {spotted.map((s) => (
                 <span key={s} className="chip"><Crosshair size={12} className="mr-1" /> {s}</span>
               ))}
             </div>
           ) : (
             <>
-              <div className="font-display font-extrabold text-2xl text-ink text-center">{item.location}</div>
+              <div className={`font-display font-extrabold text-2xl text-ink ${ALIGN_TEXT}`}>{item.location}</div>
               {item.extras?.address && (
-                <div className="mt-1 text-sm font-semibold text-ink-soft text-center">{item.extras.address}</div>
+                <div className={`mt-1 text-sm font-semibold text-ink-soft ${ALIGN_TEXT}`}>{item.extras.address}</div>
               )}
             </>
           )}
-          <div className="mt-6 flex justify-center">
+          <div className={`mt-6 flex ${ALIGN_ROW}`}>
             <button onClick={onOpenMaps} data-testid="detail-open-maps"
               className="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-white border border-[var(--line)] text-ink font-bold btn-hover">
               {t('cta.get_directions')} <ArrowRight size={15} />

@@ -1,8 +1,9 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Navigation } from 'lucide-react';
-import { Screen, SectionHead } from './primitives';
+import { Screen, SectionHead, ALIGN_TEXT, ALIGN_BLOCK } from './primitives';
 import { BookingFlow } from './useBookingFlow';
+import { todayStr, addDays, isBadRange } from '@/lib/dates';
 
 /** Reserve screen: the booking form (bookable types) or a walk-in CTA. */
 export function ReserveSection({ item, unit, bookable, cta, booking, onOpenMaps }: {
@@ -16,13 +17,21 @@ export function ReserveSection({ item, unit, bookable, cta, booking, onOpenMaps 
   const { t } = useTranslation();
   const { form, setForm, busy, msg, doBook } = booking;
   const CtaIcon = cta.Icon;
+  const today = todayStr();
+
+  // Moving check-in past the current check-out would leave an impossible range
+  // sitting in the form, so the stale end of it is dropped rather than kept
+  // around for the submit handler to reject.
+  const onCheckIn = (value: string) =>
+    setForm({ ...form, check_in: value, check_out: isBadRange(value, form.check_out) ? '' : form.check_out });
+
   return (
     <Screen tone="white" testid="detail-reserve">
       <SectionHead label={t('detail.reserve')}
         title={item.price > 0 ? `₹${item.price}${unit}` : t('detail.reserve')}
         note={bookable ? undefined : t('detail.walk_in_note')} />
 
-      <div className="mt-10 mx-auto max-w-xl">
+      <div className={`mt-10 max-w-xl ${ALIGN_BLOCK}`}>
         <div className="mist-panel p-6 md:p-8">
           {bookable ? (
             <div className="space-y-4">
@@ -30,13 +39,17 @@ export function ReserveSection({ item, unit, bookable, cta, booking, onOpenMaps 
                 <div className="grid grid-cols-2 gap-4">
                   <label className="block text-left">
                     <span className="text-xs font-semibold text-ink-soft">{t('booking.checkin')}</span>
-                    <input required type="date" value={form.check_in} onChange={(e) => setForm({ ...form, check_in: e.target.value })}
+                    <input required type="date" value={form.check_in} min={today} onChange={(e) => onCheckIn(e.target.value)}
                       data-testid="booking-checkin" className="mt-1 w-full px-3 py-3 rounded-xl border border-[var(--line)] bg-white outline-none text-sm" />
                   </label>
                   <label className="block text-left">
                     <span className="text-xs font-semibold text-ink-soft">{t('booking.checkout')}</span>
-                    <input required type="date" value={form.check_out} onChange={(e) => setForm({ ...form, check_out: e.target.value })}
-                      data-testid="booking-checkout" className="mt-1 w-full px-3 py-3 rounded-xl border border-[var(--line)] bg-white outline-none text-sm" />
+                    {/* A stay is at least one night, so the earliest check-out
+                        the picker will offer is the day after check-in. */}
+                    <input required type="date" value={form.check_out} min={form.check_in ? addDays(form.check_in, 1) : addDays(today, 1)}
+                      disabled={!form.check_in}
+                      onChange={(e) => setForm({ ...form, check_out: e.target.value })}
+                      data-testid="booking-checkout" className="mt-1 w-full px-3 py-3 rounded-xl border border-[var(--line)] bg-white outline-none text-sm disabled:opacity-50 disabled:cursor-not-allowed" />
                   </label>
                 </div>
               )}
@@ -55,7 +68,7 @@ export function ReserveSection({ item, unit, bookable, cta, booking, onOpenMaps 
                 className={`w-full py-4 rounded-full font-bold btn-hover disabled:opacity-60 inline-flex items-center justify-center gap-2 ${cta.color}`}>
                 {busy ? t('common.loading') : (item.type === 'driver' ? t('cta.talk_to_driver') : t('cta.book_now'))} <CtaIcon size={18} />
               </button>
-              {msg && <p data-testid="booking-msg" className="text-sm text-center text-pine font-semibold">{msg}</p>}
+              {msg && <p data-testid="booking-msg" className={`text-sm ${ALIGN_TEXT} text-pine font-semibold`}>{msg}</p>}
             </div>
           ) : (
             <button onClick={onOpenMaps} data-testid="info-cta"

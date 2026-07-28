@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { X } from 'lucide-react';
+import { X, ArrowUpRight } from 'lucide-react';
 import { CATEGORIES } from '@/constants/categories';
 
 /**
@@ -26,6 +26,17 @@ const NAV_LABEL_KEY: Record<string, string> = {
   event: 'events',
   biodiversity: 'biodiversity',
 };
+
+// Pale tea-green washing off to white. The direction alternates per tile so the
+// grid reads as eight separate cards catching the light rather than one sheet
+// of colour sliced into rectangles.
+const TILE_GRADIENT = [
+  'bg-gradient-to-br from-[#EDF0D8] via-[#F7F9EE] to-white',
+  'bg-gradient-to-tr from-[#EDF0D8] via-[#F7F9EE] to-white',
+];
+
+// The one saturated tile in the grid; also the accent behind each icon badge.
+const OLIVE = '#5C7006';
 
 export default function CategorySheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { t } = useTranslation();
@@ -54,7 +65,38 @@ export default function CategorySheet({ open, onClose }: { open: boolean; onClos
 
   if (!open) return null;
 
-  const last = CATEGORIES.length - 1;
+  // `cell` is the tile's slot in the grid, not its index in CATEGORIES - the
+  // browse-all card sits between the sixth and seventh type, so the gradient
+  // has to alternate by position or the seam shows either side of it.
+  const tile = ({ key, to, Icon }: typeof CATEGORIES[number], cell: number) => {
+    const active = pathname === to;
+    return (
+      <Link
+        key={key}
+        to={to}
+        onClick={onClose}
+        aria-current={active ? 'page' : undefined}
+        data-testid={`type-sheet-${key}`}
+        className={`group flex flex-col items-start justify-center gap-3 rounded-3xl border p-4
+          min-h-0 transition-shadow hover:shadow-md
+          ${TILE_GRADIENT[cell % 2]}
+          ${active ? 'border-[#5C7006] ring-1 ring-[#5C7006]' : 'border-[#E4E7CF]'}`}
+      >
+        <span className="font-display font-bold text-[15px] leading-tight text-ink">
+          {t(`nav.${NAV_LABEL_KEY[key]}`)}
+        </span>
+        <span
+          className="w-9 h-9 rounded-full grid place-items-center flex-shrink-0 text-white"
+          style={{ backgroundColor: OLIVE }}
+        >
+          <Icon className="w-[18px] h-[18px]" strokeWidth={2} />
+        </span>
+      </Link>
+    );
+  };
+
+  const head = CATEGORIES.slice(0, -1);
+  const tail = CATEGORIES.slice(-1);
 
   return (
     <div
@@ -83,12 +125,13 @@ export default function CategorySheet({ open, onClose }: { open: boolean; onClos
         </button>
       </div>
 
-      {/* Grid fills the remaining height; auto-rows-fr stretches rows to fill. */}
+      {/* Eight tiles in a 2-up grid: six types, the browse-all card, then biodiversity.
+          Rows stretch to fill the sheet but never squash below 6.5rem. */}
       <div
-        className="flex-1 min-h-0 grid grid-cols-2 auto-rows-fr gap-3 px-4
+        className="flex-1 min-h-0 overflow-y-auto grid grid-cols-2 auto-rows-[minmax(6.5rem,1fr)] gap-3 px-4
                    pb-[calc(var(--bottom-nav-h)+0.75rem)]"
       >
-        {CATEGORIES.map(({ key, to, Icon }, i) => {
+        {CATEGORIES.slice(0, 6).map(({ key, to, Icon }, i) => {
           const active = pathname === to;
           return (
             <Link
@@ -97,23 +140,64 @@ export default function CategorySheet({ open, onClose }: { open: boolean; onClos
               onClick={onClose}
               aria-current={active ? 'page' : undefined}
               data-testid={`type-sheet-${key}`}
-              className={`group flex flex-col items-center justify-center gap-3 rounded-3xl border p-4
-                min-h-0 transition-colors ${i === last ? 'col-span-2' : ''}
-                ${active
-                  ? 'border-pine bg-pine/5'
-                  : 'border-[var(--line)] bg-white hover:border-pine/40'}`}
+              className={`group flex flex-col items-start justify-center gap-3 rounded-3xl border p-4
+                min-h-0 transition-shadow hover:shadow-md
+                ${TILE_GRADIENT[i % 2]}
+                ${active ? 'border-[#5C7006] ring-1 ring-[#5C7006]' : 'border-[#E4E7CF]'}`}
             >
-              <span
-                className={`w-16 h-16 rounded-full grid place-items-center transition-colors flex-shrink-0
-                  ${active ? 'bg-pine text-white' : 'bg-mist text-pine group-hover:bg-pine/10'}`}
-              >
-                <Icon className="w-8 h-8" strokeWidth={1.8} />
+              <span className="font-display font-bold text-[15px] leading-tight text-ink">
+                {t(`nav.${NAV_LABEL_KEY[key]}`)}
               </span>
               <span
-                className={`text-sm text-center leading-tight
-                  ${active ? 'font-extrabold text-pine' : 'font-bold text-ink'}`}
+                className="w-9 h-9 rounded-full grid place-items-center flex-shrink-0 text-white"
+                style={{ backgroundColor: OLIVE }}
               >
+                <Icon className="w-[18px] h-[18px]" strokeWidth={2} />
+              </span>
+            </Link>
+          );
+        })}
+
+        {/* Browse-all: Swapped placement to 7th position */}
+        <Link
+          to="/search"
+          onClick={onClose}
+          data-testid="type-sheet-browse-all"
+          className="flex flex-col items-start justify-center gap-3 rounded-3xl p-4 min-h-0
+                     text-white transition-shadow hover:shadow-md"
+          style={{ backgroundColor: OLIVE }}
+        >
+          <span className="font-display font-bold text-[15px] leading-tight">
+            {t('nav.browse_categories')}
+          </span>
+          <span className="w-9 h-9 rounded-full grid place-items-center flex-shrink-0 bg-white/25">
+            <ArrowUpRight className="w-[18px] h-[18px]" strokeWidth={2.4} />
+          </span>
+        </Link>
+
+        {/* Biodiversity: Swapped placement to 8th position */}
+        {CATEGORIES.slice(6).map(({ key, to, Icon }) => {
+          const active = pathname === to;
+          return (
+            <Link
+              key={key}
+              to={to}
+              onClick={onClose}
+              aria-current={active ? 'page' : undefined}
+              data-testid={`type-sheet-${key}`}
+              className={`group flex flex-col items-start justify-center gap-3 rounded-3xl border p-4
+                min-h-0 transition-shadow hover:shadow-md
+                ${TILE_GRADIENT[1]}
+                ${active ? 'border-[#5C7006] ring-1 ring-[#5C7006]' : 'border-[#E4E7CF]'}`}
+            >
+              <span className="font-display font-bold text-[15px] leading-tight text-ink">
                 {t(`nav.${NAV_LABEL_KEY[key]}`)}
+              </span>
+              <span
+                className="w-9 h-9 rounded-full grid place-items-center flex-shrink-0 text-white"
+                style={{ backgroundColor: OLIVE }}
+              >
+                <Icon className="w-[18px] h-[18px]" strokeWidth={2} />
               </span>
             </Link>
           );
