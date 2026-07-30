@@ -5,6 +5,8 @@ import api from '@/lib/api';
 import FeedCard from '@/components/FeedCard';
 import { FeedCardSkeleton, GridTileSkeleton, LoadingStatus, repeat } from '@/components/skeletons';
 import { LayoutGrid, Rows3, MapPin, ArrowRight } from 'lucide-react';
+import { contentFor } from '@/lib/listingContent';
+import { routesCoverTrip } from '@/lib/routeFares';
 
 const TYPE_MAP = {
   spots: 'spot',
@@ -21,7 +23,12 @@ export default function Category({ typeOverride }) {
   const { type: paramType } = useParams();
   const [sp] = useSearchParams();
   const q = sp.get('q') || '';
-  const type = typeOverride ? typeOverride : TYPE_MAP[paramType];
+  const urlType = sp.get('type') || '';
+  // A driver search asks for a journey rather than a place, so the widget sends
+  // both ends of the route instead of a query.
+  const from = sp.get('from') || '';
+  const to = sp.get('to') || '';
+  const type = typeOverride ? typeOverride : (urlType || TYPE_MAP[paramType]);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState('grid'); // 'grid' or 'feed'
@@ -33,18 +40,33 @@ export default function Category({ typeOverride }) {
       .finally(() => setLoading(false));
   }, [type, q]);
 
-  const title = type ? t(`categories.${type}`) : (q ? `“${q}”` : t('nav.discover'));
+  // Narrowed here rather than in the query: a driver's routes live in
+  // `extras.routes`, or - for the seeded drivers - only in the editorial map, so
+  // `contentFor` is the one place that sees both and the API can't filter on it.
+  const trip = [from.trim(), to.trim()].filter(Boolean).join(' → ');
+  const results = (type === 'driver' && trip)
+    ? items.filter((it) => routesCoverTrip(contentFor(it).routes || [], from, to))
+    : items;
+
+  const searching = !!(q || trip);
+  const title = trip || (q ? `“${q}”` : type ? t(`categories.${type}`) : t('nav.discover'));
 
   return (
     <div className="mx-auto max-w-6xl px-4 md:px-6 py-6 md:py-8">
       {/* Sticky sub-header */}
       <div className="flex items-end justify-between mb-4 md:mb-6">
         <div>
-          {q && <div className="text-[11px] font-bold uppercase tracking-widest text-flag">{t('category.search')}</div>}
+          {/* The category is part of the answer, not just the query: a search
+              made from the Stays tab returns stays, and the eyebrow says so. */}
+          {searching && (
+            <div className="text-[11px] font-bold uppercase tracking-widest text-flag">
+              {type ? `${t('category.search')} · ${t(`categories.${type}`)}` : t('category.search')}
+            </div>
+          )}
           <h1 className="font-display font-extrabold text-3xl sm:text-4xl md:text-5xl text-ink leading-tight">{title}</h1>
           {/* A count of 0 while the request is still out reads as "nothing here". */}
           <p className="mt-1 text-sm text-ink-soft">
-            {loading ? t('common.loading') : t('category.results', { count: items.length })}
+            {loading ? t('common.loading') : t('category.results', { count: results.length })}
           </p>
         </div>
         <div className="hidden sm:flex items-center gap-1 p-1 rounded-full bg-white border border-[var(--line)]">
@@ -72,14 +94,14 @@ export default function Category({ typeOverride }) {
             </div>
           )}
         </>
-      ) : items.length === 0 ? (
+      ) : results.length === 0 ? (
         <div className="mist-panel p-8 md:p-10 text-center">
           <p className="text-ink-soft">{t('category.empty')}</p>
         </div>
       ) : view === 'grid' ? (
         // Instagram Explore-style grid: tight, image-first
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
-          {items.map((it) => {
+          {results.map((it) => {
             const ctaKey = it.type === 'homestay' ? 'book_now'
               : it.type === 'driver' ? 'talk_to_driver'
               : it.type === 'shop' ? 'contact_shop'
@@ -117,7 +139,7 @@ export default function Category({ typeOverride }) {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
-          {items.map((it, i) => <FeedCard key={it.id} item={it} priority={i < 2} />)}
+          {results.map((it, i) => <FeedCard key={it.id} item={it} priority={i < 2} />)}
         </div>
       )}
     </div>

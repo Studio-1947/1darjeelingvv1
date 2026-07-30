@@ -3,6 +3,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import api from '@/lib/api';
 import { shareLink } from '@/lib/share';
+import { openDirections } from '@/lib/directions';
 import { ListingDetailSkeleton, LoadingStatus } from '@/components/skeletons';
 import { amenitiesFor, hostFor } from '@/lib/listingMeta';
 import { contentFor, listingImage, galleryImagesFor, personImageFor, fallbackFor, spotInfoFor } from '@/lib/listingContent';
@@ -50,11 +51,10 @@ export default function ListingDetail() {
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, [loading, item, hash]);
 
-  const openMaps = () => {
-    if (!item) return;
-    const q = encodeURIComponent(`${item.title}, ${item.location}`);
-    window.open(`https://www.google.com/maps/search/?api=1&query=${q}`, '_blank');
-  };
+  // Every directions CTA on this page - the one under the map, the walk-in
+  // action, the mobile sticky bar, the contact screen - routes to this listing's
+  // own pin through here.
+  const openMaps = () => openDirections(item);
 
   const shareIt = async (): Promise<ShareOutcome> => {
     if (!item) return 'failed';
