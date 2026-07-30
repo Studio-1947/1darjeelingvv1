@@ -62,8 +62,8 @@ export default function About() {
         </div>
 
         <div className="mx-auto max-w-5xl px-4 md:px-8 pt-12 md:pt-20 pb-4 text-center">
-          
-          
+
+
           <h1 className="mt-6 font-display font-extrabold text-4xl sm:text-5xl md:text-6xl text-ink leading-[1.05] tracking-tight">
             {t('about.title')}
           </h1>
@@ -179,9 +179,8 @@ export default function About() {
             return (
               <div key={s.t} className="relative text-center" data-testid={`about-step-${i}`}>
                 <div
-                  className={`relative z-10 mx-auto w-14 h-14 rounded-full grid place-items-center text-white font-display font-extrabold text-lg ${
-                    isLast ? 'bg-flag' : 'bg-pine'
-                  }`}
+                  className={`relative z-10 mx-auto w-14 h-14 rounded-full grid place-items-center text-white font-display font-extrabold text-lg ${isLast ? 'bg-flag' : 'bg-pine'
+                    }`}
                 >
                   {i + 1}
                 </div>
@@ -247,9 +246,9 @@ export default function About() {
               className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-flag text-white font-bold btn-hover">
               {t('nav.provider')} <ArrowRight size={16} />
             </Link>
-            <a href="mailto:hello@1darjeeling.in"
+            <a href="mailto:1darjeelingapp@gmail.com"
               className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-white border border-[var(--line)] text-ink font-bold btn-hover">
-              <Mail size={16} /> hello@1darjeeling.in
+              <Mail size={16} /> 1darjeelingapp@gmail.com
             </a>
           </div>
         </div>

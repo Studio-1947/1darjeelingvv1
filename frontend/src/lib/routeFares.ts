@@ -60,3 +60,39 @@ export function allRoutesPriced(fares: RouteFare[]): boolean {
   return fares.length > 0 && fares.every(f => f.price > 0);
 }
 
+/**
+ * Words a typed place name and a driver's route line can disagree on without
+ * meaning different places, so "NJP Station" still finds
+ * "NJP Railway Station ↔ Darjeeling". One and two-letter fragments are dropped
+ * as noise rather than listed.
+ */
+function placeTokens(place: string): string[] {
+  return place.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length > 2);
+}
+
+/** True when one route line runs through the given place. */
+function routeCoversPlace(route: string, place: string): boolean {
+  const line = route.toLowerCase();
+  if (line.includes(place.trim().toLowerCase())) return true;
+  const tokens = placeTokens(place);
+  return tokens.length > 0 && tokens.every((token) => line.includes(token));
+}
+
+/**
+ * Does this driver run the trip being asked for?
+ *
+ * Both ends have to sit on the *same* route line: a driver who runs
+ * Darjeeling ↔ Gangtok and Bagdogra ↔ Darjeeling does not thereby run
+ * Gangtok ↔ Bagdogra. Direction is ignored - routes are written "A ↔ B" and
+ * driven both ways - and one end on its own matches any route touching it, so
+ * a half-filled search still narrows rather than emptying the page.
+ */
+export function routesCoverTrip(fares: RouteFare[], from: string, to: string): boolean {
+  const start = from.trim();
+  const end = to.trim();
+  if (!start && !end) return true;
+  return fares.some((f) =>
+    (!start || routeCoversPlace(f.route, start)) && (!end || routeCoversPlace(f.route, end))
+  );
+}
+

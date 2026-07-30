@@ -40,7 +40,7 @@ export default function Footer() {
           <h4 className="font-display font-bold text-sm mb-3 text-ink">{t('footer.legal')}</h4>
           <ul className="space-y-2 text-sm text-ink-soft">
             <li><Link to="/privacy">{t('nav.privacy')}</Link></li>
-            <li className="flex items-center gap-1"><Mail size={12} /> hello@1darjeeling.in</li>
+            <li className="flex items-center gap-1"><Mail size={12} /> 1darjeelingapp@gmail.com</li>
           </ul>
         </div>
       </div>

@@ -6,6 +6,7 @@ import { shareLink } from '@/lib/share';
 import { ListingDetailSkeleton, LoadingStatus } from '@/components/skeletons';
 import { amenitiesFor, hostFor } from '@/lib/listingMeta';
 import { contentFor, listingImage, galleryImagesFor, personImageFor, fallbackFor } from '@/lib/listingContent';
+import { openDirections } from '@/lib/directions';
 import MockPaymentModal from '@/components/MockPaymentModal';
 import BookingConfirmation from '@/components/BookingConfirmation';
 import DetailHero from '@/components/listing-detail/DetailHero';
@@ -49,11 +50,10 @@ export default function ListingDetail() {
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, [loading, item, hash]);
 
-  const openMaps = () => {
-    if (!item) return;
-    const q = encodeURIComponent(`${item.title}, ${item.location}`);
-    window.open(`https://www.google.com/maps/search/?api=1&query=${q}`, '_blank');
-  };
+  // Every directions CTA on this page - the one under the map, the walk-in
+  // action, the mobile sticky bar, the contact screen - routes to this listing's
+  // own pin through here.
+  const openMaps = () => openDirections(item);
 
   const shareIt = async (): Promise<ShareOutcome> => {
     if (!item) return 'failed';
