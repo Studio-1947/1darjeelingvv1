@@ -427,10 +427,41 @@ export function contentFor(
   return {
     about: c.about || item?.description || '',
     gallery: c.gallery,
-    coords: mapPinFor(item) || DARJEELING,
-    bestTime: c.bestTime,
+    coords: pinned || c.coords || DARJEELING,
+    // What an admin typed in the console wins over the static editorial map, the same
+    // way pinned coordinates and provider routes do above.
+    bestTime: item?.extras?.best_time || c.bestTime,
     routes,
     spotted: c.spotted,
     personPhoto: c.personPhoto,
+  };
+}
+
+/**
+ * The admin-authored visitor information on a tourist spot (see the Tourist Spots tab
+ * of the admin console). All fields are optional — `has` says whether the detail page
+ * has anything worth giving a section to.
+ */
+export function spotInfoFor(item: any): {
+  highlights: string[];
+  timings?: string;
+  entryFee?: string;
+  bestTime?: string;
+  altitude?: string;
+  howToReach?: string;
+  has: boolean;
+} {
+  const extras = item?.extras || {};
+  const info = {
+    highlights: Array.isArray(extras.highlights) ? extras.highlights.filter(Boolean) : [],
+    timings: extras.timings || undefined,
+    entryFee: extras.entry_fee || undefined,
+    bestTime: extras.best_time || undefined,
+    altitude: extras.altitude || undefined,
+    howToReach: extras.how_to_reach || undefined,
+  };
+  return {
+    ...info,
+    has: !!(info.timings || info.entryFee || info.bestTime || info.altitude || info.howToReach),
   };
 }

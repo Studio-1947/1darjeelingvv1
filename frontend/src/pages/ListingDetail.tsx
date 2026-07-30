@@ -5,8 +5,7 @@ import api from '@/lib/api';
 import { shareLink } from '@/lib/share';
 import { ListingDetailSkeleton, LoadingStatus } from '@/components/skeletons';
 import { amenitiesFor, hostFor } from '@/lib/listingMeta';
-import { contentFor, listingImage, galleryImagesFor, personImageFor, fallbackFor } from '@/lib/listingContent';
-import { openDirections } from '@/lib/directions';
+import { contentFor, listingImage, galleryImagesFor, personImageFor, fallbackFor, spotInfoFor } from '@/lib/listingContent';
 import MockPaymentModal from '@/components/MockPaymentModal';
 import BookingConfirmation from '@/components/BookingConfirmation';
 import DetailHero from '@/components/listing-detail/DetailHero';
@@ -14,6 +13,7 @@ import type { ShareOutcome } from '@/lib/share';
 import {
   AboutSection, PhotosSection, OffersSection, StayGallerySection,
   HostSection, DriverSection, BestTimeSection, RoutesSection, LocationSection,
+  HighlightsSection, VisitInfoSection,
 } from '@/components/listing-detail/sections';
 import { ReserveSection, MobileStickyBar } from '@/components/listing-detail/ReserveSection';
 import ContactSection from '@/components/listing-detail/ContactSection';
@@ -86,6 +86,9 @@ export default function ListingDetail() {
   const amenities = amenitiesFor(item);
   const host = hostFor(item);
   const c = contentFor(item);
+  // Admin-authored visitor info — only tourist spots carry it (see the admin console).
+  const spotInfo = spotInfoFor(item);
+  const isSpot = item.type === 'spot';
   const initial = (item.title || '?').trim().charAt(0).toUpperCase();
   const fallbackImg = fallbackFor(item.type);
 
@@ -108,14 +111,33 @@ export default function ListingDetail() {
       <AboutSection item={item} about={c.about}
         label={item.type === 'driver' ? t('detail.about_driver') : t('detail.about')} />
 
+      {/* A curated spot leads with why it's worth the trip, before the photos. */}
+      {isSpot && spotInfo.highlights.length > 0 && <HighlightsSection highlights={spotInfo.highlights} />}
+
       {/* Drivers get their portrait and routes instead of a place gallery. */}
       {item.type !== 'driver' && gallery.length > 0 && (
         <PhotosSection item={item} gallery={gallery} fallbackImg={fallbackImg} />
       )}
 
+      {/* Timings, entry fee, best season, altitude and directions — all admin-entered, so
+          the section is skipped entirely for a spot that has none of them filled in. */}
+      {isSpot && spotInfo.has && (
+        <VisitInfoSection
+          facts={{
+            timings: spotInfo.timings,
+            entryFee: spotInfo.entryFee,
+            bestTime: spotInfo.bestTime,
+            altitude: spotInfo.altitude,
+          }}
+          howToReach={spotInfo.howToReach}
+        />
+      )}
+
       {/* Biodiversity entries are a species or habitat, not somewhere with
-          facilities - "what this place offers" has nothing to say about them. */}
-      {item.type !== 'biodiversity' && amenities.length > 0 && (
+          facilities - "what this place offers" has nothing to say about them.
+          A spot whose admin wrote real highlights skips it too: the generic
+          type-level amenities would only restate them less specifically. */}
+      {item.type !== 'biodiversity' && !(isSpot && spotInfo.highlights.length > 0) && amenities.length > 0 && (
         <OffersSection amenities={amenities} title={offersTitle} />
       )}
 
