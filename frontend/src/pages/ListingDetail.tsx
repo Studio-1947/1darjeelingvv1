@@ -3,6 +3,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import api from '@/lib/api';
 import { shareLink } from '@/lib/share';
+import { openDirections } from '@/lib/directions';
 import { ListingDetailSkeleton, LoadingStatus } from '@/components/skeletons';
 import { amenitiesFor, hostFor } from '@/lib/listingMeta';
 import { contentFor, listingImage, galleryImagesFor, personImageFor, fallbackFor, spotInfoFor } from '@/lib/listingContent';

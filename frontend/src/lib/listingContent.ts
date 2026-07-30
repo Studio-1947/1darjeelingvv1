@@ -424,6 +424,7 @@ export function contentFor(
     ? item.extras.routes
     : c.routes;
   const routes = rawRoutes ? normalizeRoutes(rawRoutes) : undefined;
+  const pinned = mapPinFor(item);
   return {
     about: c.about || item?.description || '',
     gallery: c.gallery,
