@@ -391,6 +391,27 @@ export function personImageFor(item: any, w = 600, h = 600): string | undefined 
   return stockPhoto(c.personPhoto, w, h, seedFor(item?.title) + 91);
 }
 
+/**
+ * This listing's actual position, or undefined when nobody has placed it.
+ *
+ * Coordinates the provider pinned on the map win over the static editorial
+ * entry, mirroring `routes` in contentFor. The listings API returns the pin as
+ * top-level latitude/longitude; both must be present to be usable.
+ *
+ * Deliberately does *not* fall back to the town centre. Callers that must draw
+ * something (a map has to be centred somewhere) add DARJEELING themselves;
+ * callers that would rather admit they don't know - directions, above all -
+ * need to be able to tell a real pin from a placeholder, which they can't once
+ * the two are the same value. Two festivals really are pinned at town centre,
+ * so comparing against DARJEELING is not a way to recover that distinction.
+ */
+export function mapPinFor(item: any): [number, number] | undefined {
+  if (typeof item?.latitude === 'number' && typeof item?.longitude === 'number') {
+    return [item.latitude, item.longitude];
+  }
+  return CONTENT[item?.title]?.coords;
+}
+
 /** Content for a listing, with type-level fallbacks so every listing renders. */
 export function contentFor(
   item: any
@@ -403,13 +424,7 @@ export function contentFor(
     ? item.extras.routes
     : c.routes;
   const routes = rawRoutes ? normalizeRoutes(rawRoutes) : undefined;
-  // Coordinates the provider pinned on the map win over the static editorial
-  // entry, mirroring `routes` above. The listings API returns these as
-  // top-level latitude/longitude; both must be present to be usable.
-  const pinned: [number, number] | undefined =
-    typeof item?.latitude === 'number' && typeof item?.longitude === 'number'
-      ? [item.latitude, item.longitude]
-      : undefined;
+  const pinned = mapPinFor(item);
   return {
     about: c.about || item?.description || '',
     gallery: c.gallery,

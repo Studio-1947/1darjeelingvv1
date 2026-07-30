@@ -422,7 +422,9 @@
     "from": "কোথা থেকে",
     "to": "কোথায়",
     "from_placeholder": "পিকআপ স্থান",
-    "to_placeholder": "কোথায় যাবেন?"
+    "to_placeholder": "কোথায় যাবেন?",
+    "guests_less": "কম অতিথি",
+    "guests_more": "বেশি অতিথি"
   },
   "category": {
     "search": "অনুসন্ধান",

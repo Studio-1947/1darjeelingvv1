@@ -422,7 +422,9 @@
     "from": "कहाँ से",
     "to": "कहाँ तक",
     "from_placeholder": "पिकअप स्थान",
-    "to_placeholder": "कहाँ जाना है?"
+    "to_placeholder": "कहाँ जाना है?",
+    "guests_less": "कम मेहमान",
+    "guests_more": "अधिक मेहमान"
   },
   "category": {
     "search": "खोज",
