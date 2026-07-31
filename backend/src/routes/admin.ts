@@ -8,6 +8,7 @@ import { authenticateToken, requireAdmin, hashPassword } from '../middleware/aut
 import { rateLimiter } from '../middleware/rateLimiter';
 import { ADMIN_BOOTSTRAP_SECRET } from '../config';
 import { recomputeKycStatus } from './kyc';
+import { deleteListingsOwnedBy } from '../lib/accountCleanup';
 
 const router = Router();
 
@@ -309,6 +310,10 @@ router.delete('/admin/users/:id', authenticateToken, requireAdmin, async (req: R
   if (targetUser && targetUser.role === 'admin') {
     return res.status(403).json({ detail: 'Cannot delete admin user' });
   }
+  // Providers, bookings and payments cascade off the user row, but listings do not: their
+  // provider_id is untyped text with no foreign key, so without this a deleted provider's
+  // listings stayed live and bookable with no owner behind them.
+  await deleteListingsOwnedBy(id as any);
   await db.delete(schema.users).where(eq(schema.users.id, id as any));
   res.json({ ok: true });
 });

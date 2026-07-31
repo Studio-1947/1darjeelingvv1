@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import { db, schema } from '../db';
 import { eq } from 'drizzle-orm';
@@ -8,6 +9,23 @@ import { log, ADMIN_USERNAME, ADMIN_PASSWORD, MOCK_OTP, OTP_TTL_SECONDS, OTP_MAX
 import { sendOtp } from '../messaging';
 
 const router = Router();
+
+/**
+ * Roles a caller may pick for themselves at registration. Admin is deliberately absent —
+ * it is granted only by the seeded env credentials or by promoting a row directly.
+ */
+const SELF_ASSIGNABLE_ROLES = ['tourist', 'provider'];
+
+/**
+ * Compares two secrets without leaking their common prefix through timing. The values are
+ * hashed first so a length difference doesn't reach `timingSafeEqual`, which throws on
+ * mismatched buffer lengths (and whose throwing would itself be a signal).
+ */
+function constantTimeEquals(a: unknown, b: unknown): boolean {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  const digest = (value: string) => crypto.createHash('sha256').update(value, 'utf8').digest();
+  return crypto.timingSafeEqual(digest(a), digest(b));
+}
 
 // ============ AUTH ROUTES ============
 
@@ -192,7 +210,9 @@ router.post('/otp/verify', rateLimiter(10, 60 * 1000, 'otp_verify'), async (req:
       id: uuidv4(),
       phone,
       name: name.trim(),
-      role,
+      // Never trust the body for this: 'admin' is what every requireAdmin guard keys on,
+      // so anything outside the self-serviceable roles registers as a plain tourist.
+      role: SELF_ASSIGNABLE_ROLES.includes(role) ? role : 'tourist',
       providerPaid: false,
       email: null,
       language: null,
@@ -283,8 +303,10 @@ router.post('/admin/login', rateLimiter(10, 60 * 1000, 'admin_login'), async (re
     return res.status(400).json({ detail: 'Login username and password are required' });
   }
 
-  // Check hardcoded/env credentials first
-  if (loginInput === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
+  // Check hardcoded/env credentials first. The password is compared in constant time, the same
+  // way DB password hashes and Razorpay signatures are elsewhere — `===` short-circuits on the
+  // first differing character, which leaks how much of a guess was correct.
+  if (loginInput === ADMIN_USERNAME && constantTimeEquals(password, ADMIN_PASSWORD)) {
     const adminUser = {
       id: 'admin-system',
       name: 'System Administrator',

@@ -54,10 +54,10 @@ function completeness(spot: AdminSpot): { filled: number; total: number; missing
  * only place they can be created, edited, published or removed; the backend
  * refuses spot writes from every non-admin caller regardless of what is sent.
  */
-export default function SpotsTab({ spots, busyId, onCreate, onEdit, onDelete, onTogglePublished, onToggleFeatured }: {
+export default function SpotsTab({ spots, busyIds, onCreate, onEdit, onDelete, onTogglePublished, onToggleFeatured }: {
   spots: AdminSpot[];
-  /** Id of the spot whose row action is in flight, so only that row shows a spinner. */
-  busyId: string | null;
+  /** Ids of the spots whose row action is in flight, so only those rows show a spinner. */
+  busyIds: string[];
   onCreate: () => void;
   onEdit: (spot: AdminSpot) => void;
   onDelete: (spot: AdminSpot) => void;
@@ -143,7 +143,7 @@ export default function SpotsTab({ spots, busyId, onCreate, onEdit, onDelete, on
             <tbody className="divide-y divide-[var(--line)] text-sm text-ink">
               {visible.map((spot) => {
                 const { filled, total, missing } = completeness(spot);
-                const rowBusy = busyId === spot.id;
+                const rowBusy = busyIds.includes(spot.id);
                 const galleryCount = Array.isArray(spot.extras?.images) ? spot.extras.images.length : 0;
                 return (
                   <tr key={spot.id} className={`hover:bg-mist/40 transition-colors ${spot.published ? '' : 'bg-gold/5'}`} data-testid={`spot-row-${spot.id}`}>

@@ -37,8 +37,20 @@ export default function ListingDetail() {
   const booking = useBookingFlow(item, id);
 
   useEffect(() => {
+    // `cancelled` guards against the responses arriving out of order: navigating from one
+    // listing to another could otherwise let the first, slower response overwrite the second
+    // and leave the previous listing rendered under the new URL (with the booking flow then
+    // holding one listing's data and the other's id).
+    let cancelled = false;
     setLoading(true);
-    api.get(`/listings/${id}`).then((r) => setItem(r.data.item)).finally(() => setLoading(false));
+    // Clearing the item first means a failed or missing listing shows "not found" rather than
+    // silently leaving the previously viewed one on screen.
+    setItem(null);
+    api.get(`/listings/${id}`)
+      .then((r) => { if (!cancelled) setItem(r.data.item); })
+      .catch(() => { if (!cancelled) setItem(null); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, [id]);
 
   // Arriving on /listing/:id#reviews (the star on a feed card) used to land at
@@ -47,7 +59,10 @@ export default function ListingDetail() {
   // Once the listing is in, the section exists - jump to it then.
   useEffect(() => {
     if (loading || !item || !hash) return;
-    const el = document.querySelector(hash);
+    // getElementById, not querySelector: a hash is arbitrary user-controlled text, and anything
+    // that isn't a valid CSS selector (/listing/<id>#1, or a percent-encoded one) makes
+    // querySelector throw, which took the whole page down to a blank screen.
+    const el = document.getElementById(decodeURIComponent(hash.slice(1)));
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, [loading, item, hash]);
 
@@ -75,7 +90,7 @@ export default function ListingDetail() {
       </>
     );
   }
-  if (!item) return <div className="mx-auto max-w-5xl p-10">Not found.</div>;
+  if (!item) return <div className="mx-auto max-w-5xl p-10">{t('common.not_found')}</div>;
 
   const bookable = item.type === 'homestay' || item.type === 'driver';
   // Booked online (homestay/driver) get the reserve form; shops, cafes and events instead get a

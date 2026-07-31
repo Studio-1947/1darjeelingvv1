@@ -4,6 +4,7 @@ import { db, schema } from '../db';
 import { eq, and, desc } from 'drizzle-orm';
 import { authenticateToken } from '../middleware/auth';
 import { requireActiveSupport } from '../middleware/support';
+import { SPOT_TYPE, isSpotPublished } from '../lib/spots';
 
 const router = Router();
 
@@ -93,7 +94,10 @@ router.post('/', authenticateToken, requireActiveSupport, async (req: Request, r
   }
 
   const [listing] = await db.select().from(schema.listings).where(eq(schema.listings.id, listing_id)).limit(1);
-  if (!listing) return res.status(404).json({ detail: 'Listing not found' });
+  // A draft spot 404s everywhere else it is publicly reachable; it must not be reviewable either.
+  if (!listing || (listing.type === SPOT_TYPE && !isSpotPublished(listing.extras))) {
+    return res.status(404).json({ detail: 'Listing not found' });
+  }
 
   const now = new Date().toISOString();
   const [row] = await db.insert(schema.reviews)
