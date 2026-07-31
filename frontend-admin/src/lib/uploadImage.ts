@@ -30,8 +30,21 @@ export async function uploadSpotImage(file: File): Promise<string> {
 }
 
 /**
+ * Thrown when a batch fails part-way through, carrying the URLs that were stored before the
+ * failure. Those photos are already on the server: dropping them would orphan them there and
+ * make the admin re-upload everything (and more likely hit the rate limit doing it).
+ */
+export class PartialUploadError extends Error {
+  constructor(message: string, readonly urls: string[]) {
+    super(message);
+    this.name = 'PartialUploadError';
+  }
+}
+
+/**
  * Uploads several files in sequence (the backend rate-limits per minute, and serial uploads keep
- * the progress count honest). Resolves to the stored URLs in the order they were picked.
+ * the progress count honest). Resolves to the stored URLs in the order they were picked; on a
+ * failure it throws a PartialUploadError so the caller can keep whatever did upload.
  */
 export async function uploadSpotImages(
   files: File[],
@@ -39,7 +52,11 @@ export async function uploadSpotImages(
 ): Promise<string[]> {
   const urls: string[] = [];
   for (const file of files) {
-    urls.push(await uploadSpotImage(file));
+    try {
+      urls.push(await uploadSpotImage(file));
+    } catch (e: any) {
+      throw new PartialUploadError(e?.message || `Upload of "${file.name}" failed.`, urls);
+    }
     onProgress?.(urls.length, files.length);
   }
   return urls;
