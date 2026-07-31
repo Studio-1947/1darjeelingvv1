@@ -121,6 +121,50 @@ html[lang="ne"] h1, html[lang="ne"] h2, html[lang="ne"] h3, html[lang="ne"] h4 {
 .btn-hover { transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease; }
 .btn-hover:hover { transform: translateY(-2px); box-shadow: 0 12px 24px -8px rgba(20,32,26,0.18); }
 
+/* Border light: a short white streak orbiting the element's border in a loop.
+   A conic gradient fills a pseudo-element, the XOR mask cuts everything but a
+   thin ring, and @property makes the gradient's start angle animatable, so the
+   streak follows the border of any radius without distorting. The sweep is
+   angle-based, so on a wide pill the streak runs faster along the long edges
+   and eases around the ends - deliberate, it reads better than constant speed.
+   Browsers without @property support just keep the element's own static
+   border - decorative only, nothing depends on it. */
+@property --orbit-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+/* The host must already be positioned (relative/absolute) - the class does not
+   set position itself, because it is also used on absolutely-positioned hosts
+   where forcing `relative` would tear them out of place. */
+.border-light::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 2px;
+  background: conic-gradient(
+    from var(--orbit-angle),
+    transparent 0deg,
+    transparent 300deg,
+    rgba(255, 255, 255, 0.85) 342deg,
+    #fff 354deg,
+    transparent 360deg
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+  animation: orbit-border 3.5s linear infinite;
+}
+@keyframes orbit-border { to { --orbit-angle: 360deg; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .border-light::after { animation: none; opacity: 0; }
+}
+
 .chip {
   display: inline-flex; align-items: center; padding: 4px 10px;
   border-radius: 999px; background: #EEF2ED; color: #2C5E3B; font-weight: 600;
