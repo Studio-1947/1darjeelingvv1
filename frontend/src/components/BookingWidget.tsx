@@ -205,21 +205,16 @@ export default function BookingWidget() {
     setShowSuggest(false);
   };
 
-  // The bar sits mid-hero, so opening the panel where it stands leaves it
-  // running off the bottom of the screen. Pull the bar up under the header
-  // first and the panel gets the rest of the viewport.
   const togglePanel = () => {
     const opening = !panelOpen;
     setPanelOpen(opening);
     if (!opening) setShowSuggest(false);
-    else requestAnimationFrame(() => {
-      pillRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    });
   };
 
-  // Shared field chrome for the phone panel, so its six inputs read as one set.
-  const pillLabel = 'text-[10px] font-bold uppercase tracking-wider text-ink-soft';
-  const pillField = 'mt-1 flex items-center gap-2 border border-[var(--line)] rounded-xl px-3 py-2.5';
+  // Shared field chrome for the panel, so its six inputs read as one set.
+  // Light-on-dark: the panel is the same glass surface as the bar.
+  const pillLabel = 'text-[10px] font-bold uppercase tracking-wider text-white/60';
+  const pillField = 'mt-1 flex items-center gap-2 border border-white/20 rounded-xl px-3 py-2.5';
 
   /**
    * What the collapsed bar says once something has been chosen: place, then
@@ -276,22 +271,27 @@ export default function BookingWidget() {
       {/* The bar asks one question - where - and holds nothing but the place
           icon, the term and the submit. Dates, guests and the category used to
           sit inline as four more tap targets in a 340px-wide pill, each with
-          its own popover; they now live in a single white panel that opens
-          under the bar, so the resting state reads as a search box rather than
-          a toolbar. */}
-      {/* scroll-mt clears the fixed hero header when opening pulls the bar up. */}
-      {/* Full container width on md+ so the bar's right edge meets the header's
-          login CTA. The hero pads with px-8 where the header uses px-6, so the
-          extra 0.5rem is given back on the right to line the two edges up. */}
+          its own popover; they now live in a glass sheet that grows out of the
+          bar's bottom edge, so open or closed it reads as one search box
+          rather than a toolbar. */}
+      {/* Width-capped on md+ so the bar reads as a search field rather than
+          stretching across the whole hero container. */}
       <div
         ref={pillRef}
         data-testid="booking-widget-pill"
-        className="relative md:-mr-2 scroll-mt-[calc(var(--header-h)+0.75rem)]"
+        className="relative md:max-w-3xl"
       >
+        {/* One entity with the sheet: the bar keeps its pill shape and rides on
+            top of the sheet (z-10), which slides out from behind it. Open, the
+            bar trades its dark glass for a faint white wash so it reads as the
+            highlighted search field inside the expanded surface. The orbiting
+            light only runs while closed. */}
         <div
-          className="flex items-center gap-1 rounded-full pl-4 pr-1.5 py-1.5
-                     bg-black/60 backdrop-blur-lg border border-white/20
-                     shadow-[0_12px_36px_-10px_rgba(0,0,0,0.7)]"
+          className={`relative z-10 flex items-center gap-1 pl-4 pr-1.5 py-1.5 rounded-full
+                      backdrop-blur-lg border transition-all duration-300 ease-out
+                      ${panelOpen
+                        ? 'bg-white/10 border-white/15 shadow-none'
+                        : 'border-light bg-black/60 border-white/20 shadow-[0_12px_36px_-10px_rgba(0,0,0,0.7)]'}`}
         >
           <button
             type="button"
@@ -321,18 +321,33 @@ export default function BookingWidget() {
           </button>
         </div>
 
-        {panelOpen && (
-          <div
-            id="booking-widget-panel-mobile"
-            data-testid="booking-widget-pill-panel"
-            className="absolute left-0 right-0 top-full mt-2 z-50 bg-white border border-[var(--line)]
-                       rounded-3xl shadow-2xl p-4 overflow-y-auto
-                       max-h-[calc(100dvh-var(--header-h)-var(--bottom-nav-h)-6rem)]
-                       lg:max-h-[calc(100dvh-var(--header-h)-6rem)]
-                       animate-in fade-in slide-in-from-top-2 duration-200"
-          >
+        {/* Always mounted so the sheet's height can transition: the grid row
+            animates 0fr -> 1fr, i.e. to the content's own height - the thing
+            height:auto can't do. visibility rides the same transition so the
+            closed sheet is untabbable without cutting the collapse short.
+            Anchored at the bar's TOP, not its bottom: the sheet slides out
+            from behind the bar, so the junction between the two surfaces is
+            hidden under the bar itself and no seam ever shows mid-transition. */}
+        <div
+          id="booking-widget-panel-mobile"
+          data-testid="booking-widget-pill-panel"
+          aria-hidden={!panelOpen}
+          className={`border-light absolute inset-x-0 top-0 z-0 grid rounded-[28px]
+                      transition-[grid-template-rows,visibility] duration-300 ease-out
+                      ${panelOpen
+                        ? 'grid-rows-[1fr] visible'
+                        : 'grid-rows-[0fr] invisible pointer-events-none'}`}
+        >
+          <div className="min-h-0 overflow-hidden rounded-[28px]">
+            {/* pt clears the bar riding on top (58px tall) plus a small gap. */}
+            <div
+              className="bg-black/70 backdrop-blur-lg border border-white/20
+                         rounded-[28px] shadow-2xl p-4 pt-[70px] overflow-y-auto
+                         max-h-[calc(100dvh-var(--header-h)-var(--bottom-nav-h)-6rem)]
+                         lg:max-h-[calc(100dvh-var(--header-h)-6rem)]"
+            >
             {/* What you're looking for. Drives which fields the rest shows. */}
-            <div role="tablist" aria-label={t('widget.change_category')} className="flex gap-1 p-1 rounded-full bg-mist">
+            <div role="tablist" aria-label={t('widget.change_category')} className="flex gap-1 p-1 rounded-full bg-white/10">
               {tabs.map(({ key, label, Icon }) => (
                 <button
                   key={key}
@@ -342,7 +357,7 @@ export default function BookingWidget() {
                   onClick={() => setTab(key)}
                   data-testid={`booking-widget-tab-${key}-menu`}
                   className={`flex-1 inline-flex items-center justify-center gap-1.5 py-2 rounded-full text-sm font-bold transition-colors
-                    ${tab === key ? 'bg-white text-pine shadow-sm' : 'text-ink-soft'}`}
+                    ${tab === key ? 'bg-white text-pine shadow-sm' : 'text-white/70'}`}
                 >
                   <Icon size={15} className="flex-shrink-0" /> {label}
                 </button>
@@ -351,26 +366,26 @@ export default function BookingWidget() {
 
             {/* Where. Drivers sell a journey, so that tab asks for both ends. */}
             {tab === 'driver' ? (
-              <>
-                <label className="block mt-4">
+              <div className="mt-4 grid grid-cols-2 gap-2">
+                <label className="block">
                   <span className={pillLabel}>{t('widget.from')}</span>
                   <div className={pillField}>
-                    <MapPin size={15} className="text-ink-soft flex-shrink-0" />
+                    <MapPin size={15} className="text-white/60 flex-shrink-0" />
                     <input
                       value={from}
                       onChange={(e) => { setFrom(e.target.value); setActiveField('from'); setShowSuggest(true); }}
                       onFocus={() => { setActiveField('from'); setShowSuggest(true); }}
                       placeholder={t('widget.from_placeholder')}
                       data-testid="booking-widget-pill-from"
-                      className="flex-1 min-w-0 bg-transparent outline-none text-sm"
+                      className="flex-1 min-w-0 bg-transparent outline-none text-sm text-white placeholder:text-white/40 [color-scheme:dark]"
                     />
                   </div>
                 </label>
 
-                <label className="block mt-4">
+                <label className="block">
                   <span className={pillLabel}>{t('widget.to')}</span>
                   <div className={pillField}>
-                    <Navigation size={15} className="text-ink-soft flex-shrink-0" />
+                    <Navigation size={15} className="text-white/60 flex-shrink-0" />
                     <input
                       value={to}
                       onChange={(e) => { setTo(e.target.value); setActiveField('to'); setShowSuggest(true); }}
@@ -380,16 +395,16 @@ export default function BookingWidget() {
                       aria-expanded={showSuggest}
                       aria-controls="booking-widget-pill-suggest"
                       data-testid="booking-widget-pill-to"
-                      className="flex-1 min-w-0 bg-transparent outline-none text-sm"
+                      className="flex-1 min-w-0 bg-transparent outline-none text-sm text-white placeholder:text-white/40 [color-scheme:dark]"
                     />
                   </div>
                 </label>
-              </>
+              </div>
             ) : (
               <label className="block mt-4">
                 <span className={pillLabel}>{t('widget.destination')}</span>
                 <div className={pillField}>
-                  <MapPin size={15} className="text-ink-soft flex-shrink-0" />
+                  <MapPin size={15} className="text-white/60 flex-shrink-0" />
                   <input
                     value={q}
                     onChange={(e) => { setQ(e.target.value); setActiveField('q'); setShowSuggest(true); }}
@@ -399,7 +414,7 @@ export default function BookingWidget() {
                     aria-expanded={showSuggest}
                     aria-controls="booking-widget-pill-suggest"
                     data-testid="booking-widget-pill-where"
-                    className="flex-1 min-w-0 bg-transparent outline-none text-sm"
+                    className="flex-1 min-w-0 bg-transparent outline-none text-sm text-white placeholder:text-white/40 [color-scheme:dark]"
                   />
                 </div>
               </label>
@@ -411,7 +426,7 @@ export default function BookingWidget() {
             {showSuggest && (
               <div id="booking-widget-pill-suggest" data-testid="booking-widget-pill-suggest" className="mt-2">
                 {placeMatches.length > 0 && (
-                  <div className="px-1 pb-1 text-[10px] font-bold uppercase tracking-widest text-ink-soft">
+                  <div className="px-1 pb-1 text-[10px] font-bold uppercase tracking-widest text-white/60">
                     {t('widget.popular')}
                   </div>
                 )}
@@ -423,7 +438,7 @@ export default function BookingWidget() {
                       onMouseDown={(e) => e.preventDefault()}
                       onClick={() => pickPlace(p)}
                       data-testid={`booking-widget-pill-place-${p}`}
-                      className="px-3 py-1.5 rounded-full border border-[var(--line)] bg-white text-xs font-bold text-ink hover:border-pine/40"
+                      className="px-3 py-1.5 rounded-full border border-white/20 bg-white/10 text-xs font-bold text-white hover:bg-white/20"
                     >
                       {p}
                     </button>
@@ -431,7 +446,7 @@ export default function BookingWidget() {
                 </div>
 
                 {(matching || matches.length > 0) && (
-                  <div className="flex items-center gap-1.5 px-1 pt-3 pb-1 text-[10px] font-bold uppercase tracking-widest text-ink-soft">
+                  <div className="flex items-center gap-1.5 px-1 pt-3 pb-1 text-[10px] font-bold uppercase tracking-widest text-white/60">
                     {t('widget.matching')}
                     {matching && <Loader2 size={11} className="animate-spin" />}
                   </div>
@@ -443,18 +458,18 @@ export default function BookingWidget() {
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={() => { setPanelOpen(false); nav(`/listing/${m.id}`); }}
                     data-testid={`booking-widget-pill-listing-${m.id}`}
-                    className="w-full flex items-start gap-2 px-2 py-2 rounded-xl text-left text-ink hover:bg-black/5"
+                    className="w-full flex items-start gap-2 px-2 py-2 rounded-xl text-left text-white hover:bg-white/10"
                   >
-                    <Search size={14} className="flex-shrink-0 mt-0.5 text-ink-soft" />
+                    <Search size={14} className="flex-shrink-0 mt-0.5 text-white/60" />
                     <span className="min-w-0">
                       <span className="block text-sm font-bold truncate">{m.title}</span>
-                      <span className="block text-xs text-ink-soft truncate">{m.location}</span>
+                      <span className="block text-xs text-white/60 truncate">{m.location}</span>
                     </span>
                   </button>
                 ))}
 
                 {!matching && !placeMatches.length && !matches.length && (
-                  <div className="px-1 py-2 text-sm text-ink-soft">{t('widget.no_matches')}</div>
+                  <div className="px-1 py-2 text-sm text-white/70">{t('widget.no_matches')}</div>
                 )}
               </div>
             )}
@@ -464,14 +479,14 @@ export default function BookingWidget() {
               <label className="block mt-4">
                 <span className={pillLabel}>{t('widget.date')}</span>
                 <div className={pillField}>
-                  <Calendar size={15} className="text-ink-soft flex-shrink-0" />
+                  <Calendar size={15} className="text-white/60 flex-shrink-0" />
                   <input
                     type="date"
                     value={checkIn}
                     min={today}
                     onChange={(e) => pickCheckIn(e.target.value)}
                     data-testid="booking-widget-date"
-                    className="flex-1 min-w-0 bg-transparent outline-none text-sm"
+                    className="flex-1 min-w-0 bg-transparent outline-none text-sm text-white placeholder:text-white/40 [color-scheme:dark]"
                   />
                 </div>
               </label>
@@ -486,7 +501,7 @@ export default function BookingWidget() {
                       min={today}
                       onChange={(e) => pickCheckIn(e.target.value)}
                       data-testid="booking-widget-checkin"
-                      className="flex-1 min-w-0 bg-transparent outline-none text-sm"
+                      className="flex-1 min-w-0 bg-transparent outline-none text-sm text-white placeholder:text-white/40 [color-scheme:dark]"
                     />
                   </div>
                 </label>
@@ -499,7 +514,7 @@ export default function BookingWidget() {
                       min={checkIn ? addDays(checkIn, 1) : today}
                       onChange={(e) => setCheckOut(e.target.value)}
                       data-testid="booking-widget-checkout"
-                      className="flex-1 min-w-0 bg-transparent outline-none text-sm"
+                      className="flex-1 min-w-0 bg-transparent outline-none text-sm text-white placeholder:text-white/40 [color-scheme:dark]"
                     />
                   </div>
                 </label>
@@ -511,7 +526,7 @@ export default function BookingWidget() {
             <div className="mt-4">
               <span className={pillLabel}>{t('widget.number_of_guests')}</span>
               <div className={`${pillField} justify-between`}>
-                <Users size={15} className="text-ink-soft flex-shrink-0" />
+                <Users size={15} className="text-white/60 flex-shrink-0" />
                 <input
                   type="text"
                   inputMode="numeric"
@@ -521,7 +536,7 @@ export default function BookingWidget() {
                   onChange={(e) => setGuests(typedGuests(e.target.value))}
                   onBlur={() => setGuests(String(guestCount))}
                   data-testid="booking-widget-guests"
-                  className="flex-1 min-w-0 bg-transparent outline-none text-sm text-center"
+                  className="flex-1 min-w-0 bg-transparent outline-none text-sm text-center text-white"
                 />
                 <span className="flex items-center gap-1.5 flex-shrink-0">
                   <button
@@ -530,7 +545,7 @@ export default function BookingWidget() {
                     disabled={guestCount <= 1}
                     aria-label={t('widget.guests_less')}
                     data-testid="booking-widget-guests-minus"
-                    className="w-8 h-8 rounded-full border border-[var(--line)] grid place-items-center text-ink disabled:opacity-40"
+                    className="w-8 h-8 rounded-full border border-white/25 grid place-items-center text-white disabled:opacity-40"
                   >
                     <Minus size={14} />
                   </button>
@@ -540,7 +555,7 @@ export default function BookingWidget() {
                     disabled={guestCount >= MAX_GUESTS}
                     aria-label={t('widget.guests_more')}
                     data-testid="booking-widget-guests-plus"
-                    className="w-8 h-8 rounded-full border border-[var(--line)] grid place-items-center text-ink disabled:opacity-40"
+                    className="w-8 h-8 rounded-full border border-white/25 grid place-items-center text-white disabled:opacity-40"
                   >
                     <Plus size={14} />
                   </button>
@@ -556,10 +571,10 @@ export default function BookingWidget() {
             >
               <Search size={16} /> {t('widget.search')}
             </button>
+            </div>
           </div>
-        )}
+        </div>
       </div>
-
     </form>
   );
 }
