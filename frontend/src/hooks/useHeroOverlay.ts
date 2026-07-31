@@ -13,6 +13,10 @@ const chromeHeight = () =>
  * chrome. The landing header floats over the hero video instead of on its own
  * white plate; when the hero scrolls away it takes a solid background back so
  * it stays legible over ordinary page content.
+ *
+ * A `[data-hero-cutoff]` element inside the hero moves the handover earlier:
+ * the header goes solid the moment that element would slide underneath it,
+ * so the hero headline is never read through a transparent bar.
  */
 export default function useHeroOverlay(enabled: boolean) {
   const [overlay, setOverlay] = React.useState(enabled);
@@ -22,6 +26,11 @@ export default function useHeroOverlay(enabled: boolean) {
     let raf = 0;
     const measure = () => {
       raf = 0;
+      const cutoff = document.querySelector('[data-hero-cutoff]');
+      if (cutoff) {
+        setOverlay(cutoff.getBoundingClientRect().top > chromeHeight());
+        return;
+      }
       const hero = document.querySelector('[data-hero]');
       // On a lazy route the hero can mount a tick after the header. Assume it
       // is coming rather than flashing a white bar for a frame.
