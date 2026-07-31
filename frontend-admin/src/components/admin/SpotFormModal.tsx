@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import {
   X, Loader2, Upload, Plus, Trash2, ImageIcon, MapPin, Info, Star, Eye, EyeOff,
 } from 'lucide-react';
-import { uploadSpotImages } from '@/lib/uploadImage';
+import { uploadSpotImages, PartialUploadError } from '@/lib/uploadImage';
 import type { AdminSpot } from './SpotsTab';
 
 // Mirrors the server-side caps in backend/src/lib/spots.ts, so the admin is stopped here with a
@@ -199,6 +199,10 @@ export default function SpotFormModal({ open, spot, onClose, onSubmit }: {
   const [error, setError] = useState('');
   const titleRef = useRef<HTMLInputElement>(null);
 
+  // Anything that must not be interrupted: a save in flight, or a photo still uploading.
+  // Declared here because the Escape handler below needs it too.
+  const busy = saving || coverUploading || !!galleryUploading;
+
   // Reset whenever the modal is (re)opened for a different spot, so an edit never
   // inherits the previous record's photos.
   useEffect(() => {
@@ -211,15 +215,18 @@ export default function SpotFormModal({ open, spot, onClose, onSubmit }: {
     titleRef.current?.focus();
   }, [open, spot]);
 
-  // Escape closes — but never mid-save, which would leave the admin unsure whether it landed.
+  // Escape closes — but never mid-save, which would leave the admin unsure whether it landed,
+  // and never mid-upload either: the backdrop, the X and Cancel all already refuse while a photo
+  // is in flight, and closing here discarded the form while stranding the uploaded image on the
+  // server with its URL lost.
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !saving) onClose();
+      if (e.key === 'Escape' && !busy) onClose();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [open, saving, onClose]);
+  }, [open, busy, onClose]);
 
   if (!open) return null;
 
@@ -263,7 +270,15 @@ export default function SpotFormModal({ open, spot, onClose, onSubmit }: {
         setError(`Only ${accepted.length} photo(s) were added — the gallery holds at most ${MAX_GALLERY_IMAGES}.`);
       }
     } catch (err: any) {
-      setError(err?.message || 'Photo upload failed.');
+      // Keep whatever made it up before the failure, so a batch that breaks on photo 7 of 10
+      // still leaves the admin with the first six rather than silently discarding them.
+      const stored: string[] = err instanceof PartialUploadError ? err.urls : [];
+      if (stored.length > 0) {
+        setGallery((prev) => [...prev, ...stored]);
+        setError(`${err.message} The ${stored.length} photo(s) uploaded before it were kept.`);
+      } else {
+        setError(err?.message || 'Photo upload failed.');
+      }
     } finally {
       setGalleryUploading(null);
     }
@@ -362,8 +377,6 @@ export default function SpotFormModal({ open, spot, onClose, onSubmit }: {
       setSaving(false);
     }
   };
-
-  const busy = saving || coverUploading || !!galleryUploading;
 
   return (
     <div

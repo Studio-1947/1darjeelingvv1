@@ -105,7 +105,8 @@
     "processing": "Processing…",
     "save_changes": "Save changes",
     "something_wrong": "Something went wrong",
-    "save_failed": "Save failed"
+    "save_failed": "Save failed",
+    "not_found": "Listing not found."
   },
   "cta": {
     "book_now": "Reserve Now",

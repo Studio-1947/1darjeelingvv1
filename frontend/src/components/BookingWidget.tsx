@@ -84,9 +84,9 @@ const typedGuests = (raw) => raw.replace(/\D/g, '').slice(0, String(MAX_GUESTS).
 /**
  * MakeMyTrip-inspired booking widget.
  *
- * Two shapes from one form: phones get a compact glass pill that answers each
- * question in its own small dropdown, desktop gets the tabs + single-row panel
- * it always had. Both drive the same state, so nothing is lost by collapsing.
+ * One shape everywhere: a compact glass pill that opens a single panel holding
+ * the category tabs, place suggestions, dates and guest steppers. Desktop only
+ * caps the pill's width so it reads as a search bar, not a toolbar.
  */
 export default function BookingWidget() {
   const { t, i18n } = useTranslation();
@@ -104,28 +104,18 @@ export default function BookingWidget() {
   const [guests, setGuests] = useState('2');
   const guestCount = parseInt(guests, 10) || 1;
 
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [showGuestsPicker, setShowGuestsPicker] = useState(false);
-  // The phone layout is one panel now rather than four independent popovers,
-  // so it needs one flag. `showSuggest` only governs the place list inside it.
+  // The widget is one panel rather than four independent popovers, so it
+  // needs one flag. `showSuggest` only governs the place list inside it.
   const [panelOpen, setPanelOpen] = useState(false);
   const [showSuggest, setShowSuggest] = useState(false);
   const [matches, setMatches] = useState([]);
   const [matching, setMatching] = useState(false);
   const pillRef = useRef(null);
-  const dateRef = useRef(null);
-  const guestsRef = useRef(null);
 
   useEffect(() => {
     function handleClickOutside(event) {
-      if (dateRef.current && !dateRef.current.contains(event.target)) {
-        setShowDatePicker(false);
-      }
-      if (guestsRef.current && !guestsRef.current.contains(event.target)) {
-        setShowGuestsPicker(false);
-      }
-      // Tapping away from the bar puts the phone layout back to its resting
-      // state so the hero isn't left half-covered.
+      // Tapping away from the bar puts it back to its resting state so the
+      // hero isn't left half-covered.
       if (pillRef.current && !pillRef.current.contains(event.target)) {
         setPanelOpen(false);
         setShowSuggest(false);
@@ -280,77 +270,9 @@ export default function BookingWidget() {
     return nav(`/search?${params}`);
   };
 
-  const fieldLabel = "text-[11px] font-bold uppercase tracking-wider text-ink-soft";
-  const fieldBox = "mt-1 flex items-center gap-2 border border-[var(--line)] rounded-2xl px-3 py-2.5 md:py-3";
-
-  // Called rather than rendered as <DateFields />: a component declared in the
-  // render body is a fresh type every pass, which would remount these inputs
-  // and drop focus mid-edit. Inlining the JSX keeps them stable.
-  const dateFields = (onDone, rowClass = "flex gap-2") => (
-    <>
-      <div className={rowClass}>
-        <div className="flex-1">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-ink-soft">{t('booking.checkin')}</span>
-          <input
-            type="date"
-            value={checkIn}
-            min={today}
-            onChange={(e) => pickCheckIn(e.target.value)}
-            className="w-full mt-1 border border-[var(--line)] rounded-xl px-2 py-1.5 text-xs outline-none bg-transparent"
-            data-testid="booking-widget-checkin"
-          />
-        </div>
-        <div className="flex-1">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-ink-soft">{t('booking.checkout')}</span>
-          {/* Nothing before the night after check-in is a stay, so that's where
-              the picker starts. Check-out on its own is still allowed - the
-              widget reads it as an open-ended "until" search. */}
-          <input
-            type="date"
-            value={checkOut}
-            min={checkIn ? addDays(checkIn, 1) : today}
-            onChange={(e) => setCheckOut(e.target.value)}
-            className="w-full mt-1 border border-[var(--line)] rounded-xl px-2 py-1.5 text-xs outline-none bg-transparent"
-            data-testid="booking-widget-checkout"
-          />
-        </div>
-      </div>
-      <button
-        type="button"
-        onClick={onDone}
-        className="w-full py-1.5 bg-flag text-white font-bold text-xs rounded-xl hover:opacity-90 transition-opacity"
-      >
-        {t('widget.done')}
-      </button>
-    </>
-  );
-
-  // The panel's copy passes no ref; only the pill's needs to grab focus.
-  const guestFields = (inputRef = null) => (
-    <>
-      <span className="text-[10px] font-bold uppercase tracking-wider text-ink-soft">{t('widget.number_of_guests')}</span>
-      {/* text + inputMode rather than type=number: a number input reports '' for
-          anything it considers invalid, which hides the digits actually typed
-          and makes a two-digit cap impossible to enforce cleanly. The numeric
-          keypad still comes up on a phone. */}
-      <input
-        ref={inputRef}
-        type="text"
-        inputMode="numeric"
-        maxLength={String(MAX_GUESTS).length}
-        aria-label={t('widget.number_of_guests')}
-        value={guests}
-        onChange={(e) => setGuests(typedGuests(e.target.value))}
-        onBlur={() => setGuests(String(guestCount))}
-        data-testid="booking-widget-guests"
-        className="w-full border border-[var(--line)] rounded-xl px-2 py-1.5 text-xs outline-none bg-transparent"
-      />
-    </>
-  );
-
   return (
     <form onSubmit={submit} data-testid="booking-widget">
-      {/* ---- Phone: one search bar, everything else in a sheet below ------ */}
+      {/* ---- One search bar, everything else in a sheet below ------------- */}
       {/* The bar asks one question - where - and holds nothing but the place
           icon, the term and the submit. Dates, guests and the category used to
           sit inline as four more tap targets in a 340px-wide pill, each with
@@ -358,10 +280,13 @@ export default function BookingWidget() {
           under the bar, so the resting state reads as a search box rather than
           a toolbar. */}
       {/* scroll-mt clears the fixed hero header when opening pulls the bar up. */}
+      {/* Full container width on md+ so the bar's right edge meets the header's
+          login CTA. The hero pads with px-8 where the header uses px-6, so the
+          extra 0.5rem is given back on the right to line the two edges up. */}
       <div
         ref={pillRef}
         data-testid="booking-widget-pill"
-        className="md:hidden relative scroll-mt-[calc(var(--header-h)+0.75rem)]"
+        className="relative md:-mr-2 scroll-mt-[calc(var(--header-h)+0.75rem)]"
       >
         <div
           className="flex items-center gap-1 rounded-full pl-4 pr-1.5 py-1.5
@@ -403,6 +328,7 @@ export default function BookingWidget() {
             className="absolute left-0 right-0 top-full mt-2 z-50 bg-white border border-[var(--line)]
                        rounded-3xl shadow-2xl p-4 overflow-y-auto
                        max-h-[calc(100dvh-var(--header-h)-var(--bottom-nav-h)-6rem)]
+                       lg:max-h-[calc(100dvh-var(--header-h)-6rem)]
                        animate-in fade-in slide-in-from-top-2 duration-200"
           >
             {/* What you're looking for. Drives which fields the rest shows. */}
@@ -634,151 +560,6 @@ export default function BookingWidget() {
         )}
       </div>
 
-      {/* ---- Desktop: raised folder tabs ---------------------------------- */}
-      {/* They share the panel's white and butt straight up against its top
-          edge, so the active one reads as continuous with the form below. */}
-      <div className="hidden md:flex items-end gap-1.5" role="tablist">
-        {tabs.map(({ key, label, Icon }) => (
-          <button
-            key={key}
-            type="button"
-            role="tab"
-            aria-selected={tab === key}
-            data-testid={`booking-widget-tab-${key}`}
-            onClick={() => setTab(key)}
-            className={`relative md:px-14 rounded-t-2xl px-3 py-3.5 min-w-0
-              flex items-center justify-center gap-2 text-sm font-bold
-              transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-flag
-              ${tab === key
-                ? 'bg-white text-flag'
-                : 'bg-white/80 text-ink-soft hover:bg-white hover:text-ink'}`}
-          >
-            <Icon size={16} className="flex-shrink-0" /> <span className="truncate">{label}</span>
-            {/* Absolutely positioned rather than a border, so marking a tab
-                active can't make it 2px taller than its sibling. */}
-            {tab === key && <span className="absolute inset-x-0 bottom-0 h-0.5 bg-flag" />}
-          </button>
-        ))}
-      </div>
-
-      {/* ---- Panel: collapsed on phones until the pill opens it ----------- */}
-      {/* Top-left stays square so the first desktop tab merges into the panel. */}
-      <div
-        data-testid="booking-widget-panel"
-        className="hidden md:grid md:grid-cols-12 md:gap-3 md:items-end
-                   bg-white rounded-3xl rounded-tl-none rounded-tr-3xl
-                   shadow-[0_20px_50px_-30px_rgba(20,32,26,0.35)] p-5"
-      >
-        {tab !== 'driver' && (
-          <label className="block md:col-span-5">
-            <span className={fieldLabel}>{t('widget.destination')}</span>
-            <div className={fieldBox}>
-              <MapPin size={16} className="text-ink-soft flex-shrink-0" />
-              <input
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder={t('widget.destination_placeholder')}
-                data-testid="booking-widget-destination"
-                className="flex-1 min-w-0 bg-transparent outline-none text-sm md:text-base"
-              />
-            </div>
-          </label>
-        )}
-
-        {tab === 'driver' && (
-          <>
-            <label className="block md:col-span-3">
-              <span className={fieldLabel}>{t('widget.from')}</span>
-              <div className={fieldBox}>
-                <MapPin size={16} className="text-ink-soft flex-shrink-0" />
-                <input
-                  value={from}
-                  onChange={(e) => setFrom(e.target.value)}
-                  placeholder={t('widget.from_placeholder')}
-                  data-testid="booking-widget-from"
-                  className="flex-1 min-w-0 bg-transparent outline-none text-sm md:text-base"
-                />
-              </div>
-            </label>
-
-            <label className="block md:col-span-3">
-              <span className={fieldLabel}>{t('widget.to')}</span>
-              <div className={fieldBox}>
-                <Navigation size={16} className="text-ink-soft flex-shrink-0" />
-                <input
-                  value={to}
-                  onChange={(e) => setTo(e.target.value)}
-                  placeholder={t('widget.to_placeholder')}
-                  data-testid="booking-widget-to"
-                  className="flex-1 min-w-0 bg-transparent outline-none text-sm md:text-base"
-                />
-              </div>
-            </label>
-          </>
-        )}
-
-        {tab === 'stay' && (
-          <div ref={dateRef} className="block md:col-span-4 relative">
-            <span className={fieldLabel}>{t('widget.when')}</span>
-            <button
-              type="button"
-              onClick={() => setShowDatePicker((v) => !v)}
-              aria-expanded={showDatePicker}
-              data-testid="booking-widget-when"
-              className={`${fieldBox} w-full bg-white text-left`}
-            >
-              <Calendar size={16} className="text-ink-soft flex-shrink-0" />
-              <span className="flex-1 min-w-0 text-sm md:text-base text-ink select-none truncate">
-                {formatDates()}
-              </span>
-            </button>
-            {showDatePicker && (
-              <div className="absolute left-0 right-0 top-full mt-2 md:top-auto md:bottom-full md:mt-0 md:mb-2 p-4 bg-white border border-[var(--line)] rounded-2xl shadow-xl z-50 flex flex-col gap-3">
-                {dateFields(() => setShowDatePicker(false))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {tab === 'driver' && (
-          /* 3 + 3 (from/to) + 3 + 2 (guests) + 1 (button) = the 12-col row */
-          <label className="block md:col-span-3">
-            <span className={fieldLabel}>{t('widget.date')}</span>
-            <div className={fieldBox}>
-              <Calendar size={16} className="text-ink-soft flex-shrink-0" />
-              <input type="date" value={checkIn} min={today} onChange={(e) => pickCheckIn(e.target.value)}
-                data-testid="booking-widget-date"
-                className="flex-1 min-w-0 bg-transparent outline-none text-sm md:text-base" />
-            </div>
-          </label>
-        )}
-
-        <div ref={guestsRef} className="block md:col-span-2 relative">
-          <span className={fieldLabel}>{t('widget.guests')}</span>
-          <button
-            type="button"
-            onClick={() => setShowGuestsPicker((v) => !v)}
-            aria-expanded={showGuestsPicker}
-            data-testid="booking-widget-guests-toggle"
-            className={`${fieldBox} w-full bg-white text-left`}
-          >
-            <Users size={16} className="text-ink-soft flex-shrink-0" />
-            <span className="flex-1 min-w-0 text-sm md:text-base text-ink select-none truncate">
-              {t('widget.guest_count', { count: guestCount })}
-            </span>
-          </button>
-          {showGuestsPicker && (
-            <div className="absolute right-0 top-full mt-2 md:top-auto md:bottom-full md:mt-0 md:mb-2 p-4 bg-white border border-[var(--line)] rounded-2xl shadow-xl z-50 w-44 flex flex-col gap-2">
-              {guestFields()}
-            </div>
-          )}
-        </div>
-
-        <button type="submit" data-testid="booking-widget-search"
-          className="w-full md:col-span-1 py-3 md:py-3.5 rounded-2xl bg-flag text-white font-extrabold btn-hover flex items-center justify-center gap-2">
-          <Search size={16} /> <span className="md:hidden">{t('widget.search')}</span>
-        </button>
-      </div>
     </form>
   );
 }

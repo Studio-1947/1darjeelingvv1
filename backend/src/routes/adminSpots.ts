@@ -94,13 +94,17 @@ function validateCore(body: any, { partial }: { partial: boolean }): string | nu
       return `each tag must be a non-empty string of ${MAX_TAG_LEN} characters or fewer`;
     }
   }
-  for (const coord of ['latitude', 'longitude'] as const) {
-    const value = body[coord];
+  for (const axis of ['latitude', 'longitude'] as const) {
+    const value = body[axis];
     if (value === undefined || value === null || value === '') continue;
+    // Restricted to real numbers and numeric strings on purpose: `Number` maps " ", [] and
+    // true to finite values, which used to pass this check and pin the spot to (0, 0).
+    if (typeof value !== 'number' && typeof value !== 'string') return `${axis} must be a number`;
+    if (typeof value === 'string' && !value.trim()) continue;
     const n = Number(value);
-    if (!Number.isFinite(n)) return `${coord} must be a number`;
-    const limit = coord === 'latitude' ? 90 : 180;
-    if (n < -limit || n > limit) return `${coord} must be between -${limit} and ${limit}`;
+    if (!Number.isFinite(n)) return `${axis} must be a number`;
+    const limit = axis === 'latitude' ? 90 : 180;
+    if (n < -limit || n > limit) return `${axis} must be between -${limit} and ${limit}`;
   }
   return null;
 }
@@ -108,6 +112,8 @@ function validateCore(body: any, { partial }: { partial: boolean }): string | nu
 /** Coordinate as stored: a finite number, or null when the admin left the pin unset. */
 function coord(value: unknown): number | null {
   if (value === undefined || value === null || value === '') return null;
+  if (typeof value !== 'number' && typeof value !== 'string') return null;
+  if (typeof value === 'string' && !value.trim()) return null;
   const n = Number(value);
   return Number.isFinite(n) ? n : null;
 }
@@ -362,6 +368,8 @@ const updateSpot = async (req: Request, res: Response) => {
 
   await db.update(schema.listings).set(updates).where(eq(schema.listings.id, existing.id));
   const [updated] = await db.select().from(schema.listings).where(eq(schema.listings.id, existing.id)).limit(1);
+  // A second admin can delete the spot between the write and this read — 404 rather than throw.
+  if (!updated) return res.status(404).json({ detail: 'Tourist spot not found' });
   const counts = await reviewCounts([existing.id]);
   res.json({ item: toAdminSpot(updated, counts.get(existing.id) || 0) });
 };
@@ -410,6 +418,7 @@ router.post('/admin/spots/:id/publish', authenticateToken, requireAdmin, async (
   const extras = parseSpotExtras({ published }, (existing.extras || {}) as Record<string, any>);
   await db.update(schema.listings).set({ extras }).where(eq(schema.listings.id, existing.id));
   const [updated] = await db.select().from(schema.listings).where(eq(schema.listings.id, existing.id)).limit(1);
+  if (!updated) return res.status(404).json({ detail: 'Tourist spot not found' });
   res.json({ item: toAdminSpot(updated) });
 });
 

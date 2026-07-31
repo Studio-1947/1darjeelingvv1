@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { X, Loader2 } from 'lucide-react';
 
@@ -32,10 +32,9 @@ interface ListingFormModalProps {
   }) => Promise<void>;
 }
 
-export default function ListingFormModal({ open, onClose, initial, onSubmit }: ListingFormModalProps) {
-  const { t } = useTranslation();
-  const isEdit = !!initial?.id;
-  const [form, setForm] = useState<ListingFormValues>({
+/** The form values for a given listing, or the blank form when adding a new one. */
+function formValuesFrom(initial: ListingFormModalProps['initial']): ListingFormValues {
+  return {
     title: initial?.title || '',
     type: initial?.type || 'homestay',
     description: initial?.description || '',
@@ -43,9 +42,27 @@ export default function ListingFormModal({ open, onClose, initial, onSubmit }: L
     price: initial?.price != null ? String(initial.price) : '',
     image: initial?.image || '',
     tags: Array.isArray((initial as any)?.tags) ? (initial as any).tags.join(', ') : (initial?.tags || ''),
-  });
+  };
+}
+
+export default function ListingFormModal({ open, onClose, initial, onSubmit }: ListingFormModalProps) {
+  const { t } = useTranslation();
+  const isEdit = !!initial?.id;
+  const [form, setForm] = useState<ListingFormValues>(() => formValuesFrom(initial));
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+
+  // Both callers keep this modal mounted for the life of the page and only toggle `open`, with
+  // no `key` to force a remount. Without re-syncing here the state captured on first mount (when
+  // `initial` was still undefined) would be all this form ever showed: reopening "add" kept the
+  // last listing's values, and the edit path could never prefill at all.
+  useEffect(() => {
+    if (!open) return;
+    setForm(formValuesFrom(initial));
+    setErr('');
+    // `initial` is rebuilt on every parent render, so the identity of the listing is what matters.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, initial?.id]);
 
   if (!open) return null;
 

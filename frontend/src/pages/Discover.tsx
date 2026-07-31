@@ -162,7 +162,10 @@ export default function Discover() {
         <HeroMedia poster={HERO_POSTER} />
         <div className="relative z-10 mx-auto max-w-6xl w-full px-5 md:px-8 pt-[calc(var(--header-h)+2.5rem)] pb-24 md:pt-[calc(var(--header-h)+4rem)] md:pb-28 flex-1 flex flex-col justify-center">
           <div className="text-white max-w-2xl">
-            <h1 className="font-display font-extrabold text-[2.4rem] leading-[1.08] sm:text-5xl md:text-6xl tracking-tight drop-shadow-lg">
+            {/* data-hero-cutoff: the header drops its transparency the moment
+                it would overlap this headline, instead of waiting for the whole
+                hero to scroll away. */}
+            <h1 data-hero-cutoff className="font-display font-extrabold text-[2.4rem] leading-[1.08] sm:text-5xl md:text-6xl tracking-tight drop-shadow-lg">
               {t('hero.title_1')}<br />{t('hero.title_2')}
             </h1>
             <p className="mt-4 md:mt-5 text-white/90 text-base sm:text-lg md:text-xl max-w-xl leading-relaxed drop-shadow">

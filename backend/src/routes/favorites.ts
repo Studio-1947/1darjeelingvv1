@@ -4,6 +4,7 @@ import { db, schema } from '../db';
 import { eq, and, desc, inArray } from 'drizzle-orm';
 import { authenticateToken } from '../middleware/auth';
 import { requireActiveSupport } from '../middleware/support';
+import { SPOT_TYPE, isSpotPublished } from '../lib/spots';
 
 const router = Router();
 
@@ -67,10 +68,13 @@ router.get('/', authenticateToken, async (req: Request, res: Response) => {
   const providerById = new Map(providerRows.map(p => [p.id, p]));
 
   // Preserve the favorites order (newest saved first); a listing that was deleted since it was
-  // saved simply drops out rather than surfacing as a broken card.
+  // saved simply drops out rather than surfacing as a broken card. A spot that has since been
+  // unpublished drops out for the same reason — it 404s on its detail page, so leaving the card
+  // here would show content an admin has deliberately pulled and link nowhere.
   const items = rows
     .map(r => listingById.get(r.listingId))
     .filter((l): l is NonNullable<typeof l> => !!l)
+    .filter(l => l.type !== SPOT_TYPE || isSpotPublished(l.extras))
     .map(l => {
       const provider = providerById.get(l.providerId);
       return {
@@ -120,7 +124,11 @@ router.post('/', authenticateToken, requireActiveSupport, async (req: Request, r
   if (!listing_id) return res.status(400).json({ detail: 'listing_id is required' });
 
   const [listing] = await db.select().from(schema.listings).where(eq(schema.listings.id, listing_id)).limit(1);
-  if (!listing) return res.status(404).json({ detail: 'Listing not found' });
+  // An unpublished spot is not publicly addressable, so it cannot be saved either — otherwise a
+  // guessed id would put a draft card in someone's saved list.
+  if (!listing || (listing.type === SPOT_TYPE && !isSpotPublished(listing.extras))) {
+    return res.status(404).json({ detail: 'Listing not found' });
+  }
 
   await db.insert(schema.favorites)
     .values({ id: uuidv4(), userId: req.user.id, listingId: listing_id, createdAt: new Date().toISOString() })

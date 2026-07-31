@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { db, schema } from '../db';
 import { eq } from 'drizzle-orm';
 import { authenticateToken } from '../middleware/auth';
+import { deleteListingsOwnedBy } from '../lib/accountCleanup';
 
 const router = Router();
 
@@ -74,7 +75,8 @@ router.delete('/me', authenticateToken, async (req: Request, res: Response) => {
 
   // Manual deletions for non-strictly linked tables
   await db.delete(schema.otps).where(eq(schema.otps.phone, phone));
-  await db.delete(schema.listings).where(eq(schema.listings.providerId, uid));
+  // Covers listings filed under the user's id *and* under their provider id — see the helper.
+  await deleteListingsOwnedBy(uid);
   // Cascading deletes on schema will clean up providers, bookings, and payments, but let's be explicit
   await db.delete(schema.providers).where(eq(schema.providers.userId, uid));
   await db.delete(schema.bookings).where(eq(schema.bookings.userId, uid));

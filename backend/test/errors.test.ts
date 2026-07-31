@@ -1,6 +1,7 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import request from 'supertest';
 import { app } from '../src/app';
+import { db } from '../src/db';
 import { loginAdmin } from './helpers';
 
 describe('error handling', () => {
@@ -19,7 +20,12 @@ describe('error handling', () => {
 
   it('turns an unhandled route error into a JSON 500 without leaking a stack trace', async () => {
     const token = await loginAdmin();
-    // price is an integer column; a non-numeric value makes the driver throw mid-request.
+    // A payload can no longer reach the driver wrong-typed (the route validates first and
+    // answers 400), so the driver-level failure this asserts on is injected directly.
+    const insertSpy = vi.spyOn(db, 'insert').mockImplementationOnce(() => {
+      throw new Error('insert into "listings" failed at /src/routes/listings.ts:1');
+    });
+
     const res = await request(app)
       .post('/api/listings')
       .set('Authorization', `Bearer ${token}`)
@@ -28,10 +34,11 @@ describe('error handling', () => {
         type: 'spot',
         description: 'triggers a driver-level error',
         location: 'Darjeeling',
-        price: 'not-a-number',
+        price: 100,
         provider_id: 'admin-seed-provider',
       });
 
+    insertSpy.mockRestore();
     expect(res.status).toBe(500);
     expect(res.headers['content-type']).toMatch(/json/);
 

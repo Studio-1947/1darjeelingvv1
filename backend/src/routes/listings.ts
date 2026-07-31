@@ -9,6 +9,96 @@ import {
   isSpotPublished, publicSpotVisibility, spotOrdering, SpotValidationError,
 } from '../lib/spots';
 
+/** The listing types the app knows how to render. Mirrors the enum in the OpenAPI blocks below. */
+const LISTING_TYPES = ['spot', 'homestay', 'driver', 'shop', 'cafe', 'event', 'biodiversity'];
+
+const MAX_TITLE_LEN = 160;
+const MAX_LOCATION_LEN = 160;
+const MAX_DESCRIPTION_LEN = 8000;
+const MAX_TAGS = 12;
+const MAX_TAG_LEN = 40;
+const MAX_PRICE = 1_000_000;
+/** Upper bound for `limit`, so a public caller can't ask for the whole table in one query. */
+const MAX_PAGE_SIZE = 200;
+const DEFAULT_PAGE_SIZE = 60;
+
+/**
+ * Validates the caller-supplied columns of a listing payload. Returns an error message, or null.
+ *
+ * These columns land in a typed table (`price` is a NOT NULL integer, `title` is NOT NULL), so
+ * without this a wrong-typed field became a driver error and a 500 on what is really a bad
+ * request. `partial` is for PATCH/PUT, where an absent key means "leave it alone" — but a key
+ * that *is* present still has to be valid, which is what stops a spot being blanked out through
+ * the generic update route.
+ */
+function validateListingPayload(body: any, { partial }: { partial: boolean }): string | null {
+  for (const field of ['title', 'description', 'location'] as const) {
+    const value = body[field];
+    if (value === undefined) {
+      if (partial) continue;
+      return `${field} is required`;
+    }
+    if (typeof value !== 'string' || !value.trim()) return `${field} cannot be empty`;
+  }
+  const lengths: Array<[string, number]> = [
+    ['title', MAX_TITLE_LEN], ['location', MAX_LOCATION_LEN], ['description', MAX_DESCRIPTION_LEN],
+  ];
+  for (const [field, max] of lengths) {
+    if (typeof body[field] === 'string' && body[field].trim().length > max) {
+      return `${field} must be ${max} characters or fewer`;
+    }
+  }
+
+  if (body.type !== undefined && !LISTING_TYPES.includes(body.type)) {
+    return `type must be one of: ${LISTING_TYPES.join(', ')}`;
+  }
+
+  if (body.price !== undefined && body.price !== null) {
+    const price = Number(body.price);
+    if (!Number.isInteger(price) || price < 0 || price > MAX_PRICE) {
+      return 'price must be a whole number of rupees between 0 and 1000000';
+    }
+  }
+
+  if (body.image !== undefined && body.image !== null && body.image !== '') {
+    if (typeof body.image !== 'string' || !/^https?:\/\//i.test(body.image.trim())) {
+      return 'image must be an http(s) URL';
+    }
+  }
+
+  if (body.tags !== undefined) {
+    if (!Array.isArray(body.tags)) return 'tags must be an array';
+    if (body.tags.length > MAX_TAGS) return `tags accepts at most ${MAX_TAGS} entries`;
+    if (body.tags.some((tag: unknown) => typeof tag !== 'string' || !tag.trim() || tag.length > MAX_TAG_LEN)) {
+      return `each tag must be a non-empty string of ${MAX_TAG_LEN} characters or fewer`;
+    }
+  }
+
+  for (const axis of ['latitude', 'longitude'] as const) {
+    const value = body[axis];
+    if (value === undefined || value === null || value === '') continue;
+    // Only real numbers count: a blank-ish value like " " coerces to 0 and would silently pin
+    // the listing to the Gulf of Guinea rather than leaving the map unset.
+    if (typeof value !== 'number' && typeof value !== 'string') return `${axis} must be a number`;
+    const n = typeof value === 'number' ? value : Number(value.trim());
+    if (!Number.isFinite(n) || (typeof value === 'string' && !value.trim())) {
+      return `${axis} must be a number`;
+    }
+    const limit = axis === 'latitude' ? 90 : 180;
+    if (n < -limit || n > limit) return `${axis} must be between -${limit} and ${limit}`;
+  }
+
+  return null;
+}
+
+/** Coordinate as stored: a finite number, or null when it was left unset. */
+function coord(value: unknown): number | null {
+  if (value === undefined || value === null || value === '') return null;
+  if (typeof value === 'string' && !value.trim()) return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
 async function resolveOwnProviderId(userId: string): Promise<string | null> {
   const providersList = await db.select().from(schema.providers).where(eq(schema.providers.userId, userId));
   const active = providersList.find(p => p.status === 'active');
@@ -118,7 +208,12 @@ async function ratingsForListings(listingIds: string[]): Promise<Map<string, { c
 router.get('/', async (req: Request, res: Response) => {
   const type = req.query.type as string | undefined;
   const q = req.query.q as string | undefined;
-  const limit = parseInt(req.query.limit as string) || 60;
+  // Clamped, not trusted: a negative value made Postgres reject the query outright (a 500 on a
+  // public route) and a huge one pulled the whole table plus a review lookup for every row.
+  const requestedLimit = parseInt(req.query.limit as string, 10);
+  const limit = Number.isFinite(requestedLimit) && requestedLimit > 0
+    ? Math.min(requestedLimit, MAX_PAGE_SIZE)
+    : DEFAULT_PAGE_SIZE;
 
   // Draft spots must never surface on a public read — this route has no auth, so the
   // predicate is unconditional here and admins get their drafts from /admin/spots instead.
@@ -262,6 +357,8 @@ router.post('/', authenticateToken, async (req: Request, res: Response) => {
   if (!title || !type || !description || !location) {
     return res.status(400).json({ detail: 'Title, type, description and location are required' });
   }
+  const payloadError = validateListingPayload(req.body, { partial: false });
+  if (payloadError) return res.status(400).json({ detail: payloadError });
 
   // Tourist spots are curated editorial content, not a business someone lists. An active
   // provider may create every other type; only an admin may create a spot.
@@ -292,15 +389,17 @@ router.post('/', authenticateToken, async (req: Request, res: Response) => {
 
   const listing = {
     id: uuidv4(),
-    title,
+    title: String(title).trim(),
     type,
-    description,
-    location,
-    latitude: typeof latitude === 'number' ? latitude : null,
-    longitude: typeof longitude === 'number' ? longitude : null,
-    price,
-    image,
-    tags,
+    description: String(description).trim(),
+    location: String(location).trim(),
+    // Numeric strings are accepted here (a form input hands back "27.036"): the validator has
+    // already confirmed they parse and are in range, so create and update agree on what's stored.
+    latitude: coord(latitude),
+    longitude: coord(longitude),
+    price: price != null ? Number(price) : 0,
+    image: typeof image === 'string' ? image.trim() : '',
+    tags: Array.isArray(tags) ? tags.map((tag: string) => tag.trim()) : [],
     providerId,
     extras: storedExtras,
     createdAt: new Date().toISOString()
@@ -362,6 +461,11 @@ const updateListingHandler = async (req: Request, res: Response) => {
     });
   }
 
+  // Everything this route can write goes through the same rules as create. Without this the
+  // generic update route was a way around the validation on /admin/spots for the very same rows.
+  const payloadError = validateListingPayload(req.body, { partial: true });
+  if (payloadError) return res.status(400).json({ detail: payloadError });
+
   // `type` is deliberately absent: a listing can never be re-typed, so a provider cannot
   // convert one of their own listings into an (admin-only) spot after the fact.
   const allowed = ['title', 'description', 'location', 'latitude', 'longitude', 'price', 'image', 'tags', 'extras'] as const;
@@ -370,6 +474,18 @@ const updateListingHandler = async (req: Request, res: Response) => {
     if (req.body[key] !== undefined) {
       updateFields[key] = req.body[key];
     }
+  }
+  for (const key of ['title', 'description', 'location'] as const) {
+    if (updateFields[key] !== undefined) updateFields[key] = String(updateFields[key]).trim();
+  }
+  if (updateFields.price !== undefined && updateFields.price !== null) {
+    updateFields.price = Number(updateFields.price);
+  }
+  if (updateFields.image !== undefined) {
+    updateFields.image = typeof updateFields.image === 'string' ? updateFields.image.trim() : '';
+  }
+  if (Array.isArray(updateFields.tags)) {
+    updateFields.tags = updateFields.tags.map((tag: string) => tag.trim());
   }
 
   if (listing.type === SPOT_TYPE) {
@@ -382,10 +498,11 @@ const updateListingHandler = async (req: Request, res: Response) => {
     }
   }
 
-  for (const coord of ['latitude', 'longitude'] as const) {
-    if (updateFields[coord] !== undefined && updateFields[coord] !== null && typeof updateFields[coord] !== 'number') {
-      return res.status(400).json({ detail: `${coord} must be a number` });
-    }
+  // Range and finiteness are already settled by the validator above; this only normalises the
+  // accepted forms to what the column stores. NaN is a number to `typeof`, which is how it used
+  // to reach the database and produce a listing with an unplottable pin.
+  for (const axis of ['latitude', 'longitude'] as const) {
+    if (updateFields[axis] !== undefined) updateFields[axis] = coord(updateFields[axis]);
   }
 
   if (Object.keys(updateFields).length > 0) {
@@ -393,6 +510,9 @@ const updateListingHandler = async (req: Request, res: Response) => {
   }
 
   const [updated] = await db.select().from(schema.listings).where(eq(schema.listings.id, listing.id)).limit(1);
+  // Another admin can delete the row between the update and this read; answer 404 rather than
+  // throwing on an undefined row.
+  if (!updated) return res.status(404).json({ detail: 'Not found' });
   const itemReturn = {
     id: updated.id,
     title: updated.title,
