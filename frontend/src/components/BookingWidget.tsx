@@ -332,7 +332,7 @@ export default function BookingWidget() {
           id="booking-widget-panel-mobile"
           data-testid="booking-widget-pill-panel"
           aria-hidden={!panelOpen}
-          className={`border-light absolute inset-x-0 top-0 z-0 grid rounded-[28px]
+          className={`absolute inset-x-0 top-0 z-0 grid rounded-[28px]
                       transition-[grid-template-rows,visibility] duration-300 ease-out
                       ${panelOpen
                         ? 'grid-rows-[1fr] visible'
