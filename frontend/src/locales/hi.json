@@ -102,7 +102,8 @@
     "processing": "प्रक्रिया जारी…",
     "save_changes": "बदलाव सहेजें",
     "something_wrong": "कुछ गलत हो गया",
-    "save_failed": "सहेजा नहीं जा सका"
+    "save_failed": "सहेजा नहीं जा सका",
+    "not_found": "लिस्टिंग नहीं मिली।"
   },
   "cta": {
     "book_now": "अभी रिज़र्व करें",

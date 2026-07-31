@@ -355,9 +355,13 @@ function primaryKeyword(item: any): string {
  * two listings share the same picture across cards and the detail hero.
  */
 export function listingImage(item: any, w = 1200, h = 900): string {
+  // A real uploaded photo is checked first: `SEED_IMAGE_SET` already distinguishes one somebody
+  // actually chose from the stock image a seeded row shipped with, so this honours a cover photo
+  // an admin uploads in the console (which the curated hero used to override and hide) without
+  // disturbing the editorial hero on listings nobody has touched.
+  if (item?.image && !SEED_IMAGE_SET.has(item.image)) return sizedImage(item.image, w);
   const curatedHero = CONTENT[item?.title]?.hero;
   if (curatedHero) return sizedImage(curatedHero, w);
-  if (item?.image && !SEED_IMAGE_SET.has(item.image)) return sizedImage(item.image, w);
   return stockPhoto(primaryKeyword(item), w, h, seedFor(item?.title));
 }
 

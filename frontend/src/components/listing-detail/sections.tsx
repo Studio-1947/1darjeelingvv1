@@ -45,8 +45,10 @@ export function HighlightsSection({ highlights }: { highlights: string[] }) {
     <Screen tone="white" testid="detail-highlights">
       <SectionHead label={t('detail.highlights')} title={t('detail.highlights')} note={t('detail.highlights_note')} />
       <div className={`mt-10 grid sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5 max-w-5xl ${ALIGN_BLOCK}`}>
-        {highlights.map((highlight) => (
-          <div key={highlight} className="flex items-start gap-4 p-5 rounded-2xl border border-[var(--line)] bg-[var(--bg)]">
+        {/* Keyed by position, not by text: nothing stops an admin entering the same bullet twice,
+            and duplicate keys made React drop one of them. */}
+        {highlights.map((highlight, i) => (
+          <div key={i} className="flex items-start gap-4 p-5 rounded-2xl border border-[var(--line)] bg-[var(--bg)]">
             <Sparkles size={22} className="text-pine flex-shrink-0 mt-0.5" />
             <span className="text-ink font-semibold leading-snug">{highlight}</span>
           </div>

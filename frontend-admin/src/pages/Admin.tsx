@@ -51,11 +51,22 @@ export default function Admin() {
   // Tourist-spot authoring: the open form (null = closed; { spot: null } = creating a new one)
   // and the id of the spot whose row action is in flight.
   const [spotForm, setSpotForm] = useState<{ spot: AdminSpot | null } | null>(null);
-  const [spotBusyId, setSpotBusyId] = useState<string | null>(null);
+  // A single id could not describe two overlapping row actions: starting one on row B and then
+  // having row A's request finish cleared the flag outright, re-enabling B's buttons while its
+  // request was still in flight. Each row now clears only its own entry.
+  const [spotBusyIds, setSpotBusyIds] = useState<string[]>([]);
+  const markSpotBusy = (id: string) => setSpotBusyIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
+  const clearSpotBusy = (id: string) => setSpotBusyIds((prev) => prev.filter((x) => x !== id));
 
-  // Fetch all admin tables from the backend API
-  const loadAdminData = useCallback(async () => {
-    setLoading(true);
+  // Fetch all admin tables from the backend API.
+  //
+  // `background` refetches without raising the full-page loading state. Every row action used to
+  // trigger the blocking path, which unmounted the whole dashboard — and with it the Spots tab's
+  // own search text and filter — so publishing one spot silently cleared what the admin had
+  // typed. The blocking screen is only right for the very first load, when there is nothing
+  // on screen to preserve.
+  const loadAdminData = useCallback(async ({ background = false }: { background?: boolean } = {}) => {
+    if (!background) setLoading(true);
     setErr('');
     try {
       const [statsRes, usersRes, listingsRes, spotsRes, bookingsRes, paymentsRes] = await Promise.all([
@@ -79,7 +90,7 @@ export default function Admin() {
         setErr('Failed to load admin data');
       }
     } finally {
-      setLoading(false);
+      if (!background) setLoading(false);
     }
   }, []);
 
@@ -105,7 +116,7 @@ export default function Admin() {
     try {
       const { data } = await api.post('/admin/seed');
       setActionMsg(`Successfully seeded ${data.seeded} listings!`);
-      loadAdminData();
+      loadAdminData({ background: true });
     } catch (e) {
       setActionMsg('Failed to seed listings.');
     }
@@ -117,7 +128,7 @@ export default function Admin() {
     try {
       await api.delete(`/admin/users/${userId}`);
       setActionMsg(`User "${name}" deleted successfully.`);
-      loadAdminData();
+      loadAdminData({ background: true });
     } catch (e: any) {
       setActionMsg(e?.response?.data?.detail || 'Failed to delete user.');
     }
@@ -129,7 +140,7 @@ export default function Admin() {
     try {
       await api.delete(`/admin/listings/${listingId}`);
       setActionMsg(`Listing "${title}" deleted successfully.`);
-      loadAdminData();
+      loadAdminData({ background: true });
     } catch (e) {
       setActionMsg('Failed to delete listing.');
     }
@@ -148,7 +159,7 @@ export default function Admin() {
         ? `Spot "${data.item.title}" saved.`
         : `Spot "${data.item.title}" created${data.item.published ? ' and published' : ' as a draft'}.`
     );
-    await loadAdminData();
+    await loadAdminData({ background: true });
   };
 
   const handleDeleteSpot = async (spot: AdminSpot) => {
@@ -156,43 +167,43 @@ export default function Admin() {
       ? `\n\nThis will also delete its ${spot.review_count} review(s) and any saves.`
       : '';
     if (!confirm(`Delete the tourist spot "${spot.title}"?${warning}`)) return;
-    setSpotBusyId(spot.id);
+    markSpotBusy(spot.id);
     try {
       await api.delete(`/admin/spots/${spot.id}`);
       setActionMsg(`Spot "${spot.title}" deleted.`);
-      await loadAdminData();
+      await loadAdminData({ background: true });
     } catch (e: any) {
       setActionMsg(e?.response?.data?.detail || 'Failed to delete that spot.');
     } finally {
-      setSpotBusyId(null);
+      clearSpotBusy(spot.id);
     }
   };
 
   const handleToggleSpotPublished = async (spot: AdminSpot) => {
-    setSpotBusyId(spot.id);
+    markSpotBusy(spot.id);
     try {
       await api.post(`/admin/spots/${spot.id}/publish`, { published: !spot.published });
       setActionMsg(`"${spot.title}" is now ${spot.published ? 'a draft — hidden from visitors' : 'live on the site'}.`);
-      await loadAdminData();
+      await loadAdminData({ background: true });
     } catch (e: any) {
       setActionMsg(e?.response?.data?.detail || 'Failed to change that spot’s visibility.');
     } finally {
-      setSpotBusyId(null);
+      clearSpotBusy(spot.id);
     }
   };
 
   const handleToggleSpotFeatured = async (spot: AdminSpot) => {
-    setSpotBusyId(spot.id);
+    markSpotBusy(spot.id);
     try {
       // Only `featured` is sent: the backend merges it over the stored extras, so the
       // gallery and the rest of the editorial content are untouched.
       await api.patch(`/admin/spots/${spot.id}`, { extras: { featured: !spot.featured } });
       setActionMsg(`"${spot.title}" ${spot.featured ? 'removed from' : 'added to'} featured spots.`);
-      await loadAdminData();
+      await loadAdminData({ background: true });
     } catch (e: any) {
       setActionMsg(e?.response?.data?.detail || 'Failed to update that spot.');
     } finally {
-      setSpotBusyId(null);
+      clearSpotBusy(spot.id);
     }
   };
 
@@ -203,7 +214,7 @@ export default function Admin() {
     try {
       await api.put(`/admin/providers/${providerId}/status`, { status: nextStatus });
       setActionMsg(`Provider status updated to "${nextStatus}".`);
-      loadAdminData();
+      loadAdminData({ background: true });
     } catch (e) {
       setActionMsg('Failed to update provider status.');
     }
@@ -242,7 +253,7 @@ export default function Admin() {
           <h1 className="mt-1 font-display font-extrabold text-4xl text-ink leading-none">Console</h1>
         </div>
         <div className="flex items-center gap-3">
-          <button onClick={loadAdminData} className="px-4 py-2 text-xs font-bold border border-[var(--line)] rounded-full text-ink hover:bg-mist transition-all">
+          <button onClick={() => loadAdminData()} className="px-4 py-2 text-xs font-bold border border-[var(--line)] rounded-full text-ink hover:bg-mist transition-all">
             Refresh Data
           </button>
           <button onClick={handleSeed} className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold bg-pine text-white rounded-full btn-hover transition-all">
@@ -307,7 +318,7 @@ export default function Admin() {
       {activeTab === 'spots' && (
         <SpotsTab
           spots={spotsList}
-          busyId={spotBusyId}
+          busyIds={spotBusyIds}
           onCreate={() => { setActionMsg(''); setSpotForm({ spot: null }); }}
           onEdit={(spot) => { setActionMsg(''); setSpotForm({ spot }); }}
           onDelete={handleDeleteSpot}

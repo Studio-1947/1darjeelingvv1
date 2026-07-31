@@ -17,11 +17,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const { data } = await api.get('/auth/me');
       setUser(data.user);
-    } catch (e) {
-      localStorage.removeItem('admin_token');
+    } catch (e: any) {
+      // Only discard the token when the server actually rejected it. Treating every failure as
+      // a bad token meant a reload during a network blip or a backend restart silently signed
+      // the admin out and made them type their password again for no reason.
+      const status = e?.response?.status;
+      if (status === 401 || status === 403) {
+        localStorage.removeItem('admin_token');
+      }
       setUser(null);
-    } finally { 
-      setLoading(false); 
+    } finally {
+      setLoading(false);
     }
   }, []);
 
