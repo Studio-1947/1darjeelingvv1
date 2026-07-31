@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import api from '@/lib/api';
@@ -6,6 +6,7 @@ import { sizedImage } from '@/lib/listingContent';
 import FeedCard from '@/components/FeedCard';
 import BookingWidget from '@/components/BookingWidget';
 import HeroMedia from '@/components/HeroMedia';
+import { CATEGORIES } from '@/constants/categories';
 import { FeedCardSkeleton, SpotTileSkeleton, StayTileSkeleton, LoadingStatus, repeat } from '@/components/skeletons';
 import { Mountain, ArrowRight, Sparkles, TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react';
 
@@ -22,14 +23,84 @@ const DEALS = [
   { key: 'tea', color: 'from-gold to-[#c69108]', to: '/spots', image: 'https://images.pexels.com/photos/103875/pexels-photo-103875.jpeg' },
 ];
 
+// Six fills three rows of the two-column desktop grid exactly, and is about as
+// far as anyone scrolls a phone before wanting a control rather than more feed.
+const FEED_PAGE_SIZE = 6;
+
+// The pills use the short nav.* labels rather than the editorial categories.*
+// ones, which are too long to sit in a row of chips.
+const NAV_LABEL_KEY: Record<string, string> = {
+  spot: 'spots',
+  homestay: 'homestays',
+  driver: 'drivers',
+  shop: 'shops',
+  cafe: 'cafes',
+  event: 'events',
+  biodiversity: 'biodiversity',
+};
+
+/**
+ * Page numbers to render, with `null` standing in for a gap.
+ * Everything fits while there are few pages; past that it stays a fixed width
+ * by windowing around the current page so the control never wraps on a phone.
+ */
+function pageWindow(current: number, count: number): (number | null)[] {
+  if (count <= 7) return Array.from({ length: count }, (_, i) => i);
+  const around = [current - 1, current, current + 1].filter((p) => p > 0 && p < count - 1);
+  const pages = Array.from(new Set([0, ...around, count - 1])).sort((a, b) => a - b);
+  return pages.flatMap((p, i) => (i > 0 && p - pages[i - 1] > 1 ? [null, p] : [p]));
+}
+
 export default function Discover() {
   const { t } = useTranslation();
   const [feed, setFeed] = useState([]);
   const [spots, setSpots] = useState([]);
   const [homestays, setHomestays] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [feedType, setFeedType] = useState('all');
+  const [feedPage, setFeedPage] = useState(0);
   const spotsScrollRef = useRef<HTMLDivElement>(null);
+  const feedTopRef = useRef<HTMLElement>(null);
   const pointerRestoreRef = useRef<number>(undefined);
+
+  // Only offer a pill for a type the feed actually contains, in the canonical
+  // category order - an "Events" tab that always lands on an empty grid is
+  // worse than no tab. Counts come along so each pill can show its weight.
+  const feedTabs = useMemo(() => {
+    const counts = feed.reduce((acc, it) => {
+      acc[it.type] = (acc[it.type] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    return [
+      { key: 'all', label: t('home.filter_all'), count: feed.length },
+      ...CATEGORIES
+        .filter(({ key }) => counts[key])
+        .map(({ key }) => ({ key, label: t(`nav.${NAV_LABEL_KEY[key]}`), count: counts[key] })),
+    ];
+  }, [feed, t]);
+
+  const filteredFeed = useMemo(
+    () => (feedType === 'all' ? feed : feed.filter((it) => it.type === feedType)),
+    [feed, feedType],
+  );
+
+  const pageCount = Math.max(1, Math.ceil(filteredFeed.length / FEED_PAGE_SIZE));
+  // Clamped rather than stored blindly: switching from a 24-item tab on page 4
+  // to a 3-item tab would otherwise render an empty grid.
+  const page = Math.min(feedPage, pageCount - 1);
+  const visibleFeed = filteredFeed.slice(page * FEED_PAGE_SIZE, (page + 1) * FEED_PAGE_SIZE);
+
+  const goToPage = (next: number) => {
+    setFeedPage(next);
+    // Paging without this leaves you at the bottom of the old page, looking at
+    // the last two cards of the new one.
+    feedTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const selectTab = (key: string) => {
+    setFeedType(key);
+    setFeedPage(0);
+  };
 
   const scrollSpots = (direction: 'left' | 'right') => {
     if (spotsScrollRef.current) {
@@ -217,23 +288,131 @@ export default function Discover() {
       </section>
 
       {/* Instagram-style feed */}
-      <section className="mx-auto max-w-6xl px-4 md:px-6 pt-10 md:pt-14">
-        <div className="flex items-center gap-2 mb-4">
+      {/* scroll-mt clears the sticky header when paging jumps back up here. */}
+      <section ref={feedTopRef} className="mx-auto max-w-6xl px-4 md:px-6 pt-10 md:pt-14 scroll-mt-[calc(var(--header-h)+1rem)]">
+        <div className="flex items-center gap-2">
           <Sparkles size={18} className="text-flag" />
           <h2 className="font-display font-extrabold text-2xl md:text-3xl text-ink">{t('home.explore_darjeeling')}</h2>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
+
+        {/* Type filter. A horizontal scroller rather than a wrap, so the row
+            stays one line on a phone and the header below it doesn't move as
+            the selection changes. */}
+        {!loading && feedTabs.length > 1 && (
+          <div
+            role="group"
+            aria-label={t('home.filter_label')}
+            data-testid="feed-filter"
+            className="mt-4 flex items-center gap-2 overflow-x-auto no-scrollbar -mx-4 px-4 md:mx-0 md:px-0 pb-1"
+          >
+            {feedTabs.map(({ key, label, count }) => {
+              const active = feedType === key;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => selectTab(key)}
+                  aria-pressed={active}
+                  data-testid={`feed-filter-${key}`}
+                  className={`flex-shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-sm font-bold
+                    border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine
+                    ${active
+                      ? 'bg-pine text-white border-pine'
+                      : 'bg-white text-ink border-[var(--line)] hover:border-pine/40'}`}
+                >
+                  {label}
+                  <span className={`text-[11px] font-extrabold ${active ? 'text-white/70' : 'text-ink-soft'}`}>{count}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
           {loading ? (
             <>
               <LoadingStatus label={t('common.loading')} />
-              {repeat(4, (i) => <FeedCardSkeleton key={i} />)}
+              {repeat(FEED_PAGE_SIZE, (i) => <FeedCardSkeleton key={i} />)}
             </>
           ) : (
-            feed.map((it, idx) => (
-              <FeedCard key={it.id} item={it} priority={idx < 2} />
+            visibleFeed.map((it, idx) => (
+              // Only the first page's opening cards are above the fold; the rest
+              // stay lazy so paging doesn't eagerly fetch six full-size images.
+              <FeedCard key={it.id} item={it} priority={page === 0 && idx < 2} />
             ))
           )}
         </div>
+
+        {!loading && filteredFeed.length === 0 && (
+          <div className="mist-panel p-8 text-center" data-testid="feed-empty">
+            <p className="text-ink-soft">{t('category.empty')}</p>
+          </div>
+        )}
+
+        {!loading && pageCount > 1 && (
+          <nav
+            aria-label={t('home.pagination_label')}
+            data-testid="feed-pagination"
+            className="mt-8 flex items-center justify-center gap-1.5"
+          >
+            <button
+              type="button"
+              onClick={() => goToPage(page - 1)}
+              disabled={page === 0}
+              aria-label={t('home.prev_page')}
+              data-testid="feed-page-prev"
+              className="w-10 h-10 rounded-full grid place-items-center border border-[var(--line)] bg-white text-ink
+                         disabled:opacity-40 disabled:cursor-not-allowed hover:border-pine/40 transition-colors"
+            >
+              <ChevronLeft size={18} />
+            </button>
+
+            {pageWindow(page, pageCount).map((p, i) =>
+              p === null ? (
+                <span key={`gap-${i}`} aria-hidden="true" className="w-6 text-center text-ink-soft">…</span>
+              ) : (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => goToPage(p)}
+                  aria-label={t('home.page_n', { page: p + 1 })}
+                  aria-current={p === page ? 'page' : undefined}
+                  data-testid={`feed-page-${p + 1}`}
+                  className={`w-10 h-10 rounded-full text-sm font-bold border transition-colors
+                    ${p === page
+                      ? 'bg-pine text-white border-pine'
+                      : 'bg-white text-ink border-[var(--line)] hover:border-pine/40'}`}
+                >
+                  {p + 1}
+                </button>
+              ),
+            )}
+
+            <button
+              type="button"
+              onClick={() => goToPage(page + 1)}
+              disabled={page >= pageCount - 1}
+              aria-label={t('home.next_page')}
+              data-testid="feed-page-next"
+              className="w-10 h-10 rounded-full grid place-items-center border border-[var(--line)] bg-white text-ink
+                         disabled:opacity-40 disabled:cursor-not-allowed hover:border-pine/40 transition-colors"
+            >
+              <ChevronRight size={18} />
+            </button>
+          </nav>
+        )}
+
+        {/* Announced to screen readers on every page change; the numbers above
+            convey this visually but never as a live update. */}
+        {!loading && filteredFeed.length > 0 && (
+          <p role="status" aria-live="polite" data-testid="feed-range" className="mt-3 text-center text-xs text-ink-soft">
+            {t('home.showing_range', {
+              from: page * FEED_PAGE_SIZE + 1,
+              to: Math.min((page + 1) * FEED_PAGE_SIZE, filteredFeed.length),
+              total: filteredFeed.length,
+            })}
+          </p>
+        )}
       </section>
 
       {/* Provider CTA banner */}

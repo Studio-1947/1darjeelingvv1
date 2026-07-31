@@ -263,31 +263,96 @@
   },
   "responsible": {
     "title": "Responsible Tourism",
-    "lead": "Darjeeling is a fragile Himalayan ecosystem. Let's protect it together.",
+    "lead": "Darjeeling is a fragile Himalayan ecosystem  2,000 metres of cloud forest, tea terraces and 600 bird species, held together by the families who live in it. Six commitments keep it that way.",
     "principles": [
       {
         "t": "Say no to plastic",
-        "d": "Carry reusable bottles, bags and cups. Refill at local shops."
+        "d": "Carry reusable bottles, bags and cups. Every partner shop refills for free.",
+        "meta": "Refill points on the map"
       },
       {
         "t": "Stay local",
-        "d": "Choose homestays over chains. Your money reaches local families."
+        "d": "Choose homestays over chains. Your money reaches the family that hosts you.",
+        "meta": "214 verified homestays"
       },
       {
         "t": "Respect wildlife",
-        "d": "Do not feed or chase wild animals. Observe from a distance."
+        "d": "Do not feed or chase wild animals. Observe from a distance and keep moving.",
+        "meta": "Singalila & Senchal rules"
       },
       {
         "t": "Save the tea gardens",
-        "d": "Walk marked trails only. Don't trample undergrowth."
+        "d": "Walk marked trails only. Bushes take four years to recover from trampling.",
+        "meta": "Estate walking routes"
       },
       {
         "t": "Honour culture",
-        "d": "Ask permission before photographing monasteries and people."
+        "d": "Ask permission before photographing monasteries, rituals and people.",
+        "meta": "A short etiquette guide"
       },
       {
         "t": "Keep it quiet",
-        "d": "Keep noise low — the hills and their creatures prefer it that way."
+        "d": "Keep noise low the hills and their creatures prefer it that way.",
+        "meta": "Quiet hours 8pm–6am"
+      }
+    ],
+    "eyebrow": "Community pledge",
+    "title_1": "Responsible",
+    "title_2": "Tourism",
+    "cta_pledge": "Take the pledge",
+    "cta_guide": "Read the field guide",
+    "hero_caption_label": "01 / Singalila Ridge",
+    "hero_caption": "Cloud forest above Manebhanjan, photographed at first light.",
+    "stats": [
+      {
+        "v": "92%",
+        "l": "Revenue kept in the hills"
+      },
+      {
+        "v": "410",
+        "l": "Pledged hosts and drivers"
+      },
+      {
+        "v": "0",
+        "l": "Single-use plastic at partner cafes"
+      }
+    ],
+    "commitments_label": "Six commitments",
+    "commitments_intro": "Ask them of yourself, and of anyone you travel with. Every partner on 1 Darjeeling signs the same six.",
+    "gallery": [
+      {
+        "label": "Walk marked trails",
+        "caption": "Second flush plucking, Happy Valley."
+      },
+      {
+        "label": "Ask before you photograph",
+        "caption": "Morning prayer at Ghoom monastery."
+      },
+      {
+        "label": "Observe from a distance",
+        "caption": "Red panda, Singalila  38 left in the range."
+      }
+    ],
+    "money_eyebrow": "Where your money goes",
+    "money_title": "Every booking supports local families.",
+    "money_body": "1 Darjeeling directs tourism revenue to Darjeeling owned businesses homestays, drivers, tea houses and artisans. No chains, no aggregator margin, no middlemen in Kolkata.",
+    "money_cta": "Book with a local host",
+    "allocation": [
+      {
+        "l": "Homestay hosts",
+        "v": "₹ 68 of 100"
+      },
+      {
+        "l": "Drivers & guides",
+        "v": "₹ 17"
+      },
+      {
+        "l": "Cafes, shops, artisans",
+        "v": "₹ 7"
+      },
+      {
+        "l": "Trail & waste upkeep",
+        "v": "₹ 8"
       }
     ]
   },
@@ -516,7 +581,14 @@
       }
     },
     "scroll_left": "Scroll left",
-    "scroll_right": "Scroll right"
+    "scroll_right": "Scroll right",
+    "filter_all": "All",
+    "filter_label": "Filter by type",
+    "pagination_label": "Explore Darjeeling pages",
+    "prev_page": "Previous page",
+    "next_page": "Next page",
+    "page_n": "Page {{page}}",
+    "showing_range": "Showing {{from}}-{{to}} of {{total}}"
   },
   "widget": {
     "destination": "Destination",
@@ -540,7 +612,9 @@
     "from": "From",
     "to": "To",
     "from_placeholder": "Pickup point",
-    "to_placeholder": "Where to?"
+    "to_placeholder": "Where to?",
+    "guests_less": "Fewer guests",
+    "guests_more": "More guests"
   },
   "category": {
     "search": "Search",

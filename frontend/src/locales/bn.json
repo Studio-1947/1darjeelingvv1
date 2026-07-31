@@ -392,7 +392,14 @@
       }
     },
     "scroll_left": "বাঁদিকে স্ক্রল করুন",
-    "scroll_right": "ডানদিকে স্ক্রল করুন"
+    "scroll_right": "ডানদিকে স্ক্রল করুন",
+    "filter_all": "সব",
+    "filter_label": "ধরন অনুযায়ী বাছাই",
+    "pagination_label": "ডার্জিলিং ঘুরে দেখার পাতা",
+    "prev_page": "আগের পাতা",
+    "next_page": "পরের পাতা",
+    "page_n": "পাতা {{page}}",
+    "showing_range": "{{total}}টির মধ্যে {{from}}-{{to}} দেখানো হচ্ছে"
   },
   "widget": {
     "destination": "গন্তব্য",
@@ -416,7 +423,9 @@
     "from": "কোথা থেকে",
     "to": "কোথায়",
     "from_placeholder": "পিকআপ স্থান",
-    "to_placeholder": "কোথায় যাবেন?"
+    "to_placeholder": "কোথায় যাবেন?",
+    "guests_less": "কম অতিথি",
+    "guests_more": "বেশি অতিথি"
   },
   "category": {
     "search": "অনুসন্ধান",

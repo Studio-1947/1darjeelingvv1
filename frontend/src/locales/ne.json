@@ -392,7 +392,14 @@
       }
     },
     "scroll_left": "बायाँ स्क्रोल गर्नुहोस्",
-    "scroll_right": "दायाँ स्क्रोल गर्नुहोस्"
+    "scroll_right": "दायाँ स्क्रोल गर्नुहोस्",
+    "filter_all": "सबै",
+    "filter_label": "प्रकार अनुसार छान्नुहोस्",
+    "pagination_label": "दार्जिलिङ अन्वेषण पृष्ठहरू",
+    "prev_page": "अघिल्लो पृष्ठ",
+    "next_page": "अर्को पृष्ठ",
+    "page_n": "पृष्ठ {{page}}",
+    "showing_range": "{{total}} मध्ये {{from}}-{{to}} देखाइँदै"
   },
   "widget": {
     "destination": "गन्तव्य",
@@ -416,7 +423,9 @@
     "from": "कहाँबाट",
     "to": "कहाँसम्म",
     "from_placeholder": "पिकअप स्थान",
-    "to_placeholder": "कहाँ जाने?"
+    "to_placeholder": "कहाँ जाने?",
+    "guests_less": "कम पाहुना",
+    "guests_more": "बढी पाहुना"
   },
   "category": {
     "search": "खोज",
