@@ -61,12 +61,30 @@ function scrubUrl(url) {
   }
 }
 
+/**
+ * Which deployment this browser is talking to.
+ *
+ * Derived from the hostname at runtime rather than baked in at build time, for two reasons: the
+ * SAME bundle is deployed to both stacks, so a build-time value would be wrong on one of them;
+ * and NODE_ENV is "production" for every production build, so it cannot tell staging from real.
+ * Without this, staging errors and real incidents arrive in Sentry indistinguishable.
+ *
+ * The canonical host is named explicitly and everything else defaults to staging — the same
+ * inversion as the $robots_tag map in deploy/nginx/app.conf, and for the same reason: a new
+ * preview host should be non-production by default rather than by someone remembering.
+ */
+function deploymentEnvironment() {
+  if (process.env.NODE_ENV !== "production") return "development";
+  const host = window.location.hostname.toLowerCase();
+  return /^(www\.)?1darjeeling\.in$/.test(host) ? "production" : "staging";
+}
+
 export const SENTRY_ENABLED = Boolean(DSN);
 
 if (DSN) {
   Sentry.init({
     dsn: DSN,
-    environment: process.env.NODE_ENV,
+    environment: deploymentEnvironment(),
 
     // Session Replay and performance tracing are deliberately NOT enabled. Replay records the
     // DOM — on this site that means the OTP a user typed, the ID document they picked, and the
