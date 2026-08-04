@@ -28,6 +28,18 @@ const s3Client = new S3Client({
   region: 'us-east-1',  // Ignored by MinIO but required by AWS SDK
 });
 
+/**
+ * Can this server actually reach object storage?
+ *
+ * Used by GET /api/health. A HEAD on the public bucket is the cheapest call that proves both
+ * network reachability and that the configured credentials are accepted — a wrong
+ * MINIO_ACCESS_KEY fails here exactly as a stopped container does, which is the point: both
+ * mean uploads are broken, and both were previously invisible until a provider tried to add a photo.
+ */
+export async function checkStorage(): Promise<void> {
+  await s3Client.send(new HeadBucketCommand({ Bucket: MINIO_BUCKET }));
+}
+
 let bucketBootstrapped = false;
 
 // Ensure bucket exists and has public read policy configured
