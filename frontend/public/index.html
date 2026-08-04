@@ -5,8 +5,13 @@
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=5" />
         <meta name="theme-color" content="#2C5E3B" />
         <meta name="description" content="1 Darjeeling — One Darjeeling. Every experience. Tourism spots, homestays, drivers, cafes, cultural events and Himalayan biodiversity in a single app." />
+        <!-- SVG first for browsers that take it, .ico as the universal fallback. Both files
+             exist; the apple-touch-icon below used to point at a logo192.png that was never in
+             the repo, so every iOS visitor fetched a 404 and got a screenshot of the page as the
+             home-screen icon. -->
         <link rel="icon" href="%PUBLIC_URL%/logo.svg" type="image/svg+xml" />
-        <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
+        <link rel="icon" href="%PUBLIC_URL%/favicon.ico" sizes="any" />
+        <link rel="apple-touch-icon" href="%PUBLIC_URL%/apple-touch-icon.png" />
         <link rel="manifest" href="/manifest.json" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
