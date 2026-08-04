@@ -25,12 +25,27 @@ dotenv.config({ path: path.join(__dirname, '../.env') });
 const DSN = process.env.SENTRY_DSN?.trim();
 const APP_ENV = process.env.APP_ENV?.trim() || 'development';
 
+/**
+ * The label errors are filed under, which is NOT the same question as APP_ENV.
+ *
+ * Both deployed stacks run APP_ENV=production, and correctly so — staging has to exercise
+ * production behaviour to be worth anything. But that means APP_ENV cannot tell them apart, and
+ * without this every error from the staging box would arrive tagged `production`, sitting in the
+ * same stream as real incidents. The one thing an operator needs from an alert at 2am is whether
+ * it matters.
+ *
+ * Defaults to APP_ENV, so a single-stack deployment needs no extra configuration. The staging
+ * stack sets SENTRY_ENVIRONMENT=staging.
+ */
+const SENTRY_ENVIRONMENT = process.env.SENTRY_ENVIRONMENT?.trim() || APP_ENV;
+
 export const SENTRY_ENABLED = Boolean(DSN);
+export { SENTRY_ENVIRONMENT };
 
 if (DSN) {
   Sentry.init({
     dsn: DSN,
-    environment: APP_ENV,
+    environment: SENTRY_ENVIRONMENT,
 
     // Performance tracing is off by default: it samples ordinary successful requests, which is a
     // continuous stream of URLs and timings rather than the exceptional events this is here for.
