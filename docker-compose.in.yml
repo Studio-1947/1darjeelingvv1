@@ -114,6 +114,11 @@ services:
     build:
       context: .
       dockerfile: deploy/nginx/Dockerfile
+      args:
+        # Baked into the JS bundle at build time — CRA cannot read it at runtime. Empty means the
+        # frontend reports nothing, which is the default. Not a secret: a DSN is a write-only
+        # ingestion endpoint and ships in the bundle by design.
+        REACT_APP_SENTRY_DSN: "${FRONTEND_SENTRY_DSN:-}"
     container_name: 1darjeeling_in_nginx
     restart: unless-stopped
     ports:
