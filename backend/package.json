@@ -20,6 +20,7 @@
   "type": "commonjs",
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1087.0",
+    "@sentry/node": "^10.69.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "drizzle-orm": "^0.45.2",

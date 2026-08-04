@@ -10,6 +10,14 @@ COPY frontend/ .
 # REACT_APP_BACKEND_URL is deliberately NOT set: the app falls back to a
 # same-origin '/api' base, which app.conf proxies to the backend. Setting it to
 # an absolute URL here would hard-code the public hostname into the bundle.
+#
+# The Sentry DSN, by contrast, HAS to be a build arg. Create React App inlines REACT_APP_*
+# variables into the bundle at build time, so it cannot be read from the container's environment
+# at runtime like every backend setting is. Supplied by the compose files from the stack's .env;
+# absent, the frontend simply reports nothing. A DSN is not a secret — it is a write-only
+# ingestion endpoint and is visible in the shipped bundle by design.
+ARG REACT_APP_SENTRY_DSN=""
+ENV REACT_APP_SENTRY_DSN=$REACT_APP_SENTRY_DSN
 RUN yarn build
 
 FROM node:20-slim AS admin-build
