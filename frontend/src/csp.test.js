@@ -127,3 +127,39 @@ describe('both policies', () => {
     }
   });
 });
+
+describe('search indexing', () => {
+  // The same image serves both stacks, so only the Host header distinguishes the real site from
+  // staging. If this map ever stops naming the canonical domain, the production site starts
+  // sending itself noindex — a failure with no visible symptom until traffic disappears weeks later.
+  const conf = fs.readFileSync(NGINX_CONF, 'utf8');
+  const mapBlock = conf.match(/map\s+\$host\s+\$robots_tag\s*\{([^}]+)\}/);
+
+  it('has a $robots_tag map keyed on the request host', () => {
+    expect(mapBlock).not.toBeNull();
+  });
+
+  it('exempts the canonical domain and noindexes everything else by default', () => {
+    const body = mapBlock[1];
+    // The canonical domain must map to an empty value — nginx omits an add_header whose value is
+    // empty, so the real site sends no X-Robots-Tag at all rather than a weaker explicit "index".
+    expect(body).toMatch(/1darjeeling\\?\.in\$?["\s]*""/);
+    // Default-deny: a new staging host or a raw-IP request is non-indexable without anyone
+    // remembering to add it here.
+    expect(body).toMatch(/default\s+"noindex, nofollow"/);
+  });
+
+  it('applies the tag to every location that serves indexable content', () => {
+    // HTML for both SPAs, plus the public image bucket — listing photos are indexable by Google
+    // Images in their own right, so leaving that location out would index them under staging.
+    const tagged = conf.match(/add_header\s+X-Robots-Tag\s+\$robots_tag\s+always;/g) || [];
+    expect(tagged.length).toBe(3);
+  });
+
+  it('does not pair noindex with a Disallow robots.txt', () => {
+    // Disallow stops the crawler fetching the page, so it never sees the noindex header and an
+    // already-indexed URL stays indexed. Crawling has to stay allowed for noindex to be obeyed.
+    const robots = fs.readFileSync(path.join(__dirname, '..', 'public', 'robots.txt'), 'utf8');
+    expect(robots).not.toMatch(/^\s*Disallow:\s*\/\s*$/m);
+  });
+});
