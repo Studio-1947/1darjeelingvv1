@@ -116,10 +116,12 @@ The file's YAML testing-protocol header describes a `main_agent` / `testing_agen
 
 **Action needed:** no immediate action; flagging as a maintenance risk. A future migration to Vite (already used successfully in `frontend-admin/`) would remove the need for CRA/craco entirely.
 
-### 3.5 `ProviderOnboard.tsx` redirects to login on a direct/refreshed page load, even when already authenticated
+### 3.5 ✅ FIXED — `ProviderOnboard.tsx` redirected to login on a direct/refreshed page load, even when already authenticated
 `frontend/src/pages/ProviderOnboard.tsx:24-26` — `useEffect(() => { if (!user) nav('/login'); }, [user, nav])` doesn't check `authLoading`. `AuthContext` starts every fresh page load with `user: null` while its `GET /auth/me` call is in flight; this effect fires on that very first render and redirects to `/login` before the auth check ever resolves — even for a fully logged-in provider. Found while browser-testing the listing-management feature (§ provider dashboard work, 2026-07-16): navigating directly to `/provider/onboard` (e.g. a hard refresh, or a bookmarked link) bounces a logged-in provider back to the login screen. `ProviderDashboard.tsx`'s equivalent guard does this correctly (`if (authLoading) return; if (!user) { nav('/login'); return; }`) — `ProviderOnboard.tsx` is missing the `authLoading` check that its sibling page already has.
 
 **Action needed:** add the same `authLoading` guard to `ProviderOnboard.tsx`. One-line fix, not made here to stay in scope of the listing-management task that surfaced it.
+
+**Fixed 2026-08-04.** The guard now lives in `frontend/src/components/provider/onboard/useProviderOnboard.ts` (the effect moved into that hook after the page was split into step components): it returns early while `authLoading` is true and only redirects once the auth check has actually resolved.
 
 ---
 
@@ -244,6 +246,25 @@ provider-agnostic delivery layer, `/auth/otp/send` returns 502 rather than a fal
 `sent: true`, and a half-configured provider fails at boot. **The booking-confirmation half
 remains open** and must be closed before real bookings are taken.
 
+**✅ FULLY RESOLVED 2026-08-04.** The booking half is now closed on the same shape as the OTP half:
+
+- `MessagingProvider` gained `sendNotification()`, with a closed set of `NotificationTemplate`
+  values (Indian DLT rules mean each transactional message needs its own pre-approved template, so
+  the list is fixed and registered, not invented per call). `msg91.ts` implements it against the
+  Flow API — the OTP endpoint could never have carried these, since it only ever sends a code.
+- `src/lib/notifications.ts` notifies the guest and the host on confirmation, and the guest on
+  cancellation. It never throws (it runs after the money has moved and the booking is written, so
+  a gateway timeout must not 500 a delivered service and invite a double payment) and it never
+  fails silently: `bookings.tourist_notified_at`, `provider_notified_at` and `notify_error` record
+  what actually happened, so a missing notification is a queryable fact instead of an absence.
+- `NOTIFY_BOOKINGS` has **no default under `APP_ENV=production`** — the same treatment
+  `MOCK_PAYMENTS` gets, and for the same reason. Silence is refused; an operator has to say
+  whether bookings notify anyone. `NOTIFY_BOOKINGS=true` with `MESSAGING_PROVIDER=mock` boots but
+  logs a loud error, because that combination records attempts and delivers nothing.
+- Pinned by `test/bookingIntegrity.test.ts` — one test asserts a confirmed booking carries evidence
+  that the guest was told, another asserts that a listing with no reachable host records *why*
+  nobody could be reached rather than leaving the field blank.
+
 ### 6.B ✅ FIXED — OTPs never expired and had no per-code attempt cap
 
 `otps.created_at` is written but never read by `/auth/otp/verify`, so an issued code stays
@@ -312,3 +333,126 @@ whatever the storage cost is), and each migration file now carries a comment say
 private bucket, diffs against `file_key` values still referenced by `kyc_documents`, and
 deletes what's left over — run once against any environment that has actually applied
 0004/0005 against pre-fix data. Not implemented here; recorded so it isn't lost.
+
+---
+
+## 8. Fifth-wave findings — 2026-08-04 (pre-go-live gap audit)
+
+Found by auditing the repo and the two live deployments against the question "what stops this
+taking real bookings and real money today?". Every item below is closed unless marked otherwise.
+
+### 8.A ✅ FIXED — two guests could pay for the same homestay and the same nights
+
+`routes/bookings.ts` blocked a new booking only against rows already in status `confirmed`, and
+`routes/payments.ts` flipped a booking to `confirmed` with **no availability check at all**. So two
+travellers could each open a checkout for the same room and dates, each pay, and each be confirmed.
+Nothing downstream noticed; both dashboards rendered a valid booking. The discovery path was two
+parties arriving at one homestay.
+
+Note for anyone reading older notes: a pending-hold fix for this was *described* in a 2026-07-31
+bug-scan session and **never landed in the code**. It was still fully reproducible on `main`.
+
+Closed in two halves, because one alone is not enough:
+
+- **A hold window** (`lib/bookingAvailability.ts`, `BOOKING_HOLD_MINUTES`, default 15). A
+  `pending_payment` booking now blocks overlapping dates while its checkout is live, and stops
+  doing so once abandoned. This handles the common case without freezing a room on every closed tab.
+- **A serialised re-check at settlement.** The hold cannot catch two checkouts that were both
+  legitimately open when they started, and an overlap query alone cannot either — under READ
+  COMMITTED each transaction reads a snapshot taken before the other committed, so both see "no
+  clash". Confirmation therefore takes a `FOR UPDATE` row lock on the shared *listing* first, which
+  forces concurrent confirmations for that listing into a queue. The loser is cancelled and
+  **refunded**, and told why.
+
+The pre-existing test asserting that overlapping pending bookings are always allowed was the bug
+written down as an expectation; it is replaced in `test/bookings.test.ts` by tests for the hold
+holding, the hold expiring, and non-homestay types being unaffected. `test/bookingIntegrity.test.ts`
+covers the settlement race end to end.
+
+### 8.B ✅ FIXED — money could be taken but never given back
+
+There was no refund path anywhere: `grep -r refund backend/src` returned nothing. Cancelling a
+booking flipped `status` to `cancelled` and kept the money, with no record that anything was owed.
+The only way to return a rupee was the Razorpay dashboard, by hand, if anyone remembered.
+
+`lib/refunds.ts` now owns this. It is idempotent per *payment* row rather than per booking, so a
+double-cancel, a retried webhook and an admin clicking twice all converge on one refund. It never
+throws — it runs on paths that have already taken the money and already committed the cancellation,
+so a Razorpay outage must not 500 them — but a failed attempt is **recorded on the row**
+(`refund_reason` set, `refunded_at` still null, `status` still `paid`, because the money genuinely
+is still with the platform and reporting otherwise would make the books lie). That combination is
+the operator's queue, served by `GET /api/admin/refunds/pending`, with
+`POST /api/admin/payments/:id/refund` to retry or to refund out of band.
+
+Wired into booking cancellation and into the double-booking guard above.
+
+### 8.C ✅ FIXED — the site had no Terms, Refund or Contact page
+
+Only `/privacy` existed. Beyond the legal exposure, this is a hard gate on the payment gateway:
+Razorpay will not activate a live account without a reachable Terms & Conditions, Refund/Cancellation
+policy and Contact page, and the Consumer Protection (E-Commerce) Rules, 2020 require a named
+grievance route regardless of gateway.
+
+Added `/terms`, `/refunds` and `/contact`, plus a `LegalDocument` component the four policy pages now
+share (they were the same document shape differing only in content). The fee figures in the copy are
+taken from `config.ts` — ₹12/yr support, ₹1 booking, ₹99 registration, ₹10–₹1,00,000 donations — and
+the refund timelines match what `lib/refunds.ts` actually does.
+
+**⚠ Still needs a human:** the copy is a good-faith draft written against what the code does, not
+legal advice. Before go-live, someone with authority should confirm the named grievance officer,
+the jurisdiction clause (currently Darjeeling, West Bengal), and GST/invoicing treatment.
+
+### 8.D ✅ FIXED — no database backups
+
+`deploy/VPS-RUNBOOK.md` §7 carried "No database backups" as a known issue from the day the box was
+set up. Both stacks now run a `db-backup` sidecar (`deploy/backup/pg-backup.sh`): `pg_dump -Fc` on
+start and every 24h, 14-day retention, into a volume deliberately separate from the data volume.
+Restore and off-host copy procedures are documented in §7.1.
+
+**⚠ Still needs a human:** the dumps live on the same host as the database. Copying them off the box
+is a documented manual step, not an automated one — a dead VPS still takes both.
+
+### 8.E ✅ FIXED — the HTML was served with no security headers
+
+`app.ts` set the right headers, but only on responses Express produced — which is `/api` and nothing
+else. The HTML, JS and CSS that actually execute in the browser came from the nginx container, bare:
+no `X-Frame-Options`, no `X-Content-Type-Options`, no CSP. Confirmed against the live site.
+
+Added to the two static locations in `deploy/nginx/app.conf`, per-location rather than at server
+level for two reasons documented there: nginx's `add_header` does not inherit into a location that
+declares any of its own, and a server-level rule would append a duplicate of every header to the
+proxied `/api` responses that Express already sets.
+
+### 8.F ✅ FIXED — assorted launch defects
+
+- **Broken PWA/SEO assets.** `manifest.json` and `index.html` referenced `logo192.png`,
+  `logo512.png` and a favicon that were not in the repo, so every visitor fetched 404s and iOS
+  home-screen installs got a page screenshot. Generated from `logo.svg`; added `robots.txt` and
+  `sitemap.xml`, neither of which existed.
+- **No global API rate limit.** Only named endpoints were limited; listing search, the public feed,
+  listing detail and reviews had no ceiling at all. Added a 300/min/IP backstop across `/api`, well
+  above human browsing so the tighter per-route limits still bite first.
+- **Missing translations.** `hi`, `bn` and `ne` were each missing 22 UI keys, including navigation
+  items. (A raw key-count diff reports 111 per language, but the remainder are the policy
+  documents, which are English-only by design and reach other languages by i18next fallback.)
+  Filled. Three English strings whose em-dashes had been stripped by an earlier encoding accident
+  were repaired at the same time.
+
+### 8.G ⏳ OPEN — the 1darjeeling.in backend is down
+
+Not a code defect, but the single thing most in the way of going live. On `https://1darjeeling.in`
+the SPA and admin console serve (200) while **every `/api` path returns 502** — nginx is up and
+serving static files, so the failure is isolated to the `1darjeeling_in_backend` container. DNS and
+TLS are fine; the GoDaddy registrar hold that previously blocked this domain has been lifted.
+
+Most likely causes, in order: a startup refusal from `config.ts` (it throws on `change_me_*`
+placeholders, an unset `MOCK_PAYMENTS` or `NOTIFY_BOOKINGS` under `APP_ENV=production`, a localhost
+`MINIO_PUBLIC_URL`, or `CORS_ORIGINS=*`), then the drizzle migration hang when Postgres is
+unreachable. Diagnose with `docker logs 1darjeeling_in_backend --tail 50` on the VPS.
+
+The other stack, `onedarjeeling.duckdns.org`, is healthy.
+
+### 8.H ⏳ OPEN — test content is live in production
+
+A tourist spot titled **"admin test"** with description **"qeqwe"** is served in the public feed on
+`onedarjeeling.duckdns.org`. Delete it from the admin console's Tourist Spots tab before launch.

@@ -80,6 +80,15 @@ export const bookings = pgTable('bookings', {
   status: text('status').notNull(),
   createdAt: text('created_at').notNull(),
   confirmedAt: text('confirmed_at'),
+  // Who has actually been told this booking is confirmed. Null means "not notified" — which used
+  // to be the silent, invisible state of EVERY production booking (see INVESTIGATION.md §6.A):
+  // the guest paid, the row said confirmed, and nobody was ever informed. Persisting the outcome
+  // is what turns a failed notification into something an operator can find and re-send, rather
+  // than something discovered when a guest arrives at an unprepared homestay.
+  touristNotifiedAt: text('tourist_notified_at'),
+  providerNotifiedAt: text('provider_notified_at'),
+  // Last delivery error, kept so the admin console can show why a notification is missing.
+  notifyError: text('notify_error'),
 });
 
 export const favorites = pgTable('favorites', {
@@ -122,6 +131,14 @@ export const payments = pgTable('payments', {
   mock: boolean('mock').default(false).notNull(),
   createdAt: text('created_at').notNull(),
   paidAt: text('paid_at'),
+  // Refund trail. `status` becomes 'refunded' only once the gateway has accepted; a row that is
+  // still 'paid' but carries a refundReason is money the platform owes and has not returned —
+  // that combination is exactly what listUnreturnedPayments() reports. See lib/refunds.ts.
+  refundId: text('refund_id'),
+  refundedAt: text('refunded_at'),
+  refundAmount: integer('refund_amount'),
+  refundReason: text('refund_reason'),
+  refundError: text('refund_error'),
 });
 
 export const kycDocuments = pgTable('kyc_documents', {

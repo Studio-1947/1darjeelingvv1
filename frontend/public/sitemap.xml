@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Stable, hand-maintained routes only.
+
+  Individual listings (/listing/:id) are deliberately absent: they are created and removed by
+  providers and admins continuously, so any list of them baked into a static file is wrong the
+  day after it ships. Crawlers reach them by following the category feeds below, which is both
+  accurate and self-maintaining.
+
+  Add a line here when a new top-level route is added to frontend/src/App.tsx.
+-->
+<urlset xmlns="http://www.sitemap.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://1darjeeling.in/</loc>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+
+  <!-- Browse categories — the entry points crawlers follow to reach individual listings. -->
+  <url><loc>https://1darjeeling.in/spots</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://1darjeeling.in/homestays</loc><changefreq>daily</changefreq><priority>0.9</priority></url>
+  <url><loc>https://1darjeeling.in/drivers</loc><changefreq>daily</changefreq><priority>0.8</priority></url>
+  <url><loc>https://1darjeeling.in/cafes</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://1darjeeling.in/shops</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://1darjeeling.in/events</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://1darjeeling.in/biodiversity</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+
+  <!-- Editorial and informational pages. -->
+  <url><loc>https://1darjeeling.in/responsible</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://1darjeeling.in/about</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://1darjeeling.in/provider/onboard</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+
+  <!-- Policy pages. Low priority to a searcher, but they must be reachable and indexable:
+       a payment gateway's review checks that each one resolves. -->
+  <url><loc>https://1darjeeling.in/privacy</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://1darjeeling.in/terms</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://1darjeeling.in/refunds</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://1darjeeling.in/contact</loc><changefreq>yearly</changefreq><priority>0.4</priority></url>
+</urlset>

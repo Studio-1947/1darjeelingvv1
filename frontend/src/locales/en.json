@@ -32,7 +32,10 @@
     "my_listings": "My Listings",
     "type": "Type",
     "account": "Account",
-    "browse_categories": "Browse Categories"
+    "browse_categories": "Browse Categories",
+    "terms": "Terms",
+    "refunds": "Refunds",
+    "contact": "Contact"
   },
   "support": {
     "title": "A small token to keep 1 Darjeeling running",
@@ -263,7 +266,7 @@
   },
   "responsible": {
     "title": "Responsible Tourism",
-    "lead": "Darjeeling is a fragile Himalayan ecosystem  2,000 metres of cloud forest, tea terraces and 600 bird species, held together by the families who live in it. Six commitments keep it that way.",
+    "lead": "Darjeeling is a fragile Himalayan ecosystem — 2,000 metres of cloud forest, tea terraces and 600 bird species, held together by the families who live in it. Six commitments keep it that way.",
     "principles": [
       {
         "t": "Say no to plastic",
@@ -330,12 +333,12 @@
       },
       {
         "label": "Observe from a distance",
-        "caption": "Red panda, Singalila  38 left in the range."
+        "caption": "Red panda, Singalila — 38 left in the range."
       }
     ],
     "money_eyebrow": "Where your money goes",
     "money_title": "Every booking supports local families.",
-    "money_body": "1 Darjeeling directs tourism revenue to Darjeeling owned businesses homestays, drivers, tea houses and artisans. No chains, no aggregator margin, no middlemen in Kolkata.",
+    "money_body": "1 Darjeeling directs tourism revenue to Darjeeling-owned businesses — homestays, drivers, tea houses and artisans. No chains, no aggregator margin, no middlemen in Kolkata.",
     "money_cta": "Book with a local host",
     "allocation": [
       {
@@ -629,13 +632,66 @@
     "no_reviews_aria": "No reviews yet"
   },
   "contact": {
-    "event_note": "Reach the organizer directly, add it to your calendar, or get directions.",
-    "place_note": "Drop by, or reach out directly before you go.",
-    "call_organizer": "Call organizer",
-    "whatsapp": "WhatsApp",
-    "no_contact": "No direct contact listed - use directions below to visit in person.",
-    "add_to_calendar": "Add to calendar",
-    "wa_message": "Hi! I found {{title}} on 1 Darjeeling and would like to know more."
+    "title": "Contact Us",
+    "updated": "Last updated: August 2026",
+    "intro": [
+      "1Darjeeling is run by a small team based in the Darjeeling hills. Whether you are a traveller with a question about a booking, a local business wanting to be listed, or someone with a complaint, this page tells you how to reach a person.",
+      "We read everything that comes in and reply to most messages within 2 working days."
+    ],
+    "sections": [
+      {
+        "h": "1. General Enquiries",
+        "p": "For questions about the Platform, your account, a listing, or a booking:",
+        "contact": {
+          "name": "1Darjeeling",
+          "email": "1darjeelingapp@gmail.com",
+          "address": "Ward 4, Krishna Nagar, 1-149, Manbir Thapa Road, Mirik, West Bengal 734214"
+        }
+      },
+      {
+        "h": "2. What to Include",
+        "p": "A reply is much faster when the first message already carries what we need:",
+        "items": [
+          "The mobile number registered to your account.",
+          "The booking or listing this is about, and the date.",
+          "What you expected to happen, and what happened instead.",
+          "A screenshot, if something on screen looked wrong."
+        ],
+        "note": "Please do not send card numbers, CVVs, UPI PINs or passwords. Nobody at 1Darjeeling will ever ask you for them, and anyone who does is not us."
+      },
+      {
+        "h": "3. For Local Businesses",
+        "p": "If you run a homestay, drive for visitors, or keep a café or shop and would like to be listed, you can start from the \"For Providers\" page on this Site, or write to us at the address above. We will guide you through what is needed, including the documents required to verify your business."
+      },
+      {
+        "h": "4. Refunds and Payments",
+        "p": "Refund requests, questions about a fee, and reports of a duplicate charge should go to the address above with \"Refund\" in the subject line. Our Refund & Cancellation Policy sets out what is refundable and the timelines we work to."
+      },
+      {
+        "h": "5. Grievance Redressal",
+        "p": "In line with the Consumer Protection (E-Commerce) Rules, 2020 and the Information Technology Rules, complaints that are not resolved through ordinary support can be escalated to our Grievance Officer.",
+        "items": [
+          "Write to the address below with \"Grievance\" in the subject line.",
+          "Every grievance is acknowledged within 48 hours of receipt.",
+          "Every grievance is resolved within one month of receipt.",
+          "You will be given a reference for your complaint and told the outcome with reasons."
+        ],
+        "contact": {
+          "name": "Grievance Officer, 1Darjeeling",
+          "email": "1darjeelingapp@gmail.com",
+          "address": "Ward 4, Krishna Nagar, 1-149, Manbir Thapa Road, Mirik, West Bengal 734214"
+        }
+      },
+      {
+        "h": "6. Reporting a Listing or a Safety Concern",
+        "p": "If a listing is inaccurate, misleading, or unsafe — or if something happened during a stay or ride that we should know about — tell us at once with \"Report\" in the subject line. Safety reports are looked at the same day, and we may suspend a listing while we investigate.",
+        "note": "If you are in immediate danger, contact the local police first. In India, dial 112."
+      },
+      {
+        "h": "7. Privacy and Your Data",
+        "p": "Requests to access, correct or delete your personal data are handled under our Privacy Policy. You can delete your account yourself from your dashboard at any time; write to us if you would like us to do it for you."
+      }
+    ]
   },
   "reviews": {
     "label": "Reviews",
@@ -1060,5 +1116,219 @@
     "review_body": "Ratings and reviews are tied to your account. Sign in to leave one.",
     "cta": "Log in",
     "later": "Maybe later"
+  },
+  "terms": {
+    "title": "Terms & Conditions",
+    "updated": "Last updated: August 2026",
+    "intro": [
+      "1Darjeeling (\"we,\" \"us,\" \"our,\" or \"the Platform\") operates www.1darjeeling.in (the \"Site\"), a local marketplace and travel guide connecting visitors with homestays, drivers, cafés, shops and guides in and around Darjeeling. These Terms & Conditions govern your use of the Site.",
+      "By creating an account, making a booking request, listing a business, or otherwise using the Site, you agree to these Terms. If you do not agree, please do not use the Site."
+    ],
+    "sections": [
+      {
+        "h": "1. What 1Darjeeling Is — and Is Not",
+        "p": "We are a discovery and booking-request platform. We introduce travellers to independent local businesses; we do not own, operate, manage or control any homestay, vehicle, café or shop listed on the Site.",
+        "items": [
+          "The contract for your stay, ride, meal or purchase is between you and the local business. 1Darjeeling is not a party to it.",
+          "We do not collect the price of the stay, ride or goods. That is settled directly between you and the business, on their terms.",
+          "Listing information — photographs, prices, amenities, availability — is supplied by the business. We take reasonable care but cannot guarantee it is complete or current.",
+          "We are not responsible for the quality, safety, legality or fitness of anything offered by a listed business, nor for any act or omission of that business."
+        ]
+      },
+      {
+        "h": "2. Accounts",
+        "items": [
+          "You must be at least 18 years old to create an account and make a booking request.",
+          "You register with a mobile number verified by a one-time password. Keep access to that number secure — anyone who can receive your OTP can access your account.",
+          "You are responsible for everything done through your account.",
+          "You must give accurate information and keep it up to date. We may suspend or remove accounts that carry false, misleading or impersonating information."
+        ]
+      },
+      {
+        "h": "3. Fees Payable to 1Darjeeling",
+        "p": "All amounts below are what you pay to the Platform. They are separate from, and additional to, whatever you pay the local business for the stay, ride or goods themselves.",
+        "sub": [
+          {
+            "h": "3.1 Traveller Support & Convenience Fee — ₹12 per year",
+            "p": "An annual fee that keeps a traveller account able to make booking requests, save listings and leave reviews. It runs for 365 days from the date of payment and does not renew automatically."
+          },
+          {
+            "h": "3.2 Booking Confirmation Fee — ₹1 per booking",
+            "p": "Charged when you confirm a booking request. It covers passing your request to the business and notifying both sides. It is not a deposit, and it is not part of the price of your stay."
+          },
+          {
+            "h": "3.3 Business Registration Fee — ₹99, one time",
+            "p": "Paid once by a local business to activate its listing. It does not expire and is not a commission on bookings."
+          },
+          {
+            "h": "3.4 Donations — voluntary, ₹10 to ₹1,00,000",
+            "p": "You may choose to support the Platform with a donation of any amount within that range. A donation is a gift: it buys nothing, grants no access, unlocks no feature, and confers no benefit or priority of any kind."
+          }
+        ],
+        "note": "Payments are processed by Razorpay. We do not receive or store your full card details. Fees are stated in Indian Rupees and are inclusive of applicable taxes unless stated otherwise at the point of payment."
+      },
+      {
+        "h": "4. Bookings",
+        "items": [
+          "A booking begins as a request. It is confirmed once the booking confirmation fee is paid, at which point both you and the business are notified.",
+          "For homestays, confirmed dates are held exclusively. While a checkout is in progress, those dates are held briefly against other travellers so two people cannot pay for the same room; an abandoned checkout releases them again.",
+          "If two travellers reach payment for the same homestay and the same dates at the same moment, only the first can be confirmed. The second booking is cancelled automatically and the fee refunded — see the Refund & Cancellation Policy.",
+          "A confirmed booking is a confirmed request to the business. Check-in times, house rules, extra charges and payment for the stay itself are matters between you and the business."
+        ]
+      },
+      {
+        "h": "5. Cancellations and Refunds",
+        "p": "A booking may be cancelled by you, by the business, or by us. Fees paid to the Platform are refunded as set out in the Refund & Cancellation Policy, which forms part of these Terms.",
+        "note": "Any amount you have paid directly to a local business is governed by that business's own cancellation terms, not by ours. We can help you make contact, but we cannot refund money we never received."
+      },
+      {
+        "h": "6. Rules for Local Businesses",
+        "items": [
+          "You may list only a business you own or are authorised to represent.",
+          "You must hold every licence, registration and permission the law requires for what you offer, and produce them on request.",
+          "Identity and address documents you submit for verification are held privately and are never published — see the Privacy Policy.",
+          "Your listing must be accurate. Prices shown must be prices you will honour.",
+          "You must honour confirmed bookings, or cancel promptly so the traveller can make other arrangements.",
+          "We may suspend or remove a listing that breaks these rules, attracts sustained complaints, or misrepresents what it offers."
+        ]
+      },
+      {
+        "h": "7. Reviews and Content",
+        "items": [
+          "You may review a listing only from genuine experience. Paid, traded, fake and retaliatory reviews are not permitted.",
+          "You keep ownership of what you post, and grant us a non-exclusive, royalty-free licence to display it on the Site.",
+          "Do not post anything unlawful, misleading, obscene, hateful, or infringing someone else's rights.",
+          "We may remove content that breaks these rules, and may remove a listing or account that repeatedly does."
+        ]
+      },
+      {
+        "h": "8. Acceptable Use",
+        "items": [
+          "Do not scrape, harvest, bulk-download or systematically copy the Site or its listings.",
+          "Do not attempt to access accounts, data or systems you have no right to.",
+          "Do not interfere with the Site's operation, security or availability.",
+          "Do not use the Site to send spam or to solicit users for unrelated purposes."
+        ]
+      },
+      {
+        "h": "9. Responsible Travel",
+        "p": "Darjeeling is a living place, not a backdrop. You are expected to respect local customs, private property, protected areas and wildlife, and to follow the guidance on our Travel Responsibly page. Businesses that encourage harm to the environment or to communities may be removed."
+      },
+      {
+        "h": "10. Limitation of Liability",
+        "p": "To the fullest extent permitted by law, 1Darjeeling is not liable for any indirect, incidental or consequential loss arising from your use of the Site, from any dealing with a local business, or from anything that happens during a stay, ride or visit arranged through the Site.",
+        "note": "Where liability cannot lawfully be excluded, our total liability to you is limited to the fees you have actually paid to the Platform in the twelve months before the claim. Nothing here limits liability for death or personal injury caused by our negligence, or for fraud."
+      },
+      {
+        "h": "11. Suspension and Termination",
+        "p": "You may stop using the Site and delete your account at any time from your dashboard. We may suspend or close an account that breaches these Terms, misuses the Site, or exposes other users to risk. Fees already paid are refunded only where the Refund & Cancellation Policy says so."
+      },
+      {
+        "h": "12. Changes to These Terms",
+        "p": "We may update these Terms as the Platform changes. The \"last updated\" date above always reflects the current version, and continuing to use the Site after a change means you accept it. Changes are not applied retrospectively to a booking already confirmed."
+      },
+      {
+        "h": "13. Governing Law and Jurisdiction",
+        "p": "These Terms are governed by the laws of India. The courts at Darjeeling, West Bengal have exclusive jurisdiction over any dispute arising from them."
+      },
+      {
+        "h": "14. Contact",
+        "p": "Questions about these Terms can be sent to us at:",
+        "contact": {
+          "name": "1Darjeeling",
+          "email": "1darjeelingapp@gmail.com",
+          "address": "Ward 4, Krishna Nagar, 1-149, Manbir Thapa Road, Mirik, West Bengal 734214"
+        }
+      }
+    ]
+  },
+  "refunds": {
+    "title": "Refund & Cancellation Policy",
+    "updated": "Last updated: August 2026",
+    "intro": [
+      "This policy explains when money paid to 1Darjeeling is returned, how long it takes, and what falls outside it. It forms part of our Terms & Conditions.",
+      "One distinction governs everything below. The fees listed in this policy are paid to the Platform, and this policy covers them. The price of your stay, ride, meal or purchase is paid directly to the local business, and that money is governed by the business's own terms — we never receive it and cannot refund it."
+    ],
+    "sections": [
+      {
+        "h": "1. Cancelling a Booking",
+        "p": "A booking can be cancelled at any time before it takes place, from your dashboard, by the business, or by our team.",
+        "items": [
+          "A booking still awaiting payment can simply be cancelled — nothing has been charged.",
+          "A confirmed booking can be cancelled by you, by the business, or by us. The ₹1 booking confirmation fee is refunded in full and automatically, whoever cancels and whatever the reason.",
+          "If the business cancels on you, we will help you find an alternative wherever we can."
+        ]
+      },
+      {
+        "h": "2. Automatic Refunds",
+        "p": "Some refunds need no request at all — the Platform issues them itself:",
+        "items": [
+          "Double booking: if two travellers pay for the same homestay and the same dates at the same moment, only the first is confirmed. The second is cancelled automatically and the fee refunded in full, and we tell that traveller what happened.",
+          "Cancellation of a confirmed booking: the booking confirmation fee is returned automatically as part of the cancellation.",
+          "Duplicate charges: if a technical fault charges you twice for one thing, the duplicate is refunded in full."
+        ]
+      },
+      {
+        "h": "3. The Fees, One by One",
+        "sub": [
+          {
+            "h": "3.1 Booking Confirmation Fee — ₹1",
+            "p": "Refunded in full whenever the booking is cancelled, by any party, at any time before the stay. No request needed."
+          },
+          {
+            "h": "3.2 Traveller Support & Convenience Fee — ₹12 per year",
+            "p": "Refundable in full within 7 days of payment if you have not used it to confirm any booking. After 7 days, or once it has been used, it is not refundable — it has already delivered the access it pays for. It runs 365 days and does not auto-renew, so there is no recurring charge to cancel."
+          },
+          {
+            "h": "3.3 Business Registration Fee — ₹99",
+            "p": "Refundable in full within 7 days of payment if your listing has not yet gone live. Once the listing is published and visible to travellers, the fee is not refundable. If we reject or remove your listing for a reason that is not a breach of our Terms, we refund it in full regardless of when."
+          },
+          {
+            "h": "3.4 Donations",
+            "p": "A donation is a voluntary gift and is not refundable. If you donated by mistake — a wrong amount, a duplicate, an accidental confirmation — write to us within 7 days and we will return it."
+          }
+        ]
+      },
+      {
+        "h": "4. How Refunds Are Paid",
+        "items": [
+          "Refunds always go back to the original payment method. We cannot redirect a refund to a different card, account or wallet.",
+          "Refunds are processed through Razorpay, our payment processor.",
+          "Once we issue a refund it normally reaches your account in 5 to 7 working days. The final step is your bank's, and we cannot speed it up.",
+          "Refunds are made in Indian Rupees for the amount actually charged. Any currency-conversion difference your bank applies is outside our control."
+        ]
+      },
+      {
+        "h": "5. Asking for a Refund",
+        "p": "For anything not refunded automatically, write to us with your registered mobile number, what you paid for, and the date. Our address is at the end of this policy.",
+        "items": [
+          "We acknowledge every refund request within 2 working days.",
+          "We decide, and tell you the outcome with reasons, within 7 working days.",
+          "If we approve it, the refund is issued immediately and reaches you in the 5 to 7 working days described above."
+        ]
+      },
+      {
+        "h": "6. What This Policy Does Not Cover",
+        "items": [
+          "Money paid directly to a homestay, driver, café or shop. Ask them — their cancellation terms apply, and we will help you make contact.",
+          "Costs around a trip that we never charged: travel to Darjeeling, other bookings, time taken off.",
+          "Fees where the traveller did not show up, or cancelled after the stay had already begun.",
+          "Accounts closed by us for a breach of our Terms."
+        ]
+      },
+      {
+        "h": "7. If Something Goes Wrong With a Refund",
+        "p": "If a refund we have approved has not reached you within 10 working days, or you disagree with a decision, escalate it to our Grievance Officer — the contact details are on the Contact Us page. We will look at it again and reply within 7 working days."
+      },
+      {
+        "h": "8. Contact",
+        "p": "Refund questions and requests go to:",
+        "contact": {
+          "name": "1Darjeeling",
+          "email": "1darjeelingapp@gmail.com",
+          "address": "Ward 4, Krishna Nagar, 1-149, Manbir Thapa Road, Mirik, West Bengal 734214"
+        }
+      }
+    ]
   }
 }

@@ -1,6 +1,6 @@
 import { MESSAGING_PROVIDER } from '../config';
 import { selectProvider } from './registry';
-import { MessagingProvider, OtpMessage } from './types';
+import { MessagingProvider, NotificationMessage, OtpMessage } from './types';
 
 // Resolved once at import time. A misconfigured provider throws here, which surfaces as a
 // failed boot rather than a runtime error on the first login attempt.
@@ -25,5 +25,9 @@ export async function sendOtp(msg: OtpMessage): Promise<{ ref?: string; channel:
   return provider.sendOtp(msg);
 }
 
+export async function sendNotification(msg: NotificationMessage): Promise<{ ref?: string; channel: string }> {
+  return provider.sendNotification(msg);
+}
+
 export { MessageDeliveryError } from './types';
-export type { MessagingProvider, OtpMessage } from './types';
+export type { MessagingProvider, NotificationMessage, NotificationTemplate, OtpMessage } from './types';

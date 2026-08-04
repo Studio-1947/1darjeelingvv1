@@ -26,6 +26,18 @@ export const app = express();
 // A hop count — not `true` — so a client-forged X-Forwarded-For prefix can't spoof its way past limits.
 app.set('trust proxy', TRUST_PROXY_HOPS);
 
+// A backstop limit across the whole API, mounted before every route-specific one below.
+//
+// Until this existed only a handful of named endpoints were limited — OTP, uploads, admin login,
+// geocode — and everything else (listing search, the public feed, listing detail, reviews) could
+// be called without any ceiling at all. That is the surface that gets scraped or hammered, and on
+// a single small VPS shared with other projects it does not take much to matter.
+//
+// 300/min/IP is far above anything a person browsing generates (a page load is a handful of
+// calls), so it never fights the tighter per-route limits below — those still bite first for the
+// paths that need it. It is a ceiling on automation, not a throttle on use.
+app.use('/api', rateLimiter(300, 60 * 1000, 'api_global'));
+
 // Razorpay signs the raw bytes of the webhook body, so this route must keep them verbatim.
 // It has to be mounted BEFORE express.json(), which would otherwise consume the stream and leave
 // only a parsed object — re-serialising that yields different bytes and the HMAC never matches.

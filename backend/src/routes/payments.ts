@@ -8,6 +8,9 @@ import { rateLimiter } from '../middleware/rateLimiter';
 import { AMOUNTS, MOCK_PAYMENTS, rzpClient, RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, RAZORPAY_WEBHOOK_SECRET, IS_PROD, log } from '../config';
 import { computeSupportExpiry } from '../lib/support';
 import { resolveAmount } from '../lib/payments';
+import { findBlockingBooking, isDateExclusive, lockListingForBooking } from '../lib/bookingAvailability';
+import { notifyBookingCancelled, notifyBookingConfirmed } from '../lib/notifications';
+import { refundPaymentsFor } from '../lib/refunds';
 
 const router = Router();
 
@@ -66,11 +69,48 @@ async function handlePaymentSuccess(flow: string, referenceId: string, userId: s
     }
     return p ? serializeProvider(p) : null;
   } else if (flow === 'booking_commission') {
-    await db.update(schema.bookings)
-      .set({ status: 'confirmed', confirmedAt: new Date().toISOString() })
-      .where(eq(schema.bookings.id, referenceId));
+    // Confirming is not a plain UPDATE, because two guests can reach this point at the same
+    // instant for the same homestay and the same nights. The hold window in POST /bookings makes
+    // that rare; this makes it impossible. See lib/bookingAvailability.ts for why the listing row
+    // lock is what actually serialises them — an overlap check on its own cannot, since each
+    // transaction reads a snapshot taken before the other committed.
+    const settlement = await db.transaction(async (tx) => {
+      const [target] = await tx.select().from(schema.bookings)
+        .where(eq(schema.bookings.id, referenceId)).limit(1);
+      if (!target) return { outcome: 'missing' as const };
 
-    const [booking] = await db.select().from(schema.bookings).where(eq(schema.bookings.id, referenceId)).limit(1);
+      // Already confirmed by an earlier delivery of the same payment — nothing to redo.
+      if (target.status === 'confirmed') return { outcome: 'confirmed' as const, booking: target };
+
+      if (isDateExclusive(target.listingType) && target.checkIn && target.checkOut) {
+        await lockListingForBooking(tx, target.listingId);
+
+        const clash = await findBlockingBooking(
+          tx, target.listingId, target.checkIn, target.checkOut, target.id
+        );
+        if (clash && clash.status === 'confirmed') {
+          // Someone else's payment landed first. The guest has already been charged, so the only
+          // honest resolution is to cancel this one and give the money back — confirming both
+          // would send two parties to one room.
+          const [cancelled] = await tx.update(schema.bookings)
+            .set({ status: 'cancelled' })
+            .where(eq(schema.bookings.id, target.id))
+            .returning();
+          return { outcome: 'conflict' as const, booking: cancelled };
+        }
+      }
+
+      const [confirmed] = await tx.update(schema.bookings)
+        .set({ status: 'confirmed', confirmedAt: new Date().toISOString() })
+        .where(eq(schema.bookings.id, target.id))
+        .returning();
+      return { outcome: 'confirmed' as const, booking: confirmed };
+    });
+
+    if (settlement.outcome === 'missing') return null;
+
+    const booking = settlement.booking;
+    const conflicted = settlement.outcome === 'conflict';
     if (booking) {
       const [listing] = await db.select().from(schema.listings).where(eq(schema.listings.id, booking.listingId)).limit(1);
       let providerInfo = null;
@@ -88,11 +128,37 @@ async function handlePaymentSuccess(flow: string, referenceId: string, userId: s
       }
 
       const [bookingUser] = await db.select().from(schema.users).where(eq(schema.users.id, userId)).limit(1);
-      if (!IS_PROD) {
-        log.info(`[MOCK NOTIFY] Booking ${booking.id} confirmed. Tourist=****${(bookingUser?.phone || '').slice(-4)}`);
+
+      // The host's reachable number: a full provider row carries one, an admin-authored listing
+      // falls back to the owning user's phone, and some listings have neither.
+      const hostPhone = (providerInfo as any)?.contact_phone || (providerInfo as any)?.phone || null;
+      const hostName = (providerInfo as any)?.business_name || (providerInfo as any)?.name || null;
+
+      if (conflicted) {
+        // Charged for dates that are no longer available. Return the money first, then tell them
+        // — in that order, so the message can state truthfully whether the refund went through.
+        const outcomes = await refundPaymentsFor('booking_commission', booking.id, 'double-booked: dates taken by another guest');
+        const refunded = outcomes.some(o => o.refunded);
+        await notifyBookingCancelled(booking, bookingUser?.phone || '', bookingUser?.name || 'Guest', refunded);
+        log.error(
+          `[booking] ${booking.id} was paid for but the dates were taken first — cancelled and ` +
+          `${refunded ? 'refunded' : 'REFUND FAILED, money still held'}.`
+        );
+      } else {
+        // Fire-and-forget would reintroduce exactly the bug this replaces: an unobserved promise
+        // whose rejection nobody sees. notifyBookingConfirmed never throws and records its own
+        // outcome, so awaiting it is safe and makes the result visible on the booking row.
+        await notifyBookingConfirmed({
+          booking,
+          guestName: bookingUser?.name || 'Guest',
+          guestPhone: bookingUser?.phone || '',
+          hostName,
+          hostPhone,
+        });
       }
 
       return {
+        conflict: conflicted,
         id: booking.id,
         user_id: booking.userId,
         listing_id: booking.listingId,

@@ -9,6 +9,7 @@ import { rateLimiter } from '../middleware/rateLimiter';
 import { ADMIN_BOOTSTRAP_SECRET } from '../config';
 import { recomputeKycStatus } from './kyc';
 import { deleteListingsOwnedBy } from '../lib/accountCleanup';
+import { listUnreturnedPayments, refundPayment } from '../lib/refunds';
 
 const router = Router();
 
@@ -523,6 +524,67 @@ router.post('/admin/kyc/:id/review', authenticateToken, requireAdmin, async (req
     document: { id: doc.id, doc_type: doc.docType, status, rejection_reason: decision === 'reject' ? (reason || null) : null },
     provider_kyc_status: kycStatus,
   });
+});
+
+// ============ REFUNDS ============
+
+/**
+ * @openapi
+ * /admin/refunds/pending:
+ *   get:
+ *     summary: Payments that are owed a refund but where the gateway refused it
+ *     description: >
+ *       The operator's work queue. A refund runs on paths that have already taken the money and
+ *       already committed the cancellation, so it cannot fail the request when Razorpay is
+ *       unreachable — it records the debt instead, and this is where those land. An empty list
+ *       means the platform is holding nothing it owes.
+ *     tags: [Admin]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: Payments charged but not returned }
+ */
+router.get('/admin/refunds/pending', authenticateToken, requireAdmin, async (_req: Request, res: Response) => {
+  // Raw rows, matching GET /admin/payments above — the admin console reads camelCase everywhere,
+  // and a second naming convention on a sibling endpoint is how a tab ends up rendering
+  // `undefined` for every column.
+  const items = await listUnreturnedPayments();
+  res.json({ items, total: items.length });
+});
+
+/**
+ * @openapi
+ * /admin/payments/{id}/refund:
+ *   post:
+ *     summary: Refund a settled payment
+ *     description: >
+ *       Idempotent — a payment that is already refunded answers 200 with refunded=false and is
+ *       not sent to the gateway twice. Used both to retry a failed automatic refund and to return
+ *       money for a case the app has no rule for (a goodwill refund, a disputed charge).
+ *     tags: [Admin]
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: The refund outcome }
+ *       404: { description: Payment not found }
+ *       502: { description: The gateway refused; the debt is recorded and can be retried }
+ */
+router.post('/admin/payments/:id/refund', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
+  const reason = typeof req.body?.reason === 'string' && req.body.reason.trim()
+    ? req.body.reason.trim().slice(0, 200)
+    : 'refunded by admin';
+
+  const [payment] = await db.select().from(schema.payments).where(eq(schema.payments.id, req.params.id as any)).limit(1);
+  if (!payment) return res.status(404).json({ detail: 'Payment not found' });
+
+  const outcome = await refundPayment(payment, reason);
+  // A gateway refusal is reported as 502 rather than 200, so an admin clicking "refund" is never
+  // told the money went back when it did not.
+  if (outcome.error) return res.status(502).json({ detail: outcome.error, ...outcome });
+  res.json(outcome);
 });
 
 export default router;

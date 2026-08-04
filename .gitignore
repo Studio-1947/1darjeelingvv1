@@ -84,6 +84,10 @@ android-sdk/
 .env.*
 !.env.example
 !.env.production.example
+# Stack-specific template for the 1darjeeling.in deployment. Kept separate from the generic
+# production example because copying that one verbatim (duckdns CORS origin, a your-domain.tld
+# MinIO URL) is what took this stack down for 25 hours.
+!.env.1darjeeling-in.example
 *.env
 credentials.json
 *.key
