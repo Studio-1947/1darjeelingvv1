@@ -23,6 +23,9 @@ import Saved from '@/pages/Saved';
 import Responsible from '@/pages/Responsible';
 import About from '@/pages/About';
 import Privacy from '@/pages/Privacy';
+import Terms from '@/pages/Terms';
+import Refunds from '@/pages/Refunds';
+import Contact from '@/pages/Contact';
 
 export default function App() {
   return (
@@ -56,6 +59,12 @@ export default function App() {
                   <Route path="/responsible" element={<Responsible />} />
                   <Route path="/about" element={<About />} />
                   <Route path="/privacy" element={<Privacy />} />
+                  {/* Razorpay will not activate a live account without a reachable Terms, Refund
+                      and Contact/Grievance page, and the Consumer Protection (E-Commerce) Rules
+                      require the grievance route regardless of the gateway. */}
+                  <Route path="/terms" element={<Terms />} />
+                  <Route path="/refunds" element={<Refunds />} />
+                  <Route path="/contact" element={<Contact />} />
                 </Routes>
               </SupportGate>
             </Layout>

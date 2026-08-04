@@ -369,10 +369,52 @@ Paste that private key output as the `VPS_SSH_KEY` GitHub secret (the full `----
 
 Once the secrets are set, just `git push` to `main` and the workflow redeploys automatically — no manual SSH needed for routine updates. The workflow only touches this app's own containers (`docker compose -f docker-compose.prod.yml up -d --build`); it never touches the host Nginx config, so routine deploys can't affect other apps on the box. Re-run steps 5–6 above manually only if you ever need to set this app up on a fresh VPS.
 
+## Bookings, notifications and refunds
+
+Three behaviours are worth knowing before touching the booking or payment code, because each
+replaced a defect that failed quietly. All three are covered by `backend/test/bookingIntegrity.test.ts`.
+
+**Homestay dates are held, then re-checked.** `POST /bookings` refuses dates that overlap a
+confirmed booking *or* another guest's checkout still inside its hold window
+(`BOOKING_HOLD_MINUTES`, default 15). Because two checkouts can both be legitimately open when they
+start, confirmation re-checks under a `FOR UPDATE` lock on the listing row — an overlap query alone
+cannot serialise them. If a paid booking loses that race it is cancelled, refunded, and the guest is
+told. See `backend/src/lib/bookingAvailability.ts`.
+
+**A confirmed booking notifies both parties, and says so on the row.** `NOTIFY_BOOKINGS` has no
+default under `APP_ENV=production` — the server refuses to boot without it, the same treatment
+`MOCK_PAYMENTS` gets. Delivery outcomes are stamped onto `bookings.tourist_notified_at` /
+`provider_notified_at` / `notify_error`, so a message that did not go out is a queryable fact rather
+than an absence. Note that `MESSAGING_PROVIDER=mock` records attempts and delivers nothing; real SMS
+needs a provider **and** a DLT-approved template per message (see `.env.production.example`).
+
+**Money can be given back.** `backend/src/lib/refunds.ts` is idempotent per payment row and never
+throws — it runs after the money has moved, so a gateway outage must not 500 the cancellation. A
+refund it could not deliver leaves the row `paid` with a `refund_reason` set, which is the operator
+queue at `GET /api/admin/refunds/pending`; retry with `POST /api/admin/payments/:id/refund`.
+
+## Database backups
+
+Both production stacks run a `db-backup` sidecar taking a `pg_dump -Fc` on start and every 24 hours,
+keeping 14 days, into a volume separate from the data volume. Tunable with `BACKUP_INTERVAL_SECONDS`
+and `BACKUP_RETENTION_DAYS`.
+
+**Copying the dumps off the box is a manual step and is not automated** — they currently sit on the
+same disk as the database they came from. Verification, restore, and off-host copy commands are in
+`deploy/VPS-RUNBOOK.md` §7.1. Uploaded images and KYC documents live in MinIO, not Postgres, so a
+database restore without a matching MinIO restore leaves rows pointing at objects that are gone.
+
 ## Known issues / further reading
 
 This repo carries some rough edges from a rapid AI-assisted build. See **`INVESTIGATION.md`**
-for the full audit — what's been fixed and the still-open table. The most important open item
-is **§6.A: booking confirmation notifications are not implemented**, so a paid, confirmed
-booking currently notifies neither the tourist nor the provider. Read that table before any
-public deployment.
+for the full audit — what's been fixed and what is still open. Read it before any public
+deployment. The two open items as of 2026-08-04 are both operational rather than code:
+
+- **§8.G — the `1darjeeling.in` backend is down.** The SPA serves, but every `/api` path returns
+  502; the `1darjeeling_in_backend` container is not running. Start with
+  `docker logs 1darjeeling_in_backend --tail 50`.
+- **§8.H — test content is live.** A spot titled "admin test" is in the public feed on
+  `onedarjeeling.duckdns.org`.
+
+The long-standing §6.A (booking confirmations notified nobody) is **closed** — see the section
+above.

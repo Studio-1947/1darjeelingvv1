@@ -1,9 +1,14 @@
 import { Router, Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { db, schema } from '../db';
-import { eq, desc, inArray, and, lt, gt } from 'drizzle-orm';
+// lt/gt/and moved out with the inline overlap query — the date comparison now lives in
+// lib/bookingAvailability.ts, shared with the settlement path so the two cannot drift.
+import { eq, desc, inArray } from 'drizzle-orm';
 import { authenticateToken } from '../middleware/auth';
 import { requireActiveSupport } from '../middleware/support';
+import { findBlockingBooking, isDateExclusive } from '../lib/bookingAvailability';
+import { refundPaymentsFor } from '../lib/refunds';
+import { notifyBookingCancelled } from '../lib/notifications';
 
 const router = Router();
 
@@ -56,7 +61,9 @@ const router = Router();
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
  *       409:
- *         description: Homestay is already confirmed-booked for an overlapping date range
+ *         description: >
+ *           Homestay is unavailable for the requested range — either already confirmed-booked, or
+ *           held by another guest's checkout that is still inside its hold window.
  *         content:
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
@@ -83,16 +90,13 @@ router.post('/', authenticateToken, requireActiveSupport, async (req: Request, r
     return res.status(404).json({ detail: 'Listing not found' });
   }
 
-  if (listing_type === 'homestay') {
-    const overlapping = await db.select().from(schema.bookings).where(
-      and(
-        eq(schema.bookings.listingId, listing_id),
-        eq(schema.bookings.status, 'confirmed'),
-        lt(schema.bookings.checkIn, check_out),
-        gt(schema.bookings.checkOut, check_in)
-      )
-    ).limit(1);
-    if (overlapping.length > 0) {
+  if (isDateExclusive(listing_type)) {
+    // Blocks on confirmed bookings AND on checkouts still inside their hold window. Checking only
+    // confirmed rows (as this did before) meant two guests could both open checkout for the same
+    // nights, both pay, and both be confirmed — the settlement path in payments.ts is the second
+    // half of that fix, for the case where both get past this point at once.
+    const blocking = await findBlockingBooking(db, listing_id, check_in, check_out);
+    if (blocking) {
       return res.status(409).json({ detail: 'These dates are already booked for this homestay' });
     }
   }
@@ -335,7 +339,10 @@ router.get('/provider', authenticateToken, async (req: Request, res: Response) =
  *         required: true
  *         schema: { type: string }
  *     responses:
- *       200: { description: The cancelled booking (idempotent if already cancelled) }
+ *       200:
+ *         description: >
+ *           The cancelled booking (idempotent if already cancelled), plus `refunded` saying
+ *           whether a settled payment for it was returned.
  *       403: { description: Caller may not cancel this booking }
  *       404: { description: Booking not found }
  */
@@ -382,7 +389,25 @@ router.patch('/:id/cancel', authenticateToken, async (req: Request, res: Respons
     .set({ status: 'cancelled' })
     .where(eq(schema.bookings.id, booking.id))
     .returning();
-  res.json({ booking: shape(updated) });
+
+  // Give back whatever was paid for this booking. Before this, cancelling flipped the status and
+  // kept the money with no record that anything was owed — refundPaymentsFor is idempotent and a
+  // no-op for a booking that never got past pending_payment, so this is safe on every path.
+  const outcomes = await refundPaymentsFor(
+    'booking_commission',
+    booking.id,
+    `booking cancelled by ${req.user.role === 'admin' ? 'admin' : booking.userId === req.user.id ? 'guest' : 'host'}`
+  );
+  const refunded = outcomes.some(o => o.refunded);
+
+  // Only worth telling the guest when there was something to tell them about — a booking that
+  // never reached confirmation was never announced in the first place.
+  if (booking.status === 'confirmed') {
+    const [guest] = await db.select().from(schema.users).where(eq(schema.users.id, booking.userId)).limit(1);
+    await notifyBookingCancelled(updated, guest?.phone || '', guest?.name || 'Guest', refunded);
+  }
+
+  res.json({ booking: shape(updated), refunded });
 });
 
 export default router;

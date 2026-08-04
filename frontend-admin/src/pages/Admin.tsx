@@ -327,7 +327,11 @@ export default function Admin() {
         />
       )}
       {activeTab === 'bookings' && <BookingsTab bookings={bookingsList} />}
-      {activeTab === 'payments' && <PaymentsTab payments={paymentsList} />}
+      {/* Background refetch after a refund: the blocking path would unmount the dashboard and
+          lose the operator's place, same reasoning as the row actions above. */}
+      {activeTab === 'payments' && (
+        <PaymentsTab payments={paymentsList} onRefunded={() => loadAdminData({ background: true })} />
+      )}
 
       <SpotFormModal
         open={!!spotForm}

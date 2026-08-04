@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import request from 'supertest';
 import { app } from '../src/app';
+import { eq } from 'drizzle-orm';
+import { db, schema } from '../src/db';
 import { registerUser, createListing, onboardActiveProvider, createConfirmedBooking } from './helpers';
 
 describe('bookings', () => {
@@ -114,7 +116,11 @@ describe('bookings', () => {
     expect(res.status).toBe(200);
   });
 
-  it('does not block overlapping dates when the existing booking is only pending_payment (not yet confirmed)', async () => {
+  // This pair replaces a test that asserted overlapping pending_payment bookings were ALWAYS
+  // allowed. That was the double-booking bug written down as an expectation: it let two guests
+  // both open checkout for the same nights, and nothing downstream stopped them both paying.
+  // The rule now is a time-boxed hold — see lib/bookingAvailability.ts.
+  it('holds the dates against another guest while a checkout is still in its hold window', async () => {
     const { token: firstGuest } = await registerUser({ name: 'Unpaid Guest' });
     const listing = await createListing({ title: 'Pending Overlap Homestay' });
     await request(app)
@@ -127,6 +133,50 @@ describe('bookings', () => {
       .post('/api/bookings')
       .set('Authorization', `Bearer ${secondGuest}`)
       .send({ listing_id: listing.id, listing_type: 'homestay', check_in: '2026-12-02', check_out: '2026-12-04' });
+
+    expect(res.status).toBe(409);
+  });
+
+  it('releases the dates once an abandoned checkout falls outside the hold window', async () => {
+    const { token: firstGuest } = await registerUser({ name: 'Abandoning Guest' });
+    const listing = await createListing({ title: 'Expired Hold Homestay' });
+    const created = await request(app)
+      .post('/api/bookings')
+      .set('Authorization', `Bearer ${firstGuest}`)
+      .send({ listing_id: listing.id, listing_type: 'homestay', check_in: '2027-01-10', check_out: '2027-01-14' });
+    expect(created.status).toBe(200);
+
+    // Backdate the abandoned checkout past the hold window. Reaching into the DB is the point:
+    // the alternative is making the suite wait BOOKING_HOLD_MINUTES in real time.
+    const longAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    await db.update(schema.bookings)
+      .set({ createdAt: longAgo })
+      .where(eq(schema.bookings.id, created.body.booking.id));
+
+    const { token: secondGuest } = await registerUser({ name: 'Patient Guest' });
+    const res = await request(app)
+      .post('/api/bookings')
+      .set('Authorization', `Bearer ${secondGuest}`)
+      .send({ listing_id: listing.id, listing_type: 'homestay', check_in: '2027-01-11', check_out: '2027-01-13' });
+
+    expect(res.status).toBe(200);
+  });
+
+  it('does not hold dates for listing types that are not date-exclusive', async () => {
+    // A driver can take two fares on one day and a café does not run out of dates — the hold
+    // applies to homestays only, so this must not regress into blocking everything.
+    const { token: firstGuest } = await registerUser({ name: 'First Rider' });
+    const listing = await createListing({ title: 'Shared Driver' });
+    await request(app)
+      .post('/api/bookings')
+      .set('Authorization', `Bearer ${firstGuest}`)
+      .send({ listing_id: listing.id, listing_type: 'driver', check_in: '2027-02-01', check_out: '2027-02-02' });
+
+    const { token: secondGuest } = await registerUser({ name: 'Second Rider' });
+    const res = await request(app)
+      .post('/api/bookings')
+      .set('Authorization', `Bearer ${secondGuest}`)
+      .send({ listing_id: listing.id, listing_type: 'driver', check_in: '2027-02-01', check_out: '2027-02-02' });
 
     expect(res.status).toBe(200);
   });
