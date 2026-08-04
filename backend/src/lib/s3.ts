@@ -40,6 +40,41 @@ export async function checkStorage(): Promise<void> {
   await s3Client.send(new HeadBucketCommand({ Bucket: MINIO_BUCKET }));
 }
 
+/**
+ * Create both buckets at startup, rather than waiting for the first upload to do it.
+ *
+ * Bucket creation used to happen *only* inside uploadToMinIO()/uploadPrivate(), so a freshly
+ * deployed stack had no buckets at all until somebody happened to upload a photo. On
+ * 1darjeeling.in nobody ever did — its listings were copied in from the other stack rather than
+ * uploaded — so checkStorage()'s HeadBucket kept failing and GET /api/health reported `degraded`
+ * for days on a stack whose storage configuration was entirely correct. An uptime monitor pointed
+ * at that endpoint, which is exactly what it is for, would have paged continuously for a healthy
+ * box. Lazy creation also meant the first provider to add a listing photo was the one who
+ * discovered any bucket-level misconfiguration.
+ *
+ * Deliberately never throws. Storage being unreachable at boot must not stop the server starting:
+ * every route that does not touch object storage still works, and /api/health goes on reporting
+ * the truth to whoever is watching — which is strictly more useful than a container that exits.
+ * The calls in the upload paths are left in place as the retry, so a MinIO that comes up late
+ * still gets its buckets on first use.
+ */
+export async function ensureBucketsExist(): Promise<void> {
+  // Settled independently: failing to create one bucket must not skip the attempt at the other.
+  const [pub, kyc] = await Promise.allSettled([bootstrapBucket(), bootstrapKycBucket()]);
+
+  if (pub.status === 'fulfilled' && kyc.status === 'fulfilled') {
+    log.info(`Object storage ready — buckets "${MINIO_BUCKET}" and "${MINIO_KYC_BUCKET}" exist.`);
+    return;
+  }
+
+  // The underlying failure is already logged with its message by the two bootstrap functions;
+  // what this adds is the consequence, so the line is actionable on its own.
+  log.error(
+    'Object storage bootstrap failed at startup — uploads will retry on first use, and ' +
+    'GET /api/health will report storage as down until it succeeds.'
+  );
+}
+
 let bucketBootstrapped = false;
 
 // Ensure bucket exists and has public read policy configured
