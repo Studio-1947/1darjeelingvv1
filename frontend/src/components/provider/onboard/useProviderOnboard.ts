@@ -11,7 +11,7 @@ import { RouteFare, startingPriceFrom } from '@/lib/routeFares';
  * screens are pure layout over the object this hook returns.
  */
 export function useProviderOnboard() {
-  const { user, refresh } = useAuth();
+  const { user, loading: authLoading, refresh } = useAuth();
   const nav = useNavigate();
 
   const [step, setStep] = useState(1);
@@ -57,8 +57,13 @@ export function useProviderOnboard() {
   const [uploadingGallery, setUploadingGallery] = useState(false);
 
   useEffect(() => {
+    // Waiting for the auth check matters here: AuthContext starts every fresh page load with
+    // user=null while GET /auth/me is still in flight, so without this guard a hard refresh or a
+    // bookmarked link bounced a fully logged-in provider straight to /login. ProviderDashboard's
+    // equivalent guard already did this; this one did not.
+    if (authLoading) return;
     if (!user) nav('/login');
-  }, [user, nav]);
+  }, [authLoading, user, nav]);
 
   const update = (patch: Partial<typeof form>) => setForm((prev) => ({ ...prev, ...patch }));
 

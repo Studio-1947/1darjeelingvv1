@@ -98,6 +98,11 @@ function requirePositiveInt(name: string, raw: string | undefined, fallback: num
 export const OTP_TTL_SECONDS = requirePositiveInt('OTP_TTL_SECONDS', process.env.OTP_TTL_SECONDS, 300);
 export const OTP_MAX_ATTEMPTS = requirePositiveInt('OTP_MAX_ATTEMPTS', process.env.OTP_MAX_ATTEMPTS, 5);
 
+// How long an unpaid homestay booking holds its dates against other guests. Long enough to finish
+// a Razorpay checkout, short enough that an abandoned tab frees the room again without an operator
+// having to intervene. See lib/bookingAvailability.ts.
+export const BOOKING_HOLD_MINUTES = requirePositiveInt('BOOKING_HOLD_MINUTES', process.env.BOOKING_HOLD_MINUTES, 15);
+
 export const JWT_SECRET = requireRealValueInProd('JWT_SECRET', process.env.JWT_SECRET, 'dev_only_insecure_jwt_secret');
 // Defaulting to true is right in dev and wrong in production, for the same reason APP_ENV refuses
 // to default above: an absent variable is an operator mistake, not a request for simulated
@@ -116,6 +121,24 @@ if (IS_PROD && !process.env.MOCK_PAYMENTS?.trim()) {
   );
 }
 export const MOCK_PAYMENTS = process.env.MOCK_PAYMENTS ? process.env.MOCK_PAYMENTS.toLowerCase() === 'true' : true;
+// Whether a confirmed booking tells the guest and the host about it.
+//
+// Refused as a silent default in production for the same reason MOCK_PAYMENTS is: for months
+// every production booking notified nobody, and nothing anywhere said so (INVESTIGATION.md §6.A).
+// A tourist paid, the row said confirmed, both dashboards rendered correctly, and the homestay
+// found out when a guest walked up to the door. An operator must now state which behaviour they
+// want; only silence is refused.
+if (IS_PROD && !process.env.NOTIFY_BOOKINGS?.trim()) {
+  throw new Error(
+    '[config] NOTIFY_BOOKINGS must be set explicitly when APP_ENV=production. ' +
+    'Set NOTIFY_BOOKINGS=true to message the guest and host when a booking is confirmed, or ' +
+    'NOTIFY_BOOKINGS=false to accept that nobody is told — it is not assumed.'
+  );
+}
+export const NOTIFY_BOOKINGS = process.env.NOTIFY_BOOKINGS
+  ? process.env.NOTIFY_BOOKINGS.toLowerCase() === 'true'
+  : true;
+
 export const CORS_ORIGINS = process.env.CORS_ORIGINS
   ? process.env.CORS_ORIGINS.split(',').map(o => o.trim())
   : ['*'];
@@ -140,6 +163,18 @@ if (IS_PROD) {
       '[config] MESSAGING_PROVIDER=mock with APP_ENV=production — OTPs are not delivered and ' +
       'the 123456 universal code is active, so anyone can log in as any phone number. ' +
       'Set MESSAGING_PROVIDER to a real provider before taking real users.'
+    );
+  }
+  if (!NOTIFY_BOOKINGS) {
+    log.error(
+      '[config] NOTIFY_BOOKINGS=false with APP_ENV=production — a confirmed booking will tell ' +
+      'neither the guest nor the host. Bookings will only be visible to someone who opens a ' +
+      'dashboard. Set NOTIFY_BOOKINGS=true before taking real bookings.'
+    );
+  } else if (MOCK_OTP) {
+    log.error(
+      '[config] NOTIFY_BOOKINGS=true but MESSAGING_PROVIDER=mock — booking notifications are ' +
+      'recorded as attempted and delivered nowhere. Set a real MESSAGING_PROVIDER.'
     );
   }
 }

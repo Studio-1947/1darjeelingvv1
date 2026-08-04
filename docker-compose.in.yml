@@ -43,6 +43,30 @@ services:
       retries: 5
       start_period: 10s
 
+  # Daily pg_dump into the pg_backups_in volume. Reuses the postgres image purely because it
+  # already carries a pg_dump matching the server version — it runs no database of its own.
+  # See deploy/backup/pg-backup.sh for what this does and does NOT protect against, and
+  # VPS-RUNBOOK.md §7 for how to restore and how to get the dumps off the box.
+  db-backup:
+    image: postgres:15-alpine
+    container_name: 1darjeeling_in_db_backup
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - PGHOST=postgres
+      - PGUSER=${POSTGRES_USER}
+      - PGPASSWORD=${POSTGRES_PASSWORD}
+      - PGDATABASE=${POSTGRES_DB}
+      - BACKUP_INTERVAL_SECONDS=${BACKUP_INTERVAL_SECONDS:-86400}
+      - BACKUP_RETENTION_DAYS=${BACKUP_RETENTION_DAYS:-14}
+    volumes:
+      - pg_backups_in:/backups
+      # Read-only: the container has no business rewriting its own schedule.
+      - ./deploy/backup/pg-backup.sh:/usr/local/bin/pg-backup.sh:ro
+    entrypoint: ["/bin/sh", "/usr/local/bin/pg-backup.sh"]
+
   backend:
     build:
       context: ./backend
@@ -103,3 +127,6 @@ services:
 volumes:
   pg_data_in:
   minio_data_in:
+  # Deliberately a separate volume from pg_data_in: a restore that starts by wiping the data
+  # volume must not be able to take the backups with it.
+  pg_backups_in:

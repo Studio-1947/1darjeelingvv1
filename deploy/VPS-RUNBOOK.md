@@ -234,8 +234,68 @@ Observed while inventorying; none are caused by this app, and all are outside th
 | **Orphan cert** | `studio-tracker.duckdns.org` has a valid cert but no enabled Nginx site | `sudo certbot delete --cert-name studio-tracker.duckdns.org` if the project is gone |
 | **13.11GB build cache** | Larger than all images combined (3.7GB); 10.65GB reclaimable | `docker builder prune -f` |
 | **Stale SSH deploy keys** | `deploy`'s `authorized_keys` holds three keys all commented `github-actions-deploy` (one duplicated), so none can be safely revoked — you can't tell what each is for | Identify each from its project's deploy log fingerprint, drop the duplicate and any orphan |
-| **No database backups** | `pg_data_prod` (and every other project's volume) has no backup | Add a `pg_dump` cron before there's real data to lose |
+| ~~**No database backups**~~ ✅ RESOLVED | ~~`pg_data_prod` has no backup~~ Both stacks now run a `db-backup` sidecar taking a daily `pg_dump` — see §7.1. Other projects on this box are still unbacked | Copy the dumps off the box (§7.1) — on-host backups do not survive losing the host |
 | **Untracked directories** | `/var/www/app` (1020M) and `/var/www/Raj-kamal-mono-repo` (78M) have no running compose project | Confirm whether they're live, archive if not |
+
+### 7.1 Database backups
+
+Each stack runs a `db-backup` sidecar (`1darjeeling_prod_db_backup`, `1darjeeling_in_db_backup`)
+that takes a `pg_dump -Fc` immediately on start and then every 24 hours, keeping 14 days. The
+script is `deploy/backup/pg-backup.sh`; both are tunable from the stack's `.env` via
+`BACKUP_INTERVAL_SECONDS` and `BACKUP_RETENTION_DAYS`.
+
+Dumps land in the `pg_backups_prod` / `pg_backups_in` volumes — separate from the data volumes on
+purpose, so a restore that wipes the data volume cannot take the backups with it.
+
+**Check it is actually running** (do this after any deploy that changes the stack):
+
+```bash
+docker logs 1darjeeling_in_db_backup --tail 5
+# => [pg-backup] ... wrote /backups/one_darjeeling_20260804_041500.dump (2.4M)
+
+# List what's there:
+docker run --rm -v 1darjeeling-in_pg_backups_in:/backups alpine ls -lh /backups
+```
+
+**Copy them off the box.** This is the step that is not automated, and without it the backups are
+worth much less than they look: they sit on the same disk as the database they came from, so a
+dead VPS takes both. Run from a machine with SSH access:
+
+```bash
+ssh root@187.127.185.82 \
+  'docker run --rm -v 1darjeeling-in_pg_backups_in:/backups alpine tar cz -C /backups .' \
+  > 1darjeeling-in-backups-$(date +%Y%m%d).tar.gz
+```
+
+The dumps contain every booking, phone number, and provider record in the system — the same class
+of personal data as §8's warning about MinIO backups. Store the copies at least as carefully as the
+database itself.
+
+**Restore into a running stack** (destructive — it replaces the current contents):
+
+```bash
+# 1. Stop the backend so nothing writes mid-restore. Leave postgres up.
+docker stop 1darjeeling_in_backend
+
+# 2. Restore. --clean --if-exists drops the existing objects first; without it the restore
+#    fails on every table that already exists.
+docker run --rm -i --network container:1darjeeling_in_postgres \
+  -v 1darjeeling-in_pg_backups_in:/backups \
+  -e PGPASSWORD='<POSTGRES_PASSWORD from .env>' \
+  postgres:15-alpine \
+  pg_restore -h localhost -U <POSTGRES_USER> -d <POSTGRES_DB> --clean --if-exists \
+  /backups/<one_darjeeling_YYYYMMDD_HHMMSS.dump>
+
+# 3. Bring the backend back.
+docker start 1darjeeling_in_backend
+```
+
+A `.partial` file is an interrupted backup and is never a valid restore source — the script renames
+to `.dump` only after `pg_dump` succeeds, so trust the extension.
+
+**Uploaded files are NOT in these dumps.** Listing photos and KYC documents live in MinIO, not
+Postgres. A database restore without a matching MinIO restore (§8) gives you rows pointing at
+objects that no longer exist. Back up and restore the two together.
 
 ---
 

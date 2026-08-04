@@ -1,0 +1,26 @@
+# 1 Darjeeling — https://1darjeeling.in
+#
+# The whole public site is meant to be found: tourists reach a homestay or a viewpoint through
+# search far more often than by typing the domain. Only the surfaces that are private, personal,
+# or meaningless to a crawler are excluded.
+
+User-agent: *
+Allow: /
+
+# Admin console — never useful in an index, and no reason to advertise its existence.
+Disallow: /admin
+Disallow: /admin/
+
+# API and generated docs. Crawling these wastes budget on JSON and indexes nothing a person
+# searches for.
+Disallow: /api/
+Disallow: /api-docs
+
+# Signed-in surfaces. These render nothing without a session, so an indexed URL is a dead end.
+Disallow: /dashboard
+Disallow: /my-trips
+Disallow: /my-listings
+Disallow: /saved
+Disallow: /provider/dashboard
+
+Sitemap: https://1darjeeling.in/sitemap.xml
