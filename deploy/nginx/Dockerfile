@@ -32,5 +32,9 @@ RUN npm run build
 FROM nginx:1.27-alpine
 RUN rm -f /etc/nginx/conf.d/default.conf
 COPY deploy/nginx/app.conf /etc/nginx/conf.d/app.conf
+# Header/CSP fragments included BY app.conf. They must land outside conf.d — the stock nginx.conf
+# auto-includes conf.d/*.conf at http level, which would apply these add_headers globally (to the
+# /api proxy responses too) instead of only in the static locations that include them.
+COPY deploy/nginx/snippets/ /etc/nginx/snippets/
 COPY --from=frontend-build /app/build /usr/share/nginx/html
 COPY --from=admin-build /app/dist /usr/share/nginx/html/admin
