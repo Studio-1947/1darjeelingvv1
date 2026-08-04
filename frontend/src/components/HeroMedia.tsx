@@ -11,7 +11,7 @@ import { sizedImage } from '@/lib/listingContent';
  * (explicitly or by their connection) that they don't want it.
  */
 
-const VIDEO_BASE = 'https://res.cloudinary.com/drgb8w8ak/video/upload';
+const VIDEO_BASE = 'https://res.cloudinary.com/drgb8w8ak/video/upload/f_auto,q_auto,w_1440,br_2500k/v1783579758/S_47_July_26_web_cover_video_e1wiyd.mp4';
 const VIDEO_ID = 'v1783579758/S_47_July_26_web_cover_video_e1wiyd.mp4';
 
 /**
@@ -77,7 +77,7 @@ export default function HeroMedia({ poster }: { poster: string }) {
     if (!v) return;
     const io = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting) v.play().catch(() => {});
+        if (entry.isIntersecting) v.play().catch(() => { });
         else v.pause();
       },
       { threshold: 0.05 },
