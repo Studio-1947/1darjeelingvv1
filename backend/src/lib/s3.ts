@@ -3,6 +3,8 @@ import {
   HeadBucketCommand,
   CreateBucketCommand,
   PutBucketPolicyCommand,
+  GetBucketPolicyCommand,
+  DeleteBucketPolicyCommand,
   PutObjectCommand,
   GetObjectCommand,
   DeleteObjectCommand,
@@ -77,46 +79,62 @@ export async function ensureBucketsExist(): Promise<void> {
 
 let bucketBootstrapped = false;
 
+/**
+ * What the public bucket is allowed to expose: fetching one object by its exact key, and nothing
+ * else. Notably NOT s3:ListBucket — a browser loading a listing photo always knows the URL it
+ * wants, so the ability to enumerate every key in the bucket buys nothing and gives away the full
+ * index of everything ever uploaded, including images belonging to unpublished or deleted
+ * listings. `mc anonymous set download`, the obvious thing to reach for when fixing this by hand,
+ * grants both — which is how 1darjeeling.in ended up listable in August 2026.
+ */
+const publicReadPolicy = () => JSON.stringify({
+  Version: '2012-10-17',
+  Statement: [
+    {
+      Sid: 'PublicRead',
+      Effect: 'Allow',
+      Principal: '*',
+      Action: ['s3:GetObject'],
+      Resource: [`arn:aws:s3:::${MINIO_BUCKET}/*`],
+    },
+  ],
+});
+
 // Ensure bucket exists and has public read policy configured
 async function bootstrapBucket() {
   if (bucketBootstrapped) return;
+
+  let created = false;
   try {
     await s3Client.send(new HeadBucketCommand({ Bucket: MINIO_BUCKET }));
-    bucketBootstrapped = true;
   } catch (err: any) {
     if (err.name === 'NotFound' || err.$metadata?.httpStatusCode === 404) {
       log.info(`MinIO bucket "${MINIO_BUCKET}" not found. Bootstrapping bucket...`);
-      // Create bucket
       await s3Client.send(new CreateBucketCommand({ Bucket: MINIO_BUCKET }));
-      
-      // Apply public read bucket policy so anybody can fetch files
-      const policy = {
-        Version: '2012-10-17',
-        Statement: [
-          {
-            Sid: 'PublicRead',
-            Effect: 'Allow',
-            Principal: '*',
-            Action: ['s3:GetObject'],
-            Resource: [`arn:aws:s3:::${MINIO_BUCKET}/*`],
-          },
-        ],
-      };
-      
-      await s3Client.send(
-        new PutBucketPolicyCommand({
-          Bucket: MINIO_BUCKET,
-          Policy: JSON.stringify(policy),
-        })
-      );
-      
-      log.info(`Bucket "${MINIO_BUCKET}" successfully created with public-read policy.`);
-      bucketBootstrapped = true;
+      created = true;
     } else {
       log.error(`Failed checking/creating MinIO bucket: ${err.message || err}`);
       throw err;
     }
   }
+
+  // Applied on BOTH paths — an existing bucket gets the policy re-asserted, not just a new one.
+  // Previously the policy was set only at creation, so a bucket whose permissions were wrong
+  // stayed wrong forever: no redeploy would ever look at them again, and the only repair was
+  // somebody remembering to run mc by hand. Making this declarative means the code is the single
+  // answer to "who can read this bucket", which is the property worth having when the bucket next
+  // door holds Aadhaar and PAN scans. The trade-off is accepted deliberately: a manual policy
+  // change is reverted on the next restart, because a manual policy change here is a mistake.
+  await s3Client.send(
+    new PutBucketPolicyCommand({ Bucket: MINIO_BUCKET, Policy: publicReadPolicy() })
+  );
+
+  log.info(
+    created
+      ? `Bucket "${MINIO_BUCKET}" successfully created with public-read policy.`
+      : `Bucket "${MINIO_BUCKET}" exists; public-read policy re-applied.`
+  );
+  bucketBootstrapped = true;
 }
 
 /**
@@ -149,20 +167,49 @@ let kycBucketBootstrapped = false;
 // reachable through the authorized backend proxy, never a public URL.
 async function bootstrapKycBucket() {
   if (kycBucketBootstrapped) return;
+
   try {
     await s3Client.send(new HeadBucketCommand({ Bucket: MINIO_KYC_BUCKET }));
-    kycBucketBootstrapped = true;
   } catch (err: any) {
     if (err.name === 'NotFound' || err.$metadata?.httpStatusCode === 404) {
       log.info(`MinIO KYC bucket "${MINIO_KYC_BUCKET}" not found. Creating (private)...`);
       await s3Client.send(new CreateBucketCommand({ Bucket: MINIO_KYC_BUCKET }));
       log.info(`Private KYC bucket "${MINIO_KYC_BUCKET}" created (no public policy).`);
       kycBucketBootstrapped = true;
-    } else {
-      log.error(`Failed checking/creating KYC bucket: ${err.message || err}`);
-      throw err;
+      return;
     }
+    log.error(`Failed checking/creating KYC bucket: ${err.message || err}`);
+    throw err;
   }
+
+  // The bucket already existed, so something other than this code has had the chance to change
+  // its permissions. Check rather than assume: this bucket holds government identity documents,
+  // and the adjacent public bucket is one mistyped bucket name away in any `mc anonymous` command.
+  //
+  // The expected answer is NoSuchBucketPolicy — no policy at all — which is why the quiet path
+  // here logs nothing. Anything else is a finding, not a routine reconciliation, so it is logged
+  // at error level before being removed: silently repairing this would hide the fact that
+  // somebody's Aadhaar scans were reachable, and *that* is the part someone needs to know.
+  try {
+    await s3Client.send(new GetBucketPolicyCommand({ Bucket: MINIO_KYC_BUCKET }));
+  } catch (err: any) {
+    if (err.name === 'NoSuchBucketPolicy' || err.$metadata?.httpStatusCode === 404) {
+      kycBucketBootstrapped = true;
+      return;
+    }
+    // Couldn't read the policy (permissions, an older MinIO). Don't claim it's private.
+    log.error(`Could not verify that KYC bucket "${MINIO_KYC_BUCKET}" is private: ${err.message || err}`);
+    kycBucketBootstrapped = true;
+    return;
+  }
+
+  log.error(
+    `SECURITY: KYC bucket "${MINIO_KYC_BUCKET}" had an access policy attached. This bucket holds ` +
+    `Aadhaar/PAN/licence scans and must never be publicly readable. Removing it now — check who ` +
+    `set it and whether any document was fetched while it was in place.`
+  );
+  await s3Client.send(new DeleteBucketPolicyCommand({ Bucket: MINIO_KYC_BUCKET }));
+  kycBucketBootstrapped = true;
 }
 
 /** Uploads a private KYC object. Returns the object KEY (never a public URL). */

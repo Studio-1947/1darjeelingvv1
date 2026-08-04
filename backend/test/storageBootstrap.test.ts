@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 /**
  * These tests mock the S3 client itself rather than `src/lib/s3` wholesale, which is what every
@@ -24,6 +24,8 @@ vi.mock('@aws-sdk/client-s3', () => {
     HeadBucketCommand: class HeadBucketCommand extends Command {},
     CreateBucketCommand: class CreateBucketCommand extends Command {},
     PutBucketPolicyCommand: class PutBucketPolicyCommand extends Command {},
+    GetBucketPolicyCommand: class GetBucketPolicyCommand extends Command {},
+    DeleteBucketPolicyCommand: class DeleteBucketPolicyCommand extends Command {},
     PutObjectCommand: class PutObjectCommand extends Command {},
     GetObjectCommand: class GetObjectCommand extends Command {},
     DeleteObjectCommand: class DeleteObjectCommand extends Command {},
@@ -34,14 +36,40 @@ vi.mock('@aws-sdk/client-s3', () => {
 const PUBLIC_BUCKET = 'one-darjeeling';
 const KYC_BUCKET = 'one-darjeeling-kyc';
 
+/** The over-permissive policy `mc anonymous set download` leaves behind — GetObject *and* the
+ * ability to list every key in the bucket. This is what was live on 1darjeeling.in. */
+const mcDownloadPreset = (bucket: string) => JSON.stringify({
+  Version: '2012-10-17',
+  Statement: [
+    { Effect: 'Allow', Principal: '*', Action: ['s3:GetObject'], Resource: [`arn:aws:s3:::${bucket}/*`] },
+    { Effect: 'Allow', Principal: '*', Action: ['s3:ListBucket'], Resource: [`arn:aws:s3:::${bucket}`] },
+  ],
+});
+
 /**
- * A MinIO holding exactly `existing`. Mutated by CreateBucket, so a test can assert on the set
- * afterwards and read it as "what the server actually created".
+ * A MinIO holding exactly `existing`, with `policies` attached. Both are mutated by the commands
+ * the server sends, so a test can assert on them afterwards and read them as "the state the
+ * server actually left this MinIO in".
  */
-function minio(existing: Set<string>) {
+function minio(existing: Set<string>, policies = new Map<string, string>()) {
   return async (cmd: any) => {
     const bucket = cmd.input?.Bucket;
     switch (cmd.constructor.name) {
+      case 'PutBucketPolicyCommand':
+        policies.set(bucket, cmd.input.Policy);
+        return {};
+      case 'DeleteBucketPolicyCommand':
+        policies.delete(bucket);
+        return {};
+      case 'GetBucketPolicyCommand': {
+        const existingPolicy = policies.get(bucket);
+        if (existingPolicy) return { Policy: existingPolicy };
+        // No policy attached — MinIO's way of saying "nobody anonymous can touch this".
+        const err: any = new Error('The bucket policy does not exist');
+        err.name = 'NoSuchBucketPolicy';
+        err.$metadata = { httpStatusCode: 404 };
+        throw err;
+      }
       case 'HeadBucketCommand': {
         if (existing.has(bucket)) return {};
         // What a real MinIO returns for a HEAD on a bucket that is not there: 404 with an empty
@@ -72,8 +100,19 @@ async function freshStorage() {
 }
 
 describe('object storage bootstrap at startup', () => {
+  // Spied here rather than inside the tests that need it: a spy restored on the last line of a
+  // test body is not restored when that test fails, which leaks console calls into the next test
+  // and turns one real failure into two. Found the hard way while checking these tests were not
+  // vacuous.
+  let consoleError: ReturnType<typeof vi.spyOn>;
+
   beforeEach(() => {
     send.mockReset();
+    consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    consoleError.mockRestore();
   });
 
   it('creates both buckets on a stack that has never received an upload', async () => {
@@ -116,14 +155,57 @@ describe('object storage bootstrap at startup', () => {
     });
   });
 
-  it('creates nothing on a redeploy, when both buckets already exist', async () => {
+  it('creates nothing on a redeploy, but re-asserts the public policy', async () => {
     send.mockImplementation(minio(new Set([PUBLIC_BUCKET, KYC_BUCKET])));
 
     const { ensureBucketsExist } = await freshStorage();
     await ensureBucketsExist();
 
     expect(sent('CreateBucketCommand')).toEqual([]);
-    expect(sent('PutBucketPolicyCommand')).toEqual([]);
+    // The policy IS re-sent, and only for the public bucket. Setting it once at creation was the
+    // original defect: a bucket whose permissions drifted could never be repaired by a deploy.
+    expect(sent('PutBucketPolicyCommand').map((c) => c.input.Bucket)).toEqual([PUBLIC_BUCKET]);
+  });
+
+  it('repairs a public bucket left listable by `mc anonymous set download`', async () => {
+    // The exact live state on 1darjeeling.in: the bucket was created by hand with mc's preset,
+    // which grants s3:ListBucket on top of s3:GetObject, so anyone could enumerate every
+    // uploaded key. Nothing in the old code would ever have looked at it again.
+    const policies = new Map([[PUBLIC_BUCKET, mcDownloadPreset(PUBLIC_BUCKET)]]);
+    send.mockImplementation(minio(new Set([PUBLIC_BUCKET, KYC_BUCKET]), policies));
+
+    const { ensureBucketsExist } = await freshStorage();
+    await ensureBucketsExist();
+
+    const actions = JSON.parse(policies.get(PUBLIC_BUCKET)!).Statement.flatMap((s: any) => s.Action);
+    expect(actions).toEqual(['s3:GetObject']);
+    expect(actions).not.toContain('s3:ListBucket');
+  });
+
+  it('strips any policy found on the KYC bucket and says so loudly', async () => {
+    // One mistyped bucket name in an `mc anonymous` command is all this takes, and the contents
+    // are government identity documents. The removal is not the whole job — somebody has to be
+    // told it happened, or the exposure is repaired and never investigated.
+    const policies = new Map([[KYC_BUCKET, mcDownloadPreset(KYC_BUCKET)]]);
+    send.mockImplementation(minio(new Set([PUBLIC_BUCKET, KYC_BUCKET]), policies));
+
+    const { ensureBucketsExist } = await freshStorage();
+    await ensureBucketsExist();
+
+    expect(policies.has(KYC_BUCKET)).toBe(false);
+    expect(consoleError.mock.calls.flat().join(' ')).toContain('SECURITY');
+  });
+
+  it('leaves the KYC bucket untouched when it has no policy, and stays quiet', async () => {
+    // The normal case. A check that cried wolf on every boot would be ignored by the time it
+    // mattered, so the healthy path must send no delete and log no error.
+    send.mockImplementation(minio(new Set([PUBLIC_BUCKET, KYC_BUCKET])));
+
+    const { ensureBucketsExist } = await freshStorage();
+    await ensureBucketsExist();
+
+    expect(sent('DeleteBucketPolicyCommand')).toEqual([]);
+    expect(consoleError).not.toHaveBeenCalled();
   });
 
   it('does not throw when storage is unreachable, so the server still starts', async () => {
