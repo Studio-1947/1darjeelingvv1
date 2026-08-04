@@ -500,6 +500,39 @@ cannot quietly become public either. Full suite: **346 passing**.
 The live stack was unblocked by hand (`mc mb` + `mc anonymous set download` on the public bucket
 only) before this fix was written; the fix is what stops it recurring on the next deployment.
 
+**Follow-up the same day — the manual unblock was itself wrong, and the fix above would not have
+repaired it.** `mc anonymous set download` is a preset that grants `s3:ListBucket` *in addition to*
+`s3:GetObject`. The app's own policy grants `s3:GetObject` alone, deliberately: a browser loading a
+listing photo always knows the URL it wants, so the ability to enumerate every key buys nothing and
+gives away the full index of everything ever uploaded, including images belonging to unpublished or
+deleted listings. Confirmed live — `GET https://1darjeeling.in/one-darjeeling/` returned a complete
+`<ListBucketResult>`, while the same request to `onedarjeeling.duckdns.org`, whose bucket the app
+created itself, correctly returned `AccessDenied`.
+
+The reason it would have persisted is the second half of the same design flaw: **the policy was
+applied only at bucket creation.** A bucket whose permissions were wrong stayed wrong forever — no
+redeploy would ever look at them again, and the only repair was somebody remembering to run `mc` by
+hand. So `bootstrapBucket()` now re-asserts the policy on **both** paths, existing bucket included.
+The trade-off is accepted deliberately: a manual policy change is reverted on the next restart,
+because a manual policy change here is a mistake. Permissions on these two buckets should be
+answerable by reading the code, not by asking who last typed a command on the server.
+
+`bootstrapKycBucket()` gets the stricter treatment, since one mistyped bucket name in an
+`mc anonymous` command is all it takes and the contents are government identity documents: when the
+bucket already exists it reads the policy, and **any** policy found is logged at error level with a
+`SECURITY:` prefix before being deleted. Logged rather than silently repaired on purpose — quietly
+fixing it would hide the fact that someone's Aadhaar scans were reachable, which is the part a human
+needs to know. The expected answer is `NoSuchBucketPolicy`, and that path logs nothing, so the alarm
+stays meaningful.
+
+Validated end to end against a real MinIO, not just the mocks: a throwaway instance was put into the
+exact broken live state (`mc anonymous set download` on *both* buckets, both confirmed listable by
+anonymous HTTP), the compiled server was booted against it, and it logged the `SECURITY:` line for
+the KYC bucket and re-applied the public bucket's policy. Afterwards anonymous `LIST` returns
+`AccessDenied` on both, anonymous `GET` of a known key still returns `200` with its content, the KYC
+bucket reports `private`, and `/api/health` reports `ok`. Suite now **349 passing**; each new
+assertion was confirmed to fail against the unfixed code.
+
 ### 8.J ⏳ OPEN — 1darjeeling.in serves every listing image from the staging domain
 
 All six listings on the canonical domain store image URLs of the form
