@@ -429,6 +429,14 @@ Use a **separate Sentry project per side** — a noisy browser extension will ot
 server errors. `FRONTEND_SENTRY_DSN` is inlined into the JS bundle at image build time, so changing
 it needs a rebuild (`docker compose -f <file> up -d --build nginx`), not a restart.
 
+**Both stacks share one pair of projects, separated by environment.** Both run
+`APP_ENV=production` — staging has to exercise production behaviour to be worth anything — so
+`APP_ENV` cannot tell them apart. Set **`SENTRY_ENVIRONMENT=staging`** in the duckdns stack's
+`.env`; without it, staging errors arrive tagged `production` and sit in the same stream as real
+incidents, which is the one distinction an alert at 2am has to make. The browser side derives this
+from the hostname at runtime (the same bundle ships to both stacks, so a build-time value would be
+wrong on one of them) and needs no configuration.
+
 **On personal data.** This platform holds Aadhaar/PAN scans, phone numbers and the JWTs that
 authenticate them, and an error report is assembled from exactly the material most likely to carry
 them. Everything is scrubbed before send — see `backend/src/lib/scrub.ts` and its test:
