@@ -393,6 +393,52 @@ throws — it runs after the money has moved, so a gateway outage must not 500 t
 refund it could not deliver leaves the row `paid` with a `refund_reason` set, which is the operator
 queue at `GET /api/admin/refunds/pending`; retry with `POST /api/admin/payments/:id/refund`.
 
+## Monitoring
+
+`1darjeeling.in` was down for 25 hours in August 2026 and nobody knew. Two independent things
+have to be in place, because **neither one would have caught it alone**.
+
+### 1. Uptime checks — the half that catches an outage
+
+Point an external monitor at **`https://1darjeeling.in/api/health`**, not at `/api`.
+
+That distinction is the whole reason the endpoint exists. `GET /api` answers `{"status":"ok"}`
+from a bare JSON literal — it is true whenever the process is answering, and stays true with the
+database on fire. A monitor watching it would have reported the platform perfectly healthy while
+every booking, login and listing request failed. `GET /api/health` actually asks its dependencies
+and answers **503** with the failing component named:
+
+```json
+{"app":"1 Darjeeling","status":"degraded",
+ "checks":{"database":{"ok":true,"ms":3},
+           "storage":{"ok":false,"ms":51,"error":"connect ECONNREFUSED 172.20.0.4:9000"}}}
+```
+
+Any monitor will do — UptimeRobot's free tier gives 5-minute checks and is enough. Configure it to
+alert on a non-200, watch **both** stacks, and set the check interval below the time you would find
+an outage embarrassing rather than merely annoying.
+
+### 2. Error reporting — the half that catches a bug in a working server
+
+Set `SENTRY_DSN` (backend) and `FRONTEND_SENTRY_DSN` (browser) in the stack's `.env`. Both are
+optional and default to off; with no DSN the SDK is never initialised and nothing leaves the box.
+The backend logs which state it is in at boot, because "errors are being reported" is the kind of
+assumption only discovered to be false during the incident it was supposed to help with.
+
+Use a **separate Sentry project per side** — a noisy browser extension will otherwise bury your
+server errors. `FRONTEND_SENTRY_DSN` is inlined into the JS bundle at image build time, so changing
+it needs a rebuild (`docker compose -f <file> up -d --build nginx`), not a restart.
+
+**On personal data.** This platform holds Aadhaar/PAN scans, phone numbers and the JWTs that
+authenticate them, and an error report is assembled from exactly the material most likely to carry
+them. Everything is scrubbed before send — see `backend/src/lib/scrub.ts` and its test:
+Authorization headers, phone numbers, OTPs, uploaded documents and query-string *values* are
+replaced; stack-frame local variables are dropped wholesale; browser Session Replay and
+performance tracing are deliberately not enabled at all. Read that test before loosening anything.
+
+**What this cannot do:** report a server that never started. The 25-hour outage was a config
+refusal at boot, so Sentry would have seen nothing — the uptime check above is what covers it.
+
 ## Database backups
 
 Both production stacks run a `db-backup` sidecar taking a `pg_dump -Fc` on start and every 24 hours,

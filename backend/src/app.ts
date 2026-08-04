@@ -18,6 +18,9 @@ import kycRouter from './routes/kyc';
 import favoritesRouter from './routes/favorites';
 import reviewsRouter from './routes/reviews';
 import { rateLimiter } from './middleware/rateLimiter';
+import { reportError } from './observability';
+import { checkStorage } from './lib/s3';
+import { pool } from './db';
 
 export const app = express();
 
@@ -124,8 +127,56 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
  *                 status: { type: string, example: "ok" }
  */
 // ============ ROOT / HEALTH ============
+// Liveness: "this process is answering". Deliberately touches nothing else, so it stays a valid
+// answer to "is the container up?" even while a dependency is broken. Do NOT point an uptime
+// monitor at this one — see /api/health below for why.
 app.get('/api', (req: Request, res: Response) => {
   res.json({ app: "1 Darjeeling", status: "ok" });
+});
+
+/**
+ * @openapi
+ * /health:
+ *   get:
+ *     summary: Readiness check — is this server able to serve real traffic?
+ *     description: >
+ *       Answers 200 only when every dependency the app needs is reachable, and 503 with the
+ *       failing component named otherwise. This is the endpoint an uptime monitor should watch.
+ *     tags: [Health]
+ *     responses:
+ *       200: { description: Every dependency is reachable }
+ *       503: { description: At least one dependency is down; `checks` names which }
+ */
+// Readiness, as distinct from the liveness check above — and the distinction is the whole point.
+// GET /api answers `{"status":"ok"}` from a bare JSON literal, so it keeps saying "ok" with the
+// database on fire. A monitor watching it would have reported this platform perfectly healthy
+// while every booking, login and listing request failed. This one actually asks.
+app.get('/api/health', async (_req: Request, res: Response) => {
+  const checks: Record<string, { ok: boolean; ms: number; error?: string }> = {};
+
+  const probe = async (name: string, fn: () => Promise<unknown>) => {
+    const started = Date.now();
+    try {
+      await fn();
+      checks[name] = { ok: true, ms: Date.now() - started };
+    } catch (err) {
+      // The message names the component and the failure, and is safe: these are connection-level
+      // errors from our own infrastructure, not anything derived from a caller's request.
+      checks[name] = { ok: false, ms: Date.now() - started, error: (err as Error)?.message?.slice(0, 200) || 'unknown' };
+    }
+  };
+
+  // Sequential, not Promise.all: this endpoint gets polled continuously by an uptime monitor, and
+  // it must stay cheap enough that the monitoring is never itself a load problem.
+  await probe('database', () => pool.query('SELECT 1'));
+  await probe('storage', () => checkStorage());
+
+  const healthy = Object.values(checks).every((c) => c.ok);
+  res.status(healthy ? 200 : 503).json({
+    app: '1 Darjeeling',
+    status: healthy ? 'ok' : 'degraded',
+    checks,
+  });
 });
 
 // ============ MOUNT ROUTERS ============
@@ -162,6 +213,14 @@ app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
 
   // The detail always survives here, in the server log, where it's useful and not attacker-visible.
   log.error(`${req.method} ${req.originalUrl} -> ${status}: ${err?.stack || err?.message || err}`);
+
+  // Only 5xx is reported. A 400 or 403 is the API working correctly — telling a caller no — and
+  // reporting those would bury a real fault under a stream of rejected requests. Payload scrubbing
+  // happens inside observability.ts; nothing sensitive is passed here beyond the method and a
+  // query-stripped path.
+  if (status >= 500) {
+    reportError(err, { method: req.method, path: req.path, status });
+  }
 
   // Something already started writing (e.g. a stream); rewriting the status would corrupt it.
   if (res.headersSent) {
