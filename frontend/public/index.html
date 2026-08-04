@@ -34,7 +34,10 @@
         Learn how to configure a non-root public URL by running `npm run build`.
         -->
         <title>1 Darjeeling — One Darjeeling. Every experience.</title>
-        <script>window.addEventListener("error",function(e){if(e.error instanceof DOMException&&e.error.name==="DataCloneError"&&e.message&&e.message.includes("PerformanceServerTiming")){e.stopImmediatePropagation();e.preventDefault()}},true);</script>
+        <!-- Deliberately an external file, not an inline <script>: the CSP in
+             deploy/nginx/app.conf sets `script-src 'self'` with no 'unsafe-inline', which blocks
+             inline scripts outright. See error-shim.js for why that trade is the right one. -->
+        <script src="%PUBLIC_URL%/error-shim.js"></script>
     </head>
     <body>
         <noscript>You need to enable JavaScript to run this app.</noscript>
