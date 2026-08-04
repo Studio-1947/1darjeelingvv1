@@ -438,7 +438,7 @@ proxied `/api` responses that Express already sets.
   Filled. Three English strings whose em-dashes had been stripped by an earlier encoding accident
   were repaired at the same time.
 
-### 8.G ⏳ OPEN — the 1darjeeling.in backend is down
+### 8.G ✅ RESOLVED — the 1darjeeling.in backend is down
 
 Not a code defect, but the single thing most in the way of going live. On `https://1darjeeling.in`
 the SPA and admin console serve (200) while **every `/api` path returns 502** — nginx is up and
@@ -451,6 +451,72 @@ placeholders, an unset `MOCK_PAYMENTS` or `NOTIFY_BOOKINGS` under `APP_ENV=produ
 unreachable. Diagnose with `docker logs 1darjeeling_in_backend --tail 50` on the VPS.
 
 The other stack, `onedarjeeling.duckdns.org`, is healthy.
+
+**Resolved by 2026-08-04 afternoon.** `https://1darjeeling.in/api` answers `200`, `/api/listings`
+serves, and a stack-specific `.env.1darjeeling-in.example` now exists so the placeholder-copying
+that caused the outage cannot recur silently. Storage on that stack was still failing afterwards —
+see §8.I, which turned out to be a different bug entirely.
+
+### 8.I ✅ FIXED — object storage buckets were created lazily, so a fresh stack was never ready
+
+Found 2026-08-04 while diagnosing `1darjeeling.in` reporting `{"status":"degraded"}` from
+`/api/health` with `storage.ok=false` on a stack whose MinIO configuration was, it turned out,
+entirely correct — credentials matched, MinIO was answering, nginx was proxying.
+
+`bootstrapBucket()` and `bootstrapKycBucket()` were called **only** from inside `uploadToMinIO()`
+and `uploadPrivate()` (`lib/s3.ts`). Bucket creation was therefore lazy: a freshly deployed stack
+had no buckets at all until somebody happened to upload a photo. `1darjeeling.in` never did — its
+listings were *copied in* from the other stack rather than uploaded — so no bucket was ever
+created, `checkStorage()`'s `HeadBucket` failed forever, and the readiness endpoint reported
+`degraded` on a healthy box. **This is the worst place for a false alarm: `/api/health` is
+precisely what §8.E-era monitoring guidance tells an uptime monitor to watch, so it would have
+paged continuously since the stack went up.** The secondary cost is that lazy creation makes the
+first provider to add a listing photo the person who discovers any bucket-level misconfiguration.
+
+Two things made the live diagnosis harder than it should have been, both worth remembering:
+
+- **`/api/health` reports `err.message`** (`app.ts`). `HeadBucket` is a HEAD request, so *every*
+  error response has an empty body and the AWS SDK falls back to the generic string
+  `"UnknownError"` — it does not distinguish 403 from 404. Two hypotheses (rejected credentials,
+  then a missing bucket) were argued from that string before it was established that the string
+  carries no such information. It does prove MinIO *answered*, though: an unreachable MinIO
+  surfaces `ENOTFOUND`/`ECONNREFUSED` verbatim.
+- **An anonymous `GET /one-darjeeling/<key>` returned 403, not 404**, because MinIO answers
+  `AccessDenied` rather than confirming a bucket does not exist. That reads like a policy problem
+  and is not one. After the fix the same request correctly returns 404.
+
+**Fixed:** `ensureBucketsExist()` creates both buckets at startup, called from `server.ts` after
+`listen()`. It never throws — storage being unreachable at boot must not stop the server starting,
+since every route not touching object storage still works and `/api/health` goes on reporting the
+truth — and the calls in the upload paths are left in place as the retry for a MinIO that comes up
+late. 6 tests in `test/storageBootstrap.test.ts`, which mock the S3 client itself rather than
+`lib/s3` (stubbing the module would assert nothing, since the behaviour under test *is* what
+`lib/s3` sends). Confirmed non-vacuous: with the KYC half removed 1 test fails, and with the
+bootstrap stubbed out entirely 3 fail, including the one asserting a fresh stack reports healthy.
+One test asserts that exactly one bucket is made anonymously readable and that it is the public
+one — asserted over the whole set rather than the KYC bucket's absence, so a future third bucket
+cannot quietly become public either. Full suite: **346 passing**.
+
+The live stack was unblocked by hand (`mc mb` + `mc anonymous set download` on the public bucket
+only) before this fix was written; the fix is what stops it recurring on the next deployment.
+
+### 8.J ⏳ OPEN — 1darjeeling.in serves every listing image from the staging domain
+
+All six listings on the canonical domain store image URLs of the form
+`https://onedarjeeling.duckdns.org/one-darjeeling/<uuid>` — the same UUIDs *and* titles as rows on
+the staging stack, so they were copied across with staging's URLs intact. The objects live in
+`minio_data_prod`, not `minio_data_in`.
+
+Two consequences: production depends on the staging box for its photos, and because
+`deploy/nginx/app.conf` stamps `X-Robots-Tag` on the image path as well as the HTML (added in the
+§8-era SEO work, deliberately, so staging's copies of the pictures are not indexed under the wrong
+domain), **production's listing photos are currently served `noindex, nofollow`**.
+
+**Action needed:** either `mc mirror` the six objects into `minio_data_in` and rewrite
+`listings.image` / `providers.images` / `users.avatar`, or — probably faster and definitely safer
+for six images — re-upload them through the `1darjeeling.in` admin console, which now that §8.I is
+fixed writes correct `https://1darjeeling.in/...` URLs. Do not run the URL rewrite before the
+objects exist in the target bucket, or working images become 404s.
 
 ### 8.H ⏳ OPEN — test content is live in production
 
