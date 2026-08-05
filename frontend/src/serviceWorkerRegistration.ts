@@ -35,7 +35,42 @@ export function register(config?: Config) {
   }
 }
 
+/**
+ * Reload once when a new worker takes control, so the page on screen matches the
+ * precache now serving it.
+ *
+ * The worker activates itself (see skipWaiting in service-worker.ts); this is the
+ * other half - without it the visitor keeps looking at the old render until they
+ * happen to navigate, even though the new bundle is already in place.
+ *
+ * Two guards, both load-bearing:
+ *
+ *   hadController - on a FIRST visit clientsClaim also fires controllerchange,
+ *                   going from no controller to one. Reloading there would make
+ *                   every new visitor's first page load flash and repeat itself
+ *                   for no reason. Only a genuine hand-over counts, and that is
+ *                   what having had a controller at startup distinguishes.
+ *   refreshing    - Chrome can fire controllerchange more than once; two reloads
+ *                   back to back is a flicker at best and a loop at worst.
+ */
+function reloadOnControllerChange() {
+  const hadController = !!navigator.serviceWorker.controller;
+  if (!hadController) return;
+
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (refreshing) return;
+    refreshing = true;
+    window.location.reload();
+  });
+}
+
 function registerValidSW(swUrl: string, config?: Config) {
+  // Registered before the worker can swap, so the hand-over is never missed.
+  // A caller supplying onUpdate is taking the update over itself (to prompt
+  // rather than reload), so the automatic path stands down.
+  if (!config?.onUpdate) reloadOnControllerChange();
+
   navigator.serviceWorker
     .register(swUrl)
     .then((registration) => {
@@ -45,7 +80,6 @@ function registerValidSW(swUrl: string, config?: Config) {
         installingWorker.onstatechange = () => {
           if (installingWorker.state === 'installed') {
             if (navigator.serviceWorker.controller) {
-              console.log('New content is available and will be used once all tabs are closed.');
               if (config && config.onUpdate) config.onUpdate(registration);
             } else {
               console.log('Content is cached for offline use.');

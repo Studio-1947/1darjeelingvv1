@@ -98,6 +98,27 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   if (IS_PROD) {
     res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
   }
+
+  // API responses carried no Cache-Control at all, which is NOT the same as being
+  // uncacheable: with no Cache-Control and no Expires, a response is heuristically
+  // cacheable and the browser may reuse it without revalidating. Every endpoint
+  // under /api is either user-specific (bookings, favourites, the provider's own
+  // profile) or changes the moment a provider edits a listing, and none of it is
+  // safe to serve from a lifetime the browser invented for itself.
+  //
+  // `no-store` rather than `no-cache` deliberately: no-cache still stores the
+  // body, which for /api/bookings and /api/providers/me means one user's data
+  // sitting in the disk cache of a shared phone after they sign out.
+  //
+  // Not a meaningful loss of speed - the client holds its own 60s in-memory cache
+  // (see the QueryClient in frontend/src/index.tsx), which is where the repeat
+  // reads were actually being served from.
+  // `/api/` and bare `/api`, but deliberately NOT a startsWith('/api') test —
+  // that also catches /api-docs and /api-docs.json, which are static Swagger
+  // assets that benefit from being cached and are not user data.
+  if (req.path === '/api' || req.path.startsWith('/api/')) {
+    res.setHeader("Cache-Control", "no-store");
+  }
   next();
 });
 

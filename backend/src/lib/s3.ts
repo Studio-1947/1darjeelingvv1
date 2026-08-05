@@ -154,6 +154,17 @@ export async function uploadToMinIO(
       Key: key,
       Body: buffer,
       ContentType: contentType,
+      // Keys are `<uuid>.<ext>` (see lib/imageUpload.ts) and are never reused or
+      // overwritten, so an object at a given URL can never change - which is the
+      // precondition `immutable` asks for. Without this MinIO stores no
+      // Cache-Control at all and the browser falls back to heuristic caching:
+      // it invents a freshness lifetime, and re-downloads full-size listing
+      // photos far more often than it needs to. That cost lands on exactly the
+      // connections this app is built for.
+      //
+      // deploy/nginx/app.conf sets the same value on the way out, which is what
+      // covers the objects uploaded before this line existed.
+      CacheControl: 'public, max-age=31536000, immutable',
     })
   );
 
