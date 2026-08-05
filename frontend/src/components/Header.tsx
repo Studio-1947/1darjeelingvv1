@@ -68,21 +68,27 @@ export default function Header() {
           </button>
         )}
 
-        {/* Brand - the mark and the name together at every width. Below lg it
-            shares the bar with a back button, so it may shrink (min-w-0 +
-            truncate) rather than push the right cluster off the edge. */}
+        {/* Brand - the mark and the name together at every width.
+            The wordmark reads t('brand') rather than a hardcoded "1 Darjeeling":
+            the login card and the footer already render the translated form, so
+            in Hindi the page showed the brand in Devanagari while the bar above
+            it stayed in Latin script (QA 3.6).
+            It also stops truncating. At 390px it shared the row with a back
+            button, the language menu and sign-in, and rendered as "1 Darj…"
+            (QA 4.6) - a clipped brand name is worse than a smaller one, so below
+            sm it drops a size and holds its whole width instead. */}
         <Link
           to="/"
           className="flex items-center gap-1.5 sm:gap-2 min-w-0"
           data-testid="brand-link"
-          aria-label="1 Darjeeling"
+          aria-label={t('brand')}
         >
           {/* Background is keyed out, so the mark sits directly on the bar with
               no tile. Scales with --header-h (3.75/4.75/5rem). */}
-          <Logo className="w-9 h-9 sm:w-14 sm:h-14 lg:w-16 lg:h-16 flex-shrink-0" />
+          <Logo className="w-8 h-8 sm:w-14 sm:h-14 lg:w-16 lg:h-16 flex-shrink-0" />
           <div className="leading-none min-w-0">
-            <div className={`font-display font-extrabold text-base sm:text-lg truncate ${onVideo ? 'text-white drop-shadow' : 'text-ink'}`}>
-              1 Darjeeling
+            <div className={`font-display font-extrabold text-sm sm:text-lg whitespace-nowrap ${onVideo ? 'text-white drop-shadow' : 'text-ink'}`}>
+              {t('brand')}
             </div>
           </div>
         </Link>

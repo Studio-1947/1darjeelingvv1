@@ -106,7 +106,10 @@ export default function BottomNav() {
             </span>
           </Link>
 
-          {/* Type is a toggle, not a route - it opens the category sheet. */}
+          {/* A toggle, not a route - it opens the category sheet. Labelled
+              "Categories" to match the sheet it opens, which is headed
+              "DISCOVER / Categories"; the tab used to say "Type" and nothing on
+              the other side of the tap repeated the word (QA 4.1). */}
           <button
             type="button"
             onClick={() => setTypeOpen((v) => !v)}
@@ -125,7 +128,7 @@ export default function BottomNav() {
                 }`}
               />
             </span>
-            <span className="truncate max-w-full px-0.5">{t('nav.type')}</span>
+            <span className="truncate max-w-full px-0.5">{t('nav.categories')}</span>
           </button>
 
           <Link

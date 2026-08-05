@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { ArrowRight, Leaf, TreePine, PawPrint, Camera, Recycle, VolumeX } from 'lucide-react';
 import SmartImg from '@/components/SmartImg';
 import { sizedImage } from '@/lib/listingContent';
+import { useSeo } from '@/components/Seo';
 
 /**
  * Responsible Tourism - a modernist editorial grid.
@@ -33,6 +34,7 @@ const microLabel = 'text-[10px] md:text-[11px] font-bold uppercase tracking-[0.1
 
 export default function Responsible() {
   const { t } = useTranslation();
+  useSeo({ title: t('responsible.title'), description: t('responsible.lead') });
   const asArray = <T,>(key: string): T[] => {
     const v = t(key, { returnObjects: true });
     return Array.isArray(v) ? (v as T[]) : [];

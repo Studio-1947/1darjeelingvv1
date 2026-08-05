@@ -65,39 +65,6 @@ export default function CategorySheet({ open, onClose }: { open: boolean; onClos
 
   if (!open) return null;
 
-  // `cell` is the tile's slot in the grid, not its index in CATEGORIES - the
-  // browse-all card sits between the sixth and seventh type, so the gradient
-  // has to alternate by position or the seam shows either side of it.
-  const tile = ({ key, to, Icon }: typeof CATEGORIES[number], cell: number) => {
-    const active = pathname === to;
-    return (
-      <Link
-        key={key}
-        to={to}
-        onClick={onClose}
-        aria-current={active ? 'page' : undefined}
-        data-testid={`type-sheet-${key}`}
-        className={`group flex flex-col items-start justify-center gap-3 rounded-3xl border p-4
-          min-h-0 transition-shadow hover:shadow-md
-          ${TILE_GRADIENT[cell % 2]}
-          ${active ? 'border-[#5C7006] ring-1 ring-[#5C7006]' : 'border-[#E4E7CF]'}`}
-      >
-        <span className="font-display font-bold text-[15px] leading-tight text-ink">
-          {t(`nav.${NAV_LABEL_KEY[key]}`)}
-        </span>
-        <span
-          className="w-9 h-9 rounded-full grid place-items-center flex-shrink-0 text-white"
-          style={{ backgroundColor: OLIVE }}
-        >
-          <Icon className="w-[18px] h-[18px]" strokeWidth={2} />
-        </span>
-      </Link>
-    );
-  };
-
-  const head = CATEGORIES.slice(0, -1);
-  const tail = CATEGORIES.slice(-1);
-
   return (
     <div
       role="dialog"
@@ -158,7 +125,10 @@ export default function CategorySheet({ open, onClose }: { open: boolean; onClos
           );
         })}
 
-        {/* Browse-all: Swapped placement to 7th position */}
+        {/* Everything, unfiltered - the one tile in this grid that is not a
+            category. It used to read "Browse Categories" inside a sheet headed
+            "Categories", which described what the visitor was already doing and
+            said nothing about where it goes (QA 4.2). */}
         <Link
           to="/search"
           onClick={onClose}
@@ -168,7 +138,7 @@ export default function CategorySheet({ open, onClose }: { open: boolean; onClos
           style={{ backgroundColor: OLIVE }}
         >
           <span className="font-display font-bold text-[15px] leading-tight">
-            {t('nav.browse_categories')}
+            {t('nav.all_listings')}
           </span>
           <span className="w-9 h-9 rounded-full grid place-items-center flex-shrink-0 bg-white/25">
             <ArrowUpRight className="w-[18px] h-[18px]" strokeWidth={2.4} />

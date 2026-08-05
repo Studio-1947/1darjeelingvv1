@@ -9,8 +9,14 @@
 
 import { normalizeRoutes, RouteFare } from './routeFares';
 
-// Verified images already shipping in the app (see backend/src/seed_data.ts).
-// Used as the safe fallback when a keyword photo fails to load.
+// The five images the seeded listings ship with (see backend/src/seed_data.ts).
+//
+// These are *identifiers*, not a fallback set. They used to double as the
+// per-type stand-in whenever a photo failed to load, which is how one photo of
+// Kanchenjunga ended up heading a homestay, a teahouse and a monastery at the
+// same time while the image CDN was down (QA 1.1 / 3.7). A failed photo now
+// renders <ImageFallback> instead - branded, obviously not a photograph, and
+// visible to us when a host stops serving. See components/SmartImg.tsx.
 export const FALLBACK = {
   himalaya: 'https://images.unsplash.com/photo-1584395631446-e41b0fc3f68d',
   teaGarden: 'https://images.pexels.com/photos/35151733/pexels-photo-35151733.jpeg',
@@ -19,20 +25,11 @@ export const FALLBACK = {
   cafe: 'https://images.pexels.com/photos/33932441/pexels-photo-33932441.png',
 } as const;
 
-export function fallbackFor(type: string): string {
-  switch (type) {
-    case 'cafe':
-    case 'shop': return FALLBACK.cafe;
-    case 'biodiversity': return FALLBACK.redPanda;
-    case 'event': return FALLBACK.teaGarden;
-    default: return FALLBACK.himalaya;
-  }
-}
-
 /**
  * Real keyword photo with no API key, via LoremFlickr (serves matching Flickr
  * photos). `seed` locks a deterministic image so galleries stay stable across
- * reloads and sibling slots don't collide. Pair with <SmartImg> for a fallback.
+ * reloads and sibling slots don't collide - each listing gets its own picture
+ * rather than sharing one with its neighbours.
  */
 export function stockPhoto(query: string, w = 1600, h = 1000, seed = 1): string {
   const tags = query.trim().split(/\s+/).map(encodeURIComponent).join(',');

@@ -8,6 +8,10 @@ export default function Footer() {
   const { t } = useTranslation();
   return (
     <footer className="mt-16 md:mt-24 border-t border-[var(--line)] bg-white pb-20 lg:pb-0" data-testid="site-footer">
+      {/* Every column heading was an <h4> under a page <h1>, so the outline read
+          H1 → H4 → H4 → H4 with H2 and H3 skipped entirely (QA 5.2). They are the
+          top-level sections of the footer, so h2 is the honest level; the visual
+          size is set by the class and is unchanged. */}
       <div className="mx-auto max-w-7xl px-4 md:px-8 py-10 md:py-14 grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-10">
         <div className="col-span-2 md:col-span-1">
           <div className="flex items-center gap-2 mb-3">
@@ -18,7 +22,7 @@ export default function Footer() {
           <p className="mt-4 text-xs text-ink-soft flex items-center gap-1"><Heart size={12} className="text-flag" /> {t('footer.made')}</p>
         </div>
         <div>
-          <h4 className="font-display font-bold text-sm mb-3 text-ink">{t('nav.discover')}</h4>
+          <h2 className="font-display font-bold text-sm mb-3 text-ink">{t('nav.discover')}</h2>
           <ul className="space-y-2 text-sm text-ink-soft">
             <li><Link to="/spots">{t('nav.spots')}</Link></li>
             <li><Link to="/homestays">{t('nav.homestays')}</Link></li>
@@ -27,7 +31,7 @@ export default function Footer() {
           </ul>
         </div>
         <div>
-          <h4 className="font-display font-bold text-sm mb-3 text-ink">{t('footer.darjeeling')}</h4>
+          <h2 className="font-display font-bold text-sm mb-3 text-ink">{t('footer.darjeeling')}</h2>
           <ul className="space-y-2 text-sm text-ink-soft">
             <li><Link to="/events">{t('nav.events')}</Link></li>
             <li><Link to="/biodiversity">{t('nav.biodiversity')}</Link></li>
@@ -37,7 +41,7 @@ export default function Footer() {
           </ul>
         </div>
         <div>
-          <h4 className="font-display font-bold text-sm mb-3 text-ink">{t('footer.legal')}</h4>
+          <h2 className="font-display font-bold text-sm mb-3 text-ink">{t('footer.legal')}</h2>
           <ul className="space-y-2 text-sm text-ink-soft">
             <li><Link to="/privacy">{t('nav.privacy')}</Link></li>
             <li><Link to="/terms">{t('nav.terms')}</Link></li>

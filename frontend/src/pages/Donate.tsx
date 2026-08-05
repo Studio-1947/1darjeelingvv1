@@ -5,6 +5,7 @@ import { HeartHandshake, Check, ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { createPaymentOrder, completeMockPayment, payWithRazorpay } from '@/lib/api';
 import MockPaymentModal from '@/components/MockPaymentModal';
+import { useSeo } from '@/components/Seo';
 
 // Mirrors DONATION_MIN_PAISE / DONATION_MAX_PAISE in backend/src/config.ts. This copy exists to
 // give immediate feedback, not to enforce anything — the server's check is the real one, and it
@@ -16,6 +17,7 @@ const PRESETS_PAISE = [10000, 25000, 50000, 100000];
 
 export default function Donate() {
   const { t } = useTranslation();
+  useSeo({ title: t('donate.title'), description: t('donate.lead') });
   const { user } = useAuth();
   const nav = useNavigate();
 

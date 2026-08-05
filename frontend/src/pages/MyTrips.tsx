@@ -3,8 +3,9 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
-import { 
-  Ticket, Calendar, ArrowRight, XCircle, Loader2, Compass, Phone, 
+import { useSeo } from '@/components/Seo';
+import {
+  Ticket, Calendar, ArrowRight, XCircle, Loader2, Compass, Phone,
   CheckCircle2, Clock, MapPin, Store, LogIn, Sparkles
 } from 'lucide-react';
 
@@ -38,6 +39,7 @@ function StatusPill({ status, isPast }: { status: string; isPast: boolean }) {
 
 export default function MyTrips() {
   const { t, i18n } = useTranslation();
+  useSeo({ title: t('nav.my_trips'), noindex: true });
   const { user, loading: authLoading } = useAuth();
   const nav = useNavigate();
   const [bookings, setBookings] = useState<any[]>([]);
