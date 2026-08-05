@@ -5,6 +5,7 @@ import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { Phone, KeyRound } from 'lucide-react';
 import Logo from '@/components/Logo';
+import Seo from '@/components/Seo';
 
 export default function Login() {
   const { t } = useTranslation();
@@ -37,6 +38,10 @@ export default function Login() {
     return next.includes('provider') ? 'provider' : 'tourist';
   });
   const [mockOtp, setMockOtp] = useState('');
+  // Which channel the code actually went out on. The server asks WhatsApp first
+  // and falls back to SMS, and it reports back what it used - so the confirmation
+  // can name the right app instead of guessing.
+  const [sentChannel, setSentChannel] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [userExists, setUserExists] = useState(false);
@@ -49,6 +54,7 @@ export default function Login() {
     try {
       const { data } = await api.post('/auth/otp/send', { phone, channel: 'whatsapp' });
       setMockOtp(data.mock_otp);
+      setSentChannel(data.channel || '');
       setUserExists(!!data.exists);
       setStep(2);
     } catch (e) { setErr(e?.response?.data?.detail || t('auth.send_failed')); }
@@ -81,6 +87,7 @@ export default function Login() {
 
   return (
     <div className="mx-auto max-w-md px-4 md:px-8 py-8 md:py-14">
+      <Seo title={t('auth.welcome')} noindex />
       <div className="mist-panel p-6 md:p-8">
         <div className="text-center mb-6">
           <Logo className="mx-auto w-16 h-16" />
@@ -102,14 +109,26 @@ export default function Login() {
               </button>
             </div>
 
+            {/* One field, one name. English called this "Phone number" while
+                Hindi, Nepali and Bengali all called it "WhatsApp number", so the
+                same form told different visitors different things about where
+                their code would arrive (QA 3.2). The label is the neutral, true
+                one everywhere; the hint below says how delivery actually works,
+                which is what the discrepancy was really trying to convey - the
+                server tries WhatsApp first and falls back to SMS. */}
             <label className="block">
               <span className="text-xs font-semibold text-ink-soft">{t('auth.phone_label')}</span>
               <div className="mt-1 flex items-center gap-2 px-3 py-2 rounded-xl border border-[var(--line)] bg-white">
                 <Phone size={16} className="text-ink-soft" />
                 <input value={phone} onChange={(e) => setPhone(e.target.value)} required
+                  type="tel" inputMode="tel" autoComplete="tel"
+                  aria-describedby="login-phone-hint"
                   data-testid="login-phone" placeholder={t('auth.phone_placeholder')}
                   className="flex-1 bg-transparent outline-none py-1" />
               </div>
+              <span id="login-phone-hint" data-testid="login-phone-hint" className="mt-1.5 block text-xs text-ink-soft">
+                {t('auth.phone_hint')}
+              </span>
             </label>
 
             <button disabled={busy} data-testid="login-send-otp"
@@ -121,6 +140,13 @@ export default function Login() {
 
         {step === 2 && !showConfirmSwitch && (
           <form onSubmit={verify} className="space-y-4" data-testid="login-step-2">
+            {/* Names the app the code was actually sent through, rather than
+                leaving the visitor to check both. */}
+            {sentChannel && (
+              <p data-testid="login-sent-via" className="text-sm text-ink-soft">
+                {t(sentChannel === 'whatsapp' ? 'auth.sent_whatsapp' : 'auth.sent_sms', { phone })}
+              </p>
+            )}
             {mockOtp && (
               <div className="rounded-xl bg-gold/20 border border-gold/40 px-4 py-3 text-sm text-ink">
                 <span className="font-bold">{t('auth.mock_otp')}</span> {mockOtp}

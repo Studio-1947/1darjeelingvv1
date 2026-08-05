@@ -6,9 +6,11 @@ import { useAuth } from '@/context/AuthContext';
 import { createPaymentOrder, completeMockPayment, payWithRazorpay } from '@/lib/api';
 import { needsSupport } from '@/lib/support';
 import MockPaymentModal from '@/components/MockPaymentModal';
+import { useSeo } from '@/components/Seo';
 
 export default function Support() {
   const { t } = useTranslation();
+  useSeo({ title: t('support.title'), noindex: true });
   const { user, refresh, logout } = useAuth();
   const nav = useNavigate();
   const location = useLocation();

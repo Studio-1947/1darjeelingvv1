@@ -1,5 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import Seo from '@/components/Seo';
 
 /**
  * The renderer shared by every policy page — Privacy, Terms, Refunds and Contact.
@@ -57,6 +58,10 @@ export default function LegalDocument({ ns, testId }: { ns: string; testId: stri
 
   return (
     <div className="mx-auto max-w-3xl px-4 md:px-8 py-10 md:py-14" data-testid={testId}>
+      {/* Razorpay and the Consumer Protection rules both require these pages to be
+          findable, so they carry their own title and description rather than the
+          site-wide default. The first intro paragraph is the document's own summary. */}
+      <Seo title={t(`${ns}.title`)} description={intro[0]} />
       <h1 className="font-display font-extrabold text-3xl sm:text-4xl md:text-5xl text-ink leading-tight">{t(`${ns}.title`)}</h1>
       <p className="text-sm text-ink-soft mt-2">{t(`${ns}.updated`)}</p>
 

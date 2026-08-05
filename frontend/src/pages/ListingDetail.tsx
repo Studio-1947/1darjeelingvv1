@@ -6,7 +6,8 @@ import { shareLink } from '@/lib/share';
 import { openDirections } from '@/lib/directions';
 import { ListingDetailSkeleton, LoadingStatus } from '@/components/skeletons';
 import { amenitiesFor, hostFor } from '@/lib/listingMeta';
-import { contentFor, listingImage, galleryImagesFor, personImageFor, fallbackFor, spotInfoFor } from '@/lib/listingContent';
+import { contentFor, listingImage, galleryImagesFor, personImageFor, spotInfoFor } from '@/lib/listingContent';
+import Seo from '@/components/Seo';
 import MockPaymentModal from '@/components/MockPaymentModal';
 import BookingConfirmation from '@/components/BookingConfirmation';
 import DetailHero from '@/components/listing-detail/DetailHero';
@@ -97,7 +98,11 @@ export default function ListingDetail() {
   // direct-contact/action screen. Spots and biodiversity stay purely informational.
   const contactable = ['shop', 'cafe', 'event'].includes(item.type);
 
-  const unit = item.type === 'homestay' ? t('common.per_night') : item.type === 'driver' ? t('common.per_day') : '';
+  // A homestay's price is per person, not per night - the provider onboarding asks
+  // for "Starting Price (₹/Head)". The `common.per_night` key said "/ head" in
+  // English and "per night" in Hindi, Nepali and Bengali, so the same listing made
+  // two different commercial claims depending on the language (QA 3.1).
+  const unit = item.type === 'homestay' ? t('common.per_head') : item.type === 'driver' ? t('common.per_day') : '';
   const cta = ctaFor(item.type);
   const amenities = amenitiesFor(item);
   const host = hostFor(item);
@@ -106,7 +111,6 @@ export default function ListingDetail() {
   const spotInfo = spotInfoFor(item);
   const isSpot = item.type === 'spot';
   const initial = (item.title || '?').trim().charAt(0).toUpperCase();
-  const fallbackImg = fallbackFor(item.type);
 
   const gallery = galleryImagesFor(item);
   const personSrc = host.avatar || personImageFor(item);
@@ -122,6 +126,19 @@ export default function ListingDetail() {
 
   return (
     <div className="pb-28 lg:pb-0">
+      {/* Every listing used to inherit the site-wide title and description, so
+          Ghum Monastery and a Lebong homestay were indistinguishable to Google
+          and to a WhatsApp link preview - only the <h1> differed (QA 3.4). The
+          canonical is spelled out because a listing is reached with a trip's
+          dates attached, and those must not fragment it into separate URLs. */}
+      <Seo
+        title={item.title}
+        description={c.about || item.description}
+        image={listingImage(item, 1200, 630)}
+        canonical={`${window.location.origin}/listing/${item.id}`}
+        ogType={bookable ? 'product' : 'place'}
+      />
+
       <DetailHero item={item} unit={unit} onShare={shareIt} />
 
       <AboutSection item={item} about={c.about}
@@ -132,7 +149,7 @@ export default function ListingDetail() {
 
       {/* Drivers get their portrait and routes instead of a place gallery. */}
       {item.type !== 'driver' && gallery.length > 0 && (
-        <PhotosSection item={item} gallery={gallery} fallbackImg={fallbackImg} />
+        <PhotosSection item={item} gallery={gallery} />
       )}
 
       {/* Timings, entry fee, best season, altitude and directions — all admin-entered, so

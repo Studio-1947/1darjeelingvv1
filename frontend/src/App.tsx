@@ -26,6 +26,7 @@ import Privacy from '@/pages/Privacy';
 import Terms from '@/pages/Terms';
 import Refunds from '@/pages/Refunds';
 import Contact from '@/pages/Contact';
+import NotFound from '@/pages/NotFound';
 
 export default function App() {
   return (
@@ -65,6 +66,9 @@ export default function App() {
                   <Route path="/terms" element={<Terms />} />
                   <Route path="/refunds" element={<Refunds />} />
                   <Route path="/contact" element={<Contact />} />
+                  {/* Anything else. Without this the router matched nothing and
+                      rendered an empty <main> between the header and footer. */}
+                  <Route path="*" element={<NotFound />} />
                 </Routes>
               </SupportGate>
             </Layout>
