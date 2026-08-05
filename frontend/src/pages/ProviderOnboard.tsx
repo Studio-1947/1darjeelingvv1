@@ -7,6 +7,7 @@ import BasicInfoStep from '@/components/provider/onboard/BasicInfoStep';
 import DriverForm from '@/components/provider/onboard/DriverForm';
 import HomestayForm from '@/components/provider/onboard/HomestayForm';
 import CafeShopForm from '@/components/provider/onboard/CafeShopForm';
+import { useSeo } from '@/components/Seo';
 
 /**
  * Provider onboarding. Step 1 collects the business basics; step 2 is a
@@ -15,6 +16,7 @@ import CafeShopForm from '@/components/provider/onboard/CafeShopForm';
  */
 export default function ProviderOnboard() {
   const { t } = useTranslation();
+  useSeo({ title: t('provider.onboard_title') });
   const o = useProviderOnboard();
 
   const stepScreen =

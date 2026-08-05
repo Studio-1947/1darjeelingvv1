@@ -104,14 +104,14 @@ export function VisitInfoSection({ facts, howToReach }: {
 }
 
 /** Curated keyword-photo gallery (editorial content, not provider uploads). */
-export function PhotosSection({ item, gallery, fallbackImg }: { item: any; gallery: string[]; fallbackImg: string }) {
+export function PhotosSection({ item, gallery }: { item: any; gallery: string[] }) {
   const { t } = useTranslation();
   return (
     <Screen tone="white" testid="detail-photos">
       <SectionHead label={t('detail.photos')} title={t('detail.photos')} note={t('detail.gallery_note')} />
       <div className="mt-10 grid sm:grid-cols-3 gap-4 md:gap-5">
         {gallery.map((src, i) => (
-          <SmartImg key={src + i} src={src} fallback={fallbackImg} alt={`${item.title} ${i + 1}`}
+          <SmartImg key={src + i} src={src} alt={`${item.title} ${i + 1}`}
             className="w-full aspect-[4/3] object-cover rounded-2xl border border-[var(--line)]" />
         ))}
       </div>
@@ -148,7 +148,7 @@ export function StayGallerySection({ images }: { images: string[] }) {
       <div className="mt-10 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {images.map((url, index) => (
           <div key={index} className="aspect-[4/3] rounded-3xl overflow-hidden border border-[var(--line)] bg-mist shadow-md hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
-            <img src={url} alt={t('detail.gallery_alt', { index: index + 1 })} className="w-full h-full object-cover" />
+            <SmartImg src={url} alt={t('detail.gallery_alt', { index: index + 1 })} className="w-full h-full object-cover" />
           </div>
         ))}
       </div>

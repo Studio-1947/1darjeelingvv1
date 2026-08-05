@@ -2,8 +2,10 @@ import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import api from '@/lib/api';
-import { sizedImage } from '@/lib/listingContent';
+import { listingImage, sizedImage } from '@/lib/listingContent';
 import FeedCard from '@/components/FeedCard';
+import SmartImg from '@/components/SmartImg';
+import Seo from '@/components/Seo';
 import BookingWidget from '@/components/BookingWidget';
 import HeroMedia from '@/components/HeroMedia';
 import { CATEGORIES } from '@/constants/categories';
@@ -156,6 +158,8 @@ export default function Discover() {
 
   return (
     <div>
+      <Seo description={t('seo.home_description')} />
+
       {/* HERO / Booking widget - starts at y=0 and carries the header height as
           padding, since the bar is drawn on top of the video. */}
       <section className="relative min-h-[100dvh] flex flex-col justify-center" data-hero>
@@ -235,7 +239,9 @@ export default function Discover() {
               <Link key={s.id} to={`/listing/${s.id}`} data-testid={`spot-tile-${s.id}`}
                 className="flex-shrink-0 w-[70%] sm:w-[45%] md:w-[30%] rounded-2xl overflow-hidden bg-white border border-[var(--line)] btn-hover">
                 <div className="aspect-[4/5] relative bg-mist overflow-hidden">
-                  {s.image && <img src={sizedImage(s.image)} alt={s.title} className="w-full h-full object-cover" loading="lazy" decoding="async" />}
+                  {/* Per-listing, not the raw seed image five listings share - see
+                      the note in Category.tsx's grid tile. */}
+                  <SmartImg src={listingImage(s, 800, 1000)} alt={s.title} className="w-full h-full object-cover" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
                   <div className="absolute bottom-0 inset-x-0 p-3 md:p-4 text-white">
                     <div className="text-[10px] uppercase tracking-widest opacity-90">{s.location}</div>
@@ -274,14 +280,14 @@ export default function Discover() {
           {homestays.slice(0, 4).map((h) => (
             <div key={h.id} data-testid={`stay-tile-${h.id}`} className="flex flex-col rounded-2xl overflow-hidden bg-white border border-[var(--line)] btn-hover">
               <Link to={`/listing/${h.id}`} className="block aspect-square bg-mist overflow-hidden">
-                {h.image && <img src={sizedImage(h.image, 500)} alt={h.title} className="w-full h-full object-cover" loading="lazy" decoding="async" />}
+                <SmartImg src={listingImage(h, 500, 500)} alt={h.title} className="w-full h-full object-cover" />
               </Link>
               <div className="p-3 flex-1 flex flex-col">
                 <div className="font-display font-bold text-sm md:text-base text-ink line-clamp-1">{h.title}</div>
                 <div className="text-[11px] text-ink-soft line-clamp-1 mt-0.5">{h.location}</div>
                 <div className="mt-1.5 flex items-baseline gap-1">
                   <span className="font-extrabold text-pine text-sm md:text-base">₹{h.price}</span>
-                  <span className="text-[10px] text-ink-soft">{t('common.per_night')}</span>
+                  <span className="text-[10px] text-ink-soft">{t('common.per_head')}</span>
                 </div>
                 <Link to={`/listing/${h.id}`} data-testid={`stay-book-${h.id}`}
                   className="mt-3 inline-flex items-center justify-center gap-1.5 py-2 rounded-full bg-flag text-white font-bold text-xs btn-hover">

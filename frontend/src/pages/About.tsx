@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { ArrowRight, Mail, Heart, Check } from 'lucide-react';
 import CircularGallery from '@/components/CircularGallery';
 import { sizedImage } from '@/lib/listingContent';
+import { useSeo } from '@/components/Seo';
 
 // One photo per pillar, in the order the strings are listed.
 const PILLAR_IMAGES = [
@@ -40,6 +41,7 @@ const GALLERY_ITEMS = TEAM_MEMBERS.map(m => ({
  */
 export default function About() {
   const { t } = useTranslation();
+  useSeo({ title: t('about.title'), description: t('about.mission_body') });
   const stats = t('about.stats', { returnObjects: true }) as { v: string; l: string }[];
   const pillars = t('about.pillars', { returnObjects: true }) as { t: string; d: string }[];
   const chips = t('about.why_chips', { returnObjects: true }) as string[];

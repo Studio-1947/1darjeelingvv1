@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import gsap from 'gsap';
 import SmartImg from '@/components/SmartImg';
-import { listingImage, fallbackFor } from '@/lib/listingContent';
+import { listingImage } from '@/lib/listingContent';
 import VerifiedBadge from '@/components/provider/VerifiedBadge';
 import { MapPin, ArrowLeft, Share2, Heart, ChevronDown, Check } from 'lucide-react';
 import { SCREEN_H } from './primitives';
@@ -69,11 +69,10 @@ export default function DetailHero({ item, unit, onShare }: {
 
   // A distinct per-listing hero (provider image kept; shared seed images replaced).
   const heroSrc = listingImage(item, 2000, 1200);
-  const fallbackImg = fallbackFor(item.type);
 
   return (
     <section ref={heroRef} className={`relative ${SCREEN_H} h-[calc(100svh-var(--header-h))] w-full overflow-hidden bg-mist`} data-testid="detail-hero">
-      <SmartImg src={heroSrc} fallback={fallbackImg} alt={item.title} className="absolute inset-0 w-full h-full object-cover" />
+      <SmartImg src={heroSrc} alt={item.title} className="absolute inset-0 w-full h-full object-cover" />
       <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/45" />
 
       {/* Below lg the sticky header supplies the back control - avoid two. */}

@@ -29,3 +29,40 @@ export function addDays(date: string, n: number): string {
 export function isBadRange(checkIn: string, checkOut: string): boolean {
   return Boolean(checkIn && checkOut && checkOut <= checkIn);
 }
+
+/**
+ * A date-input value as a Date at local midnight, or null.
+ *
+ * `new Date('2026-08-20')` is parsed as UTC midnight, so formatting it anywhere
+ * west of Greenwich prints the 19th. Building from the parts keeps the day the
+ * day the visitor picked, wherever they are reading from.
+ */
+export function parseDate(date: string): Date | null {
+  if (!date) return null;
+  const [y, m, d] = date.split('-').map(Number);
+  if (!y || !m || !d) return null;
+  const t = new Date(y, m - 1, d);
+  return Number.isNaN(t.getTime()) ? null : t;
+}
+
+/** One date in the active language: `20 Aug`. Falls back to the raw value if unparseable. */
+export function formatDay(date: string, locale = 'en'): string {
+  const d = parseDate(date);
+  if (!d) return date || '';
+  return d.toLocaleDateString(locale, { day: 'numeric', month: 'short' });
+}
+
+/**
+ * A stay as one string: `20 - 22 Aug` inside a month, `28 Aug - 2 Sep` across
+ * one. Returns '' unless both ends are set - callers word the half-filled cases
+ * themselves, since "from the 20th" and "until the 22nd" are different prompts.
+ */
+export function formatRange(checkIn: string, checkOut: string, locale = 'en'): string {
+  const a = parseDate(checkIn);
+  const b = parseDate(checkOut);
+  if (!a || !b) return '';
+  if (a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth()) {
+    return `${a.getDate()} - ${b.getDate()} ${a.toLocaleDateString(locale, { month: 'short' })}`;
+  }
+  return `${formatDay(checkIn, locale)} - ${formatDay(checkOut, locale)}`;
+}

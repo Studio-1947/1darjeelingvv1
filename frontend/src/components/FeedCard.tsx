@@ -3,25 +3,34 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { MapPin, Share2, Bookmark, Star, ArrowRight, Phone, Store, Coffee, Ticket, Leaf, Mountain, Check, X } from 'lucide-react';
 import SmartImg from '@/components/SmartImg';
-import { listingImage, fallbackFor } from '@/lib/listingContent';
+import { listingImage } from '@/lib/listingContent';
+import { cardCtaKey } from '@/lib/cardCta';
 import { useFavorites } from '@/context/FavoritesContext';
 import { useLoginGate } from '@/components/LoginGate';
 import { shareLink } from '@/lib/share';
 
+// The icon and colour still say what kind of place this is; the words no longer
+// promise something the card can't do. Tapping any of these opens the listing -
+// it does not reserve a room or ring a driver - so only the two types whose CTA
+// already described a navigation keep their own wording (QA 4.7). The shared
+// label comes from cardCtaKey so the grid tiles and these cards can't drift.
 const CTA_MAP = {
-  homestay: { key: 'book_now', Icon: ArrowRight, color: 'bg-flag text-white' },
-  driver: { key: 'talk_to_driver', Icon: Phone, color: 'bg-pine text-white' },
-  shop: { key: 'contact_shop', Icon: Store, color: 'bg-ink text-white' },
-  cafe: { key: 'visit_cafe', Icon: Coffee, color: 'bg-ink text-white' },
-  event: { key: 'join_event', Icon: Ticket, color: 'bg-flag text-white' },
-  biodiversity: { key: 'learn_more', Icon: Leaf, color: 'bg-pine text-white' },
-  spot: { key: 'explore', Icon: Mountain, color: 'bg-pine text-white' },
+  homestay: { Icon: ArrowRight, color: 'bg-flag text-white' },
+  driver: { Icon: Phone, color: 'bg-pine text-white' },
+  shop: { Icon: Store, color: 'bg-ink text-white' },
+  cafe: { Icon: Coffee, color: 'bg-ink text-white' },
+  event: { Icon: Ticket, color: 'bg-flag text-white' },
+  biodiversity: { Icon: Leaf, color: 'bg-pine text-white' },
+  spot: { Icon: Mountain, color: 'bg-pine text-white' },
 };
 
 /**
  * Instagram-post-style feed card with contextual CTA button.
+ *
+ * `tripSuffix` carries the dates and guest count from a search through to the
+ * listing page, so the booking form opens filled in - see lib/tripParams.
  */
-export default function FeedCard({ item, priority = false }) {
+export default function FeedCard({ item, priority = false, tripSuffix = '' }) {
   const { t } = useTranslation();
   const nav = useNavigate();
   const { isFavorite, toggle } = useFavorites();
@@ -58,12 +67,13 @@ export default function FeedCard({ item, priority = false }) {
     if (!requireAuth('review')) return;
     nav(`/listing/${item.id}#reviews`);
   };
-  const unit = item.type === 'homestay' ? t('common.per_night') : item.type === 'driver' ? t('common.per_day') : '';
+  // A homestay is priced per person, not per night - see the note on common.per_head.
+  const unit = item.type === 'homestay' ? t('common.per_head') : item.type === 'driver' ? t('common.per_day') : '';
   const cat = t(`categories.${item.type}`);
   const cta = CTA_MAP[item.type] || CTA_MAP.spot;
   const CtaIcon = cta.Icon;
   const img = listingImage(item, 900, 900);
-  const fallbackImg = fallbackFor(item.type);
+  const href = `/listing/${item.id}${tripSuffix}`;
 
   return (
     <article className="bg-white rounded-3xl border border-[var(--line)] overflow-hidden max-w-xl mx-auto md:mx-0 w-full h-full flex flex-col" data-testid={`feed-card-${item.id}`}>
@@ -72,7 +82,7 @@ export default function FeedCard({ item, priority = false }) {
         <div className="w-10 h-10 rounded-full p-[2px] bg-gradient-to-tr from-pine via-gold to-flag flex-shrink-0">
           <div className="w-full h-full rounded-full bg-white p-[2px]">
             <div className="w-full h-full rounded-full overflow-hidden bg-mist">
-              <SmartImg src={img} fallback={fallbackImg} alt="" className="w-full h-full object-cover" loading={priority ? 'eager' : 'lazy'} />
+              <SmartImg src={img} alt="" className="w-full h-full object-cover" loading={priority ? 'eager' : 'lazy'} />
             </div>
           </div>
         </div>
@@ -83,9 +93,9 @@ export default function FeedCard({ item, priority = false }) {
       </div>
 
       {/* Image */}
-      <Link to={`/listing/${item.id}`} className="block relative bg-mist flex-shrink-0" data-testid={`feed-card-image-${item.id}`}>
+      <Link to={href} className="block relative bg-mist flex-shrink-0" data-testid={`feed-card-image-${item.id}`}>
         <div className="aspect-square w-full overflow-hidden">
-          <SmartImg src={img} fallback={fallbackImg} alt={item.title} className="w-full h-full object-cover" loading={priority ? 'eager' : 'lazy'} />
+          <SmartImg src={img} alt={item.title} className="w-full h-full object-cover" loading={priority ? 'eager' : 'lazy'} />
         </div>
         {item.price > 0 && (
           <div className="absolute bottom-3 left-3 px-3 py-1.5 rounded-full bg-white/95 backdrop-blur text-ink text-sm font-extrabold shadow-sm">
@@ -135,7 +145,7 @@ export default function FeedCard({ item, priority = false }) {
 
       {/* Caption */}
       <div className="px-3.5 py-3 flex-1 flex flex-col">
-        <Link to={`/listing/${item.id}`} className="font-display font-extrabold text-lg text-ink leading-tight hover:underline line-clamp-1">
+        <Link to={href} className="font-display font-extrabold text-lg text-ink leading-tight hover:underline line-clamp-1">
           {item.title}
         </Link>
         <p className="mt-1 text-xs text-ink-soft flex items-center gap-1 truncate"><MapPin size={11} className="flex-shrink-0" /> {item.location}</p>
@@ -147,11 +157,11 @@ export default function FeedCard({ item, priority = false }) {
         {/* CTA */}
         <div className="mt-auto pt-3.5">
           <Link
-            to={`/listing/${item.id}`}
+            to={href}
             data-testid={`feed-cta-${item.id}`}
             className={`w-full inline-flex items-center justify-center gap-2 py-2.5 rounded-full font-bold text-sm btn-hover ${cta.color}`}
           >
-            <CtaIcon size={16} /> {t(`cta.${cta.key}`)}
+            <CtaIcon size={16} /> {t(cardCtaKey(item.type))}
           </Link>
         </div>
       </div>

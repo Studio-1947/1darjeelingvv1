@@ -35,7 +35,8 @@
     "browse_categories": "Browse Categories",
     "terms": "Terms",
     "refunds": "Refunds",
-    "contact": "Contact"
+    "contact": "Contact",
+    "all_listings": "All listings"
   },
   "support": {
     "title": "A small token to keep 1 Darjeeling running",
@@ -87,7 +88,7 @@
     "view_details": "View details",
     "explore": "Explore",
     "starting_from": "From",
-    "per_night": "/ head",
+    "per_night": "/ night",
     "per_head": "/ head",
     "per_day": "/ day",
     "loading": "Loading…",
@@ -109,7 +110,8 @@
     "save_changes": "Save changes",
     "something_wrong": "Something went wrong",
     "save_failed": "Save failed",
-    "not_found": "Listing not found."
+    "not_found": "Listing not found.",
+    "entry_varies": "Entry varies"
   },
   "cta": {
     "book_now": "Reserve Now",
@@ -186,7 +188,10 @@
     "terms_link": "privacy policy",
     "terms_suffix": ".",
     "send_failed": "Failed to send OTP",
-    "invalid_otp": "Invalid OTP"
+    "invalid_otp": "Invalid OTP",
+    "phone_hint": "We send a one-time code on WhatsApp, or by SMS if WhatsApp is not available on this number.",
+    "sent_whatsapp": "Code sent on WhatsApp to {{phone}}.",
+    "sent_sms": "Code sent by SMS to {{phone}}."
   },
   "provider": {
     "onboard_title": "List your business",
@@ -262,7 +267,16 @@
     },
     "dates_required": "Check-in and check-out dates are required",
     "dates_order": "Check-out date must be after check-in date",
-    "failed": "Booking failed"
+    "failed": "Booking failed",
+    "price_details": "Price details",
+    "nights_one": "{{count}} night",
+    "nights_other": "{{count}} nights",
+    "pick_dates_for_total": "Pick your dates to see the full amount.",
+    "paid_to_host": "Paid directly to your host.",
+    "confirmation_fee": "Booking confirmation fee",
+    "payable_now": "Payable now",
+    "fees_and_refunds": "Fees & refund policy",
+    "guests_required": "At least one guest"
   },
   "responsible": {
     "title": "Responsible Tourism",
@@ -623,7 +637,14 @@
     "search": "Search",
     "results_one": "{{count}} result",
     "results_other": "{{count}} results",
-    "empty": "No listings yet in this category."
+    "empty": "No listings yet in this category.",
+    "view_grid": "Grid view",
+    "view_list": "List view",
+    "none_in_category": "No {{category}} match “{{query}}”.",
+    "search_all": "Search all categories",
+    "found_elsewhere_one": "{{count}} result for “{{query}}” in another category",
+    "found_elsewhere_other": "{{count}} results for “{{query}}” in other categories",
+    "found_elsewhere_note": "Not in this category, but it might be what you were looking for."
   },
   "feed": {
     "no_reviews": "No reviews",
@@ -1330,5 +1351,19 @@
         }
       }
     ]
+  },
+  "a11y": {
+    "skip_to_content": "Skip to content"
+  },
+  "seo": {
+    "default_description": "Tourism spots, homestays, drivers, cafes, cultural events and Himalayan biodiversity across Darjeeling, Kurseong and Kalimpong.",
+    "home_description": "Find viewpoints, family-run homestays, licensed drivers, tea shops, cafes and festivals across the Darjeeling hills - booked direct with the people who run them."
+  },
+  "notfound": {
+    "eyebrow": "Page not found",
+    "title": "This page is not here",
+    "body": "The link may be old, or the address mistyped. Everything on 1 Darjeeling is still one tap away.",
+    "go_home": "Back to home",
+    "browse": "Browse everything"
   }
 }

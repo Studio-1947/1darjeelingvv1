@@ -3,7 +3,16 @@ import React, { useState } from 'react';
 // The site header is sticky, so a "full screen" section is the viewport minus
 // its height, or each one would sit past the fold. --header-h tracks the real
 // height (the header carries the circular category rail).
+//
+// This is the hero's height. The stacked sections below it use SECTION_H, which
+// is deliberately shorter: a section is centred inside its box, so a heading and
+// three photos in a full-viewport frame left half a screen of empty white
+// between the description and the Photos block - which reads as a component
+// that failed to render rather than as breathing room (QA 4.4). Two thirds of
+// the viewport still gives each section the page to itself when its content
+// warrants it, and lets a short one close up behind the next.
 export const SCREEN_H = 'min-h-[calc(100svh-var(--header-h))]';
+export const SECTION_H = 'min-h-[min(66svh,calc(100svh-var(--header-h)))]';
 
 /**
  * How the detail page's sections align their content. Every section in this
@@ -37,8 +46,8 @@ export function Screen({ tone = 'bg', children, testid }: {
 }) {
   const bg = tone === 'white' ? 'bg-white' : tone === 'mist' ? 'bg-mist' : 'bg-[var(--bg)]';
   return (
-    <section data-testid={testid} className={`${SCREEN_H} flex items-center ${bg}`}>
-      <div className={`${SCREEN_COL} py-20 md:py-24`}>{children}</div>
+    <section data-testid={testid} className={`${SECTION_H} flex items-center ${bg}`}>
+      <div className={`${SCREEN_COL} py-16 md:py-20`}>{children}</div>
     </section>
   );
 }

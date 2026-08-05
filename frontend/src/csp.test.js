@@ -18,24 +18,51 @@ const path = require('path');
 
 const REPO_ROOT = path.join(__dirname, '..', '..');
 const NGINX_CONF = path.join(REPO_ROOT, 'deploy', 'nginx', 'app.conf');
+const SNIPPET_DIR = path.join(REPO_ROOT, 'deploy', 'nginx', 'snippets');
 const INDEX_HTML = path.join(__dirname, '..', 'public', 'index.html');
 const SRC_DIR = __dirname;
 
 const CSP_HEADER = /add_header\s+Content-Security-Policy\s+"([^"]+)"/;
+const SNIPPET_INCLUDE = /include\s+\/etc\/nginx\/snippets\/([\w.-]+);/g;
+
+/** The body of a `location <prefix> { … }` block, up to its closing brace. */
+function locationBlock(conf, locationPrefix) {
+  const start = conf.indexOf(`location ${locationPrefix} {`);
+  if (start === -1) throw new Error(`No "location ${locationPrefix} {" block in app.conf`);
+  const rest = conf.slice(start);
+  // Locations sit one level inside `server { … }`, so their closing brace is the first line
+  // that is exactly four spaces and a brace. Brace-counting would be more general and is not
+  // worth it against a file whose indentation is enforced by review.
+  const end = rest.indexOf('\n    }');
+  return end === -1 ? rest : rest.slice(0, end);
+}
 
 /**
- * The CSP declared inside a given `location <prefix> {` block.
+ * The CSP that applies inside a given `location <prefix> {` block.
  *
  * Reading "the first CSP in the file" instead of this is what made the first version of these
  * tests fail against the admin policy — which has no frame-src at all, because it needs none.
+ *
+ * The policies now live in deploy/nginx/snippets/ and reach each location through an `include`,
+ * because add_header does not inherit into a location that declares one of its own and all four
+ * static locations therefore have to restate the whole header set. This follows the include
+ * rather than reading app.conf alone — which is what these tests used to do, and why they
+ * started throwing at import time the moment the snippets landed.
  */
 function cspFor(locationPrefix) {
   const conf = fs.readFileSync(NGINX_CONF, 'utf8');
-  const blockStart = conf.indexOf(`location ${locationPrefix} {`);
-  if (blockStart === -1) throw new Error(`No "location ${locationPrefix} {" block in app.conf`);
-  const match = conf.slice(blockStart).match(CSP_HEADER);
-  if (!match) throw new Error(`No Content-Security-Policy inside "location ${locationPrefix}"`);
-  return match[1];
+  const block = locationBlock(conf, locationPrefix);
+
+  const sources = [block];
+  for (const m of block.matchAll(SNIPPET_INCLUDE)) {
+    sources.push(fs.readFileSync(path.join(SNIPPET_DIR, m[1]), 'utf8'));
+  }
+
+  for (const text of sources) {
+    const match = text.match(CSP_HEADER);
+    if (match) return match[1];
+  }
+  throw new Error(`No Content-Security-Policy reaches "location ${locationPrefix}"`);
 }
 
 /** The source values of one CSP directive, e.g. directiveSources(csp, 'frame-src'). */
@@ -150,10 +177,29 @@ describe('search indexing', () => {
   });
 
   it('applies the tag to every location that serves indexable content', () => {
-    // HTML for both SPAs, plus the public image bucket — listing photos are indexable by Google
-    // Images in their own right, so leaving that location out would index them under staging.
-    const tagged = conf.match(/add_header\s+X-Robots-Tag\s+\$robots_tag\s+always;/g) || [];
-    expect(tagged.length).toBe(3);
+    // HTML for both SPAs and their asset sub-locations reach it through the shared snippet;
+    // the public image bucket declares its own because it proxies MinIO rather than serving
+    // files. Listing photos are indexable by Google Images in their own right, so leaving that
+    // location out would index them under staging.
+    const common = fs.readFileSync(path.join(SNIPPET_DIR, 'headers-common.conf'), 'utf8');
+    expect((common.match(/add_header\s+X-Robots-Tag\s+\$robots_tag\s+always;/g) || []).length).toBe(1);
+
+    const includers = conf.match(/include\s+\/etc\/nginx\/snippets\/headers-common\.conf;/g) || [];
+    expect(includers.length).toBe(4);
+
+    expect(locationBlock(conf, '/one-darjeeling/')).toMatch(/add_header\s+X-Robots-Tag\s+\$robots_tag\s+always;/);
+  });
+
+  it('pairs the shared headers with a policy in every static location', () => {
+    // The two snippets are what stop the four static locations drifting apart, so a location that
+    // pulls in one and forgets the other is the failure mode they were split to prevent — an
+    // asset location silently running with no CSP at all.
+    const blocks = ['/static/', '/', '/admin/assets/', '/admin/'];
+    for (const prefix of blocks) {
+      const block = locationBlock(conf, prefix);
+      expect(block).toMatch(/include\s+\/etc\/nginx\/snippets\/headers-common\.conf;/);
+      expect(block).toMatch(/include\s+\/etc\/nginx\/snippets\/csp-(public|admin)\.conf;/);
+    }
   });
 
   it('does not pair noindex with a Disallow robots.txt', () => {

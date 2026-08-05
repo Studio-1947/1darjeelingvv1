@@ -6,12 +6,14 @@ import { useAuth } from '@/context/AuthContext';
 import { fetchFavorites, SavedListing } from '@/lib/favorites';
 import api from '@/lib/api';
 import ListingCard from '@/components/ListingCard';
+import { useSeo } from '@/components/Seo';
 
 /**
  * Wishlist / Saved places with shareable Trip Plan itinerary feature.
  */
 export default function Saved() {
   const { t } = useTranslation();
+  useSeo({ title: t('saved.title'), noindex: true });
   const { user, loading: authLoading } = useAuth();
   const nav = useNavigate();
   const [searchParams] = useSearchParams();

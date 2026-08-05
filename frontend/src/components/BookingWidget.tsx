@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Search, MapPin, Navigation, Calendar, Users, Home as HomeIcon, Car, Loader2, Minus, Plus } from 'lucide-react';
 import api from '@/lib/api';
-import { todayStr, addDays, isBadRange } from '@/lib/dates';
+import { todayStr, addDays, isBadRange, formatDay, formatRange } from '@/lib/dates';
+import { writeTrip } from '@/lib/tripParams';
 
 // Offered the moment the field is focused, so an empty search still has
 // somewhere to go. Filtered against whatever gets typed after that.
@@ -103,6 +104,12 @@ export default function BookingWidget() {
   // the number every display and caller should read.
   const [guests, setGuests] = useState('2');
   const guestCount = parseInt(guests, 10) || 1;
+  // Whether the visitor actually chose a party size, as opposed to leaving the
+  // default of 2 alone. Same distinction the collapsed bar's summary already
+  // draws: guests qualifies a query, it never starts one - so an untouched
+  // field must not put "2 Guests" in the results URL and on the booking form.
+  const [guestsTouched, setGuestsTouched] = useState(false);
+  const changeGuests = (value: string) => { setGuestsTouched(true); setGuests(value); };
 
   // The widget is one panel rather than four independent popovers, so it
   // needs one flag. `showSuggest` only governs the place list inside it.
@@ -127,29 +134,11 @@ export default function BookingWidget() {
 
   const formatDates = () => {
     if (!checkIn && !checkOut) return t('widget.any_dates');
-
     // Month names follow the chosen language, not a hardcoded en-US locale.
     const locale = i18n.language || 'en';
-    const formatDateStr = (dateStr) => {
-      if (!dateStr) return '';
-      const d = new Date(dateStr);
-      if (isNaN(d.getTime())) return dateStr;
-      return d.toLocaleDateString(locale, { day: 'numeric', month: 'short' });
-    };
-
-    if (checkIn && !checkOut) return t('widget.from_date', { date: formatDateStr(checkIn) });
-    if (!checkIn && checkOut) return t('widget.until_date', { date: formatDateStr(checkOut) });
-
-    const d1 = new Date(checkIn);
-    const d2 = new Date(checkOut);
-    if (!isNaN(d1.getTime()) && !isNaN(d2.getTime())) {
-      if (d1.getMonth() === d2.getMonth() && d1.getFullYear() === d2.getFullYear()) {
-        const monthStr = d1.toLocaleDateString(locale, { month: 'short' });
-        return `${d1.getDate()} - ${d2.getDate()} ${monthStr}`;
-      }
-    }
-
-    return `${formatDateStr(checkIn)} - ${formatDateStr(checkOut)}`;
+    if (checkIn && !checkOut) return t('widget.from_date', { date: formatDay(checkIn, locale) });
+    if (!checkIn && checkOut) return t('widget.until_date', { date: formatDay(checkOut, locale) });
+    return formatRange(checkIn, checkOut, locale);
   };
 
   const tabs = [
@@ -241,15 +230,23 @@ export default function BookingWidget() {
   // nothing else, a driver search returns drivers and nothing else. Every query
   // therefore carries the tab's type, and an empty one falls through to that
   // category's own page.
+  //
+  // The dates and guest count ride along on every submit, including the empty-query
+  // fall-through to /homestays: the panel showed them back to the visitor, so
+  // dropping them at the moment they press Search is the one thing the widget
+  // must not do (QA 2.2). /search and the listing page both read them back out
+  // via lib/tripParams.
   const submit = (e) => {
     e.preventDefault();
     const active = activeTab;
-    const params = new URLSearchParams({ type: active.type });
+    const trip = { checkIn, checkOut, guests: guestsTouched ? guestCount : 1 };
+    const params = writeTrip(new URLSearchParams({ type: active.type }), trip);
+    const bare = writeTrip(new URLSearchParams(), trip).toString();
 
     if (tab === 'driver') {
       const a = from.trim();
       const b = to.trim();
-      if (!a && !b) return nav(active.target);
+      if (!a && !b) return nav(bare ? `${active.target}?${bare}` : active.target);
       // The route, not free text: a driver's title and location say where they
       // live, not where they drive, so matching `q` against them dropped the
       // drivers who actually run the trip. /search reads from/to against each
@@ -260,7 +257,7 @@ export default function BookingWidget() {
     }
 
     const where = q.trim();
-    if (!where) return nav(active.target);
+    if (!where) return nav(bare ? `${active.target}?${bare}` : active.target);
     params.set('q', where);
     return nav(`/search?${params}`);
   };
@@ -533,7 +530,7 @@ export default function BookingWidget() {
                   maxLength={String(MAX_GUESTS).length}
                   aria-label={t('widget.number_of_guests')}
                   value={guests}
-                  onChange={(e) => setGuests(typedGuests(e.target.value))}
+                  onChange={(e) => changeGuests(typedGuests(e.target.value))}
                   onBlur={() => setGuests(String(guestCount))}
                   data-testid="booking-widget-guests"
                   className="flex-1 min-w-0 bg-transparent outline-none text-sm text-center text-white"
@@ -541,7 +538,7 @@ export default function BookingWidget() {
                 <span className="flex items-center gap-1.5 flex-shrink-0">
                   <button
                     type="button"
-                    onClick={() => setGuests(String(Math.max(1, guestCount - 1)))}
+                    onClick={() => changeGuests(String(Math.max(1, guestCount - 1)))}
                     disabled={guestCount <= 1}
                     aria-label={t('widget.guests_less')}
                     data-testid="booking-widget-guests-minus"
@@ -551,7 +548,7 @@ export default function BookingWidget() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setGuests(String(Math.min(MAX_GUESTS, guestCount + 1)))}
+                    onClick={() => changeGuests(String(Math.min(MAX_GUESTS, guestCount + 1)))}
                     disabled={guestCount >= MAX_GUESTS}
                     aria-label={t('widget.guests_more')}
                     data-testid="booking-widget-guests-plus"

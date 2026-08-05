@@ -9,9 +9,11 @@ import {
 } from 'lucide-react';
 import ListingFormModal from '@/components/ListingFormModal';
 import EditListingModal from '@/components/provider/dashboard/EditListingModal';
+import { useSeo } from '@/components/Seo';
 
 export default function MyListings() {
   const { t } = useTranslation();
+  useSeo({ title: t('nav.my_listings'), noindex: true });
   const { user, loading: authLoading } = useAuth();
   const nav = useNavigate();
   

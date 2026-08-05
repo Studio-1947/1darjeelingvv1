@@ -17,6 +17,7 @@ import type { KycProfile } from '@/lib/kyc';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import AvatarUploader from '@/components/provider/AvatarUploader';
 import { uploadImage } from '@/lib/uploadImage';
+import { useSeo } from '@/components/Seo';
 
 // The edit-listing tile names what the provider is actually configuring. Only
 // a homestay has a "stay"; a driver's listing is a profile of themselves, their
@@ -31,6 +32,7 @@ const CONFIGURE_LABEL_KEY: Record<string, string> = {
 /** Provider home: booking stats, the bookings list, and business profile. */
 export default function ProviderDashboard() {
   const { t } = useTranslation();
+  useSeo({ title: t('provider.dashboard_title'), noindex: true });
   const { user, loading: authLoading } = useAuth();
   const nav = useNavigate();
   const [provider, setProvider] = useState(null);

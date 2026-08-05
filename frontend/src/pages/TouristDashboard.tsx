@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { LogOut, Store, Compass, Phone, ArrowRight, Ticket, Calendar, Sparkles, XCircle, Loader2 } from 'lucide-react';
+import { useSeo } from '@/components/Seo';
 
 function StatusPill({ status }) {
   const { t } = useTranslation();
@@ -19,6 +20,7 @@ function StatusPill({ status }) {
 
 export default function TouristDashboard() {
   const { t, i18n } = useTranslation();
+  useSeo({ title: t('nav.dashboard'), noindex: true });
   const { user, loading: authLoading, logout } = useAuth();
   const nav = useNavigate();
   const [bookings, setBookings] = useState<any[]>([]);
