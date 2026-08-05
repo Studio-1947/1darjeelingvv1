@@ -149,5 +149,46 @@ jobs:
             cd /var/www/1darjeeling-in
             git fetch origin prod
             git reset --hard origin/prod
-            docker compose -f docker-compose.in.yml up -d --build --remove-orphans
+
+            # BuildKit attaches a provenance attestation by default, which makes the build export an
+            # OCI index whose digest changes on EVERY build — even one where every layer is CACHED.
+            # Compose compares that digest against the image the running container was created from,
+            # so without this line every deploy recreated every service, including the ones the
+            # commit never touched. That is how 3188926 — a commit touching only deploy/nginx/* —
+            # came to recreate the backend, lose the rename race below, and take /api down for a
+            # change that had nothing to do with it. Nothing in this pipeline consumes attestations.
+            export BUILDX_NO_DEFAULT_ATTESTATIONS=1
+
+            # --wait, because plain `up -d` returns once the containers are *started*: a backend
+            # that exits during `drizzle-kit migrate` or boots without a database would ship as a
+            # green deploy. Paired with the backend healthcheck in docker-compose.in.yml this fails
+            # the job on a sick stack. The timeout has to clear migrations on a cold start.
+            deploy() {
+              docker compose -f docker-compose.in.yml up -d --build --remove-orphans \
+                --wait --wait-timeout 180
+            }
+
+            # To replace a container Compose renames the outgoing one to <short-id>_<name> to free
+            # the name, then creates its replacement under the real name. When the daemon loses the
+            # renamed container mid-dance it answers "No such container: <short-id>_<name>" and `up`
+            # aborts — leaving that service with NO container at all. That is a hard outage, not a
+            # failed no-op, and it is what happened on 2026-08-04: the backend simply ceased to
+            # exist and nginx 502'd every /api path until someone noticed by hand.
+            #
+            # It is a known intermittent Docker race (docker/compose#11151) whose documented remedy
+            # is to run `up` again. So: clear any half-renamed leftovers and retry once, rather than
+            # ending the job with production down. A second failure is real and must stay loud.
+            if ! deploy; then
+              echo "::warning::compose up failed — sweeping half-recreated containers and retrying once"
+              # Deliberately unanchored: some daemons expose container names with a leading "/", so
+              # a ^-anchored pattern silently matches nothing. The 12-hex prefix is specific enough
+              # on its own — no real container in this stack is named that way.
+              docker ps -aq --filter 'name=[0-9a-f]{12}_1darjeeling_in_' | xargs -r docker rm -f || true
+              if ! deploy; then
+                echo "::error::Redeploy failed twice. The 1darjeeling.in stack may be partially down —"
+                echo "::error::check 'docker compose -f docker-compose.in.yml ps' on the VPS before retrying."
+                exit 1
+              fi
+            fi
+
             docker image prune -f

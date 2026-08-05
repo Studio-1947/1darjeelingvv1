@@ -86,6 +86,28 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+    # Without this the container is "healthy" the instant the process forks, so a backend that
+    # dies during `drizzle-kit migrate`, or boots with an unreachable database, still counts as a
+    # successful deploy. Probes /api/health (readiness — 200 only when Postgres AND MinIO answer)
+    # rather than /api (liveness — a JSON literal that keeps saying "ok" with the database on fire).
+    #
+    # node, not curl/wget: node:20-slim ships neither, and a healthcheck is a poor reason to add a
+    # package to a production image.
+    #
+    # Safe to point at readiness because Docker does NOT restart a merely-unhealthy container (only
+    # one that exits), so a MinIO hiccup marks this red without starting a restart loop. What it
+    # does do is fail `up --wait` in the deploy job — which is the entire point.
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "require('http').get('http://127.0.0.1:8000/api/health',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      # Covers a cold start that has to apply migrations before it can answer anything.
+      start_period: 60s
 
   minio:
     image: minio/minio:latest
