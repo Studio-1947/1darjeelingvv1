@@ -35,7 +35,7 @@ export function rateLimiter(
   limit: number,
   windowMs: number,
   keyPrefix: string,
-  opts: { enabled?: boolean } = {}
+  opts: { enabled?: boolean; keyExtractor?: (req: Request) => string | undefined } = {}
 ) {
   // Resolved once at mount time; opts.enabled lets tests exercise the limiter, which is otherwise
   // disabled under APP_ENV=test and would go completely untested.
@@ -51,13 +51,13 @@ export function rateLimiter(
       return next();
     }
 
-    const ip = req.ip || req.socket.remoteAddress || 'unknown';
+    const key = opts.keyExtractor?.(req) || req.ip || req.socket.remoteAddress || 'unknown';
     const now = Date.now();
-    const record = store[ip];
+    const record = store[key];
 
     if (!record || now > record.resetTime) {
       sweepExpired(store, now);
-      store[ip] = {
+      store[key] = {
         count: 1,
         resetTime: now + windowMs
       };
