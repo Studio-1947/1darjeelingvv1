@@ -34,6 +34,9 @@ export function isSupportRequiredError(error: any): boolean {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    if (error?.response?.status === 401) {
+      localStorage.removeItem('token');
+    }
     if (isSupportRequiredError(error) && window.location.pathname !== SUPPORT_ROUTE) {
       const next = encodeURIComponent(`${window.location.pathname}${window.location.search}`);
       window.location.assign(`${SUPPORT_ROUTE}?next=${next}`);
