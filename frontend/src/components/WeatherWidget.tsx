@@ -60,13 +60,11 @@ const WEATHERS: Record<string, LocationWeather> = {
 export default function WeatherWidget() {
   const { t } = useTranslation();
   const [selectedLoc, setSelectedLoc] = useState<keyof typeof WEATHERS>('darjeeling');
-  const [weatherData, setWeatherData] = useState<LocationWeather>(WEATHERS.darjeeling);
+  const [liveOverride, setLiveOverride] = useState<LocationWeather | null>(null);
 
   const handleSelectLocation = (key: keyof typeof WEATHERS) => {
     setSelectedLoc(key);
-    if (WEATHERS[key]) {
-      setWeatherData(WEATHERS[key]);
-    }
+    setLiveOverride(null); // Clear override so tab switch instantly shows target location weather
   };
 
   useEffect(() => {
@@ -74,19 +72,19 @@ export default function WeatherWidget() {
     api
       .get('/weather', { params: { location: selectedLoc } })
       .then((r) => {
-        if (!cancelled && r.data) setWeatherData(r.data);
+        if (!cancelled && r.data && r.data.name) setLiveOverride(r.data);
       })
       .catch(() => {
-        if (!cancelled && WEATHERS[selectedLoc]) {
-          setWeatherData(WEATHERS[selectedLoc]);
-        }
+        if (!cancelled) setLiveOverride(null);
       });
     return () => {
       cancelled = true;
     };
   }, [selectedLoc]);
 
-  const data = weatherData;
+  // Priority: live override ONLY if it matches currently selected location, else local WEATHERS[selectedLoc]
+  const fallbackData = WEATHERS[selectedLoc] || WEATHERS.darjeeling;
+  const data = liveOverride && liveOverride.name.toLowerCase().includes(selectedLoc) ? liveOverride : fallbackData;
 
   const indexBadge = {
     clear: {

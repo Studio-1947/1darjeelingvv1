@@ -58,6 +58,41 @@ const ROUTE_DATA: Record<string, Omit<RouteDetail, 'from' | 'to' | 'driverCount'
   'Kurseong Motor Stand->Mirik Lake & Simana Border': { distanceKm: 34, durationHours: 1.3, minFare: 1800, maxFare: 3300, hatchbackFare: 1800, suvFare: 3000, routeNote: 'Pine forests & Tea estates scenic road', terrainDifficulty: 'Moderate Hill' },
 };
 
+function normalizeHub(s: string): string {
+  const lower = s.toLowerCase();
+  if (lower.includes('bagdogra')) return 'bagdogra';
+  if (lower.includes('njp')) return 'njp';
+  if (lower.includes('siliguri')) return 'siliguri';
+  if (lower.includes('darjeeling')) return 'darjeeling';
+  if (lower.includes('ghum')) return 'ghum';
+  if (lower.includes('kalimpong')) return 'kalimpong';
+  if (lower.includes('kurseong')) return 'kurseong';
+  if (lower.includes('mirik')) return 'mirik';
+  return lower;
+}
+
+function findRoute(f: string, t: string) {
+  const directKey = `${f}->${t}`;
+  const reverseKey = `${t}->${f}`;
+  if (ROUTE_DATA[directKey]) return ROUTE_DATA[directKey];
+  if (ROUTE_DATA[reverseKey]) return ROUTE_DATA[reverseKey];
+
+  const normF = normalizeHub(f);
+  const normT = normalizeHub(t);
+
+  const matchedKey = Object.keys(ROUTE_DATA).find((k) => {
+    const [kF, kT] = k.split('->');
+    const normKF = normalizeHub(kF);
+    const normKT = normalizeHub(kT);
+    const forward = normKF === normF && normKT === normT;
+    const backward = normKF === normT && normKT === normF;
+    return forward || backward;
+  });
+
+  if (matchedKey) return ROUTE_DATA[matchedKey];
+  return null;
+}
+
 /**
  * @openapi
  * /api/routes/estimate:
@@ -79,7 +114,7 @@ router.get('/estimate', async (req: Request, res: Response) => {
   const from = (req.query.from as string || 'Bagdogra Airport (IXB)').trim();
   const to = (req.query.to as string || 'Darjeeling Town (Chowk Bazaar / Clubside)').trim();
 
-  if (from === to) {
+  if (normalizeHub(from) === normalizeHub(to)) {
     return res.json({
       from,
       to,
@@ -95,26 +130,7 @@ router.get('/estimate', async (req: Request, res: Response) => {
     });
   }
 
-  const findRouteKey = (f: string, t: string) => {
-    const directKey = `${f}->${t}`;
-    const reverseKey = `${t}->${f}`;
-    if (ROUTE_DATA[directKey]) return ROUTE_DATA[directKey];
-    if (ROUTE_DATA[reverseKey]) return ROUTE_DATA[reverseKey];
-
-    // Substring matching (both forward and reverse)
-    const fLower = f.toLowerCase();
-    const tLower = t.toLowerCase();
-    const matchedKey = Object.keys(ROUTE_DATA).find((k) => {
-      const [kFrom, kTo] = k.split('->').map((s) => s.toLowerCase());
-      const directMatch = (kFrom.includes(fLower) || fLower.includes(kFrom)) && (kTo.includes(tLower) || tLower.includes(kTo));
-      const reverseMatch = (kFrom.includes(tLower) || tLower.includes(kFrom)) && (kTo.includes(fLower) || fLower.includes(kTo));
-      return directMatch || reverseMatch;
-    });
-    if (matchedKey) return ROUTE_DATA[matchedKey];
-    return null;
-  };
-
-  const base = findRouteKey(from, to) || {
+  const base = findRoute(from, to) || {
     distanceKm: 55,
     durationHours: 2.3,
     minFare: 2500,

@@ -63,8 +63,24 @@ const ROUTE_DATA: Record<string, Omit<RouteDetail, 'driverCount'>> = {
   'Kurseong Motor Stand->Mirik Lake & Simana Border': { distanceKm: 34, durationHours: 1.3, minFare: 1800, maxFare: 3300, hatchbackFare: 1800, suvFare: 3000, routeNote: 'Pine forests & Tea estates scenic road', terrainDifficulty: 'Moderate Hill' },
 };
 
+function normalizeHub(s: string): string {
+  const lower = s.toLowerCase();
+  if (lower.includes('bagdogra')) return 'bagdogra';
+  if (lower.includes('njp')) return 'njp';
+  if (lower.includes('siliguri')) return 'siliguri';
+  if (lower.includes('darjeeling')) return 'darjeeling';
+  if (lower.includes('ghum')) return 'ghum';
+  if (lower.includes('kalimpong')) return 'kalimpong';
+  if (lower.includes('kurseong')) return 'kurseong';
+  if (lower.includes('mirik')) return 'mirik';
+  return lower;
+}
+
 function getRouteInfo(fromLoc: string, toLoc: string): RouteDetail {
-  if (fromLoc === toLoc) {
+  const normF = normalizeHub(fromLoc);
+  const normT = normalizeHub(toLoc);
+
+  if (normF === normT) {
     return {
       distanceKm: 0,
       durationHours: 0,
@@ -77,10 +93,17 @@ function getRouteInfo(fromLoc: string, toLoc: string): RouteDetail {
       driverCount: 0,
     };
   }
-  const directKey = `${fromLoc}->${toLoc}`;
-  const reverseKey = `${toLoc}->${fromLoc}`;
-  const hit = ROUTE_DATA[directKey] || ROUTE_DATA[reverseKey];
+
+  const matchedKey = Object.keys(ROUTE_DATA).find((k) => {
+    const [kF, kT] = k.split('->');
+    const normKF = normalizeHub(kF);
+    const normKT = normalizeHub(kT);
+    return (normKF === normF && normKT === normT) || (normKF === normT && normKT === normF);
+  });
+
+  const hit = matchedKey ? ROUTE_DATA[matchedKey] : null;
   if (hit) return { ...hit, driverCount: 4 };
+
   return {
     distanceKm: 55,
     durationHours: 2.3,
