@@ -633,6 +633,16 @@
     "guests_less": "Fewer guests",
     "guests_more": "More guests"
   },
+  "filter": {
+    "search_placeholder": "Search by name, landmark or keyword…",
+    "all_locations": "All Hubs & Locations",
+    "sort_recommended": "Featured / Popular",
+    "sort_price_asc": "Price: Low to High",
+    "sort_price_desc": "Price: High to Low",
+    "sort_name_asc": "Name: A – Z",
+    "filters": "Filters",
+    "reset": "Reset"
+  },
   "category": {
     "search": "Search",
     "results_one": "{{count}} result",
