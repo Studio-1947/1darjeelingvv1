@@ -80,7 +80,7 @@ export default function RouteEstimator() {
   return (
     <div
       data-testid="route-estimator"
-      className="bg-gradient-to-br from-[#14201A] to-[#1F332A] rounded-3xl p-5 md:p-8 text-white border border-white/15 shadow-2xl"
+      className="relative bg-gradient-to-br from-[#14201A] to-[#1F332A] rounded-3xl p-5 md:p-8 text-white border border-white/15 shadow-2xl border-light overflow-hidden"
     >
       <div className="flex items-center gap-3 mb-4">
         <div className="w-10 h-10 rounded-2xl bg-pine/50 border border-pine text-white flex items-center justify-center">

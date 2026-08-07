@@ -62,6 +62,13 @@ export default function WeatherWidget() {
   const [selectedLoc, setSelectedLoc] = useState<keyof typeof WEATHERS>('darjeeling');
   const [weatherData, setWeatherData] = useState<LocationWeather>(WEATHERS.darjeeling);
 
+  const handleSelectLocation = (key: keyof typeof WEATHERS) => {
+    setSelectedLoc(key);
+    if (WEATHERS[key]) {
+      setWeatherData(WEATHERS[key]);
+    }
+  };
+
   useEffect(() => {
     let cancelled = false;
     api
@@ -70,7 +77,9 @@ export default function WeatherWidget() {
         if (!cancelled && r.data) setWeatherData(r.data);
       })
       .catch(() => {
-        if (!cancelled) setWeatherData(WEATHERS[selectedLoc] || WEATHERS.darjeeling);
+        if (!cancelled && WEATHERS[selectedLoc]) {
+          setWeatherData(WEATHERS[selectedLoc]);
+        }
       });
     return () => {
       cancelled = true;
@@ -95,14 +104,14 @@ export default function WeatherWidget() {
       bg: 'bg-slate-500/20 text-slate-300 border-slate-500/30',
       icon: CloudFog,
     },
-  }[data.kanchenjungaIndex];
+  }[data.kanchenjungaIndex || 'clear'];
 
   const BadgeIcon = indexBadge.icon;
 
   return (
     <div
       data-testid="weather-widget"
-      className="bg-black/60 backdrop-blur-xl border border-white/20 rounded-3xl p-4 md:p-6 text-white shadow-2xl transition-all"
+      className="relative bg-black/60 backdrop-blur-xl border border-white/20 rounded-3xl p-4 md:p-6 text-white shadow-2xl transition-all border-light overflow-hidden"
     >
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-white/15">
         <div className="flex items-center gap-2">
@@ -125,7 +134,7 @@ export default function WeatherWidget() {
             <button
               key={key}
               type="button"
-              onClick={() => setSelectedLoc(key as keyof typeof WEATHERS)}
+              onClick={() => handleSelectLocation(key as keyof typeof WEATHERS)}
               className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap ${
                 selectedLoc === key
                   ? 'bg-white text-pine shadow-sm scale-105'
