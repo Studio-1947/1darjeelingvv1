@@ -24,30 +24,30 @@ export default function Footer() {
         <div>
           <h2 className="font-display font-bold text-sm mb-3 text-ink">{t('nav.discover')}</h2>
           <ul className="space-y-2 text-sm text-ink-soft">
-            <li><Link to="/spots">{t('nav.spots')}</Link></li>
-            <li><Link to="/homestays">{t('nav.homestays')}</Link></li>
-            <li><Link to="/drivers">{t('nav.drivers')}</Link></li>
-            <li><Link to="/cafes">{t('nav.cafes')}</Link></li>
+            <li><Link to="/spots" className="hover:text-pine transition-colors">{t('nav.spots')}</Link></li>
+            <li><Link to="/homestays" className="hover:text-pine transition-colors">{t('nav.homestays')}</Link></li>
+            <li><Link to="/drivers" className="hover:text-pine transition-colors">{t('nav.drivers')}</Link></li>
+            <li><Link to="/cafes" className="hover:text-pine transition-colors">{t('nav.cafes')}</Link></li>
           </ul>
         </div>
         <div>
           <h2 className="font-display font-bold text-sm mb-3 text-ink">{t('footer.darjeeling')}</h2>
           <ul className="space-y-2 text-sm text-ink-soft">
-            <li><Link to="/events">{t('nav.events')}</Link></li>
-            <li><Link to="/biodiversity">{t('nav.biodiversity')}</Link></li>
-            <li><Link to="/responsible">{t('nav.responsible')}</Link></li>
-            <li><Link to="/about">{t('nav.about')}</Link></li>
-            <li><Link to="/provider/onboard">{t('nav.provider')}</Link></li>
+            <li><Link to="/events" className="hover:text-pine transition-colors">{t('nav.events')}</Link></li>
+            <li><Link to="/biodiversity" className="hover:text-pine transition-colors">{t('nav.biodiversity')}</Link></li>
+            <li><Link to="/responsible" className="hover:text-pine transition-colors">{t('nav.responsible')}</Link></li>
+            <li><Link to="/about" className="hover:text-pine transition-colors">{t('nav.about')}</Link></li>
+            <li><Link to="/provider/onboard" className="hover:text-pine transition-colors">{t('nav.provider')}</Link></li>
           </ul>
         </div>
         <div>
           <h2 className="font-display font-bold text-sm mb-3 text-ink">{t('footer.legal')}</h2>
           <ul className="space-y-2 text-sm text-ink-soft">
-            <li><Link to="/privacy">{t('nav.privacy')}</Link></li>
-            <li><Link to="/terms">{t('nav.terms')}</Link></li>
-            <li><Link to="/refunds">{t('nav.refunds')}</Link></li>
-            <li><Link to="/contact">{t('nav.contact')}</Link></li>
-            <li className="flex items-center gap-1"><Mail size={12} /> 1darjeelingapp@gmail.com</li>
+            <li><Link to="/privacy" className="hover:text-pine transition-colors">{t('nav.privacy')}</Link></li>
+            <li><Link to="/terms" className="hover:text-pine transition-colors">{t('nav.terms')}</Link></li>
+            <li><Link to="/refunds" className="hover:text-pine transition-colors">{t('nav.refunds')}</Link></li>
+            <li><Link to="/contact" className="hover:text-pine transition-colors">{t('nav.contact')}</Link></li>
+            <li className="flex items-center gap-1 mt-2 text-ink/80 font-medium"><Mail size={12} className="text-pine flex-shrink-0" /> 1darjeelingapp@gmail.com</li>
           </ul>
         </div>
       </div>

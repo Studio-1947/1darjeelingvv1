@@ -6,6 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import { fetchFavorites, SavedListing } from '@/lib/favorites';
 import api from '@/lib/api';
 import ListingCard from '@/components/ListingCard';
+import TripPlannerModal from '@/components/TripPlannerModal';
 import { useSeo } from '@/components/Seo';
 
 /**
@@ -23,6 +24,7 @@ export default function Saved() {
 
   // Share modal state
   const [showPlanModal, setShowPlanModal] = useState(false);
+  const [showItineraryModal, setShowItineraryModal] = useState(false);
   const [copied, setCopied] = useState(false);
   const [tripTitle, setTripTitle] = useState(() => t('saved.default_trip_name'));
 
@@ -90,13 +92,22 @@ export default function Saved() {
         </div>
 
         {items.length > 0 && (
-          <button
-            onClick={() => setShowPlanModal(true)}
-            data-testid="plan-trip-cta"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-pine text-white font-bold text-sm btn-hover shadow-sm"
-          >
-            <Sparkles size={16} /> {t('saved.plan_cta')}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowItineraryModal(true)}
+              data-testid="build-itinerary-cta"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-gold text-ink font-extrabold text-sm btn-hover shadow-sm"
+            >
+              <Sparkles size={16} /> Build Day 1/2/3 Trip
+            </button>
+            <button
+              onClick={() => setShowPlanModal(true)}
+              data-testid="plan-trip-cta"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-pine text-white font-bold text-sm btn-hover shadow-sm"
+            >
+              <Share2 size={16} /> {t('saved.plan_cta')}
+            </button>
+          </div>
         )}
       </div>
 
@@ -181,6 +192,12 @@ export default function Saved() {
           </div>
         </div>
       )}
+
+      <TripPlannerModal
+        open={showItineraryModal}
+        onClose={() => setShowItineraryModal(false)}
+        savedTitles={items.map((i) => i.title)}
+      />
     </div>
   );
 }
