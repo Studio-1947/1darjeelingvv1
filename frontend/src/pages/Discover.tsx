@@ -167,7 +167,7 @@ export default function Discover() {
         {/* Bottom padding outweighs the top on purpose: it lifts the centered
             block above the hero's midline so the search panel that opens under
             the bar has breathing space before the fold. */}
-        <div className="relative z-10 mx-auto max-w-6xl w-full px-5 md:px-8 pt-[calc(var(--header-h)+0.5rem)] pb-80 md:pt-[calc(var(--header-h)+1.5rem)] md:pb-[22rem] flex-1 flex flex-col justify-center">
+        <div className="relative z-10 mx-auto max-w-6xl w-full px-4 sm:px-6 md:px-8 pt-[calc(var(--header-h)+1rem)] pb-20 md:pt-[calc(var(--header-h)+2rem)] md:pb-28 flex-1 flex flex-col justify-center">
           <div className="text-white max-w-2xl">
             {/* data-hero-cutoff: the header drops its transparency the moment
                 it would overlap this headline, instead of waiting for the whole
