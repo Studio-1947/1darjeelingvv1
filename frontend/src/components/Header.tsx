@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/context/AuthContext';
@@ -14,6 +14,7 @@ export default function Header() {
   const { t } = useTranslation();
   const { user, logout } = useAuth();
   const [dropdownOpen, setDropdownOpen] = React.useState(false);
+  const [avatarError, setAvatarError] = React.useState(false);
   const dropdownRef = React.useRef(null);
   const nav = useNavigate();
   const { pathname } = useLocation();
@@ -147,8 +148,8 @@ export default function Header() {
             <div className="relative" ref={dropdownRef}>
               <button onClick={() => setDropdownOpen(!dropdownOpen)} data-testid="header-profile"
                 className="w-9 h-9 rounded-full bg-gradient-to-br from-pine to-pine-dark text-white grid place-items-center font-bold btn-hover focus:outline-none overflow-hidden">
-                {user.avatar ? (
-                  <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
+                {user.avatar && !avatarError ? (
+                  <img src={user.avatar} alt={user.name} onError={() => setAvatarError(true)} className="w-full h-full object-cover" />
                 ) : user.name ? (
                   user.name.trim().charAt(0).toUpperCase()
                 ) : (
