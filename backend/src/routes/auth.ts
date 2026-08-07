@@ -70,7 +70,13 @@ function constantTimeEquals(a: unknown, b: unknown): boolean {
  *             schema: { $ref: '#/components/schemas/Error' }
  */
 // Send OTP
-router.post('/otp/send', rateLimiter(5, 60 * 1000, 'otp_send'), async (req: Request, res: Response) => {
+router.post(
+  '/otp/send',
+  rateLimiter(5, 60 * 1000, 'otp_send'),
+  rateLimiter(3, 60 * 1000, 'otp_send_phone', {
+    keyExtractor: (req: Request) => (req.body?.phone ? `phone:${req.body.phone.trim()}` : undefined),
+  }),
+  async (req: Request, res: Response) => {
   const { phone, channel = 'whatsapp' } = req.body;
   if (!phone) {
     return res.status(400).json({ detail: 'Phone number is required' });

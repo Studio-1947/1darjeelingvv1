@@ -90,4 +90,36 @@ describe('rateLimiter client attribution', () => {
     expect(realApp.get('trust proxy')).not.toBe(true);
     expect(typeof realApp.get('trust proxy')).toBe('number');
   });
+
+  it('supports keyExtractor for per-phone rate limiting across distinct IPs', async () => {
+    const app = express();
+    app.use(express.json());
+    app.set('trust proxy', 2);
+    app.post(
+      '/phone-limited',
+      rateLimiter(2, 60_000, uniquePrefix(), {
+        enabled: true,
+        keyExtractor: (req) => (req.body?.phone ? `phone:${req.body.phone}` : undefined),
+      }),
+      (req, res) => res.json({ ok: true })
+    );
+
+    // Call 1 & 2 for phone A from IP 1 & IP 2 succeed.
+    expect(
+      (await request(app).post('/phone-limited').set('X-Forwarded-For', asClient('1.1.1.1')).send({ phone: '+919999999999' })).status
+    ).toBe(200);
+    expect(
+      (await request(app).post('/phone-limited').set('X-Forwarded-For', asClient('2.2.2.2')).send({ phone: '+919999999999' })).status
+    ).toBe(200);
+
+    // Call 3 for phone A from IP 3 fails with 429 (per-phone limit hit despite unique IP).
+    expect(
+      (await request(app).post('/phone-limited').set('X-Forwarded-For', asClient('3.3.3.3')).send({ phone: '+919999999999' })).status
+    ).toBe(429);
+
+    // Call for phone B from IP 3 succeeds.
+    expect(
+      (await request(app).post('/phone-limited').set('X-Forwarded-For', asClient('3.3.3.3')).send({ phone: '+918888888888' })).status
+    ).toBe(200);
+  });
 });
