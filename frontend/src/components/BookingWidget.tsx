@@ -234,7 +234,7 @@ export default function BookingWidget() {
           </div>
 
           {/* Main Horizontal Glass Bar */}
-          <div className="relative z-20 flex items-stretch bg-black/60 backdrop-blur-xl border border-white/20 rounded-2xl shadow-[0_16px_40px_-12px_rgba(0,0,0,0.8)] p-2 transition-all hover:border-white/30 border-light overflow-hidden">
+          <div className="relative z-20 flex items-stretch bg-black/60 backdrop-blur-xl border border-white/20 rounded-2xl shadow-[0_16px_40px_-12px_rgba(0,0,0,0.8)] p-2 transition-all hover:border-white/30 border-light">
             {/* Destination / Route Field */}
             {tab === 'driver' ? (
               <div className="flex-1 grid grid-cols-2 gap-2 px-3 py-1.5 border-r border-white/15">

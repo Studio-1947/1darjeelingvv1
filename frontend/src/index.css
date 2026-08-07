@@ -135,21 +135,24 @@ html[lang="ne"] h1, html[lang="ne"] h2, html[lang="ne"] h3, html[lang="ne"] h4 {
   initial-value: 0deg;
 }
 
-/* The host must already be positioned (relative/absolute) - the class does not
-   set position itself, because it is also used on absolutely-positioned hosts
-   where forcing `relative` would tear them out of place. */
+/* The host must already be positioned (relative/absolute) - the class enforces position: relative if unpositioned */
+.border-light {
+  position: relative;
+}
+
 .border-light::after {
   content: '';
   position: absolute;
-  inset: -1px;
+  inset: 0;
   border-radius: inherit;
-  padding: 2px;
+  padding: 1.5px;
   background: conic-gradient(
     from var(--orbit-angle),
     transparent 0deg,
-    transparent 300deg,
-    rgba(255, 255, 255, 0.85) 342deg,
-    #fff 354deg,
+    transparent 280deg,
+    rgba(240, 185, 11, 0.4) 320deg,
+    rgba(255, 255, 255, 0.95) 350deg,
+    #ffffff 356deg,
     transparent 360deg
   );
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
@@ -157,6 +160,7 @@ html[lang="ne"] h1, html[lang="ne"] h2, html[lang="ne"] h3, html[lang="ne"] h4 {
   mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   mask-composite: exclude;
   pointer-events: none;
+  z-index: 10;
   animation: orbit-border 3.5s linear infinite;
 }
 @keyframes orbit-border { to { --orbit-angle: 360deg; } }

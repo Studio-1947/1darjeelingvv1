@@ -111,7 +111,7 @@ export default function WeatherWidget() {
   return (
     <div
       data-testid="weather-widget"
-      className="relative bg-black/60 backdrop-blur-xl border border-white/20 rounded-3xl p-4 md:p-6 text-white shadow-2xl transition-all border-light overflow-hidden"
+      className="relative bg-black/60 backdrop-blur-xl border border-white/20 rounded-3xl p-4 md:p-6 text-white shadow-2xl transition-all border-light"
     >
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-white/15">
         <div className="flex items-center gap-2">
