@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { X, Calendar, Share2, Plus, Trash2, Check, MapPin, Sparkles } from 'lucide-react';
+import { X, Share2, Plus, Trash2, Check, MapPin, Sparkles } from 'lucide-react';
 import { shareLink } from '@/lib/share';
 
 interface ItineraryDay {
@@ -50,6 +50,24 @@ export default function TripPlannerModal({ open, onClose, savedTitles = [] }: Tr
   const [newItemText, setNewItemText] = useState('');
   const [targetDay, setTargetDay] = useState(1);
   const [shareState, setShareState] = useState<'idle' | 'copied'>('idle');
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Close on Escape keypress
+  useEffect(() => {
+    if (!open) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [open, onClose]);
+
+  // Clean up share timer
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
 
   if (!open) return null;
 
@@ -104,7 +122,8 @@ export default function TripPlannerModal({ open, onClose, savedTitles = [] }: Tr
     });
     if (result === 'copied') {
       setShareState('copied');
-      setTimeout(() => setShareState('idle'), 2000);
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => setShareState('idle'), 2000);
     }
   };
 
@@ -112,6 +131,7 @@ export default function TripPlannerModal({ open, onClose, savedTitles = [] }: Tr
     <div
       role="dialog"
       aria-modal="true"
+      aria-labelledby="trip-planner-title"
       data-testid="trip-planner-modal"
       className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200"
     >
@@ -121,7 +141,7 @@ export default function TripPlannerModal({ open, onClose, savedTitles = [] }: Tr
           <div className="flex items-center gap-2">
             <Sparkles size={20} className="text-gold" />
             <div>
-              <h3 className="font-display font-extrabold text-lg">
+              <h3 id="trip-planner-title" className="font-display font-extrabold text-lg">
                 {t('planner.title', 'Himalayan Trip Itinerary Builder')}
               </h3>
               <p className="text-xs text-white/70">
@@ -130,7 +150,9 @@ export default function TripPlannerModal({ open, onClose, savedTitles = [] }: Tr
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
+            aria-label={t('common.close', 'Close modal')}
             data-testid="trip-planner-close"
             className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-colors"
           >
@@ -191,7 +213,7 @@ export default function TripPlannerModal({ open, onClose, savedTitles = [] }: Tr
                 <ul className="mt-3 space-y-2">
                   {d.items.map((it, idx) => (
                     <li
-                      key={idx}
+                      key={`${it}-${idx}`}
                       className="flex items-center justify-between gap-2 p-2 rounded-xl bg-mist text-xs text-ink font-semibold"
                     >
                       <span className="flex items-center gap-2 min-w-0 truncate">
@@ -203,6 +225,7 @@ export default function TripPlannerModal({ open, onClose, savedTitles = [] }: Tr
                         onClick={() => handleRemoveItem(d.day, idx)}
                         className="text-ink-soft hover:text-flag p-1 flex-shrink-0"
                         title="Remove activity"
+                        aria-label={`Remove ${it}`}
                       >
                         <Trash2 size={13} />
                       </button>
@@ -218,6 +241,7 @@ export default function TripPlannerModal({ open, onClose, savedTitles = [] }: Tr
             <select
               value={targetDay}
               onChange={(e) => setTargetDay(Number(e.target.value))}
+              aria-label="Select trip day"
               className="px-3 py-2.5 rounded-xl border border-[var(--line)] bg-white text-xs font-bold text-ink outline-none"
             >
               <option value={1}>Day 1</option>
@@ -230,6 +254,7 @@ export default function TripPlannerModal({ open, onClose, savedTitles = [] }: Tr
               value={newItemText}
               onChange={(e) => setNewItemText(e.target.value)}
               placeholder="Add custom place or activity..."
+              aria-label="Add custom place or activity"
               className="flex-1 px-4 py-2.5 rounded-xl border border-[var(--line)] bg-white text-xs text-ink outline-none"
             />
 
