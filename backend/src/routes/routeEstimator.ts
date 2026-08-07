@@ -42,6 +42,7 @@ const ROUTE_DATA: Record<string, Omit<RouteDetail, 'from' | 'to' | 'driverCount'
 
   // Siliguri Junction (Tenzing Norgay Stand)
   'Siliguri Junction (Tenzing Norgay Stand)->Darjeeling Town (Chowk Bazaar / Clubside)': { distanceKm: 62, durationHours: 2.5, minFare: 2500, maxFare: 4200, hatchbackFare: 2500, suvFare: 3900, routeNote: 'Hill Cart Road via Sukna Forest & Tindharia', terrainDifficulty: 'Winding Mountain' },
+  'Siliguri Junction (Tenzing Norgay Stand)->Ghum Junction & Monastery': { distanceKm: 55, durationHours: 2.3, minFare: 2400, maxFare: 4000, hatchbackFare: 2400, suvFare: 3700, routeNote: 'Hill Cart Road climb to Ghum Monastery (2,258m)', terrainDifficulty: 'Winding Mountain' },
   'Siliguri Junction (Tenzing Norgay Stand)->Kalimpong Motor Stand': { distanceKm: 65, durationHours: 2.4, minFare: 2600, maxFare: 4300, hatchbackFare: 2600, suvFare: 4000, routeNote: 'Coronation Bridge & NH10 Teesta Corridor', terrainDifficulty: 'Moderate Hill' },
   'Siliguri Junction (Tenzing Norgay Stand)->Kurseong Motor Stand': { distanceKm: 36, durationHours: 1.5, minFare: 1900, maxFare: 3500, hatchbackFare: 1900, suvFare: 3200, routeNote: 'Direct Hill Cart Road climb', terrainDifficulty: 'Steep Ascent' },
   'Siliguri Junction (Tenzing Norgay Stand)->Mirik Lake & Simana Border': { distanceKm: 46, durationHours: 1.8, minFare: 2100, maxFare: 3800, hatchbackFare: 2100, suvFare: 3400, routeNote: 'Dudhia River bridge & Mechi Valley route', terrainDifficulty: 'Moderate Hill' },
@@ -51,6 +52,9 @@ const ROUTE_DATA: Record<string, Omit<RouteDetail, 'from' | 'to' | 'driverCount'
   'Darjeeling Town (Chowk Bazaar / Clubside)->Kalimpong Motor Stand': { distanceKm: 50, durationHours: 2.2, minFare: 2500, maxFare: 4200, hatchbackFare: 2500, suvFare: 3800, routeNote: 'Peshok Tea Garden viewpoint & Teesta Confluence', terrainDifficulty: 'Winding Mountain' },
   'Darjeeling Town (Chowk Bazaar / Clubside)->Kurseong Motor Stand': { distanceKm: 31, durationHours: 1.3, minFare: 1800, maxFare: 3400, hatchbackFare: 1800, suvFare: 3000, routeNote: 'Hill Cart Road via Batasia Loop & Ghum', terrainDifficulty: 'Moderate Hill' },
   'Darjeeling Town (Chowk Bazaar / Clubside)->Mirik Lake & Simana Border': { distanceKm: 49, durationHours: 2.1, minFare: 2300, maxFare: 4000, hatchbackFare: 2300, suvFare: 3600, routeNote: 'Indo-Nepal border road via Pashupati Market', terrainDifficulty: 'Winding Mountain' },
+  'Ghum Junction & Monastery->Kalimpong Motor Stand': { distanceKm: 52, durationHours: 2.1, minFare: 2400, maxFare: 4100, hatchbackFare: 2400, suvFare: 3700, routeNote: 'Peshok Road via 6th Mile & Teesta Bridge', terrainDifficulty: 'Winding Mountain' },
+  'Ghum Junction & Monastery->Kurseong Motor Stand': { distanceKm: 24, durationHours: 1.0, minFare: 1400, maxFare: 2600, hatchbackFare: 1400, suvFare: 2400, routeNote: 'Highland ridge road via Sonada & Hope Town', terrainDifficulty: 'Moderate Hill' },
+  'Ghum Junction & Monastery->Mirik Lake & Simana Border': { distanceKm: 42, durationHours: 1.8, minFare: 2000, maxFare: 3600, hatchbackFare: 2000, suvFare: 3300, routeNote: 'Scenic pine forest highway via Jorepokhri & Simana', terrainDifficulty: 'Winding Mountain' },
 
   // Kalimpong, Kurseong, Mirik
   'Kalimpong Motor Stand->Kurseong Motor Stand': { distanceKm: 68, durationHours: 2.5, minFare: 2600, maxFare: 4300, hatchbackFare: 2600, suvFare: 3900, routeNote: 'Teesta Valley & Ghum Junction bypass', terrainDifficulty: 'Winding Mountain' },
