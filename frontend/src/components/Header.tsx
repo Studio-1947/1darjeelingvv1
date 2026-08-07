@@ -51,9 +51,13 @@ export default function Header() {
 
   return (
     <header
-      className={`z-40 transition-colors duration-300 ${
+      className={`z-40 transition-all duration-300 ${
         isLanding ? 'fixed top-0 inset-x-0' : 'sticky top-0'
-      } ${onVideo ? 'bg-transparent border-b border-transparent' : 'bg-white border-b border-[var(--line)]'}`}
+      } ${
+        onVideo
+          ? 'bg-transparent border-b border-transparent'
+          : 'bg-white/90 backdrop-blur-md border-b border-[var(--line)] shadow-sm'
+      }`}
       data-testid="site-header"
     >
       <div className="mx-auto max-w-6xl px-2 sm:px-4 md:px-6 h-[var(--header-h)] flex items-center gap-1.5 sm:gap-3 lg:gap-5 xl:gap-8">
@@ -158,7 +162,7 @@ export default function Header() {
               </button>
 
               {dropdownOpen && (
-                <div className="absolute right-0 mt-2 w-48 bg-white border border-[var(--line)] rounded-2xl shadow-xl py-2 z-50" data-testid="header-profile-dropdown">
+                <div className="absolute right-0 mt-2 w-52 bg-white/95 backdrop-blur-xl border border-[var(--line)] rounded-2xl shadow-2xl py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200" data-testid="header-profile-dropdown">
                   <div className="px-4 py-2 border-b border-[var(--line)]">
                     <p className="text-sm font-bold text-ink truncate">{user.name}</p>
                     <p className="text-[10px] uppercase tracking-wider font-bold text-ink-soft mt-0.5 capitalize">{user.role}</p>
