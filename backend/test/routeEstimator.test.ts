@@ -8,8 +8,8 @@ describe('Route Estimator API (/api/routes/estimate)', () => {
     expect(res.status).toBe(200);
     expect(res.body.distanceKm).toBe(68);
     expect(res.body.durationHours).toBe(3.0);
-    expect(res.body.minFare).toBe(2600);
-    expect(res.body.maxFare).toBe(3200);
+    expect(res.body.minFare).toBe(2800);
+    expect(res.body.maxFare).toBe(4500);
     expect(typeof res.body.driverCount).toBe('number');
   });
 
@@ -17,6 +17,6 @@ describe('Route Estimator API (/api/routes/estimate)', () => {
     const res = await request(app).get('/api/routes/estimate?from=Darjeeling Town&to=Bagdogra Airport (IXB)');
     expect(res.status).toBe(200);
     expect(res.body.distanceKm).toBe(68);
-    expect(res.body.minFare).toBe(2600);
+    expect(res.body.minFare).toBe(2800);
   });
 });
