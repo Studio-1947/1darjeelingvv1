@@ -47,6 +47,7 @@ const ROUTE_DATA: Record<string, Omit<RouteDetail, 'driverCount'>> = {
 
   // Siliguri Junction (Tenzing Norgay Stand)
   'Siliguri Junction (Tenzing Norgay Stand)->Darjeeling Town (Chowk Bazaar / Clubside)': { distanceKm: 62, durationHours: 2.5, minFare: 2500, maxFare: 4200, hatchbackFare: 2500, suvFare: 3900, routeNote: 'Hill Cart Road via Sukna Forest & Tindharia', terrainDifficulty: 'Winding Mountain' },
+  'Siliguri Junction (Tenzing Norgay Stand)->Ghum Junction & Monastery': { distanceKm: 55, durationHours: 2.3, minFare: 2400, maxFare: 4000, hatchbackFare: 2400, suvFare: 3700, routeNote: 'Hill Cart Road climb to Ghum Monastery (2,258m)', terrainDifficulty: 'Winding Mountain' },
   'Siliguri Junction (Tenzing Norgay Stand)->Kalimpong Motor Stand': { distanceKm: 65, durationHours: 2.4, minFare: 2600, maxFare: 4300, hatchbackFare: 2600, suvFare: 4000, routeNote: 'Coronation Bridge & NH10 Teesta Corridor', terrainDifficulty: 'Moderate Hill' },
   'Siliguri Junction (Tenzing Norgay Stand)->Kurseong Motor Stand': { distanceKm: 36, durationHours: 1.5, minFare: 1900, maxFare: 3500, hatchbackFare: 1900, suvFare: 3200, routeNote: 'Direct Hill Cart Road climb', terrainDifficulty: 'Steep Ascent' },
   'Siliguri Junction (Tenzing Norgay Stand)->Mirik Lake & Simana Border': { distanceKm: 46, durationHours: 1.8, minFare: 2100, maxFare: 3800, hatchbackFare: 2100, suvFare: 3400, routeNote: 'Dudhia River bridge & Mechi Valley route', terrainDifficulty: 'Moderate Hill' },
@@ -56,6 +57,9 @@ const ROUTE_DATA: Record<string, Omit<RouteDetail, 'driverCount'>> = {
   'Darjeeling Town (Chowk Bazaar / Clubside)->Kalimpong Motor Stand': { distanceKm: 50, durationHours: 2.2, minFare: 2500, maxFare: 4200, hatchbackFare: 2500, suvFare: 3800, routeNote: 'Peshok Tea Garden viewpoint & Teesta Confluence', terrainDifficulty: 'Winding Mountain' },
   'Darjeeling Town (Chowk Bazaar / Clubside)->Kurseong Motor Stand': { distanceKm: 31, durationHours: 1.3, minFare: 1800, maxFare: 3400, hatchbackFare: 1800, suvFare: 3000, routeNote: 'Hill Cart Road via Batasia Loop & Ghum', terrainDifficulty: 'Moderate Hill' },
   'Darjeeling Town (Chowk Bazaar / Clubside)->Mirik Lake & Simana Border': { distanceKm: 49, durationHours: 2.1, minFare: 2300, maxFare: 4000, hatchbackFare: 2300, suvFare: 3600, routeNote: 'Indo-Nepal border road via Pashupati Market', terrainDifficulty: 'Winding Mountain' },
+  'Ghum Junction & Monastery->Kalimpong Motor Stand': { distanceKm: 52, durationHours: 2.1, minFare: 2400, maxFare: 4100, hatchbackFare: 2400, suvFare: 3700, routeNote: 'Peshok Road via 6th Mile & Teesta Bridge', terrainDifficulty: 'Winding Mountain' },
+  'Ghum Junction & Monastery->Kurseong Motor Stand': { distanceKm: 24, durationHours: 1.0, minFare: 1400, maxFare: 2600, hatchbackFare: 1400, suvFare: 2400, routeNote: 'Highland ridge road via Sonada & Hope Town', terrainDifficulty: 'Moderate Hill' },
+  'Ghum Junction & Monastery->Mirik Lake & Simana Border': { distanceKm: 42, durationHours: 1.8, minFare: 2000, maxFare: 3600, hatchbackFare: 2000, suvFare: 3300, routeNote: 'Scenic pine forest highway via Jorepokhri & Simana', terrainDifficulty: 'Winding Mountain' },
 
   // Kalimpong, Kurseong, Mirik
   'Kalimpong Motor Stand->Kurseong Motor Stand': { distanceKm: 68, durationHours: 2.5, minFare: 2600, maxFare: 4300, hatchbackFare: 2600, suvFare: 3900, routeNote: 'Teesta Valley & Ghum Junction bypass', terrainDifficulty: 'Winding Mountain' },
@@ -137,15 +141,19 @@ export default function RouteEstimator() {
 
   useEffect(() => {
     let cancelled = false;
+    // Always instantly set synchronous route detail for immediate responsiveness
+    const localInfo = getRouteInfo(fromHub, toHub);
+    setRouteInfo(localInfo);
+
     api
       .get('/routes/estimate', { params: { from: fromHub, to: toHub } })
       .then((r) => {
-        if (!cancelled && r.data) {
+        if (!cancelled && r.data && typeof r.data.distanceKm === 'number') {
           setRouteInfo(r.data);
         }
       })
       .catch(() => {
-        if (!cancelled) setRouteInfo(getRouteInfo(fromHub, toHub));
+        if (!cancelled) setRouteInfo(localInfo);
       });
     return () => {
       cancelled = true;
@@ -173,10 +181,10 @@ export default function RouteEstimator() {
           </div>
           <div>
             <div className="text-[10px] font-bold uppercase tracking-widest text-flag">
-              {t('estimator.tag', 'Transit & Fares')}
+              {t('estimator.tag', 'TRANSIT & REFERENCE FARES')}
             </div>
             <h3 className="font-display font-extrabold text-xl md:text-2xl text-white">
-              {t('estimator.title', 'Himalayan Route & Driver Fare Calculator')}
+              {t('estimator.title', 'Himalayan Route & Driver Fare Guide')}
             </h3>
           </div>
         </div>
@@ -184,7 +192,7 @@ export default function RouteEstimator() {
         {/* Driver availability badge */}
         <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gold/20 border border-gold/40 text-gold text-xs font-extrabold">
           <Zap size={14} className="animate-pulse" />
-          <span>{info.driverCount ? `${info.driverCount} Verified Drivers Ready` : 'Drivers Available'}</span>
+          <span>{info.driverCount ? `${info.driverCount} Local Drivers Available` : 'Local Drivers Available'}</span>
         </div>
       </div>
 
@@ -241,7 +249,7 @@ export default function RouteEstimator() {
         </div>
 
         <div className="bg-white/5 border border-white/10 rounded-2xl p-3">
-          <div className="text-[10px] font-bold text-white/60 uppercase">Travel Time</div>
+          <div className="text-[10px] font-bold text-white/60 uppercase">Est. Travel Time</div>
           <div className="font-display font-extrabold text-xl mt-1 text-white flex items-center gap-1">
             <Clock size={16} className="text-gold" /> {info.durationHours} <span className="text-xs font-normal text-white/60">hrs</span>
           </div>
@@ -249,7 +257,7 @@ export default function RouteEstimator() {
 
         <div className="col-span-2 bg-white/10 border border-white/20 rounded-2xl p-3 flex flex-col justify-between">
           <div className="text-[10px] font-bold text-gold uppercase tracking-wider flex items-center justify-between">
-            <span className="flex items-center gap-1"><ShieldCheck size={13} /> Estimated Fare Range</span>
+            <span className="flex items-center gap-1"><ShieldCheck size={13} /> Est. Reference Fare Range</span>
             <span className="text-[10px] text-white/60 font-semibold flex items-center gap-1">
               <Mountain size={11} /> {info.terrainDifficulty}
             </span>
@@ -272,7 +280,7 @@ export default function RouteEstimator() {
           }`}
         >
           <span>Hatchback / Sedan (Dzire)</span>
-          <span className="font-bold">₹{info.hatchbackFare.toLocaleString('en-IN')}</span>
+          <span className="font-bold">Ref. ₹{info.hatchbackFare.toLocaleString('en-IN')}</span>
         </button>
 
         <button
@@ -285,7 +293,7 @@ export default function RouteEstimator() {
           }`}
         >
           <span>SUV (Innova / Bolero)</span>
-          <span className="font-bold">₹{info.suvFare.toLocaleString('en-IN')}</span>
+          <span className="font-bold">Ref. ₹{info.suvFare.toLocaleString('en-IN')}</span>
         </button>
       </div>
 
@@ -294,16 +302,24 @@ export default function RouteEstimator() {
         {info.routeNote}
       </p>
 
+      {/* Direct Connection Notice */}
+      <div className="mt-3 p-3 rounded-2xl bg-white/5 border border-white/10 text-white/80 text-xs flex items-start gap-2.5 leading-relaxed">
+        <span className="text-gold font-bold flex-shrink-0 mt-0.5">ℹ️</span>
+        <div>
+          <span className="font-extrabold text-white">Direct Local Connection:</span> 1 Darjeeling connects travelers directly with independent local drivers. Fares listed are standard local reference rates for guidance — not direct booking fees or Uber/Ola style automated cab dispatches.
+        </div>
+      </div>
+
       {/* Dynamic CTA Button */}
       <button
         type="button"
         onClick={handleSearchDrivers}
         data-testid="estimator-search-drivers"
-        className="mt-5 w-full py-3.5 rounded-full bg-pine hover:bg-pine-dark text-white font-extrabold flex items-center justify-center gap-2 btn-hover transition-all"
+        className="mt-4 w-full py-3.5 rounded-full bg-pine hover:bg-pine-dark text-white font-extrabold flex items-center justify-center gap-2 btn-hover transition-all"
       >
         <span>
           {selectedFare > 0
-            ? `Book ${vehicleType === 'suv' ? 'Mountain SUV' : 'Hatchback Cab'} (₹${selectedFare.toLocaleString('en-IN')})`
+            ? `Find & Connect Drivers (Ref. ₹${selectedFare.toLocaleString('en-IN')})`
             : 'Find Drivers Running This Route'}
         </span>
         <ArrowRight size={18} />
