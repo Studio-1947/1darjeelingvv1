@@ -257,14 +257,29 @@ docker logs 1darjeeling_in_db_backup --tail 5
 docker run --rm -v 1darjeeling-in_pg_backups_in:/backups alpine ls -lh /backups
 ```
 
-**Copy them off the box.** This is the step that is not automated, and without it the backups are
-worth much less than they look: they sit on the same disk as the database they came from, so a
-dead VPS takes both. Run from a machine with SSH access:
+**Copy them off the box.** Use `deploy/backup/sync-offsite-backup.sh` to extract and compress backup volumes off the host:
 
 ```bash
+# On the VPS (or remotely over SSH):
+chmod +x deploy/backup/sync-offsite-backup.sh
+./deploy/backup/sync-offsite-backup.sh 1darjeeling-in /var/backups/1darjeeling
+
+# Or via remote SSH directly:
 ssh root@187.127.185.82 \
   'docker run --rm -v 1darjeeling-in_pg_backups_in:/backups alpine tar cz -C /backups .' \
   > 1darjeeling-in-backups-$(date +%Y%m%d).tar.gz
+```
+
+### 7.2 Database & Object Storage Maintenance Utilities
+
+The backend contains utility scripts in `backend/scripts/` for database domain URL migration and MinIO storage orphan cleanup:
+
+```bash
+# 1. Rewrite asset domain URLs in PostgreSQL (e.g. from staging to production domain)
+npx tsx scripts/rewrite-prod-urls.ts --from https://onedarjeeling.duckdns.org --to https://1darjeeling.in [--dry-run]
+
+# 2. Scan and prune unreferenced orphan files in MinIO public & private KYC storage
+npx tsx scripts/cleanup-orphan-storage.ts [--execute]
 ```
 
 The dumps contain every booking, phone number, and provider record in the system — the same class
