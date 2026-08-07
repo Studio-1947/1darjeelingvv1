@@ -8,6 +8,8 @@ import SmartImg from '@/components/SmartImg';
 import Seo from '@/components/Seo';
 import BookingWidget from '@/components/BookingWidget';
 import HeroMedia from '@/components/HeroMedia';
+import WeatherWidget from '@/components/WeatherWidget';
+import RouteEstimator from '@/components/RouteEstimator';
 import { CATEGORIES } from '@/constants/categories';
 import { FeedCardSkeleton, SpotTileSkeleton, StayTileSkeleton, LoadingStatus, repeat } from '@/components/skeletons';
 import { Mountain, ArrowRight, Sparkles, TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -182,6 +184,10 @@ export default function Discover() {
           <div className="mt-7 md:mt-10">
             <BookingWidget />
           </div>
+
+          <div className="mt-6">
+            <WeatherWidget />
+          </div>
         </div>
       </section>
 
@@ -207,6 +213,11 @@ export default function Discover() {
               <ArrowRight size={18} className="absolute top-4 right-4 opacity-80" />
             </Link>
           ))}
+        </div>
+
+        {/* Route Estimator Section */}
+        <div className="mt-8">
+          <RouteEstimator />
         </div>
       </section>
 

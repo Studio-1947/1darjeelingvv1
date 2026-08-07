@@ -20,6 +20,7 @@ import {
 import { ReserveSection, MobileStickyBar } from '@/components/listing-detail/ReserveSection';
 import ContactSection from '@/components/listing-detail/ContactSection';
 import ReviewsSection from '@/components/listing-detail/ReviewsSection';
+import AudioGuide from '@/components/AudioGuide';
 import { ctaFor } from '@/components/listing-detail/cta';
 import { useBookingFlow } from '@/components/listing-detail/useBookingFlow';
 
@@ -143,6 +144,19 @@ export default function ListingDetail() {
 
       <AboutSection item={item} about={c.about}
         label={item.type === 'driver' ? t('detail.about_driver') : t('detail.about')} />
+
+      {/* Multilingual Heritage Audio Guide */}
+      <div className="mx-auto max-w-5xl px-4 sm:px-6 my-6">
+        <AudioGuide
+          title={item.title}
+          transcripts={{
+            en: c.about || item.description || 'Welcome to this historic spot in Darjeeling hills.',
+            bn: `${item.title} - দার্জিলিং পাহাড়ের একটি অনন্য ঐতিহাসিক স্থান।`,
+            hi: `${item.title} - दार्जिलिंग पहाड़ियों का एक प्रसिद्ध और सुंदर स्थल।`,
+            ne: `${item.title} - दार्जिलिङ पहाडको ऐतिहासिक तथा सुन्दर स्थान।`,
+          }}
+        />
+      </div>
 
       {/* A curated spot leads with why it's worth the trip, before the photos. */}
       {isSpot && spotInfo.highlights.length > 0 && <HighlightsSection highlights={spotInfo.highlights} />}
