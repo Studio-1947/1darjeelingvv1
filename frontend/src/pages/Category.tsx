@@ -139,7 +139,7 @@ export default function Category({ typeOverride }) {
               {/* max-w + truncate: an admin's entry fee is free text and can run
                   to "₹30 per person, ₹100 camera" - long enough to cross the tile. */}
               {badge && (
-                <div className="absolute top-2 right-2 max-w-[75%] truncate px-2 py-0.5 rounded-full bg-white/95 text-ink text-[11px] font-extrabold">
+                <div className="absolute top-2 right-2 max-w-[75%] truncate px-2.5 py-0.5 rounded-full bg-black/70 backdrop-blur-md text-white border border-white/20 text-[11px] font-extrabold shadow-sm">
                   {badge}
                 </div>
               )}

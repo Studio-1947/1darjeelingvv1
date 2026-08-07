@@ -17,6 +17,8 @@ import geocodeRouter from './routes/geocode';
 import kycRouter from './routes/kyc';
 import favoritesRouter from './routes/favorites';
 import reviewsRouter from './routes/reviews';
+import weatherRouter from './routes/weather';
+import routeEstimatorRouter from './routes/routeEstimator';
 import { rateLimiter } from './middleware/rateLimiter';
 import { reportError } from './observability';
 import { checkStorage } from './lib/s3';
@@ -211,6 +213,8 @@ app.use('/api/favorites', favoritesRouter);
 app.use('/api/reviews', reviewsRouter);
 app.use('/api/payments', paymentsRouter);
 app.use('/api/geocode', geocodeRouter);
+app.use('/api/weather', weatherRouter);
+app.use('/api/routes', routeEstimatorRouter);
 app.use('/api', adminRouter); // Mount admin routes directly under /api (e.g. /api/admin/seed, /api/admin/stats)
 app.use('/api', adminSpotsRouter); // Admin-only tourist-spot CRUD (e.g. /api/admin/spots)
 

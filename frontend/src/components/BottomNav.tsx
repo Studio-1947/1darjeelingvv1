@@ -57,8 +57,8 @@ export default function BottomNav() {
   const activeFor = (routes: string[]) => !typeOpen && routes.includes(pathname);
 
   const tabCls = (isActive: boolean) =>
-    `flex flex-col items-center justify-center gap-0.5 py-2 min-w-0 text-[10px] font-semibold ${
-      isActive ? 'text-flag' : 'text-ink-soft'
+    `flex flex-col items-center justify-center gap-0.5 py-2.5 min-w-0 text-[10px] font-bold transition-all duration-150 active:scale-95 ${
+      isActive ? 'text-flag font-extrabold' : 'text-ink-soft hover:text-ink'
     }`;
 
   const homeActive = activeFor(homeMatch);
@@ -71,7 +71,7 @@ export default function BottomNav() {
 
       <nav
         data-testid="bottom-nav"
-        className="lg:hidden fixed bottom-0 inset-x-0 z-50 bg-white border-t border-[var(--line)]"
+        className="lg:hidden fixed bottom-0 inset-x-0 z-50 bg-white/95 backdrop-blur-xl border-t border-[var(--line)] shadow-[0_-4px_20px_rgba(0,0,0,0.06)]"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
         <div className="grid grid-cols-4">

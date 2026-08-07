@@ -76,7 +76,7 @@ export default function FeedCard({ item, priority = false, tripSuffix = '' }) {
   const href = `/listing/${item.id}${tripSuffix}`;
 
   return (
-    <article className="bg-white rounded-3xl border border-[var(--line)] overflow-hidden max-w-xl mx-auto md:mx-0 w-full h-full flex flex-col" data-testid={`feed-card-${item.id}`}>
+    <article className="bg-white rounded-3xl border border-[var(--line)] overflow-hidden max-w-xl mx-auto md:mx-0 w-full h-full flex flex-col transition-all duration-300 hover:shadow-xl hover:-translate-y-1" data-testid={`feed-card-${item.id}`}>
       {/* Header */}
       <div className="flex items-center gap-3 p-3.5 flex-shrink-0">
         <div className="w-10 h-10 rounded-full p-[2px] bg-gradient-to-tr from-pine via-gold to-flag flex-shrink-0">
@@ -93,13 +93,13 @@ export default function FeedCard({ item, priority = false, tripSuffix = '' }) {
       </div>
 
       {/* Image */}
-      <Link to={href} className="block relative bg-mist flex-shrink-0" data-testid={`feed-card-image-${item.id}`}>
+      <Link to={href} className="block relative bg-mist flex-shrink-0 group overflow-hidden" data-testid={`feed-card-image-${item.id}`}>
         <div className="aspect-square w-full overflow-hidden">
-          <SmartImg src={img} alt={item.title} className="w-full h-full object-cover" loading={priority ? 'eager' : 'lazy'} />
+          <SmartImg src={img} alt={item.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading={priority ? 'eager' : 'lazy'} />
         </div>
         {item.price > 0 && (
-          <div className="absolute bottom-3 left-3 px-3 py-1.5 rounded-full bg-white/95 backdrop-blur text-ink text-sm font-extrabold shadow-sm">
-            ₹{item.price}<span className="text-xs text-ink-soft font-semibold">{unit}</span>
+          <div className="absolute bottom-3 left-3 px-3.5 py-1.5 rounded-full bg-black/70 backdrop-blur-md text-white border border-white/20 text-sm font-extrabold shadow-lg">
+            ₹{item.price}<span className="text-xs text-white/80 font-semibold">{unit}</span>
           </div>
         )}
       </Link>

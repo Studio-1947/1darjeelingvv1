@@ -158,7 +158,7 @@ export default function LocationPicker({ initialLat, initialLng, onLocationSelec
             )}
             {landmarkMatches.map((l, i) => (
               <li key={l.name}>
-                <button type="button" onMouseDown={(e) => e.preventDefault()}
+                <button type="button" onMouseDown={(e) => e.preventDefault()} onTouchStart={(e) => e.preventDefault()}
                   onClick={() => pickResult({ display_name: l.name, lat: l.lat, lon: l.lon })}
                   data-testid={`location-landmark-${i}`}
                   className="w-full flex items-start gap-2 px-3 py-2.5 text-left text-sm text-ink hover:bg-mist">
@@ -174,7 +174,7 @@ export default function LocationPicker({ initialLat, initialLng, onLocationSelec
             )}
             {results.map((r, i) => (
               <li key={`${r.lat},${r.lon},${i}`}>
-                <button type="button" onMouseDown={(e) => e.preventDefault()}
+                <button type="button" onMouseDown={(e) => e.preventDefault()} onTouchStart={(e) => e.preventDefault()}
                   onClick={() => pickResult(r)} data-testid={`location-result-${i}`}
                   className="w-full flex items-start gap-2 px-3 py-2.5 text-left text-sm text-ink hover:bg-mist">
                   <MapPin size={14} className="text-pine flex-shrink-0 mt-0.5" />
