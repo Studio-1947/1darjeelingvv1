@@ -67,5 +67,10 @@ log "starting — database=${PGDATABASE} host=${PGHOST} interval=${INTERVAL_SECO
 while true; do
   take_backup || log "continuing despite failure; will retry next interval"
   prune_old
+  if [ -f "/scripts/sync-offsite-backup.sh" ] || [ -f "$(dirname "$0")/sync-offsite-backup.sh" ]; then
+    script="$(dirname "$0")/sync-offsite-backup.sh"
+    [ -f "/scripts/sync-offsite-backup.sh" ] && script="/scripts/sync-offsite-backup.sh"
+    sh "$script" || log "off-site sync warning; continuing"
+  fi
   sleep "$INTERVAL_SECONDS"
 done
