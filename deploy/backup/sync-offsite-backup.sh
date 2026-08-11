@@ -1,37 +1,39 @@
 #!/bin/sh
-# Offsite Backup Replication Helper for 1 Darjeeling.
+# Remote off-site PostgreSQL backup replication script for 1 Darjeeling.
 #
-# Pulls database dumps from docker volumes (`1darjeeling-in_pg_backups_in` or `1darjeeling-prod_pg_backups_prod`)
-# and packages them into encrypted tar archives for secure off-site storage.
+# Syncs local .dump files from BACKUP_DIR to REMOTE_BACKUP_S3_BUCKET.
+# Supported via AWS CLI or S3-compatible APIs (MinIO, Wasabi, AWS S3, Cloudflare R2).
 #
-# Usage (run on VPS or remote machine with SSH access to VPS):
-#   chmod +x deploy/backup/sync-offsite-backup.sh
-#   ./deploy/backup/sync-offsite-backup.sh [1darjeeling-in|1darjeeling-prod] [destination_dir]
-#
+# Environment variables:
+#   BACKUP_DIR                - Local directory containing dumps (default: /backups)
+#   REMOTE_BACKUP_S3_BUCKET   - Target S3 bucket path (e.g. s3://my-offsite-backups/1darjeeling)
+#   AWS_ACCESS_KEY_ID         - Remote S3 credentials
+#   AWS_SECRET_ACCESS_KEY     - Remote S3 secret
+#   AWS_DEFAULT_REGION        - Remote S3 region (default: us-east-1)
 
 set -eu
 
-STACK="${1:-1darjeeling-in}"
-DEST_DIR="${2:-./backups-archive}"
-TIMESTAMP="$(date -u '+%Y%m%d_%H%M%S')"
+BACKUP_DIR="${BACKUP_DIR:-/backups}"
+REMOTE_BUCKET="${REMOTE_BACKUP_S3_BUCKET:-}"
 
-if [ "$STACK" = "1darjeeling-in" ]; property_volume="1darjeeling-in_pg_backups_in"; else property_volume="1darjeeling-prod_pg_backups_prod"; fi
+log() {
+  echo "[sync-offsite] $(date -u '+%Y-%m-%dT%H:%M:%SZ') $*"
+}
 
-echo "[offsite-sync] Target stack: $STACK (volume: $property_volume)"
-echo "[offsite-sync] Destination directory: $DEST_DIR"
+if [ -z "$REMOTE_BUCKET" ]; then
+  log "REMOTE_BACKUP_S3_BUCKET is unset; skipping remote replication."
+  exit 0
+fi
 
-mkdir -p "$DEST_DIR"
+log "Starting sync of $BACKUP_DIR to $REMOTE_BUCKET..."
 
-OUT_FILE="${DEST_DIR}/${STACK}_backups_${TIMESTAMP}.tar.gz"
-
-echo "[offsite-sync] Extracting latest database dumps..."
-docker run --rm -v "${property_volume}:/backups:ro" alpine tar czf - -C /backups . > "$OUT_FILE"
-
-FILE_SIZE="$(du -h "$OUT_FILE" | cut -f1)"
-echo "[offsite-sync] SUCCESS: Created archive $OUT_FILE ($FILE_SIZE)"
-
-echo ""
-echo "========================================================================="
-echo "SECURITY NOTICE: The backup archive contains sensitive production data."
-echo "Ensure this archive is stored in an encrypted offsite location (e.g. AWS S3 Glacier, GCP Cloud Storage)."
-echo "========================================================================="
+if command -v aws >/dev/null 2>&1; then
+  aws s3 sync "$BACKUP_DIR" "$REMOTE_BUCKET" --exclude "*.partial"
+  log "Sync complete via AWS CLI."
+elif command -v rclone >/dev/null 2>&1; then
+  rclone sync "$BACKUP_DIR" "$REMOTE_BUCKET" --exclude "*.partial"
+  log "Sync complete via rclone."
+else
+  log "ERROR: Neither 'aws' nor 'rclone' CLI tool is installed in the container image."
+  exit 1
+fi
