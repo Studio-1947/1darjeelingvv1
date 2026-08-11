@@ -17,7 +17,9 @@ COPY frontend/ .
 # absent, the frontend simply reports nothing. A DSN is not a secret — it is a write-only
 # ingestion endpoint and is visible in the shipped bundle by design.
 ARG REACT_APP_SENTRY_DSN=""
+ARG VITE_SENTRY_DSN=""
 ENV REACT_APP_SENTRY_DSN=$REACT_APP_SENTRY_DSN
+ENV VITE_SENTRY_DSN=${VITE_SENTRY_DSN:-$REACT_APP_SENTRY_DSN}
 RUN yarn build
 
 FROM node:20-slim AS admin-build
@@ -36,5 +38,5 @@ COPY deploy/nginx/app.conf /etc/nginx/conf.d/app.conf
 # auto-includes conf.d/*.conf at http level, which would apply these add_headers globally (to the
 # /api proxy responses too) instead of only in the static locations that include them.
 COPY deploy/nginx/snippets/ /etc/nginx/snippets/
-COPY --from=frontend-build /app/build /usr/share/nginx/html
+COPY --from=frontend-build /app/dist /usr/share/nginx/html
 COPY --from=admin-build /app/dist /usr/share/nginx/html/admin

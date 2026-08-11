@@ -72,9 +72,10 @@
     "zod": "3.24.4"
   },
   "scripts": {
-    "start": "craco start",
-    "build": "craco build",
-    "test": "craco test"
+    "start": "vite",
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview"
   },
   "browserslist": {
     "production": [
@@ -90,14 +91,13 @@
   },
   "devDependencies": {
     "@babel/plugin-proposal-private-property-in-object": "7.21.11",
-    "@craco/craco": "7.1.0",
-    "@emergentbase/visual-edits": "https://assets.emergent.sh/npm/emergentbase-visual-edits-1.0.13.tgz",
     "@eslint/js": "9.23.0",
     "@types/leaflet": "^1.9.21",
     "@types/lodash": "4.17.24",
     "@types/node": "^26.1.1",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "10.4.20",
     "dotenv": "16.4.5",
     "eslint": "9.23.0",
@@ -108,7 +108,8 @@
     "globals": "15.15.0",
     "postcss": "8.5.10",
     "tailwindcss": "3.4.17",
-    "typescript": "5.5.4"
+    "typescript": "5.5.4",
+    "vite": "^6.2.0"
   },
   "resolutions": {
     "react-router": "7.15.0",
@@ -119,7 +120,6 @@
     "diff": "4.0.4",
     "follow-redirects": "1.16.0",
     "path-to-regexp": "0.1.13",
-    "rollup": "2.80.0",
     "underscore": "1.13.8",
     "@babel/plugin-transform-modules-systemjs": "7.29.4",
     "@eslint/plugin-kit": "0.3.4",
