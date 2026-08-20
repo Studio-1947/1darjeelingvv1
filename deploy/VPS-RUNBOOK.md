@@ -178,6 +178,81 @@ sudo journalctl -u ssh -n 30 --no-pager | grep -iE "accepted|invalid user"
 - `Accepted publickey for deploy` → SSH is fine; the failure is later in the script
 - *No entry at all* → wrong host/port, or a firewall
 
+### Deploy fails at `git fetch` — "Repository not found"
+
+```
+ERROR: Repository not found.
+fatal: Could not read from remote repository.
+Process exited with status 128
+```
+
+SSH into the VPS **succeeded** — this is the VPS failing to read from GitHub, which is the
+opposite direction and a different key. `VPS_SSH_KEY` is not involved.
+
+The wording is the diagnosis. GitHub answers `Permission denied (publickey)` when no key matched
+at all, and `Repository not found` when a key authenticated fine but that identity has no grant on
+the repo — it hides existence rather than admitting the repo is there.
+
+**The usual cause is the repository going private.** A *public* repo can be fetched by any valid
+SSH identity, whether or not it has been granted access. So a VPS key that was never actually
+authorised still worked. Flip the repo to private and GitHub starts checking, finds no grant, and
+returns this. Nothing on the box changed; it lost the free ride.
+
+Fix it by giving the VPS a deploy key. Run **as the same user the workflow logs in as**
+(`VPS_USER`, e.g. `deploy`) — a key in root's `~/.ssh` does nothing for `deploy`:
+
+```sh
+# 1. A key of its own, named so it can be identified later from the GitHub side
+ssh-keygen -t ed25519 -C "vps-1darjeelingvv1" -f ~/.ssh/id_ed25519_1darjeelingvv1 -N ""
+cat ~/.ssh/id_ed25519_1darjeelingvv1.pub
+```
+
+Add that public key at **github.com/Studio-1947/1darjeelingvv1 → Settings → Deploy keys → Add
+deploy key**. Leave *Allow write access* unchecked — these workflows only fetch.
+
+```sh
+# 2. Pin github.com to that key. IdentitiesOnly matters: without it ssh offers every key it can
+#    find and GitHub authenticates as whichever one answers first, which is how you end up
+#    debugging a "Repository not found" that is really "wrong identity".
+cat >> ~/.ssh/config <<'EOF'
+Host github.com
+  HostName github.com
+  User git
+  IdentityFile ~/.ssh/id_ed25519_1darjeelingvv1
+  IdentitiesOnly yes
+EOF
+chmod 600 ~/.ssh/config
+
+# 3. Both checkouts must be SSH remotes, not HTTPS — an HTTPS remote cannot use this key
+git -C /var/www/1darjeelingvv1  remote set-url origin git@github.com:Studio-1947/1darjeelingvv1.git
+git -C /var/www/1darjeeling-in  remote set-url origin git@github.com:Studio-1947/1darjeelingvv1.git
+
+# 4. Verify. The success line names the repo the key belongs to — read it, it is the whole answer
+ssh -T git@github.com
+git -C /var/www/1darjeelingvv1 fetch origin main && echo "main OK"
+git -C /var/www/1darjeeling-in fetch origin prod && echo "prod OK"
+```
+
+Expect `Hi Studio-1947/1darjeelingvv1! You've successfully authenticated, but GitHub does not
+provide shell access.` If it greets you as a *different* repo or as a username, the wrong key is
+being offered and step 2 is what fixes it.
+
+**One key covers both stacks**, because `/var/www/1darjeelingvv1` and `/var/www/1darjeeling-in`
+are two checkouts of the same repository. A *different* repository — the mobile app, say — needs
+its own key: GitHub allows a given deploy key on only one repo, and trying to reuse this one there
+would force you to remove it from here and break both stacks again.
+
+If `git fetch` instead complains about **dubious ownership**, the checkout is owned by root (the
+bootstrap in §9.2 uses `sudo git clone`) while the workflow runs as `deploy`. Hand it over rather
+than adding a `safe.directory` exception, since the deploy also needs to write to the tree:
+
+```sh
+sudo chown -R deploy:deploy /var/www/1darjeeling-in /var/www/1darjeelingvv1
+```
+
+> Going private also means GitHub Actions minutes are now billed — they are free only on public
+> repositories. Worth watching if the deploy workflows run often.
+
 ### Site returns 502
 
 The container behind the port is down, or Nginx points at the wrong port. Check `docker ps` for
