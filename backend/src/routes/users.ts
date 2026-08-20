@@ -3,6 +3,7 @@ import { db, schema } from '../db';
 import { eq } from 'drizzle-orm';
 import { authenticateToken } from '../middleware/auth';
 import { deleteListingsOwnedBy } from '../lib/accountCleanup';
+import { toPublicUser } from '../lib/publicUser';
 
 const router = Router();
 
@@ -65,7 +66,7 @@ router.patch('/me', authenticateToken, async (req: Request, res: Response) => {
   }
 
   const [updatedUser] = await db.select().from(schema.users).where(eq(schema.users.id, req.user.id)).limit(1);
-  res.json({ user: updatedUser });
+  res.json({ user: toPublicUser(updatedUser) });
 });
 
 // Delete User Account and cleanup

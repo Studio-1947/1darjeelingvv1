@@ -55,6 +55,11 @@ function blockingPredicate(
     or(
       // Paid for and belonging to a guest — blocks unconditionally.
       eq(schema.bookings.status, 'confirmed'),
+      // The host has agreed to take these nights. Blocks unconditionally too, and deliberately
+      // NOT subject to the hold window: a host who accepts has promised the room, and a promise
+      // that silently expires fifteen minutes later is worse than no acceptance at all. If the
+      // guest never pays, the host cancels — which is a decision someone makes, not a timeout.
+      eq(schema.bookings.status, 'accepted'),
       // A checkout still in flight. `createdAt` is an ISO-8601 UTC string for every row this app
       // writes, so lexicographic ordering is chronological ordering and a text comparison is a
       // correct time comparison.

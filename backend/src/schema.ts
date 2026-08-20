@@ -77,9 +77,17 @@ export const bookings = pgTable('bookings', {
   checkOut: text('check_out'),
   guests: integer('guests').default(1).notNull(),
   notes: text('notes').default('').notNull(),
+  // 'pending_payment' | 'accepted' | 'confirmed' | 'cancelled'.
+  //
+  // `accepted` is the host's answer to a request: they have agreed to take the booking, but the
+  // guest has not paid yet, so it is not `confirmed`. Payment is what confirms — that has not
+  // changed. An instant-confirm rate skips `accepted` entirely, going straight from
+  // pending_payment to confirmed when the commission settles.
   status: text('status').notNull(),
   createdAt: text('created_at').notNull(),
   confirmedAt: text('confirmed_at'),
+  // When the host accepted. Null on an instant booking, which no host ever saw.
+  acceptedAt: text('accepted_at'),
   // Who has actually been told this booking is confirmed. Null means "not notified" — which used
   // to be the silent, invisible state of EVERY production booking (see INVESTIGATION.md §6.A):
   // the guest paid, the row said confirmed, and nobody was ever informed. Persisting the outcome
