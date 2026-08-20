@@ -6,7 +6,7 @@ import { db, schema } from '../db';
 import { eq, desc, inArray } from 'drizzle-orm';
 import { authenticateToken } from '../middleware/auth';
 import { requireActiveSupport } from '../middleware/support';
-import { findBlockingBooking, isDateExclusive } from '../lib/bookingAvailability';
+import { findBlockingBooking, isDateExclusive, lockListingForBooking } from '../lib/bookingAvailability';
 import { refundPaymentsFor } from '../lib/refunds';
 import { notifyBookingCancelled } from '../lib/notifications';
 
@@ -198,6 +198,7 @@ router.get('/me', authenticateToken, async (req: Request, res: Response) => {
       status: b.status,
       created_at: b.createdAt,
       confirmed_at: b.confirmedAt,
+      accepted_at: b.acceptedAt,
       listing: listingReturn
     });
   }
@@ -271,7 +272,7 @@ router.get('/provider', authenticateToken, async (req: Request, res: Response) =
   if (listingIds.length === 0) {
     return res.json({
       items: [],
-      stats: { total: 0, confirmed: 0, pending: 0, revenue: 0 },
+      stats: { total: 0, confirmed: 0, pending: 0, accepted: 0, revenue: 0 },
       listings: []
     });
   }
@@ -298,6 +299,7 @@ router.get('/provider', authenticateToken, async (req: Request, res: Response) =
       status: b.status,
       created_at: b.createdAt,
       confirmed_at: b.confirmedAt,
+      accepted_at: b.acceptedAt,
       customer: customer ? { name: customer.name, phone: customer.phone } : null,
       listing: listingMatch
     });
@@ -315,7 +317,10 @@ router.get('/provider', authenticateToken, async (req: Request, res: Response) =
   const stats = {
     total: bookings.length,
     confirmed: confirmedBookings.length,
+    // What still needs the host's attention. An accepted booking is waiting on the guest's
+    // payment, not on the host, so it is counted separately rather than nagging them forever.
     pending: bookings.filter(b => b.status === 'pending_payment').length,
+    accepted: bookings.filter(b => b.status === 'accepted').length,
     revenue: revenue
   };
 
@@ -348,39 +353,123 @@ router.get('/provider', authenticateToken, async (req: Request, res: Response) =
  */
 // Cancel a booking. A traveller can cancel their own; a provider can decline/cancel one on a
 // listing they own; an admin can cancel any. Only ever transitions to 'cancelled' (no un-cancel).
+/**
+ * Does this caller own the listing a booking was made against?
+ *
+ * The listing's providerId can be a provider id or a bare user id (admin-created listings), so
+ * both are accepted. Shared by cancel and confirm, which must agree on who the host is — two
+ * copies of this would eventually let someone confirm a booking they cannot cancel.
+ */
+async function ownsListingFor(
+  booking: typeof schema.bookings.$inferSelect,
+  user: { id: string; role: string }
+): Promise<boolean> {
+  const [listing] = await db.select({ providerId: schema.listings.providerId })
+    .from(schema.listings).where(eq(schema.listings.id, booking.listingId)).limit(1);
+  if (!listing) return false;
+  const providersList = await db.select({ id: schema.providers.id })
+    .from(schema.providers).where(eq(schema.providers.userId, user.id));
+  const ownIds = new Set<string>([user.id, ...providersList.map(p => p.id)]);
+  return ownIds.has(listing.providerId);
+}
+
+const bookingShape = (b: typeof schema.bookings.$inferSelect) => ({
+  id: b.id,
+  user_id: b.userId,
+  listing_id: b.listingId,
+  listing_type: b.listingType,
+  listing_title: b.listingTitle,
+  check_in: b.checkIn,
+  check_out: b.checkOut,
+  guests: b.guests,
+  notes: b.notes,
+  status: b.status,
+  created_at: b.createdAt,
+  confirmed_at: b.confirmedAt,
+  accepted_at: b.acceptedAt,
+});
+
+/**
+ * @openapi
+ * /bookings/{id}/confirm:
+ *   patch:
+ *     summary: Accept a booking request (host or admin only)
+ *     description: >
+ *       Moves a `pending_payment` booking to `accepted` — the host has agreed to take it. This
+ *       does NOT confirm the booking: payment is still what confirms, and the status becomes
+ *       `confirmed` when the commission settles. An accepted booking holds its dates
+ *       unconditionally, unlike a pending one, which expires with the checkout hold window.
+ *     tags: [Bookings]
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: The accepted booking }
+ *       403: { description: Not the host of this listing }
+ *       404: { description: Booking not found }
+ *       409: { description: The booking is cancelled, or its dates went to someone else }
+ */
+router.patch('/:id/confirm', authenticateToken, async (req: Request, res: Response) => {
+  const [booking] = await db.select().from(schema.bookings).where(eq(schema.bookings.id, req.params.id as any)).limit(1);
+  if (!booking) return res.status(404).json({ detail: 'Booking not found' });
+
+  // Deliberately NOT the guest: a guest accepting their own request would be the whole point of
+  // host approval defeated. Admins are included as the operational escape hatch they are elsewhere.
+  const allowed = req.user.role === 'admin' || (await ownsListingFor(booking, req.user));
+  if (!allowed) {
+    return res.status(403).json({ detail: 'Only the host of this listing can accept this booking' });
+  }
+
+  // Idempotent, and already-confirmed is a success rather than an error — the guest paid before
+  // the host got to the request, which is a normal race on an instant-confirm rate.
+  if (booking.status === 'accepted' || booking.status === 'confirmed') {
+    return res.json({ booking: bookingShape(booking) });
+  }
+  if (booking.status === 'cancelled') {
+    return res.status(409).json({ detail: 'This booking was cancelled and cannot be accepted' });
+  }
+
+  // Accepting takes the dates off the market unconditionally, so it has to be serialised against
+  // the settlement path the same way that path serialises against itself — otherwise a host could
+  // accept one guest at the same instant another guest's payment confirms the same nights.
+  const outcome = await db.transaction(async (tx) => {
+    if (isDateExclusive(booking.listingType) && booking.checkIn && booking.checkOut) {
+      await lockListingForBooking(tx, booking.listingId);
+      const clash = await findBlockingBooking(
+        tx, booking.listingId, booking.checkIn, booking.checkOut, booking.id
+      );
+      if (clash && (clash.status === 'confirmed' || clash.status === 'accepted')) {
+        return { taken: true as const };
+      }
+    }
+    const [accepted] = await tx.update(schema.bookings)
+      .set({ status: 'accepted', acceptedAt: new Date().toISOString() })
+      .where(eq(schema.bookings.id, booking.id))
+      .returning();
+    return { taken: false as const, booking: accepted };
+  });
+
+  if (outcome.taken) {
+    return res.status(409).json({ detail: 'These dates have already gone to another guest' });
+  }
+
+  res.json({ booking: bookingShape(outcome.booking) });
+});
+
 router.patch('/:id/cancel', authenticateToken, async (req: Request, res: Response) => {
   const [booking] = await db.select().from(schema.bookings).where(eq(schema.bookings.id, req.params.id as any)).limit(1);
   if (!booking) return res.status(404).json({ detail: 'Booking not found' });
 
-  let allowed = booking.userId === req.user.id || req.user.role === 'admin';
-  if (!allowed) {
-    // Provider path: the listing's providerId can be a provider id or a bare user id (admin-created
-    // listings), so accept either the caller's user id or any of their provider ids.
-    const [listing] = await db.select({ providerId: schema.listings.providerId })
-      .from(schema.listings).where(eq(schema.listings.id, booking.listingId)).limit(1);
-    if (listing) {
-      const providersList = await db.select({ id: schema.providers.id })
-        .from(schema.providers).where(eq(schema.providers.userId, req.user.id));
-      const ownIds = new Set<string>([req.user.id, ...providersList.map(p => p.id)]);
-      allowed = ownIds.has(listing.providerId);
-    }
-  }
+  const allowed =
+    booking.userId === req.user.id ||
+    req.user.role === 'admin' ||
+    (await ownsListingFor(booking, req.user));
   if (!allowed) return res.status(403).json({ detail: 'You do not have permission to cancel this booking' });
 
-  const shape = (b: typeof schema.bookings.$inferSelect) => ({
-    id: b.id,
-    user_id: b.userId,
-    listing_id: b.listingId,
-    listing_type: b.listingType,
-    listing_title: b.listingTitle,
-    check_in: b.checkIn,
-    check_out: b.checkOut,
-    guests: b.guests,
-    notes: b.notes,
-    status: b.status,
-    created_at: b.createdAt,
-    confirmed_at: b.confirmedAt,
-  });
+  const shape = bookingShape;
 
   // Idempotent: cancelling an already-cancelled booking just echoes it back.
   if (booking.status === 'cancelled') return res.json({ booking: shape(booking) });

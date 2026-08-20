@@ -88,7 +88,10 @@ async function handlePaymentSuccess(flow: string, referenceId: string, userId: s
         const clash = await findBlockingBooking(
           tx, target.listingId, target.checkIn, target.checkOut, target.id
         );
-        if (clash && clash.status === 'confirmed') {
+        // `accepted` counts as taken here for the same reason it blocks in the predicate: the
+        // host has already promised those nights to someone else, so confirming this payment
+        // would send two parties to one room just as surely as a confirmed clash would.
+        if (clash && (clash.status === 'confirmed' || clash.status === 'accepted')) {
           // Someone else's payment landed first. The guest has already been charged, so the only
           // honest resolution is to cancel this one and give the money back — confirming both
           // would send two parties to one room.

@@ -71,6 +71,13 @@
       "when": 1785818210841,
       "tag": "0009_remarkable_korg",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1787221974772,
+      "tag": "0010_cloudy_thor",
+      "breakpoints": true
     }
   ]
 }
