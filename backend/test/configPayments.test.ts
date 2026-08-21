@@ -9,6 +9,10 @@ import { describe, it, expect, afterEach, vi } from 'vitest';
 function stubProductionBaseline() {
   vi.stubEnv('APP_ENV', 'production');
   vi.stubEnv('JWT_SECRET', 'a_real_production_jwt_secret');
+  // MESSAGING_PROVIDER defaults to mock, which config.ts refuses in production before it reaches
+  // the MOCK_PAYMENTS guard. Naming a real provider clears that earlier failure; see
+  // configMockOtp.test.ts, which tests it directly.
+  vi.stubEnv('MESSAGING_PROVIDER', 'msg91');
 }
 
 async function importConfig() {

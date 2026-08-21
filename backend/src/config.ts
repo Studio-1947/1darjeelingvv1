@@ -83,6 +83,31 @@ export const MESSAGING_PROVIDER = process.env.MESSAGING_PROVIDER?.trim() || 'moc
 // to switch to real delivery with one variable.
 export const MOCK_OTP = MESSAGING_PROVIDER === 'mock';
 
+// The mock provider in production is not a degraded feature, it is an unauthenticated takeover of
+// every account on the system: `123456` logs in as any phone number, including one that has never
+// registered, and including an admin's. Until now that combination only logged an error and booted
+// anyway, which is how it survived on a deployed stack — nobody reads a startup log that scrolls
+// past on a machine that came up healthy.
+//
+// APP_ENV alone cannot decide this. Both deployed stacks run APP_ENV=production (staging has to
+// exercise production behaviour to be worth anything), and on staging the bypass is genuinely
+// wanted. So the operator states the intent in a variable that cannot be misread, and only silence
+// is refused — the same shape as the MOCK_PAYMENTS guard below.
+//
+// One notch stricter than that guard, deliberately: an explicit MESSAGING_PROVIDER=mock is not
+// enough on its own. "We have no SMS gateway wired up yet" and "anyone may log in as anyone" are
+// different decisions, and writing the provider name only makes the first one. ALLOW_MOCK_OTP is
+// the only place the second one can be made.
+export const ALLOW_MOCK_OTP = process.env.ALLOW_MOCK_OTP?.trim().toLowerCase() === 'true';
+if (IS_PROD && MOCK_OTP && !ALLOW_MOCK_OTP) {
+  throw new Error(
+    '[config] MESSAGING_PROVIDER=mock with APP_ENV=production leaves the 123456 universal code ' +
+    'live, so anyone can log in as any phone number. Set MESSAGING_PROVIDER to a provider that ' +
+    'actually delivers (registered: mock, msg91), or — on a staging stack where a bypass login is ' +
+    'what you want — set ALLOW_MOCK_OTP=true to say so. It is not assumed.'
+  );
+}
+
 function requirePositiveInt(name: string, raw: string | undefined, fallback: number): number {
   const trimmed = raw?.trim();
   if (!trimmed) return fallback;
@@ -159,10 +184,13 @@ if (IS_PROD) {
     log.error('[config] MOCK_PAYMENTS=true with APP_ENV=production — payments are simulated and no money will be charged.');
   }
   if (MOCK_OTP) {
+    // Reachable only via an explicit ALLOW_MOCK_OTP=true (the guard above throws otherwise), so
+    // this is no longer news to the operator — it is the reminder that the state they asked for
+    // is still on, printed on every boot until they turn it off.
     log.error(
-      '[config] MESSAGING_PROVIDER=mock with APP_ENV=production — OTPs are not delivered and ' +
-      'the 123456 universal code is active, so anyone can log in as any phone number. ' +
-      'Set MESSAGING_PROVIDER to a real provider before taking real users.'
+      '[config] ALLOW_MOCK_OTP=true with APP_ENV=production — OTPs are not delivered and the ' +
+      '123456 universal code is active, so anyone can log in as any phone number. This stack ' +
+      'must not take real users. Set MESSAGING_PROVIDER to a real provider to end it.'
     );
   }
   if (!NOTIFY_BOOKINGS) {

@@ -428,7 +428,12 @@ cp .env.production.example .env
 #   APP_ENV=production
 #   CORS_ORIGINS=https://1darjeeling.in
 #   MINIO_PUBLIC_URL=https://1darjeeling.in
-#   MOCK_PAYMENTS / MESSAGING_PROVIDER — real values when going truly live
+#   MOCK_PAYMENTS — real value when going truly live
+#   MESSAGING_PROVIDER — must NOT be `mock` here. With APP_ENV=production the backend
+#     refuses to boot on the mock provider unless ALLOW_MOCK_OTP=true is also set, and on
+#     1darjeeling.in it must never be: mock accepts the universal code 123456 from anyone,
+#     for any phone number. Set msg91 and its credentials, or the deploy fails — which is
+#     the intended outcome, and better than a live site with every account open.
 # See §4 for the backend's startup refusals if a value is missing or left at a placeholder.
 ```
 
