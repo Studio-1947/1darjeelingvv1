@@ -7,6 +7,7 @@ import { rateLimiter } from '../middleware/rateLimiter';
 import { authenticateToken, makeToken, verifyPassword, hashPassword, needsRehash } from '../middleware/auth';
 import { log, ADMIN_USERNAME, ADMIN_PASSWORD, MOCK_OTP, OTP_TTL_SECONDS, OTP_MAX_ATTEMPTS } from '../config';
 import { sendOtp } from '../messaging';
+import { toPublicUser } from '../lib/publicUser';
 
 const router = Router();
 
@@ -235,7 +236,7 @@ router.post('/otp/verify', rateLimiter(10, 60 * 1000, 'otp_verify'), async (req:
   }
 
   const token = makeToken(user.id, user.phone, user.role);
-  return res.json({ token, user });
+  return res.json({ token, user: toPublicUser(user) });
 });
 
 /**
@@ -262,7 +263,7 @@ router.post('/otp/verify', rateLimiter(10, 60 * 1000, 'otp_verify'), async (req:
  */
 // Current User Details
 router.get('/me', authenticateToken, (req: Request, res: Response) => {
-  res.json({ user: req.user });
+  res.json({ user: toPublicUser(req.user) });
 });
 
 /**
@@ -321,7 +322,7 @@ router.post('/admin/login', rateLimiter(10, 60 * 1000, 'admin_login'), async (re
       createdAt: new Date().toISOString()
     };
     const token = makeToken(adminUser.id, adminUser.phone, adminUser.role);
-    return res.json({ token, user: adminUser });
+    return res.json({ token, user: toPublicUser(adminUser) });
   }
 
   const [user] = await db.select().from(schema.users).where(eq(schema.users.phone, loginInput)).limit(1);
@@ -344,7 +345,7 @@ router.post('/admin/login', rateLimiter(10, 60 * 1000, 'admin_login'), async (re
   }
 
   const token = makeToken(user.id, user.phone, user.role);
-  return res.json({ token, user });
+  return res.json({ token, user: toPublicUser(user) });
 });
 
 export default router;
