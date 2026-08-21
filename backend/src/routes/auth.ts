@@ -8,6 +8,7 @@ import { authenticateToken, makeToken, verifyPassword, hashPassword, needsRehash
 import { log, ADMIN_USERNAME, ADMIN_PASSWORD, MOCK_OTP, OTP_TTL_SECONDS, OTP_MAX_ATTEMPTS } from '../config';
 import { sendOtp } from '../messaging';
 import { toPublicUser } from '../lib/publicUser';
+import { reserveOtpSend } from '../lib/otpSendBudget';
 
 const router = Router();
 
@@ -64,6 +65,11 @@ function constantTimeEquals(a: unknown, b: unknown): boolean {
  *         content:
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
+ *       429:
+ *         description: Per-minute rate limit, or a daily send budget (per-phone or platform-wide) is exhausted. Retry-After gives the seconds to wait.
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
  *       502:
  *         description: The messaging provider could not be reached or rejected the request
  *         content:
@@ -81,6 +87,23 @@ router.post(
   const { phone, channel = 'whatsapp' } = req.body;
   if (!phone) {
     return res.status(400).json({ detail: 'Phone number is required' });
+  }
+
+  // Durable daily ceiling, checked before a code is generated or a message costs anything. The
+  // per-minute limiters above cap the rate; this caps the total, and survives the restart that
+  // clears them. See lib/otpSendBudget.ts.
+  const budget = await reserveOtpSend(phone);
+  if (!budget.ok) {
+    res.setHeader('Retry-After', String(budget.retryAfterSeconds));
+    return res.status(429).json({
+      detail: budget.scope === 'phone'
+        // Named for what it is, so a real person on a bad line knows waiting is the answer and
+        // trying a different number is not.
+        ? 'Too many codes requested for this number today. Try again tomorrow.'
+        // Deliberately vague: that the PLATFORM is out of budget is exactly the feedback an
+        // attacker draining it is looking for.
+        : 'Could not send OTP, please try again later',
+    });
   }
 
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
@@ -109,6 +132,9 @@ router.post(
   } catch (err) {
     // The diagnostic can name the provider and quote its response, so it stays server-side.
     log.error(`[otp] delivery failed for ****${phone.slice(-4)}: ${(err as Error).message}`);
+    // Nothing was delivered, so nothing was spent. Handing the reservation back keeps a provider
+    // outage from burning through a user's ten daily codes — or the platform's thousand.
+    await budget.release();
     return res.status(502).json({ detail: 'Could not send OTP, please try again' });
   }
 

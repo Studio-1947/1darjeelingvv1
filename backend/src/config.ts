@@ -98,6 +98,27 @@ function requirePositiveInt(name: string, raw: string | undefined, fallback: num
 export const OTP_TTL_SECONDS = requirePositiveInt('OTP_TTL_SECONDS', process.env.OTP_TTL_SECONDS, 300);
 export const OTP_MAX_ATTEMPTS = requirePositiveInt('OTP_MAX_ATTEMPTS', process.env.OTP_MAX_ATTEMPTS, 5);
 
+// Daily ceilings on OTP sends, enforced against durable counters in lib/otpSendBudget.ts.
+//
+// The per-minute limiters in middleware/rateLimiter.ts do not cover this. They are in-memory and
+// per-process, so a deploy wipes them, and they cap the RATE of sends without capping the TOTAL:
+// at 3/min a single number absorbs 4,320 messages a day, and rotating the number costs an attacker
+// nothing. While the provider is `mock` that is only noise. Once real SMS is wired up each one of
+// those is a charge on the platform's account, and SMS pumping — driving traffic to numbers whose
+// termination fees the attacker collects a cut of — is the specific way that bill is turned into
+// someone else's revenue.
+//
+// Per-phone 10/day: comfortably above a real person having a bad signal day, far below anything
+// worth farming. Global 1000/day: sized for a platform this size to never notice it, while capping
+// the worst case at a bounded number rather than an unbounded one. Both are the ceiling, not the
+// expected load — if either is ever reached, the response is to look at why, not to raise it.
+export const OTP_MAX_SENDS_PER_PHONE_PER_DAY = requirePositiveInt(
+  'OTP_MAX_SENDS_PER_PHONE_PER_DAY', process.env.OTP_MAX_SENDS_PER_PHONE_PER_DAY, 10
+);
+export const OTP_MAX_SENDS_PER_DAY = requirePositiveInt(
+  'OTP_MAX_SENDS_PER_DAY', process.env.OTP_MAX_SENDS_PER_DAY, 1000
+);
+
 // How long an unpaid homestay booking holds its dates against other guests. Long enough to finish
 // a Razorpay checkout, short enough that an abandoned tab frees the room again without an operator
 // having to intervene. See lib/bookingAvailability.ts.

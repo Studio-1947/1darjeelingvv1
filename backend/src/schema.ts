@@ -1,4 +1,4 @@
-import { pgTable, text, integer, boolean, numeric, jsonb, doublePrecision, uniqueIndex, index } from 'drizzle-orm/pg-core';
+import { pgTable, text, integer, boolean, numeric, jsonb, doublePrecision, uniqueIndex, index, primaryKey } from 'drizzle-orm/pg-core';
 
 export const users = pgTable('users', {
   id: text('id').primaryKey(),
@@ -165,4 +165,21 @@ export const kycDocuments = pgTable('kyc_documents', {
   // of the same docType can't both insert, which previously let approved/pending duplicates
   // coexist and made the Verified badge flap depending on unordered row read order.
   providerDocTypeUnique: uniqueIndex('kyc_documents_provider_doc_type_unique').on(t.providerId, t.docType),
+}));
+
+// Durable daily counters for OTP sends. Separate from middleware/rateLimiter.ts on purpose: that
+// limiter is in-memory and per-process, so its windows reset on every deploy and are invisible to
+// a second container. That is acceptable for a per-minute burst guard and useless for a daily
+// spend cap, which is what stands between a real SMS provider and a billing attack — an attacker
+// who can trigger a redeploy, or simply wait one out, gets a fresh budget.
+//
+// One row per (scope, day). `scope` is either 'global' or `phone:<number>`; keeping both in one
+// table means one insert shape and one sweep rather than two of each.
+export const otpSendCounters = pgTable('otp_send_counters', {
+  scope: text('scope').notNull(),
+  // 'YYYY-MM-DD', UTC. Text, like every other date in this schema.
+  day: text('day').notNull(),
+  count: integer('count').notNull().default(0),
+}, (t) => ({
+  scopeDayPk: primaryKey({ columns: [t.scope, t.day] }),
 }));
