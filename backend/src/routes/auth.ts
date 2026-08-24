@@ -9,6 +9,7 @@ import { log, ADMIN_USERNAME, ADMIN_PASSWORD, MOCK_OTP, OTP_TTL_SECONDS, OTP_MAX
 import { sendOtp } from '../messaging';
 import { toPublicUser } from '../lib/publicUser';
 import { reserveOtpSend } from '../lib/otpSendBudget';
+import { isPlausiblePhone, phoneKey } from '../lib/phone';
 
 const router = Router();
 
@@ -81,7 +82,13 @@ router.post(
   '/otp/send',
   rateLimiter(5, 60 * 1000, 'otp_send'),
   rateLimiter(3, 60 * 1000, 'otp_send_phone', {
-    keyExtractor: (req: Request) => (req.body?.phone ? `phone:${req.body.phone.trim()}` : undefined),
+    // Keyed on the canonical number, not the string as typed. Keying on the raw value meant
+    // "+919876543210", "+91 98765 43210" and "9876543210" were three separate buckets for one
+    // person, so a caller could reset their own limit by adding a space.
+    keyExtractor: (req: Request) => {
+      const key = phoneKey(req.body?.phone);
+      return key ? `phone:${key}` : undefined;
+    },
   }),
   async (req: Request, res: Response) => {
   const { phone, channel = 'whatsapp' } = req.body;
@@ -89,10 +96,21 @@ router.post(
     return res.status(400).json({ detail: 'Phone number is required' });
   }
 
+  // Checked before anything is reserved or sent. This route used to test only that `phone` was
+  // present, so any string reached the budget and the messaging provider — and on a mock-mode
+  // server the universal code then verified it, leaving an account whose identity was
+  // "not-a-number". The filter is permissive about shape on purpose: the website's phone field
+  // is free text, so real accounts exist under every spelling a person might type, and all of
+  // them have to keep working. See lib/phone.ts.
+  if (!isPlausiblePhone(phone)) {
+    return res.status(400).json({ detail: 'That does not look like a phone number' });
+  }
+
   // Durable daily ceiling, checked before a code is generated or a message costs anything. The
   // per-minute limiters above cap the rate; this caps the total, and survives the restart that
-  // clears them. See lib/otpSendBudget.ts.
-  const budget = await reserveOtpSend(phone);
+  // clears them. Spent against the canonical number so the ten-a-day cannot be reset by
+  // respelling it. See lib/otpSendBudget.ts.
+  const budget = await reserveOtpSend(phoneKey(phone) ?? phone);
   if (!budget.ok) {
     res.setHeader('Retry-After', String(budget.retryAfterSeconds));
     return res.status(429).json({
@@ -202,6 +220,15 @@ router.post('/otp/verify', rateLimiter(10, 60 * 1000, 'otp_verify'), async (req:
   const { phone, otp, name, role = 'tourist' } = req.body;
   if (!phone || !otp) {
     return res.status(400).json({ detail: 'Phone and OTP are required' });
+  }
+
+  // A junk number can no longer be issued a code at all, so this is belt and braces — except in
+  // mock mode, where the universal bypass below needs no stored row and would otherwise still
+  // mint a session for one. Lookup still uses the number exactly as sent: `users.phone` holds
+  // whatever was typed at signup, and canonicalising here would send an existing user to a new,
+  // empty account instead of their own.
+  if (!isPlausiblePhone(phone)) {
+    return res.status(400).json({ detail: 'That does not look like a phone number' });
   }
 
   const [otpRec] = await db.select().from(schema.otps).where(eq(schema.otps.phone, phone)).limit(1);
