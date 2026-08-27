@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { db, schema } from '../db';
+import { toPublicUser, type PublicUser } from '../lib/publicUser';
 import { eq } from 'drizzle-orm';
 import { JWT_SECRET } from '../config';
 
@@ -55,12 +56,45 @@ export function needsRehash(storedHash: string): boolean {
   return !storedHash?.startsWith(`${PREFIX}$${PBKDF2_DIGEST}$${PBKDF2_ITERATIONS}$`);
 }
 
+/**
+ * The authenticated caller, as every route sees it.
+ *
+ * Two things this type is doing, both of which used to be missing.
+ *
+ * It is a TYPE. `user?: any` meant 49 reads across the routes — 38 of them
+ * `req.user.id` — were unchecked, on the one object whose shape decides who a request is
+ * allowed to act as.
+ *
+ * And it is the PUBLIC shape. `authenticateToken` used to put the raw Drizzle row here, which
+ * carries the `password` column; nothing echoed it, but the whole reason lib/publicUser.ts
+ * exists is that an earlier version of this app did exactly that on every /auth/me poll. A row
+ * that never reaches the request cannot be leaked from it by the next route somebody writes.
+ */
+export type AuthenticatedUser = PublicUser;
+
+/**
+ * Non-optional deliberately, and the invariant is real rather than wishful: every route that
+ * reads `req.user` is mounted behind `authenticateToken`, which answers 401 and never calls
+ * next() unless it has set this. Typing it optional instead would put a `!` on 49 call sites
+ * and improve nothing — the useful checking here is of the SHAPE, so a typo in a property name
+ * or a change to the user row is caught at compile time.
+ *
+ * `requireActiveSupport` still guards for absence at runtime. That is not redundancy to remove:
+ * it is what catches the mounting mistake this type cannot see.
+ */
 declare global {
   namespace Express {
     interface Request {
-      user?: any;
+      user: AuthenticatedUser;
     }
   }
+}
+
+/** What makeToken signs, and therefore all jwt.verify can be trusted to return. */
+interface JwtPayload {
+  sub: string;
+  phone?: string;
+  role?: string;
 }
 
 export function makeToken(userId: string, phone: string, role: string): string {
@@ -75,22 +109,23 @@ export async function authenticateToken(req: Request, res: Response, next: NextF
 
   const token = authHeader.split(' ')[1];
   try {
-    const payload = jwt.verify(token, JWT_SECRET) as any;
+    const payload = jwt.verify(token, JWT_SECRET) as JwtPayload;
     if (payload.sub === 'admin-system') {
-      req.user = {
+      req.user = toPublicUser({
         id: 'admin-system',
         name: 'System Administrator',
         phone: 'admin',
         role: 'admin',
         createdAt: new Date().toISOString()
-      };
+      });
       return next();
     }
     const [user] = await db.select().from(schema.users).where(eq(schema.users.id, payload.sub)).limit(1);
     if (!user) {
       return res.status(401).json({ detail: 'User not found' });
     }
-    req.user = user;
+    // Sanitised here rather than at each responder: the password column stops at this line.
+    req.user = toPublicUser(user);
     next();
   } catch (err) {
     return res.status(401).json({ detail: 'Invalid token' });

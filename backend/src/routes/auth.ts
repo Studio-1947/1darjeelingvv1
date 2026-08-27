@@ -371,7 +371,8 @@ router.post('/otp/verify', rateLimiter(10, 60 * 1000, 'otp_verify'), async (req:
  */
 // Current User Details
 router.get('/me', authenticateToken, (req: Request, res: Response) => {
-  res.json({ user: toPublicUser(req.user) });
+  // Already the public shape — authenticateToken sanitises before the request reaches here.
+  res.json({ user: req.user });
 });
 
 /**
