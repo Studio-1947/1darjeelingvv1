@@ -8,7 +8,7 @@ import { authenticateToken, requireAdmin, hashPassword } from '../middleware/aut
 import { rateLimiter } from '../middleware/rateLimiter';
 import { ADMIN_BOOTSTRAP_SECRET } from '../config';
 import { recomputeKycStatus } from './kyc';
-import { deleteListingsOwnedBy } from '../lib/accountCleanup';
+import { deleteListingsOwnedBy, deleteKycFilesOwnedBy } from '../lib/accountCleanup';
 import { listUnreturnedPayments, refundPayment } from '../lib/refunds';
 
 const router = Router();
@@ -315,6 +315,9 @@ router.delete('/admin/users/:id', authenticateToken, requireAdmin, async (req: R
   // provider_id is untyped text with no foreign key, so without this a deleted provider's
   // listings stayed live and bookable with no owner behind them.
   await deleteListingsOwnedBy(id as any);
+  // Same reason as the self-service path in routes/users.ts: kyc_documents cascades off the
+  // provider rows, but the files it points at are in object storage, which nothing cascades to.
+  await deleteKycFilesOwnedBy(id as any);
   await db.delete(schema.users).where(eq(schema.users.id, id as any));
   res.json({ ok: true });
 });
