@@ -506,6 +506,16 @@
     "guests_less": "कम पाहुना",
     "guests_more": "बढी पाहुना"
   },
+  "filter": {
+    "search_placeholder": "नाम, ल्यान्डमार्क वा किवर्डबाट खोज्नुहोस्…",
+    "all_locations": "सबै हब र स्थान",
+    "sort_recommended": "फिचर्ड / लोकप्रिय",
+    "sort_price_asc": "मूल्य: कमबाट बढी",
+    "sort_price_desc": "मूल्य: बढीबाट कम",
+    "sort_name_asc": "नाम: A – Z",
+    "filters": "फिल्टर",
+    "reset": "रिसेट"
+  },
   "category": {
     "search": "खोज",
     "results_one": "{{count}} नतिजा",
