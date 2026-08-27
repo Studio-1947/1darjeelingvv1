@@ -5,6 +5,7 @@ import {
   NotificationTemplate,
   OtpMessage,
 } from '../types';
+import { requireCredentials, requireNotificationTemplates } from '../providerConfig';
 
 /**
  * WhatsApp Cloud API, talking to Meta directly — no SMS aggregator in between.
@@ -143,14 +144,7 @@ export function createWhatsAppProvider(
     name: 'whatsapp',
 
     init() {
-      const required = ['WHATSAPP_ACCESS_TOKEN', 'WHATSAPP_PHONE_NUMBER_ID', 'WHATSAPP_OTP_TEMPLATE'];
-      const missing = required.filter((k) => !env[k]?.trim());
-      if (missing.length > 0) {
-        throw new Error(
-          `[messaging] MESSAGING_PROVIDER=whatsapp requires ${missing.join(', ')}. ` +
-          `See docs/WHATSAPP_SETUP.md, or use MESSAGING_PROVIDER=mock.`
-        );
-      }
+      requireCredentials('whatsapp', env, ['WHATSAPP_ACCESS_TOKEN', 'WHATSAPP_PHONE_NUMBER_ID', 'WHATSAPP_OTP_TEMPLATE']);
 
       // The token most people copy out of the Meta dashboard first is the temporary one, and it
       // dies after roughly 24 hours — which presents later as "login stopped working overnight"
@@ -165,21 +159,7 @@ export function createWhatsAppProvider(
           'expire in about 24 hours. Generate a System User token instead — see docs/WHATSAPP_SETUP.md.'
         );
       }
-
-      // Only demanded when booking notifications are switched on, so a deployment that intends
-      // to notify cannot boot half-configured and discover it at the first confirmed booking.
-      // Same reasoning as the msg91 adapter and the Razorpay checks in config.ts.
-      if (env.NOTIFY_BOOKINGS?.trim().toLowerCase() === 'true') {
-        const missingTemplates = Object.values(TEMPLATE_ENV_VARS).filter((k) => !env[k]?.trim());
-        if (missingTemplates.length > 0) {
-          throw new Error(
-            `[messaging] NOTIFY_BOOKINGS=true with MESSAGING_PROVIDER=whatsapp requires an ` +
-            `approved template name for every transactional message: ${missingTemplates.join(', ')}. ` +
-            `Create them in WhatsApp Manager and set these, or set NOTIFY_BOOKINGS=false to ` +
-            `leave booking notifications off.`
-          );
-        }
-      }
+      requireNotificationTemplates('whatsapp', env, TEMPLATE_ENV_VARS, 'Create them in WhatsApp Manager and set these');
     },
 
     async sendOtp({ phone, otp }: OtpMessage) {

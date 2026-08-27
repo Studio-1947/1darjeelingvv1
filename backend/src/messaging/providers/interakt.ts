@@ -5,6 +5,7 @@ import {
   NotificationTemplate,
   OtpMessage,
 } from '../types';
+import { requireCredentials, requireNotificationTemplates } from '../providerConfig';
 
 /**
  * Interakt — WhatsApp, through a Meta Business Solution Provider rather than Meta directly.
@@ -159,33 +160,17 @@ export function createInteraktProvider(
     name: 'interakt',
 
     init() {
-      const required = ['INTERAKT_API_KEY', 'INTERAKT_OTP_TEMPLATE'];
-      const missing = required.filter((k) => !env[k]?.trim());
-      if (missing.length > 0) {
-        throw new Error(
-          `[messaging] MESSAGING_PROVIDER=interakt requires ${missing.join(', ')}. ` +
-          `See docs/WHATSAPP_SETUP.md, or use MESSAGING_PROVIDER=mock.`
-        );
-      }
+      requireCredentials('interakt', env, ['INTERAKT_API_KEY', 'INTERAKT_OTP_TEMPLATE']);
 
+      // Adapter-specific: splitPhone leans on this being a real dialling code, and a wrong one
+      // does not fail at send time — it puts the split in the wrong place.
       if (!/^\+?[0-9]{1,3}$/.test(countryCode)) {
         throw new Error(
           `[messaging] INTERAKT_COUNTRY_CODE must be a dialling code like "+91", got "${countryCode}".`
         );
       }
 
-      // Same reasoning as the other two adapters: a deployment that means to notify people must
-      // fail at boot rather than at the first confirmed booking.
-      if (env.NOTIFY_BOOKINGS?.trim().toLowerCase() === 'true') {
-        const missingTemplates = Object.values(TEMPLATE_ENV_VARS).filter((k) => !env[k]?.trim());
-        if (missingTemplates.length > 0) {
-          throw new Error(
-            `[messaging] NOTIFY_BOOKINGS=true with MESSAGING_PROVIDER=interakt requires a synced ` +
-            `template name for every transactional message: ${missingTemplates.join(', ')}. ` +
-            `Sync them into Interakt and set these, or set NOTIFY_BOOKINGS=false.`
-          );
-        }
-      }
+      requireNotificationTemplates('interakt', env, TEMPLATE_ENV_VARS, 'Sync them into Interakt and set these');
     },
 
     async sendOtp({ phone, otp }: OtpMessage) {
