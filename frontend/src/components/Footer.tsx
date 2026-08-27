@@ -47,6 +47,7 @@ export default function Footer() {
             <li><Link to="/terms" className="hover:text-pine transition-colors">{t('nav.terms')}</Link></li>
             <li><Link to="/refunds" className="hover:text-pine transition-colors">{t('nav.refunds')}</Link></li>
             <li><Link to="/contact" className="hover:text-pine transition-colors">{t('nav.contact')}</Link></li>
+            <li><Link to="/delete-account" className="hover:text-pine transition-colors">{t('nav.delete_account')}</Link></li>
             <li className="flex items-center gap-1 mt-2 text-ink/80 font-medium"><Mail size={12} className="text-pine flex-shrink-0" /> 1darjeelingapp@gmail.com</li>
           </ul>
         </div>
