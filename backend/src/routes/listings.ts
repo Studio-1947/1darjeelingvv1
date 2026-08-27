@@ -4,6 +4,7 @@ import { db, schema } from '../db';
 import { eq, or, and, ilike, inArray } from 'drizzle-orm';
 import { authenticateToken } from '../middleware/auth';
 import { storeBase64Image, ImageUploadError } from '../lib/imageUpload';
+import { routeParam } from '../lib/routeParam';
 import {
   SPOT_TYPE, SPOT_FORBIDDEN_MESSAGE, canWriteSpots, parseSpotExtras,
   isSpotPublished, publicSpotVisibility, spotOrdering, SpotValidationError,
@@ -303,7 +304,7 @@ router.get('/', async (req: Request, res: Response) => {
  */
 // Get single listing detail
 router.get('/:id', async (req: Request, res: Response) => {
-  const [item] = await db.select().from(schema.listings).where(eq(schema.listings.id, req.params.id as any)).limit(1);
+  const [item] = await db.select().from(schema.listings).where(eq(schema.listings.id, routeParam(req, 'id'))).limit(1);
   if (!item) {
     return res.status(404).json({ detail: 'Not found' });
   }
@@ -449,7 +450,7 @@ router.post('/upload', authenticateToken, async (req: Request, res: Response) =>
 
 // Update listing handler (supports both PUT and PATCH)
 const updateListingHandler = async (req: Request, res: Response) => {
-  const [listing] = await db.select().from(schema.listings).where(eq(schema.listings.id, req.params.id as any)).limit(1);
+  const [listing] = await db.select().from(schema.listings).where(eq(schema.listings.id, routeParam(req, 'id'))).limit(1);
   if (!listing) {
     return res.status(404).json({ detail: 'Not found' });
   }
@@ -536,7 +537,7 @@ router.put('/:id', authenticateToken, updateListingHandler);
 
 // Delete a listing (provider who owns it, or admin)
 router.delete('/:id', authenticateToken, async (req: Request, res: Response) => {
-  const [listing] = await db.select().from(schema.listings).where(eq(schema.listings.id, req.params.id as any)).limit(1);
+  const [listing] = await db.select().from(schema.listings).where(eq(schema.listings.id, routeParam(req, 'id'))).limit(1);
   if (!listing) {
     return res.status(404).json({ detail: 'Not found' });
   }

@@ -9,6 +9,7 @@ import { requireActiveSupport } from '../middleware/support';
 import { findBlockingBooking, isDateExclusive, lockListingForBooking } from '../lib/bookingAvailability';
 import { refundPaymentsFor } from '../lib/refunds';
 import { notifyBookingCancelled } from '../lib/notifications';
+import { routeParam } from '../lib/routeParam';
 
 const router = Router();
 
@@ -413,7 +414,7 @@ const bookingShape = (b: typeof schema.bookings.$inferSelect) => ({
  *       409: { description: The booking is cancelled, or its dates went to someone else }
  */
 router.patch('/:id/confirm', authenticateToken, async (req: Request, res: Response) => {
-  const [booking] = await db.select().from(schema.bookings).where(eq(schema.bookings.id, req.params.id as any)).limit(1);
+  const [booking] = await db.select().from(schema.bookings).where(eq(schema.bookings.id, routeParam(req, 'id'))).limit(1);
   if (!booking) return res.status(404).json({ detail: 'Booking not found' });
 
   // Deliberately NOT the guest: a guest accepting their own request would be the whole point of
@@ -460,7 +461,7 @@ router.patch('/:id/confirm', authenticateToken, async (req: Request, res: Respon
 });
 
 router.patch('/:id/cancel', authenticateToken, async (req: Request, res: Response) => {
-  const [booking] = await db.select().from(schema.bookings).where(eq(schema.bookings.id, req.params.id as any)).limit(1);
+  const [booking] = await db.select().from(schema.bookings).where(eq(schema.bookings.id, routeParam(req, 'id'))).limit(1);
   if (!booking) return res.status(404).json({ detail: 'Booking not found' });
 
   const allowed =

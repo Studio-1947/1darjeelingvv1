@@ -10,6 +10,7 @@ import { ADMIN_BOOTSTRAP_SECRET } from '../config';
 import { recomputeKycStatus } from './kyc';
 import { deleteListingsOwnedBy, deleteKycFilesOwnedBy } from '../lib/accountCleanup';
 import { listUnreturnedPayments, refundPayment } from '../lib/refunds';
+import { routeParam } from '../lib/routeParam';
 
 const router = Router();
 
@@ -235,8 +236,8 @@ router.get('/admin/listings', authenticateToken, requireAdmin, async (req: Reque
  */
 // Admin Listings Delete
 router.delete('/admin/listings/:id', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
-  const { id } = req.params;
-  await db.delete(schema.listings).where(eq(schema.listings.id, id as any));
+  const id = routeParam(req, 'id');
+  await db.delete(schema.listings).where(eq(schema.listings.id, id));
   res.json({ ok: true });
 });
 
@@ -306,19 +307,19 @@ router.get('/admin/users', authenticateToken, requireAdmin, async (req: Request,
  */
 // Admin Users Delete
 router.delete('/admin/users/:id', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
-  const { id } = req.params;
-  const [targetUser] = await db.select().from(schema.users).where(eq(schema.users.id, id as any)).limit(1);
+  const id = routeParam(req, 'id');
+  const [targetUser] = await db.select().from(schema.users).where(eq(schema.users.id, id)).limit(1);
   if (targetUser && targetUser.role === 'admin') {
     return res.status(403).json({ detail: 'Cannot delete admin user' });
   }
   // Providers, bookings and payments cascade off the user row, but listings do not: their
   // provider_id is untyped text with no foreign key, so without this a deleted provider's
   // listings stayed live and bookable with no owner behind them.
-  await deleteListingsOwnedBy(id as any);
+  await deleteListingsOwnedBy(id);
   // Same reason as the self-service path in routes/users.ts: kyc_documents cascades off the
   // provider rows, but the files it points at are in object storage, which nothing cascades to.
-  await deleteKycFilesOwnedBy(id as any);
-  await db.delete(schema.users).where(eq(schema.users.id, id as any));
+  await deleteKycFilesOwnedBy(id);
+  await db.delete(schema.users).where(eq(schema.users.id, id));
   res.json({ ok: true });
 });
 
@@ -366,7 +367,7 @@ const ALLOWED_PROVIDER_STATUSES = ['pending_payment', 'active', 'suspended'] as 
 
 // Admin Providers status update
 router.put('/admin/providers/:id/status', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const id = routeParam(req, 'id');
   const { status } = req.body;
   if (!status) {
     return res.status(400).json({ detail: 'Status is required' });
@@ -374,7 +375,7 @@ router.put('/admin/providers/:id/status', authenticateToken, requireAdmin, async
   if (!ALLOWED_PROVIDER_STATUSES.includes(status)) {
     return res.status(400).json({ detail: `Status must be one of: ${ALLOWED_PROVIDER_STATUSES.join(', ')}` });
   }
-  await db.update(schema.providers).set({ status }).where(eq(schema.providers.id, id as any));
+  await db.update(schema.providers).set({ status }).where(eq(schema.providers.id, id));
   res.json({ ok: true });
 });
 
@@ -511,7 +512,7 @@ router.post('/admin/kyc/:id/review', authenticateToken, requireAdmin, async (req
       return res.status(400).json({ detail: 'reason must be 500 characters or fewer' });
     }
   }
-  const [doc] = await db.select().from(schema.kycDocuments).where(eq(schema.kycDocuments.id, req.params.id as any)).limit(1);
+  const [doc] = await db.select().from(schema.kycDocuments).where(eq(schema.kycDocuments.id, routeParam(req, 'id'))).limit(1);
   if (!doc) return res.status(404).json({ detail: 'Not found' });
 
   const status = decision === 'approve' ? 'approved' : 'rejected';
@@ -580,7 +581,7 @@ router.post('/admin/payments/:id/refund', authenticateToken, requireAdmin, async
     ? req.body.reason.trim().slice(0, 200)
     : 'refunded by admin';
 
-  const [payment] = await db.select().from(schema.payments).where(eq(schema.payments.id, req.params.id as any)).limit(1);
+  const [payment] = await db.select().from(schema.payments).where(eq(schema.payments.id, routeParam(req, 'id'))).limit(1);
   if (!payment) return res.status(404).json({ detail: 'Payment not found' });
 
   const outcome = await refundPayment(payment, reason);
