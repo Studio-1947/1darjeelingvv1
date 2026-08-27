@@ -10,6 +10,7 @@ import { sendOtp } from '../messaging';
 import { toPublicUser } from '../lib/publicUser';
 import { reserveOtpSend } from '../lib/otpSendBudget';
 import { isPlausiblePhone, phoneKey } from '../lib/phone';
+import { generateReferralCode, redeemReferralCode } from '../lib/referrals';
 
 const router = Router();
 
@@ -250,7 +251,7 @@ router.post(
  */
 // Verify OTP
 router.post('/otp/verify', rateLimiter(10, 60 * 1000, 'otp_verify'), async (req: Request, res: Response) => {
-  const { phone, otp, name, role = 'tourist' } = req.body;
+  const { phone, otp, name, role = 'tourist', referral_code: referralCode } = req.body;
   if (!phone || !otp) {
     return res.status(400).json({ detail: 'Phone and OTP are required' });
   }
@@ -316,9 +317,26 @@ router.post('/otp/verify', rateLimiter(10, 60 * 1000, 'otp_verify'), async (req:
       avatar: null,
       createdAt: new Date().toISOString(),
       supportExpiresAt: null,
-      password: null
+      password: null,
+      // Minted at registration so the invite screen never has to wait on a write.
+      referralCode: await generateReferralCode()
     };
     await db.insert(schema.users).values(user);
+
+    // A code only counts at signup, and only for the account that just came into existence —
+    // that is the whole anti-abuse story, and it is enforced by a unique referee_id rather than
+    // by this call site. Deliberately after the insert and deliberately unawaited-for-failure:
+    // redeemReferralCode never throws, because losing a reward must not cost someone the
+    // account they just created.
+    if (referralCode) {
+      const redeemed = await redeemReferralCode(user.id, referralCode);
+      if (redeemed.ok) {
+        // The row was just written by redeem; re-read so the token and the response carry the
+        // extended expiry rather than the null this object still holds.
+        const [fresh] = await db.select().from(schema.users).where(eq(schema.users.id, user.id)).limit(1);
+        if (fresh) user = fresh;
+      }
+    }
   }
 
   if (otpRec) {

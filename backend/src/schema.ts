@@ -13,6 +13,30 @@ export const users = pgTable('users', {
   // Tourist platform support & convenience fee. null = never paid. Active while > now().
   supportExpiresAt: text('support_expires_at'),
   password: text('password'),
+  // The user's own invite code. Server-generated and unique — the app used to derive one from
+  // the first name (`ASHA-1D`), which collides on every second Asha and could not be looked up.
+  // Nullable because rows created before referrals existed have none until they are backfilled.
+  referralCode: text('referral_code').unique(),
+});
+
+/**
+ * Who invited whom, and what it bought them.
+ *
+ * One row per successful referral, written once at the moment the invited account is created.
+ * The reward is applied in the same transaction and recorded here rather than recomputed, so
+ * "why is this pass valid until 2028" has an answer that survives a change to the reward rule.
+ */
+export const referrals = pgTable('referrals', {
+  id: text('id').primaryKey(),
+  referrerId: text('referrer_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  // Unique: an account can be referred exactly once, at signup. Enforced at the DB level rather
+  // than by a read-then-write check, which two concurrent registrations could both pass.
+  refereeId: text('referee_id').references(() => users.id, { onDelete: 'cascade' }).notNull().unique(),
+  // The code as it was typed, kept for support questions after a user changes their code.
+  code: text('code').notNull(),
+  // What each side actually received, so the ledger explains the expiry it produced.
+  rewardDays: integer('reward_days').notNull(),
+  createdAt: text('created_at').notNull(),
 });
 
 export const otps = pgTable('otps', {

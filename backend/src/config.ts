@@ -321,3 +321,16 @@ export const DONATION_MAX_PAISE = 10_000_000;  // ₹1,00,000
 // See docs/superpowers/specs/2026-07-22-tourist-platform-support-fee-design.md
 export const SUPPORT_DURATION_DAYS = 365;
 
+// What each side of a referral gets when a code is redeemed, in days. The app has always
+// advertised "+3 months", so that is the default; it is a knob because the number is a
+// marketing decision and changing it must not need a deploy of new code.
+//
+// Applied to `supportExpiresAt` for BOTH parties, monotonically — see lib/referrals.ts. There
+// is deliberately no provider-side reward: `providerPaid` is a boolean with no expiry to
+// extend, so "1 month free on your ₹99 plan" cannot be honoured without a plan-renewal model
+// that does not exist yet. The app's copy no longer promises it.
+export const REFERRAL_REWARD_DAYS = requirePositiveInt(
+  'REFERRAL_REWARD_DAYS',
+  process.env.REFERRAL_REWARD_DAYS,
+  90
+);

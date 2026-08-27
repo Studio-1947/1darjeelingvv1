@@ -1,9 +1,11 @@
 import { Router, Request, Response } from 'express';
 import { db, schema } from '../db';
+import { REFERRAL_REWARD_DAYS } from '../config';
 import { eq } from 'drizzle-orm';
 import { authenticateToken } from '../middleware/auth';
 import { deleteListingsOwnedBy, deleteKycFilesOwnedBy } from '../lib/accountCleanup';
 import { toPublicUser } from '../lib/publicUser';
+import { assignReferralCode, countReferrals } from '../lib/referrals';
 
 const router = Router();
 
@@ -67,6 +69,33 @@ router.patch('/me', authenticateToken, async (req: Request, res: Response) => {
 
   const [updatedUser] = await db.select().from(schema.users).where(eq(schema.users.id, req.user.id)).limit(1);
   res.json({ user: toPublicUser(updatedUser) });
+});
+
+/**
+ * @openapi
+ * /users/me/referrals:
+ *   get:
+ *     summary: The caller's invite code and how many accounts it has brought in
+ *     tags: [Users]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200:
+ *         description: Code and count
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 code: { type: string }
+ *                 joined: { type: integer }
+ *                 reward_days: { type: integer }
+ */
+// The code is assigned lazily here as well as at registration, so accounts created before
+// referrals existed get one the first time they open the invite screen — no backfill needed.
+router.get('/me/referrals', authenticateToken, async (req: Request, res: Response) => {
+  const code = await assignReferralCode(req.user.id);
+  const joined = await countReferrals(req.user.id);
+  res.json({ code, joined, reward_days: REFERRAL_REWARD_DAYS });
 });
 
 // Delete User Account and cleanup
