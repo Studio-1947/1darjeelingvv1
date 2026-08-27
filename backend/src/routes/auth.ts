@@ -5,7 +5,7 @@ import { db, schema } from '../db';
 import { eq } from 'drizzle-orm';
 import { rateLimiter } from '../middleware/rateLimiter';
 import { authenticateToken, makeToken, verifyPassword, hashPassword, needsRehash } from '../middleware/auth';
-import { log, ADMIN_USERNAME, ADMIN_PASSWORD, MOCK_OTP, OTP_TTL_SECONDS, OTP_MAX_ATTEMPTS } from '../config';
+import { log, ADMIN_USERNAME, ADMIN_PASSWORD, MOCK_OTP, OTP_TTL_SECONDS, OTP_MAX_ATTEMPTS, REVIEW_PHONE, REVIEW_OTP } from '../config';
 import { sendOtp } from '../messaging';
 import { toPublicUser } from '../lib/publicUser';
 import { reserveOtpSend } from '../lib/otpSendBudget';
@@ -18,6 +18,30 @@ const router = Router();
  * it is granted only by the seeded env credentials or by promoting a row directly.
  */
 const SELF_ASSIGNABLE_ROLES = ['tourist', 'provider'];
+
+/**
+ * Constant-time string comparison, via a digest so the inputs need not be the same length.
+ *
+ * `===` on a secret leaks its prefix through timing. That is a marginal risk against a code
+ * this long, but the reviewer code is the one credential in the system with no expiry and no
+ * cross-process rate limit, so it is the last place to spend a marginal risk.
+ */
+function secretEquals(a: string, b: string): boolean {
+  const ha = crypto.createHash('sha256').update(a).digest();
+  const hb = crypto.createHash('sha256').update(b).digest();
+  return crypto.timingSafeEqual(ha, hb);
+}
+
+/** True when this request is the store reviewer signing in with their fixed code. */
+function isReviewLogin(phone: unknown, otp: unknown): boolean {
+  if (!REVIEW_PHONE) return false;
+  if (typeof phone !== 'string' || typeof otp !== 'string') return false;
+  // Exact match, deliberately: not phoneKey(), which folds several spellings onto one number.
+  // The reviewer types what the console tells them to type, and widening what counts as "the
+  // review number" is exactly how a narrow exception stops being narrow.
+  if (phone !== REVIEW_PHONE) return false;
+  return secretEquals(otp, REVIEW_OTP);
+}
 
 /**
  * Compares two secrets without leaking their common prefix through timing. The values are
@@ -110,6 +134,15 @@ router.post(
   // per-minute limiters above cap the rate; this caps the total, and survives the restart that
   // clears them. Spent against the canonical number so the ten-a-day cannot be reset by
   // respelling it. See lib/otpSendBudget.ts.
+  // The reviewer's code is fixed and already in the Play Console, so there is nothing to send.
+  // Short-circuited before the budget reservation on purpose: a real dispatch here would spend
+  // from the daily cap and deliver an SMS to a number the reviewer does not hold, and the code
+  // it delivered would not be the one they were given.
+  if (REVIEW_PHONE && phone === REVIEW_PHONE) {
+    const [reviewUser] = await db.select().from(schema.users).where(eq(schema.users.phone, phone)).limit(1);
+    return res.json({ sent: true, channel, exists: !!reviewUser });
+  }
+
   const budget = await reserveOtpSend(phoneKey(phone) ?? phone);
   if (!budget.ok) {
     res.setHeader('Retry-After', String(budget.retryAfterSeconds));
@@ -236,8 +269,12 @@ router.post('/otp/verify', rateLimiter(10, 60 * 1000, 'otp_verify'), async (req:
   // The universal bypass is evaluated first and deliberately: it has to work with no stored
   // row at all, which is how the test helpers and mock-mode logins work.
   const universalOk = MOCK_OTP && otp === '123456';
+  // Same shape as the universal bypass, and for the same reason: there is no stored row to
+  // check against. Unlike it, this one is scoped to a single number and survives into
+  // production, which is the whole point — see the REVIEW_PHONE block in config.ts.
+  const reviewOk = isReviewLogin(phone, otp);
 
-  if (!universalOk) {
+  if (!universalOk && !reviewOk) {
     if (!otpRec) {
       return res.status(400).json({ detail: 'Invalid OTP' });
     }

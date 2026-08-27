@@ -1,6 +1,7 @@
 import Razorpay from 'razorpay';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
+import { isPlausiblePhone } from './lib/phone';
 
 dotenv.config({ path: path.join(__dirname, '../.env') });
 
@@ -82,6 +83,59 @@ export const MESSAGING_PROVIDER = process.env.MESSAGING_PROVIDER?.trim() || 'moc
 // APP_ENV, so a production-configured staging deployment stays usable while still being able
 // to switch to real delivery with one variable.
 export const MOCK_OTP = MESSAGING_PROVIDER === 'mock';
+
+// ── Store-review access ──────────────────────────────────────────────────────
+//
+// Google Play and Apple both require working sign-in credentials for their reviewer, and this
+// app signs in with an SMS OTP to a phone the reviewer does not hold. "We could not access the
+// app" is one of the commonest rejections, and the tempting fix — leaving MESSAGING_PROVIDER on
+// mock — hands `123456` to the entire internet.
+//
+// So: exactly ONE number may verify with a fixed code. Not a mode and not a flag that widens
+// later. A single number compared with ===, and a code compared in constant time.
+//
+// Both variables must be set, or neither applies. The validation below is deliberately
+// unforgiving, because this is a backdoor whose failure mode is silent: a short or guessable
+// code here is worse than having no reviewer access at all, so it refuses to boot instead.
+const REVIEW_PHONE_RAW = process.env.REVIEW_PHONE?.trim() || '';
+const REVIEW_OTP_RAW = process.env.REVIEW_OTP?.trim() || '';
+
+// A code short enough to brute-force is not protected by the verify rate limiter alone: that
+// limiter is per-process and in-memory (see middleware/rateLimiter.ts), so it resets on every
+// deploy and is invisible to a second container. The length is what has to carry this.
+const REVIEW_OTP_MIN_LENGTH = 10;
+
+if (REVIEW_PHONE_RAW || REVIEW_OTP_RAW) {
+  if (!REVIEW_PHONE_RAW || !REVIEW_OTP_RAW) {
+    throw new Error(
+      '[config] REVIEW_PHONE and REVIEW_OTP must be set together. One without the other is ' +
+      'either a half-configured reviewer account or a typo, and both are worth failing on.'
+    );
+  }
+  if (!isPlausiblePhone(REVIEW_PHONE_RAW)) {
+    throw new Error(`[config] REVIEW_PHONE is not a phone number: "${REVIEW_PHONE_RAW}".`);
+  }
+  if (REVIEW_OTP_RAW.length < REVIEW_OTP_MIN_LENGTH) {
+    throw new Error(
+      `[config] REVIEW_OTP must be at least ${REVIEW_OTP_MIN_LENGTH} characters. This code never ` +
+      'expires and is not rate-limited across processes, so it has to be long enough that ' +
+      'guessing it is hopeless. Generate a random one; do not invent it.'
+    );
+  }
+  // A backreference regex was the obvious way to write this and cost an hour to a stray escape;
+  // plain comparisons say the same thing and cannot be mangled. Rejects "0000000000" and any
+  // run off the number pad.
+  const allOneCharacter = [...REVIEW_OTP_RAW].every((c) => c === REVIEW_OTP_RAW[0]);
+  if (allOneCharacter || '01234567890123456789'.includes(REVIEW_OTP_RAW)) {
+    throw new Error('[config] REVIEW_OTP is a guessable sequence. Generate a random value.');
+  }
+}
+
+/** The one phone number that may use REVIEW_OTP, or null when reviewer access is off. */
+export const REVIEW_PHONE: string | null = REVIEW_PHONE_RAW && REVIEW_OTP_RAW ? REVIEW_PHONE_RAW : null;
+/** The fixed code for REVIEW_PHONE. Empty string when reviewer access is off. */
+export const REVIEW_OTP: string = REVIEW_PHONE ? REVIEW_OTP_RAW : '';
+
 
 function requirePositiveInt(name: string, raw: string | undefined, fallback: number): number {
   const trimmed = raw?.trim();
@@ -179,6 +233,15 @@ if (IS_PROD) {
   if (MOCK_PAYMENTS) {
     log.error('[config] MOCK_PAYMENTS=true with APP_ENV=production — payments are simulated and no money will be charged.');
   }
+  if (REVIEW_PHONE) {
+    // Not an error — it is a deliberate, configured exception. But it is a standing credential
+    // with no expiry, so it says so at every boot rather than being discovered in a log a year
+    // from now by someone who did not know it existed.
+    log.info(
+      `[config] Store-review sign-in is ENABLED for the single number ending ${REVIEW_PHONE.slice(-4)}. ` +
+      'Unset REVIEW_PHONE and REVIEW_OTP once the app is published and the reviewer is done.'
+    );
+  }
   if (MOCK_OTP) {
     log.error(
       '[config] MESSAGING_PROVIDER=mock with APP_ENV=production — OTPs are not delivered and ' +
@@ -257,3 +320,4 @@ export const DONATION_MAX_PAISE = 10_000_000;  // ₹1,00,000
 // Tourist platform support & convenience fee window, in days.
 // See docs/superpowers/specs/2026-07-22-tourist-platform-support-fee-design.md
 export const SUPPORT_DURATION_DAYS = 365;
+
