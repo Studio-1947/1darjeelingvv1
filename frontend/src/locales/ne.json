@@ -36,7 +36,8 @@
     "terms": "सर्तहरू",
     "refunds": "फिर्ता",
     "contact": "सम्पर्क",
-    "all_listings": "सबै सूचीहरू"
+    "all_listings": "सबै सूचीहरू",
+    "delete_account": "खाता मेटाउनुहोस्"
   },
   "support": {
     "title": "1 दार्जिलिङ चलाइराख्न सानो सहयोग",
@@ -505,6 +506,16 @@
     "to_placeholder": "कहाँ जाने?",
     "guests_less": "कम पाहुना",
     "guests_more": "बढी पाहुना"
+  },
+  "filter": {
+    "search_placeholder": "नाम, ल्यान्डमार्क वा किवर्डबाट खोज्नुहोस्…",
+    "all_locations": "सबै हब र स्थान",
+    "sort_recommended": "फिचर्ड / लोकप्रिय",
+    "sort_price_asc": "मूल्य: कमबाट बढी",
+    "sort_price_desc": "मूल्य: बढीबाट कम",
+    "sort_name_asc": "नाम: A – Z",
+    "filters": "फिल्टर",
+    "reset": "रिसेट"
   },
   "category": {
     "search": "खोज",

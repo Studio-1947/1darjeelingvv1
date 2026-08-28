@@ -285,6 +285,8 @@ checks so it still works with no row present.
 
 `/otp/send` was previously rate-limited per IP only (5 requests/60s). It now also runs a per-phone rate limiter (3 requests/60s per phone number, keyed by `req.body.phone`) via `rateLimiter`'s `keyExtractor` option in `middleware/rateLimiter.ts`. This prevents SMS pumping/billing abuse across rotating IPs and protects the 5-attempt verification cap on `/otp/verify`. Fixed 2026-08-06 with unit test coverage in `test/rateLimiter.test.ts`.
 
+**Extended 2026-08-21 — daily budgets (`lib/otpSendBudget.ts`).** The per-minute limiter is in-memory and per-process, so its windows are wiped by every deploy, and it caps the *rate* without capping the *total*: 3/min sustained is 4,320 messages a day to a single number, and rotating the number costs an attacker nothing. That is noise under `MESSAGING_PROVIDER=mock` and a bill under a real provider, which is what SMS pumping monetises. `/otp/send` now also reserves against durable daily counters in `otp_send_counters` — `OTP_MAX_SENDS_PER_PHONE_PER_DAY` (default 10) and `OTP_MAX_SENDS_PER_DAY` (default 1000, platform-wide) — before a code is generated. The reservation is released if delivery fails, so a provider outage costs nobody their budget. Both refusals are 429 with `Retry-After`; the global one is deliberately vague in the response body and loud in the log. Covered by `test/otpSendBudget.test.ts` and `test/otpSendBudgetRoute.test.ts`.
+
 ---
 
 ## 7. Fourth-wave findings — 2026-07-21 (KYC/provider-lifecycle hardening pass)

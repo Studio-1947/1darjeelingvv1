@@ -36,7 +36,8 @@
     "terms": "শর্তাবলি",
     "refunds": "রিফান্ড",
     "contact": "যোগাযোগ",
-    "all_listings": "সব তালিকা"
+    "all_listings": "সব তালিকা",
+    "delete_account": "অ্যাকাউন্ট মুছুন"
   },
   "support": {
     "title": "1 দার্জিলিং চালু রাখতে একটি ছোট সহযোগিতা",
@@ -505,6 +506,16 @@
     "to_placeholder": "কোথায় যাবেন?",
     "guests_less": "কম অতিথি",
     "guests_more": "বেশি অতিথি"
+  },
+  "filter": {
+    "search_placeholder": "নাম, ল্যান্ডমার্ক বা কিওয়ার্ড দিয়ে খুঁজুন…",
+    "all_locations": "সব হাব ও এলাকা",
+    "sort_recommended": "ফিচার্ড / জনপ্রিয়",
+    "sort_price_asc": "দাম: কম থেকে বেশি",
+    "sort_price_desc": "দাম: বেশি থেকে কম",
+    "sort_name_asc": "নাম: A – Z",
+    "filters": "ফিল্টার",
+    "reset": "রিসেট"
   },
   "category": {
     "search": "অনুসন্ধান",

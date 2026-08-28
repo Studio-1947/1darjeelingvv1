@@ -23,11 +23,19 @@ import type { NotificationTemplate } from '../messaging';
 
 const SIGNATURE = '— 1 Darjeeling';
 
-/** A date range rendered for a human, tolerant of the non-homestay bookings that have no dates. */
+/**
+ * A date range rendered for a human, tolerant of the non-homestay bookings that have no dates.
+ *
+ * Returns a bare noun phrase with no leading preposition, because the caller supplies that. The
+ * two single-date branches used to carry their own "on", which read correctly nowhere it was
+ * actually used: every call site says "confirmed for {stay}", so a taxi booking announced itself
+ * as "confirmed for on a date to be arranged". Worth fixing now rather than later — this string
+ * goes into WhatsApp templates, and changing an approved template means another review.
+ */
 function formatStay(checkIn: string | null, checkOut: string | null): string {
   if (checkIn && checkOut) return `${checkIn} to ${checkOut}`;
-  if (checkIn) return `on ${checkIn}`;
-  return 'on a date to be arranged';
+  if (checkIn) return checkIn;
+  return 'a date to be arranged';
 }
 
 type BookingRow = typeof schema.bookings.$inferSelect;

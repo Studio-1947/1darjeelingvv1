@@ -5,6 +5,8 @@ import { eq } from 'drizzle-orm';
 import { authenticateToken } from '../middleware/auth';
 import { KYC_REQUIREMENTS } from '../lib/kycRequirements';
 
+import { isPlausiblePhone } from '../lib/phone';
+
 const SELF_ONBOARDABLE_BUSINESS_TYPES = Object.keys(KYC_REQUIREMENTS);
 
 const router = Router();
@@ -65,6 +67,13 @@ router.post('/onboard', authenticateToken, async (req: Request, res: Response) =
 
   if (!business_name || !business_name.trim() || !business_type || !description || !description.trim() || !location || !location.trim() || !contact_phone || !contact_phone.trim()) {
     return res.status(400).json({ detail: 'Business name, type, description, location, and contact phone are required' });
+  }
+
+  // This is the number that reaches a traveller as `provider_phone` on the listing detail, and
+  // calling it is the entire transaction the platform charges for. A provider who fat-fingers
+  // it publishes a listing whose only real action is dead, and nothing downstream would notice.
+  if (!isPlausiblePhone(contact_phone)) {
+    return res.status(400).json({ detail: 'Contact phone must be a phone number travellers can call' });
   }
 
   // business_type gates the KYC matrix (requirementsFor). Anything outside the self-onboardable

@@ -1,6 +1,7 @@
 import Razorpay from 'razorpay';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
+import { isPlausiblePhone } from './lib/phone';
 
 dotenv.config({ path: path.join(__dirname, '../.env') });
 
@@ -83,6 +84,59 @@ export const MESSAGING_PROVIDER = process.env.MESSAGING_PROVIDER?.trim() || 'moc
 // to switch to real delivery with one variable.
 export const MOCK_OTP = MESSAGING_PROVIDER === 'mock';
 
+// ── Store-review access ──────────────────────────────────────────────────────
+//
+// Google Play and Apple both require working sign-in credentials for their reviewer, and this
+// app signs in with an SMS OTP to a phone the reviewer does not hold. "We could not access the
+// app" is one of the commonest rejections, and the tempting fix — leaving MESSAGING_PROVIDER on
+// mock — hands `123456` to the entire internet.
+//
+// So: exactly ONE number may verify with a fixed code. Not a mode and not a flag that widens
+// later. A single number compared with ===, and a code compared in constant time.
+//
+// Both variables must be set, or neither applies. The validation below is deliberately
+// unforgiving, because this is a backdoor whose failure mode is silent: a short or guessable
+// code here is worse than having no reviewer access at all, so it refuses to boot instead.
+const REVIEW_PHONE_RAW = process.env.REVIEW_PHONE?.trim() || '';
+const REVIEW_OTP_RAW = process.env.REVIEW_OTP?.trim() || '';
+
+// A code short enough to brute-force is not protected by the verify rate limiter alone: that
+// limiter is per-process and in-memory (see middleware/rateLimiter.ts), so it resets on every
+// deploy and is invisible to a second container. The length is what has to carry this.
+const REVIEW_OTP_MIN_LENGTH = 10;
+
+if (REVIEW_PHONE_RAW || REVIEW_OTP_RAW) {
+  if (!REVIEW_PHONE_RAW || !REVIEW_OTP_RAW) {
+    throw new Error(
+      '[config] REVIEW_PHONE and REVIEW_OTP must be set together. One without the other is ' +
+      'either a half-configured reviewer account or a typo, and both are worth failing on.'
+    );
+  }
+  if (!isPlausiblePhone(REVIEW_PHONE_RAW)) {
+    throw new Error(`[config] REVIEW_PHONE is not a phone number: "${REVIEW_PHONE_RAW}".`);
+  }
+  if (REVIEW_OTP_RAW.length < REVIEW_OTP_MIN_LENGTH) {
+    throw new Error(
+      `[config] REVIEW_OTP must be at least ${REVIEW_OTP_MIN_LENGTH} characters. This code never ` +
+      'expires and is not rate-limited across processes, so it has to be long enough that ' +
+      'guessing it is hopeless. Generate a random one; do not invent it.'
+    );
+  }
+  // A backreference regex was the obvious way to write this and cost an hour to a stray escape;
+  // plain comparisons say the same thing and cannot be mangled. Rejects "0000000000" and any
+  // run off the number pad.
+  const allOneCharacter = [...REVIEW_OTP_RAW].every((c) => c === REVIEW_OTP_RAW[0]);
+  if (allOneCharacter || '01234567890123456789'.includes(REVIEW_OTP_RAW)) {
+    throw new Error('[config] REVIEW_OTP is a guessable sequence. Generate a random value.');
+  }
+}
+
+/** The one phone number that may use REVIEW_OTP, or null when reviewer access is off. */
+export const REVIEW_PHONE: string | null = REVIEW_PHONE_RAW && REVIEW_OTP_RAW ? REVIEW_PHONE_RAW : null;
+/** The fixed code for REVIEW_PHONE. Empty string when reviewer access is off. */
+export const REVIEW_OTP: string = REVIEW_PHONE ? REVIEW_OTP_RAW : '';
+
+
 function requirePositiveInt(name: string, raw: string | undefined, fallback: number): number {
   const trimmed = raw?.trim();
   if (!trimmed) return fallback;
@@ -97,6 +151,27 @@ function requirePositiveInt(name: string, raw: string | undefined, fallback: num
 // be reissued. Enforced in routes/auth.ts.
 export const OTP_TTL_SECONDS = requirePositiveInt('OTP_TTL_SECONDS', process.env.OTP_TTL_SECONDS, 300);
 export const OTP_MAX_ATTEMPTS = requirePositiveInt('OTP_MAX_ATTEMPTS', process.env.OTP_MAX_ATTEMPTS, 5);
+
+// Daily ceilings on OTP sends, enforced against durable counters in lib/otpSendBudget.ts.
+//
+// The per-minute limiters in middleware/rateLimiter.ts do not cover this. They are in-memory and
+// per-process, so a deploy wipes them, and they cap the RATE of sends without capping the TOTAL:
+// at 3/min a single number absorbs 4,320 messages a day, and rotating the number costs an attacker
+// nothing. While the provider is `mock` that is only noise. Once real SMS is wired up each one of
+// those is a charge on the platform's account, and SMS pumping — driving traffic to numbers whose
+// termination fees the attacker collects a cut of — is the specific way that bill is turned into
+// someone else's revenue.
+//
+// Per-phone 10/day: comfortably above a real person having a bad signal day, far below anything
+// worth farming. Global 1000/day: sized for a platform this size to never notice it, while capping
+// the worst case at a bounded number rather than an unbounded one. Both are the ceiling, not the
+// expected load — if either is ever reached, the response is to look at why, not to raise it.
+export const OTP_MAX_SENDS_PER_PHONE_PER_DAY = requirePositiveInt(
+  'OTP_MAX_SENDS_PER_PHONE_PER_DAY', process.env.OTP_MAX_SENDS_PER_PHONE_PER_DAY, 10
+);
+export const OTP_MAX_SENDS_PER_DAY = requirePositiveInt(
+  'OTP_MAX_SENDS_PER_DAY', process.env.OTP_MAX_SENDS_PER_DAY, 1000
+);
 
 // How long an unpaid homestay booking holds its dates against other guests. Long enough to finish
 // a Razorpay checkout, short enough that an abandoned tab frees the room again without an operator
@@ -157,6 +232,15 @@ if (IS_PROD) {
   }
   if (MOCK_PAYMENTS) {
     log.error('[config] MOCK_PAYMENTS=true with APP_ENV=production — payments are simulated and no money will be charged.');
+  }
+  if (REVIEW_PHONE) {
+    // Not an error — it is a deliberate, configured exception. But it is a standing credential
+    // with no expiry, so it says so at every boot rather than being discovered in a log a year
+    // from now by someone who did not know it existed.
+    log.info(
+      `[config] Store-review sign-in is ENABLED for the single number ending ${REVIEW_PHONE.slice(-4)}. ` +
+      'Unset REVIEW_PHONE and REVIEW_OTP once the app is published and the reviewer is done.'
+    );
   }
   if (MOCK_OTP) {
     log.error(
@@ -236,3 +320,17 @@ export const DONATION_MAX_PAISE = 10_000_000;  // ₹1,00,000
 // Tourist platform support & convenience fee window, in days.
 // See docs/superpowers/specs/2026-07-22-tourist-platform-support-fee-design.md
 export const SUPPORT_DURATION_DAYS = 365;
+
+// What each side of a referral gets when a code is redeemed, in days. The app has always
+// advertised "+3 months", so that is the default; it is a knob because the number is a
+// marketing decision and changing it must not need a deploy of new code.
+//
+// Applied to `supportExpiresAt` for BOTH parties, monotonically — see lib/referrals.ts. There
+// is deliberately no provider-side reward: `providerPaid` is a boolean with no expiry to
+// extend, so "1 month free on your ₹99 plan" cannot be honoured without a plan-renewal model
+// that does not exist yet. The app's copy no longer promises it.
+export const REFERRAL_REWARD_DAYS = requirePositiveInt(
+  'REFERRAL_REWARD_DAYS',
+  process.env.REFERRAL_REWARD_DAYS,
+  90
+);

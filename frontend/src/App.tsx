@@ -25,6 +25,7 @@ import About from '@/pages/About';
 import Privacy from '@/pages/Privacy';
 import Terms from '@/pages/Terms';
 import Refunds from '@/pages/Refunds';
+import DeleteAccount from '@/pages/DeleteAccount';
 import Contact from '@/pages/Contact';
 import NotFound from '@/pages/NotFound';
 
@@ -65,6 +66,7 @@ export default function App() {
                       require the grievance route regardless of the gateway. */}
                   <Route path="/terms" element={<Terms />} />
                   <Route path="/refunds" element={<Refunds />} />
+                  <Route path="/delete-account" element={<DeleteAccount />} />
                   <Route path="/contact" element={<Contact />} />
                   {/* Anything else. Without this the router matched nothing and
                       rendered an empty <main> between the header and footer. */}

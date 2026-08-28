@@ -8,6 +8,7 @@ import { isAllowedDocType } from '../lib/kycRequirements';
 import { computeCompletion } from '../lib/profileCompletion';
 import { uploadPrivate, getPrivateObject, deletePrivate } from '../lib/s3';
 import { log } from '../config';
+import { routeParam } from '../lib/routeParam';
 
 const router = Router();
 
@@ -251,9 +252,9 @@ router.delete('/me/kyc/:docType', authenticateToken, async (req: Request, res: R
   const provider = await ownActiveProvider(req.user.id);
   if (!provider) return res.status(403).json({ detail: 'Only active providers can manage KYC documents' });
   const removed = await db.select().from(schema.kycDocuments)
-    .where(and(eq(schema.kycDocuments.providerId, provider.id), eq(schema.kycDocuments.docType, req.params.docType as any)));
+    .where(and(eq(schema.kycDocuments.providerId, provider.id), eq(schema.kycDocuments.docType, routeParam(req, 'docType'))));
   await db.delete(schema.kycDocuments)
-    .where(and(eq(schema.kycDocuments.providerId, provider.id), eq(schema.kycDocuments.docType, req.params.docType as any)));
+    .where(and(eq(schema.kycDocuments.providerId, provider.id), eq(schema.kycDocuments.docType, routeParam(req, 'docType'))));
   for (const row of removed) {
     try {
       await deletePrivate(row.fileKey);
@@ -267,7 +268,7 @@ router.delete('/me/kyc/:docType', authenticateToken, async (req: Request, res: R
 
 // GET /providers/kyc/:id/file — stream a private doc to owner or admin
 router.get('/kyc/:id/file', authenticateToken, async (req: Request, res: Response) => {
-  const [doc] = await db.select().from(schema.kycDocuments).where(eq(schema.kycDocuments.id, req.params.id as any)).limit(1);
+  const [doc] = await db.select().from(schema.kycDocuments).where(eq(schema.kycDocuments.id, routeParam(req, 'id'))).limit(1);
   if (!doc) return res.status(404).json({ detail: 'Not found' });
 
   let allowed = req.user.role === 'admin';

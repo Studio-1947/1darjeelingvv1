@@ -1,6 +1,8 @@
 import { MessagingProvider } from './types';
 import { createMockProvider } from './providers/mock';
 import { createMsg91Provider } from './providers/msg91';
+import { createWhatsAppProvider } from './providers/whatsapp';
+import { createInteraktProvider } from './providers/interakt';
 
 /**
  * Adding a provider is two lines: an adapter file implementing MessagingProvider, and one
@@ -9,6 +11,8 @@ import { createMsg91Provider } from './providers/msg91';
 export const PROVIDER_FACTORIES: Record<string, (env: NodeJS.ProcessEnv) => MessagingProvider> = {
   mock: () => createMockProvider(),
   msg91: (env) => createMsg91Provider(env),
+  whatsapp: (env) => createWhatsAppProvider(env),
+  interakt: (env) => createInteraktProvider(env),
 };
 
 export function selectProvider(name: string, env: NodeJS.ProcessEnv): MessagingProvider {
