@@ -158,7 +158,12 @@ router.post(
     });
   }
 
-  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  // crypto.randomInt, not Math.random: V8 implements Math.random as xorshift128+, whose internal
+  // state can be recovered from a handful of consecutive outputs. On this endpoint that is an
+  // account-takeover path — request codes for a number you control until the state is known, then
+  // predict the code issued to someone else's. randomInt draws from the CSPRNG and is uniform over
+  // the range (no modulo bias). Upper bound is exclusive, so this yields 100000..999999.
+  const otp = crypto.randomInt(100000, 1000000).toString();
   const now = new Date().toISOString();
 
   // Check if the user already exists
