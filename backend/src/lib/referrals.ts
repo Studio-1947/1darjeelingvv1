@@ -24,11 +24,13 @@ import { log, REFERRAL_REWARD_DAYS } from '../config';
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
- * Unambiguous when read aloud or off a screen: no O/0, I/1, or S/5, which is the whole point of
- * a code a traveller reads to a friend across a table. 32^6 is ~1e9 — sparse enough that the
- * retry loop below effectively never runs twice at this app's scale.
+ * Unambiguous when read aloud or off a screen: no O/0, I/1, S/5, or Z/2, which is the whole
+ * point of a code a traveller reads to a friend across a table. Z was the one pair that got
+ * missed — its own test caught it, but only on the ~18% of runs that happened to draw a Z.
+ * 29^6 is ~6e8 — sparse enough that the retry loop below effectively never runs twice at this
+ * app's scale.
  */
-const ALPHABET = 'ABCDEFGHJKLMNPQRTUVWXYZ2346789';
+const ALPHABET = 'ABCDEFGHJKLMNPQRTUVWXY2346789';
 const CODE_LENGTH = 6;
 
 function randomCode(): string {
