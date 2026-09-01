@@ -60,23 +60,23 @@ export function createSmtpProvider(env: NodeJS.ProcessEnv): MessagingProvider {
       }
 
       const subjectMap: Record<string, string> = {
-        booking_confirmed_guest: 'Booking Confirmed — 1 Darjeeling',
-        booking_confirmed_host: 'New Booking — 1 Darjeeling',
-        booking_cancelled_guest: 'Booking Cancelled — 1 Darjeeling',
+        booking_confirmed_guest: 'Booking Confirmed — aangan',
+        booking_confirmed_host: 'New Booking — aangan',
+        booking_cancelled_guest: 'Booking Cancelled — aangan',
       };
 
-      const subject = subjectMap[template] || `1 Darjeeling — ${template.replace(/_/g, ' ')}`;
+      const subject = subjectMap[template] || `aangan — ${template.replace(/_/g, ' ')}`;
 
       const htmlBody = `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #1a1a1a;">
           <div style="text-align: center; margin-bottom: 24px;">
-            <h1 style="font-size: 20px; color: #2d5a27;">🏔 1 Darjeeling</h1>
+            <h1 style="font-size: 20px; color: #2d5a27;">🏔 aangan</h1>
           </div>
           <div style="background: #f8f9fa; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
             <pre style="font-family: inherit; white-space: pre-wrap; margin: 0; font-size: 14px; line-height: 1.6;">${text}</pre>
           </div>
           <p style="font-size: 12px; color: #999; text-align: center;">
-            This is a transactional message from 1 Darjeeling. You are receiving this because you have an active booking.
+            This is a transactional message from aangan. You are receiving this because you have an active booking.
           </p>
         </div>
       `;

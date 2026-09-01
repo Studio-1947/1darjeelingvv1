@@ -9,7 +9,7 @@ const router = Router();
 // so the User-Agent is under our control and one hot client can't get the
 // whole app blocked.
 const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search';
-const USER_AGENT = '1Darjeeling/1.0 (team@1947.io)';
+const USER_AGENT = 'aangan/1.0 (team@1947.io)';
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // addresses don't move; keep for a day
 const CACHE_MAX_ENTRIES = 500;
 

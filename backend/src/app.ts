@@ -130,7 +130,7 @@ app.get('/api-docs.json', (req: Request, res: Response) => {
   res.json(swaggerSpec);
 });
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
-  customSiteTitle: '1 Darjeeling API Docs',
+  customSiteTitle: 'aangan API Docs',
 }));
 
 /**
@@ -155,7 +155,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
 // answer to "is the container up?" even while a dependency is broken. Do NOT point an uptime
 // monitor at this one — see /api/health below for why.
 app.get('/api', (req: Request, res: Response) => {
-  res.json({ app: "1 Darjeeling", status: "ok" });
+  res.json({ app: "aangan", status: "ok" });
 });
 
 /**
@@ -197,7 +197,7 @@ app.get('/api/health', async (_req: Request, res: Response) => {
 
   const healthy = Object.values(checks).every((c) => c.ok);
   res.status(healthy ? 200 : 503).json({
-    app: '1 Darjeeling',
+    app: 'aangan',
     status: healthy ? 'ok' : 'degraded',
     checks,
   });
