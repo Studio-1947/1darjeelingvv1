@@ -3,17 +3,17 @@
 # 127.0.0.1:8092 by docker-compose.in.yml.
 #
 # First make both DNS records resolve to this VPS, then install with:
-#   sudo cp deploy/host-nginx-site.aaganerp.in.conf.example /etc/nginx/sites-available/aaganerp.in
-#   sudo ln -s /etc/nginx/sites-available/aaganerp.in /etc/nginx/sites-enabled/
+#   sudo cp deploy/host-nginx-site.aanganerp.in.conf.example /etc/nginx/sites-available/aanganerp.in
+#   sudo ln -s /etc/nginx/sites-available/aanganerp.in /etc/nginx/sites-enabled/
 #   sudo nginx -t && sudo systemctl reload nginx
-#   sudo certbot --nginx -d aaganerp.in -d www.aaganerp.in
+#   sudo certbot --nginx -d aanganerp.in -d www.aanganerp.in
 #
 # Do not copy this template over the file after Certbot has added its TLS
 # directives. Edit the existing VPS site file and test Nginx before reloading.
 
 server {
     listen 80;
-    server_name aaganerp.in www.aaganerp.in;
+    server_name aanganerp.in www.aanganerp.in;
 
     client_max_body_size 30m;
 
