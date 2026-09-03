@@ -19,7 +19,7 @@ describe('messaging registry', () => {
     // Pinned deliberately: MESSAGING_PROVIDER is validated against these keys, so a provider
     // that is written but never registered fails at boot with "not a registered provider",
     // naming a file that plainly exists.
-    expect(Object.keys(PROVIDER_FACTORIES).sort()).toEqual(['interakt', 'mock', 'msg91', 'whatsapp']);
+    expect(Object.keys(PROVIDER_FACTORIES).sort()).toEqual(['interakt', 'mock', 'msg91', 'smtp', 'whatsapp']);
   });
 
   it('runs init() during selection so bad config fails at selection time', () => {
