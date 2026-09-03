@@ -1,4 +1,4 @@
-# Production stack for aaganerp.in — the SECOND isolated stack on this VPS,
+# Production stack for aanganerp.in — the SECOND isolated stack on this VPS,
 # running ALONGSIDE the existing 1darjeeling-prod stack (onedarjeeling.duckdns.org,
 # docker-compose.prod.yml). The two stacks share NOTHING: distinct compose project
 # name, container names, volumes, and host port. That isolation is the whole reason
@@ -19,7 +19,7 @@
 # optional.)
 #
 # Like the other stack, nginx here is bound to 127.0.0.1 only — the VPS's system
-# Nginx + Certbot terminates TLS for aaganerp.in and reverse-proxies to this
+# Nginx + Certbot terminates TLS for aanganerp.in and reverse-proxies to this
 # container's loopback port (8092). See deploy/VPS-RUNBOOK.md.
 name: 1darjeeling-in
 
@@ -145,7 +145,7 @@ services:
     container_name: 1darjeeling_in_nginx
     restart: unless-stopped
     ports:
-      # Loopback-only — the VPS system Nginx proxy_passes aaganerp.in here.
+      # Loopback-only — the VPS system Nginx proxy_passes aanganerp.in here.
       # Change the host port (left of the colon) if 8092 is ever taken (verify with `sudo ss -tlnp | grep 8092`).
       - "127.0.0.1:8092:80"
     depends_on:
