@@ -5,6 +5,7 @@ import {
   NotificationTemplate,
   OtpMessage,
 } from '../types';
+import { requireCredentials, requireNotificationTemplates } from '../providerConfig';
 
 const MSG91_OTP_URL = 'https://control.msg91.com/api/v5/otp';
 // Transactional messages go through Flow, not the OTP endpoint: the OTP API only ever sends a
@@ -43,29 +44,8 @@ export function createMsg91Provider(
     name: 'msg91',
 
     init() {
-      const missing = ['MSG91_AUTH_KEY', 'MSG91_TEMPLATE_ID'].filter((k) => !env[k]?.trim());
-      if (missing.length > 0) {
-        throw new Error(
-          `[messaging] MESSAGING_PROVIDER=msg91 requires ${missing.join(', ')}. ` +
-          `Set them, or use MESSAGING_PROVIDER=mock.`
-        );
-      }
-
-      // Only demanded when booking notifications are switched on. Validating here rather than at
-      // first send means a deployment that intends to notify guests cannot boot half-configured
-      // and discover it at the first confirmed booking — the same reasoning as the Razorpay
-      // checks in config.ts.
-      if (env.NOTIFY_BOOKINGS?.trim().toLowerCase() === 'true') {
-        const missingTemplates = Object.values(TEMPLATE_ENV_VARS).filter((k) => !env[k]?.trim());
-        if (missingTemplates.length > 0) {
-          throw new Error(
-            `[messaging] NOTIFY_BOOKINGS=true with MESSAGING_PROVIDER=msg91 requires a DLT ` +
-            `template id for every transactional message: ${missingTemplates.join(', ')}. ` +
-            `Register the templates in the MSG91 dashboard and set these, or set ` +
-            `NOTIFY_BOOKINGS=false to leave booking notifications off.`
-          );
-        }
-      }
+      requireCredentials('msg91', env, ['MSG91_AUTH_KEY', 'MSG91_TEMPLATE_ID']);
+      requireNotificationTemplates('msg91', env, TEMPLATE_ENV_VARS, 'Register the DLT templates in the MSG91 dashboard and set these');
     },
 
     async sendOtp({ phone, otp }: OtpMessage) {

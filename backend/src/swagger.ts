@@ -5,9 +5,9 @@ const options: swaggerJsdoc.Options = {
   definition: {
     openapi: '3.0.3',
     info: {
-      title: '1 Darjeeling API',
+      title: 'aangan API',
       version: '1.0.0',
-      description: 'REST API for the 1 Darjeeling tourism + local marketplace platform (auth, providers, listings, bookings, payments, admin).',
+      description: 'REST API for the aangan tourism + local marketplace platform (auth, providers, listings, bookings, payments, admin).',
     },
     servers: [
       // Relative URL — resolves against whichever origin actually served

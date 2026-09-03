@@ -24,7 +24,7 @@ import { useTranslation } from 'react-i18next';
  * server response - see the crawler note in deploy/nginx/app.conf.
  */
 
-const SITE_URL = process.env.REACT_APP_SITE_URL || 'https://1darjeeling.in';
+const SITE_URL = process.env.REACT_APP_SITE_URL || 'https://aangan.in';
 
 /** Upserts <meta {attr}="{key}" content="…">, or removes it when content is empty. */
 function setMeta(attr: 'name' | 'property', key: string, content?: string) {

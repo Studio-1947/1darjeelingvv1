@@ -36,7 +36,8 @@
     "terms": "Terms",
     "refunds": "Refunds",
     "contact": "Contact",
-    "all_listings": "All listings"
+    "all_listings": "All listings",
+    "delete_account": "Delete Account"
   },
   "support": {
     "title": "A small token to keep 1 Darjeeling running",
@@ -1375,5 +1376,73 @@
     "body": "The link may be old, or the address mistyped. Everything on 1 Darjeeling is still one tap away.",
     "go_home": "Back to home",
     "browse": "Browse everything"
+  },
+  "data_deletion": {
+    "title": "Delete Your Account & Data",
+    "updated": "Last updated: August 2026",
+    "intro": [
+      "This page explains how to delete your 1Darjeeling account and what happens to your data when you do. It applies to both the 1 Darjeeling Android app and this website, which share one account.",
+      "You do not need the app installed to make this request, and you do not need to speak to anyone first. If you can sign in, deleting takes about thirty seconds and needs no approval from us."
+    ],
+    "sections": [
+      {
+        "h": "1. Deleting From the App",
+        "p": "This is the fastest route and it is immediate — there is no queue and no review step.",
+        "items": [
+          "Open the 1 Darjeeling app and go to the Profile tab.",
+          "Scroll to the bottom and tap Delete account.",
+          "Read the confirmation, which lists exactly what is about to be removed, then tap Delete permanently.",
+          "You are signed out straight away. The account is gone at that moment, not at the end of a notice period."
+        ]
+      },
+      {
+        "h": "2. Requesting Deletion By Email",
+        "p": "If you have uninstalled the app, lost access to the phone number you signed up with, or would simply rather ask us, email the address at the bottom of this page from any address and tell us the phone number on the account.",
+        "items": [
+          "We reply within 3 working days to confirm we have the request.",
+          "Because the account is identified by a phone number, we will send a one-time code to that number to confirm the request is yours. This is the only check we make, and it exists so that nobody can delete someone else's account by guessing their number.",
+          "The deletion itself is completed within 30 days of that confirmation, and in practice within a few days."
+        ],
+        "note": "If you cannot receive a code on that number any more, say so in your email and we will find another way to verify you rather than refusing the request."
+      },
+      {
+        "h": "3. What Is Deleted",
+        "p": "Deletion is permanent and it is not a deactivation. Everything below is removed outright from our systems, not hidden or flagged:",
+        "items": [
+          "Your account: name, phone number, email address if you gave one, profile photo, language and interests.",
+          "Your bookings, past and upcoming, and the payment records attached to them.",
+          "Your saved stays, your reviews, and any referral history.",
+          "If you host or drive with us: your business profile, every listing you published, and the KYC identity documents you uploaded — both the records and the document files themselves.",
+          "Any one-time login codes still held against your phone number."
+        ],
+        "note": "Your listings disappear from the site as part of this, so a traveller cannot book something that no longer has anyone behind it."
+      },
+      {
+        "h": "4. What Is Kept, and Why",
+        "p": "Two narrow categories survive deletion, in both cases because the law requires it of us rather than because we want them:",
+        "items": [
+          "Transaction records that tax and accounting law obliges us to retain — the amount, the date and the invoice reference for money that actually moved. These are kept for 8 years as required, and are not linked back to a live account.",
+          "Records we have been formally required to preserve for an ongoing legal claim, dispute or investigation. If this applies to you we will tell you when you ask to delete."
+        ],
+        "note": "Nothing else is retained. We do not keep a shadow copy of a deleted profile, and we do not keep your account so that you can “reactivate” it later — if you come back, you start a new account."
+      },
+      {
+        "h": "5. Backups",
+        "p": "Our database backups are encrypted, are not readable as a browsable copy of your profile, and roll off on a 30-day cycle. A deleted account can therefore persist inside a backup image for up to 30 days after deletion. It is never restored into the live system, and it is overwritten automatically at the end of that cycle."
+      },
+      {
+        "h": "6. Money Owed to You",
+        "p": "Deleting your account does not cancel a refund you are already owed. If a booking of yours is cancelled and a fee is due back, that refund is processed to the original payment method whether or not the account still exists. Delete first and it still reaches you."
+      },
+      {
+        "h": "7. Contact",
+        "p": "For a deletion request, or any question about what we hold on you, write to us. This is also the grievance contact named in our Privacy Policy.",
+        "contact": {
+          "name": "1Darjeeling",
+          "email": "1darjeelingapp@gmail.com",
+          "address": "Ward 4, Krishna Nagar, 1-149, Manbir Thapa Road, Mirik, West Bengal 734214"
+        }
+      }
+    ]
   }
 }

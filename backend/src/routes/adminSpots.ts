@@ -5,6 +5,7 @@ import * as schema from '../schema';
 import { and, eq, inArray } from 'drizzle-orm';
 import { authenticateToken, requireAdmin } from '../middleware/auth';
 import { storeBase64Image, ImageUploadError } from '../lib/imageUpload';
+import { routeParam } from '../lib/routeParam';
 import {
   SPOT_TYPE, parseSpotExtras, spotOrdering, SpotValidationError, isSpotPublished,
 } from '../lib/spots';
@@ -283,7 +284,7 @@ router.post('/admin/spots', authenticateToken, requireAdmin, async (req: Request
 /** Loads a spot by id, or answers 404 — a non-spot listing id is not addressable here. */
 async function loadSpot(req: Request, res: Response) {
   const [row] = await db.select().from(schema.listings)
-    .where(and(eq(schema.listings.id, req.params.id as any), eq(schema.listings.type, SPOT_TYPE)))
+    .where(and(eq(schema.listings.id, routeParam(req, 'id')), eq(schema.listings.type, SPOT_TYPE)))
     .limit(1);
   if (!row) {
     res.status(404).json({ detail: 'Tourist spot not found' });

@@ -5,9 +5,12 @@ import { db, schema } from '../db';
 import { eq } from 'drizzle-orm';
 import { rateLimiter } from '../middleware/rateLimiter';
 import { authenticateToken, makeToken, verifyPassword, hashPassword, needsRehash } from '../middleware/auth';
-import { log, ADMIN_USERNAME, ADMIN_PASSWORD, MOCK_OTP, OTP_TTL_SECONDS, OTP_MAX_ATTEMPTS } from '../config';
+import { log, ADMIN_USERNAME, ADMIN_PASSWORD, MOCK_OTP, OTP_TTL_SECONDS, OTP_MAX_ATTEMPTS, REVIEW_PHONE, REVIEW_OTP } from '../config';
 import { sendOtp } from '../messaging';
 import { toPublicUser } from '../lib/publicUser';
+import { reserveOtpSend } from '../lib/otpSendBudget';
+import { isPlausiblePhone, phoneKey } from '../lib/phone';
+import { generateReferralCode, redeemReferralCode } from '../lib/referrals';
 
 const router = Router();
 
@@ -16,6 +19,30 @@ const router = Router();
  * it is granted only by the seeded env credentials or by promoting a row directly.
  */
 const SELF_ASSIGNABLE_ROLES = ['tourist', 'provider'];
+
+/**
+ * Constant-time string comparison, via a digest so the inputs need not be the same length.
+ *
+ * `===` on a secret leaks its prefix through timing. That is a marginal risk against a code
+ * this long, but the reviewer code is the one credential in the system with no expiry and no
+ * cross-process rate limit, so it is the last place to spend a marginal risk.
+ */
+function secretEquals(a: string, b: string): boolean {
+  const ha = crypto.createHash('sha256').update(a).digest();
+  const hb = crypto.createHash('sha256').update(b).digest();
+  return crypto.timingSafeEqual(ha, hb);
+}
+
+/** True when this request is the store reviewer signing in with their fixed code. */
+function isReviewLogin(phone: unknown, otp: unknown): boolean {
+  if (!REVIEW_PHONE) return false;
+  if (typeof phone !== 'string' || typeof otp !== 'string') return false;
+  // Exact match, deliberately: not phoneKey(), which folds several spellings onto one number.
+  // The reviewer types what the console tells them to type, and widening what counts as "the
+  // review number" is exactly how a narrow exception stops being narrow.
+  if (phone !== REVIEW_PHONE) return false;
+  return secretEquals(otp, REVIEW_OTP);
+}
 
 /**
  * Compares two secrets without leaking their common prefix through timing. The values are
@@ -64,6 +91,11 @@ function constantTimeEquals(a: unknown, b: unknown): boolean {
  *         content:
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
+ *       429:
+ *         description: Per-minute rate limit, or a daily send budget (per-phone or platform-wide) is exhausted. Retry-After gives the seconds to wait.
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
  *       502:
  *         description: The messaging provider could not be reached or rejected the request
  *         content:
@@ -75,12 +107,55 @@ router.post(
   '/otp/send',
   rateLimiter(5, 60 * 1000, 'otp_send'),
   rateLimiter(3, 60 * 1000, 'otp_send_phone', {
-    keyExtractor: (req: Request) => (req.body?.phone ? `phone:${req.body.phone.trim()}` : undefined),
+    // Keyed on the canonical number, not the string as typed. Keying on the raw value meant
+    // "+919876543210", "+91 98765 43210" and "9876543210" were three separate buckets for one
+    // person, so a caller could reset their own limit by adding a space.
+    keyExtractor: (req: Request) => {
+      const key = phoneKey(req.body?.phone);
+      return key ? `phone:${key}` : undefined;
+    },
   }),
   async (req: Request, res: Response) => {
   const { phone, channel = 'whatsapp' } = req.body;
   if (!phone) {
     return res.status(400).json({ detail: 'Phone number is required' });
+  }
+
+  // Checked before anything is reserved or sent. This route used to test only that `phone` was
+  // present, so any string reached the budget and the messaging provider — and on a mock-mode
+  // server the universal code then verified it, leaving an account whose identity was
+  // "not-a-number". The filter is permissive about shape on purpose: the website's phone field
+  // is free text, so real accounts exist under every spelling a person might type, and all of
+  // them have to keep working. See lib/phone.ts.
+  if (!isPlausiblePhone(phone)) {
+    return res.status(400).json({ detail: 'That does not look like a phone number' });
+  }
+
+  // Durable daily ceiling, checked before a code is generated or a message costs anything. The
+  // per-minute limiters above cap the rate; this caps the total, and survives the restart that
+  // clears them. Spent against the canonical number so the ten-a-day cannot be reset by
+  // respelling it. See lib/otpSendBudget.ts.
+  // The reviewer's code is fixed and already in the Play Console, so there is nothing to send.
+  // Short-circuited before the budget reservation on purpose: a real dispatch here would spend
+  // from the daily cap and deliver an SMS to a number the reviewer does not hold, and the code
+  // it delivered would not be the one they were given.
+  if (REVIEW_PHONE && phone === REVIEW_PHONE) {
+    const [reviewUser] = await db.select().from(schema.users).where(eq(schema.users.phone, phone)).limit(1);
+    return res.json({ sent: true, channel, exists: !!reviewUser });
+  }
+
+  const budget = await reserveOtpSend(phoneKey(phone) ?? phone);
+  if (!budget.ok) {
+    res.setHeader('Retry-After', String(budget.retryAfterSeconds));
+    return res.status(429).json({
+      detail: budget.scope === 'phone'
+        // Named for what it is, so a real person on a bad line knows waiting is the answer and
+        // trying a different number is not.
+        ? 'Too many codes requested for this number today. Try again tomorrow.'
+        // Deliberately vague: that the PLATFORM is out of budget is exactly the feedback an
+        // attacker draining it is looking for.
+        : 'Could not send OTP, please try again later',
+    });
   }
 
   // crypto.randomInt, not Math.random: V8 implements Math.random as xorshift128+, whose internal
@@ -114,6 +189,9 @@ router.post(
   } catch (err) {
     // The diagnostic can name the provider and quote its response, so it stays server-side.
     log.error(`[otp] delivery failed for ****${phone.slice(-4)}: ${(err as Error).message}`);
+    // Nothing was delivered, so nothing was spent. Handing the reservation back keeps a provider
+    // outage from burning through a user's ten daily codes — or the platform's thousand.
+    await budget.release();
     return res.status(502).json({ detail: 'Could not send OTP, please try again' });
   }
 
@@ -178,9 +256,18 @@ router.post(
  */
 // Verify OTP
 router.post('/otp/verify', rateLimiter(10, 60 * 1000, 'otp_verify'), async (req: Request, res: Response) => {
-  const { phone, otp, name, role = 'tourist' } = req.body;
+  const { phone, otp, name, role = 'tourist', referral_code: referralCode } = req.body;
   if (!phone || !otp) {
     return res.status(400).json({ detail: 'Phone and OTP are required' });
+  }
+
+  // A junk number can no longer be issued a code at all, so this is belt and braces — except in
+  // mock mode, where the universal bypass below needs no stored row and would otherwise still
+  // mint a session for one. Lookup still uses the number exactly as sent: `users.phone` holds
+  // whatever was typed at signup, and canonicalising here would send an existing user to a new,
+  // empty account instead of their own.
+  if (!isPlausiblePhone(phone)) {
+    return res.status(400).json({ detail: 'That does not look like a phone number' });
   }
 
   const [otpRec] = await db.select().from(schema.otps).where(eq(schema.otps.phone, phone)).limit(1);
@@ -188,8 +275,12 @@ router.post('/otp/verify', rateLimiter(10, 60 * 1000, 'otp_verify'), async (req:
   // The universal bypass is evaluated first and deliberately: it has to work with no stored
   // row at all, which is how the test helpers and mock-mode logins work.
   const universalOk = MOCK_OTP && otp === '123456';
+  // Same shape as the universal bypass, and for the same reason: there is no stored row to
+  // check against. Unlike it, this one is scoped to a single number and survives into
+  // production, which is the whole point — see the REVIEW_PHONE block in config.ts.
+  const reviewOk = isReviewLogin(phone, otp);
 
-  if (!universalOk) {
+  if (!universalOk && !reviewOk) {
     if (!otpRec) {
       return res.status(400).json({ detail: 'Invalid OTP' });
     }
@@ -231,9 +322,26 @@ router.post('/otp/verify', rateLimiter(10, 60 * 1000, 'otp_verify'), async (req:
       avatar: null,
       createdAt: new Date().toISOString(),
       supportExpiresAt: null,
-      password: null
+      password: null,
+      // Minted at registration so the invite screen never has to wait on a write.
+      referralCode: await generateReferralCode()
     };
     await db.insert(schema.users).values(user);
+
+    // A code only counts at signup, and only for the account that just came into existence —
+    // that is the whole anti-abuse story, and it is enforced by a unique referee_id rather than
+    // by this call site. Deliberately after the insert and deliberately unawaited-for-failure:
+    // redeemReferralCode never throws, because losing a reward must not cost someone the
+    // account they just created.
+    if (referralCode) {
+      const redeemed = await redeemReferralCode(user.id, referralCode);
+      if (redeemed.ok) {
+        // The row was just written by redeem; re-read so the token and the response carry the
+        // extended expiry rather than the null this object still holds.
+        const [fresh] = await db.select().from(schema.users).where(eq(schema.users.id, user.id)).limit(1);
+        if (fresh) user = fresh;
+      }
+    }
   }
 
   if (otpRec) {
@@ -268,7 +376,8 @@ router.post('/otp/verify', rateLimiter(10, 60 * 1000, 'otp_verify'), async (req:
  */
 // Current User Details
 router.get('/me', authenticateToken, (req: Request, res: Response) => {
-  res.json({ user: toPublicUser(req.user) });
+  // Already the public shape — authenticateToken sanitises before the request reaches here.
+  res.json({ user: req.user });
 });
 
 /**

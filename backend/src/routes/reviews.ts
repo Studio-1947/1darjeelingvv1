@@ -5,6 +5,7 @@ import { eq, and, desc } from 'drizzle-orm';
 import { authenticateToken } from '../middleware/auth';
 import { requireActiveSupport } from '../middleware/support';
 import { SPOT_TYPE, isSpotPublished } from '../lib/spots';
+import { routeParam } from '../lib/routeParam';
 
 const router = Router();
 
@@ -44,7 +45,7 @@ function reviewOut(r: typeof schema.reviews.$inferSelect) {
 router.get('/listing/:listingId', async (req: Request, res: Response) => {
   const rows = await db.select()
     .from(schema.reviews)
-    .where(eq(schema.reviews.listingId, req.params.listingId as any))
+    .where(eq(schema.reviews.listingId, routeParam(req, 'listingId')))
     .orderBy(desc(schema.reviews.createdAt));
 
   const count = rows.length;
@@ -138,7 +139,7 @@ router.post('/', authenticateToken, requireActiveSupport, async (req: Request, r
  */
 router.delete('/:id', authenticateToken, async (req: Request, res: Response) => {
   const deleted = await db.delete(schema.reviews)
-    .where(and(eq(schema.reviews.id, req.params.id as any), eq(schema.reviews.userId, req.user.id)))
+    .where(and(eq(schema.reviews.id, routeParam(req, 'id')), eq(schema.reviews.userId, req.user.id)))
     .returning();
   if (deleted.length === 0) return res.status(404).json({ detail: 'Review not found' });
   res.json({ ok: true });

@@ -1,4 +1,4 @@
-import { pgTable, text, integer, boolean, numeric, jsonb, doublePrecision, uniqueIndex, index } from 'drizzle-orm/pg-core';
+import { pgTable, text, integer, boolean, numeric, jsonb, doublePrecision, uniqueIndex, index, primaryKey } from 'drizzle-orm/pg-core';
 
 export const users = pgTable('users', {
   id: text('id').primaryKey(),
@@ -13,6 +13,30 @@ export const users = pgTable('users', {
   // Tourist platform support & convenience fee. null = never paid. Active while > now().
   supportExpiresAt: text('support_expires_at'),
   password: text('password'),
+  // The user's own invite code. Server-generated and unique — the app used to derive one from
+  // the first name (`ASHA-1D`), which collides on every second Asha and could not be looked up.
+  // Nullable because rows created before referrals existed have none until they are backfilled.
+  referralCode: text('referral_code').unique(),
+});
+
+/**
+ * Who invited whom, and what it bought them.
+ *
+ * One row per successful referral, written once at the moment the invited account is created.
+ * The reward is applied in the same transaction and recorded here rather than recomputed, so
+ * "why is this pass valid until 2028" has an answer that survives a change to the reward rule.
+ */
+export const referrals = pgTable('referrals', {
+  id: text('id').primaryKey(),
+  referrerId: text('referrer_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  // Unique: an account can be referred exactly once, at signup. Enforced at the DB level rather
+  // than by a read-then-write check, which two concurrent registrations could both pass.
+  refereeId: text('referee_id').references(() => users.id, { onDelete: 'cascade' }).notNull().unique(),
+  // The code as it was typed, kept for support questions after a user changes their code.
+  code: text('code').notNull(),
+  // What each side actually received, so the ledger explains the expiry it produced.
+  rewardDays: integer('reward_days').notNull(),
+  createdAt: text('created_at').notNull(),
 });
 
 export const otps = pgTable('otps', {
@@ -165,4 +189,21 @@ export const kycDocuments = pgTable('kyc_documents', {
   // of the same docType can't both insert, which previously let approved/pending duplicates
   // coexist and made the Verified badge flap depending on unordered row read order.
   providerDocTypeUnique: uniqueIndex('kyc_documents_provider_doc_type_unique').on(t.providerId, t.docType),
+}));
+
+// Durable daily counters for OTP sends. Separate from middleware/rateLimiter.ts on purpose: that
+// limiter is in-memory and per-process, so its windows reset on every deploy and are invisible to
+// a second container. That is acceptable for a per-minute burst guard and useless for a daily
+// spend cap, which is what stands between a real SMS provider and a billing attack — an attacker
+// who can trigger a redeploy, or simply wait one out, gets a fresh budget.
+//
+// One row per (scope, day). `scope` is either 'global' or `phone:<number>`; keeping both in one
+// table means one insert shape and one sweep rather than two of each.
+export const otpSendCounters = pgTable('otp_send_counters', {
+  scope: text('scope').notNull(),
+  // 'YYYY-MM-DD', UTC. Text, like every other date in this schema.
+  day: text('day').notNull(),
+  count: integer('count').notNull().default(0),
+}, (t) => ({
+  scopeDayPk: primaryKey({ columns: [t.scope, t.day] }),
 }));

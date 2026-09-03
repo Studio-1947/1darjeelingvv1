@@ -16,7 +16,10 @@ export default function Footer() {
         <div className="col-span-2 md:col-span-1">
           <div className="flex items-center gap-2 mb-3">
             <Logo className="w-9 h-9" />
-            <div className="font-display font-extrabold text-lg text-ink">{t('brand')}</div>
+            <div>
+              <div className="font-display font-extrabold text-lg text-ink">{t('brand')}</div>
+              <div className="text-[10px] font-semibold tracking-wide text-ink-soft">By studio 1947</div>
+            </div>
           </div>
           <p className="text-sm text-ink-soft leading-relaxed">{t('brand_tagline')}</p>
           <p className="mt-4 text-xs text-ink-soft flex items-center gap-1"><Heart size={12} className="text-flag" /> {t('footer.made')}</p>
@@ -47,6 +50,7 @@ export default function Footer() {
             <li><Link to="/terms" className="hover:text-pine transition-colors">{t('nav.terms')}</Link></li>
             <li><Link to="/refunds" className="hover:text-pine transition-colors">{t('nav.refunds')}</Link></li>
             <li><Link to="/contact" className="hover:text-pine transition-colors">{t('nav.contact')}</Link></li>
+            <li><Link to="/delete-account" className="hover:text-pine transition-colors">{t('nav.delete_account')}</Link></li>
             <li className="flex items-center gap-1 mt-2 text-ink/80 font-medium"><Mail size={12} className="text-pine flex-shrink-0" /> 1darjeelingapp@gmail.com</li>
           </ul>
         </div>

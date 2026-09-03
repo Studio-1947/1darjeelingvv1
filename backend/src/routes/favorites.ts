@@ -5,6 +5,7 @@ import { eq, and, desc, inArray } from 'drizzle-orm';
 import { authenticateToken } from '../middleware/auth';
 import { requireActiveSupport } from '../middleware/support';
 import { SPOT_TYPE, isSpotPublished } from '../lib/spots';
+import { routeParam } from '../lib/routeParam';
 
 const router = Router();
 
@@ -157,7 +158,7 @@ router.delete('/:listingId', authenticateToken, async (req: Request, res: Respon
   await db.delete(schema.favorites)
     .where(and(
       eq(schema.favorites.userId, req.user.id),
-      eq(schema.favorites.listingId, req.params.listingId as any)
+      eq(schema.favorites.listingId, routeParam(req, 'listingId'))
     ));
   res.json({ ok: true });
 });

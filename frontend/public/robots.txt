@@ -1,4 +1,4 @@
-# 1 Darjeeling — https://1darjeeling.in
+# aangan — https://aangan.in
 #
 # The whole public site is meant to be found: tourists reach a homestay or a viewpoint through
 # search far more often than by typing the domain. Only the surfaces that are private, personal,
@@ -23,4 +23,4 @@ Disallow: /my-listings
 Disallow: /saved
 Disallow: /provider/dashboard
 
-Sitemap: https://1darjeeling.in/sitemap.xml
+Sitemap: https://aangan.in/sitemap.xml

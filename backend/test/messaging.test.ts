@@ -15,8 +15,11 @@ describe('messaging registry', () => {
     expect(() => selectProvider('carrier-pigeon', {})).toThrow(/mock/);
   });
 
-  it('registers both mock and msg91', () => {
-    expect(Object.keys(PROVIDER_FACTORIES).sort()).toEqual(['mock', 'msg91']);
+  it('registers every provider the app can be configured with', () => {
+    // Pinned deliberately: MESSAGING_PROVIDER is validated against these keys, so a provider
+    // that is written but never registered fails at boot with "not a registered provider",
+    // naming a file that plainly exists.
+    expect(Object.keys(PROVIDER_FACTORIES).sort()).toEqual(['interakt', 'mock', 'msg91', 'smtp', 'whatsapp']);
   });
 
   it('runs init() during selection so bad config fails at selection time', () => {
