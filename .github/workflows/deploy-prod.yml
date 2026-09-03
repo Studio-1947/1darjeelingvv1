@@ -1,8 +1,8 @@
-name: Deploy to VPS (prod → aaganerp.in)
+name: Deploy to VPS (prod → aanganerp.in)
 
 # Parallel to deploy.yml, for the SECOND production stack. A push to `prod` runs the
 # same gates as main, then deploys the 1darjeeling-in stack (docker-compose.in.yml)
-# to aaganerp.in. The main → onedarjeeling.duckdns.org pipeline (deploy.yml) is a
+# to aanganerp.in. The main → onedarjeeling.duckdns.org pipeline (deploy.yml) is a
 # separate workflow and is unaffected by anything here. This workflow triggers ONLY on
 # the `prod` branch, so it sits inert on main.
 on:
@@ -137,7 +137,7 @@ jobs:
           echo "All required secrets are present."
           echo "VPS_USER is set (${#VPS_USER} chars); VPS_SSH_KEY is set (${#VPS_SSH_KEY} chars)."
 
-      - name: SSH into VPS and redeploy the aaganerp.in stack
+      - name: SSH into VPS and redeploy the aanganerp.in stack
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -185,7 +185,7 @@ jobs:
               # on its own — no real container in this stack is named that way.
               docker ps -aq --filter 'name=[0-9a-f]{12}_1darjeeling_in_' | xargs -r docker rm -f || true
               if ! deploy; then
-                echo "::error::Redeploy failed twice. The aaganerp.in stack may be partially down —"
+                echo "::error::Redeploy failed twice. The aanganerp.in stack may be partially down —"
                 echo "::error::check 'docker compose -f docker-compose.in.yml ps' on the VPS before retrying."
                 exit 1
               fi
