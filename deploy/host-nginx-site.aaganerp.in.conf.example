@@ -1,0 +1,30 @@
+# Reference only — install this on the VPS's system Nginx, not in a container.
+# It fronts the existing `prod` Compose stack, whose internal nginx is bound to
+# 127.0.0.1:8092 by docker-compose.in.yml.
+#
+# First make both DNS records resolve to this VPS, then install with:
+#   sudo cp deploy/host-nginx-site.aaganerp.in.conf.example /etc/nginx/sites-available/aaganerp.in
+#   sudo ln -s /etc/nginx/sites-available/aaganerp.in /etc/nginx/sites-enabled/
+#   sudo nginx -t && sudo systemctl reload nginx
+#   sudo certbot --nginx -d aaganerp.in -d www.aaganerp.in
+#
+# Do not copy this template over the file after Certbot has added its TLS
+# directives. Edit the existing VPS site file and test Nginx before reloading.
+
+server {
+    listen 80;
+    server_name aaganerp.in www.aaganerp.in;
+
+    client_max_body_size 30m;
+
+    location / {
+        proxy_pass http://127.0.0.1:8092;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
