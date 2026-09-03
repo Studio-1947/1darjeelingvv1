@@ -95,6 +95,9 @@ export default function Header() {
             <div className={`font-display font-extrabold text-sm sm:text-lg whitespace-nowrap ${onVideo ? 'text-white drop-shadow' : 'text-ink'}`}>
               {t('brand')}
             </div>
+            <div className={`mt-0.5 text-[8px] sm:text-[10px] font-semibold tracking-wide whitespace-nowrap ${onVideo ? 'text-white/85' : 'text-ink-soft'}`}>
+              By studio 1947
+            </div>
           </div>
         </Link>
 

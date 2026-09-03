@@ -8,6 +8,7 @@ dotenv.config({ path: path.join(__dirname, '../.env') });
 // Logging setup — defined first so the startup validation below can use it.
 export const log = {
   info: (msg: string) => console.log(`[INFO] ${new Date().toISOString()} - ${msg}`),
+  warn: (msg: string) => console.warn(`[WARN] ${new Date().toISOString()} - ${msg}`),
   error: (msg: string) => console.error(`[ERROR] ${new Date().toISOString()} - ${msg}`)
 };
 
@@ -334,3 +335,28 @@ export const REFERRAL_REWARD_DAYS = requirePositiveInt(
   process.env.REFERRAL_REWARD_DAYS,
   90
 );
+
+// ── Google OAuth ──────────────────────────────────────────────────────────
+// Client IDs for verifying Google ID tokens from the mobile app and web.
+// In production these are REQUIRED — Google login silently fails without them.
+// Obtain from https://console.cloud.google.com/apis/credentials (OAuth 2.0 Client IDs).
+export const GOOGLE_WEB_CLIENT_ID = process.env.GOOGLE_WEB_CLIENT_ID || '';
+export const GOOGLE_ANDROID_CLIENT_ID = process.env.GOOGLE_ANDROID_CLIENT_ID || '';
+export const GOOGLE_IOS_CLIENT_ID = process.env.GOOGLE_IOS_CLIENT_ID || '';
+
+// ── SMTP / Email ──────────────────────────────────────────────────────────
+// Nodemailer transport configuration for transactional emails (booking confirmations,
+// receipts, etc.). When unset, email sending is silently disabled — no emails are
+// sent but nothing crashes. Set SMTP_HOST and SMTP_PORT to enable.
+export const SMTP_HOST = process.env.SMTP_HOST || '';
+export const SMTP_PORT = process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT, 10) : 587;
+export const SMTP_USER = process.env.SMTP_USER || '';
+export const SMTP_PASS = process.env.SMTP_PASS || '';
+export const SMTP_FROM = process.env.SMTP_FROM || 'noreply@1darjeeling.in';
+
+if (IS_PROD && (!SMTP_HOST || !SMTP_PORT)) {
+  log.error(
+    '[config] SMTP_HOST/SMTP_PORT not set with APP_ENV=production — emails (booking ' +
+    'confirmations, receipts) will not be delivered. Set them or accept no email delivery.'
+  );
+}

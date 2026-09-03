@@ -16,7 +16,10 @@ export default function Footer() {
         <div className="col-span-2 md:col-span-1">
           <div className="flex items-center gap-2 mb-3">
             <Logo className="w-9 h-9" />
-            <div className="font-display font-extrabold text-lg text-ink">{t('brand')}</div>
+            <div>
+              <div className="font-display font-extrabold text-lg text-ink">{t('brand')}</div>
+              <div className="text-[10px] font-semibold tracking-wide text-ink-soft">By studio 1947</div>
+            </div>
           </div>
           <p className="text-sm text-ink-soft leading-relaxed">{t('brand_tagline')}</p>
           <p className="mt-4 text-xs text-ink-soft flex items-center gap-1"><Heart size={12} className="text-flag" /> {t('footer.made')}</p>

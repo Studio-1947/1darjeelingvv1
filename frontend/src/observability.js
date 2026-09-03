@@ -76,7 +76,7 @@ function scrubUrl(url) {
 function deploymentEnvironment() {
   if (process.env.NODE_ENV !== "production") return "development";
   const host = window.location.hostname.toLowerCase();
-  return /^(www\.)?1darjeeling\.in$/.test(host) ? "production" : "staging";
+  return /^(www\.)?aangan\.in$/.test(host) ? "production" : "staging";
 }
 
 export const SENTRY_ENABLED = Boolean(DSN);

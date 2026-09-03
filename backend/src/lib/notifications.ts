@@ -21,7 +21,7 @@ import type { NotificationTemplate } from '../messaging';
  *     notification is a queryable fact rather than an absence nobody can see.
  */
 
-const SIGNATURE = '— 1 Darjeeling';
+const SIGNATURE = '— aangan · By studio 1947';
 
 /**
  * A date range rendered for a human, tolerant of the non-homestay bookings that have no dates.
