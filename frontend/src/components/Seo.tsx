@@ -24,7 +24,11 @@ import { useTranslation } from 'react-i18next';
  * server response - see the crawler note in deploy/nginx/app.conf.
  */
 
-const SITE_URL = process.env.REACT_APP_SITE_URL || 'https://aangan.in';
+// See the note in observability.js: a bare `process.env.*` read is a ReferenceError under Vite.
+const SITE_URL =
+  import.meta.env.VITE_SITE_URL ||
+  (typeof process !== 'undefined' && process.env ? process.env.REACT_APP_SITE_URL : undefined) ||
+  'https://aangan.in';
 
 /** Upserts <meta {attr}="{key}" content="…">, or removes it when content is empty. */
 function setMeta(attr: 'name' | 'property', key: string, content?: string) {
