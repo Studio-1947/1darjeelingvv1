@@ -2,7 +2,6 @@ import React from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/context/AuthContext';
-import LanguageSwitcher from '@/components/LanguageSwitcher';
 import StoryCircle from '@/components/StoryCircle';
 import Logo from '@/components/Logo';
 import useGoBack from '@/hooks/useGoBack';
@@ -139,10 +138,9 @@ export default function Header() {
 
         {/* Right cluster - shown at every width. The hamburger it used to hide
             behind on phones held nothing the bottom tab bar doesn't already
-            reach, so the two controls a visitor actually looks for up here -
-            language and sign-in - now sit in the bar itself. */}
+            reach, so the control a visitor actually looks for up here -
+            sign-in - now sits in the bar itself. */}
         <div className="flex items-center gap-1.5 sm:gap-2.5 flex-shrink-0 ml-auto">
-          <LanguageSwitcher onDark={onVideo} />
           {/* Saved has its own route from the profile menu and the tab bar, so
               below lg this shortcut only competes for the width login needs. */}
           {user && (
