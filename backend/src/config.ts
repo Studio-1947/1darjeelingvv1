@@ -78,12 +78,19 @@ export const RATE_LIMIT_ENABLED = process.env.RATE_LIMIT_ENABLED
 // development and the test suite work with no configuration. The selected provider validates
 // its own credentials at startup — see src/messaging/registry.ts.
 export const MESSAGING_PROVIDER = process.env.MESSAGING_PROVIDER?.trim() || 'mock';
+// Required only for the signed Interakt delivery-status endpoint. Kept separate from the API
+// key: webhook verification is an inbound trust boundary, not an outbound credential.
+export const INTERAKT_WEBHOOK_SECRET = process.env.INTERAKT_WEBHOOK_SECRET?.trim() || '';
 
 // True when OTPs are not actually delivered. Gates both the mock_otp field in the /otp/send
 // response and the 123456 universal code. Deliberately keyed to the provider rather than to
 // APP_ENV, so a production-configured staging deployment stays usable while still being able
 // to switch to real delivery with one variable.
 export const MOCK_OTP = MESSAGING_PROVIDER === 'mock';
+
+if (IS_PROD && MESSAGING_PROVIDER === 'interakt' && !INTERAKT_WEBHOOK_SECRET) {
+  throw new Error('[config] INTERAKT_WEBHOOK_SECRET is required when MESSAGING_PROVIDER=interakt in production.');
+}
 
 // ── Store-review access ──────────────────────────────────────────────────────
 //

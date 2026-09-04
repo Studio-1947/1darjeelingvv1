@@ -303,6 +303,29 @@ when the provider has confirmed handoff.
 Nothing else in the codebase learns the provider's name. See `backend/src/messaging/providers/msg91.ts`
 for a worked example, including why a 2xx response is not by itself treated as delivery.
 
+### Interakt WhatsApp Authentication
+
+The production WhatsApp OTP provider is Interakt. Create and sync a Meta **Authentication**
+template named `aagan_otp`, then place the following values only in the VPS deployment `.env`:
+
+    MESSAGING_PROVIDER=interakt
+    INTERAKT_API_KEY=<Interakt Developer Settings key>
+    INTERAKT_OTP_TEMPLATE=aagan_otp
+    INTERAKT_TEMPLATE_LANGUAGE=en
+    INTERAKT_COUNTRY_CODE=+91
+    INTERAKT_WEBHOOK_SECRET=<different random secret>
+
+Configure Interakt's HTTPS webhook as `https://elegantsip.in/api/v1/webhooks/interakt`,
+subscribe to API-template `sent`, `delivered`, `read`, and `failed` delivery events, and use the
+same `INTERAKT_WEBHOOK_SECRET` in both deployments. Elegant Sip verifies and forwards only
+Aangan's `aangan:otp:` events to `https://aanganerp.in/api/webhooks/interakt`, where Aangan
+verifies the original signature and records each callback/event pair once. Never put the API key,
+webhook secret, OTP, or phone number in source, client configuration, or logs.
+
+When an Interakt account is shared with another application, Interakt can send to only one
+webhook receiver. Keep that receiver as a dispatcher and forward the raw body plus the original
+`Interakt-Signature` only when `callbackData` starts with `aangan:otp:` to the Aangan endpoint.
+
 ## Production deployment
 
 > Day-to-day operations — inventorying what's running on the shared VPS, diagnosing a crash-looping

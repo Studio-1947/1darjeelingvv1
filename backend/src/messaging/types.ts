@@ -2,6 +2,8 @@ export interface OtpMessage {
   phone: string;
   otp: string;
   channel: string;
+  /** Opaque internal identifier echoed by Interakt's delivery webhooks. */
+  challengeId?: string;
 }
 
 /**
