@@ -91,7 +91,7 @@ describe('POST /auth/otp/verify expiry', () => {
 
     // Backdate the issue time past the 300s window.
     const stale = new Date(Date.now() - 301 * 1000).toISOString();
-    await db.update(schema.otps).set({ createdAt: stale }).where(eq(schema.otps.phone, phone));
+    await db.update(schema.otps).set({ expiresAt: stale }).where(eq(schema.otps.phone, phone));
 
     const res = await request(app).post('/api/auth/otp/verify').send({ phone, otp, name: 'Expired User' });
 
@@ -107,6 +107,15 @@ describe('POST /auth/otp/verify expiry', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.token).toBeTruthy();
+  });
+
+  it('persists only an Argon2 hash, never the usable OTP', async () => {
+    const phone = nextPhone();
+    const otp = await issueOtp(phone);
+    const [rec] = await db.select().from(schema.otps).where(eq(schema.otps.phone, phone)).limit(1);
+
+    expect(rec.otpHash).not.toContain(otp);
+    expect(rec.otpHash).toMatch(/^\$argon2id\$/);
   });
 });
 

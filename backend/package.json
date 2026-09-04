@@ -21,6 +21,7 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1087.0",
     "@sentry/node": "^10.69.0",
+    "argon2": "^0.44.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "drizzle-orm": "^0.45.2",
@@ -28,6 +29,7 @@
     "google-auth-library": "^11.0.2",
     "jsonwebtoken": "^9.0.3",
     "nodemailer": "^9.1.0",
+    "one-darjeeling-root": "file:..",
     "pg": "^8.22.0",
     "razorpay": "^2.9.6",
     "swagger-jsdoc": "^6.3.0",

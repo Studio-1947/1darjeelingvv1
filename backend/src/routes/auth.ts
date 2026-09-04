@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import { db, schema } from '../db';
-import { eq } from 'drizzle-orm';
+import { and, desc, eq, isNull } from 'drizzle-orm';
 import { rateLimiter } from '../middleware/rateLimiter';
 import { authenticateToken, makeToken, verifyPassword, hashPassword, needsRehash } from '../middleware/auth';
 import { log, ADMIN_USERNAME, ADMIN_PASSWORD, MOCK_OTP, OTP_TTL_SECONDS, OTP_MAX_ATTEMPTS, REVIEW_PHONE, REVIEW_OTP } from '../config';
@@ -11,6 +11,7 @@ import { toPublicUser } from '../lib/publicUser';
 import { reserveOtpSend } from '../lib/otpSendBudget';
 import { isPlausiblePhone, phoneKey } from '../lib/phone';
 import { generateReferralCode, redeemReferralCode } from '../lib/referrals';
+import { hashOtp, verifyOtpHash } from '../lib/otpHash';
 
 const router = Router();
 
@@ -164,7 +165,10 @@ router.post(
   // predict the code issued to someone else's. randomInt draws from the CSPRNG and is uniform over
   // the range (no modulo bias). Upper bound is exclusive, so this yields 100000..999999.
   const otp = crypto.randomInt(100000, 1000000).toString();
+  const challengeId = uuidv4();
   const now = new Date().toISOString();
+  const expiresAt = new Date(Date.now() + OTP_TTL_SECONDS * 1000).toISOString();
+  const otpHash = await hashOtp(otp);
 
   // Check if the user already exists
   const [user] = await db.select().from(schema.users).where(eq(schema.users.phone, phone)).limit(1);
@@ -185,7 +189,7 @@ router.post(
   // went out is the same class of untruth this layer exists to prevent.
   let deliveredChannel: string;
   try {
-    ({ channel: deliveredChannel } = await sendOtp({ phone, otp, channel }));
+    ({ channel: deliveredChannel } = await sendOtp({ phone, otp, channel, challengeId }));
   } catch (err) {
     // The diagnostic can name the provider and quote its response, so it stays server-side.
     log.error(`[otp] delivery failed for ****${phone.slice(-4)}: ${(err as Error).message}`);
@@ -195,12 +199,18 @@ router.post(
     return res.status(502).json({ detail: 'Could not send OTP, please try again' });
   }
 
-  await db.insert(schema.otps)
-    .values({ phone, otp, channel: deliveredChannel, createdAt: now, attempts: 0 })
-    .onConflictDoUpdate({
-      target: schema.otps.phone,
-      set: { otp, channel: deliveredChannel, createdAt: now, attempts: 0 }
-    });
+  // Do not overwrite an older, already-delivered challenge. A delivery failure on a resend must
+  // not take away the code the customer already has; each successfully handed-off code is an
+  // independently expiring, single-use challenge.
+  await db.insert(schema.otps).values({
+    id: challengeId,
+    phone,
+    otpHash,
+    channel: deliveredChannel,
+    createdAt: now,
+    expiresAt,
+    attempts: 0,
+  });
 
   if (MOCK_OTP) {
     return res.json({
@@ -270,7 +280,10 @@ router.post('/otp/verify', rateLimiter(10, 60 * 1000, 'otp_verify'), async (req:
     return res.status(400).json({ detail: 'That does not look like a phone number' });
   }
 
-  const [otpRec] = await db.select().from(schema.otps).where(eq(schema.otps.phone, phone)).limit(1);
+  const [otpRec] = await db.select().from(schema.otps)
+    .where(and(eq(schema.otps.phone, phone), isNull(schema.otps.consumedAt)))
+    .orderBy(desc(schema.otps.createdAt))
+    .limit(1);
 
   // The universal bypass is evaluated first and deliberately: it has to work with no stored
   // row at all, which is how the test helpers and mock-mode logins work.
@@ -291,15 +304,14 @@ router.post('/otp/verify', rateLimiter(10, 60 * 1000, 'otp_verify'), async (req:
       return res.status(429).json({ detail: 'Too many incorrect attempts. Request a new OTP.' });
     }
 
-    const ageMs = Date.now() - new Date(otpRec.createdAt).getTime();
-    if (ageMs > OTP_TTL_SECONDS * 1000) {
+    if (Date.now() > new Date(otpRec.expiresAt).getTime()) {
       return res.status(400).json({ detail: 'OTP expired. Request a new one.' });
     }
 
-    if (otpRec.otp !== otp) {
+    if (!(await verifyOtpHash(otpRec.otpHash, otp))) {
       await db.update(schema.otps)
         .set({ attempts: otpRec.attempts + 1 })
-        .where(eq(schema.otps.phone, phone));
+        .where(eq(schema.otps.id, otpRec.id));
       return res.status(400).json({ detail: 'Invalid OTP' });
     }
   }
@@ -323,6 +335,7 @@ router.post('/otp/verify', rateLimiter(10, 60 * 1000, 'otp_verify'), async (req:
       createdAt: new Date().toISOString(),
       supportExpiresAt: null,
       password: null,
+      phoneVerifiedAt: new Date().toISOString(),
       // Minted at registration so the invite screen never has to wait on a write.
       referralCode: await generateReferralCode()
     };
@@ -345,7 +358,16 @@ router.post('/otp/verify', rateLimiter(10, 60 * 1000, 'otp_verify'), async (req:
   }
 
   if (otpRec) {
-    await db.delete(schema.otps).where(eq(schema.otps.phone, phone));
+    // Deleting after a successful verification both consumes this challenge and removes its
+    // Argon2 hash sooner than its natural expiry. Other challenges for a resend stay usable.
+    await db.delete(schema.otps).where(eq(schema.otps.id, otpRec.id));
+  }
+
+  if (user && !user.phoneVerifiedAt) {
+    await db.update(schema.users)
+      .set({ phoneVerifiedAt: new Date().toISOString() })
+      .where(eq(schema.users.id, user.id));
+    user.phoneVerifiedAt = new Date().toISOString();
   }
 
   const token = makeToken(user.id, user.phone, user.role);

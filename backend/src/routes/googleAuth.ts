@@ -132,6 +132,7 @@ router.post(
         createdAt: new Date().toISOString(),
         supportExpiresAt: null,
         password: null,
+        phoneVerifiedAt: null,
         referralCode: null,
       };
 

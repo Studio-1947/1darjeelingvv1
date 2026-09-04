@@ -4,7 +4,7 @@ import { MessageDeliveryError } from '../src/messaging/types';
 
 const ENV = {
   INTERAKT_API_KEY: 'aW50ZXJha3Qtc2VjcmV0LWtleQ==',
-  INTERAKT_OTP_TEMPLATE: 'one_darjeeling_login',
+  INTERAKT_OTP_TEMPLATE: 'aagan_otp',
 };
 
 const OTP_MSG = { phone: '+91 99999 99999', otp: '654321', channel: 'whatsapp' };
@@ -69,15 +69,16 @@ describe('interakt adapter — sending a code', () => {
     const fetchImpl = vi.fn().mockResolvedValue(jsonResponse(accepted()));
     const provider = createInteraktProvider(ENV, fetchImpl as unknown as typeof fetch);
 
-    await provider.sendOtp(OTP_MSG);
+    await provider.sendOtp({ ...OTP_MSG, challengeId: 'challenge-123' });
 
     const body = JSON.parse(fetchImpl.mock.calls[0][1].body);
     expect(body).toMatchObject({
       countryCode: '+91',
       phoneNumber: '9999999999',
       type: 'Template',
+      callbackData: 'aangan:otp:challenge-123',
       template: {
-        name: 'one_darjeeling_login',
+        name: 'aagan_otp',
         languageCode: 'en',
         bodyValues: ['654321'],
         buttonValues: { '0': ['654321'] },
@@ -91,12 +92,24 @@ describe('interakt adapter — sending a code', () => {
     const fetchImpl = vi.fn().mockResolvedValue(jsonResponse(accepted()));
     const provider = createInteraktProvider(ENV, fetchImpl as unknown as typeof fetch);
 
-    await provider.sendOtp(OTP_MSG);
+    await provider.sendOtp({ ...OTP_MSG, challengeId: 'challenge-123' });
 
     const [url, init] = fetchImpl.mock.calls[0];
     expect(init.headers.Authorization).toBe(`Basic ${ENV.INTERAKT_API_KEY}`);
     expect(url).toBe('https://api.interakt.ai/v1/public/message/');
     expect(url).not.toContain(ENV.INTERAKT_API_KEY);
+  });
+
+  it('uses the configured public Interakt API base URL', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse(accepted()));
+    const provider = createInteraktProvider(
+      { ...ENV, INTERAKT_API_BASE_URL: 'https://interakt.example/v1/public/' },
+      fetchImpl as unknown as typeof fetch,
+    );
+
+    await provider.sendOtp(OTP_MSG);
+
+    expect(fetchImpl.mock.calls[0][0]).toBe('https://interakt.example/v1/public/message/');
   });
 
   it('refuses a code longer than WhatsApp allows', async () => {
