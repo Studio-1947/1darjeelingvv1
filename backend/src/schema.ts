@@ -13,6 +13,8 @@ export const users = pgTable('users', {
   // Tourist platform support & convenience fee. null = never paid. Active while > now().
   supportExpiresAt: text('support_expires_at'),
   password: text('password'),
+  // Set atomically after a successful WhatsApp OTP verification.
+  phoneVerifiedAt: text('phone_verified_at'),
   // The user's own invite code. Server-generated and unique — the app used to derive one from
   // the first name (`ASHA-1D`), which collides on every second Asha and could not be looked up.
   // Nullable because rows created before referrals existed have none until they are backfilled.
@@ -40,13 +42,26 @@ export const referrals = pgTable('referrals', {
 });
 
 export const otps = pgTable('otps', {
-  phone: text('phone').primaryKey(),
-  otp: text('otp').notNull(),
+  id: text('id').primaryKey(),
+  phone: text('phone').notNull(),
+  otpHash: text('otp_hash').notNull(),
   channel: text('channel').notNull(),
   createdAt: text('created_at').notNull(),
   // Wrong guesses against the current code. Reset to 0 whenever a new code is issued.
   attempts: integer('attempts').notNull().default(0),
+  consumedAt: text('consumed_at'),
+  expiresAt: text('expires_at').notNull(),
 });
+
+/** Interakt delivery events, deduplicated by the opaque callback plus event type. */
+export const interaktDeliveryEvents = pgTable('interakt_delivery_events', {
+  id: text('id').primaryKey(),
+  callbackData: text('callback_data').notNull(),
+  eventType: text('event_type').notNull(),
+  receivedAt: text('received_at').notNull(),
+}, (t) => ({
+  callbackEventUnique: uniqueIndex('interakt_delivery_events_callback_event_unique').on(t.callbackData, t.eventType),
+}));
 
 export const providers = pgTable('providers', {
   id: text('id').primaryKey(),

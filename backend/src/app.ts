@@ -20,6 +20,7 @@ import favoritesRouter from './routes/favorites';
 import reviewsRouter from './routes/reviews';
 import weatherRouter from './routes/weather';
 import routeEstimatorRouter from './routes/routeEstimator';
+import interaktWebhookRouter from './routes/interaktWebhook';
 import { rateLimiter } from './middleware/rateLimiter';
 import { reportError } from './observability';
 import { checkStorage } from './lib/s3';
@@ -49,6 +50,7 @@ app.use('/api', rateLimiter(300, 60 * 1000, 'api_global'));
 // only a parsed object — re-serialising that yields different bytes and the HMAC never matches.
 // express.json() then skips this request because express.raw() has already marked the body read.
 app.use('/api/payments/webhook', express.raw({ type: '*/*' }));
+app.use('/api/webhooks/interakt', express.raw({ type: '*/*' }));
 
 // Rate limit the KYC upload path before the 8mb JSON parser below buffers anything, so an
 // unauthenticated caller looping requests gets a 429 instead of the server repeatedly
@@ -214,6 +216,7 @@ app.use('/api/bookings', bookingsRouter);
 app.use('/api/favorites', favoritesRouter);
 app.use('/api/reviews', reviewsRouter);
 app.use('/api/payments', paymentsRouter);
+app.use('/api/webhooks/interakt', interaktWebhookRouter);
 app.use('/api/geocode', geocodeRouter);
 app.use('/api/weather', weatherRouter);
 app.use('/api/routes', routeEstimatorRouter);

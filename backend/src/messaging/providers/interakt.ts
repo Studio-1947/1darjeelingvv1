@@ -20,7 +20,7 @@ import { requireCredentials, requireNotificationTemplates } from '../providerCon
  * ones in docs/WHATSAPP_TEMPLATES.md, synced into Interakt from the same Meta business account.
  */
 
-const INTERAKT_MESSAGE_URL = 'https://api.interakt.ai/v1/public/message/';
+const DEFAULT_INTERAKT_API_BASE_URL = 'https://api.interakt.ai/v1/public';
 
 /** Same three transactional messages, named by whatever they were synced as in Interakt. */
 const TEMPLATE_ENV_VARS: Record<NotificationTemplate, string> = {
@@ -102,6 +102,8 @@ export function createInteraktProvider(
   fetchImpl: typeof fetch = fetch
 ): MessagingProvider {
   const countryCode = env.INTERAKT_COUNTRY_CODE?.trim() || '+91';
+  const apiBaseUrl = env.INTERAKT_API_BASE_URL?.trim() || DEFAULT_INTERAKT_API_BASE_URL;
+  const messageUrl = `${apiBaseUrl.replace(/\/$/, '')}/message/`;
 
   async function postMessage(payload: unknown, what: string): Promise<string | undefined> {
     // Interakt issues a key that is already base64; it goes after "Basic" verbatim, and is NOT
@@ -111,7 +113,7 @@ export function createInteraktProvider(
 
     let res: Response;
     try {
-      res = await fetchImpl(INTERAKT_MESSAGE_URL, {
+      res = await fetchImpl(messageUrl, {
         method: 'POST',
         headers: { Authorization: `Basic ${key}`, 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -169,11 +171,17 @@ export function createInteraktProvider(
           `[messaging] INTERAKT_COUNTRY_CODE must be a dialling code like "+91", got "${countryCode}".`
         );
       }
+      try {
+        const parsed = new URL(apiBaseUrl);
+        if (parsed.protocol !== 'https:') throw new Error('not HTTPS');
+      } catch {
+        throw new Error('[messaging] INTERAKT_API_BASE_URL must be an HTTPS URL.');
+      }
 
       requireNotificationTemplates('interakt', env, TEMPLATE_ENV_VARS, 'Sync them into Interakt and set these');
     },
 
-    async sendOtp({ phone, otp }: OtpMessage) {
+    async sendOtp({ phone, otp, challengeId }: OtpMessage) {
       if (otp.length > MAX_OTP_LENGTH) {
         throw new MessageDeliveryError(
           'interakt',
@@ -189,6 +197,9 @@ export function createInteraktProvider(
         countryCode: cc,
         phoneNumber,
         type: 'Template',
+        // This is intentionally an opaque internal value. Never put the OTP, phone, or user
+        // data in callbackData: Interakt returns it in delivery status webhooks.
+        ...(challengeId ? { callbackData: `aangan:otp:${challengeId}` } : {}),
         template: {
           name: env.INTERAKT_OTP_TEMPLATE!.trim(),
           languageCode: env.INTERAKT_TEMPLATE_LANGUAGE?.trim() || 'en',

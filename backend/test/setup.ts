@@ -4,7 +4,7 @@ import { db, pool } from '../src/db';
 
 beforeEach(async () => {
   // TRUNCATE ... CASCADE clears all tables regardless of FK order and resets identity if any.
-  await db.execute(sql`TRUNCATE TABLE payments, bookings, listings, providers, otps, otp_send_counters, users RESTART IDENTITY CASCADE`);
+  await db.execute(sql`TRUNCATE TABLE payments, bookings, listings, providers, otps, otp_send_counters, interakt_delivery_events, users RESTART IDENTITY CASCADE`);
 });
 
 afterAll(async () => {
