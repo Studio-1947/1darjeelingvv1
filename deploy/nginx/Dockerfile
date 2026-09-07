@@ -1,5 +1,5 @@
 # Builds the two static frontends and packages them with Nginx.
-# Build context MUST be the repo root (docker-compose.prod.yml sets this),
+# Build context MUST be the repo root (docker-compose.in.yml sets this),
 # since this stage copies from sibling frontend/ and frontend-admin/ dirs.
 
 FROM node:20-slim AS frontend-build

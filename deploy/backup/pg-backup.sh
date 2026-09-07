@@ -1,7 +1,7 @@
 #!/bin/sh
 # Periodic Postgres backup for the 1 Darjeeling stacks.
 #
-# Runs as a sidecar container beside Postgres (see docker-compose.prod.yml / docker-compose.in.yml)
+# Runs as a sidecar container beside Postgres (see docker-compose.in.yml)
 # rather than as a host cron job, so a backup schedule ships with the stack and cannot be forgotten
 # on a rebuild. deploy/VPS-RUNBOOK.md §7 carried "No database backups" as a known issue from the
 # day the box was set up; this is what closes it.

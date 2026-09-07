@@ -147,7 +147,7 @@ npm test             # vitest
 
 Tests run against `one_darjeeling_test`, a **separate database** from your dev one, because the suite truncates every table between tests. Re-run `test:setup` after adding a migration.
 
-`test:setup` applies **migrations**, deliberately — not `db:push`. Building the test schema straight from `schema.ts` would mean a forgotten `db:generate` still produced a green suite while production came up missing the column. Tests therefore run against exactly what production runs. CI additionally fails if `schema.ts` has changes with no committed migration, and a red suite blocks the deploy (`.github/workflows/deploy.yml`).
+`test:setup` applies **migrations**, deliberately — not `db:push`. Building the test schema straight from `schema.ts` would mean a forgotten `db:generate` still produced a green suite while production came up missing the column. Tests therefore run against exactly what production runs. CI additionally fails if `schema.ts` has changes with no committed migration, and a red suite blocks the deploy (`.github/workflows/deploy-prod.yml`).
 
 ## API documentation
 
@@ -204,7 +204,7 @@ Dashboard → **Settings → Webhooks → Add New Webhook**:
 
 | Field         | Value                                                     |
 | ------------- | --------------------------------------------------------- |
-| Webhook URL   | `https://onedarjeeling.duckdns.org/api/payments/webhook`  |
+| Webhook URL   | `https://aanganerp.in/api/payments/webhook`  |
 | Secret        | Any long random string you generate — **you choose this** |
 | Active Events | `payment.captured` and `order.paid`                       |
 
@@ -334,35 +334,35 @@ webhook receiver. Keep that receiver as a dispatcher and forward the raw body pl
 
 This VPS already runs a **system-level Nginx + Certbot** in front of several other apps (each its own `sites-available` file, each with its own DuckDNS domain and Let's Encrypt cert via `certbot --nginx`). This app follows the exact same convention rather than introducing its own — it does **not** run its own Nginx/Certbot on ports 80/443.
 
-The app itself deploys as three containers: `postgres`, `backend` (Express API), and an `nginx` container that bakes in both frontend static builds (public app at `/`, admin console at `/admin`) and reverse-proxies `/api` + `/api-docs` to the backend. That `nginx` container is bound to `127.0.0.1:8091` only — never exposed directly. The VPS's existing system Nginx is what actually terminates TLS and is reachable from the internet; it reverse-proxies `onedarjeeling.duckdns.org` to `127.0.0.1:8091`, exactly like it already does for the other apps on this box (compare `/etc/nginx/sites-available/s47-task.duckdns.org`).
+The app itself deploys as three containers: `postgres`, `backend` (Express API), and an `nginx` container that bakes in both frontend static builds (public app at `/`, admin console at `/admin`) and reverse-proxies `/api` + `/api-docs` to the backend. That `nginx` container is bound to `127.0.0.1:8092` only — never exposed directly. The VPS's existing system Nginx is what actually terminates TLS and is reachable from the internet; it reverse-proxies `aanganerp.in` to `127.0.0.1:8092`, exactly like it already does for the other apps on this box (compare `/etc/nginx/sites-available/s47-task.duckdns.org`).
 
 ### One-time VPS setup
 
-1. **Clone the repo** to `/var/www/1darjeelingvv1` (already done) and `cd` into it.
+1. **Clone the repo** to `/var/www/1darjeeling-in` (already done) and `cd` into it.
 2. **Create `.env`** from the template: `cp .env.production.example .env`, then fill in real values — a strong `POSTGRES_PASSWORD`, `JWT_SECRET`, `ADMIN_BOOTSTRAP_SECRET`, a changed `ADMIN_PASSWORD`, and your Razorpay live keys (or leave `MOCK_PAYMENTS=true` until you're ready to charge real money). This file is gitignored — it stays on the server and is never pulled from or pushed to GitHub.
-3. **Confirm 8091 is free**: `sudo ss -tlnp | grep 8091` should print nothing. If it's taken, pick a different port in `docker-compose.prod.yml`'s `nginx.ports` and in step 5 below.
+3. **Confirm 8092 is free**: `sudo ss -tlnp | grep 8092` should print nothing. If it's taken, pick a different port in `docker-compose.in.yml`'s `nginx.ports` and in step 5 below.
 4. **Bring the app containers up**:
    ```sh
-   docker compose -f docker-compose.prod.yml up -d --build
-   curl -I http://127.0.0.1:8091/   # sanity check — should be 200, straight from this container
+   docker compose -f docker-compose.in.yml up -d --build
+   curl -I http://127.0.0.1:8092/   # sanity check — should be 200, straight from this container
    ```
 5. **Add the host Nginx site** (this is the one step that touches the shared system Nginx — it only _adds_ a new file, never edits an existing one):
    ```sh
-   sudo cp deploy/host-nginx-site.conf.example /etc/nginx/sites-available/onedarjeeling.duckdns.org
-   sudo ln -s /etc/nginx/sites-available/onedarjeeling.duckdns.org /etc/nginx/sites-enabled/
+   sudo cp deploy/host-nginx-site.in.conf.example /etc/nginx/sites-available/aanganerp.in
+   sudo ln -s /etc/nginx/sites-available/aanganerp.in /etc/nginx/sites-enabled/
    sudo nginx -t && sudo systemctl reload nginx
    ```
    `nginx -t` must print "syntax is ok" / "test is successful" before you reload — if it doesn't, stop and fix the config rather than reloading anyway (a bad reload here would affect every other app on this box, not just this one).
 6. **Issue the TLS cert** via the same Certbot already managing the other domains' certs:
    ```sh
-   sudo certbot --nginx -d onedarjeeling.duckdns.org
+   sudo certbot --nginx -d aanganerp.in
    ```
    This edits the site file in place to add the SSL block and HTTP→HTTPS redirect — the same thing it already did for the other five certs visible in `sudo certbot certificates`. No separate renewal setup needed; the existing Certbot timer on this VPS picks it up automatically.
-7. **Seed + bootstrap admin** (first time only): once containers are up, follow the same `/api/admin/bootstrap` flow described earlier in this README, but against `https://onedarjeeling.duckdns.org/api/...` instead of localhost.
+7. **Seed + bootstrap admin** (first time only): once containers are up, follow the same `/api/admin/bootstrap` flow described earlier in this README, but against `https://aanganerp.in/api/...` instead of localhost.
 
 ### Ongoing deploys (GitHub Actions)
 
-`.github/workflows/deploy.yml` SSHes into the VPS on every push to `main` and runs `git reset --hard origin/main && docker compose -f docker-compose.prod.yml up -d --build --remove-orphans`. It needs these **GitHub repo secrets** (Settings → Secrets and variables → Actions):
+`.github/workflows/deploy-prod.yml` SSHes into the VPS on every push to `prod` and runs `git reset --hard origin/prod && docker compose -f docker-compose.in.yml up -d --build --remove-orphans`. It needs these **GitHub repo secrets** (Settings → Secrets and variables → Actions):
 
 | Secret        | Value                                               |
 | ------------- | --------------------------------------------------- |
@@ -390,7 +390,7 @@ Check what's currently trusted with `ssh-keygen -lf ~/.ssh/authorized_keys`; any
 
 Paste that private key output as the `VPS_SSH_KEY` GitHub secret (the full `-----BEGIN OPENSSH PRIVATE KEY-----` block, unmodified). This is a _separate_ keypair from whatever SSH key the VPS already uses to `git clone`/`git pull` from GitHub — that one lets the VPS talk to GitHub; this new one lets GitHub Actions talk to the VPS, the opposite direction. Never reuse the VPS's own GitHub-facing key for this.
 
-Once the secrets are set, just `git push` to `main` and the workflow redeploys automatically — no manual SSH needed for routine updates. The workflow only touches this app's own containers (`docker compose -f docker-compose.prod.yml up -d --build`); it never touches the host Nginx config, so routine deploys can't affect other apps on the box. Re-run steps 5–6 above manually only if you ever need to set this app up on a fresh VPS.
+Once the secrets are set, just `git push` to `prod` and the workflow redeploys automatically — no manual SSH needed for routine updates. The workflow only touches this app's own containers (`docker compose -f docker-compose.in.yml up -d --build`); it never touches the host Nginx config, so routine deploys can't affect other apps on the box. Re-run steps 5–6 above manually only if you ever need to set this app up on a fresh VPS.
 
 ## Bookings, notifications and refunds
 
@@ -418,12 +418,12 @@ queue at `GET /api/admin/refunds/pending`; retry with `POST /api/admin/payments/
 
 ## Monitoring
 
-`1darjeeling.in` was down for 25 hours in August 2026 and nobody knew. Two independent things
+`aanganerp.in` was down for 25 hours in August 2026 and nobody knew. Two independent things
 have to be in place, because **neither one would have caught it alone**.
 
 ### 1. Uptime checks — the half that catches an outage
 
-Point an external monitor at **`https://1darjeeling.in/api/health`**, not at `/api`.
+Point an external monitor at **`https://aanganerp.in/api/health`**, not at `/api`.
 
 That distinction is the whole reason the endpoint exists. `GET /api` answers `{"status":"ok"}`
 from a bare JSON literal — it is true whenever the process is answering, and stays true with the
@@ -487,11 +487,11 @@ This repo carries some rough edges from a rapid AI-assisted build. See **`INVEST
 for the full audit — what's been fixed and what is still open. Read it before any public
 deployment. The two open items as of 2026-08-04 are both operational rather than code:
 
-- **§8.G — the `1darjeeling.in` backend is down.** The SPA serves, but every `/api` path returns
+- **§8.G — the `aanganerp.in` backend is down.** The SPA serves, but every `/api` path returns
   502; the `1darjeeling_in_backend` container is not running. Start with
   `docker logs 1darjeeling_in_backend --tail 50`.
 - **§8.H — test content is live.** A spot titled "admin test" is in the public feed on
-  `onedarjeeling.duckdns.org`.
+  `aanganerp.in`.
 
 The long-standing §6.A (booking confirmations notified nobody) is **closed** — see the section
 above.

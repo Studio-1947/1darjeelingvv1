@@ -359,7 +359,7 @@ export const SMTP_HOST = process.env.SMTP_HOST || '';
 export const SMTP_PORT = process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT, 10) : 587;
 export const SMTP_USER = process.env.SMTP_USER || '';
 export const SMTP_PASS = process.env.SMTP_PASS || '';
-export const SMTP_FROM = process.env.SMTP_FROM || 'noreply@1darjeeling.in';
+export const SMTP_FROM = process.env.SMTP_FROM || 'noreply@aanganerp.in';
 
 if (IS_PROD && (!SMTP_HOST || !SMTP_PORT)) {
   log.error(
