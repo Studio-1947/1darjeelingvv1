@@ -47,7 +47,8 @@ export const otps = pgTable('otps', {
   otpHash: text('otp_hash').notNull(),
   channel: text('channel').notNull(),
   createdAt: text('created_at').notNull(),
-  // Wrong guesses against the current code. Reset to 0 whenever a new code is issued.
+  // Wrong guesses against THIS challenge. Each send inserts its own row starting at 0 rather
+  // than resetting an existing one, so a spent challenge keeps its count until it expires.
   attempts: integer('attempts').notNull().default(0),
   consumedAt: text('consumed_at'),
   expiresAt: text('expires_at').notNull(),

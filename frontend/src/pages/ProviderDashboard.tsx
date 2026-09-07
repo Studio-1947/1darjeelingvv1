@@ -14,7 +14,6 @@ import ProfileCompletionBar from '@/components/provider/ProfileCompletionBar';
 import { getMyProfile } from '@/lib/kyc';
 import type { KycProfile } from '@/lib/kyc';
 
-import LanguageSwitcher from '@/components/LanguageSwitcher';
 import AvatarUploader from '@/components/provider/AvatarUploader';
 import { uploadImage } from '@/lib/uploadImage';
 import { useSeo } from '@/components/Seo';
@@ -161,7 +160,6 @@ export default function ProviderDashboard() {
           <p className="text-sm text-ink-soft mt-1">{t(`categories.${provider.business_type}`, { defaultValue: provider.business_type })} · {provider.location}</p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
-          <LanguageSwitcher />
           <button
             onClick={() => {
               localStorage.setItem(`unlocked_traveller_${user.id}`, 'true');

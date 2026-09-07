@@ -1,54 +1,16 @@
 // Plain .js for the same reason as api.test.js — the repo has no @types/jest.
 //
-// Two things here fail silently rather than loudly, which is why they are worth a test:
+// The translation-parity suite that used to live here went away with Hindi, Bengali and Nepali
+// (English-only, decided Sep 2026). What remains is the check that was never about translation:
 //
-//  1. A key present in en.json and missing elsewhere renders English mid-sentence in a Hindi page.
-//     Nothing errors; it just looks broken to the one user who notices. Three languages were each
-//     missing 22 keys before this existed.
-//  2. LegalDocument reads `sections` with { returnObjects: true } and guards with
-//     `Array.isArray(...) ? ... : []` so a malformed namespace degrades to an EMPTY PAGE rather
-//     than throwing. That guard is right — a legal page must not white-screen — but it means a
-//     typo produces a blank Terms page that nobody notices until a payment gateway's reviewer
-//     opens it and rejects the account.
+//   LegalDocument reads `sections` with { returnObjects: true } and guards with
+//   `Array.isArray(...) ? ... : []` so a malformed namespace degrades to an EMPTY PAGE rather
+//   than throwing. That guard is right — a legal page must not white-screen — but it means a
+//   typo produces a blank Terms page that nobody notices until a payment gateway's reviewer
+//   opens it and rejects the account.
 const en = require('./en.json');
-const hi = require('./hi.json');
-const bn = require('./bn.json');
-const ne = require('./ne.json');
 
-/** Flattens to dotted leaf paths. Arrays are leaves — order and shape are checked separately. */
-function leafKeys(obj, prefix = '', acc = []) {
-  for (const key of Object.keys(obj)) {
-    const value = obj[key];
-    const path = prefix + key;
-    if (value && typeof value === 'object' && !Array.isArray(value)) {
-      leafKeys(value, path + '.', acc);
-    } else {
-      acc.push(path);
-    }
-  }
-  return acc;
-}
-
-// The policy documents are authored in English only and reach the other languages through
-// i18next's fallback — a deliberate choice, since a mistranslated refund term is worse than an
-// English one. They are therefore excluded from the parity check below rather than counted as gaps.
-const ENGLISH_ONLY = ['privacy.', 'terms.', 'refunds.', 'contact.', 'data_deletion.'];
-const isEnglishOnly = (key) => ENGLISH_ONLY.some((ns) => key.startsWith(ns));
-
-const TRANSLATIONS = { hi, bn, ne };
 const LEGAL_NAMESPACES = ['privacy', 'terms', 'refunds', 'contact', 'data_deletion'];
-
-describe('translation parity', () => {
-  const englishKeys = leafKeys(en).filter((k) => !isEnglishOnly(k));
-
-  Object.keys(TRANSLATIONS).forEach((locale) => {
-    it(`${locale}.json covers every UI key in en.json`, () => {
-      const present = new Set(leafKeys(TRANSLATIONS[locale]));
-      const missing = englishKeys.filter((k) => !present.has(k));
-      expect(missing).toEqual([]);
-    });
-  });
-});
 
 describe('legal documents render with content', () => {
   LEGAL_NAMESPACES.forEach((ns) => {

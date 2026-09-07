@@ -4,7 +4,7 @@ import { app } from '../src/app';
 import { setProviderForTests, getProvider, MessageDeliveryError } from '../src/messaging';
 import { nextPhone } from './helpers';
 import { db, schema } from '../src/db';
-import { eq } from 'drizzle-orm';
+import { and, desc, eq, isNull } from 'drizzle-orm';
 import { OTP_MAX_ATTEMPTS } from '../src/config';
 
 const realProvider = getProvider();
@@ -145,13 +145,22 @@ describe('POST /auth/otp/verify attempt cap', () => {
     expect(res.body.detail).toMatch(/too many/i);
   });
 
-  it('resets the attempt counter when a new code is issued', async () => {
+  it('starts a newly issued code on a clean attempt counter', async () => {
     const phone = nextPhone();
     await issueOtp(phone);
     await request(app).post('/api/auth/otp/verify').send({ phone, otp: '000000' });
 
     const fresh = await issueOtp(phone);
-    const [rec] = await db.select().from(schema.otps).where(eq(schema.otps.phone, phone)).limit(1);
+    // Ordered exactly as /otp/verify orders it, and for the same reason. `phone` stopped being
+    // the primary key when each send became its own challenge row: a resend no longer updates
+    // the old row, it inserts a second one and leaves the first alive on purpose. An unordered
+    // limit(1) therefore returns whichever of the two rows the planner feels like — it was
+    // handing back the spent challenge (attempts: 1) and failing this assertion. The claim being
+    // made is about the NEWEST unconsumed challenge, so the query has to say so.
+    const [rec] = await db.select().from(schema.otps)
+      .where(and(eq(schema.otps.phone, phone), isNull(schema.otps.consumedAt)))
+      .orderBy(desc(schema.otps.createdAt))
+      .limit(1);
     expect(rec.attempts).toBe(0);
 
     const res = await request(app).post('/api/auth/otp/verify').send({ phone, otp: fresh, name: 'Reset User' });

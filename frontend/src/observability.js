@@ -14,7 +14,13 @@ import * as Sentry from "@sentry/react";
  * exactly the material most likely to contain them.
  */
 
-const DSN = process.env.REACT_APP_SENTRY_DSN;
+// Read via import.meta.env: Vite statically replaces `process.env.NODE_ENV` but leaves every other
+// `process.env.*` in place, and `process` does not exist in the browser — so an unguarded read here
+// threw ReferenceError before React could mount, white-screening the whole app. The REACT_APP_
+// fallback keeps any CRA-era build environment working.
+const DSN =
+  import.meta.env.VITE_SENTRY_DSN ||
+  (typeof process !== "undefined" && process.env ? process.env.REACT_APP_SENTRY_DSN : undefined);
 
 const REDACTED = "[redacted]";
 
