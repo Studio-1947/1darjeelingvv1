@@ -5,7 +5,13 @@
 FROM node:20-slim AS frontend-build
 WORKDIR /app
 COPY frontend/package.json frontend/yarn.lock ./
-RUN corepack enable && corepack prepare yarn@1.22.22 --activate && yarn install --frozen-lockfile
+# --network-timeout: yarn 1.x gives each tarball request only 30s before it throws
+# ESOCKETTIMEDOUT and fails the whole install. The VPS link to registry.yarnpkg.com is slow
+# enough that larger tarballs (@sentry/core) routinely blow past 30s, which is what broke the
+# 2026-09-07 deploy. --network-concurrency caps yarn at 4 parallel sockets instead of 8, so a
+# constrained uplink is not the thing being timed out.
+RUN corepack enable && corepack prepare yarn@1.22.22 --activate \
+    && yarn install --frozen-lockfile --network-timeout 600000 --network-concurrency 4
 COPY frontend/ .
 # REACT_APP_BACKEND_URL is deliberately NOT set: the app falls back to a
 # same-origin '/api' base, which app.conf proxies to the backend. Setting it to
