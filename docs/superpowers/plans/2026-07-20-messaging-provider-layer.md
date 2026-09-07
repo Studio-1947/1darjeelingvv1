@@ -18,7 +18,7 @@
 - Never log or return a provider credential. Never forward a provider response body to an HTTP client.
 - Schema changes go through `npm run db:generate` and the generated SQL is committed. CI fails if `schema.ts` changes without a matching migration.
 - Existing test helper `registerUser()` logs in with OTP `123456`. That universal code must keep working under `APP_ENV=test`, which it does because `MESSAGING_PROVIDER` defaults to `mock`.
-- Work happens on branch `feat/otp-provider-layer`. Do not push to `main` — pushing to `main` triggers the VPS deploy.
+- Work happens on branch `feat/otp-provider-layer`. Do not push to `main`  pushing to `main` triggers the VPS deploy.
 
 ## Deviation from the spec
 
@@ -116,7 +116,7 @@ describe('MessageDeliveryError', () => {
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `cd backend && npx vitest run test/messaging.test.ts`
-Expected: FAIL — `Cannot find module '../src/messaging/registry'`
+Expected: FAIL  `Cannot find module '../src/messaging/registry'`
 
 - [ ] **Step 3: Write the types**
 
@@ -141,7 +141,7 @@ export interface MessagingProvider {
 
   /**
    * Resolves only on confirmed handoff to the provider. Throws MessageDeliveryError on
-   * any failure — a resolved promise is what allows the route to report `sent: true`.
+   * any failure  a resolved promise is what allows the route to report `sent: true`.
    */
   sendOtp(msg: OtpMessage): Promise<{ ref?: string }>;
 }
@@ -249,7 +249,7 @@ export function createMsg91Provider(env: NodeJS.ProcessEnv): MessagingProvider {
     },
 
     async sendOtp() {
-      throw new Error('not implemented — see Task 2');
+      throw new Error('not implemented  see Task 2');
     },
   };
 }
@@ -297,7 +297,7 @@ Before writing code, confirm these against MSG91's current API reference, since 
 - Header `authkey`
 - Success body `{"type":"success","request_id":"..."}`; failures return **HTTP 200** with `{"type":"error","message":"..."}`
 
-If any differ, adjust the constants and the response-parsing branch below. The tests assert behaviour (throws on error-shaped body, returns ref on success), so they stay valid if the field names change — update the fixtures to match.
+If any differ, adjust the constants and the response-parsing branch below. The tests assert behaviour (throws on error-shaped body, returns ref on success), so they stay valid if the field names change  update the fixtures to match.
 
 - [ ] **Step 2: Write the failing test**
 
@@ -394,7 +394,7 @@ describe('msg91 adapter', () => {
 - [ ] **Step 3: Run test to verify it fails**
 
 Run: `cd backend && npx vitest run test/msg91.test.ts`
-Expected: FAIL — the stub throws `not implemented — see Task 2`.
+Expected: FAIL  the stub throws `not implemented  see Task 2`.
 
 - [ ] **Step 4: Implement the adapter**
 
@@ -414,7 +414,7 @@ const MAX_QUOTED_BODY = 200;
  * MSG91 v5 OTP API.
  *
  * `fetchImpl` is injectable purely so the suite can exercise every failure branch without a
- * network — the same reason rateLimiter takes `opts.enabled`. Application code always gets
+ * network  the same reason rateLimiter takes `opts.enabled`. Application code always gets
  * the global fetch.
  */
 export function createMsg91Provider(
@@ -478,7 +478,7 @@ export function createMsg91Provider(
       }
 
       // MSG91 reports application-level failures with HTTP 200 and type:"error". Treating a
-      // 2xx as success here would mean reporting delivery for a code that was never sent —
+      // 2xx as success here would mean reporting delivery for a code that was never sent 
       // the exact defect this layer exists to prevent.
       if (body?.type !== 'success') {
         throw new MessageDeliveryError(
@@ -576,7 +576,7 @@ describe('messaging module singleton', () => {
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `cd backend && npx vitest run test/messaging.test.ts`
-Expected: FAIL — `MESSAGING_PROVIDER` is not exported from config; `../src/messaging` not found.
+Expected: FAIL  `MESSAGING_PROVIDER` is not exported from config; `../src/messaging` not found.
 
 - [ ] **Step 3: Add the config values**
 
@@ -585,7 +585,7 @@ In `backend/src/config.ts`, add after the `RATE_LIMIT_ENABLED` export:
 ```ts
 // Which messaging provider delivers OTPs. `mock` delivers nothing and is the default, so
 // development and the test suite work with no configuration. The selected provider validates
-// its own credentials at startup — see src/messaging/registry.ts.
+// its own credentials at startup  see src/messaging/registry.ts.
 export const MESSAGING_PROVIDER = process.env.MESSAGING_PROVIDER?.trim() || 'mock';
 
 // True when OTPs are not actually delivered. Gates both the mock_otp field in the /otp/send
@@ -617,7 +617,7 @@ In `backend/src/config.ts`, inside the existing `if (IS_PROD) { ... }` block, ad
 ```ts
   if (MOCK_OTP) {
     log.error(
-      '[config] MESSAGING_PROVIDER=mock with APP_ENV=production — OTPs are not delivered and ' +
+      '[config] MESSAGING_PROVIDER=mock with APP_ENV=production  OTPs are not delivered and ' +
       'the 123456 universal code is active, so anyone can log in as any phone number. ' +
       'Set MESSAGING_PROVIDER to a real provider before taking real users.'
     );
@@ -759,7 +759,7 @@ describe('POST /auth/otp/send delivery', () => {
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `cd backend && npx vitest run test/otp.test.ts`
-Expected: FAIL — the 502 test gets 200, because the route never calls a provider.
+Expected: FAIL  the 502 test gets 200, because the route never calls a provider.
 
 - [ ] **Step 3: Update the imports in `routes/auth.ts`**
 
@@ -771,7 +771,7 @@ import { log, ADMIN_USERNAME, ADMIN_PASSWORD, MOCK_OTP, OTP_TTL_SECONDS, OTP_MAX
 import { sendOtp } from '../messaging';
 ```
 
-`IS_PROD` is no longer used by this file — remove it from the import to keep the typecheck clean. `OTP_TTL_SECONDS` and `OTP_MAX_ATTEMPTS` are consumed in Task 5.
+`IS_PROD` is no longer used by this file  remove it from the import to keep the typecheck clean. `OTP_TTL_SECONDS` and `OTP_MAX_ATTEMPTS` are consumed in Task 5.
 
 - [ ] **Step 4: Replace the send handler body**
 
@@ -838,7 +838,7 @@ Expected: PASS, 4 tests.
 - [ ] **Step 7: Typecheck and run the full suite**
 
 Run: `cd backend && npx tsc --noEmit && npm test`
-Expected: clean; 104 tests passing. `auth.test.ts` must still pass — `registerUser()` depends on the mock provider staying active by default.
+Expected: clean; 104 tests passing. `auth.test.ts` must still pass  `registerUser()` depends on the mock provider staying active by default.
 
 - [ ] **Step 8: Commit**
 
@@ -971,7 +971,7 @@ describe('POST /auth/otp/verify attempt cap', () => {
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `cd backend && npx vitest run test/otp.test.ts`
-Expected: FAIL — `rec.attempts` is undefined and the expiry test returns 200.
+Expected: FAIL  `rec.attempts` is undefined and the expiry test returns 200.
 
 - [ ] **Step 3: Add the schema column**
 
@@ -988,7 +988,7 @@ export const otps = pgTable('otps', {
 });
 ```
 
-`integer` is already imported at the top of the file — no import change needed.
+`integer` is already imported at the top of the file  no import change needed.
 
 - [ ] **Step 4: Generate and apply the migration**
 
@@ -1137,7 +1137,7 @@ Append, matching the file's existing commentary style:
 # --- Messaging / OTP delivery ---
 # `mock` means OTPs are NOT delivered and the 123456 universal code is accepted, so anyone
 # can log in as any phone number. That is intentional for a pre-launch staging deployment and
-# the server logs a loud error about it at startup — but it must not be left this way once
+# the server logs a loud error about it at startup  but it must not be left this way once
 # real users exist. Set a real provider and supply its credentials below.
 MESSAGING_PROVIDER=mock
 
@@ -1158,7 +1158,7 @@ Add a section after the existing Razorpay setup section:
 ## OTP delivery
 
 Login OTPs go out through a provider chosen by `MESSAGING_PROVIDER`. The default, `mock`,
-delivers nothing and returns the code in the `/auth/otp/send` response — this is what lets
+delivers nothing and returns the code in the `/auth/otp/send` response  this is what lets
 local development and the test suite run with no provider account.
 
 Going live is a config change, not a code change:
@@ -1178,7 +1178,7 @@ It reports `sent: true` only when the provider has confirmed handoff.
 ### Adding another provider
 
 1. Create `backend/src/messaging/providers/<name>.ts` exporting a factory that returns a
-   `MessagingProvider` — `init()` validates its env vars, `sendOtp()` delivers or throws
+   `MessagingProvider`  `init()` validates its env vars, `sendOtp()` delivers or throws
    `MessageDeliveryError`.
 2. Add one entry to `PROVIDER_FACTORIES` in `backend/src/messaging/registry.ts`.
 3. Set `MESSAGING_PROVIDER=<name>`.
@@ -1193,7 +1193,7 @@ The current text cites inoperative production rate limiting and `drizzle-kit pus
 
 ```markdown
 This repo carries some rough edges from a rapid AI-assisted build. See **`INVESTIGATION.md`**
-for the full audit — what's been fixed and the still-open table. The most important open item
+for the full audit  what's been fixed and the still-open table. The most important open item
 is **§6.A: booking confirmation notifications are not implemented**, so a paid, confirmed
 booking currently notifies neither the tourist nor the provider. Read that table before any
 public deployment.
@@ -1213,7 +1213,7 @@ checks so it still works with no row present.
 Update §6.A to note the OTP half is resolved while the notification half stays open:
 
 ```markdown
-**Partially resolved 2026-07-20:** the OTP half is closed — `src/messaging/` provides a
+**Partially resolved 2026-07-20:** the OTP half is closed  `src/messaging/` provides a
 provider-agnostic delivery layer, `/auth/otp/send` returns 502 rather than a false
 `sent: true`, and a half-configured provider fails at boot. **The booking-confirmation half
 remains open** and must be closed before real bookings are taken.
@@ -1245,12 +1245,12 @@ and 5.B while omitting the open notification gap."
 
 ## Final verification
 
-- [ ] `cd backend && npx tsc --noEmit` — clean
-- [ ] `cd backend && npm test` — 111 passing, 0 failing
+- [ ] `cd backend && npx tsc --noEmit`  clean
+- [ ] `cd backend && npm test`  111 passing, 0 failing
 - [ ] `cd backend && npx drizzle-kit generate` produces no new migration (schema and migrations in sync, which is what CI checks)
 - [ ] `git log --oneline feat/otp-provider-layer` shows six implementation commits
 - [ ] Boot check, mock path: `MESSAGING_PROVIDER=mock APP_ENV=development npx tsx src/server.ts` starts
 - [ ] Boot check, misconfigured path: `MESSAGING_PROVIDER=msg91 APP_ENV=development npx tsx src/server.ts` **fails** with a message naming `MSG91_AUTH_KEY`
 - [ ] Boot check, unknown provider: `MESSAGING_PROVIDER=nope APP_ENV=development npx tsx src/server.ts` **fails** listing `mock, msg91`
 
-Do not push to `main`. Open a PR from `feat/otp-provider-layer` instead — a push to `main` triggers the VPS deploy.
+Do not push to `main`. Open a PR from `feat/otp-provider-layer` instead  a push to `main` triggers the VPS deploy.

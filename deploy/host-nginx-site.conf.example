@@ -1,4 +1,4 @@
-# Reference only — this is NOT used by Docker or docker-compose.prod.yml.
+# Reference only  this is NOT used by Docker or docker-compose.prod.yml.
 # It's the file to create on the VPS's system Nginx (not in this repo's
 # containers) at /etc/nginx/sites-available/onedarjeeling.duckdns.org,
 # matching the exact convention already used for the other apps on this box
@@ -12,7 +12,7 @@
 #
 # That last command edits this file in place to add the SSL block and the
 # HTTP->HTTPS redirect, exactly like it already did for the other five
-# certs visible in `sudo certbot certificates` — nothing more to do after
+# certs visible in `sudo certbot certificates`  nothing more to do after
 # that; Certbot's existing renewal timer on this VPS covers this cert too.
 
 server {

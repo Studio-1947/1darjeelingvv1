@@ -11,7 +11,7 @@
 #
 # WHAT IT DOES NOT PROTECT AGAINST: losing the VPS. The dumps live in a Docker volume on the same
 # host as the database they came from, so a dead disk takes both. Copying them off the box is a
-# separate step and it is described in the runbook — treat this script as necessary, not
+# separate step and it is described in the runbook  treat this script as necessary, not
 # sufficient.
 #
 # The dumps contain every booking, phone number and provider record in the system. Whatever
@@ -38,7 +38,7 @@ take_backup() {
   # rather than all-or-nothing like a plain SQL file.
   #
   # Written to a .partial name and renamed only on success, so a backup interrupted half-way
-  # (container stopped, disk full) can never be mistaken for a complete one during a restore —
+  # (container stopped, disk full) can never be mistaken for a complete one during a restore 
   # which is the moment when that mistake costs the most.
   if pg_dump -Fc --no-owner --no-acl -f "$tmp" 2>/tmp/pg_dump.err; then
     mv "$tmp" "$target"
@@ -60,7 +60,7 @@ prune_old() {
   fi
 }
 
-log "starting — database=${PGDATABASE} host=${PGHOST} interval=${INTERVAL_SECONDS}s retention=${RETENTION_DAYS}d"
+log "starting  database=${PGDATABASE} host=${PGHOST} interval=${INTERVAL_SECONDS}s retention=${RETENTION_DAYS}d"
 
 # A backup is taken immediately on start rather than after the first full interval. Without this,
 # a stack redeployed daily would restart the timer every time and never actually produce one.

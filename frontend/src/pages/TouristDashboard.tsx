@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
-import { LogOut, Store, Compass, Phone, ArrowRight, Ticket, Calendar, Sparkles, XCircle, Loader2 } from 'lucide-react';
+import { LogOut, Store, Compass, Phone, ArrowRight, Ticket, Calendar, XCircle, Loader2 } from 'lucide-react';
 import { useSeo } from '@/components/Seo';
 
 function StatusPill({ status }) {
@@ -156,7 +156,7 @@ export default function TouristDashboard() {
       {/* Quick actions */}
       <div className="mt-10">
         <h2 className="font-display font-extrabold text-xl md:text-2xl text-ink mb-4 flex items-center gap-2">
-          <Sparkles size={18} className="text-flag" /> {t('dashboard.quick_actions')}
+          <Compass size={20} className="text-pine" /> {t('dashboard.quick_actions')}
         </h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <Link to="/homestays" className="rounded-2xl p-4 bg-white border border-[var(--line)] btn-hover">

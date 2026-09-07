@@ -1,16 +1,16 @@
-# Production stack — deliberately isolated from docker-compose.yml (the
+# Production stack  deliberately isolated from docker-compose.yml (the
 # local-dev-only file) with both an explicit project `name` AND distinct
 # container/volume names. Both matter: Compose derives a project name from
 # the directory by default, so two compose files in the same folder with a
 # same-named service (e.g. "postgres") are tracked as the SAME resource
-# regardless of container_name — confirmed the hard way while testing this
+# regardless of container_name  confirmed the hard way while testing this
 # file, where `docker compose -f docker-compose.prod.yml up` recreated (and
 # briefly deleted) the dev environment's actual postgres container. The
 # `name:` below is what actually prevents that; the distinct container/
 # volume names are defense-in-depth on top of it.
 #
 # This VPS already runs a system-level Nginx + Certbot fronting every other
-# app on the box (see README's "Production deployment" section) — so unlike
+# app on the box (see README's "Production deployment" section)  so unlike
 # an earlier draft of this file, nginx here is NOT exposed on 80/443. It's
 # bound to 127.0.0.1 only, on a port the system Nginx reverse-proxies to,
 # exactly like every other project already deployed here.
@@ -30,14 +30,14 @@ services:
     # Lets `depends_on: condition: service_healthy` below actually mean "Postgres is accepting
     # connections", not merely "the container was started".
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}" ]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 10s
 
   # Daily pg_dump into the pg_backups_prod volume. Reuses the postgres image purely because it
-  # already carries a pg_dump matching the server version — it runs no database of its own.
+  # already carries a pg_dump matching the server version  it runs no database of its own.
   # See deploy/backup/pg-backup.sh for what this does and does NOT protect against, and
   # VPS-RUNBOOK.md §7 for how to restore and how to get the dumps off the box.
   db-backup:
@@ -58,7 +58,7 @@ services:
       - pg_backups_prod:/backups
       # Read-only: the container has no business rewriting its own schedule.
       - ./deploy/backup/pg-backup.sh:/usr/local/bin/pg-backup.sh:ro
-    entrypoint: ["/bin/sh", "/usr/local/bin/pg-backup.sh"]
+    entrypoint: [ "/bin/sh", "/usr/local/bin/pg-backup.sh" ]
 
   backend:
     build:
@@ -72,7 +72,7 @@ services:
       # Computed here (not hand-duplicated in .env) so Postgres credentials
       # only ever live in one place.
       - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
-    # Bare `depends_on` only waits for the container to start, not for Postgres/MinIO to be ready —
+    # Bare `depends_on` only waits for the container to start, not for Postgres/MinIO to be ready 
     # so the backend's schema sync or first bucket bootstrap could fire before either is up.
     depends_on:
       postgres:
@@ -81,15 +81,15 @@ services:
         condition: service_healthy
     # Without this the container is "healthy" the instant the process forks, so a backend that
     # dies during `drizzle-kit migrate`, or boots with an unreachable database, still counts as a
-    # successful deploy. Probes /api/health (readiness — 200 only when Postgres AND MinIO answer)
-    # rather than /api (liveness — a JSON literal that keeps saying "ok" with the database on fire).
+    # successful deploy. Probes /api/health (readiness  200 only when Postgres AND MinIO answer)
+    # rather than /api (liveness  a JSON literal that keeps saying "ok" with the database on fire).
     #
     # node, not curl/wget: node:20-slim ships neither, and a healthcheck is a poor reason to add a
     # package to a production image.
     #
     # Safe to point at readiness because Docker does NOT restart a merely-unhealthy container (only
     # one that exits), so a MinIO hiccup marks this red without starting a restart loop. What it
-    # does do is fail `up --wait` in the deploy job — which is the entire point.
+    # does do is fail `up --wait` in the deploy job  which is the entire point.
     healthcheck:
       test:
         - CMD
@@ -112,7 +112,7 @@ services:
     # No `ports:` here on purpose. The backend reaches MinIO over the internal compose network
     # (MINIO_ENDPOINT=http://minio:9000 in .env); publishing 9000/9001 to the host would put the
     # object store directly on the internet. The PUBLIC bucket is instead served through the nginx
-    # container (see deploy/nginx/app.conf), and the PRIVATE KYC bucket is never exposed at all —
+    # container (see deploy/nginx/app.conf), and the PRIVATE KYC bucket is never exposed at all 
     # it's reachable only via the backend's own authorized proxy route.
     volumes:
       - minio_data_prod:/data
@@ -120,7 +120,7 @@ services:
     # MinIO exposes a liveness probe on its API port; used so `depends_on: condition:
     # service_healthy` above means "MinIO is actually accepting S3 calls", not just "started".
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -131,7 +131,7 @@ services:
       context: .
       dockerfile: deploy/nginx/Dockerfile
       args:
-        # Baked into the JS bundle at build time — CRA cannot read it at runtime. Empty means the
+        # Baked into the JS bundle at build time  CRA cannot read it at runtime. Empty means the
         # frontend reports nothing, which is the default. Not a secret: a DSN is a write-only
         # ingestion endpoint and ships in the bundle by design.
         REACT_APP_SENTRY_DSN: "${FRONTEND_SENTRY_DSN:-}"
@@ -139,7 +139,7 @@ services:
     container_name: 1darjeeling_prod_nginx
     restart: unless-stopped
     ports:
-      # Loopback-only — the VPS's system Nginx is what's actually reachable
+      # Loopback-only  the VPS's system Nginx is what's actually reachable
       # from the internet; it proxy_passes to this port. Change the host
       # port here (left of the colon) if 8091 is ever already taken.
       - "127.0.0.1:8091:80"
@@ -149,7 +149,7 @@ services:
 
 volumes:
   pg_data_prod:
-  minio_data_prod:
-  # Deliberately a separate volume from pg_data_prod: a restore that starts by wiping the data
+  minio_data_prod: # Deliberately a separate volume from pg_data_prod: a restore that starts by wiping the data
+
   # volume must not be able to take the backups with it.
   pg_backups_prod:

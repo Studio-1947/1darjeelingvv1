@@ -1,89 +1,175 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Volume2, VolumeX, Play, Pause, Globe, Headphones } from 'lucide-react';
 
 interface AudioGuideProps {
   title: string;
-  transcripts: {
-    en: string;
-    bn: string;
-    hi: string;
-    ne: string;
+  aboutText?: string;
+  transcripts?: {
+    en?: string;
+    bn?: string;
+    hi?: string;
+    ne?: string;
   };
 }
 
-export default function AudioGuide({ title, transcripts }: AudioGuideProps) {
+export default function AudioGuide({ title, aboutText, transcripts }: AudioGuideProps) {
   const [lang, setLang] = useState<'en' | 'bn' | 'hi' | 'ne'>('en');
   const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(false);
+  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
-  const langNames = {
+  const langNames: Record<'en' | 'bn' | 'hi' | 'ne', string> = {
     en: 'English',
     bn: 'বাংলা',
     hi: 'हिंदी',
     ne: 'नेपाली',
   };
 
-  useEffect(() => {
+  const texts: Record<'en' | 'bn' | 'hi' | 'ne', string> = {
+    en: transcripts?.en || aboutText || 'Welcome to this authentic destination in the Darjeeling hills.',
+    bn: transcripts?.bn || `${title} - দার্জিলিং পাহাড়ের একটি অনন্য ঐতিহ্যবাহী স্থান।`,
+    hi: transcripts?.hi || `${title} - दार्जिलिंग पहाड़ियों का एक प्रसिद्ध और सुंदर स्थल।`,
+    ne: transcripts?.ne || `${title} - दार्जिलिङ पहाडको ऐतिहासिक तथा सुन्दर स्थान।`,
+  };
+
+  const stopAudio = () => {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel();
       setPlaying(false);
+      utteranceRef.current = null;
     }
+  };
+
+  useEffect(() => {
+    stopAudio();
   }, [lang]);
+
+  useEffect(() => {
+    return () => {
+      stopAudio();
+    };
+  }, []);
+
+  const getBestVoice = (targetLang: 'en' | 'bn' | 'hi' | 'ne'): SpeechSynthesisVoice | null => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return null;
+    const voices = window.speechSynthesis.getVoices() || [];
+    if (voices.length === 0) return null;
+
+    if (targetLang === 'ne') {
+      // Nepali voices are often rare on Windows/Mac; try ne-NP, ne, then Hindi (hi-IN) which uses Devanagari phonetics accurately
+      const nepaliVoice = voices.find(v => v.lang.toLowerCase().startsWith('ne'));
+      if (nepaliVoice) return nepaliVoice;
+      const hindiVoice = voices.find(v => v.lang.toLowerCase().startsWith('hi'));
+      if (hindiVoice) return hindiVoice;
+      const indicVoice = voices.find(v => v.lang.includes('IN'));
+      if (indicVoice) return indicVoice;
+    } else if (targetLang === 'hi') {
+      const hindiVoice = voices.find(v => v.lang.toLowerCase().startsWith('hi'));
+      if (hindiVoice) return hindiVoice;
+      const indicVoice = voices.find(v => v.lang.includes('IN'));
+      if (indicVoice) return indicVoice;
+    } else if (targetLang === 'bn') {
+      const bengaliVoice = voices.find(v => v.lang.toLowerCase().startsWith('bn'));
+      if (bengaliVoice) return bengaliVoice;
+      const indicVoice = voices.find(v => v.lang.includes('IN'));
+      if (indicVoice) return indicVoice;
+    } else {
+      const enVoice = voices.find(v => v.lang.toLowerCase() === 'en-in') || voices.find(v => v.lang.toLowerCase().startsWith('en'));
+      if (enVoice) return enVoice;
+    }
+
+    return voices[0] || null;
+  };
+
+  const playNarration = (isMuted = muted) => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    const synth = window.speechSynthesis;
+    synth.cancel();
+
+    const textToRead = texts[lang] || texts.en;
+    const utterance = new SpeechSynthesisUtterance(textToRead);
+    utteranceRef.current = utterance;
+    utterance.rate = 0.9;
+    utterance.pitch = 1.0;
+    utterance.volume = isMuted ? 0 : 1;
+
+    const langCode = lang === 'bn' ? 'bn-IN' : lang === 'hi' ? 'hi-IN' : lang === 'ne' ? 'ne-NP' : 'en-US';
+    utterance.lang = langCode;
+
+    const bestVoice = getBestVoice(lang);
+    if (bestVoice) {
+      utterance.voice = bestVoice;
+    }
+
+    utterance.onend = () => {
+      setPlaying(false);
+      utteranceRef.current = null;
+    };
+    utterance.onerror = (e: SpeechSynthesisErrorEvent) => {
+      if (e.error !== 'interrupted' && e.error !== 'canceled') {
+        console.warn('SpeechSynthesis error:', e.error);
+        if (bestVoice && utterance.voice !== bestVoice) {
+          try {
+            const fallbackUtt = new SpeechSynthesisUtterance(textToRead);
+            fallbackUtt.volume = isMuted ? 0 : 1;
+            synth.speak(fallbackUtt);
+            return;
+          } catch (_) {}
+        }
+      }
+      setPlaying(false);
+      utteranceRef.current = null;
+    };
+
+    synth.speak(utterance);
+    setPlaying(true);
+  };
 
   const togglePlay = () => {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
     const synth = window.speechSynthesis;
 
     if (playing) {
-      synth.pause();
+      synth.cancel();
       setPlaying(false);
     } else {
-      if (synth.paused) {
-        synth.resume();
-        setPlaying(true);
-      } else {
-        synth.cancel();
-        const text = transcripts[lang] || transcripts.en;
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.rate = 0.9;
-        utterance.pitch = 1.0;
-        utterance.lang = lang === 'bn' ? 'bn-IN' : lang === 'hi' ? 'hi-IN' : lang === 'ne' ? 'ne-NP' : 'en-US';
-        utterance.onend = () => setPlaying(false);
-        utterance.onerror = () => setPlaying(false);
-        synth.speak(utterance);
-        setPlaying(true);
-      }
+      playNarration(muted);
+    }
+  };
+
+  const toggleMute = () => {
+    const nextMuted = !muted;
+    setMuted(nextMuted);
+    if (playing) {
+      playNarration(nextMuted);
     }
   };
 
   return (
     <div
       data-testid="audio-guide-player"
-      className="rounded-2xl border border-[var(--line)] bg-gradient-to-r from-mist via-white to-mist p-4 shadow-sm"
+      className="mt-6 rounded-2xl border border-[var(--line)] bg-gradient-to-r from-mist via-white to-mist p-3.5 sm:p-4 shadow-xs"
     >
-      <div className="flex items-center justify-between gap-3 pb-3 border-b border-[var(--line)]">
+      <div className="flex items-center justify-between gap-2 flex-wrap pb-2.5 border-b border-[var(--line)]">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-pine text-white flex items-center justify-center">
-            <Headphones size={16} />
+          <div className="w-7 h-7 rounded-full bg-pine text-white flex items-center justify-center flex-shrink-0">
+            <Headphones size={14} />
           </div>
-          <div>
-            <div className="text-[10px] font-bold uppercase tracking-widest text-pine">
-              Heritage Audio Guide
-            </div>
-            <div className="font-display font-extrabold text-sm text-ink">{title}</div>
-          </div>
+          <span className="text-xs font-bold uppercase tracking-wider text-pine">
+            Audio Story & Narration
+          </span>
         </div>
 
         {/* Language Selector */}
-        <div className="flex items-center gap-1 bg-white border border-[var(--line)] rounded-full p-1 shadow-xs">
-          <Globe size={13} className="text-ink-soft ml-1.5" />
+        <div className="flex items-center gap-1 bg-white border border-[var(--line)] rounded-full p-0.5 shadow-2xs">
+          <Globe size={12} className="text-ink-soft ml-1.5 hidden sm:inline" />
           {(['en', 'bn', 'hi', 'ne'] as const).map((l) => (
             <button
               key={l}
               type="button"
               onClick={() => setLang(l)}
               className={`px-2 py-0.5 rounded-full text-[11px] font-bold transition-all ${
-                lang === l ? 'bg-pine text-white' : 'text-ink-soft hover:text-ink'
+                lang === l ? 'bg-pine text-white shadow-2xs' : 'text-ink-soft hover:text-ink'
               }`}
             >
               {langNames[l]}
@@ -99,14 +185,14 @@ export default function AudioGuide({ title, transcripts }: AudioGuideProps) {
           onClick={togglePlay}
           data-testid="audio-play-toggle"
           aria-label={playing ? 'Pause Narration' : 'Play Narration'}
-          className="w-10 h-10 rounded-full bg-flag text-white flex items-center justify-center shadow-md btn-hover flex-shrink-0"
+          className="w-9 h-9 rounded-full bg-flag text-white flex items-center justify-center shadow-sm btn-hover flex-shrink-0"
         >
-          {playing ? <Pause size={18} /> : <Play size={18} className="ml-0.5" />}
+          {playing ? <Pause size={16} /> : <Play size={16} className="ml-0.5" />}
         </button>
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between text-[11px] font-semibold text-ink-soft mb-1">
-            <span>{playing ? 'Playing Heritage Story...' : 'Tap Play to Listen'}</span>
+            <span>{playing ? (muted ? 'Playing (Muted)...' : 'Playing Narration...') : 'Listen to Audio Guide'}</span>
             <span>{langNames[lang]}</span>
           </div>
           <div className="h-1.5 w-full bg-line rounded-full overflow-hidden">
@@ -120,17 +206,13 @@ export default function AudioGuide({ title, transcripts }: AudioGuideProps) {
 
         <button
           type="button"
-          onClick={() => setMuted(!muted)}
-          className="text-ink-soft hover:text-ink p-1 flex-shrink-0"
+          onClick={toggleMute}
+          aria-label={muted ? 'Unmute Audio' : 'Mute Audio'}
+          className="text-ink-soft hover:text-ink p-1.5 rounded-lg hover:bg-mist transition-colors flex-shrink-0"
         >
-          {muted ? <VolumeX size={18} /> : <Volume2 size={18} />}
+          {muted ? <VolumeX size={17} className="text-flag" /> : <Volume2 size={17} />}
         </button>
       </div>
-
-      {/* Transcript text fallback */}
-      <p className="mt-3 text-xs text-ink-soft leading-relaxed italic bg-white/70 p-2.5 rounded-xl border border-[var(--line)] line-clamp-3">
-        "{transcripts[lang] || transcripts.en}"
-      </p>
     </div>
   );
 }

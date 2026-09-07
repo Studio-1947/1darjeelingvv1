@@ -238,7 +238,7 @@ allowed-tools: Read, Write, Edit, Glob, Grep
 | Method | Use When |
 |--------|----------|
 | **React/Vue component** | Dynamic, JS needed |
-| **@apply in CSS** | Sparingly — only when a component layer isn't available |
+| **@apply in CSS** | Sparingly  only when a component layer isn't available |
 | **Design tokens** | Reusable values |
 
 ---

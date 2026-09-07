@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Star, Loader2, Trash2, Camera, Image as ImageIcon, X } from 'lucide-react';
+import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
 import { fetchReviews, postReview, deleteReview, Review, ReviewSummary } from '@/lib/reviews';
 import { uploadImages } from '@/lib/uploadImage';
@@ -92,22 +93,38 @@ export default function ReviewsSection({ item }: { item: any }) {
     try {
       const urls = await uploadImages(files);
       setPhotos((prev) => [...prev, ...urls]);
+      toast.success(t('reviews.photo_uploaded', 'Photo attached successfully!'));
     } catch (err: any) {
-      setError(err?.message || t('reviews.upload_failed'));
+      const msg = typeof err === 'string' ? err : (err?.message || t('reviews.upload_failed', 'Upload failed'));
+      setError(msg);
+      toast.error(msg);
     } finally {
       setUploadingPhotos(false);
     }
   };
 
   const submit = async () => {
-    if (rating < 1) { setError(t('reviews.pick_rating')); return; }
+    if (rating < 1) {
+      const msg = t('reviews.pick_rating');
+      setError(msg);
+      toast.error(msg);
+      return;
+    }
     setSubmitting(true);
     setError('');
     try {
+      const isUpdate = !!myReview;
       await postReview(item.id, rating, comment.trim(), photos);
+      toast.success(
+        isUpdate
+          ? t('reviews.updated_toast', 'Your review has been updated!')
+          : t('reviews.posted_toast', 'Thank you! Your review has been posted.')
+      );
       await load();
     } catch (e: any) {
-      setError(e?.response?.data?.detail || t('reviews.save_failed'));
+      const errMsg = e?.response?.data?.detail || t('reviews.save_failed');
+      setError(errMsg);
+      toast.error(errMsg);
     } finally {
       setSubmitting(false);
     }
@@ -121,7 +138,10 @@ export default function ReviewsSection({ item }: { item: any }) {
       setRating(0);
       setComment('');
       setPhotos([]);
+      toast.success(t('reviews.removed_toast', 'Your review has been removed.'));
       await load();
+    } catch (e: any) {
+      toast.error(e?.response?.data?.detail || 'Failed to remove review');
     } finally {
       setSubmitting(false);
     }
@@ -212,11 +232,18 @@ export default function ReviewsSection({ item }: { item: any }) {
               </div>
 
               {error && <p className="mt-2 text-sm text-flag font-semibold">{error}</p>}
-              <button onClick={submit} disabled={submitting || uploadingPhotos} data-testid="review-submit"
-                className="mt-4 inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-pine text-white font-bold btn-hover disabled:opacity-60">
-                {submitting ? <Loader2 size={15} className="animate-spin" /> : null}
-                {myReview ? t('reviews.update_cta') : t('reviews.post')}
-              </button>
+              <div className="mt-4 flex items-center gap-3 flex-wrap">
+                <button onClick={submit} disabled={submitting || uploadingPhotos} data-testid="review-submit"
+                  className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-pine text-white font-bold btn-hover disabled:opacity-60">
+                  {submitting ? <Loader2 size={15} className="animate-spin" /> : null}
+                  {myReview ? t('reviews.update_cta') : t('reviews.post')}
+                </button>
+                {myReview && (
+                  <span className="text-xs text-ink-soft">
+                    {t('reviews.single_review_hint', 'Editing your existing review')}
+                  </span>
+                )}
+              </div>
             </div>
           ) : (
             <div className={`${ALIGN_TEXT}`}>

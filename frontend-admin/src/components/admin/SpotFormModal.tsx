@@ -81,7 +81,7 @@ function initialState(spot?: AdminSpot | null): FormState {
 const inputClass =
   'mt-1 w-full rounded-xl border border-[var(--line)] bg-white px-3.5 py-2.5 text-sm text-ink outline-none focus:ring-2 focus:ring-flag/20 transition-all';
 
-/** Labelled field wrapper — keeps every row of the form on the same rhythm. */
+/** Labelled field wrapper  keeps every row of the form on the same rhythm. */
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
     <label className="block">
@@ -175,7 +175,7 @@ function ChipInput({ values, onChange, placeholder, max, testId }: {
 }
 
 /**
- * Create/edit form for a tourist spot — the only place a spot is authored.
+ * Create/edit form for a tourist spot  the only place a spot is authored.
  *
  * Photos upload straight to the admin-only endpoint and are stored as URLs, so the
  * form always holds hosted images rather than pending files: closing mid-edit can
@@ -215,7 +215,7 @@ export default function SpotFormModal({ open, spot, onClose, onSubmit }: {
     titleRef.current?.focus();
   }, [open, spot]);
 
-  // Escape closes — but never mid-save, which would leave the admin unsure whether it landed,
+  // Escape closes  but never mid-save, which would leave the admin unsure whether it landed,
   // and never mid-upload either: the backdrop, the X and Cancel all already refuse while a photo
   // is in flight, and closing here discarded the form while stranding the uploaded image on the
   // server with its URL lost.
@@ -267,7 +267,7 @@ export default function SpotFormModal({ open, spot, onClose, onSubmit }: {
       const urls = await uploadSpotImages(accepted, (done, total) => setGalleryUploading({ done, total }));
       setGallery((prev) => [...prev, ...urls]);
       if (files.length > accepted.length) {
-        setError(`Only ${accepted.length} photo(s) were added — the gallery holds at most ${MAX_GALLERY_IMAGES}.`);
+        setError(`Only ${accepted.length} photo(s) were added  the gallery holds at most ${MAX_GALLERY_IMAGES}.`);
       }
     } catch (err: any) {
       // Keep whatever made it up before the failure, so a batch that breaks on photo 7 of 10
@@ -395,7 +395,7 @@ export default function SpotFormModal({ open, spot, onClose, onSubmit }: {
               {isEdit ? 'Edit spot' : 'Add a tourist spot'}
             </h2>
             <p className="mt-1 text-xs text-ink-soft">
-              Curated by admins only — providers can never create or edit these.
+              Curated by admins only  providers can never create or edit these.
             </p>
           </div>
           <button
@@ -426,7 +426,7 @@ export default function SpotFormModal({ open, spot, onClose, onSubmit }: {
             </Field>
 
             <div className="grid sm:grid-cols-2 gap-4">
-              <Field label="Area" hint="Shown on cards — e.g. Ghum, Darjeeling.">
+              <Field label="Area" hint="Shown on cards  e.g. Ghum, Darjeeling.">
                 <input
                   required
                   value={form.location}
@@ -445,7 +445,7 @@ export default function SpotFormModal({ open, spot, onClose, onSubmit }: {
               </Field>
             </div>
 
-            <Field label="Description" hint="A few paragraphs — this is the 'About this place' text.">
+            <Field label="Description" hint="A few paragraphs  this is the 'About this place' text.">
               <textarea
                 required
                 rows={5}
@@ -456,7 +456,7 @@ export default function SpotFormModal({ open, spot, onClose, onSubmit }: {
               />
             </Field>
 
-            <Field label="Highlights" hint="Short bullets shown as chips — e.g. “Kanchenjunga sunrise”.">
+            <Field label="Highlights" hint="Short bullets shown as chips  e.g. “Kanchenjunga sunrise”.">
               <ChipInput
                 values={highlights}
                 onChange={setHighlights}
@@ -522,9 +522,8 @@ export default function SpotFormModal({ open, spot, onClose, onSubmit }: {
                 ))}
 
                 {gallery.length < MAX_GALLERY_IMAGES && (
-                  <label className={`aspect-[4/3] rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors ${
-                    galleryUploading ? 'border-pine/50 bg-pine/5 text-pine' : 'border-[var(--line)] text-ink-soft hover:border-flag/50 hover:text-flag'
-                  }`}>
+                  <label className={`aspect-[4/3] rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors ${galleryUploading ? 'border-pine/50 bg-pine/5 text-pine' : 'border-[var(--line)] text-ink-soft hover:border-flag/50 hover:text-flag'
+                    }`}>
                     {galleryUploading ? (
                       <>
                         <Upload size={18} className="animate-pulse" />
@@ -559,12 +558,12 @@ export default function SpotFormModal({ open, spot, onClose, onSubmit }: {
               </Field>
             </div>
 
-            <Field label="How to reach" hint="Directions from town — transport, distance, rough travel time.">
+            <Field label="How to reach" hint="Directions from town  transport, distance, rough travel time.">
               <textarea rows={3} value={form.howToReach} onChange={(e) => set('howToReach', e.target.value)} className={`${inputClass} resize-y`} />
             </Field>
 
             <div className="grid sm:grid-cols-2 gap-4">
-              <Field label="Entry price (₹)" hint="Numeric — 0 shows the spot as free. Used on cards.">
+              <Field label="Entry price (₹)" hint="Numeric  0 shows the spot as free. Used on cards.">
                 <input type="number" min="0" step="1" value={form.price} onChange={(e) => set('price', e.target.value)} data-testid="spot-form-price" className={inputClass} />
               </Field>
               <Field label="Tags">
@@ -573,7 +572,7 @@ export default function SpotFormModal({ open, spot, onClose, onSubmit }: {
             </div>
           </Section>
 
-          <Section icon={MapPin} title="Map pin" note="Both fields, or neither — the public page falls back to central Darjeeling.">
+          <Section icon={MapPin} title="Map pin" note="Both fields, or neither  the public page falls back to central Darjeeling.">
             <div className="grid sm:grid-cols-2 gap-4">
               <Field label="Latitude" hint="e.g. 27.0028">
                 <input value={form.latitude} onChange={(e) => set('latitude', e.target.value)} inputMode="decimal" data-testid="spot-form-latitude" className={inputClass} />
@@ -590,9 +589,8 @@ export default function SpotFormModal({ open, spot, onClose, onSubmit }: {
                 type="button"
                 onClick={() => set('published', !form.published)}
                 data-testid="spot-form-published"
-                className={`flex items-center gap-3 p-4 rounded-xl border text-left transition-all ${
-                  form.published ? 'border-pine bg-pine/5' : 'border-[var(--line)] hover:bg-mist'
-                }`}
+                className={`flex items-center gap-3 p-4 rounded-xl border text-left transition-all ${form.published ? 'border-pine bg-pine/5' : 'border-[var(--line)] hover:bg-mist'
+                  }`}
               >
                 {form.published ? <Eye size={18} className="text-pine" /> : <EyeOff size={18} className="text-ink-soft" />}
                 <span>
@@ -607,9 +605,8 @@ export default function SpotFormModal({ open, spot, onClose, onSubmit }: {
                 type="button"
                 onClick={() => set('featured', !form.featured)}
                 data-testid="spot-form-featured"
-                className={`flex items-center gap-3 p-4 rounded-xl border text-left transition-all ${
-                  form.featured ? 'border-gold bg-gold/10' : 'border-[var(--line)] hover:bg-mist'
-                }`}
+                className={`flex items-center gap-3 p-4 rounded-xl border text-left transition-all ${form.featured ? 'border-gold bg-gold/10' : 'border-[var(--line)] hover:bg-mist'
+                  }`}
               >
                 <Star size={18} className={form.featured ? 'text-gold fill-gold' : 'text-ink-soft'} />
                 <span>

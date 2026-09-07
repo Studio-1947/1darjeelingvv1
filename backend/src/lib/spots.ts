@@ -2,7 +2,7 @@ import { sql, SQL } from 'drizzle-orm';
 import * as schema from '../schema';
 
 /**
- * Tourist spots — the editorial "places to visit" section of the app.
+ * Tourist spots  the editorial "places to visit" section of the app.
  *
  * Unlike homestays/drivers/shops/cafes, a spot is not somebody's business: it is
  * curated content about a public place. Only an admin may create, edit, upload
@@ -16,13 +16,13 @@ import * as schema from '../schema';
  */
 export const SPOT_TYPE = 'spot';
 
-/** Roles allowed to write a spot. Deliberately a one-element list — admins only. */
+/** Roles allowed to write a spot. Deliberately a one-element list  admins only. */
 export function canWriteSpots(role: string | undefined): boolean {
   return role === 'admin';
 }
 
 export const SPOT_FORBIDDEN_MESSAGE =
-  'Tourist spots are curated content — only an admin can create or edit them';
+  'Tourist spots are curated content  only an admin can create or edit them';
 
 // ---------------------------------------------------------------------------
 // extras shape
@@ -64,8 +64,8 @@ const TEXT_FIELDS = {
   how_to_reach: MAX_LONG_TEXT,
 } as const;
 
-/** Thrown for a caller-fixable payload problem — routes answer these with a 400. */
-export class SpotValidationError extends Error {}
+/** Thrown for a caller-fixable payload problem  routes answer these with a 400. */
+export class SpotValidationError extends Error { }
 
 function fail(message: string): never {
   throw new SpotValidationError(message);
@@ -185,7 +185,7 @@ export function publicSpotVisibility(): SQL {
  *
  * The COALESCE on `featured` is load-bearing, not defensive noise. A row written before
  * this module existed (the seeder's `extras: {}`) has no `featured` key, so `extras->>'featured'`
- * is NULL and the comparison yields NULL — and Postgres `ORDER BY ... DESC` defaults to
+ * is NULL and the comparison yields NULL  and Postgres `ORDER BY ... DESC` defaults to
  * NULLS FIRST, which sorted every legacy spot *ahead* of the ones an admin actually
  * featured. Folding NULL to 'false' first makes the expression a real boolean for every row.
  */

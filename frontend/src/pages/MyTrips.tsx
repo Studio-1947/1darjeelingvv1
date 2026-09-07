@@ -6,7 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useSeo } from '@/components/Seo';
 import {
   Ticket, Calendar, ArrowRight, XCircle, Loader2, Compass, Phone,
-  CheckCircle2, Clock, MapPin, Store, LogIn, Sparkles
+  CheckCircle2, Clock, MapPin, Store, LogIn
 } from 'lucide-react';
 
 function StatusPill({ status, isPast }: { status: string; isPast: boolean }) {
@@ -324,7 +324,7 @@ export default function MyTrips() {
       {/* Quick suggestions */}
       <div className="mt-12">
         <h2 className="font-display font-extrabold text-xl text-ink mb-4 flex items-center gap-2">
-          <Sparkles size={18} className="text-flag" /> Explore More in Darjeeling
+          <Compass size={20} className="text-pine" /> Explore More in Darjeeling
         </h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <Link to="/homestays" className="rounded-2xl p-4 bg-white border border-[var(--line)] btn-hover shadow-sm">

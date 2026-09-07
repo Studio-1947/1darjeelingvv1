@@ -11,7 +11,7 @@ interface PaymentsTabProps {
  * PaymentsTab displays payment logs, order references, dates and amounts, and is where an
  * operator returns money.
  *
- * The refund column is not decoration. `lib/refunds.ts` deliberately never throws — it runs after
+ * The refund column is not decoration. `lib/refunds.ts` deliberately never throws  it runs after
  * the money has moved and the cancellation has already committed, so a Razorpay outage records the
  * debt instead of failing the request. A payment left `paid` with a refund reason on it is money
  * the platform owes and has not returned, which is why those rows are called out here rather than
@@ -36,10 +36,10 @@ export default function PaymentsTab({ payments, onRefunded }: PaymentsTabProps) 
       const res = await api.post(`/admin/payments/${pm.id}/refund`, { reason: 'refunded by admin' });
       // The endpoint is idempotent: an already-refunded payment answers 200 with refunded=false
       // rather than sending a second refund to the gateway. Say which of the two happened.
-      setMsg(res.data?.refunded ? `Refunded ${label}.` : `${label} was already refunded — nothing sent.`);
+      setMsg(res.data?.refunded ? `Refunded ${label}.` : `${label} was already refunded  nothing sent.`);
       onRefunded?.();
     } catch (e: any) {
-      // A gateway refusal is a 502 here, never a silent success — the money really is still held.
+      // A gateway refusal is a 502 here, never a silent success  the money really is still held.
       setMsg(e?.response?.data?.detail || 'Refund failed. The payment is still marked as owed; try again.');
     } finally {
       setBusyId(null);
@@ -90,11 +90,10 @@ export default function PaymentsTab({ payments, onRefunded }: PaymentsTabProps) 
 
                   {/* Payment status badge */}
                   <td className="p-4">
-                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
-                      pm.status === 'refunded' ? 'bg-ink/10 text-ink-soft'
-                      : pm.status === 'paid' ? 'bg-pine/10 text-pine'
-                      : 'bg-flag/10 text-flag'
-                    }`}>
+                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${pm.status === 'refunded' ? 'bg-ink/10 text-ink-soft'
+                        : pm.status === 'paid' ? 'bg-pine/10 text-pine'
+                          : 'bg-flag/10 text-flag'
+                      }`}>
                       {pm.status}
                     </span>
                   </td>
@@ -134,7 +133,7 @@ export default function PaymentsTab({ payments, onRefunded }: PaymentsTabProps) 
                       </button>
                     ) : (
                       // Never settled, so there is nothing to send back.
-                      <span className="text-ink-soft">—</span>
+                      <span className="text-ink-soft"></span>
                     )}
                   </td>
                 </tr>

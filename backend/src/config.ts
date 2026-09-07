@@ -5,7 +5,7 @@ import { isPlausiblePhone } from './lib/phone';
 
 dotenv.config({ path: path.join(__dirname, '../.env') });
 
-// Logging setup — defined first so the startup validation below can use it.
+// Logging setup  defined first so the startup validation below can use it.
 export const log = {
   info: (msg: string) => console.log(`[INFO] ${new Date().toISOString()} - ${msg}`),
   warn: (msg: string) => console.warn(`[WARN] ${new Date().toISOString()} - ${msg}`),
@@ -15,13 +15,13 @@ export const log = {
 // APP_ENV must be stated explicitly. It previously defaulted to 'development', which meant a
 // single unset variable in production silently re-enabled the mock-OTP bypass (any phone number
 // logs in with 123456) and the dev secret defaults below. A missing APP_ENV is an operator
-// mistake, not a request for dev mode — so refuse to start rather than guess.
+// mistake, not a request for dev mode  so refuse to start rather than guess.
 const VALID_APP_ENVS = ['development', 'test', 'production'];
 const rawAppEnv = process.env.APP_ENV?.trim();
 if (!rawAppEnv) {
   throw new Error(
     `[config] APP_ENV is required and must be one of: ${VALID_APP_ENVS.join(', ')}. ` +
-    `Set it explicitly (see .env.example) — it is not assumed.`
+    `Set it explicitly (see .env.example)  it is not assumed.`
   );
 }
 if (!VALID_APP_ENVS.includes(rawAppEnv)) {
@@ -58,7 +58,7 @@ export const PORT = process.env.PORT || 8000;
 // Production chain is: client -> system Nginx (host) -> nginx container -> backend, and both
 // Nginx layers append $proxy_add_x_forwarded_for, so there are exactly 2 trusted hops.
 // This is a hop COUNT rather than `true` on purpose: `true` trusts the leftmost X-Forwarded-For
-// entry, which is entirely attacker-supplied — anyone could spoof their IP and evade rate limits.
+// entry, which is entirely attacker-supplied  anyone could spoof their IP and evade rate limits.
 // Counting from the right means a forged prefix is ignored. In development there is no proxy, so 0.
 const rawTrustProxy = process.env.TRUST_PROXY_HOPS?.trim();
 export const TRUST_PROXY_HOPS = rawTrustProxy !== undefined && rawTrustProxy !== ''
@@ -69,14 +69,14 @@ if (!Number.isInteger(TRUST_PROXY_HOPS) || TRUST_PROXY_HOPS < 0) {
 }
 
 // Rate limiting is off in the test suite by default (tests would trip the OTP limits immediately).
-// Individual tests opt back in per-middleware — see middleware/rateLimiter.ts.
+// Individual tests opt back in per-middleware  see middleware/rateLimiter.ts.
 export const RATE_LIMIT_ENABLED = process.env.RATE_LIMIT_ENABLED
   ? process.env.RATE_LIMIT_ENABLED.toLowerCase() === 'true'
   : APP_ENV !== 'test';
 
 // Which messaging provider delivers OTPs. `mock` delivers nothing and is the default, so
 // development and the test suite work with no configuration. The selected provider validates
-// its own credentials at startup — see src/messaging/registry.ts.
+// its own credentials at startup  see src/messaging/registry.ts.
 export const MESSAGING_PROVIDER = process.env.MESSAGING_PROVIDER?.trim() || 'mock';
 // Required only for the signed Interakt delivery-status endpoint. Kept separate from the API
 // key: webhook verification is an inbound trust boundary, not an outbound credential.
@@ -96,8 +96,8 @@ if (IS_PROD && MESSAGING_PROVIDER === 'interakt' && !INTERAKT_WEBHOOK_SECRET) {
 //
 // Google Play and Apple both require working sign-in credentials for their reviewer, and this
 // app signs in with an SMS OTP to a phone the reviewer does not hold. "We could not access the
-// app" is one of the commonest rejections, and the tempting fix — leaving MESSAGING_PROVIDER on
-// mock — hands `123456` to the entire internet.
+// app" is one of the commonest rejections, and the tempting fix  leaving MESSAGING_PROVIDER on
+// mock  hands `123456` to the entire internet.
 //
 // So: exactly ONE number may verify with a fixed code. Not a mode and not a flag that widens
 // later. A single number compared with ===, and a code compared in constant time.
@@ -166,14 +166,14 @@ export const OTP_MAX_ATTEMPTS = requirePositiveInt('OTP_MAX_ATTEMPTS', process.e
 // per-process, so a deploy wipes them, and they cap the RATE of sends without capping the TOTAL:
 // at 3/min a single number absorbs 4,320 messages a day, and rotating the number costs an attacker
 // nothing. While the provider is `mock` that is only noise. Once real SMS is wired up each one of
-// those is a charge on the platform's account, and SMS pumping — driving traffic to numbers whose
-// termination fees the attacker collects a cut of — is the specific way that bill is turned into
+// those is a charge on the platform's account, and SMS pumping  driving traffic to numbers whose
+// termination fees the attacker collects a cut of  is the specific way that bill is turned into
 // someone else's revenue.
 //
 // Per-phone 10/day: comfortably above a real person having a bad signal day, far below anything
 // worth farming. Global 1000/day: sized for a platform this size to never notice it, while capping
 // the worst case at a bounded number rather than an unbounded one. Both are the ceiling, not the
-// expected load — if either is ever reached, the response is to look at why, not to raise it.
+// expected load  if either is ever reached, the response is to look at why, not to raise it.
 export const OTP_MAX_SENDS_PER_PHONE_PER_DAY = requirePositiveInt(
   'OTP_MAX_SENDS_PER_PHONE_PER_DAY', process.env.OTP_MAX_SENDS_PER_PHONE_PER_DAY, 10
 );
@@ -190,17 +190,17 @@ export const JWT_SECRET = requireRealValueInProd('JWT_SECRET', process.env.JWT_S
 // Defaulting to true is right in dev and wrong in production, for the same reason APP_ENV refuses
 // to default above: an absent variable is an operator mistake, not a request for simulated
 // payments. Left as a silent default, one forgotten line in an env file lets any authenticated
-// caller settle their own order through /payments/mock/complete — granting themselves the ₹12
+// caller settle their own order through /payments/mock/complete  granting themselves the ₹12
 // support fee, or activating a provider for ₹0.
 //
 // An EXPLICIT MOCK_PAYMENTS=true still boots in production, with the warning below. That is a
 // documented pre-go-live state (see .env.production.example and deploy/VPS-RUNBOOK.md) and stays
-// supported — the operator said what they meant. Only silence is refused.
+// supported  the operator said what they meant. Only silence is refused.
 if (IS_PROD && !process.env.MOCK_PAYMENTS?.trim()) {
   throw new Error(
     '[config] MOCK_PAYMENTS must be set explicitly when APP_ENV=production. ' +
     'Set MOCK_PAYMENTS=false to charge real money, or MOCK_PAYMENTS=true to keep payments ' +
-    'simulated before go-live — it is not assumed.'
+    'simulated before go-live  it is not assumed.'
   );
 }
 export const MOCK_PAYMENTS = process.env.MOCK_PAYMENTS ? process.env.MOCK_PAYMENTS.toLowerCase() === 'true' : true;
@@ -215,7 +215,7 @@ if (IS_PROD && !process.env.NOTIFY_BOOKINGS?.trim()) {
   throw new Error(
     '[config] NOTIFY_BOOKINGS must be set explicitly when APP_ENV=production. ' +
     'Set NOTIFY_BOOKINGS=true to message the guest and host when a booking is confirmed, or ' +
-    'NOTIFY_BOOKINGS=false to accept that nobody is told — it is not assumed.'
+    'NOTIFY_BOOKINGS=false to accept that nobody is told  it is not assumed.'
   );
 }
 export const NOTIFY_BOOKINGS = process.env.NOTIFY_BOOKINGS
@@ -239,10 +239,10 @@ if (IS_PROD) {
     throw new Error('[config] CORS_ORIGINS must not be "*" when APP_ENV=production. List the real origins.');
   }
   if (MOCK_PAYMENTS) {
-    log.error('[config] MOCK_PAYMENTS=true with APP_ENV=production — payments are simulated and no money will be charged.');
+    log.error('[config] MOCK_PAYMENTS=true with APP_ENV=production  payments are simulated and no money will be charged.');
   }
   if (REVIEW_PHONE) {
-    // Not an error — it is a deliberate, configured exception. But it is a standing credential
+    // Not an error  it is a deliberate, configured exception. But it is a standing credential
     // with no expiry, so it says so at every boot rather than being discovered in a log a year
     // from now by someone who did not know it existed.
     log.info(
@@ -252,27 +252,27 @@ if (IS_PROD) {
   }
   if (MOCK_OTP) {
     log.error(
-      '[config] MESSAGING_PROVIDER=mock with APP_ENV=production — OTPs are not delivered and ' +
+      '[config] MESSAGING_PROVIDER=mock with APP_ENV=production  OTPs are not delivered and ' +
       'the 123456 universal code is active, so anyone can log in as any phone number. ' +
       'Set MESSAGING_PROVIDER to a real provider before taking real users.'
     );
   }
   if (!NOTIFY_BOOKINGS) {
     log.error(
-      '[config] NOTIFY_BOOKINGS=false with APP_ENV=production — a confirmed booking will tell ' +
+      '[config] NOTIFY_BOOKINGS=false with APP_ENV=production  a confirmed booking will tell ' +
       'neither the guest nor the host. Bookings will only be visible to someone who opens a ' +
       'dashboard. Set NOTIFY_BOOKINGS=true before taking real bookings.'
     );
   } else if (MOCK_OTP) {
     log.error(
-      '[config] NOTIFY_BOOKINGS=true but MESSAGING_PROVIDER=mock — booking notifications are ' +
+      '[config] NOTIFY_BOOKINGS=true but MESSAGING_PROVIDER=mock  booking notifications are ' +
       'recorded as attempted and delivered nowhere. Set a real MESSAGING_PROVIDER.'
     );
   }
 }
 
 // Once real money is involved, a missing key is not something to discover at checkout in front of
-// a paying customer — fail at boot instead.
+// a paying customer  fail at boot instead.
 if (!MOCK_PAYMENTS) {
   if (!RAZORPAY_KEY_ID || !RAZORPAY_KEY_SECRET) {
     throw new Error('[config] RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET are required when MOCK_PAYMENTS=false.');
@@ -289,7 +289,7 @@ if (!MOCK_PAYMENTS) {
 
 export const MINIO_ENDPOINT = process.env.MINIO_ENDPOINT || 'http://localhost:9000';
 // Plain `||` fallbacks here would let production silently run on the well-known
-// minioadmin/minioadminpassword dev credentials if the env vars were ever left unset — same class
+// minioadmin/minioadminpassword dev credentials if the env vars were ever left unset  same class
 // of mistake requireRealValueInProd already guards against for JWT_SECRET/ADMIN_PASSWORD/etc.
 export const MINIO_ACCESS_KEY = requireRealValueInProd('MINIO_ACCESS_KEY', process.env.MINIO_ACCESS_KEY, 'minioadmin');
 export const MINIO_SECRET_KEY = requireRealValueInProd('MINIO_SECRET_KEY', process.env.MINIO_SECRET_KEY, 'minioadminpassword');
@@ -298,12 +298,12 @@ export const MINIO_PUBLIC_URL = process.env.MINIO_PUBLIC_URL || 'http://localhos
 export const MINIO_KYC_BUCKET = process.env.MINIO_KYC_BUCKET || 'one-darjeeling-kyc';
 
 // A localhost/127.0.0.1 MINIO_PUBLIC_URL in production means every uploaded listing image
-// (uploadToMinIO() bakes this straight into the URL it returns) is unreachable to real users —
+// (uploadToMinIO() bakes this straight into the URL it returns) is unreachable to real users 
 // it would only ever resolve on the server itself. Catch it at boot rather than after launch.
 if (IS_PROD && /^https?:\/\/(localhost|127\.0\.0\.1)([:/]|$)/i.test(MINIO_PUBLIC_URL)) {
   throw new Error(
     `[config] MINIO_PUBLIC_URL is set to a localhost URL ("${MINIO_PUBLIC_URL}") but APP_ENV=production. ` +
-    `Set it to the real public site origin (e.g. https://your-domain.tld) — see .env.production.example.`
+    `Set it to the real public site origin (e.g. https://your-domain.tld)  see .env.production.example.`
   );
 }
 
@@ -333,7 +333,7 @@ export const SUPPORT_DURATION_DAYS = 365;
 // advertised "+3 months", so that is the default; it is a knob because the number is a
 // marketing decision and changing it must not need a deploy of new code.
 //
-// Applied to `supportExpiresAt` for BOTH parties, monotonically — see lib/referrals.ts. There
+// Applied to `supportExpiresAt` for BOTH parties, monotonically  see lib/referrals.ts. There
 // is deliberately no provider-side reward: `providerPaid` is a boolean with no expiry to
 // extend, so "1 month free on your ₹99 plan" cannot be honoured without a plan-renewal model
 // that does not exist yet. The app's copy no longer promises it.
@@ -345,7 +345,7 @@ export const REFERRAL_REWARD_DAYS = requirePositiveInt(
 
 // ── Google OAuth ──────────────────────────────────────────────────────────
 // Client IDs for verifying Google ID tokens from the mobile app and web.
-// In production these are REQUIRED — Google login silently fails without them.
+// In production these are REQUIRED  Google login silently fails without them.
 // Obtain from https://console.cloud.google.com/apis/credentials (OAuth 2.0 Client IDs).
 export const GOOGLE_WEB_CLIENT_ID = process.env.GOOGLE_WEB_CLIENT_ID || '';
 export const GOOGLE_ANDROID_CLIENT_ID = process.env.GOOGLE_ANDROID_CLIENT_ID || '';
@@ -353,7 +353,7 @@ export const GOOGLE_IOS_CLIENT_ID = process.env.GOOGLE_IOS_CLIENT_ID || '';
 
 // ── SMTP / Email ──────────────────────────────────────────────────────────
 // Nodemailer transport configuration for transactional emails (booking confirmations,
-// receipts, etc.). When unset, email sending is silently disabled — no emails are
+// receipts, etc.). When unset, email sending is silently disabled  no emails are
 // sent but nothing crashes. Set SMTP_HOST and SMTP_PORT to enable.
 export const SMTP_HOST = process.env.SMTP_HOST || '';
 export const SMTP_PORT = process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT, 10) : 587;
@@ -363,7 +363,7 @@ export const SMTP_FROM = process.env.SMTP_FROM || 'noreply@1darjeeling.in';
 
 if (IS_PROD && (!SMTP_HOST || !SMTP_PORT)) {
   log.error(
-    '[config] SMTP_HOST/SMTP_PORT not set with APP_ENV=production — emails (booking ' +
+    '[config] SMTP_HOST/SMTP_PORT not set with APP_ENV=production  emails (booking ' +
     'confirmations, receipts) will not be delivered. Set them or accept no email delivery.'
   );
 }

@@ -34,7 +34,7 @@ Model Context Protocol - standard for connecting AI systems with external tools 
 ```
 my-mcp-server/
 ├── src/
-│   └── index.ts      # Main entry — McpServer from @modelcontextprotocol/sdk
+│   └── index.ts      # Main entry  McpServer from @modelcontextprotocol/sdk
 ├── package.json      # dep: @modelcontextprotocol/sdk
 └── tsconfig.json
 ```
@@ -151,7 +151,7 @@ my-mcp-server/
 | args | Command arguments |
 | env | Environment variables |
 
-> MCP is multi-client — the same server works across Claude Desktop, Claude Code, and IDE hosts. Remote (Streamable HTTP) servers authenticate via OAuth rather than a local command.
+> MCP is multi-client  the same server works across Claude Desktop, Claude Code, and IDE hosts. Remote (Streamable HTTP) servers authenticate via OAuth rather than a local command.
 
 ---
 

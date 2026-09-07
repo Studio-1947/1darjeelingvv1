@@ -29,7 +29,7 @@ const MAGIC_BYTES: Record<string, number[]> = {
 };
 
 // ISO 32000 (the PDF spec) permits the "%PDF-" header to appear anywhere within the first 1024
-// bytes of the file, not just at offset 0 — some scanners/tools prepend a UTF-8 BOM or leading
+// bytes of the file, not just at offset 0  some scanners/tools prepend a UTF-8 BOM or leading
 // whitespace before it, and such files are still legitimate PDFs. JPEG and PNG signatures, by
 // contrast, are always exactly byte 0, so those keep an exact offset-0 match.
 const PDF_SIGNATURE_SEARCH_WINDOW = 1024;
@@ -89,7 +89,7 @@ export async function recomputeKycStatus(providerId: string): Promise<string> {
   return kycStatus;
 }
 
-// GET /providers/me/profile — profile + completion + checklist + kycStatus
+// GET /providers/me/profile  profile + completion + checklist + kycStatus
 router.get('/me/profile', authenticateToken, async (req: Request, res: Response) => {
   const provider = await ownActiveProvider(req.user.id);
   if (!provider) return res.status(404).json({ detail: 'No active provider profile' });
@@ -122,7 +122,7 @@ router.get('/me/profile', authenticateToken, async (req: Request, res: Response)
   });
 });
 
-// GET /providers/me/kyc — list own docs
+// GET /providers/me/kyc  list own docs
 router.get('/me/kyc', authenticateToken, async (req: Request, res: Response) => {
   const provider = await ownActiveProvider(req.user.id);
   if (!provider) return res.status(404).json({ detail: 'No active provider profile' });
@@ -130,7 +130,7 @@ router.get('/me/kyc', authenticateToken, async (req: Request, res: Response) => 
   res.json({ documents: docs.map(docOut) });
 });
 
-// POST /providers/me/kyc — upload/replace a doc
+// POST /providers/me/kyc  upload/replace a doc
 router.post('/me/kyc', authenticateToken, async (req: Request, res: Response) => {
   const provider = await ownActiveProvider(req.user.id);
   if (!provider) return res.status(403).json({ detail: 'Only active providers can upload KYC documents' });
@@ -162,7 +162,7 @@ router.post('/me/kyc', authenticateToken, async (req: Request, res: Response) =>
   try {
     await uploadPrivate(buffer, key, contentType);
   } catch (err: any) {
-    // The storage backend (MinIO) being down/misconfigured is not the provider's fault — a
+    // The storage backend (MinIO) being down/misconfigured is not the provider's fault  a
     // bare 500 here would read on the frontend as "your file was rejected". Log the real
     // cause server-side and answer with a 503 that says so, without leaking internals.
     log.error(`KYC storage upload failed for provider ${provider.id}, doc_type ${doc_type}: ${err?.message || err}`);
@@ -177,11 +177,11 @@ router.post('/me/kyc', authenticateToken, async (req: Request, res: Response) =>
     // taking a row lock (`FOR UPDATE`) so concurrent uploads of the same (providerId, docType)
     // serialize on that row. Without the lock, two concurrent requests can both read the same
     // pre-existing fileKey outside any transaction, both upload their own new object, and then
-    // race to write the row — whichever write loses that race has its own freshly-uploaded
+    // race to write the row  whichever write loses that race has its own freshly-uploaded
     // object referenced by nobody, an orphan that persists forever (the DB row only remembers
     // one fileKey, the winner's). Locking the row means the second request to actually run its
     // upsert necessarily observes the first request's already-committed fileKey as "the previous
-    // one", so each request cleans up exactly the object its own write replaced — never the
+    // one", so each request cleans up exactly the object its own write replaced  never the
     // object that ends up live in the row.
     doc = await db.transaction(async (tx) => {
       const [existing] = await tx.select().from(schema.kycDocuments)
@@ -221,7 +221,7 @@ router.post('/me/kyc', authenticateToken, async (req: Request, res: Response) =>
       return row;
     });
   } catch (err) {
-    // The DB write failed — the object we just uploaded is now orphaned (unreferenced by any
+    // The DB write failed  the object we just uploaded is now orphaned (unreferenced by any
     // row). Best-effort clean it up before propagating, so failed writes don't leak storage.
     try {
       await deletePrivate(key);
@@ -247,7 +247,7 @@ router.post('/me/kyc', authenticateToken, async (req: Request, res: Response) =>
   res.json({ document: docOut(doc) });
 });
 
-// DELETE /providers/me/kyc/:docType — owner removes a doc
+// DELETE /providers/me/kyc/:docType  owner removes a doc
 router.delete('/me/kyc/:docType', authenticateToken, async (req: Request, res: Response) => {
   const provider = await ownActiveProvider(req.user.id);
   if (!provider) return res.status(403).json({ detail: 'Only active providers can manage KYC documents' });
@@ -266,7 +266,7 @@ router.delete('/me/kyc/:docType', authenticateToken, async (req: Request, res: R
   res.json({ ok: true });
 });
 
-// GET /providers/kyc/:id/file — stream a private doc to owner or admin
+// GET /providers/kyc/:id/file  stream a private doc to owner or admin
 router.get('/kyc/:id/file', authenticateToken, async (req: Request, res: Response) => {
   const [doc] = await db.select().from(schema.kycDocuments).where(eq(schema.kycDocuments.id, routeParam(req, 'id'))).limit(1);
   if (!doc) return res.status(404).json({ detail: 'Not found' });
@@ -290,7 +290,7 @@ router.get('/kyc/:id/file', authenticateToken, async (req: Request, res: Respons
   res.setHeader('Content-Type', resolvedType);
   res.setHeader('Cache-Control', 'private, no-store');
   // The content type is ultimately sourced from the uploader's own data-URL prefix, so a
-  // browser must never be allowed to sniff/reinterpret it (e.g. as HTML) — and it must never
+  // browser must never be allowed to sniff/reinterpret it (e.g. as HTML)  and it must never
   // render inline as a top-level navigation target for arbitrary content, only as an asset.
   res.setHeader('X-Content-Type-Options', 'nosniff');
   const ext = path.extname(doc.fileKey) || (resolvedType === 'application/pdf' ? '.pdf' : '');

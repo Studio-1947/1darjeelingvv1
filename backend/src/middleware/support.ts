@@ -5,7 +5,7 @@ import { isExemptFromSupport, isSupportActive } from '../lib/support';
  * Blocks the actions that cost the platform something until the annual support fee is active.
  * Mount AFTER authenticateToken, which is what puts the user row on the request.
  *
- * 402 rather than 403: the request is well-formed and the caller is who they claim to be — the
+ * 402 rather than 403: the request is well-formed and the caller is who they claim to be  the
  * only thing missing is payment. That distinction matters to the client, which redirects on 402
  * but treats 403 as a genuine authorisation failure. The client keys on `code`, not the prose.
  */

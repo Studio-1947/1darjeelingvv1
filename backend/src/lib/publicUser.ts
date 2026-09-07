@@ -3,7 +3,7 @@
  *
  * Every auth route used to answer with the raw Drizzle row, which carries the `password` column.
  * For a tourist that column is null and nothing happened; for a DB-backed admin it is a real
- * PBKDF2 hash, and it was being handed back on every /auth/me poll — into client state, into
+ * PBKDF2 hash, and it was being handed back on every /auth/me poll  into client state, into
  * whatever the client logs, and into any front-end error reporter. An allowlist rather than a
  * `delete user.password`, so a column added to the schema later is excluded by default instead
  * of exposed because nobody remembered to redact it.

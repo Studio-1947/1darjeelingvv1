@@ -229,7 +229,7 @@ Behavior for creating and loading "Mental Model" summaries to preserve context b
 
 ## Combining Modes
 
-Modes are not exclusive — most real tasks chain several in sequence:
+Modes are not exclusive  most real tasks chain several in sequence:
 
 | Flow | Mode Chain |
 |------|------------|

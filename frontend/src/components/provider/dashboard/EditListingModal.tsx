@@ -90,25 +90,25 @@ export default function EditListingModal({ listing, onClose, onSave }: {
     try {
       const extrasPayload = isDriver
         ? {
-            ...listing.extras,
-            images: gallery,
-            host_avatar: driverAvatar,
-            car_model: carModel,
-            gender,
-            vehicle_type: vehicleType,
-            routes,
-          }
+          ...listing.extras,
+          images: gallery,
+          host_avatar: driverAvatar,
+          car_model: carModel,
+          gender,
+          vehicle_type: vehicleType,
+          routes,
+        }
         : {
-            ...listing.extras,
-            images: gallery,
-            host_name: hostName,
-            host_bio: hostBio,
-            host_avatar: hostAvatar,
-            gender,
-            address,
-            amenities: selectedAmenities,
-            tags: selectedTags,
-          };
+          ...listing.extras,
+          images: gallery,
+          host_name: hostName,
+          host_bio: hostBio,
+          host_avatar: hostAvatar,
+          gender,
+          address,
+          amenities: selectedAmenities,
+          tags: selectedTags,
+        };
 
       // A driver's headline price tracks their cheapest route, so it can't drift
       // from the per-route fares. Other types keep the manual price field.
@@ -157,7 +157,7 @@ export default function EditListingModal({ listing, onClose, onSave }: {
               <div className="block">
                 <span className="text-xs font-semibold text-ink-soft">{t('el.starting_price')}</span>
                 <div className="mt-1 w-full px-3.5 py-2.5 rounded-xl border border-[var(--line)] bg-mist text-sm text-ink font-semibold">
-                  {startingPriceFrom(routes) > 0 ? `₹${startingPriceFrom(routes)}` : '—'}
+                  {startingPriceFrom(routes) > 0 ? `₹${startingPriceFrom(routes)}` : ''}
                   <span className="text-ink-soft font-normal"> · {t('el.starting_price_note')}</span>
                 </div>
               </div>

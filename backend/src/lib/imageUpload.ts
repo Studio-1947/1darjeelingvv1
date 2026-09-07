@@ -8,8 +8,8 @@ import { uploadToMinIO } from './s3';
 // squeaks under the parser but is still over the real ceiling.
 export const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
 
-/** Thrown for caller-fixable upload problems — routes answer these with a 400. */
-export class ImageUploadError extends Error {}
+/** Thrown for caller-fixable upload problems  routes answer these with a 400. */
+export class ImageUploadError extends Error { }
 
 /**
  * Media types we will store, and the extension each one is filed under.
@@ -75,7 +75,7 @@ export async function storeBase64Image(file: unknown, filename: unknown): Promis
   }
 
   // One parse of the whole prefix, so the declared type and the payload can never be read
-  // from different patterns — a mismatch there is what lets a non-image slip through as one.
+  // from different patterns  a mismatch there is what lets a non-image slip through as one.
   // Media-type parameters (`;charset=…`) are tolerated and ignored.
   const parsed = /^data:([a-z0-9][a-z0-9!#$&^_.+-]*\/[a-z0-9][a-z0-9!#$&^_.+-]*)((?:;[^;,]*)*);base64,([\s\S]*)$/i
     .exec(file.trim());
@@ -86,7 +86,7 @@ export async function storeBase64Image(file: unknown, filename: unknown): Promis
   const contentType = parsed[1].toLowerCase();
   const ext = ALLOWED_TYPES[contentType];
   if (!ext) {
-    throw new ImageUploadError(`Unsupported image type — please upload a ${ACCEPTED_LIST} file`);
+    throw new ImageUploadError(`Unsupported image type  please upload a ${ACCEPTED_LIST} file`);
   }
 
   // Node's base64 decoder silently skips characters outside the alphabet, which would let a

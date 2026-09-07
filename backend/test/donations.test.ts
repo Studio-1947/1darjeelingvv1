@@ -85,7 +85,7 @@ describe('donation settlement', () => {
     expect(completeRes.body.record.amount).toBe(25000);
   });
 
-  it('grants nothing — a donation must never buy access', async () => {
+  it('grants nothing  a donation must never buy access', async () => {
     // The property that matters most about this flow. Donating cannot extend support, activate a
     // provider, or confirm a booking; if it ever could, "donate" becomes a discount code.
     const { token, user } = await registerUser({ name: 'Nothing Nita', paySupport: false });

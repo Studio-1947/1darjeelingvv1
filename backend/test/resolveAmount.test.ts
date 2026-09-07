@@ -16,7 +16,7 @@ function err(result: ReturnType<typeof resolveAmount>) {
   return result.error;
 }
 
-describe('resolveAmount — fixed-price flows', () => {
+describe('resolveAmount  fixed-price flows', () => {
   it('takes the amount from the server-side map', () => {
     expect(ok(resolveAmount('provider_registration', {}))).toBe(AMOUNTS.provider_registration);
     expect(ok(resolveAmount('booking_commission', {}))).toBe(AMOUNTS.booking_commission);
@@ -41,7 +41,7 @@ describe('resolveAmount — fixed-price flows', () => {
   });
 });
 
-describe('resolveAmount — donation', () => {
+describe('resolveAmount  donation', () => {
   it('accepts a valid client-supplied amount', () => {
     expect(ok(resolveAmount('donation', { amount: 50000 }))).toBe(50000);
   });
@@ -62,7 +62,7 @@ describe('resolveAmount — donation', () => {
     expect(err(resolveAmount('donation', { amount: undefined })).status).toBe(400);
   });
 
-  it('rejects a non-integer amount — paise are indivisible', () => {
+  it('rejects a non-integer amount  paise are indivisible', () => {
     expect(err(resolveAmount('donation', { amount: 1050.5 })).status).toBe(400);
   });
 
@@ -91,7 +91,7 @@ describe('resolveAmount — donation', () => {
     expect(err(resolveAmount('donation', { amount: 1 })).detail).toMatch(/10 and .*1,?00,?000|1000 and 10000000/);
   });
 
-  it('is not present in the AMOUNTS map — a donation has no fixed price', () => {
+  it('is not present in the AMOUNTS map  a donation has no fixed price', () => {
     expect(AMOUNTS.donation).toBeUndefined();
   });
 

@@ -330,7 +330,7 @@ export default function CategoryFilterBar({
 
       {/* Mobile Filter Modal Sheet */}
       {showMobileFilters && (
-        <div className="fixed inset-0 z-50 flex flex-col justify-end sm:hidden">
+        <div className="fixed inset-0 z-[60] flex flex-col justify-end sm:hidden">
           <div
             className="fixed inset-0 bg-black/60 backdrop-blur-sm"
             onClick={() => setShowMobileFilters(false)}

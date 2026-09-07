@@ -1,5 +1,5 @@
 // Suppresses a benign DataCloneError some browsers raise when structured-cloning a
-// PerformanceServerTiming entry. Cosmetic — it only stops the console filling with an error the
+// PerformanceServerTiming entry. Cosmetic  it only stops the console filling with an error the
 // app cannot act on.
 //
 // This lives in its own file rather than inline in index.html so that the Content-Security-Policy

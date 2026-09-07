@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { X, Share2, Plus, Trash2, Check, MapPin, Sparkles } from 'lucide-react';
+import { X, Share2, Plus, Trash2, Check, MapPin, Calendar } from 'lucide-react';
 import { shareLink } from '@/lib/share';
 
 interface ItineraryDay {
@@ -139,7 +139,7 @@ export default function TripPlannerModal({ open, onClose, savedTitles = [] }: Tr
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--line)] bg-[#14201A] text-white">
           <div className="flex items-center gap-2">
-            <Sparkles size={20} className="text-gold" />
+            <Calendar size={20} className="text-gold" />
             <div>
               <h3 id="trip-planner-title" className="font-display font-extrabold text-lg">
                 {t('planner.title', 'Himalayan Trip Itinerary Builder')}

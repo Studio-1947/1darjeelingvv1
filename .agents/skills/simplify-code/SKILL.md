@@ -6,7 +6,7 @@ allowed-tools: Read, Write, Edit, Grep, Glob
 effort: medium
 ---
 
-# Simplify Code — Reduce Unnecessary Complexity
+# Simplify Code  Reduce Unnecessary Complexity
 
 > The best code is the code you don't have to write. The second best is the code anyone can read.
 

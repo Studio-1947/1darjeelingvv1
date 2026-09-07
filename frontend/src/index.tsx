@@ -1,5 +1,5 @@
 // First import so error reporting is listening before anything can throw. Inert unless the build
-// was given REACT_APP_SENTRY_DSN — see observability.js.
+// was given REACT_APP_SENTRY_DSN  see observability.js.
 import "@/observability";
 import React from "react";
 import ReactDOM from "react-dom/client";

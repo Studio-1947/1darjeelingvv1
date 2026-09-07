@@ -1,4 +1,4 @@
-# WhatsApp OTP with Interakt — implementation reference
+# WhatsApp OTP with Interakt  implementation reference
 
 This is the reusable reference implementation for passwordless WhatsApp sign-in.
 It uses Interakt's Template Send API for a Meta-approved **Authentication**

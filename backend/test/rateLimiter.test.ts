@@ -9,7 +9,7 @@ const uniquePrefix = () => `unit_test_${prefixCounter++}`;
 
 /**
  * Mini app standing in for the production topology. Supertest connects over loopback, so the
- * socket address is 127.0.0.1 and X-Forwarded-For supplies the hops in front of it — the same
+ * socket address is 127.0.0.1 and X-Forwarded-For supplies the hops in front of it  the same
  * shape Express sees behind system Nginx -> nginx container.
  */
 function makeApp(opts: { trustProxy: number | boolean; limit?: number }) {
@@ -35,7 +35,7 @@ describe('rateLimiter client attribution', () => {
     expect((await request(app).get('/limited').set('X-Forwarded-For', asClient('203.0.113.5'))).status).toBe(200);
     expect((await request(app).get('/limited').set('X-Forwarded-For', asClient('203.0.113.5'))).status).toBe(429);
 
-    // Client B must be unaffected — this is what breaks in production without trust proxy.
+    // Client B must be unaffected  this is what breaks in production without trust proxy.
     const otherClient = await request(app).get('/limited').set('X-Forwarded-For', asClient('198.51.100.9'));
     expect(otherClient.status).toBe(200);
   });
@@ -54,7 +54,7 @@ describe('rateLimiter client attribution', () => {
     const spoof = (n: number) => request(app).get('/limited').set('X-Forwarded-For', `10.0.0.${n}, 203.0.113.99, 10.10.0.1`);
 
     expect((await spoof(1)).status).toBe(200);
-    // A different forged prefix must NOT buy a fresh bucket — same real client.
+    // A different forged prefix must NOT buy a fresh bucket  same real client.
     expect((await spoof(2)).status).toBe(429);
   });
 

@@ -1,4 +1,4 @@
-# Reference only — this is NOT used by Docker or docker-compose.in.yml.
+# Reference only  this is NOT used by Docker or docker-compose.in.yml.
 # It's the file to create on the VPS's system Nginx (not in this repo's
 # containers) at /etc/nginx/sites-available/1darjeeling.in, matching the exact
 # convention already used for every other app on this box (compare
@@ -13,7 +13,7 @@
 #
 # That last command edits this file in place to add the SSL block and the
 # HTTP->HTTPS redirect, exactly like it already did for the other certs on this
-# VPS — nothing more to do after that; Certbot's existing renewal timer covers
+# VPS  nothing more to do after that; Certbot's existing renewal timer covers
 # this cert too. DNS for 1darjeeling.in must resolve to this VPS before certbot
 # runs (see deploy/VPS-RUNBOOK.md).
 

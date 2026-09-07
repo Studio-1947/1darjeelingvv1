@@ -273,8 +273,8 @@ router.get('/admin/users', authenticateToken, requireAdmin, async (req: Request,
     providerStatus: schema.providers.status,
     businessName: schema.providers.businessName,
   })
-  .from(schema.users)
-  .leftJoin(schema.providers, eq(schema.users.id, schema.providers.userId));
+    .from(schema.users)
+    .leftJoin(schema.providers, eq(schema.users.id, schema.providers.userId));
   res.json({ items });
 });
 
@@ -361,7 +361,7 @@ router.delete('/admin/users/:id', authenticateToken, requireAdmin, async (req: R
  */
 // The real provider lifecycle: pending_payment (onboarded, awaiting the ₹99 registration
 // payment) -> active (paid, listings publish, KYC uploads accepted) -> suspended (an admin
-// has pulled the provider — the frontend's suspend action (Admin.tsx) sends exactly this
+// has pulled the provider  the frontend's suspend action (Admin.tsx) sends exactly this
 // value). All three must be allowed here or the admin console's suspend/reinstate actions 400.
 const ALLOWED_PROVIDER_STATUSES = ['pending_payment', 'active', 'suspended'] as const;
 
@@ -429,7 +429,7 @@ router.get('/admin/payments', authenticateToken, requireAdmin, async (req: Reque
   res.json({ items });
 });
 
-// GET /admin/kyc?status=pending&limit=50&offset=0 — page through KYC documents with
+// GET /admin/kyc?status=pending&limit=50&offset=0  page through KYC documents with
 // provider/user context. `status` is optional (omit for all statuses); `limit`/`offset`
 // default to a sane page size and are capped so a caller can't force an unbounded scan.
 const KYC_LIST_DEFAULT_LIMIT = 50;
@@ -442,7 +442,7 @@ function parsePositiveInt(raw: unknown, fallback: number, max?: number): number 
   return max != null ? Math.min(n, max) : n;
 }
 
-/** Parses an offset query param — unlike limit, 0 is a valid, meaningful value. */
+/** Parses an offset query param  unlike limit, 0 is a valid, meaningful value. */
 function parseNonNegativeInt(raw: unknown, fallback: number): number {
   const n = parseInt(String(raw), 10);
   if (!Number.isFinite(n) || n < 0) return fallback;
@@ -459,7 +459,7 @@ router.get('/admin/kyc', authenticateToken, requireAdmin, async (req: Request, r
   const whereClause = statusFilter ? eq(schema.kycDocuments.status, statusFilter) : undefined;
 
   // Ordered explicitly (newest upload first) so that paging is stable and non-overlapping
-  // across requests — without an ORDER BY, row order across separate queries is not
+  // across requests  without an ORDER BY, row order across separate queries is not
   // guaranteed, which would make limit/offset paging unreliable.
   const [rows, totalRows] = await Promise.all([
     db.select().from(schema.kycDocuments).where(whereClause).orderBy(desc(schema.kycDocuments.uploadedAt), schema.kycDocuments.id).limit(limit).offset(offset),
@@ -498,7 +498,7 @@ router.get('/admin/kyc', authenticateToken, requireAdmin, async (req: Request, r
   res.json({ documents, total, limit, offset });
 });
 
-// POST /admin/kyc/:id/review — approve or reject a document
+// POST /admin/kyc/:id/review  approve or reject a document
 router.post('/admin/kyc/:id/review', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
   const { decision, reason } = req.body || {};
   if (decision !== 'approve' && decision !== 'reject') {
@@ -540,7 +540,7 @@ router.post('/admin/kyc/:id/review', authenticateToken, requireAdmin, async (req
  *     description: >
  *       The operator's work queue. A refund runs on paths that have already taken the money and
  *       already committed the cancellation, so it cannot fail the request when Razorpay is
- *       unreachable — it records the debt instead, and this is where those land. An empty list
+ *       unreachable  it records the debt instead, and this is where those land. An empty list
  *       means the platform is holding nothing it owes.
  *     tags: [Admin]
  *     security: [{ bearerAuth: [] }]
@@ -548,7 +548,7 @@ router.post('/admin/kyc/:id/review', authenticateToken, requireAdmin, async (req
  *       200: { description: Payments charged but not returned }
  */
 router.get('/admin/refunds/pending', authenticateToken, requireAdmin, async (_req: Request, res: Response) => {
-  // Raw rows, matching GET /admin/payments above — the admin console reads camelCase everywhere,
+  // Raw rows, matching GET /admin/payments above  the admin console reads camelCase everywhere,
   // and a second naming convention on a sibling endpoint is how a tab ends up rendering
   // `undefined` for every column.
   const items = await listUnreturnedPayments();
@@ -561,7 +561,7 @@ router.get('/admin/refunds/pending', authenticateToken, requireAdmin, async (_re
  *   post:
  *     summary: Refund a settled payment
  *     description: >
- *       Idempotent — a payment that is already refunded answers 200 with refunded=false and is
+ *       Idempotent  a payment that is already refunded answers 200 with refunded=false and is
  *       not sent to the gateway twice. Used both to retry a failed automatic refund and to return
  *       money for a case the app has no rule for (a goodwill refund, a disputed charge).
  *     tags: [Admin]

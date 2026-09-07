@@ -54,7 +54,7 @@ describe('double-booking', () => {
     const { token: guestB } = await registerUser({ name: 'Guest B' });
 
     // Both guests get a booking row for overlapping nights. The hold window would normally stop
-    // the second one, so it is expired first — this reproduces the exact race the hold cannot
+    // the second one, so it is expired first  this reproduces the exact race the hold cannot
     // catch: two checkouts that were both legitimately open when they started.
     const bookingA = await createBooking(guestA, listing.id, '2027-03-01', '2027-03-05');
     await expireHold(bookingA);
@@ -90,7 +90,7 @@ describe('double-booking', () => {
     const [payment] = await db.select().from(schema.payments)
       .where(eq(schema.payments.orderId, payB.orderId)).limit(1);
 
-    // Charged, then given back — not silently kept.
+    // Charged, then given back  not silently kept.
     expect(payment.status).toBe('refunded');
     expect(payment.refundAmount).toBe(payment.amount);
     expect(payment.refundReason).toContain('double-booked');
@@ -124,7 +124,7 @@ describe('booking notifications', () => {
 
   it('says why nobody could be told rather than leaving it blank', async () => {
     // This listing is admin-authored with a provider id that names no provider and no user, so
-    // there is no host phone number to reach. The booking must still confirm — and must say so.
+    // there is no host phone number to reach. The booking must still confirm  and must say so.
     const listing = await createListing({ title: 'Hostless Homestay' });
     const { token } = await registerUser({ name: 'Guest Without Host' });
     const bookingId = await createBooking(token, listing.id, '2027-07-01', '2027-07-03');
@@ -155,7 +155,7 @@ describe('refunds', () => {
     expect(payment.userId).toBe(user.id);
   });
 
-  it('is idempotent — a second cancel does not refund twice', async () => {
+  it('is idempotent  a second cancel does not refund twice', async () => {
     const listing = await createListing({ title: 'Double Cancel Homestay' });
     const { token } = await registerUser({ name: 'Twice Cancelling Guest' });
     const bookingId = await createBooking(token, listing.id, '2027-09-01', '2027-09-04');
@@ -167,7 +167,7 @@ describe('refunds', () => {
     expect(second.status).toBe(200);
     const [payment] = await db.select().from(schema.payments).where(eq(schema.payments.orderId, orderId)).limit(1);
     expect(payment.status).toBe('refunded');
-    // One refund reference, written once — a second gateway call would have overwritten it.
+    // One refund reference, written once  a second gateway call would have overwritten it.
     expect(payment.refundId).toBe(`mock_rfnd_${orderId}`);
   });
 

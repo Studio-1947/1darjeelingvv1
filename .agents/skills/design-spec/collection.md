@@ -10,7 +10,7 @@
 - [**Ollama**](https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/ollama/DESIGN.md) - Run LLMs locally. Terminal-first, monochrome simplicity
 - [**OpenCode AI**](https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/opencode.ai/DESIGN.md) - AI coding platform. Developer-centric dark theme
 - [**Replicate**](https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/replicate/DESIGN.md) - Run ML models via API. Clean white canvas, code-forward
-- [**Runway**](https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/runwayml/DESIGN.md) - AI creative-tools platform with an editorial film-festival aesthetic — cinematic dark heroes, paper-white reading bands, single proprietary sans, and pure black pill CTAs.
+- [**Runway**](https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/runwayml/DESIGN.md) - AI creative-tools platform with an editorial film-festival aesthetic  cinematic dark heroes, paper-white reading bands, single proprietary sans, and pure black pill CTAs.
 - [**Together AI**](https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/together.ai/DESIGN.md) - Open-source AI infrastructure. Technical, blueprint-style design
 - [**VoltAgent**](https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/voltagent/DESIGN.md) - AI agent framework. Void-black canvas, emerald accent, terminal-native
 - [**xAI**](https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/x.ai/DESIGN.md) - Elon Musk's AI lab. Stark monochrome, futuristic minimalism
@@ -32,7 +32,7 @@
 - [**HashiCorp**](https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/hashicorp/DESIGN.md) - Infrastructure automation. Enterprise-clean, black and white
 - [**MongoDB**](https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/mongodb/DESIGN.md) - Document database. Green leaf branding, developer documentation focus
 - [**PostHog**](https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/posthog/DESIGN.md) - Product analytics. Playful hedgehog branding, developer-friendly dark UI
-- [**Sanity**](https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/sanity/DESIGN.md) - Headless content platform with a dark-first editorial marketing surface — 112px display type, IBM Plex Mono technical eyebrows, and a single coral-red accent reserved for the highest-priority CTA.
+- [**Sanity**](https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/sanity/DESIGN.md) - Headless content platform with a dark-first editorial marketing surface  112px display type, IBM Plex Mono technical eyebrows, and a single coral-red accent reserved for the highest-priority CTA.
 - [**Sentry**](https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/sentry/DESIGN.md) - Error monitoring. Dark dashboard, data-dense, pink-purple accent
 - [**Supabase**](https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/supabase/DESIGN.md) - Open-source Firebase alternative. Dark emerald theme, code-first
 
@@ -100,7 +100,7 @@
 
 ### Retro Web · DESIGN.md Nostalgia
 
-A Saturday series — DESIGN.md files extracted from the web of the 1990s. Drop one in and tell your AI agent to build a period-accurate vintage UI.
+A Saturday series  DESIGN.md files extracted from the web of the 1990s. Drop one in and tell your AI agent to build a period-accurate vintage UI.
 
 - [**Dell (1996)**](https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/dell-1996/DESIGN.md) - Catalog-era enterprise web. Literal black page frame, flat color-block "ribbon cards", chunky Helvetica-Black titles over Times Roman body, and hand-cut GIF stickers (NEW! bursts, award seals, beveled product photos).
 - [**Nintendo.com (2001)**](https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/nintendo-2001/DESIGN.md) - Y2K "console chrome" web. Brushed-periwinkle beveled metal panels, a halftone-dotted carbon nav glowing amber, outlined Arial-Black box-art wordmarks over circuit-board hero fields, and a pixel Mario welcome bubble.

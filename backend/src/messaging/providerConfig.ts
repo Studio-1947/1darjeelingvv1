@@ -21,7 +21,7 @@ export function requireCredentials(provider: string, env: NodeJS.ProcessEnv, key
 
 /**
  * A deployment that means to notify people must fail at BOOT rather than at the first confirmed
- * booking — the same reasoning as the Razorpay checks in config.ts. Only demanded when
+ * booking  the same reasoning as the Razorpay checks in config.ts. Only demanded when
  * notifications are actually switched on, so a provider configured for login codes alone does
  * not have to register templates it will never send.
  *

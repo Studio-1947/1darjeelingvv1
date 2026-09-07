@@ -113,7 +113,12 @@ export function useBookingFlow(item: any, id: string) {
         next.check_out = t('booking.dates_order');
       }
     }
-    if (!(Number(form.guests) >= 1)) next.guests = t('booking.guests_required');
+    const maxGuests = item?.type === 'driver' ? (item?.extras?.seats || 6) : (item?.guests || item?.extras?.capacity || 10);
+    if (!(Number(form.guests) >= 1)) {
+      next.guests = t('booking.guests_required');
+    } else if (Number(form.guests) > maxGuests) {
+      next.guests = t('booking.guests_max', { max: maxGuests, defaultValue: `Maximum ${maxGuests} ${item?.type === 'driver' ? 'passengers' : 'guests'} allowed for this booking` });
+    }
 
     setErrors(next);
     if (Object.keys(next).length === 0) return true;

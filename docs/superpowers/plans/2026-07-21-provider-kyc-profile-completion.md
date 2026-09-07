@@ -12,51 +12,51 @@
 
 - **Backend package manager:** `npm` in `backend/`. Public frontend uses **Yarn** (`corepack yarn@1.22.22`), admin uses `npm`.
 - **KYC is optional and never blocks** onboarding, listing visibility, bookings, or payments. It only awards a "Verified" badge.
-- **Tourist experience is unchanged** — no KYC, no forced profile step.
+- **Tourist experience is unchanged**  no KYC, no forced profile step.
 - **Sensitive KYC files must never be served from a public URL.** They live in a private bucket with no public-read policy and are streamed only to the owning provider or an admin.
 - **Allowed KYC mime types:** `image/jpeg`, `image/png`, `application/pdf`. **Max size:** 5 MB (decoded).
 - **Existing `POST /listings/upload` is NOT reused for KYC** and is left unchanged.
 - **Doc-requirement matrix is the approved v1 set** (see spec §3). It lives in ONE shared module imported everywhere.
 - **Design palette:** Pine Green `#2C5E3B`, Prayer-Flag Red `#C42E2E`, Golden Yellow `#F0B90B`.
 - Spec: `docs/superpowers/specs/2026-07-21-provider-kyc-profile-completion-design.md`.
-- Run backend tests with `npm test` from `backend/` (requires the test DB — `npm run test:setup` once).
+- Run backend tests with `npm test` from `backend/` (requires the test DB  `npm run test:setup` once).
 
 ---
 
 ## File Structure
 
 **Backend (create):**
-- `backend/src/lib/kycRequirements.ts` — per-type doc matrix + helpers (pure).
-- `backend/src/lib/profileCompletion.ts` — completion % + checklist + kycStatus rollup (pure).
-- `backend/src/routes/kyc.ts` — provider-facing KYC endpoints (upload/list/delete/file/profile).
+- `backend/src/lib/kycRequirements.ts`  per-type doc matrix + helpers (pure).
+- `backend/src/lib/profileCompletion.ts`  completion % + checklist + kycStatus rollup (pure).
+- `backend/src/routes/kyc.ts`  provider-facing KYC endpoints (upload/list/delete/file/profile).
 - `backend/test/kycRequirements.test.ts`, `backend/test/profileCompletion.test.ts`, `backend/test/kyc.test.ts`, `backend/test/adminKyc.test.ts`.
 
 **Backend (modify):**
-- `backend/src/schema.ts` — add `kycDocuments` table + `providers.kycStatus`.
-- `backend/src/lib/s3.ts` — add private-bucket upload + object-stream helpers.
-- `backend/src/config.ts` — add `MINIO_KYC_BUCKET`.
-- `backend/src/app.ts` — mount the KYC router.
-- `backend/src/routes/admin.ts` — add admin KYC list + review endpoints.
-- `backend/test/helpers.ts` — allow choosing `business_type` when onboarding a test provider.
-- `docker-compose.yml`, `.env.production.example` — add `MINIO_KYC_BUCKET`.
+- `backend/src/schema.ts`  add `kycDocuments` table + `providers.kycStatus`.
+- `backend/src/lib/s3.ts`  add private-bucket upload + object-stream helpers.
+- `backend/src/config.ts`  add `MINIO_KYC_BUCKET`.
+- `backend/src/app.ts`  mount the KYC router.
+- `backend/src/routes/admin.ts`  add admin KYC list + review endpoints.
+- `backend/test/helpers.ts`  allow choosing `business_type` when onboarding a test provider.
+- `docker-compose.yml`, `.env.production.example`  add `MINIO_KYC_BUCKET`.
 
 **Public frontend (create):**
-- `frontend/src/lib/kyc.ts` — API calls + shared TS types.
+- `frontend/src/lib/kyc.ts`  API calls + shared TS types.
 - `frontend/src/components/provider/ProfileCompletionBar.tsx`
 - `frontend/src/components/provider/VerifiedBadge.tsx`
 - `frontend/src/components/provider/dashboard/KycSection.tsx`
 
 **Public frontend (modify):**
-- `frontend/src/pages/ProviderDashboard.tsx` — add "Complete your profile" card + KycSection on the Business Profile tab.
-- `frontend/src/components/ListingCard.tsx`, `frontend/src/pages/ListingDetail.tsx` — show VerifiedBadge.
-- `frontend/src/locales/{en,bn,hi,ne}.json` — new strings.
+- `frontend/src/pages/ProviderDashboard.tsx`  add "Complete your profile" card + KycSection on the Business Profile tab.
+- `frontend/src/components/ListingCard.tsx`, `frontend/src/pages/ListingDetail.tsx`  show VerifiedBadge.
+- `frontend/src/locales/{en,bn,hi,ne}.json`  new strings.
 
 **Admin frontend (create/modify):**
 - `frontend-admin/src/pages/KycReview.tsx` (create) + wire a nav entry/route in `frontend-admin/src/App.tsx`.
 
 ---
 
-## Phase 1 — Backend pure logic (no DB, no HTTP)
+## Phase 1  Backend pure logic (no DB, no HTTP)
 
 ### Task 1: Shared KYC requirements module
 
@@ -117,7 +117,7 @@ describe('kycRequirements', () => {
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `cd backend && npx vitest run test/kycRequirements.test.ts`
-Expected: FAIL — cannot find module `../src/lib/kycRequirements`.
+Expected: FAIL  cannot find module `../src/lib/kycRequirements`.
 
 - [ ] **Step 3: Write the implementation**
 
@@ -126,7 +126,7 @@ Create `backend/src/lib/kycRequirements.ts`:
 ```ts
 export type DocRequirement = { docType: string; label: string; required: boolean };
 
-// v1 matrix — approved in the design spec (§3). Single source of truth for
+// v1 matrix  approved in the design spec (§3). Single source of truth for
 // backend validation, completion math, and the frontend checklist.
 const IDENTITY: DocRequirement[] = [
   { docType: 'aadhaar', label: 'Aadhaar card', required: true },
@@ -287,7 +287,7 @@ describe('computeCompletion', () => {
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `cd backend && npx vitest run test/profileCompletion.test.ts`
-Expected: FAIL — cannot find module `../src/lib/profileCompletion`.
+Expected: FAIL  cannot find module `../src/lib/profileCompletion`.
 
 - [ ] **Step 3: Write the implementation**
 
@@ -409,7 +409,7 @@ git commit -m "feat(kyc): add profile-completion and kycStatus computation"
 
 ---
 
-## Phase 2 — Schema, storage, and config
+## Phase 2  Schema, storage, and config
 
 ### Task 3: Add `kyc_documents` table and `providers.kycStatus`
 
@@ -437,7 +437,7 @@ export const kycDocuments = pgTable('kyc_documents', {
   id: text('id').primaryKey(),
   providerId: text('provider_id').references(() => providers.id, { onDelete: 'cascade' }).notNull(),
   docType: text('doc_type').notNull(),
-  fileKey: text('file_key').notNull(),        // object key in the PRIVATE bucket — never a public URL
+  fileKey: text('file_key').notNull(),        // object key in the PRIVATE bucket  never a public URL
   contentType: text('content_type').notNull(),
   status: text('status').notNull(),           // 'pending' | 'approved' | 'rejected'
   rejectionReason: text('rejection_reason'),
@@ -520,8 +520,8 @@ git commit -m "feat(kyc): configure private KYC bucket name"
 **Interfaces:**
 - Consumes: `MINIO_KYC_BUCKET` from config.
 - Produces:
-  - `uploadPrivate(buffer: Buffer, key: string, contentType: string): Promise<string>` — uploads to the private bucket, returns the **object key** (not a URL).
-  - `getPrivateObject(key: string): Promise<{ stream: Readable; contentType?: string }>` — fetches an object for streaming.
+  - `uploadPrivate(buffer: Buffer, key: string, contentType: string): Promise<string>`  uploads to the private bucket, returns the **object key** (not a URL).
+  - `getPrivateObject(key: string): Promise<{ stream: Readable; contentType?: string }>`  fetches an object for streaming.
 
 - [ ] **Step 1: Extend `s3.ts`**
 
@@ -558,7 +558,7 @@ Append to the end of `backend/src/lib/s3.ts`:
 ```ts
 let kycBucketBootstrapped = false;
 
-// The KYC bucket is created WITHOUT any public-read policy — objects are only
+// The KYC bucket is created WITHOUT any public-read policy  objects are only
 // reachable through the authorized backend proxy, never a public URL.
 async function bootstrapKycBucket() {
   if (kycBucketBootstrapped) return;
@@ -614,9 +614,9 @@ git commit -m "feat(kyc): add private-bucket upload and object-stream helpers"
 
 ---
 
-## Phase 3 — Backend routes
+## Phase 3  Backend routes
 
-### Task 6: Test helper — onboard a provider of a chosen type
+### Task 6: Test helper  onboard a provider of a chosen type
 
 **Files:**
 - Modify: `backend/test/helpers.ts`
@@ -661,7 +661,7 @@ git commit -m "test(kyc): let onboardActiveProvider pick a business type"
 
 ---
 
-### Task 7: Provider KYC router — profile, list, upload, delete, file
+### Task 7: Provider KYC router  profile, list, upload, delete, file
 
 **Files:**
 - Create: `backend/src/routes/kyc.ts`
@@ -783,7 +783,7 @@ describe('provider KYC', () => {
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `cd backend && npx vitest run test/kyc.test.ts`
-Expected: FAIL — routes return 404 (router not mounted yet).
+Expected: FAIL  routes return 404 (router not mounted yet).
 
 - [ ] **Step 3: Write the router**
 
@@ -844,7 +844,7 @@ export async function recomputeKycStatus(providerId: string): Promise<string> {
   return kycStatus;
 }
 
-// GET /providers/me/profile — profile + completion + checklist + kycStatus
+// GET /providers/me/profile  profile + completion + checklist + kycStatus
 router.get('/me/profile', authenticateToken, async (req: Request, res: Response) => {
   const provider = await ownActiveProvider(req.user.id);
   if (!provider) return res.status(404).json({ detail: 'No active provider profile' });
@@ -870,7 +870,7 @@ router.get('/me/profile', authenticateToken, async (req: Request, res: Response)
   });
 });
 
-// GET /providers/me/kyc — list own docs
+// GET /providers/me/kyc  list own docs
 router.get('/me/kyc', authenticateToken, async (req: Request, res: Response) => {
   const provider = await ownActiveProvider(req.user.id);
   if (!provider) return res.status(404).json({ detail: 'No active provider profile' });
@@ -878,7 +878,7 @@ router.get('/me/kyc', authenticateToken, async (req: Request, res: Response) => 
   res.json({ documents: docs.map(docOut) });
 });
 
-// POST /providers/me/kyc — upload/replace a doc
+// POST /providers/me/kyc  upload/replace a doc
 router.post('/me/kyc', authenticateToken, kycJson, async (req: Request, res: Response) => {
   const provider = await ownActiveProvider(req.user.id);
   if (!provider) return res.status(403).json({ detail: 'Only active providers can upload KYC documents' });
@@ -929,7 +929,7 @@ router.post('/me/kyc', authenticateToken, kycJson, async (req: Request, res: Res
   res.json({ document: docOut(doc as any) });
 });
 
-// DELETE /providers/me/kyc/:docType — owner removes a doc
+// DELETE /providers/me/kyc/:docType  owner removes a doc
 router.delete('/me/kyc/:docType', authenticateToken, async (req: Request, res: Response) => {
   const provider = await ownActiveProvider(req.user.id);
   if (!provider) return res.status(403).json({ detail: 'Only active providers can manage KYC documents' });
@@ -939,7 +939,7 @@ router.delete('/me/kyc/:docType', authenticateToken, async (req: Request, res: R
   res.json({ ok: true });
 });
 
-// GET /providers/kyc/:id/file — stream a private doc to owner or admin
+// GET /providers/kyc/:id/file  stream a private doc to owner or admin
 router.get('/kyc/:id/file', authenticateToken, async (req: Request, res: Response) => {
   const [doc] = await db.select().from(schema.kycDocuments).where(eq(schema.kycDocuments.id, req.params.id)).limit(1);
   if (!doc) return res.status(404).json({ detail: 'Not found' });
@@ -1071,7 +1071,7 @@ describe('admin KYC review', () => {
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `cd backend && npx vitest run test/adminKyc.test.ts`
-Expected: FAIL — `/api/admin/kyc` returns 404.
+Expected: FAIL  `/api/admin/kyc` returns 404.
 
 - [ ] **Step 3: Implement the endpoints**
 
@@ -1084,7 +1084,7 @@ import { recomputeKycStatus } from './kyc';
 Add these routes to the router (before `export default router;`):
 
 ```ts
-// GET /admin/kyc?status=pending — list KYC documents with provider/user context
+// GET /admin/kyc?status=pending  list KYC documents with provider/user context
 router.get('/admin/kyc', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
   const statusFilter = typeof req.query.status === 'string' ? req.query.status : undefined;
   const rows = await db.select().from(schema.kycDocuments);
@@ -1114,7 +1114,7 @@ router.get('/admin/kyc', authenticateToken, requireAdmin, async (req: Request, r
   res.json({ documents });
 });
 
-// POST /admin/kyc/:id/review — approve or reject a document
+// POST /admin/kyc/:id/review  approve or reject a document
 router.post('/admin/kyc/:id/review', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
   const { decision, reason } = req.body || {};
   if (decision !== 'approve' && decision !== 'reject') {
@@ -1158,7 +1158,7 @@ git commit -m "feat(kyc): admin KYC listing and approve/reject review endpoints"
 
 ---
 
-## Phase 4 — Public frontend
+## Phase 4  Public frontend
 
 ### Task 9: KYC API client + types
 
@@ -1335,7 +1335,7 @@ git commit -m "feat(kyc): profile completion bar and verified badge components"
 
 **Interfaces:**
 - Consumes: `getMyProfile`, `uploadKycDoc`, `deleteKycDoc`, `KycProfile`, `ChecklistItem` from `@/lib/kyc`; `ProfileCompletionBar`.
-- Produces: `KycSection({ onProfileChange }: { onProfileChange?: (p: KycProfile) => void })` — self-contained; fetches its own data.
+- Produces: `KycSection({ onProfileChange }: { onProfileChange?: (p: KycProfile) => void })`  self-contained; fetches its own data.
 
 - [ ] **Step 1: Write the component**
 
@@ -1414,7 +1414,7 @@ export default function KycSection({ onProfileChange }: { onProfileChange?: (p: 
 
       <div>
         <h3 className="font-bold text-ink mb-1">Verification (KYC)</h3>
-        <p className="text-xs text-ink-soft mb-3">Optional — upload these to earn a Verified badge. JPEG, PNG, or PDF, up to 5&nbsp;MB.</p>
+        <p className="text-xs text-ink-soft mb-3">Optional  upload these to earn a Verified badge. JPEG, PNG, or PDF, up to 5&nbsp;MB.</p>
         <ul className="space-y-3">
           {kycItems.map(item => {
             const m = stateMeta[item.state];
@@ -1619,7 +1619,7 @@ Add a `kyc` block (place alongside existing top-level sections):
   "profileCompletion": "Profile completion",
   "completeYourListing": "Complete your listing",
   "verification": "Verification (KYC)",
-  "verificationHelp": "Optional — upload these to earn a Verified badge. JPEG, PNG, or PDF, up to 5 MB.",
+  "verificationHelp": "Optional  upload these to earn a Verified badge. JPEG, PNG, or PDF, up to 5 MB.",
   "verified": "Verified",
   "inReview": "In review",
   "rejected": "Rejected",
@@ -1651,7 +1651,7 @@ git commit -m "feat(kyc): add KYC i18n strings across locales"
 
 ---
 
-## Phase 5 — Admin app
+## Phase 5  Admin app
 
 ### Task 15: Admin KYC review page
 
@@ -1737,7 +1737,7 @@ export default function KycReview() {
           <div key={d.id} className="flex items-center justify-between border rounded-lg p-3">
             <div>
               <div className="font-semibold">{d.business_name} · {d.business_type}</div>
-              <div className="text-sm text-gray-600">{d.owner_name} — {d.doc_type}</div>
+              <div className="text-sm text-gray-600">{d.owner_name}  {d.doc_type}</div>
               <button className="text-blue-600 text-sm underline" onClick={() => openFile(d.file_url)}>View document</button>
             </div>
             <div className="flex gap-2">
@@ -1782,7 +1782,7 @@ git commit -m "feat(kyc): admin KYC review page"
 
 ---
 
-## Phase 6 — Full verification & docs
+## Phase 6  Full verification & docs
 
 ### Task 16: End-to-end verification and doc updates
 
@@ -1837,6 +1837,6 @@ git commit -m "docs(kyc): document KYC tables, endpoints, and env in PRD and REA
 - §10 out-of-scope respected (no gating, no tourist KYC, `/listings/upload` untouched). ✓
 - §11 open items: blend weights fixed in Task 2; verified = required-only (Task 2 rollup). ✓
 
-**Placeholder scan:** No TBD/TODO; every code step has full code. Tasks 12, 13-step-2, 15-step-3 reference reading an existing file first because exact insertion points are file-specific — each still specifies the exact code to insert and where. ✓
+**Placeholder scan:** No TBD/TODO; every code step has full code. Tasks 12, 13-step-2, 15-step-3 reference reading an existing file first because exact insertion points are file-specific  each still specifies the exact code to insert and where. ✓
 
 **Type consistency:** `computeCompletion` signature matches between Task 2 (def) and Task 7 (call). `recomputeKycStatus` defined in Task 7, imported in Task 8. `KycProfile`/`ChecklistItem`/`KycDoc` defined in Task 9, consumed in Tasks 11–12. `provider_verified` produced in Task 13-step-2, consumed in 13-steps 3–4. Response field names (`doc_type`, `completion_percent`, `kyc_status`, `checklist`, `documents`) consistent across backend routes, tests, and frontend client. ✓

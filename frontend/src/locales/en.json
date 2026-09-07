@@ -40,12 +40,13 @@
     "delete_account": "Delete Account"
   },
   "support": {
-    "title": "A small token to keep 1 Darjeeling running",
-    "amount_line": "₹12 for the year — a one-time platform support & convenience fee that goes toward maintenance, hosting and building costs.",
-    "body": "That's ₹1 a month. It keeps the app running for travellers and keeps listings free for the small homestays, drivers and cafés on it.",
-    "cta": "Pay ₹12 · valid 1 year",
-    "reassurance": "Valid for one year. Nothing auto-charges — we'll ask you again next year.",
-    "skip": "Not now — browse without an account",
+    "eyebrow": "the invitation",
+    "title": "Come into the aangan",
+    "amount_line": "A year of homestays, rides, cafés and quiet corners, from people who actually live in the hills.",
+    "body": "₹12 keeps it running for the year. Listings stay free for the families and small businesses on it.",
+    "cta": "Step in · ₹12 for the year",
+    "reassurance": "Valid for one year. Nothing auto-charges.",
+    "skip": "Not now, just browsing",
     "modal_title": "Platform support fee",
     "modal_duration": "· 1 year",
     "privacy_link": "privacy policy",
@@ -53,12 +54,12 @@
   },
   "donate": {
     "title": "Donate for good",
-    "lead": "Give what you like — every rupee goes into keeping 1 Darjeeling running and its listings free for small local businesses.",
+    "lead": "Give what you like  every rupee goes into keeping 1 Darjeeling running and its listings free for small local businesses.",
     "choose": "Choose an amount",
     "custom": "Or enter your own",
     "cta": "Donate ₹{{amount}}",
-    "note": "A one-off gift. It buys nothing and unlocks nothing — it just helps.",
-    "thanks": "Thank you — ₹{{amount}} received.",
+    "note": "A one-off gift. It buys nothing and unlocks nothing  it just helps.",
+    "thanks": "Thank you  ₹{{amount}} received.",
     "invalid": "Enter an amount between ₹10 and ₹1,00,000.",
     "error": "Payment could not be completed. Please try again.",
     "modal_title": "Donation",
@@ -82,7 +83,7 @@
     "biodiversity": "Biodiversity"
   },
   "search": {
-    "placeholder": "Search — place, shop or event"
+    "placeholder": "Search  place, shop or event"
   },
   "common": {
     "book_now": "Reserve now",
@@ -281,7 +282,7 @@
   },
   "responsible": {
     "title": "Responsible Tourism",
-    "lead": "Darjeeling is a fragile Himalayan ecosystem — 2,000 metres of cloud forest, tea terraces and 600 bird species, held together by the families who live in it. Six commitments keep it that way.",
+    "lead": "Darjeeling is a fragile Himalayan ecosystem  2,000 metres of cloud forest, tea terraces and 600 bird species, held together by the families who live in it. Six commitments keep it that way.",
     "principles": [
       {
         "t": "Say no to plastic",
@@ -348,12 +349,12 @@
       },
       {
         "label": "Observe from a distance",
-        "caption": "Red panda, Singalila — 38 left in the range."
+        "caption": "Red panda, Singalila  38 left in the range."
       }
     ],
     "money_eyebrow": "Where your money goes",
     "money_title": "Every booking supports local families.",
-    "money_body": "1 Darjeeling directs tourism revenue to Darjeeling-owned businesses — homestays, drivers, tea houses and artisans. No chains, no aggregator margin, no middlemen in Kolkata.",
+    "money_body": "1 Darjeeling directs tourism revenue to Darjeeling-owned businesses  homestays, drivers, tea houses and artisans. No chains, no aggregator margin, no middlemen in Kolkata.",
     "money_cta": "Book with a local host",
     "allocation": [
       {
@@ -716,7 +717,7 @@
       },
       {
         "h": "6. Reporting a Listing or a Safety Concern",
-        "p": "If a listing is inaccurate, misleading, or unsafe — or if something happened during a stay or ride that we should know about — tell us at once with \"Report\" in the subject line. Safety reports are looked at the same day, and we may suspend a listing while we investigate.",
+        "p": "If a listing is inaccurate, misleading, or unsafe  or if something happened during a stay or ride that we should know about  tell us at once with \"Report\" in the subject line. Safety reports are looked at the same day, and we may suspend a listing while we investigate.",
         "note": "If you are in immediate danger, contact the local police first. In India, dial 112."
       },
       {
@@ -968,7 +969,7 @@
       "fee_note": "A one-time platform fee of ₹99 is charged to list your driver profile live on the 1 Darjeeling directory.",
       "rates_label": "Your Route Rates",
       "rates_note": "Set a fare for each route you operate. Travellers see these on your profile, and the lowest becomes your public starting rate.",
-      "rates_empty": "No routes yet — add the routes you operate in step 03 above, then price them here.",
+      "rates_empty": "No routes yet  add the routes you operate in step 03 above, then price them here.",
       "starting_rate": "Starting rate",
       "onwards": "onwards"
     },
@@ -1158,12 +1159,12 @@
     ],
     "sections": [
       {
-        "h": "1. What 1Darjeeling Is — and Is Not",
+        "h": "1. What 1Darjeeling Is  and Is Not",
         "p": "We are a discovery and booking-request platform. We introduce travellers to independent local businesses; we do not own, operate, manage or control any homestay, vehicle, café or shop listed on the Site.",
         "items": [
           "The contract for your stay, ride, meal or purchase is between you and the local business. 1Darjeeling is not a party to it.",
           "We do not collect the price of the stay, ride or goods. That is settled directly between you and the business, on their terms.",
-          "Listing information — photographs, prices, amenities, availability — is supplied by the business. We take reasonable care but cannot guarantee it is complete or current.",
+          "Listing information  photographs, prices, amenities, availability  is supplied by the business. We take reasonable care but cannot guarantee it is complete or current.",
           "We are not responsible for the quality, safety, legality or fitness of anything offered by a listed business, nor for any act or omission of that business."
         ]
       },
@@ -1171,7 +1172,7 @@
         "h": "2. Accounts",
         "items": [
           "You must be at least 18 years old to create an account and make a booking request.",
-          "You register with a mobile number verified by a one-time password. Keep access to that number secure — anyone who can receive your OTP can access your account.",
+          "You register with a mobile number verified by a one-time password. Keep access to that number secure  anyone who can receive your OTP can access your account.",
           "You are responsible for everything done through your account.",
           "You must give accurate information and keep it up to date. We may suspend or remove accounts that carry false, misleading or impersonating information."
         ]
@@ -1181,19 +1182,19 @@
         "p": "All amounts below are what you pay to the Platform. They are separate from, and additional to, whatever you pay the local business for the stay, ride or goods themselves.",
         "sub": [
           {
-            "h": "3.1 Traveller Support & Convenience Fee — ₹12 per year",
+            "h": "3.1 Traveller Support & Convenience Fee  ₹12 per year",
             "p": "An annual fee that keeps a traveller account able to make booking requests, save listings and leave reviews. It runs for 365 days from the date of payment and does not renew automatically."
           },
           {
-            "h": "3.2 Booking Confirmation Fee — ₹1 per booking",
+            "h": "3.2 Booking Confirmation Fee  ₹1 per booking",
             "p": "Charged when you confirm a booking request. It covers passing your request to the business and notifying both sides. It is not a deposit, and it is not part of the price of your stay."
           },
           {
-            "h": "3.3 Business Registration Fee — ₹99, one time",
+            "h": "3.3 Business Registration Fee  ₹99, one time",
             "p": "Paid once by a local business to activate its listing. It does not expire and is not a commission on bookings."
           },
           {
-            "h": "3.4 Donations — voluntary, ₹10 to ₹1,00,000",
+            "h": "3.4 Donations  voluntary, ₹10 to ₹1,00,000",
             "p": "You may choose to support the Platform with a donation of any amount within that range. A donation is a gift: it buys nothing, grants no access, unlocks no feature, and confers no benefit or priority of any kind."
           }
         ],
@@ -1204,7 +1205,7 @@
         "items": [
           "A booking begins as a request. It is confirmed once the booking confirmation fee is paid, at which point both you and the business are notified.",
           "For homestays, confirmed dates are held exclusively. While a checkout is in progress, those dates are held briefly against other travellers so two people cannot pay for the same room; an abandoned checkout releases them again.",
-          "If two travellers reach payment for the same homestay and the same dates at the same moment, only the first can be confirmed. The second booking is cancelled automatically and the fee refunded — see the Refund & Cancellation Policy.",
+          "If two travellers reach payment for the same homestay and the same dates at the same moment, only the first can be confirmed. The second booking is cancelled automatically and the fee refunded  see the Refund & Cancellation Policy.",
           "A confirmed booking is a confirmed request to the business. Check-in times, house rules, extra charges and payment for the stay itself are matters between you and the business."
         ]
       },
@@ -1218,7 +1219,7 @@
         "items": [
           "You may list only a business you own or are authorised to represent.",
           "You must hold every licence, registration and permission the law requires for what you offer, and produce them on request.",
-          "Identity and address documents you submit for verification are held privately and are never published — see the Privacy Policy.",
+          "Identity and address documents you submit for verification are held privately and are never published  see the Privacy Policy.",
           "Your listing must be accurate. Prices shown must be prices you will honour.",
           "You must honour confirmed bookings, or cancel promptly so the traveller can make other arrangements.",
           "We may suspend or remove a listing that breaks these rules, attracts sustained complaints, or misrepresents what it offers."
@@ -1279,21 +1280,21 @@
     "updated": "Last updated: August 2026",
     "intro": [
       "This policy explains when money paid to 1Darjeeling is returned, how long it takes, and what falls outside it. It forms part of our Terms & Conditions.",
-      "One distinction governs everything below. The fees listed in this policy are paid to the Platform, and this policy covers them. The price of your stay, ride, meal or purchase is paid directly to the local business, and that money is governed by the business's own terms — we never receive it and cannot refund it."
+      "One distinction governs everything below. The fees listed in this policy are paid to the Platform, and this policy covers them. The price of your stay, ride, meal or purchase is paid directly to the local business, and that money is governed by the business's own terms  we never receive it and cannot refund it."
     ],
     "sections": [
       {
         "h": "1. Cancelling a Booking",
         "p": "A booking can be cancelled at any time before it takes place, from your dashboard, by the business, or by our team.",
         "items": [
-          "A booking still awaiting payment can simply be cancelled — nothing has been charged.",
+          "A booking still awaiting payment can simply be cancelled  nothing has been charged.",
           "A confirmed booking can be cancelled by you, by the business, or by us. The ₹1 booking confirmation fee is refunded in full and automatically, whoever cancels and whatever the reason.",
           "If the business cancels on you, we will help you find an alternative wherever we can."
         ]
       },
       {
         "h": "2. Automatic Refunds",
-        "p": "Some refunds need no request at all — the Platform issues them itself:",
+        "p": "Some refunds need no request at all  the Platform issues them itself:",
         "items": [
           "Double booking: if two travellers pay for the same homestay and the same dates at the same moment, only the first is confirmed. The second is cancelled automatically and the fee refunded in full, and we tell that traveller what happened.",
           "Cancellation of a confirmed booking: the booking confirmation fee is returned automatically as part of the cancellation.",
@@ -1304,20 +1305,20 @@
         "h": "3. The Fees, One by One",
         "sub": [
           {
-            "h": "3.1 Booking Confirmation Fee — ₹1",
+            "h": "3.1 Booking Confirmation Fee  ₹1",
             "p": "Refunded in full whenever the booking is cancelled, by any party, at any time before the stay. No request needed."
           },
           {
-            "h": "3.2 Traveller Support & Convenience Fee — ₹12 per year",
-            "p": "Refundable in full within 7 days of payment if you have not used it to confirm any booking. After 7 days, or once it has been used, it is not refundable — it has already delivered the access it pays for. It runs 365 days and does not auto-renew, so there is no recurring charge to cancel."
+            "h": "3.2 Traveller Support & Convenience Fee  ₹12 per year",
+            "p": "Refundable in full within 7 days of payment if you have not used it to confirm any booking. After 7 days, or once it has been used, it is not refundable  it has already delivered the access it pays for. It runs 365 days and does not auto-renew, so there is no recurring charge to cancel."
           },
           {
-            "h": "3.3 Business Registration Fee — ₹99",
+            "h": "3.3 Business Registration Fee  ₹99",
             "p": "Refundable in full within 7 days of payment if your listing has not yet gone live. Once the listing is published and visible to travellers, the fee is not refundable. If we reject or remove your listing for a reason that is not a breach of our Terms, we refund it in full regardless of when."
           },
           {
             "h": "3.4 Donations",
-            "p": "A donation is a voluntary gift and is not refundable. If you donated by mistake — a wrong amount, a duplicate, an accidental confirmation — write to us within 7 days and we will return it."
+            "p": "A donation is a voluntary gift and is not refundable. If you donated by mistake  a wrong amount, a duplicate, an accidental confirmation  write to us within 7 days and we will return it."
           }
         ]
       },
@@ -1342,7 +1343,7 @@
       {
         "h": "6. What This Policy Does Not Cover",
         "items": [
-          "Money paid directly to a homestay, driver, café or shop. Ask them — their cancellation terms apply, and we will help you make contact.",
+          "Money paid directly to a homestay, driver, café or shop. Ask them  their cancellation terms apply, and we will help you make contact.",
           "Costs around a trip that we never charged: travel to Darjeeling, other bookings, time taken off.",
           "Fees where the traveller did not show up, or cancelled after the stay had already begun.",
           "Accounts closed by us for a breach of our Terms."
@@ -1350,7 +1351,7 @@
       },
       {
         "h": "7. If Something Goes Wrong With a Refund",
-        "p": "If a refund we have approved has not reached you within 10 working days, or you disagree with a decision, escalate it to our Grievance Officer — the contact details are on the Contact Us page. We will look at it again and reply within 7 working days."
+        "p": "If a refund we have approved has not reached you within 10 working days, or you disagree with a decision, escalate it to our Grievance Officer  the contact details are on the Contact Us page. We will look at it again and reply within 7 working days."
       },
       {
         "h": "8. Contact",
@@ -1387,7 +1388,7 @@
     "sections": [
       {
         "h": "1. Deleting From the App",
-        "p": "This is the fastest route and it is immediate — there is no queue and no review step.",
+        "p": "This is the fastest route and it is immediate  there is no queue and no review step.",
         "items": [
           "Open the 1 Darjeeling app and go to the Profile tab.",
           "Scroll to the bottom and tap Delete account.",
@@ -1412,7 +1413,7 @@
           "Your account: name, phone number, email address if you gave one, profile photo, language and interests.",
           "Your bookings, past and upcoming, and the payment records attached to them.",
           "Your saved stays, your reviews, and any referral history.",
-          "If you host or drive with us: your business profile, every listing you published, and the KYC identity documents you uploaded — both the records and the document files themselves.",
+          "If you host or drive with us: your business profile, every listing you published, and the KYC identity documents you uploaded  both the records and the document files themselves.",
           "Any one-time login codes still held against your phone number."
         ],
         "note": "Your listings disappear from the site as part of this, so a traveller cannot book something that no longer has anyone behind it."
@@ -1421,10 +1422,10 @@
         "h": "4. What Is Kept, and Why",
         "p": "Two narrow categories survive deletion, in both cases because the law requires it of us rather than because we want them:",
         "items": [
-          "Transaction records that tax and accounting law obliges us to retain — the amount, the date and the invoice reference for money that actually moved. These are kept for 8 years as required, and are not linked back to a live account.",
+          "Transaction records that tax and accounting law obliges us to retain  the amount, the date and the invoice reference for money that actually moved. These are kept for 8 years as required, and are not linked back to a live account.",
           "Records we have been formally required to preserve for an ongoing legal claim, dispute or investigation. If this applies to you we will tell you when you ask to delete."
         ],
-        "note": "Nothing else is retained. We do not keep a shadow copy of a deleted profile, and we do not keep your account so that you can “reactivate” it later — if you come back, you start a new account."
+        "note": "Nothing else is retained. We do not keep a shadow copy of a deleted profile, and we do not keep your account so that you can “reactivate” it later  if you come back, you start a new account."
       },
       {
         "h": "5. Backups",

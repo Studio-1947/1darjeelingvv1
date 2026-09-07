@@ -6,7 +6,7 @@ import * as Sentry from "@sentry/react";
  * Inert without REACT_APP_SENTRY_DSN, which is the normal state for development. Note the
  * build-time catch: Create React App inlines REACT_APP_* variables into the bundle during
  * `yarn build`, so this is fixed at image build time, NOT read from the container's environment.
- * Turning it on therefore requires a rebuild — see deploy/nginx/Dockerfile, where the value is
+ * Turning it on therefore requires a rebuild  see deploy/nginx/Dockerfile, where the value is
  * threaded through as a build arg from the stack's .env.
  *
  * Scrubbing mirrors backend/src/lib/scrub.ts, and matters for the same reason: this platform
@@ -15,7 +15,7 @@ import * as Sentry from "@sentry/react";
  */
 
 // Read via import.meta.env: Vite statically replaces `process.env.NODE_ENV` but leaves every other
-// `process.env.*` in place, and `process` does not exist in the browser — so an unguarded read here
+// `process.env.*` in place, and `process` does not exist in the browser  so an unguarded read here
 // threw ReferenceError before React could mount, white-screening the whole app. The REACT_APP_
 // fallback keeps any CRA-era build environment working.
 const DSN =
@@ -24,7 +24,7 @@ const DSN =
 
 const REDACTED = "[redacted]";
 
-/** Substring-matched, case-insensitive — `phone` also covers `contactPhone`, `phone_number`. */
+/** Substring-matched, case-insensitive  `phone` also covers `contactPhone`, `phone_number`. */
 const SENSITIVE = [
   "phone", "mobile", "otp", "email", "token", "password", "auth", "secret",
   "aadhaar", "aadhar", "pan", "licence", "license",
@@ -53,7 +53,7 @@ function scrub(value, depth = 0) {
   return value;
 }
 
-/** Query VALUES stripped, keys kept — a login URL otherwise carries a real phone number. */
+/** Query VALUES stripped, keys kept  a login URL otherwise carries a real phone number. */
 function scrubUrl(url) {
   if (!url) return url;
   try {
@@ -75,7 +75,7 @@ function scrubUrl(url) {
  * and NODE_ENV is "production" for every production build, so it cannot tell staging from real.
  * Without this, staging errors and real incidents arrive in Sentry indistinguishable.
  *
- * The canonical host is named explicitly and everything else defaults to staging — the same
+ * The canonical host is named explicitly and everything else defaults to staging  the same
  * inversion as the $robots_tag map in deploy/nginx/app.conf, and for the same reason: a new
  * preview host should be non-production by default rather than by someone remembering.
  */
@@ -93,7 +93,7 @@ if (DSN) {
     environment: deploymentEnvironment(),
 
     // Session Replay and performance tracing are deliberately NOT enabled. Replay records the
-    // DOM — on this site that means the OTP a user typed, the ID document they picked, and the
+    // DOM  on this site that means the OTP a user typed, the ID document they picked, and the
     // phone number in their profile. It is the single most invasive thing this SDK offers and
     // nothing about diagnosing a crash needs it.
     tracesSampleRate: 0,

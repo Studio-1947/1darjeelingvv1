@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import api from '@/lib/api';
 
 interface LocationWeather {
@@ -43,25 +44,25 @@ export default function WeatherWidget() {
     };
   }, []);
 
-  // Bare text on the hero video: no panel, border or blur. Two consequences shape the
-  // classes below. The gaps are wider than the card version's, because whitespace is now
-  // the only thing separating one reading from the next; and the text carries the same
-  // drop-shadow as the hero headline, because the footage runs bright in places and plain
-  // white on a pale frame is unreadable without it.
   return (
     <div
       data-testid="weather-widget"
-      className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-4 md:gap-x-10"
+      className="grid grid-cols-4 gap-2 sm:gap-4 md:gap-6 w-full"
     >
       {LOCATIONS.map((key) => (
-        <div key={key} data-testid={`weather-card-${key}`} className="text-white">
-          <div className="text-[11px] font-bold uppercase tracking-widest text-white/75 truncate drop-shadow">
+        <Link
+          key={key}
+          to={`/search?q=${encodeURIComponent(temps[key].name)}`}
+          data-testid={`weather-card-${key}`}
+          className="group block text-white transition-transform active:scale-95 text-left"
+        >
+          <div className="text-[10px] sm:text-[11px] md:text-xs font-bold uppercase tracking-wider md:tracking-widest text-white/80 group-hover:text-white truncate drop-shadow transition-colors">
             {temps[key].name}
           </div>
-          <div className="font-display font-extrabold text-2xl leading-none mt-1.5 drop-shadow-lg">
+          <div className="font-display font-extrabold text-lg sm:text-xl md:text-2xl leading-none mt-1 drop-shadow-lg group-hover:text-gold transition-colors">
             {temps[key].temp}°C
           </div>
-        </div>
+        </Link>
       ))}
     </div>
   );

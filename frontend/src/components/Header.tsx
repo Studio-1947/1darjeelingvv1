@@ -194,6 +194,10 @@ export default function Header() {
                         className="w-full text-left px-4 py-2.5 text-sm text-ink hover:bg-mist font-semibold transition-colors">
                         {t('nav.dashboard') || 'Dashboard'}
                       </button>
+                      <button onClick={() => { setDropdownOpen(false); nav('/provider/onboard'); }}
+                        className="w-full text-left px-4 py-2.5 text-sm text-pine hover:bg-mist font-bold transition-colors">
+                        {t('nav.host_with_us', 'List your Stay / Taxi')}
+                      </button>
                     </>
                   )}
                   
@@ -203,7 +207,7 @@ export default function Header() {
                     <Heart size={14} /> {t('nav.saved')}
                   </button>
 
-                  <button onClick={() => { setDropdownOpen(false); nav('/login'); logout(); }}
+                  <button onClick={() => { setDropdownOpen(false); logout(); nav('/'); }}
                     className="w-full text-left px-4 py-2.5 text-sm text-flag hover:bg-mist font-bold border-t border-[var(--line)] transition-colors">
                     {t('nav.logout') || 'Log out'}
                   </button>

@@ -13,7 +13,7 @@
 
 /**
  * Key names whose VALUES are replaced wholesale. Matched case-insensitively as a substring, so
- * `phone` also covers `contactPhone`, `phone_number` and `userPhone` — deliberately broad, because
+ * `phone` also covers `contactPhone`, `phone_number` and `userPhone`  deliberately broad, because
  * the cost of over-redacting a field is a slightly less useful error report, and the cost of
  * under-redacting one is a government ID in a third party's database.
  */
@@ -23,7 +23,7 @@ const REDACTED_KEYS = [
   'jwt', 'auth', 'credential',
   // Identity
   'phone', 'mobile', 'otp', 'email', 'aadhaar', 'aadhar', 'pan', 'licence', 'license',
-  // Documents and uploads — also the largest payloads, since they arrive base64-encoded
+  // Documents and uploads  also the largest payloads, since they arrive base64-encoded
   'file', 'filekey', 'file_key', 'document', 'image', 'images', 'avatar', 'photo', 'buffer',
   'data_url', 'dataurl', 'base64',
 ];
@@ -41,7 +41,7 @@ function isSensitiveKey(key: string): boolean {
 /**
  * Returns a copy of `value` with every sensitive field replaced.
  *
- * Non-destructive on purpose — the caller is usually holding the live request object, and
+ * Non-destructive on purpose  the caller is usually holding the live request object, and
  * redacting it in place would blank the data the application still needs to serve the response.
  */
 export function scrubValue(value: unknown, depth = 0): unknown {
@@ -62,7 +62,7 @@ export function scrubValue(value: unknown, depth = 0): unknown {
     return out;
   }
 
-  // A long string in a leaf position is usually a base64 upload that escaped the key match —
+  // A long string in a leaf position is usually a base64 upload that escaped the key match 
   // truncate rather than ship a megabyte of image data to a logging service.
   if (typeof value === 'string' && value.length > 1024) {
     return `${value.slice(0, 128)}… [truncated ${value.length} chars]`;

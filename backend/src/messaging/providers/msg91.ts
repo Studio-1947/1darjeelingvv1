@@ -15,7 +15,7 @@ const MSG91_FLOW_URL = 'https://control.msg91.com/api/v5/flow/';
 /**
  * Each transactional message needs its OWN DLT-approved template registered with MSG91, so each
  * one gets its own env var. A template that is not configured is a hard delivery failure rather
- * than a silent skip — the whole point of this layer is that "notified" is never recorded for a
+ * than a silent skip  the whole point of this layer is that "notified" is never recorded for a
  * message nobody sent.
  */
 const TEMPLATE_ENV_VARS: Record<NotificationTemplate, string> = {
@@ -33,7 +33,7 @@ const MAX_QUOTED_BODY = 200;
  * MSG91 v5 OTP API.
  *
  * `fetchImpl` is injectable purely so the suite can exercise every failure branch without a
- * network — the same reason rateLimiter takes `opts.enabled`. Application code always gets
+ * network  the same reason rateLimiter takes `opts.enabled`. Application code always gets
  * the global fetch.
  */
 export function createMsg91Provider(
@@ -92,7 +92,7 @@ export function createMsg91Provider(
       }
 
       // MSG91 reports application-level failures with HTTP 200 and type:"error". Treating a
-      // 2xx as success here would mean reporting delivery for a code that was never sent —
+      // 2xx as success here would mean reporting delivery for a code that was never sent 
       // the exact defect this layer exists to prevent.
       if (body?.type !== 'success') {
         throw new MessageDeliveryError(
@@ -102,7 +102,7 @@ export function createMsg91Provider(
       }
 
       // MSG91's v5 OTP endpoint always delivers via SMS regardless of the `channel` requested
-      // (there is no WhatsApp/voice option on this API) — report that, not the caller's ask.
+      // (there is no WhatsApp/voice option on this API)  report that, not the caller's ask.
       return { ref: body.request_id, channel: 'sms' };
     },
 
@@ -114,7 +114,7 @@ export function createMsg91Provider(
       if (!templateId) {
         throw new MessageDeliveryError(
           'msg91',
-          `no DLT template configured for "${template}" — set ${templateEnvVar}.`
+          `no DLT template configured for "${template}"  set ${templateEnvVar}.`
         );
       }
 

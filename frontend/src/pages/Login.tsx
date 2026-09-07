@@ -112,7 +112,7 @@ export default function Login() {
         setShowConfirmSwitch(true);
       } else {
         login(data.token, data.user);
-        if (data.user.role === 'provider') {
+        if (role === 'provider' || data.user.role === 'provider') {
           if (data.user.providerPaid) {
             nav('/provider/dashboard');
           } else {

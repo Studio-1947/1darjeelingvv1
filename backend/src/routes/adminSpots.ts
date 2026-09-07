@@ -17,7 +17,7 @@ import {
  * the section admin-owned; the public side (routes/listings.ts) only ever reads, and
  * refuses spot writes from anyone who is not an admin. Spots are stored as rows in
  * `listings` with `type='spot'` so they keep search, favourites, reviews and the
- * public detail page — see lib/spots.ts for the extras contract.
+ * public detail page  see lib/spots.ts for the extras contract.
  */
 const router = Router();
 
@@ -85,7 +85,7 @@ function validateCore(body: any, { partial }: { partial: boolean }): string | nu
   }
   if (body.image !== undefined && body.image !== null && body.image !== '') {
     if (typeof body.image !== 'string' || !/^https?:\/\//i.test(body.image.trim())) {
-      return 'image must be an http(s) URL — upload the cover photo first';
+      return 'image must be an http(s) URL  upload the cover photo first';
     }
   }
   if (body.tags !== undefined) {
@@ -281,7 +281,7 @@ router.post('/admin/spots', authenticateToken, requireAdmin, async (req: Request
   res.json({ item: toAdminSpot(row as typeof schema.listings.$inferSelect) });
 });
 
-/** Loads a spot by id, or answers 404 — a non-spot listing id is not addressable here. */
+/** Loads a spot by id, or answers 404  a non-spot listing id is not addressable here. */
 async function loadSpot(req: Request, res: Response) {
   const [row] = await db.select().from(schema.listings)
     .where(and(eq(schema.listings.id, routeParam(req, 'id')), eq(schema.listings.type, SPOT_TYPE)))
@@ -369,7 +369,7 @@ const updateSpot = async (req: Request, res: Response) => {
 
   await db.update(schema.listings).set(updates).where(eq(schema.listings.id, existing.id));
   const [updated] = await db.select().from(schema.listings).where(eq(schema.listings.id, existing.id)).limit(1);
-  // A second admin can delete the spot between the write and this read — 404 rather than throw.
+  // A second admin can delete the spot between the write and this read  404 rather than throw.
   if (!updated) return res.status(404).json({ detail: 'Tourist spot not found' });
   const counts = await reviewCounts([existing.id]);
   res.json({ item: toAdminSpot(updated, counts.get(existing.id) || 0) });

@@ -16,7 +16,7 @@ import { hashOtp, verifyOtpHash } from '../lib/otpHash';
 const router = Router();
 
 /**
- * Roles a caller may pick for themselves at registration. Admin is deliberately absent —
+ * Roles a caller may pick for themselves at registration. Admin is deliberately absent 
  * it is granted only by the seeded env credentials or by promoting a row directly.
  */
 const SELF_ASSIGNABLE_ROLES = ['tourist', 'provider'];
@@ -117,113 +117,113 @@ router.post(
     },
   }),
   async (req: Request, res: Response) => {
-  const { phone, channel = 'whatsapp' } = req.body;
-  if (!phone) {
-    return res.status(400).json({ detail: 'Phone number is required' });
-  }
+    const { phone, channel = 'whatsapp' } = req.body;
+    if (!phone) {
+      return res.status(400).json({ detail: 'Phone number is required' });
+    }
 
-  // Checked before anything is reserved or sent. This route used to test only that `phone` was
-  // present, so any string reached the budget and the messaging provider — and on a mock-mode
-  // server the universal code then verified it, leaving an account whose identity was
-  // "not-a-number". The filter is permissive about shape on purpose: the website's phone field
-  // is free text, so real accounts exist under every spelling a person might type, and all of
-  // them have to keep working. See lib/phone.ts.
-  if (!isPlausiblePhone(phone)) {
-    return res.status(400).json({ detail: 'That does not look like a phone number' });
-  }
+    // Checked before anything is reserved or sent. This route used to test only that `phone` was
+    // present, so any string reached the budget and the messaging provider  and on a mock-mode
+    // server the universal code then verified it, leaving an account whose identity was
+    // "not-a-number". The filter is permissive about shape on purpose: the website's phone field
+    // is free text, so real accounts exist under every spelling a person might type, and all of
+    // them have to keep working. See lib/phone.ts.
+    if (!isPlausiblePhone(phone)) {
+      return res.status(400).json({ detail: 'That does not look like a phone number' });
+    }
 
-  // Durable daily ceiling, checked before a code is generated or a message costs anything. The
-  // per-minute limiters above cap the rate; this caps the total, and survives the restart that
-  // clears them. Spent against the canonical number so the ten-a-day cannot be reset by
-  // respelling it. See lib/otpSendBudget.ts.
-  // The reviewer's code is fixed and already in the Play Console, so there is nothing to send.
-  // Short-circuited before the budget reservation on purpose: a real dispatch here would spend
-  // from the daily cap and deliver an SMS to a number the reviewer does not hold, and the code
-  // it delivered would not be the one they were given.
-  if (REVIEW_PHONE && phone === REVIEW_PHONE) {
-    const [reviewUser] = await db.select().from(schema.users).where(eq(schema.users.phone, phone)).limit(1);
-    return res.json({ sent: true, channel, exists: !!reviewUser });
-  }
+    // Durable daily ceiling, checked before a code is generated or a message costs anything. The
+    // per-minute limiters above cap the rate; this caps the total, and survives the restart that
+    // clears them. Spent against the canonical number so the ten-a-day cannot be reset by
+    // respelling it. See lib/otpSendBudget.ts.
+    // The reviewer's code is fixed and already in the Play Console, so there is nothing to send.
+    // Short-circuited before the budget reservation on purpose: a real dispatch here would spend
+    // from the daily cap and deliver an SMS to a number the reviewer does not hold, and the code
+    // it delivered would not be the one they were given.
+    if (REVIEW_PHONE && phone === REVIEW_PHONE) {
+      const [reviewUser] = await db.select().from(schema.users).where(eq(schema.users.phone, phone)).limit(1);
+      return res.json({ sent: true, channel, exists: !!reviewUser });
+    }
 
-  const budget = await reserveOtpSend(phoneKey(phone) ?? phone);
-  if (!budget.ok) {
-    res.setHeader('Retry-After', String(budget.retryAfterSeconds));
-    return res.status(429).json({
-      detail: budget.scope === 'phone'
-        // Named for what it is, so a real person on a bad line knows waiting is the answer and
-        // trying a different number is not.
-        ? 'Too many codes requested for this number today. Try again tomorrow.'
-        // Deliberately vague: that the PLATFORM is out of budget is exactly the feedback an
-        // attacker draining it is looking for.
-        : 'Could not send OTP, please try again later',
-    });
-  }
+    const budget = await reserveOtpSend(phoneKey(phone) ?? phone);
+    if (!budget.ok) {
+      res.setHeader('Retry-After', String(budget.retryAfterSeconds));
+      return res.status(429).json({
+        detail: budget.scope === 'phone'
+          // Named for what it is, so a real person on a bad line knows waiting is the answer and
+          // trying a different number is not.
+          ? 'Too many codes requested for this number today. Try again tomorrow.'
+          // Deliberately vague: that the PLATFORM is out of budget is exactly the feedback an
+          // attacker draining it is looking for.
+          : 'Could not send OTP, please try again later',
+      });
+    }
 
-  // crypto.randomInt, not Math.random: V8 implements Math.random as xorshift128+, whose internal
-  // state can be recovered from a handful of consecutive outputs. On this endpoint that is an
-  // account-takeover path — request codes for a number you control until the state is known, then
-  // predict the code issued to someone else's. randomInt draws from the CSPRNG and is uniform over
-  // the range (no modulo bias). Upper bound is exclusive, so this yields 100000..999999.
-  const otp = crypto.randomInt(100000, 1000000).toString();
-  const challengeId = uuidv4();
-  const now = new Date().toISOString();
-  const expiresAt = new Date(Date.now() + OTP_TTL_SECONDS * 1000).toISOString();
-  const otpHash = await hashOtp(otp);
+    // crypto.randomInt, not Math.random: V8 implements Math.random as xorshift128+, whose internal
+    // state can be recovered from a handful of consecutive outputs. On this endpoint that is an
+    // account-takeover path  request codes for a number you control until the state is known, then
+    // predict the code issued to someone else's. randomInt draws from the CSPRNG and is uniform over
+    // the range (no modulo bias). Upper bound is exclusive, so this yields 100000..999999.
+    const otp = crypto.randomInt(100000, 1000000).toString();
+    const challengeId = uuidv4();
+    const now = new Date().toISOString();
+    const expiresAt = new Date(Date.now() + OTP_TTL_SECONDS * 1000).toISOString();
+    const otpHash = await hashOtp(otp);
 
-  // Check if the user already exists
-  const [user] = await db.select().from(schema.users).where(eq(schema.users.phone, phone)).limit(1);
-  const exists = !!user;
+    // Check if the user already exists
+    const [user] = await db.select().from(schema.users).where(eq(schema.users.phone, phone)).limit(1);
+    const exists = !!user;
 
-  // Only a resolved send permits reporting `sent: true`. The previous version returned success
-  // unconditionally, so in production every caller was told a code had been sent when nothing
-  // had been dispatched at all.
-  //
-  // Delivery is attempted before the OTP is stored, not after. The upsert below replaces any
-  // still-valid code the user was previously issued for this phone; if delivery then failed,
-  // that replacement would never reach the user while the code it destroyed still would have
-  // worked. Storing only on a confirmed send means a failed resend leaves an existing, working
-  // code intact instead of leaving the user with nothing.
-  // The channel actually used for delivery — reported below and stored — comes from the
-  // provider's response, not the caller's request: it may differ (msg91 always delivers SMS
-  // regardless of what was asked for), and telling the caller "sent via whatsapp" when an SMS
-  // went out is the same class of untruth this layer exists to prevent.
-  let deliveredChannel: string;
-  try {
-    ({ channel: deliveredChannel } = await sendOtp({ phone, otp, channel, challengeId }));
-  } catch (err) {
-    // The diagnostic can name the provider and quote its response, so it stays server-side.
-    log.error(`[otp] delivery failed for ****${phone.slice(-4)}: ${(err as Error).message}`);
-    // Nothing was delivered, so nothing was spent. Handing the reservation back keeps a provider
-    // outage from burning through a user's ten daily codes — or the platform's thousand.
-    await budget.release();
-    return res.status(502).json({ detail: 'Could not send OTP, please try again' });
-  }
+    // Only a resolved send permits reporting `sent: true`. The previous version returned success
+    // unconditionally, so in production every caller was told a code had been sent when nothing
+    // had been dispatched at all.
+    //
+    // Delivery is attempted before the OTP is stored, not after. The upsert below replaces any
+    // still-valid code the user was previously issued for this phone; if delivery then failed,
+    // that replacement would never reach the user while the code it destroyed still would have
+    // worked. Storing only on a confirmed send means a failed resend leaves an existing, working
+    // code intact instead of leaving the user with nothing.
+    // The channel actually used for delivery  reported below and stored  comes from the
+    // provider's response, not the caller's request: it may differ (msg91 always delivers SMS
+    // regardless of what was asked for), and telling the caller "sent via whatsapp" when an SMS
+    // went out is the same class of untruth this layer exists to prevent.
+    let deliveredChannel: string;
+    try {
+      ({ channel: deliveredChannel } = await sendOtp({ phone, otp, channel, challengeId }));
+    } catch (err) {
+      // The diagnostic can name the provider and quote its response, so it stays server-side.
+      log.error(`[otp] delivery failed for ****${phone.slice(-4)}: ${(err as Error).message}`);
+      // Nothing was delivered, so nothing was spent. Handing the reservation back keeps a provider
+      // outage from burning through a user's ten daily codes  or the platform's thousand.
+      await budget.release();
+      return res.status(502).json({ detail: 'Could not send OTP, please try again' });
+    }
 
-  // Do not overwrite an older, already-delivered challenge. A delivery failure on a resend must
-  // not take away the code the customer already has; each successfully handed-off code is an
-  // independently expiring, single-use challenge.
-  await db.insert(schema.otps).values({
-    id: challengeId,
-    phone,
-    otpHash,
-    channel: deliveredChannel,
-    createdAt: now,
-    expiresAt,
-    attempts: 0,
-  });
-
-  if (MOCK_OTP) {
-    return res.json({
-      sent: true,
+    // Do not overwrite an older, already-delivered challenge. A delivery failure on a resend must
+    // not take away the code the customer already has; each successfully handed-off code is an
+    // independently expiring, single-use challenge.
+    await db.insert(schema.otps).values({
+      id: challengeId,
+      phone,
+      otpHash,
       channel: deliveredChannel,
-      mock_otp: otp,
-      hint: "Mock mode: use the OTP shown or 123456",
-      exists
+      createdAt: now,
+      expiresAt,
+      attempts: 0,
     });
-  }
 
-  return res.json({ sent: true, channel: deliveredChannel, exists });
-});
+    if (MOCK_OTP) {
+      return res.json({
+        sent: true,
+        channel: deliveredChannel,
+        mock_otp: otp,
+        hint: "Mock mode: use the OTP shown or 123456",
+        exists
+      });
+    }
+
+    return res.json({ sent: true, channel: deliveredChannel, exists });
+  });
 
 /**
  * @openapi
@@ -271,7 +271,7 @@ router.post('/otp/verify', rateLimiter(10, 60 * 1000, 'otp_verify'), async (req:
     return res.status(400).json({ detail: 'Phone and OTP are required' });
   }
 
-  // A junk number can no longer be issued a code at all, so this is belt and braces — except in
+  // A junk number can no longer be issued a code at all, so this is belt and braces  except in
   // mock mode, where the universal bypass below needs no stored row and would otherwise still
   // mint a session for one. Lookup still uses the number exactly as sent: `users.phone` holds
   // whatever was typed at signup, and canonicalising here would send an existing user to a new,
@@ -290,7 +290,7 @@ router.post('/otp/verify', rateLimiter(10, 60 * 1000, 'otp_verify'), async (req:
   const universalOk = MOCK_OTP && otp === '123456';
   // Same shape as the universal bypass, and for the same reason: there is no stored row to
   // check against. Unlike it, this one is scoped to a single number and survives into
-  // production, which is the whole point — see the REVIEW_PHONE block in config.ts.
+  // production, which is the whole point  see the REVIEW_PHONE block in config.ts.
   const reviewOk = isReviewLogin(phone, otp);
 
   if (!universalOk && !reviewOk) {
@@ -341,7 +341,7 @@ router.post('/otp/verify', rateLimiter(10, 60 * 1000, 'otp_verify'), async (req:
     };
     await db.insert(schema.users).values(user);
 
-    // A code only counts at signup, and only for the account that just came into existence —
+    // A code only counts at signup, and only for the account that just came into existence 
     // that is the whole anti-abuse story, and it is enforced by a unique referee_id rather than
     // by this call site. Deliberately after the insert and deliberately unawaited-for-failure:
     // redeemReferralCode never throws, because losing a reward must not cost someone the
@@ -398,7 +398,7 @@ router.post('/otp/verify', rateLimiter(10, 60 * 1000, 'otp_verify'), async (req:
  */
 // Current User Details
 router.get('/me', authenticateToken, (req: Request, res: Response) => {
-  // Already the public shape — authenticateToken sanitises before the request reaches here.
+  // Already the public shape  authenticateToken sanitises before the request reaches here.
   res.json({ user: req.user });
 });
 
@@ -447,7 +447,7 @@ router.post('/admin/login', rateLimiter(10, 60 * 1000, 'admin_login'), async (re
   }
 
   // Check hardcoded/env credentials first. The password is compared in constant time, the same
-  // way DB password hashes and Razorpay signatures are elsewhere — `===` short-circuits on the
+  // way DB password hashes and Razorpay signatures are elsewhere  `===` short-circuits on the
   // first differing character, which leaks how much of a guess was correct.
   if (loginInput === ADMIN_USERNAME && constantTimeEquals(password, ADMIN_PASSWORD)) {
     const adminUser = {

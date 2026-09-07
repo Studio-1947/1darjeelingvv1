@@ -12,7 +12,7 @@ import WeatherWidget from '@/components/WeatherWidget';
 import RouteEstimator from '@/components/RouteEstimator';
 import { CATEGORIES } from '@/constants/categories';
 import { FeedCardSkeleton, SpotTileSkeleton, StayTileSkeleton, LoadingStatus, repeat } from '@/components/skeletons';
-import { Mountain, ArrowRight, Sparkles, TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Mountain, ArrowRight, Compass, TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const RED_PANDA = 'https://images.unsplash.com/photo-1542880941-1abfea46bba6';
 const HERO_POSTER = 'https://images.unsplash.com/photo-1544735716-392fe2489ffa';
@@ -185,7 +185,7 @@ export default function Discover() {
             <BookingWidget />
           </div>
 
-          <div className="mt-6">
+          <div className="mt-3 md:mt-4 max-w-4xl mx-auto w-full px-4 sm:px-6">
             <WeatherWidget />
           </div>
         </div>
@@ -314,7 +314,7 @@ export default function Discover() {
       {/* scroll-mt clears the sticky header when paging jumps back up here. */}
       <section ref={feedTopRef} className="mx-auto max-w-6xl px-4 md:px-6 pt-10 md:pt-14 scroll-mt-[calc(var(--header-h)+1rem)]">
         <div className="flex items-center gap-2">
-          <Sparkles size={18} className="text-flag" />
+          <Compass size={20} className="text-pine" />
           <h2 className="font-display font-extrabold text-2xl md:text-3xl text-ink">{t('home.explore_darjeeling')}</h2>
         </div>
 

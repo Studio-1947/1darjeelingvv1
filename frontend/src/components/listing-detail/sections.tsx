@@ -15,16 +15,30 @@ import VerifiedBadge from '@/components/provider/VerifiedBadge';
 // decides which sections a listing type gets; each section only renders it.
 
 /** Detailed "about" text plus the listing's tags. */
-export function AboutSection({ item, about, label }: { item: any; about?: string; label?: string }) {
+export function AboutSection({
+  item,
+  about,
+  label,
+  audioComponent,
+}: {
+  item: any;
+  about?: string;
+  label?: string;
+  audioComponent?: React.ReactNode;
+}) {
   const { t } = useTranslation();
   return (
     <Screen tone="bg" testid="detail-about">
       <SectionHead label={label || t('detail.about')} title={item.title} />
+
+      {audioComponent && (
+        <div className={`max-w-3xl md:max-w-4xl lg:max-w-5xl ${ALIGN_BLOCK}`}>
+          {audioComponent}
+        </div>
+      )}
+
       {/* whitespace-pre-line so an `about` written as multiple paragraphs
-          (separated by blank lines) keeps its breaks instead of collapsing.
-          The measure widens with the viewport rather than staying at 3xl, which
-          left a lot of empty column on a desktop screen. Phones are narrower
-          than 3xl to begin with, so the base cap is what they keep. */}
+          (separated by blank lines) keeps its breaks instead of collapsing. */}
       <p className={`mt-8 text-lg md:text-xl text-ink leading-relaxed ${ALIGN_TEXT} max-w-3xl md:max-w-4xl lg:max-w-5xl ${ALIGN_BLOCK} whitespace-pre-line`}>{about}</p>
       {item.tags?.length > 0 && (
         <div className={`mt-8 flex flex-wrap ${ALIGN_ROW} gap-2`}>
@@ -49,7 +63,7 @@ export function HighlightsSection({ highlights }: { highlights: string[] }) {
             and duplicate keys made React drop one of them. */}
         {highlights.map((highlight, i) => (
           <div key={i} className="flex items-start gap-4 p-5 rounded-2xl border border-[var(--line)] bg-[var(--bg)]">
-            <Sparkles size={22} className="text-pine flex-shrink-0 mt-0.5" />
+            <Compass size={20} className="text-pine flex-shrink-0 mt-0.5" />
             <span className="text-ink font-semibold leading-snug">{highlight}</span>
           </div>
         ))}
@@ -59,7 +73,7 @@ export function HighlightsSection({ highlights }: { highlights: string[] }) {
 }
 
 /**
- * Practical visitor information for a tourist spot — the answers people look for
+ * Practical visitor information for a tourist spot  the answers people look for
  * before setting out. Every field is optional; the section only renders when the
  * admin has filled at least one, and each card only appears when it has a value.
  */
@@ -89,6 +103,13 @@ export function VisitInfoSection({ facts, howToReach }: {
             </div>
           ))}
         </div>
+      )}
+
+      {/* Tourism spot disclaimer: ticket charges & timings are indicative */}
+      {cards.length > 0 && (
+        <p className={`mt-4 text-xs text-ink-soft italic max-w-5xl ${ALIGN_BLOCK}`}>
+          * {t('detail.ticket_disclaimer', 'Note: Entry fees, ticket charges, and timings are set by local administration and subject to seasonal revision. We strive to keep details updated.')}
+        </p>
       )}
 
       {howToReach && (
