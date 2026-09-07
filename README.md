@@ -341,11 +341,16 @@ The app itself deploys as three containers: `postgres`, `backend` (Express API),
 1. **Clone the repo** to `/var/www/1darjeeling-in` (already done) and `cd` into it.
 2. **Create `.env`** from the template: `cp .env.production.example .env`, then fill in real values — a strong `POSTGRES_PASSWORD`, `JWT_SECRET`, `ADMIN_BOOTSTRAP_SECRET`, a changed `ADMIN_PASSWORD`, and your Razorpay live keys (or leave `MOCK_PAYMENTS=true` until you're ready to charge real money). This file is gitignored — it stays on the server and is never pulled from or pushed to GitHub.
 3. **Confirm 8092 is free**: `sudo ss -tlnp | grep 8092` should print nothing. If it's taken, pick a different port in `docker-compose.in.yml`'s `nginx.ports` and in step 5 below.
-4. **Bring the app containers up**:
+4. **Bring the app containers up** from the images CI publishes:
    ```sh
-   docker compose -f docker-compose.in.yml up -d --build
+   docker login ghcr.io -u <your-github-user>   # PAT with read:packages as the password
+   docker compose -f docker-compose.in.yml pull
+   docker compose -f docker-compose.in.yml up -d --wait
    curl -I http://127.0.0.1:8092/   # sanity check — should be 200, straight from this container
    ```
+   This takes `:latest`. Push to `prod` once afterwards so the stack lands on a SHA-tagged image.
+   If GHCR is unreachable, `docker compose -f docker-compose.in.yml build` still works — see the
+   escape hatch in `deploy/VPS-RUNBOOK.md` §3.
 5. **Add the host Nginx site** (this is the one step that touches the shared system Nginx — it only _adds_ a new file, never edits an existing one):
    ```sh
    sudo cp deploy/host-nginx-site.in.conf.example /etc/nginx/sites-available/aanganerp.in
@@ -362,7 +367,11 @@ The app itself deploys as three containers: `postgres`, `backend` (Express API),
 
 ### Ongoing deploys (GitHub Actions)
 
-`.github/workflows/deploy-prod.yml` SSHes into the VPS on every push to `prod` and runs `git reset --hard origin/prod && docker compose -f docker-compose.in.yml up -d --build --remove-orphans`. It needs these **GitHub repo secrets** (Settings → Secrets and variables → Actions):
+`.github/workflows/deploy-prod.yml` runs on every push to `prod`: backend suite + typechecks, then it **builds both images on the runner** and pushes them to GHCR as `ghcr.io/studio-1947/1darjeelingvv1-{backend,nginx}:<commit-sha>`, then SSHes into the VPS to `git reset --hard origin/prod`, `docker compose pull` and restart.
+
+The VPS does **not** build images. It used to, which meant a full `yarn install` and two frontend bundles ran over the VPS's uplink on the critical path of every deploy — slow, and flaky enough that a yarn `ESOCKETTIMEDOUT` killed a release outright. Registry auth on the box is the workflow's own ephemeral `GITHUB_TOKEN`, so no permanent credential is stored there.
+
+It needs these **GitHub repo secrets** (Settings → Secrets and variables → Actions):
 
 | Secret        | Value                                               |
 | ------------- | --------------------------------------------------- |
@@ -370,6 +379,14 @@ The app itself deploys as three containers: `postgres`, `backend` (Express API),
 | `VPS_USER`    | The SSH user (e.g. `deploy`)                        |
 | `VPS_SSH_KEY` | The **private** key of a deploy keypair (see below) |
 | `VPS_PORT`    | Optional, defaults to `22`                          |
+
+No registry secret is needed — `GITHUB_TOKEN` is issued per run. One optional repo **variable** (Settings → Secrets and variables → Actions → Variables):
+
+| Variable                | Value                                                                          |
+| ----------------------- | ------------------------------------------------------------------------------ |
+| `FRONTEND_SENTRY_DSN`   | Sentry DSN inlined into the frontend bundles at build time. Unset ⇒ no reporting. |
+
+It is a variable rather than a secret deliberately: a DSN is a write-only ingestion endpoint and ships in the shipped JS by design. It moved here from the VPS's `.env` because the bundles are now built in CI, and a build arg cannot come from the deploy host.
 
 **Generating the deploy key** (run once, on the VPS, as the `deploy` user):
 
@@ -390,7 +407,9 @@ Check what's currently trusted with `ssh-keygen -lf ~/.ssh/authorized_keys`; any
 
 Paste that private key output as the `VPS_SSH_KEY` GitHub secret (the full `-----BEGIN OPENSSH PRIVATE KEY-----` block, unmodified). This is a _separate_ keypair from whatever SSH key the VPS already uses to `git clone`/`git pull` from GitHub — that one lets the VPS talk to GitHub; this new one lets GitHub Actions talk to the VPS, the opposite direction. Never reuse the VPS's own GitHub-facing key for this.
 
-Once the secrets are set, just `git push` to `prod` and the workflow redeploys automatically — no manual SSH needed for routine updates. The workflow only touches this app's own containers (`docker compose -f docker-compose.in.yml up -d --build`); it never touches the host Nginx config, so routine deploys can't affect other apps on the box. Re-run steps 5–6 above manually only if you ever need to set this app up on a fresh VPS.
+Once the secrets are set, just `git push` to `prod` and the workflow redeploys automatically — no manual SSH needed for routine updates. The workflow only touches this app's own containers (`docker compose -f docker-compose.in.yml up -d`); it never touches the host Nginx config, so routine deploys can't affect other apps on the box. Re-run steps 5–6 above manually only if you ever need to set this app up on a fresh VPS.
+
+To **roll back**, re-run the deploy with an earlier commit's SHA as `IMAGE_TAG` — see `deploy/VPS-RUNBOOK.md` §3. The old images stay in GHCR, so nothing is rebuilt.
 
 ## Bookings, notifications and refunds
 
@@ -450,15 +469,17 @@ assumption only discovered to be false during the incident it was supposed to he
 
 Use a **separate Sentry project per side** — a noisy browser extension will otherwise bury your
 server errors. `FRONTEND_SENTRY_DSN` is inlined into the JS bundle at image build time, so changing
-it needs a rebuild (`docker compose -f <file> up -d --build nginx`), not a restart.
+it needs a new image, not a restart: update the `FRONTEND_SENTRY_DSN` repo variable and re-run the
+deploy workflow. (It is a repo variable, not the VPS's `.env`, because the bundles are built in CI.)
 
-**Both stacks share one pair of projects, separated by environment.** Both run
-`APP_ENV=production` — staging has to exercise production behaviour to be worth anything — so
-`APP_ENV` cannot tell them apart. Set **`SENTRY_ENVIRONMENT=staging`** in the duckdns stack's
-`.env`; without it, staging errors arrive tagged `production` and sit in the same stream as real
-incidents, which is the one distinction an alert at 2am has to make. The browser side derives this
-from the hostname at runtime (the same bundle ships to both stacks, so a build-time value would be
-wrong on one of them) and needs no configuration.
+**`SENTRY_ENVIRONMENT` separates streams within one pair of projects.** There is only one stack
+now that the duckdns one is retired, so nothing needs setting — but if a staging stack is ever
+added, set **`SENTRY_ENVIRONMENT=staging`** in its `.env`. It would run `APP_ENV=production` too
+(staging has to exercise production behaviour to be worth anything), so `APP_ENV` cannot tell them
+apart, and without the override staging errors arrive tagged `production` and sit in the same
+stream as real incidents — the one distinction an alert at 2am has to make. The browser side
+derives this from the hostname at runtime, so the same bundle is correct on every host and needs
+no configuration.
 
 **On personal data.** This platform holds Aadhaar/PAN scans, phone numbers and the JWTs that
 authenticate them, and an error report is assembled from exactly the material most likely to carry

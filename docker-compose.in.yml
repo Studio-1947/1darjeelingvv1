@@ -67,6 +67,12 @@ services:
     entrypoint: ["/bin/sh", "/usr/local/bin/pg-backup.sh"]
 
   backend:
+    # Built and pushed by .github/workflows/deploy-prod.yml, then pulled here. IMAGE_TAG is the
+    # deployed commit's SHA; it falls back to :latest only for a manual `up` run by hand on the box.
+    image: ghcr.io/studio-1947/1darjeelingvv1-backend:${IMAGE_TAG:-latest}
+    # Kept as an escape hatch, NOT the normal path: `docker compose -f docker-compose.in.yml build`
+    # still works if GHCR is unreachable and the site has to be rebuilt from the box. A plain
+    # `up -d` prefers the image above and will not trigger this.
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -132,6 +138,10 @@ services:
       start_period: 10s
 
   nginx:
+    image: ghcr.io/studio-1947/1darjeelingvv1-nginx:${IMAGE_TAG:-latest}
+    # Escape hatch only — see the note on backend. Note the Sentry DSN below is read from the
+    # VPS's .env, which only applies to such a manual local build; the images CI publishes get it
+    # from the FRONTEND_SENTRY_DSN repo variable instead.
     build:
       context: .
       dockerfile: deploy/nginx/Dockerfile

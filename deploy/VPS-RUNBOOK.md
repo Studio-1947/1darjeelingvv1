@@ -83,15 +83,31 @@ domain. That mapping is also how you check a port is free before assigning one t
 
 ## 3. Deploying
 
-Routine deploys are automatic: push to `prod` → GitHub Actions runs the backend test suite and the
-frontend builds → on green, it SSHes in and rebuilds this app's containers only. See
+Routine deploys are automatic: push to `prod` → GitHub Actions runs the backend suite and the
+typechecks → on green, it **builds both images on the runner and pushes them to GHCR** → then
+SSHes in, pulls those images and restarts this app's containers. See
 `.github/workflows/deploy-prod.yml`.
 
-There is **one** auto-deploy path:
+**The VPS does not build images.** It did until 2026-09-07, and that put a full `yarn install`
+plus two frontend bundles on the critical path of every deploy, over this box's own uplink —
+which is slow enough that yarn hit `ESOCKETTIMEDOUT` on a tarball and killed a release. The box
+now only pulls; it never contacts npm or the yarn registry.
 
 | Branch | Workflow | Stack | Compose file | Domain |
 | ------ | -------- | ----- | ------------ | ------ |
 | `prod` | `deploy-prod.yml` | `1darjeeling-in` | `docker-compose.in.yml` | `aanganerp.in` |
+
+Images are tagged with the deployed commit's SHA:
+
+| Image | Registry |
+| ----- | -------- |
+| backend | `ghcr.io/studio-1947/1darjeelingvv1-backend:<sha>` |
+| nginx (both frontends) | `ghcr.io/studio-1947/1darjeelingvv1-nginx:<sha>` |
+
+The deploy passes that SHA as `IMAGE_TAG`. Because the reference changes every commit, Compose
+recreates exactly the services whose image changed — no digest-churn workaround needed.
+Registry auth is the workflow's own ephemeral `GITHUB_TOKEN`, so **no permanent registry
+credential is stored on this box**; the deploy logs out again on exit.
 
 > **Retired 2026-09-07.** There used to be a second stack — `main` → `deploy.yml` →
 > `docker-compose.prod.yml` → `onedarjeeling.duckdns.org`, in `/var/www/1darjeelingvv1`. It has been
@@ -99,13 +115,35 @@ There is **one** auto-deploy path:
 > the repo. `main` no longer deploys anywhere. If you find a `docker-compose.prod.yml` or a
 > `1darjeeling-prod-*` container on this box, it is a leftover, not a running service.
 
-Manual deploy (from `/var/www/1darjeeling-in`):
+Manual deploy (from `/var/www/1darjeeling-in`) — pulling a tag CI already published:
 
 ```sh
-docker compose -f docker-compose.in.yml up -d --build
+docker login ghcr.io -u <your-github-user>   # a PAT with read:packages as the password
+export IMAGE_TAG=<commit-sha>                # omit to take :latest
+docker compose -f docker-compose.in.yml pull backend nginx
+docker compose -f docker-compose.in.yml up -d --wait
 docker compose -f docker-compose.in.yml ps
-curl -I http://127.0.0.1:8092/          # 200 straight from the container
+curl -I http://127.0.0.1:8092/               # 200 straight from the container
 ```
+
+To **roll back**, redeploy an earlier SHA: set `IMAGE_TAG` to that commit and re-run the two
+commands above. The images are still in GHCR; nothing needs rebuilding.
+
+<details>
+<summary>Escape hatch: building on the box (only if GHCR is unreachable)</summary>
+
+`docker-compose.in.yml` still carries `build:` blocks, so the site can be rebuilt locally:
+
+```sh
+docker compose -f docker-compose.in.yml build
+docker compose -f docker-compose.in.yml up -d --wait
+```
+
+This is the slow path that was retired as the default — expect 15+ minutes and a real chance of
+a registry timeout. It also reads `FRONTEND_SENTRY_DSN` from this box's `.env`, whereas CI-built
+images take it from the `FRONTEND_SENTRY_DSN` repo variable. Use it to restore service, then get
+back onto a CI-built image.
+</details>
 
 The backend applies database migrations (`drizzle-kit migrate`) on start, then serves. Migrations
 are versioned SQL in `backend/drizzle/`, tracked in a ledger, so each runs exactly once.
@@ -230,7 +268,7 @@ Observed while inventorying; none are caused by this app, and all are outside th
 | **Orphan cert** | `studio-tracker.duckdns.org` has a valid cert but no enabled Nginx site | `sudo certbot delete --cert-name studio-tracker.duckdns.org` if the project is gone |
 | **13.11GB build cache** | Larger than all images combined (3.7GB); 10.65GB reclaimable | `docker builder prune -f` |
 | **Stale SSH deploy keys** | `deploy`'s `authorized_keys` holds three keys all commented `github-actions-deploy` (one duplicated), so none can be safely revoked — you can't tell what each is for | Identify each from its project's deploy log fingerprint, drop the duplicate and any orphan |
-| ~~**No database backups**~~ ✅ RESOLVED | ~~`pg_data_in` has no backup~~ Both stacks now run a `db-backup` sidecar taking a daily `pg_dump` — see §7.1. Other projects on this box are still unbacked | Copy the dumps off the box (§7.1) — on-host backups do not survive losing the host |
+| ~~**No database backups**~~ ✅ RESOLVED | ~~`pg_data_in` has no backup~~ The stack now runs a `db-backup` sidecar taking a daily `pg_dump` — see §7.1. Other projects on this box are still unbacked | Copy the dumps off the box (§7.1) — on-host backups do not survive losing the host |
 | **Untracked directories** | `/var/www/app` (1020M) and `/var/www/Raj-kamal-mono-repo` (78M) have no running compose project | Confirm whether they're live, archive if not |
 
 ### 7.1 Database backups
