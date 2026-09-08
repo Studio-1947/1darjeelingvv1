@@ -84,44 +84,52 @@ export default function AudioGuide({ title, aboutText, transcripts }: AudioGuide
   const playNarration = (isMuted = muted) => {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
     const synth = window.speechSynthesis;
-    synth.cancel();
 
     const textToRead = texts[lang] || texts.en;
-    const utterance = new SpeechSynthesisUtterance(textToRead);
-    utteranceRef.current = utterance;
-    utterance.rate = 0.9;
-    utterance.pitch = 1.0;
-    utterance.volume = isMuted ? 0 : 1;
-
     const langCode = lang === 'bn' ? 'bn-IN' : lang === 'hi' ? 'hi-IN' : lang === 'ne' ? 'ne-NP' : 'en-US';
-    utterance.lang = langCode;
-
     const bestVoice = getBestVoice(lang);
-    if (bestVoice) {
-      utterance.voice = bestVoice;
-    }
 
-    utterance.onend = () => {
-      setPlaying(false);
-      utteranceRef.current = null;
-    };
-    utterance.onerror = (e: SpeechSynthesisErrorEvent) => {
-      if (e.error !== 'interrupted' && e.error !== 'canceled') {
-        console.warn('SpeechSynthesis error:', e.error);
-        if (bestVoice && utterance.voice !== bestVoice) {
-          try {
-            const fallbackUtt = new SpeechSynthesisUtterance(textToRead);
-            fallbackUtt.volume = isMuted ? 0 : 1;
-            synth.speak(fallbackUtt);
-            return;
-          } catch (_) {}
+    // synth.cancel() below fires the OUTGOING utterance's onend/onerror, but only after this
+    // function has already moved utteranceRef on to the new one - often on the next microtask,
+    // once setPlaying(true) has already run. Without this identity check that stale callback
+    // clobbers `playing` back to false even though the new utterance is speaking fine, which is
+    // exactly what made a second mute/unmute cycle look broken: toggleMute() only restarts speech
+    // `if (playing)`, and by then `playing` was a lie.
+    const speak = (u: SpeechSynthesisUtterance, volume: number) => {
+      u.rate = 0.9;
+      u.pitch = 1.0;
+      u.volume = volume;
+      u.lang = langCode;
+      if (bestVoice) u.voice = bestVoice;
+
+      u.onend = () => {
+        if (utteranceRef.current !== u) return;
+        setPlaying(false);
+        utteranceRef.current = null;
+      };
+      u.onerror = (e: SpeechSynthesisErrorEvent) => {
+        if (utteranceRef.current !== u) return;
+        if (e.error !== 'interrupted' && e.error !== 'canceled') {
+          console.warn('SpeechSynthesis error:', e.error);
+          if (bestVoice && u.voice !== bestVoice) {
+            try {
+              const fallbackUtt = new SpeechSynthesisUtterance(textToRead);
+              utteranceRef.current = fallbackUtt;
+              speak(fallbackUtt, volume);
+              return;
+            } catch (_) {}
+          }
         }
-      }
-      setPlaying(false);
-      utteranceRef.current = null;
+        setPlaying(false);
+        utteranceRef.current = null;
+      };
+
+      utteranceRef.current = u;
+      synth.speak(u);
     };
 
-    synth.speak(utterance);
+    synth.cancel();
+    speak(new SpeechSynthesisUtterance(textToRead), isMuted ? 0 : 1);
     setPlaying(true);
   };
 
