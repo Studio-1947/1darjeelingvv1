@@ -203,7 +203,7 @@ export default function BookingWidget() {
 
   return (
     <form onSubmit={submit} data-testid="booking-widget" className="relative w-full">
-      <div ref={containerRef} className="relative w-full max-w-4xl mx-auto">
+      <div ref={containerRef} className="relative w-full">
         {/* ========================================================================= */}
         {/* DESKTOP & TABLET WIDGET (md+)                                             */}
         {/* ========================================================================= */}
