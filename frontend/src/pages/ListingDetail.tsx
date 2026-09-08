@@ -150,12 +150,6 @@ export default function ListingDetail() {
           <AudioGuide
             title={item.title}
             aboutText={c.about || item.description}
-            transcripts={{
-              en: c.about || item.description || 'Welcome to this authentic destination in the Darjeeling hills.',
-              bn: `${item.title} - দার্জিলিং পাহাড়ের একটি অনন্য ঐতিহ্যবাহী স্থান।`,
-              hi: `${item.title} - दार्जिलिंग पहाड़ियों का एक प्रसिद्ध और सुंदर स्थल।`,
-              ne: `${item.title} - दार्जिलिङ पहाडको ऐतिहासिक तथा सुन्दर स्थान।`,
-            }}
           />
         }
       />

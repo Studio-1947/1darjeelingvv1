@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Heart, EnvelopeSimple as Mail } from '@phosphor-icons/react';
-import Logo from '@/components/Logo';
+import Wordmark from '@/components/Wordmark';
 
 export default function Footer() {
   const { t } = useTranslation();
@@ -14,12 +14,9 @@ export default function Footer() {
           size is set by the class and is unchanged. */}
       <div className="mx-auto max-w-7xl px-4 md:px-8 py-10 md:py-14 grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-10">
         <div className="col-span-2 md:col-span-1">
-          <div className="flex items-center gap-2 mb-3">
-            <Logo className="w-9 h-9" />
-            <div>
-              <div className="font-display font-extrabold text-lg text-ink">{t('brand')}</div>
-              <div className="text-[10px] font-semibold tracking-wide text-ink-soft">By studio 1947</div>
-            </div>
+          <div className="mb-3">
+            <Wordmark className="h-6 w-auto text-ink" />
+            <div className="mt-1 text-[10px] font-semibold tracking-wide text-ink-soft">By studio 1947</div>
           </div>
           <p className="text-sm text-ink-soft leading-relaxed">{t('brand_tagline')}</p>
           <p className="mt-4 text-xs text-ink-soft flex items-center gap-1"><Heart size={12} className="text-flag" /> {t('footer.made')}</p>

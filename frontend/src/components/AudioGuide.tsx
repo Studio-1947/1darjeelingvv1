@@ -1,36 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { SpeakerHigh as Volume2, SpeakerSlash as VolumeX, Play, Pause, Globe, Headphones } from '@phosphor-icons/react';
+import { SpeakerHigh as Volume2, SpeakerSlash as VolumeX, Play, Pause, Headphones } from '@phosphor-icons/react';
 
 interface AudioGuideProps {
   title: string;
   aboutText?: string;
-  transcripts?: {
-    en?: string;
-    bn?: string;
-    hi?: string;
-    ne?: string;
-  };
 }
 
-export default function AudioGuide({ title, aboutText, transcripts }: AudioGuideProps) {
-  const [lang, setLang] = useState<'en' | 'bn' | 'hi' | 'ne'>('en');
+export default function AudioGuide({ title, aboutText }: AudioGuideProps) {
   const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(false);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
-  const langNames: Record<'en' | 'bn' | 'hi' | 'ne', string> = {
-    en: 'English',
-    bn: 'বাংলা',
-    hi: 'हिंदी',
-    ne: 'नेपाली',
-  };
-
-  const texts: Record<'en' | 'bn' | 'hi' | 'ne', string> = {
-    en: transcripts?.en || aboutText || 'Welcome to this authentic destination in the Darjeeling hills.',
-    bn: transcripts?.bn || `${title} - দার্জিলিং পাহাড়ের একটি অনন্য ঐতিহ্যবাহী স্থান।`,
-    hi: transcripts?.hi || `${title} - दार्जिलिंग पहाड़ियों का एक प्रसिद्ध और सुंदर स्थल।`,
-    ne: transcripts?.ne || `${title} - दार्जिलिङ पहाडको ऐतिहासिक तथा सुन्दर स्थान।`,
-  };
+  const text = aboutText || `Welcome to ${title}, an authentic destination in the Darjeeling hills.`;
 
   const stopAudio = () => {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
@@ -41,53 +22,24 @@ export default function AudioGuide({ title, aboutText, transcripts }: AudioGuide
   };
 
   useEffect(() => {
-    stopAudio();
-  }, [lang]);
-
-  useEffect(() => {
     return () => {
       stopAudio();
     };
   }, []);
 
-  const getBestVoice = (targetLang: 'en' | 'bn' | 'hi' | 'ne'): SpeechSynthesisVoice | null => {
+  const getBestVoice = (): SpeechSynthesisVoice | null => {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) return null;
     const voices = window.speechSynthesis.getVoices() || [];
     if (voices.length === 0) return null;
-
-    if (targetLang === 'ne') {
-      // Nepali voices are often rare on Windows/Mac; try ne-NP, ne, then Hindi (hi-IN) which uses Devanagari phonetics accurately
-      const nepaliVoice = voices.find(v => v.lang.toLowerCase().startsWith('ne'));
-      if (nepaliVoice) return nepaliVoice;
-      const hindiVoice = voices.find(v => v.lang.toLowerCase().startsWith('hi'));
-      if (hindiVoice) return hindiVoice;
-      const indicVoice = voices.find(v => v.lang.includes('IN'));
-      if (indicVoice) return indicVoice;
-    } else if (targetLang === 'hi') {
-      const hindiVoice = voices.find(v => v.lang.toLowerCase().startsWith('hi'));
-      if (hindiVoice) return hindiVoice;
-      const indicVoice = voices.find(v => v.lang.includes('IN'));
-      if (indicVoice) return indicVoice;
-    } else if (targetLang === 'bn') {
-      const bengaliVoice = voices.find(v => v.lang.toLowerCase().startsWith('bn'));
-      if (bengaliVoice) return bengaliVoice;
-      const indicVoice = voices.find(v => v.lang.includes('IN'));
-      if (indicVoice) return indicVoice;
-    } else {
-      const enVoice = voices.find(v => v.lang.toLowerCase() === 'en-in') || voices.find(v => v.lang.toLowerCase().startsWith('en'));
-      if (enVoice) return enVoice;
-    }
-
-    return voices[0] || null;
+    const enVoice = voices.find(v => v.lang.toLowerCase() === 'en-in') || voices.find(v => v.lang.toLowerCase().startsWith('en'));
+    return enVoice || voices[0] || null;
   };
 
   const playNarration = (isMuted = muted) => {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
     const synth = window.speechSynthesis;
 
-    const textToRead = texts[lang] || texts.en;
-    const langCode = lang === 'bn' ? 'bn-IN' : lang === 'hi' ? 'hi-IN' : lang === 'ne' ? 'ne-NP' : 'en-US';
-    const bestVoice = getBestVoice(lang);
+    const bestVoice = getBestVoice();
 
     // synth.cancel() below fires the OUTGOING utterance's onend/onerror, but only after this
     // function has already moved utteranceRef on to the new one - often on the next microtask,
@@ -99,7 +51,7 @@ export default function AudioGuide({ title, aboutText, transcripts }: AudioGuide
       u.rate = 0.9;
       u.pitch = 1.0;
       u.volume = volume;
-      u.lang = langCode;
+      u.lang = 'en-US';
       if (bestVoice) u.voice = bestVoice;
 
       u.onend = () => {
@@ -113,7 +65,7 @@ export default function AudioGuide({ title, aboutText, transcripts }: AudioGuide
           console.warn('SpeechSynthesis error:', e.error);
           if (bestVoice && u.voice !== bestVoice) {
             try {
-              const fallbackUtt = new SpeechSynthesisUtterance(textToRead);
+              const fallbackUtt = new SpeechSynthesisUtterance(text);
               utteranceRef.current = fallbackUtt;
               speak(fallbackUtt, volume);
               return;
@@ -129,7 +81,7 @@ export default function AudioGuide({ title, aboutText, transcripts }: AudioGuide
     };
 
     synth.cancel();
-    speak(new SpeechSynthesisUtterance(textToRead), isMuted ? 0 : 1);
+    speak(new SpeechSynthesisUtterance(text), isMuted ? 0 : 1);
     setPlaying(true);
   };
 
@@ -158,32 +110,13 @@ export default function AudioGuide({ title, aboutText, transcripts }: AudioGuide
       data-testid="audio-guide-player"
       className="mt-6 rounded-2xl border border-[var(--line)] bg-gradient-to-r from-mist via-white to-mist p-3.5 sm:p-4 shadow-xs"
     >
-      <div className="flex items-center justify-between gap-2 flex-wrap pb-2.5 border-b border-[var(--line)]">
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-full bg-pine text-white flex items-center justify-center flex-shrink-0">
-            <Headphones size={14} />
-          </div>
-          <span className="text-xs font-bold uppercase tracking-wider text-pine">
-            Audio Story & Narration
-          </span>
+      <div className="flex items-center gap-2 pb-2.5 border-b border-[var(--line)]">
+        <div className="w-7 h-7 rounded-full bg-pine text-white flex items-center justify-center flex-shrink-0">
+          <Headphones size={14} />
         </div>
-
-        {/* Language Selector */}
-        <div className="flex items-center gap-1 bg-white border border-[var(--line)] rounded-full p-0.5 shadow-2xs">
-          <Globe size={12} className="text-ink-soft ml-1.5 hidden sm:inline" />
-          {(['en', 'bn', 'hi', 'ne'] as const).map((l) => (
-            <button
-              key={l}
-              type="button"
-              onClick={() => setLang(l)}
-              className={`px-2 py-0.5 rounded-full text-[11px] font-bold transition-all ${
-                lang === l ? 'bg-pine text-white shadow-2xs' : 'text-ink-soft hover:text-ink'
-              }`}
-            >
-              {langNames[l]}
-            </button>
-          ))}
-        </div>
+        <span className="text-xs font-bold uppercase tracking-wider text-pine">
+          Audio Story & Narration
+        </span>
       </div>
 
       {/* Player Bar */}
@@ -199,9 +132,8 @@ export default function AudioGuide({ title, aboutText, transcripts }: AudioGuide
         </button>
 
         <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between text-[11px] font-semibold text-ink-soft mb-1">
-            <span>{playing ? (muted ? 'Playing (Muted)...' : 'Playing Narration...') : 'Listen to Audio Guide'}</span>
-            <span>{langNames[lang]}</span>
+          <div className="text-[11px] font-semibold text-ink-soft mb-1">
+            {playing ? (muted ? 'Playing (Muted)...' : 'Playing Narration...') : 'Listen to Audio Guide'}
           </div>
           <div className="h-1.5 w-full bg-line rounded-full overflow-hidden">
             <div

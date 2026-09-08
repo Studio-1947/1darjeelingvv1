@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/context/AuthContext';
 import StoryCircle from '@/components/StoryCircle';
-import Logo from '@/components/Logo';
+import Wordmark from '@/components/Wordmark';
 import useGoBack from '@/hooks/useGoBack';
 import useHeroOverlay from '@/hooks/useHeroOverlay';
 import { CATEGORIES } from '@/constants/categories';
@@ -83,20 +83,12 @@ export default function Header() {
             sm it drops a size and holds its whole width instead. */}
         <Link
           to="/"
-          className="flex items-center gap-1.5 sm:gap-2 min-w-0"
+          className="flex items-center min-w-0"
           data-testid="brand-link"
           aria-label={t('brand')}
         >
-          {/* Background is keyed out, so the mark sits directly on the bar with
-              no tile. Scales with --header-h (3.75/4.75/5rem). */}
-          <Logo className="w-8 h-8 sm:w-14 sm:h-14 lg:w-16 lg:h-16 flex-shrink-0" />
           <div className="leading-none min-w-0">
-            <div className={`font-display font-extrabold text-sm sm:text-lg whitespace-nowrap ${onVideo ? 'text-white drop-shadow' : 'text-ink'}`}>
-              {t('brand')}
-            </div>
-            <div className={`mt-0.5 text-[8px] sm:text-[10px] font-semibold tracking-wide whitespace-nowrap ${onVideo ? 'text-white/85' : 'text-ink-soft'}`}>
-              By studio 1947
-            </div>
+            <Wordmark className={`h-5 sm:h-8 lg:h-9 w-auto ${onVideo ? 'text-white drop-shadow' : 'text-ink'}`} />
           </div>
         </Link>
 
