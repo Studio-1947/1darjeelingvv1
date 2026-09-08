@@ -5,7 +5,7 @@ import gsap from 'gsap';
 import SmartImg from '@/components/SmartImg';
 import { listingImage } from '@/lib/listingContent';
 import VerifiedBadge from '@/components/provider/VerifiedBadge';
-import { MapPin, ArrowLeft, Share2, Heart, ChevronDown, Check } from 'lucide-react';
+import { MapPin, ArrowLeft, ShareNetwork as Share2, Heart, CaretDown as ChevronDown, Check } from '@phosphor-icons/react';
 import { SCREEN_H } from './primitives';
 import { useFavorites } from '@/context/FavoritesContext';
 import { useLoginGate } from '@/components/LoginGate';

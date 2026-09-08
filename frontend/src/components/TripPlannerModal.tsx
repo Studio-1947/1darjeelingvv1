@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { X, Share2, Plus, Trash2, Check, MapPin, Calendar } from 'lucide-react';
+import { X, ShareNetwork as Share2, Plus, Trash as Trash2, Check, MapPin, Calendar } from '@phosphor-icons/react';
 import { shareLink } from '@/lib/share';
 
 interface ItineraryDay {

@@ -1,4 +1,4 @@
-import { Mountain, Home as HomeIcon, Car, Store, Coffee, PartyPopper, Leaf } from 'lucide-react';
+import { Mountains as Mountain, House as HomeIcon, Car, Storefront as Store, Coffee, Confetti as PartyPopper, Leaf } from '@phosphor-icons/react';
 
 /**
  * The seven top-level categories. They live in the header nav (and are the

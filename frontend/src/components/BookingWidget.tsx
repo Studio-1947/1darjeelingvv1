@@ -2,10 +2,11 @@ import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Search, MapPin, Navigation, Calendar, Users, Home as HomeIcon, Car, Loader2, Minus, Plus, X } from 'lucide-react';
+import { MagnifyingGlass as Search, MapPin, NavigationArrow as Navigation, Calendar, Users, House as HomeIcon, Car, CircleNotch as Loader2, Minus, Plus, X } from '@phosphor-icons/react';
 import api from '@/lib/api';
 import { todayStr, addDays, isBadRange, formatDay, formatRange } from '@/lib/dates';
 import { writeTrip } from '@/lib/tripParams';
+import WeatherForecast from '@/components/WeatherForecast';
 
 const PLACES: { name: string; alt?: string[] }[] = [
   // Darjeeling and around
@@ -192,6 +193,9 @@ export default function BookingWidget() {
     params.set('q', where);
     return nav(`/search?${params}`);
   };
+
+  // Whatever the visitor is typing as their destination, on whichever tab is active.
+  const destinationQuery = tab === 'driver' ? (to.trim() || from.trim()) : q;
 
   const pillLabel = 'text-[10px] font-bold uppercase tracking-wider text-white/60';
   const pillField =
@@ -823,6 +827,12 @@ export default function BookingWidget() {
               document.body,
             )}
         </div>
+
+        {destinationQuery.trim().length >= 3 && (
+          <div className="mt-3 md:mt-4">
+            <WeatherForecast query={destinationQuery} />
+          </div>
+        )}
       </div>
     </form>
   );

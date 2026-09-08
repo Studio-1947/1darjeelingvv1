@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Navigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { HeartHandshake, Check, ArrowLeft } from 'lucide-react';
+import { HandHeart as HeartHandshake, Check, ArrowLeft } from '@phosphor-icons/react';
 import { useAuth } from '@/context/AuthContext';
 import { createPaymentOrder, completeMockPayment, payWithRazorpay } from '@/lib/api';
 import MockPaymentModal from '@/components/MockPaymentModal';

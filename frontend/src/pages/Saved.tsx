@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Heart, Share2, Map, Check, Calendar, X, Copy, ExternalLink } from 'lucide-react';
+import { Heart, ShareNetwork as Share2, MapTrifold as Map, Check, Calendar, X, Copy, ArrowSquareOut as ExternalLink } from '@phosphor-icons/react';
 import { useAuth } from '@/context/AuthContext';
 import { fetchFavorites, SavedListing } from '@/lib/favorites';
 import api from '@/lib/api';

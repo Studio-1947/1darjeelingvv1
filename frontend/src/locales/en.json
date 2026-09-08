@@ -635,6 +635,23 @@
     "guests_less": "Fewer guests",
     "guests_more": "More guests"
   },
+  "weather": {
+    "loading": "Fetching forecast…",
+    "not_found": "Couldn't find a forecast for that place.",
+    "forecast_for": "7-day forecast for {{name}}",
+    "today": "Today",
+    "high": "High",
+    "low": "Low",
+    "conditions": {
+      "clear": "Clear",
+      "partly_cloudy": "Partly cloudy",
+      "cloudy": "Cloudy",
+      "fog": "Foggy",
+      "rain": "Rain",
+      "snow": "Snow",
+      "storm": "Storm"
+    }
+  },
   "filter": {
     "search_placeholder": "Search by name, landmark or keyword…",
     "all_locations": "All Hubs & Locations",
@@ -746,6 +763,7 @@
     "pick_rating": "Please pick a star rating.",
     "save_failed": "Could not save your review. Please try again.",
     "upload_failed": "Failed to upload review photos.",
+    "photo_limit": "You can attach up to {{count}} photos.",
     "your_rating": "Your rating",
     "out_of_5": "{{value}} out of 5",
     "star_aria_one": "{{count}} star",

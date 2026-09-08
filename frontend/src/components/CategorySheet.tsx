@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { X, ArrowUpRight } from 'lucide-react';
+import { X, ArrowUpRight } from '@phosphor-icons/react';
 import { CATEGORIES } from '@/constants/categories';
 
 /**
@@ -119,7 +119,7 @@ export default function CategorySheet({ open, onClose }: { open: boolean; onClos
                 className="w-9 h-9 rounded-full grid place-items-center flex-shrink-0 text-white"
                 style={{ backgroundColor: OLIVE }}
               >
-                <Icon className="w-[18px] h-[18px]" strokeWidth={2} />
+                <Icon className="w-[18px] h-[18px]" weight="regular" />
               </span>
             </Link>
           );
@@ -141,7 +141,7 @@ export default function CategorySheet({ open, onClose }: { open: boolean; onClos
             {t('nav.all_listings')}
           </span>
           <span className="w-9 h-9 rounded-full grid place-items-center flex-shrink-0 bg-white/25">
-            <ArrowUpRight className="w-[18px] h-[18px]" strokeWidth={2.4} />
+            <ArrowUpRight className="w-[18px] h-[18px]" weight="bold" />
           </span>
         </Link>
 
@@ -167,7 +167,7 @@ export default function CategorySheet({ open, onClose }: { open: boolean; onClos
                 className="w-9 h-9 rounded-full grid place-items-center flex-shrink-0 text-white"
                 style={{ backgroundColor: OLIVE }}
               >
-                <Icon className="w-[18px] h-[18px]" strokeWidth={2} />
+                <Icon className="w-[18px] h-[18px]" weight="regular" />
               </span>
             </Link>
           );

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { X, Shield, Lock, CheckCircle2, IndianRupee, Loader2 } from 'lucide-react';
+import { X, Shield, Lock, CheckCircle as CheckCircle2, CurrencyInr as IndianRupee, CircleNotch as Loader2 } from '@phosphor-icons/react';
 import Logo from '@/components/Logo';
 
 /**

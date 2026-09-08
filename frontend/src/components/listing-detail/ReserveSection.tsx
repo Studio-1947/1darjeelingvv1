@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Navigation, Receipt } from 'lucide-react';
+import { NavigationArrow as Navigation, Receipt } from '@phosphor-icons/react';
 import { Screen, SectionHead, ALIGN_TEXT, ALIGN_BLOCK } from './primitives';
 import { BookingFlow } from './useBookingFlow';
 import { todayStr, addDays, isBadRange } from '@/lib/dates';

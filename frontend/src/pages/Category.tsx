@@ -6,7 +6,7 @@ import FeedCard from '@/components/FeedCard';
 import SmartImg from '@/components/SmartImg';
 import Seo from '@/components/Seo';
 import { FeedCardSkeleton, GridTileSkeleton, LoadingStatus, repeat } from '@/components/skeletons';
-import { LayoutGrid, Rows3, MapPin, ArrowRight, CalendarRange, Users, Search as SearchIcon } from 'lucide-react';
+import { SquaresFour as LayoutGrid, Rows as Rows3, MapPin, ArrowRight, CalendarDots as CalendarRange, Users, MagnifyingGlass as SearchIcon } from '@phosphor-icons/react';
 import CategoryFilterBar from '@/components/CategoryFilterBar';
 import { contentFor, listingImage } from '@/lib/listingContent';
 import { routesCoverTrip } from '@/lib/routeFares';

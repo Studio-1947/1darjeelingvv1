@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
-import { CheckCircle2, Clock, Wallet, CalendarCheck, Users, LayoutList, Phone, MessageCircle, ArrowRight, ExternalLink, X, Upload, Plus, Trash2, Edit, Pencil } from 'lucide-react';
+import { CheckCircle as CheckCircle2, Clock, Wallet, CalendarCheck, Users, ListBullets as LayoutList, Phone, ChatCircle as MessageCircle, ArrowRight, ArrowSquareOut as ExternalLink, X, Upload, Plus, Trash as Trash2, PencilSimple as Edit, Pencil } from '@phosphor-icons/react';
 import ListingFormModal from '@/components/ListingFormModal';
 import { StatCard } from '@/components/provider/dashboard/widgets';
 import BookingCard from '@/components/provider/dashboard/BookingCard';

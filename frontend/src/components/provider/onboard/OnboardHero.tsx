@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Upload } from 'lucide-react';
+import { Upload } from '@phosphor-icons/react';
 import { SCREEN_H } from './layout';
 
 /**

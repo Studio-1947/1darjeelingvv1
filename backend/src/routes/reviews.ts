@@ -14,6 +14,8 @@ const router = Router();
 // is public; writing/removing requires auth and touches only the caller's own review.
 
 const MAX_COMMENT_LEN = 2000;
+const MAX_REVIEW_PHOTOS = 6;
+const MAX_PHOTO_URL_LEN = 2000;
 
 function reviewOut(r: typeof schema.reviews.$inferSelect) {
   return {
@@ -22,10 +24,26 @@ function reviewOut(r: typeof schema.reviews.$inferSelect) {
     user_id: r.userId,
     rating: r.rating,
     comment: r.comment,
+    photos: r.photos || [],
     author_name: r.authorName,
     created_at: r.createdAt,
     updated_at: r.updatedAt,
   };
+}
+
+/** Validates the `photos` field of a review submission; returns the cleaned array or an error message. */
+function parseReviewPhotos(value: unknown): { photos: string[] } | { error: string } {
+  if (value === undefined) return { photos: [] };
+  if (!Array.isArray(value)) return { error: 'photos must be an array' };
+  if (value.length > MAX_REVIEW_PHOTOS) return { error: `photos accepts at most ${MAX_REVIEW_PHOTOS} entries` };
+  const photos: string[] = [];
+  for (const url of value) {
+    if (typeof url !== 'string' || !url.trim()) return { error: 'each photo must be a non-empty URL string' };
+    if (url.length > MAX_PHOTO_URL_LEN) return { error: 'photo URL is too long' };
+    if (!/^https?:\/\//i.test(url)) return { error: 'each photo must be an http(s) URL' };
+    photos.push(url.trim());
+  }
+  return { photos };
 }
 
 /**
@@ -72,9 +90,10 @@ router.get('/listing/:listingId', async (req: Request, res: Response) => {
  *               listing_id: { type: string }
  *               rating: { type: integer, minimum: 1, maximum: 5 }
  *               comment: { type: string }
+ *               photos: { type: array, items: { type: string }, maxItems: 6, description: "http(s) URLs, e.g. from POST /listings/upload" }
  *     responses:
  *       200: { description: The saved review }
- *       400: { description: Invalid rating or comment }
+ *       400: { description: Invalid rating, comment, or photos }
  *       402:
  *         description: The caller's annual platform support fee is not active
  *         content:
@@ -83,7 +102,7 @@ router.get('/listing/:listingId', async (req: Request, res: Response) => {
  *       404: { description: Listing not found }
  */
 router.post('/', authenticateToken, requireActiveSupport, async (req: Request, res: Response) => {
-  const { listing_id, rating, comment } = req.body || {};
+  const { listing_id, rating, comment, photos } = req.body || {};
 
   if (!listing_id) return res.status(400).json({ detail: 'listing_id is required' });
   if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
@@ -93,6 +112,8 @@ router.post('/', authenticateToken, requireActiveSupport, async (req: Request, r
   if (text.length > MAX_COMMENT_LEN) {
     return res.status(400).json({ detail: `Comment must be ${MAX_COMMENT_LEN} characters or fewer` });
   }
+  const parsedPhotos = parseReviewPhotos(photos);
+  if ('error' in parsedPhotos) return res.status(400).json({ detail: parsedPhotos.error });
 
   const [listing] = await db.select().from(schema.listings).where(eq(schema.listings.id, listing_id)).limit(1);
   // A draft spot 404s everywhere else it is publicly reachable; it must not be reviewable either.
@@ -108,13 +129,14 @@ router.post('/', authenticateToken, requireActiveSupport, async (req: Request, r
       listingId: listing_id,
       rating,
       comment: text,
+      photos: parsedPhotos.photos,
       authorName: req.user.name || 'Traveller',
       createdAt: now,
       updatedAt: null,
     })
     .onConflictDoUpdate({
       target: [schema.reviews.userId, schema.reviews.listingId],
-      set: { rating, comment: text, authorName: req.user.name || 'Traveller', updatedAt: now },
+      set: { rating, comment: text, photos: parsedPhotos.photos, authorName: req.user.name || 'Traveller', updatedAt: now },
     })
     .returning();
 

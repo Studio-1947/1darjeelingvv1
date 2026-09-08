@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { MapPin } from 'lucide-react';
+import { MapPin } from '@phosphor-icons/react';
 
 /**
  * Real, interactive map via OpenStreetMap's embed - no API key required.

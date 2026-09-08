@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Upload, CheckCircle2, Clock, XCircle, Circle } from 'lucide-react';
+import { Upload, CheckCircle as CheckCircle2, Clock, XCircle, Circle } from '@phosphor-icons/react';
 import { getMyProfile, uploadKycDoc, deleteKycDoc, KycApiError, KycProfile, ChecklistItem } from '@/lib/kyc';
 import ProfileCompletionBar from '../ProfileCompletionBar';
 

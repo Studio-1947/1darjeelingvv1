@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Heart, Mail } from 'lucide-react';
+import { Heart, EnvelopeSimple as Mail } from '@phosphor-icons/react';
 import Logo from '@/components/Logo';
 
 export default function Footer() {

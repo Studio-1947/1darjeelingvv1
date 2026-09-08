@@ -1,9 +1,4 @@
-import {
-  Wifi, Utensils, Flame, Mountain, TreePine, Home, ParkingCircle, Coffee, Croissant,
-  Car, Languages, Clock, ShieldCheck, Luggage, Fuel, Store, Gift, CreditCard, Package,
-  Leaf, Landmark, Users, PawPrint, Camera, Sunrise, Music, Ticket, Tag, Check,
-  Binoculars, Route,
-} from 'lucide-react';
+import { WifiHigh as Wifi, ForkKnife as Utensils, Fire as Flame, Mountains as Mountain, Tree as TreePine, House as Home, Park as ParkingCircle, Coffee, Bread as Croissant, Car, Translate as Languages, Clock, ShieldCheck, Suitcase as Luggage, GasPump as Fuel, Storefront as Store, Gift, CreditCard, Package, Leaf, Bank as Landmark, Users, PawPrint, Camera, Sun as Sunrise, MusicNote as Music, Ticket, Tag, Check, Binoculars, Path as Route } from '@phosphor-icons/react';
 
 export type Amenity = { Icon: any; label: string };
 

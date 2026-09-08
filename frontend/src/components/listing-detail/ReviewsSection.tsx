@@ -1,13 +1,16 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Star, Loader2, Trash2, Camera, Image as ImageIcon, X } from 'lucide-react';
+import { Star, CircleNotch as Loader2, Trash as Trash2, Camera, Image as ImageIcon, X } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
 import { fetchReviews, postReview, deleteReview, Review, ReviewSummary } from '@/lib/reviews';
 import { uploadImages } from '@/lib/uploadImage';
 import { ReviewSkeleton, LoadingStatus, repeat } from '@/components/skeletons';
 import { ALIGN_TEXT, ALIGN_ROW, ALIGN_BLOCK, SCREEN_COL } from './primitives';
+
+// Matches MAX_REVIEW_PHOTOS in backend/src/routes/reviews.ts.
+const MAX_REVIEW_PHOTOS = 6;
 
 /** Read-only row of five stars for a given rating (supports halves via rounding). */
 function Stars({ value, size = 16 }: { value: number; size?: number }) {
@@ -88,10 +91,17 @@ export default function ReviewsSection({ item }: { item: any }) {
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
+    const remaining = MAX_REVIEW_PHOTOS - photos.length;
+    if (remaining <= 0) {
+      toast.error(t('reviews.photo_limit', { count: MAX_REVIEW_PHOTOS, defaultValue: 'You can attach up to {{count}} photos.' }));
+      e.target.value = '';
+      return;
+    }
+    const selected = Array.from(files).slice(0, remaining);
     setUploadingPhotos(true);
     setError('');
     try {
-      const urls = await uploadImages(files);
+      const urls = await uploadImages(selected);
       setPhotos((prev) => [...prev, ...urls]);
       toast.success(t('reviews.photo_uploaded', 'Photo attached successfully!'));
     } catch (err: any) {
@@ -210,24 +220,26 @@ export default function ReviewsSection({ item }: { item: any }) {
                       </button>
                     </div>
                   ))}
-                  <label className="w-16 h-16 rounded-xl border-2 border-dashed border-[var(--line)] hover:border-pine grid place-items-center cursor-pointer bg-white text-ink-soft hover:text-pine transition-colors">
-                    {uploadingPhotos ? (
-                      <Loader2 size={18} className="animate-spin" />
-                    ) : (
-                      <div className="flex flex-col items-center gap-0.5">
-                        <Camera size={18} />
-                        <span className="text-[9px] font-bold">{t('reviews.add_photo')}</span>
-                      </div>
-                    )}
-                    <input
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      onChange={handlePhotoUpload}
-                      disabled={uploadingPhotos || submitting}
-                      className="hidden"
-                    />
-                  </label>
+                  {photos.length < MAX_REVIEW_PHOTOS && (
+                    <label className="w-16 h-16 rounded-xl border-2 border-dashed border-[var(--line)] hover:border-pine grid place-items-center cursor-pointer bg-white text-ink-soft hover:text-pine transition-colors">
+                      {uploadingPhotos ? (
+                        <Loader2 size={18} className="animate-spin" />
+                      ) : (
+                        <div className="flex flex-col items-center gap-0.5">
+                          <Camera size={18} />
+                          <span className="text-[9px] font-bold">{t('reviews.add_photo')}</span>
+                        </div>
+                      )}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={handlePhotoUpload}
+                        disabled={uploadingPhotos || submitting}
+                        className="hidden"
+                      />
+                    </label>
+                  )}
                 </div>
               </div>
 

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { X, Upload } from 'lucide-react';
+import { X, Upload } from '@phosphor-icons/react';
 import api from '@/lib/api';
 import { uploadImage, uploadImages } from '@/lib/uploadImage';
 import { VEHICLE_TYPES, HOMESTAY_AMENITIES, HOMESTAY_TAGS } from '@/constants/listingOptions';

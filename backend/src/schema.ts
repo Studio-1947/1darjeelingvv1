@@ -156,6 +156,7 @@ export const reviews = pgTable('reviews', {
   listingId: text('listing_id').references(() => listings.id, { onDelete: 'cascade' }).notNull(),
   rating: integer('rating').notNull(), // 1..5, validated in the route
   comment: text('comment').default('').notNull(),
+  photos: jsonb('photos').$type<string[]>().default([]).notNull(),
   authorName: text('author_name').notNull(), // snapshot of the reviewer's name at write time
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at'),

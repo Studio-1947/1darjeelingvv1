@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { CheckCircle2, MapPin, Calendar, Users, Phone, MessageCircle, ArrowRight, X, Copy, ExternalLink } from 'lucide-react';
+import { CheckCircle as CheckCircle2, MapPin, Calendar, Users, Phone, ChatCircle as MessageCircle, ArrowRight, X, Copy, ArrowSquareOut as ExternalLink } from '@phosphor-icons/react';
 
 /**
  * Booking / provider registration confirmation modal.

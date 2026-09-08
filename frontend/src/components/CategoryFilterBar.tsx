@@ -1,17 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  Search,
-  MapPin,
-  SlidersHorizontal,
-  ArrowUpDown,
-  X,
-  RotateCcw,
-  Car,
-  Home as HomeIcon,
-  Ticket,
-  Check,
-} from 'lucide-react';
+import { MagnifyingGlass as Search, MapPin, SlidersHorizontal, ArrowsDownUp as ArrowUpDown, X, ArrowCounterClockwise as RotateCcw, Car, House as HomeIcon, Ticket, Check } from '@phosphor-icons/react';
 
 export interface CategoryFilterBarProps {
   categoryType?: string;

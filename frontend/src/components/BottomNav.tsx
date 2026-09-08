@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Home, Ticket, Store, LayoutGrid, User, ChevronUp } from 'lucide-react';
+import { House as Home, Ticket, Storefront as Store, SquaresFour as LayoutGrid, User, CaretUp as ChevronUp } from '@phosphor-icons/react';
 import { useAuth } from '@/context/AuthContext';
 import CategorySheet from '@/components/CategorySheet';
 
@@ -85,7 +85,7 @@ export default function BottomNav() {
             aria-current={homeActive ? 'page' : undefined}
             className={tabCls(homeActive)}
           >
-            <Home size={20} strokeWidth={homeActive ? 2.6 : 2} className="flex-shrink-0" />
+            <Home size={20} weight={homeActive ? 'bold' : 'regular'} className="flex-shrink-0" />
             <span className="truncate max-w-full px-0.5">{t('nav.home')}</span>
           </Link>
 
@@ -97,9 +97,9 @@ export default function BottomNav() {
             className={tabCls(tripsActive)}
           >
             {isProvider ? (
-              <Store size={20} strokeWidth={tripsActive ? 2.6 : 2} className="flex-shrink-0" />
+              <Store size={20} weight={tripsActive ? 'bold' : 'regular'} className="flex-shrink-0" />
             ) : (
-              <Ticket size={20} strokeWidth={tripsActive ? 2.6 : 2} className="flex-shrink-0" />
+              <Ticket size={20} weight={tripsActive ? 'bold' : 'regular'} className="flex-shrink-0" />
             )}
             <span className="truncate max-w-full px-0.5">
               {isProvider ? (t('nav.my_listings') || 'My Listings') : (t('nav.trips') || 'My Trips')}
@@ -119,10 +119,10 @@ export default function BottomNav() {
             className={tabCls(typeOpen)}
           >
             <span className="relative flex-shrink-0">
-              <LayoutGrid size={20} strokeWidth={typeOpen ? 2.6 : 2} />
+              <LayoutGrid size={20} weight={typeOpen ? 'bold' : 'regular'} />
               <ChevronUp
                 size={11}
-                strokeWidth={2.6}
+                weight="bold"
                 className={`absolute -top-2 left-1/2 -translate-x-1/2 transition-transform duration-200 ${
                   typeOpen ? 'rotate-180' : ''
                 }`}
@@ -138,7 +138,7 @@ export default function BottomNav() {
             aria-current={accountActive ? 'page' : undefined}
             className={tabCls(accountActive)}
           >
-            <User size={20} strokeWidth={accountActive ? 2.6 : 2} className="flex-shrink-0" />
+            <User size={20} weight={accountActive ? 'bold' : 'regular'} className="flex-shrink-0" />
             <span className="truncate max-w-full px-0.5">{t('nav.account')}</span>
           </Link>
         </div>

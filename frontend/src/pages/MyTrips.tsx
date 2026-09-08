@@ -4,10 +4,7 @@ import { useTranslation } from 'react-i18next';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { useSeo } from '@/components/Seo';
-import {
-  Ticket, Calendar, ArrowRight, XCircle, Loader2, Compass, Phone,
-  CheckCircle2, Clock, MapPin, Store, LogIn
-} from 'lucide-react';
+import { Ticket, Calendar, ArrowRight, XCircle, CircleNotch as Loader2, Compass, Phone, CheckCircle as CheckCircle2, Clock, MapPin, Storefront as Store, SignIn as LogIn } from '@phosphor-icons/react';
 
 function StatusPill({ status, isPast }: { status: string; isPast: boolean }) {
   const { t } = useTranslation();

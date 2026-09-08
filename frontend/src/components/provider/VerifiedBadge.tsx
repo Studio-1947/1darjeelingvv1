@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { BadgeCheck } from 'lucide-react';
+import { SealCheck as BadgeCheck } from '@phosphor-icons/react';
 
 /** Shown when a provider's kyc_status is 'verified'. */
 export default function VerifiedBadge({ size = 'sm' }: { size?: 'sm' | 'md' }) {

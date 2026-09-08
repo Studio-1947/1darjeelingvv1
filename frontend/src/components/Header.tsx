@@ -7,7 +7,7 @@ import Logo from '@/components/Logo';
 import useGoBack from '@/hooks/useGoBack';
 import useHeroOverlay from '@/hooks/useHeroOverlay';
 import { CATEGORIES } from '@/constants/categories';
-import { User, Heart, ArrowLeft } from 'lucide-react';
+import { User, Heart, ArrowLeft } from '@phosphor-icons/react';
 
 export default function Header() {
   const { t } = useTranslation();

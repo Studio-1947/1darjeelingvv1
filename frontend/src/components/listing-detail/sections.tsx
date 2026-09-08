@@ -4,10 +4,7 @@ import SmartImg from '@/components/SmartImg';
 import MapEmbed from '@/components/MapEmbed';
 import { optionLabel } from '@/lib/optionLabel';
 import { RouteFare } from '@/lib/routeFares';
-import {
-  MapPin, Tag, Navigation, ArrowRight, Languages,
-  CalendarClock, Route, Crosshair, Clock, Ticket, Mountain, Sparkles, Compass,
-} from 'lucide-react';
+import { MapPin, Tag, NavigationArrow as Navigation, ArrowRight, Translate as Languages, CalendarStar as CalendarClock, Path as Route, Crosshair, Clock, Ticket, Mountains as Mountain, Sparkle as Sparkles, Compass } from '@phosphor-icons/react';
 import { Screen, SectionHead, Avatar, ALIGN_TEXT, ALIGN_ROW, ALIGN_BLOCK } from './primitives';
 import VerifiedBadge from '@/components/provider/VerifiedBadge';
 

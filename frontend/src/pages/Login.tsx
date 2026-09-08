@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
-import { Phone, KeyRound } from 'lucide-react';
+import { Phone, Key as KeyRound } from '@phosphor-icons/react';
 import Logo from '@/components/Logo';
 import Seo from '@/components/Seo';
 

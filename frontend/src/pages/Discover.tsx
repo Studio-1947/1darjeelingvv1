@@ -8,11 +8,10 @@ import SmartImg from '@/components/SmartImg';
 import Seo from '@/components/Seo';
 import BookingWidget from '@/components/BookingWidget';
 import HeroMedia from '@/components/HeroMedia';
-import WeatherWidget from '@/components/WeatherWidget';
 import RouteEstimator from '@/components/RouteEstimator';
 import { CATEGORIES } from '@/constants/categories';
 import { FeedCardSkeleton, SpotTileSkeleton, StayTileSkeleton, LoadingStatus, repeat } from '@/components/skeletons';
-import { Mountain, ArrowRight, Compass, TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Mountains as Mountain, ArrowRight, Compass, TrendUp as TrendingUp, CaretLeft as ChevronLeft, CaretRight as ChevronRight } from '@phosphor-icons/react';
 
 const RED_PANDA = 'https://images.unsplash.com/photo-1542880941-1abfea46bba6';
 const HERO_POSTER = 'https://images.unsplash.com/photo-1544735716-392fe2489ffa';
@@ -183,10 +182,6 @@ export default function Discover() {
           </div>
           <div className="mt-7 md:mt-10">
             <BookingWidget />
-          </div>
-
-          <div className="mt-3 md:mt-4 max-w-4xl mx-auto w-full px-4 sm:px-6">
-            <WeatherWidget />
           </div>
         </div>
       </section>

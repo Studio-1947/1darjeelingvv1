@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Volume2, VolumeX, Play, Pause, Globe, Headphones } from 'lucide-react';
+import { SpeakerHigh as Volume2, SpeakerSlash as VolumeX, Play, Pause, Globe, Headphones } from '@phosphor-icons/react';
 
 interface AudioGuideProps {
   title: string;

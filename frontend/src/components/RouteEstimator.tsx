@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Car, Navigation, Clock, ShieldCheck, ArrowRight, MapPin, Zap, Mountain } from 'lucide-react';
+import { Car, NavigationArrow as Navigation, Clock, ShieldCheck, ArrowRight, MapPin, Lightning as Zap, Mountains as Mountain } from '@phosphor-icons/react';
 import api from '@/lib/api';
 
 export interface RouteDetail {
