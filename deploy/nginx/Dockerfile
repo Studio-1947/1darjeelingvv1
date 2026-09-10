@@ -1,11 +1,24 @@
 # Builds the two static frontends and packages them with Nginx.
-# Build context MUST be the repo root (docker-compose.prod.yml sets this),
-# since this stage copies from sibling frontend/ and frontend-admin/ dirs.
+# Build context MUST be the repo root (the `images` job in deploy-prod.yml sets this, as does
+# docker-compose.in.yml's escape-hatch build), since this stage copies from the sibling
+# frontend/ and frontend-admin/ dirs.
+#
+# This normally runs on a GitHub runner, not the VPS — see the `images` job for why.
 
 FROM node:20-slim AS frontend-build
 WORKDIR /app
 COPY frontend/package.json frontend/yarn.lock ./
-RUN corepack enable && corepack prepare yarn@1.22.22 --activate && yarn install --frozen-lockfile
+# yarn 1.x gives each tarball request only 30s before it throws ESOCKETTIMEDOUT and fails the
+# whole install — which is how the 2026-09-07 deploy died fetching @sentry/core over the VPS's
+# uplink. Kept now that builds happen on a runner: it costs nothing on a fast link, and it still
+# covers the escape-hatch case of rebuilding on the box with GHCR down.
+#
+# Note this raises the bar for giving up, so it is not free — a genuinely stalled socket now hangs
+# for the full 10 minutes instead of erroring at 30s and retrying. That trade is right on a link
+# that is slow-but-progressing and wrong on one that stalls. If a build ever hangs here rather
+# than failing, lower this rather than raising it.
+RUN corepack enable && corepack prepare yarn@1.22.22 --activate \
+    && yarn install --frozen-lockfile --network-timeout 600000
 COPY frontend/ .
 # REACT_APP_BACKEND_URL is deliberately NOT set: the app falls back to a
 # same-origin '/api' base, which app.conf proxies to the backend. Setting it to

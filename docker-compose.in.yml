@@ -1,16 +1,15 @@
-# Production stack for aanganerp.in  the SECOND isolated stack on this VPS,
-# running ALONGSIDE the existing 1darjeeling-prod stack (onedarjeeling.duckdns.org,
-# docker-compose.prod.yml). The two stacks share NOTHING: distinct compose project
-# name, container names, volumes, and host port. That isolation is the whole reason
-# a bad deploy of one stack cannot touch the other's data or uptime.
+# Production stack for aanganerp.in — the only production stack on this VPS as of
+# 2026-09-07. It used to run alongside a second one (`1darjeeling-prod`,
+# onedarjeeling.duckdns.org, docker-compose.prod.yml), which has been decommissioned;
+# that file is deleted and nothing in this repo deploys it any more.
 #
 # Deployed automatically from the `prod` branch by .github/workflows/deploy-prod.yml.
 # ALWAYS pass `-f docker-compose.in.yml` for this stack: a bare `docker compose` in
-# this directory picks up the dev docker-compose.yml, and `-f docker-compose.prod.yml`
-# is the OTHER production stack.
+# this directory picks up the dev docker-compose.yml instead.
 #
-# Why an explicit `name:` AND distinct container/volume names (same reasoning as
-# docker-compose.prod.yml): Compose derives a project name from the directory by
+# Why an explicit `name:` AND distinct container/volume names — still worth keeping now
+# that the sibling stack is gone, because the dev docker-compose.yml still sits in this
+# same directory: Compose derives a project name from the directory by
 # default, so two compose files in the same folder with a same-named service are
 # tracked as the SAME resource regardless of container_name. The `name:` below is
 # what actually keeps this stack's resources separate; the distinct container and
@@ -18,7 +17,7 @@
 # namespace, not project-scoped, so distinct container names are mandatory, not
 # optional.)
 #
-# Like the other stack, nginx here is bound to 127.0.0.1 only  the VPS's system
+# Like the other stack, nginx here is bound to 127.0.0.1 only — the VPS's system
 # Nginx + Certbot terminates TLS for aanganerp.in and reverse-proxies to this
 # container's loopback port (8092). See deploy/VPS-RUNBOOK.md.
 name: 1darjeeling-in
@@ -37,14 +36,14 @@ services:
     # Lets `depends_on: condition: service_healthy` below actually mean "Postgres is accepting
     # connections", not merely "the container was started".
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}" ]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 10s
 
   # Daily pg_dump into the pg_backups_in volume. Reuses the postgres image purely because it
-  # already carries a pg_dump matching the server version  it runs no database of its own.
+  # already carries a pg_dump matching the server version — it runs no database of its own.
   # See deploy/backup/pg-backup.sh for what this does and does NOT protect against, and
   # VPS-RUNBOOK.md §7 for how to restore and how to get the dumps off the box.
   db-backup:
@@ -65,9 +64,15 @@ services:
       - pg_backups_in:/backups
       # Read-only: the container has no business rewriting its own schedule.
       - ./deploy/backup/pg-backup.sh:/usr/local/bin/pg-backup.sh:ro
-    entrypoint: [ "/bin/sh", "/usr/local/bin/pg-backup.sh" ]
+    entrypoint: ["/bin/sh", "/usr/local/bin/pg-backup.sh"]
 
   backend:
+    # Built and pushed by .github/workflows/deploy-prod.yml, then pulled here. IMAGE_TAG is the
+    # deployed commit's SHA; it falls back to :latest only for a manual `up` run by hand on the box.
+    image: ghcr.io/studio-1947/1darjeelingvv1-backend:${IMAGE_TAG:-latest}
+    # Kept as an escape hatch, NOT the normal path: `docker compose -f docker-compose.in.yml build`
+    # still works if GHCR is unreachable and the site has to be rebuilt from the box. A plain
+    # `up -d` prefers the image above and will not trigger this.
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -79,7 +84,7 @@ services:
       # Computed here (not hand-duplicated in .env) so Postgres credentials
       # only ever live in one place.
       - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
-    # Bare `depends_on` only waits for the container to start, not for Postgres/MinIO to be ready 
+    # Bare `depends_on` only waits for the container to start, not for Postgres/MinIO to be ready —
     # so the backend's schema sync or first bucket bootstrap could fire before either is up.
     depends_on:
       postgres:
@@ -88,15 +93,15 @@ services:
         condition: service_healthy
     # Without this the container is "healthy" the instant the process forks, so a backend that
     # dies during `drizzle-kit migrate`, or boots with an unreachable database, still counts as a
-    # successful deploy. Probes /api/health (readiness  200 only when Postgres AND MinIO answer)
-    # rather than /api (liveness  a JSON literal that keeps saying "ok" with the database on fire).
+    # successful deploy. Probes /api/health (readiness — 200 only when Postgres AND MinIO answer)
+    # rather than /api (liveness — a JSON literal that keeps saying "ok" with the database on fire).
     #
     # node, not curl/wget: node:20-slim ships neither, and a healthcheck is a poor reason to add a
     # package to a production image.
     #
     # Safe to point at readiness because Docker does NOT restart a merely-unhealthy container (only
     # one that exits), so a MinIO hiccup marks this red without starting a restart loop. What it
-    # does do is fail `up --wait` in the deploy job  which is the entire point.
+    # does do is fail `up --wait` in the deploy job — which is the entire point.
     healthcheck:
       test:
         - CMD
@@ -116,28 +121,32 @@ services:
     environment:
       - MINIO_ROOT_USER=${MINIO_ROOT_USER}
       - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
-    # No `ports:` on purpose  MinIO is internal-only. The backend reaches it over the
+    # No `ports:` on purpose — MinIO is internal-only. The backend reaches it over the
     # compose network (MINIO_ENDPOINT=http://minio:9000 in .env); the PUBLIC bucket is
     # served through nginx (deploy/nginx/app.conf), and the PRIVATE KYC bucket is never
-    # exposed. See docker-compose.prod.yml / VPS-RUNBOOK.md §8 for the full rationale.
+    # exposed. See VPS-RUNBOOK.md §8 for the full rationale.
     volumes:
       - minio_data_in:/data
     command: server /data --console-address ":9001"
     # MinIO exposes a liveness probe on its API port; used so `depends_on: condition:
     # service_healthy` above means "MinIO is actually accepting S3 calls", not just "started".
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 10s
 
   nginx:
+    image: ghcr.io/studio-1947/1darjeelingvv1-nginx:${IMAGE_TAG:-latest}
+    # Escape hatch only — see the note on backend. Note the Sentry DSN below is read from the
+    # VPS's .env, which only applies to such a manual local build; the images CI publishes get it
+    # from the FRONTEND_SENTRY_DSN repo variable instead.
     build:
       context: .
       dockerfile: deploy/nginx/Dockerfile
       args:
-        # Baked into the JS bundle at build time  CRA cannot read it at runtime. Empty means the
+        # Baked into the JS bundle at build time — CRA cannot read it at runtime. Empty means the
         # frontend reports nothing, which is the default. Not a secret: a DSN is a write-only
         # ingestion endpoint and ships in the bundle by design.
         REACT_APP_SENTRY_DSN: "${FRONTEND_SENTRY_DSN:-}"
@@ -145,7 +154,7 @@ services:
     container_name: 1darjeeling_in_nginx
     restart: unless-stopped
     ports:
-      # Loopback-only  the VPS system Nginx proxy_passes aanganerp.in here.
+      # Loopback-only — the VPS system Nginx proxy_passes aanganerp.in here.
       # Change the host port (left of the colon) if 8092 is ever taken (verify with `sudo ss -tlnp | grep 8092`).
       - "127.0.0.1:8092:80"
     depends_on:
@@ -154,7 +163,7 @@ services:
 
 volumes:
   pg_data_in:
-  minio_data_in: # Deliberately a separate volume from pg_data_in: a restore that starts by wiping the data
-
+  minio_data_in:
+  # Deliberately a separate volume from pg_data_in: a restore that starts by wiping the data
   # volume must not be able to take the backups with it.
   pg_backups_in:

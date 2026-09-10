@@ -1,13 +1,16 @@
 /**
- * Rewrites asset domain URLs stored in the PostgreSQL database from a source domain
- * (e.g. https://onedarjeeling.duckdns.org/) to a target domain (e.g. https://1darjeeling.in/).
+ * Rewrites asset domain URLs stored in the PostgreSQL database from a source domain to a
+ * target domain. uploadToMinIO() stores ABSOLUTE URLs (`${MINIO_PUBLIC_URL}/${MINIO_BUCKET}/<key>`),
+ * so rows written before a domain change keep pointing at the old host and their images 404
+ * once it stops resolving. The defaults below are the migration that is currently outstanding:
+ * 1darjeeling.in was retired in favour of aanganerp.in on 2026-09-07.
  *
  * Safe & idempotent:
  * - Can be run with `--dry-run` to preview matches without mutating the database.
  * - Handles `listings.image`, `providers.images` (JSONB array), and `users.avatar`.
  *
  * Usage:
- *   npx tsx scripts/rewrite-prod-urls.ts --from https://onedarjeeling.duckdns.org --to https://1darjeeling.in [--dry-run]
+ *   npx tsx scripts/rewrite-prod-urls.ts --from https://1darjeeling.in --to https://aanganerp.in [--dry-run]
  */
 import { Client } from 'pg';
 import * as dotenv from 'dotenv';
@@ -23,8 +26,8 @@ if (!dbUrl) {
 
 function parseArgs() {
   const args = process.argv.slice(2);
-  let fromDomain = 'https://onedarjeeling.duckdns.org';
-  let toDomain = 'https://1darjeeling.in';
+  let fromDomain = 'https://1darjeeling.in';
+  let toDomain = 'https://aanganerp.in';
   let dryRun = false;
 
   for (let i = 0; i < args.length; i++) {

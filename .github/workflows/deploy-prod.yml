@@ -70,10 +70,13 @@ jobs:
         working-directory: backend
         run: npm test
 
-  # Identical gate to deploy.yml's `frontend` job: JSX/type errors and lockfile drift
-  # must fail here, before the merge, not inside `docker build` during the deploy.
+  # Typechecks only. This job used to run `yarn build` / `npm run build` too, but the `images`
+  # job below now builds both frontends inside the real Dockerfile — on a runner, before the VPS
+  # is touched — so a broken build already fails the release there. Running it twice cost ~7
+  # minutes a deploy and proved nothing the image build doesn't. `tsc --noEmit` stays because the
+  # bundlers do NOT typecheck: CRA and vite both happily emit a bundle from code that fails tsc.
   frontend:
-    name: Frontend builds
+    name: Frontend typechecks
     runs-on: ubuntu-latest
 
     steps:
@@ -85,6 +88,8 @@ jobs:
           cache: yarn
           cache-dependency-path: frontend/yarn.lock
 
+      # --frozen-lockfile: a package.json change without a matching yarn.lock fails here rather
+      # than at image build time.
       - name: Install frontend dependencies
         working-directory: frontend
         run: corepack enable && corepack prepare yarn@1.22.22 --activate && yarn install --frozen-lockfile
@@ -92,10 +97,6 @@ jobs:
       - name: Typecheck frontend
         working-directory: frontend
         run: npx tsc --noEmit
-
-      - name: Build frontend
-        working-directory: frontend
-        run: yarn build
 
       - name: Install admin dependencies
         working-directory: frontend-admin
@@ -105,17 +106,88 @@ jobs:
         working-directory: frontend-admin
         run: npx tsc --noEmit
 
-      - name: Build admin
-        working-directory: frontend-admin
-        run: npm run build
+  # Build both images HERE, on the runner, and push them to GHCR.
+  #
+  # They used to be built on the VPS by `compose up --build` inside the deploy SSH session. That
+  # put a full `yarn install` + two frontend bundles on the critical path of every production
+  # deploy, running over the VPS's own uplink — which is slow and flaky enough that yarn threw
+  # ESOCKETTIMEDOUT fetching @sentry/core and killed the 2026-09-07 release outright. A registry
+  # that is unreachable from the VPS could take production down for a change that had nothing to
+  # do with it. Runners have fast network and a throwaway filesystem; that is where a build belongs.
+  #
+  # The VPS now only pulls. It never talks to npm or the yarn registry again.
+  images:
+    name: Build and push images
+    needs: [test, frontend] # never publish an image from a red suite
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write # push to ghcr.io
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }} # ephemeral, scoped to this run
+
+      # Lowercase and hardcoded: GHCR rejects uppercase in a path, and ${{ github.repository }}
+      # is "Studio-1947/1darjeelingvv1".
+      - name: Build and push backend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/studio-1947/1darjeelingvv1-backend:${{ github.sha }}
+            ghcr.io/studio-1947/1darjeelingvv1-backend:latest
+          # Layer cache lives in the Actions cache, not on any host, so a cold runner still
+          # reuses layers from the previous deploy.
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,scope=backend,mode=max
+          # Plain manifest, not an OCI index. Attestations make the exported digest change on
+          # every build even when every layer is cached, which is what used to make Compose
+          # recreate untouched services on the VPS. Off here, the digest tracks the content.
+          provenance: false
+          sbom: false
+
+      - name: Build and push nginx (both frontends)
+        uses: docker/build-push-action@v6
+        with:
+          # Repo root: this Dockerfile copies from sibling frontend/ and frontend-admin/ dirs.
+          context: .
+          file: ./deploy/nginx/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/studio-1947/1darjeelingvv1-nginx:${{ github.sha }}
+            ghcr.io/studio-1947/1darjeelingvv1-nginx:latest
+          # Inlined into the JS bundle at build time, so it has to be supplied to the BUILD —
+          # it can no longer come from the VPS's .env now that the build happens here. A repo
+          # VARIABLE, not a secret: a Sentry DSN is a write-only ingestion endpoint and ships in
+          # the bundle by design. Unset is fine and means the frontend reports nothing.
+          build-args: |
+            REACT_APP_SENTRY_DSN=${{ vars.FRONTEND_SENTRY_DSN }}
+            VITE_SENTRY_DSN=${{ vars.FRONTEND_SENTRY_DSN }}
+          cache-from: type=gha,scope=nginx
+          cache-to: type=gha,scope=nginx,mode=max
+          provenance: false
+          sbom: false
 
   deploy:
     name: Deploy
-    needs: [test, frontend] # a red suite or a broken build must stop the release
+    needs: [images] # which itself needs test+frontend, so a red suite still blocks the release
     # Deploy only on a real push to prod (or a manual dispatch). Without this guard the
     # pull_request trigger above would ship every opened PR straight to the VPS.
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read # the VPS pulls from ghcr.io with this run's GITHUB_TOKEN
     steps:
       # An unset GitHub secret silently becomes an empty string, so a missing VPS_USER
       # reaches sshd as a blank username and surfaces as a broken-key error. Name the
@@ -131,7 +203,7 @@ jobs:
           if [ -z "$VPS_USER" ]; then missing="$missing VPS_USER"; fi
           if [ -z "$VPS_SSH_KEY" ]; then missing="$missing VPS_SSH_KEY"; fi
           if [ -n "$missing" ]; then
-            echo "::error::Missing repository secret(s):$missing  add them under Settings > Secrets and variables > Actions. VPS_USER should be the SSH login (e.g. 'deploy')."
+            echo "::error::Missing repository secret(s):$missing — add them under Settings > Secrets and variables > Actions. VPS_USER should be the SSH login (e.g. 'deploy')."
             exit 1
           fi
           echo "All required secrets are present."
@@ -139,39 +211,61 @@ jobs:
 
       - name: SSH into VPS and redeploy the aanganerp.in stack
         uses: appleboy/ssh-action@v1.2.0
+        env:
+          # This commit's SHA is the image tag both build steps pushed. Pinning the deploy to it
+          # (rather than :latest) means the VPS runs exactly the images this run produced, and a
+          # re-run of an older commit rolls back instead of silently pulling whatever is newest.
+          IMAGE_TAG: ${{ github.sha }}
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT || 22 }}
+          # Forwarded into the remote shell rather than interpolated into the script, so the token
+          # never appears in the rendered command line (which ssh-action echoes on failure).
+          envs: IMAGE_TAG,GHCR_USER,GHCR_TOKEN
+          # No build happens here any more, so this is a pull + restart. 10m would now be ample;
+          # 15m is headroom for a cold pull of both images on a slow link, and the job still exits
+          # as soon as the stack is healthy.
+          command_timeout: 15m
           script: |
             set -euo pipefail
             cd /var/www/1darjeeling-in
             git fetch origin prod
             git reset --hard origin/prod
 
-            # BuildKit attaches a provenance attestation by default, which makes the build export an
-            # OCI index whose digest changes on EVERY build  even one where every layer is CACHED.
-            # Compose compares that digest against the image the running container was created from,
-            # so without this line every deploy recreated every service, including the ones the
-            # commit never touched. That is how 3188926  a commit touching only deploy/nginx/* 
-            # came to recreate the backend, lose the rename race below, and take /api down for a
-            # change that had nothing to do with it. Nothing in this pipeline consumes attestations.
-            export BUILDX_NO_DEFAULT_ATTESTATIONS=1
+            # The repo checkout is still needed — docker-compose.in.yml, the .env beside it and the
+            # deploy/backup/pg-backup.sh bind mount all live here. Only the IMAGE BUILD moved away.
+
+            # Ephemeral, run-scoped GITHUB_TOKEN: no long-lived registry credential is stored on
+            # the VPS, and the logout below drops it again even if a later step fails.
+            echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
+            trap 'docker logout ghcr.io >/dev/null 2>&1 || true' EXIT
+
+            # Fail here, before touching the running stack, if an image is missing or unpullable —
+            # rather than half-way through `up` with one service already replaced.
+            docker compose -f docker-compose.in.yml pull backend nginx
 
             # --wait, because plain `up -d` returns once the containers are *started*: a backend
             # that exits during `drizzle-kit migrate` or boots without a database would ship as a
             # green deploy. Paired with the backend healthcheck in docker-compose.in.yml this fails
             # the job on a sick stack. The timeout has to clear migrations on a cold start.
+            #
+            # No --build: the images are already built and pulled. IMAGE_TAG is this commit's SHA,
+            # so the image reference changes on every deploy and Compose recreates exactly the
+            # services whose image actually changed — the digest-churn problem the old
+            # BUILDX_NO_DEFAULT_ATTESTATIONS export worked around no longer exists by construction.
             deploy() {
-              docker compose -f docker-compose.in.yml up -d --build --remove-orphans \
+              docker compose -f docker-compose.in.yml up -d --remove-orphans \
                 --wait --wait-timeout 180
             }
 
             # To replace a container Compose renames the outgoing one to <short-id>_<name> to free
             # the name, then creates its replacement under the real name. When the daemon loses the
             # renamed container mid-dance it answers "No such container: <short-id>_<name>" and `up`
-            # aborts  leaving that service with NO container at all. That is a hard outage, not a
+            # aborts — leaving that service with NO container at all. That is a hard outage, not a
             # failed no-op, and it is what happened on 2026-08-04: the backend simply ceased to
             # exist and nginx 502'd every /api path until someone noticed by hand.
             #
@@ -179,16 +273,33 @@ jobs:
             # is to run `up` again. So: clear any half-renamed leftovers and retry once, rather than
             # ending the job with production down. A second failure is real and must stay loud.
             if ! deploy; then
-              echo "::warning::compose up failed  sweeping half-recreated containers and retrying once"
+              echo "::warning::compose up failed — sweeping half-recreated containers and retrying once"
               # Deliberately unanchored: some daemons expose container names with a leading "/", so
               # a ^-anchored pattern silently matches nothing. The 12-hex prefix is specific enough
-              # on its own  no real container in this stack is named that way.
+              # on its own — no real container in this stack is named that way.
               docker ps -aq --filter 'name=[0-9a-f]{12}_1darjeeling_in_' | xargs -r docker rm -f || true
               if ! deploy; then
-                echo "::error::Redeploy failed twice. The aanganerp.in stack may be partially down "
+                echo "::error::Redeploy failed twice. The aanganerp.in stack may be partially down —"
                 echo "::error::check 'docker compose -f docker-compose.in.yml ps' on the VPS before retrying."
                 exit 1
               fi
             fi
 
+            # Every deploy now pulls a SHA-TAGGED image, and a tagged image is never "dangling",
+            # so `docker image prune -f` alone would let old revisions pile up until the disk
+            # filled — this box already carries 13GB of build cache (see VPS-RUNBOOK §7).
+            #
+            # Scoped strictly to this app's two repositories: several other projects share this
+            # daemon, and an untargeted `prune -a` would delete their images too. Keeps the tag
+            # just deployed and :latest; `|| true` because the running containers hold references
+            # and rmi is allowed to refuse.
+            for repo in backend nginx; do
+              docker images --format '{{.Repository}}:{{.Tag}}' \
+                "ghcr.io/studio-1947/1darjeelingvv1-$repo" 2>/dev/null \
+                | grep -v ":${IMAGE_TAG}$" \
+                | grep -v ':latest$' \
+                | xargs -r docker rmi -f 2>/dev/null || true
+            done
+
+            # Still worth running: clears layers left dangling by an escape-hatch local build.
             docker image prune -f
