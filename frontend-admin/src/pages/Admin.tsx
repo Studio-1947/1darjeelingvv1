@@ -61,8 +61,8 @@ export default function Admin() {
   // Fetch all admin tables from the backend API.
   //
   // `background` refetches without raising the full-page loading state. Every row action used to
-  // trigger the blocking path, which unmounted the whole dashboard — and with it the Spots tab's
-  // own search text and filter — so publishing one spot silently cleared what the admin had
+  // trigger the blocking path, which unmounted the whole dashboard  and with it the Spots tab's
+  // own search text and filter  so publishing one spot silently cleared what the admin had
   // typed. The blocking screen is only right for the very first load, when there is nothing
   // on screen to preserve.
   const loadAdminData = useCallback(async ({ background = false }: { background?: boolean } = {}) => {
@@ -97,9 +97,9 @@ export default function Admin() {
   // Check authorization and load data
   useEffect(() => {
     if (authLoading) return;
-    if (!user) { 
-      nav('/login'); 
-      return; 
+    if (!user) {
+      nav('/login');
+      return;
     }
     if (user.role !== 'admin') {
       setErr('Admin authorization required');
@@ -183,7 +183,7 @@ export default function Admin() {
     markSpotBusy(spot.id);
     try {
       await api.post(`/admin/spots/${spot.id}/publish`, { published: !spot.published });
-      setActionMsg(`"${spot.title}" is now ${spot.published ? 'a draft — hidden from visitors' : 'live on the site'}.`);
+      setActionMsg(`"${spot.title}" is now ${spot.published ? 'a draft  hidden from visitors' : 'live on the site'}.`);
       await loadAdminData({ background: true });
     } catch (e: any) {
       setActionMsg(e?.response?.data?.detail || 'Failed to change that spot’s visibility.');
@@ -278,7 +278,7 @@ export default function Admin() {
           <StatCard label="Total Users" value={stats.users} icon={UsersIcon} color="text-pine bg-pine/10" />
           <StatCard label="Service Providers" value={stats.providers} icon={Store} color="text-flag bg-flag/10" />
           <StatCard label="Active Services" value={stats.listings} icon={LayoutList} color="text-blue-500 bg-blue-50" />
-          {/* Live spots only — drafts aren't visible to anyone but this console. */}
+          {/* Live spots only  drafts aren't visible to anyone but this console. */}
           <StatCard label="Tourist Spots" value={spotsList.filter((s) => s.published).length} icon={Mountain} color="text-emerald-600 bg-emerald-50" />
           <StatCard label="Bookings Made" value={stats.bookings} icon={CalendarCheck} color="text-orange-500 bg-orange-50" />
           <StatCard label="Paid Transactions" value={stats.payments} icon={Wallet} color="text-yellow-600 bg-yellow-50" />
@@ -298,9 +298,8 @@ export default function Admin() {
           <button
             key={tab.id}
             onClick={() => { setActiveTab(tab.id); setActionMsg(''); }}
-            className={`px-5 py-3 font-bold text-sm border-b-2 transition-all ${
-              activeTab === tab.id ? 'border-flag text-flag' : 'border-transparent text-ink-soft hover:text-ink'
-            }`}
+            className={`px-5 py-3 font-bold text-sm border-b-2 transition-all ${activeTab === tab.id ? 'border-flag text-flag' : 'border-transparent text-ink-soft hover:text-ink'
+              }`}
           >
             {tab.label}
           </button>

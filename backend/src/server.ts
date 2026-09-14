@@ -15,12 +15,12 @@ const server = app.listen(PORT, () => {
   log.info(
     SENTRY_ENABLED
       ? 'Error reporting: enabled (SENTRY_DSN is set)'
-      : 'Error reporting: DISABLED — no SENTRY_DSN set, unhandled errors will only reach the container log.'
+      : 'Error reporting: DISABLED  no SENTRY_DSN set, unhandled errors will only reach the container log.'
   );
 
   // Not awaited, and safe not to be: ensureBucketsExist() never rejects, and the port should open
   // whether or not MinIO is answering yet. Started here rather than before listen() so a slow
-  // storage layer delays nothing — compose already gates this container on MinIO being healthy,
+  // storage layer delays nothing  compose already gates this container on MinIO being healthy,
   // so in production this normally completes before the first request arrives.
   void ensureBucketsExist();
 });

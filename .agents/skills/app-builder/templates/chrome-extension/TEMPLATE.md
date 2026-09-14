@@ -36,7 +36,7 @@ project-name/
 │       ├── storage.ts   # Chrome storage helpers
 │       └── messaging.ts # Message passing
 ├── public/              # Static assets (icons)
-├── manifest.config.ts   # defineManifest() — typed manifest
+├── manifest.config.ts   # defineManifest()  typed manifest
 ├── vite.config.ts       # crx({ manifest }) + react + tailwind
 └── package.json
 ```
@@ -91,6 +91,6 @@ project-name/
 
 - Use type-safe messaging
 - Wrap Chrome APIs in promises
-- MV3 background is an ephemeral service worker — persist state in `chrome.storage`, not module globals; use event listeners + alarms, not long-lived timers
+- MV3 background is an ephemeral service worker  persist state in `chrome.storage`, not module globals; use event listeners + alarms, not long-lived timers
 - Minimize permissions
 - Scope content-script styles to avoid host-page bleed

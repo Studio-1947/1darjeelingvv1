@@ -108,7 +108,7 @@ export default function ListingDetail() {
   const amenities = amenitiesFor(item);
   const host = hostFor(item);
   const c = contentFor(item);
-  // Admin-authored visitor info — only tourist spots carry it (see the admin console).
+  // Admin-authored visitor info  only tourist spots carry it (see the admin console).
   const spotInfo = spotInfoFor(item);
   const isSpot = item.type === 'spot';
   const initial = (item.title || '?').trim().charAt(0).toUpperCase();
@@ -142,21 +142,17 @@ export default function ListingDetail() {
 
       <DetailHero item={item} unit={unit} onShare={shareIt} />
 
-      <AboutSection item={item} about={c.about}
-        label={item.type === 'driver' ? t('detail.about_driver') : t('detail.about')} />
-
-      {/* Multilingual Heritage Audio Guide */}
-      <div className="mx-auto max-w-5xl px-4 sm:px-6 my-6">
-        <AudioGuide
-          title={item.title}
-          transcripts={{
-            en: c.about || item.description || 'Welcome to this historic spot in Darjeeling hills.',
-            bn: `${item.title} - দার্জিলিং পাহাড়ের একটি অনন্য ঐতিহাসিক স্থান।`,
-            hi: `${item.title} - दार्जिलिंग पहाड़ियों का एक प्रसिद्ध और सुंदर स्थल।`,
-            ne: `${item.title} - दार्जिलिङ पहाडको ऐतिहासिक तथा सुन्दर स्थान।`,
-          }}
-        />
-      </div>
+      <AboutSection
+        item={item}
+        about={c.about}
+        label={item.type === 'driver' ? t('detail.about_driver') : t('detail.about')}
+        audioComponent={
+          <AudioGuide
+            title={item.title}
+            aboutText={c.about || item.description}
+          />
+        }
+      />
 
       {/* A curated spot leads with why it's worth the trip, before the photos. */}
       {isSpot && spotInfo.highlights.length > 0 && <HighlightsSection highlights={spotInfo.highlights} />}
@@ -166,7 +162,7 @@ export default function ListingDetail() {
         <PhotosSection item={item} gallery={gallery} />
       )}
 
-      {/* Timings, entry fee, best season, altitude and directions — all admin-entered, so
+      {/* Timings, entry fee, best season, altitude and directions  all admin-entered, so
           the section is skipped entirely for a spot that has none of them filled in. */}
       {isSpot && spotInfo.has && (
         <VisitInfoSection

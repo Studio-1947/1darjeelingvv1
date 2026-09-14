@@ -131,7 +131,7 @@ describe('payments ownership', () => {
   });
 
   it('blocks completing an order against a reference_id it was not created for', async () => {
-    // Victim onboards as a provider but never pays — stays pending_payment.
+    // Victim onboards as a provider but never pays  stays pending_payment.
     const { token: victimToken, phone } = await registerUser({ name: 'Victim Provider', role: 'provider' });
     const onboardRes = await request(app)
       .post('/api/providers/onboard')

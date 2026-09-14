@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import Seo from '@/components/Seo';
 
 /**
- * The renderer shared by every policy page — Privacy, Terms, Refunds and Contact.
+ * The renderer shared by every policy page  Privacy, Terms, Refunds and Contact.
  *
  * All four are the same document shape (title, updated stamp, intro paragraphs, numbered
  * sections, an optional contact card) differing only in which i18n namespace they read, so they
@@ -25,7 +25,7 @@ export interface Block {
   contact?: { name: string; email: string; address: string };
 }
 
-/** Paragraph + bullets + closer — the body shared by sections and sub-sections. */
+/** Paragraph + bullets + closer  the body shared by sections and sub-sections. */
 function Body({ block }: { block: Block }) {
   return (
     <>
@@ -49,7 +49,7 @@ export default function LegalDocument({ ns, testId }: { ns: string; testId: stri
   const { t } = useTranslation();
 
   // These documents are authored in English only and reach the other languages through i18next's
-  // fallback. If a lookup ever fails to resolve, t() hands back the key as a string — guard so a
+  // fallback. If a lookup ever fails to resolve, t() hands back the key as a string  guard so a
   // legal page degrades to empty rather than throwing.
   const rawIntro = t(`${ns}.intro`, { returnObjects: true });
   const intro: string[] = Array.isArray(rawIntro) ? rawIntro : [];

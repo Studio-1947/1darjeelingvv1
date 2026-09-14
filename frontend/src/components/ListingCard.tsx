@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { MapPin } from 'lucide-react';
+import { MapPin } from '@phosphor-icons/react';
 import SmartImg from '@/components/SmartImg';
 import { listingImage } from '@/lib/listingContent';
 import VerifiedBadge from '@/components/provider/VerifiedBadge';

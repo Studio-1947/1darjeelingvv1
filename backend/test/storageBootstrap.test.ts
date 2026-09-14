@@ -7,7 +7,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
  *
  * What they defend is a bug that shipped and stayed invisible. Bucket creation used to happen only
  * inside the upload functions, so a correctly-configured stack that had never received an upload
- * had no buckets — and `GET /api/health` therefore reported `degraded` indefinitely. That is the
+ * had no buckets  and `GET /api/health` therefore reported `degraded` indefinitely. That is the
  * worst possible failure for a readiness endpoint: it is the thing an uptime monitor watches, and
  * it was crying wolf on a healthy box.
  */
@@ -15,28 +15,28 @@ const { send } = vi.hoisted(() => ({ send: vi.fn() }));
 
 vi.mock('@aws-sdk/client-s3', () => {
   class Command {
-    constructor(public readonly input: any) {}
+    constructor(public readonly input: any) { }
   }
   return {
     S3Client: class {
       send = send;
     },
-    HeadBucketCommand: class HeadBucketCommand extends Command {},
-    CreateBucketCommand: class CreateBucketCommand extends Command {},
-    PutBucketPolicyCommand: class PutBucketPolicyCommand extends Command {},
-    GetBucketPolicyCommand: class GetBucketPolicyCommand extends Command {},
-    DeleteBucketPolicyCommand: class DeleteBucketPolicyCommand extends Command {},
-    PutObjectCommand: class PutObjectCommand extends Command {},
-    GetObjectCommand: class GetObjectCommand extends Command {},
-    DeleteObjectCommand: class DeleteObjectCommand extends Command {},
+    HeadBucketCommand: class HeadBucketCommand extends Command { },
+    CreateBucketCommand: class CreateBucketCommand extends Command { },
+    PutBucketPolicyCommand: class PutBucketPolicyCommand extends Command { },
+    GetBucketPolicyCommand: class GetBucketPolicyCommand extends Command { },
+    DeleteBucketPolicyCommand: class DeleteBucketPolicyCommand extends Command { },
+    PutObjectCommand: class PutObjectCommand extends Command { },
+    GetObjectCommand: class GetObjectCommand extends Command { },
+    DeleteObjectCommand: class DeleteObjectCommand extends Command { },
   };
 });
 
-// The defaults from config.ts — vitest.config.ts sets no MINIO_* variables.
+// The defaults from config.ts  vitest.config.ts sets no MINIO_* variables.
 const PUBLIC_BUCKET = 'one-darjeeling';
 const KYC_BUCKET = 'one-darjeeling-kyc';
 
-/** The over-permissive policy `mc anonymous set download` leaves behind — GetObject *and* the
+/** The over-permissive policy `mc anonymous set download` leaves behind  GetObject *and* the
  * ability to list every key in the bucket. This is what was live on 1darjeeling.in. */
 const mcDownloadPreset = (bucket: string) => JSON.stringify({
   Version: '2012-10-17',
@@ -64,7 +64,7 @@ function minio(existing: Set<string>, policies = new Map<string, string>()) {
       case 'GetBucketPolicyCommand': {
         const existingPolicy = policies.get(bucket);
         if (existingPolicy) return { Policy: existingPolicy };
-        // No policy attached — MinIO's way of saying "nobody anonymous can touch this".
+        // No policy attached  MinIO's way of saying "nobody anonymous can touch this".
         const err: any = new Error('The bucket policy does not exist');
         err.name = 'NoSuchBucketPolicy';
         err.$metadata = { httpStatusCode: 404 };
@@ -73,7 +73,7 @@ function minio(existing: Set<string>, policies = new Map<string, string>()) {
       case 'HeadBucketCommand': {
         if (existing.has(bucket)) return {};
         // What a real MinIO returns for a HEAD on a bucket that is not there: 404 with an empty
-        // body. Note the message — a HEAD has no body for the SDK to parse, so it falls back to
+        // body. Note the message  a HEAD has no body for the SDK to parse, so it falls back to
         // the generic "UnknownError" regardless of status. That string is why the live diagnosis
         // could not read a cause out of /api/health, and the bootstrap must branch on
         // $metadata.httpStatusCode rather than on the message.
@@ -108,7 +108,7 @@ describe('object storage bootstrap at startup', () => {
 
   beforeEach(() => {
     send.mockReset();
-    consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    consoleError = vi.spyOn(console, 'error').mockImplementation(() => { });
   });
 
   afterEach(() => {
@@ -125,7 +125,7 @@ describe('object storage bootstrap at startup', () => {
     expect(existing).toEqual(new Set([PUBLIC_BUCKET, KYC_BUCKET]));
   });
 
-  it('makes a fresh stack report healthy — the regression this exists for', async () => {
+  it('makes a fresh stack report healthy  the regression this exists for', async () => {
     const existing = new Set<string>();
     send.mockImplementation(minio(existing));
 
@@ -147,7 +147,7 @@ describe('object storage bootstrap at startup', () => {
 
     const policies = sent('PutBucketPolicyCommand');
     // The KYC bucket holds Aadhaar/PAN/licence scans. Exactly one bucket may be made anonymously
-    // readable, and it must be the other one — asserted on the whole set, not just on the KYC
+    // readable, and it must be the other one  asserted on the whole set, not just on the KYC
     // bucket's absence, so a future third bucket cannot quietly become public here either.
     expect(policies.map((p) => p.input.Bucket)).toEqual([PUBLIC_BUCKET]);
     expect(JSON.parse(policies[0].input.Policy)).toMatchObject({
@@ -184,7 +184,7 @@ describe('object storage bootstrap at startup', () => {
 
   it('strips any policy found on the KYC bucket and says so loudly', async () => {
     // One mistyped bucket name in an `mc anonymous` command is all this takes, and the contents
-    // are government identity documents. The removal is not the whole job — somebody has to be
+    // are government identity documents. The removal is not the whole job  somebody has to be
     // told it happened, or the exposure is repaired and never investigated.
     const policies = new Map([[KYC_BUCKET, mcDownloadPreset(KYC_BUCKET)]]);
     send.mockImplementation(minio(new Set([PUBLIC_BUCKET, KYC_BUCKET]), policies));

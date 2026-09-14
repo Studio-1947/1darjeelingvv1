@@ -96,7 +96,7 @@ describe('razorpay webhook', () => {
     const bookingId = bookingRes.body.booking.id as string;
     const orderId = await createOrder(token, 'booking_commission', bookingId);
 
-    // Customer pays, then closes the tab — only Razorpay reports it.
+    // Customer pays, then closes the tab  only Razorpay reports it.
     const res = await deliver(paymentCaptured(orderId));
     expect(res.status).toBe(200);
     expect(res.body.already).toBe(false);
@@ -116,7 +116,7 @@ describe('razorpay webhook', () => {
     expect(me.body.provider.status).toBe('active');
   });
 
-  it('is idempotent across repeated deliveries — no duplicate listing', async () => {
+  it('is idempotent across repeated deliveries  no duplicate listing', async () => {
     const { token, providerId } = await onboardPendingProvider('Duplicate Provider');
     const orderId = await createOrder(token, 'provider_registration', providerId);
 

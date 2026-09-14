@@ -17,7 +17,7 @@ describe('isExemptFromSupport', () => {
     expect(isExemptFromSupport({ role: 'provider', providerPaid: true })).toBe(true);
   });
 
-  it('does NOT exempt a provider who has not paid — role flips before payment', () => {
+  it('does NOT exempt a provider who has not paid  role flips before payment', () => {
     expect(isExemptFromSupport({ role: 'provider', providerPaid: false })).toBe(false);
     expect(isExemptFromSupport({ role: 'provider' })).toBe(false);
     expect(isExemptFromSupport({ role: 'provider', providerPaid: null })).toBe(false);

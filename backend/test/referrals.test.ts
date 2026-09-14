@@ -11,8 +11,8 @@ import { REFERRAL_REWARD_DAYS } from '../src/config';
 /**
  * Referrals: the reward the app has advertised since before anything could pay it out.
  *
- * The interesting cases are all abuse and all cheap to get wrong — self-referral, double
- * redemption, redeeming after the fact — so they are pinned here rather than left to the
+ * The interesting cases are all abuse and all cheap to get wrong  self-referral, double
+ * redemption, redeeming after the fact  so they are pinned here rather than left to the
  * happy path.
  */
 

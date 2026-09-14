@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowRight, Leaf, TreePine, PawPrint, Camera, Recycle, VolumeX } from 'lucide-react';
+import { ArrowRight, Leaf, Tree as TreePine, PawPrint, Camera, Recycle, SpeakerSlash as VolumeX } from '@phosphor-icons/react';
 import SmartImg from '@/components/SmartImg';
 import { sizedImage } from '@/lib/listingContent';
 import { useSeo } from '@/components/Seo';

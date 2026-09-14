@@ -22,4 +22,4 @@ ENV CHOKIDAR_USEPOLLING=true
 ENV WATCHPACK_POLLING=true
 
 # Start the development server
-CMD ["yarn", "start"]
+CMD ["yarn", "start", "--host", "0.0.0.0"]

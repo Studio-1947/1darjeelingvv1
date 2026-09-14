@@ -1,4 +1,4 @@
-# Tourist Platform Support Fee — Design
+# Tourist Platform Support Fee  Design
 
 > Date: 2026-07-22
 > Status: Approved for planning
@@ -8,7 +8,7 @@
 
 ## 1. Goal
 
-Every tourist who logs in must pay **₹12 for the year** before reaching any logged-in surface. The money is framed to the user not as a membership or a subscription, but as a **platform support & convenience fee** covering maintenance, hosting and build costs — a token amount that keeps listings free for the small homestays, drivers and cafés on the platform.
+Every tourist who logs in must pay **₹12 for the year** before reaching any logged-in surface. The money is framed to the user not as a membership or a subscription, but as a **platform support & convenience fee** covering maintenance, hosting and build costs  a token amount that keeps listings free for the small homestays, drivers and cafés on the platform.
 
 Logged-out browsing stays completely free. The Discover feed, category grids and listing detail pages remain public to anyone without a session, exactly as today.
 
@@ -28,7 +28,7 @@ These were settled during brainstorming and are not open for reinterpretation du
 
 ## 3. Naming
 
-The word "membership" appears nowhere — not in code, not in UI, not in i18n keys. It implies a club with benefits; this is cost recovery.
+The word "membership" appears nowhere  not in code, not in UI, not in i18n keys. It implies a club with benefits; this is cost recovery.
 
 | Concept | Name |
 |---|---|
@@ -46,14 +46,14 @@ A single nullable column on `users`:
 supportExpiresAt: text('support_expires_at')   // ISO 8601, nullable
 ```
 
-- `null` — has never paid.
+- `null`  has never paid.
 - Active when `supportExpiresAt > now()`.
 
 `payments` needs **no schema change**. The new flow writes rows with `flow = 'platform_support'`, `referenceId` = the payer's own user id, `amount = 1200`. These appear in the existing admin PaymentsTab automatically.
 
 ### Why one column rather than a `memberships` table
 
-The `payments` table already answers "who paid what, when". The only genuinely new fact is "when does access end" — one column. Reads are free because `authenticateToken` already loads the full user row (`backend/src/middleware/auth.ts:89`), so `req.user` and `GET /auth/me` expose it with no extra query and no token format change (no forced logout on deploy).
+The `payments` table already answers "who paid what, when". The only genuinely new fact is "when does access end"  one column. Reads are free because `authenticateToken` already loads the full user row (`backend/src/middleware/auth.ts:89`), so `req.user` and `GET /auth/me` expose it with no extra query and no token format change (no forced logout on deploy).
 
 If admin-granted comp memberships or tiers are ever needed, a `memberships` table can be added later and this column becomes its cache. That is not in scope now.
 
@@ -67,7 +67,7 @@ newExpiry = max(now, existingExpiry ?? now) + SUPPORT_DURATION_DAYS
 
 This does two jobs:
 
-1. **Early renewal is additive.** Paying with 100 days left yields 465 days, not 365 — the user is not punished for renewing early.
+1. **Early renewal is additive.** Paying with 100 days left yields 465 days, not 365  the user is not punished for renewing early.
 2. **It is monotonic.** The expiry can only move forward, so a double-delivered webhook can never shorten someone's access even if `settlePaymentOnce`'s guard were somehow bypassed.
 
 ## 5. Who is exempt
@@ -81,9 +81,9 @@ exempt = role === 'admin'
 
 ### Why `providerPaid` must be part of the check
 
-`role` flips to `provider` the moment a user submits `/providers/onboard` — *before* the ₹99 is paid. Exempting all providers would therefore let any tourist submit the onboarding form, flip their role, and browse for free. Requiring `providerPaid` closes that.
+`role` flips to `provider` the moment a user submits `/providers/onboard`  *before* the ₹99 is paid. Exempting all providers would therefore let any tourist submit the onboarding form, flip their role, and browse for free. Requiring `providerPaid` closes that.
 
-Unpaid providers are not stranded by this: `Login.tsx` already routes them to `/provider/onboard`, where they pay ₹99 and become exempt. They are gated from tourist surfaces in the meantime, which is correct — they have paid nothing.
+Unpaid providers are not stranded by this: `Login.tsx` already routes them to `/provider/onboard`, where they pay ₹99 and become exempt. They are gated from tourist surfaces in the meantime, which is correct  they have paid nothing.
 
 ## 6. Backend changes
 
@@ -104,10 +104,10 @@ Unpaid providers are not stranded by this: `Login.tsx` already routes them to `/
 
 Booking cancel, un-favourite, and review delete stay open to lapsed accounts. The gate exists to
 stop unpaid accounts consuming value, not to trap users in commitments or hold their content
-hostage — a lapsed user who cannot cancel simply no-shows, which is worse for the provider than
+hostage  a lapsed user who cannot cancel simply no-shows, which is worse for the provider than
 the cancellation would have been.
 
-### `assertOwnsReference` — `platform_support`
+### `assertOwnsReference`  `platform_support`
 
 `referenceId` must equal the calling user's id, else `403`. This mirrors the existing rule that an order is bound to something the caller owns at creation time, and prevents a user creating a ₹12 order that credits somebody else's account.
 
@@ -121,11 +121,11 @@ Runs after `authenticateToken`. Passes exempt users through. Otherwise, if `supp
 
 `402 Payment Required` is the honest status here and gives the frontend an unambiguous signal distinct from `401` (bad token) and `403` (not yours). The machine-readable `code` is what the client keys on, not the prose.
 
-It is applied to **tourist write routes only**. Public GETs stay open, and — importantly — `GET /auth/me` stays open, because the `/support` screen itself must be able to read the user while unpaid.
+It is applied to **tourist write routes only**. Public GETs stay open, and  importantly  `GET /auth/me` stays open, because the `/support` screen itself must be able to read the user while unpaid.
 
 ### The two layers have different jobs
 
-`SupportGate` is the **product** gate: it is what makes an unpaid tourist unable to reach the feed, listings or dashboard in the app. `requireActiveSupport` is the **value** gate: it makes sure nothing that actually costs the platform something — a booking, a favourite, a review — can be performed by an unpaid account, no matter what client is talking to the API.
+`SupportGate` is the **product** gate: it is what makes an unpaid tourist unable to reach the feed, listings or dashboard in the app. `requireActiveSupport` is the **value** gate: it makes sure nothing that actually costs the platform something  a booking, a favourite, a review  can be performed by an unpaid account, no matter what client is talking to the API.
 
 This means an unpaid tourist holding a token could still `GET` their (empty) booking list directly from the API. That is accepted deliberately: it exposes nothing that was not already theirs, and blanket-gating every authenticated GET would break the `/support` screen and buy nothing.
 
@@ -147,7 +147,7 @@ Reuses the existing payment plumbing unchanged, exactly as `useBookingFlow` does
 
 ### The logout escape is mandatory
 
-A hard gate on a logged-in user with no exit is a trap: they cannot pay, cannot browse, cannot leave. The screen carries a secondary action — **"Not now — browse without an account"** → `logout()` → `/`. Public browsing was always free; this only makes it reachable from behind the gate.
+A hard gate on a logged-in user with no exit is a trap: they cannot pay, cannot browse, cannot leave. The screen carries a secondary action  **"Not now  browse without an account"** → `logout()` → `/`. Public browsing was always free; this only makes it reachable from behind the gate.
 
 ### `402` response interceptor
 
@@ -159,18 +159,18 @@ All strings go through i18n (`frontend/src/locales/`), consistent with the exist
 
 > **A small token to keep 1 Darjeeling running**
 >
-> ₹12 for the year — a one-time platform support & convenience fee that goes toward maintenance, hosting and building costs.
+> ₹12 for the year  a one-time platform support & convenience fee that goes toward maintenance, hosting and building costs.
 >
 > That's ₹1 a month. It keeps the app running for travellers and keeps listings free for the small homestays, drivers and cafés on it.
 >
 > **[ Pay ₹12 · valid 1 year ]**
 >
-> Valid for one year. Nothing auto-charges — we'll ask you again next year.
+> Valid for one year. Nothing auto-charges  we'll ask you again next year.
 
 Two constraints on this copy:
 
 - The button states the amount plainly.
-- The reassurance is **"nothing auto-charges"**, not "this isn't a subscription". Mechanically this *is* a recurring annual charge; "support fee" is the framing, and it is an accurate one, since the money genuinely covers hosting and maintenance. But the claim we put on screen has to be the one that survives scrutiny. No Razorpay mandate or token is created, so "nothing auto-charges" is verifiably true and addresses the actual fear — a silent debit. If auto-renewal is ever added, this line must be removed in the same change.
+- The reassurance is **"nothing auto-charges"**, not "this isn't a subscription". Mechanically this *is* a recurring annual charge; "support fee" is the framing, and it is an accurate one, since the money genuinely covers hosting and maintenance. But the claim we put on screen has to be the one that survives scrutiny. No Razorpay mandate or token is created, so "nothing auto-charges" is verifiably true and addresses the actual fear  a silent debit. If auto-renewal is ever added, this line must be removed in the same change.
 
 ## 8. Error handling
 

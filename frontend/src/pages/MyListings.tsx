@@ -3,10 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
-import { 
-  Store, Plus, Trash2, Pencil, ExternalLink, ArrowRight, CheckCircle2, 
-  Clock, LayoutList, Loader2, Sparkles, Building2, MapPin, Tag
-} from 'lucide-react';
+import { Storefront as Store, Plus, Trash as Trash2, Pencil, ArrowSquareOut as ExternalLink, ArrowRight, CheckCircle as CheckCircle2, Clock, ListBullets as LayoutList, CircleNotch as Loader2, Sparkle as Sparkles, Buildings as Building2, MapPin, Tag } from '@phosphor-icons/react';
 import ListingFormModal from '@/components/ListingFormModal';
 import EditListingModal from '@/components/provider/dashboard/EditListingModal';
 import { useSeo } from '@/components/Seo';

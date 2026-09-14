@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus, X } from 'lucide-react';
+import { Plus, X } from '@phosphor-icons/react';
 import { optionLabel } from '@/lib/optionLabel';
 import { ROUTE_SUGGESTIONS } from '@/constants/listingOptions';
 import { RouteFare, RouteUnit, DEFAULT_ROUTE_UNIT, startingPriceFrom } from '@/lib/routeFares';

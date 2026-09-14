@@ -29,7 +29,7 @@ project-name/
 ├── src/
 │   ├── main/            # Main process (lifecycle, windows, IPC handlers)
 │   │   └── index.ts
-│   ├── preload/         # contextBridge — type-safe IPC surface
+│   ├── preload/         # contextBridge  type-safe IPC surface
 │   │   ├── index.ts
 │   │   └── index.d.ts   # Ambient types shared with renderer
 │   └── renderer/        # React app
@@ -90,7 +90,7 @@ project-name/
 
 ## Best Practices
 
-- `contextIsolation: true` (default v12+), `sandbox: true` (default v20+), `nodeIntegration: false` (default v5+) — never enable Node for remote content
+- `contextIsolation: true` (default v12+), `sandbox: true` (default v20+), `nodeIntegration: false` (default v5+)  never enable Node for remote content
 - Expose a narrow API via `contextBridge.exposeInMainWorld`, never raw `ipcRenderer`
 - Validate IPC `sender` against an allowlist; set a restrictive CSP (`script-src 'self'`)
 - Type-safe IPC: share types from `preload/index.d.ts` into the renderer

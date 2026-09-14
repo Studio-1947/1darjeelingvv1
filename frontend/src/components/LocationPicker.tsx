@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import type { Map as LeafletMap, Marker as LeafletMarker, LatLng } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { MapPin, Search, Loader2, Mountain } from 'lucide-react';
+import { MapPin, MagnifyingGlass as Search, CircleNotch as Loader2, Mountains as Mountain } from '@phosphor-icons/react';
 import api from '@/lib/api';
 
 // Default centre: Darjeeling town (same anchor the read-only maps use).

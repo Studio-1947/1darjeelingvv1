@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { MapPin, Share2, Bookmark, Star, ArrowRight, Phone, Store, Coffee, Ticket, Leaf, Mountain, Check, X } from 'lucide-react';
+import { MapPin, ShareNetwork as Share2, Bookmark, Star, ArrowRight, Phone, Storefront as Store, Coffee, Ticket, Leaf, Mountains as Mountain, Check, X } from '@phosphor-icons/react';
 import SmartImg from '@/components/SmartImg';
 import { listingImage } from '@/lib/listingContent';
 import { cardCtaKey } from '@/lib/cardCta';

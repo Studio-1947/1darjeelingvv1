@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowRight, Mail, Heart, Check } from 'lucide-react';
+import { ArrowRight, EnvelopeSimple as Mail, Heart, Check } from '@phosphor-icons/react';
 import CircularGallery from '@/components/CircularGallery';
 import { sizedImage } from '@/lib/listingContent';
 import { useSeo } from '@/components/Seo';

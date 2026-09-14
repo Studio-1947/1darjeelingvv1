@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Upload, Plus, X } from 'lucide-react';
+import { Upload, Plus, X } from '@phosphor-icons/react';
 
 /**
  * Photo grid with a dashed "add" tile and remove buttons on each image.

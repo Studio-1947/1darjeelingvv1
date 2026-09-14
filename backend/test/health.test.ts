@@ -18,7 +18,7 @@ const { app } = await import('../src/app');
 /**
  * The distinction these tests defend is the reason the endpoint exists.
  *
- * `GET /api` returns `{"status":"ok"}` from a bare JSON literal — it is true whenever the process
+ * `GET /api` returns `{"status":"ok"}` from a bare JSON literal  it is true whenever the process
  * is answering, and stays true with the database on fire. An uptime monitor pointed at it would
  * have reported this platform perfectly healthy while every booking, login and listing failed.
  * `GET /api/health` is the one that actually asks its dependencies, and it must keep doing so.

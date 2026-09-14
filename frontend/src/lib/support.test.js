@@ -1,4 +1,4 @@
-// Plain .js for the same reason as api.test.js — the repo has no @types/jest.
+// Plain .js for the same reason as api.test.js  the repo has no @types/jest.
 const { isExemptFromSupport, isSupportActive, needsSupport } = require('./support');
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -18,7 +18,7 @@ describe('isExemptFromSupport', () => {
 });
 
 describe('needsSupport', () => {
-  it('is false without a user — logged-out browsing is free', () => {
+  it('is false without a user  logged-out browsing is free', () => {
     expect(needsSupport(null)).toBe(false);
     expect(needsSupport(undefined)).toBe(false);
   });

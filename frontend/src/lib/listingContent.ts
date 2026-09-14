@@ -155,6 +155,46 @@ export const CONTENT: Record<string, ListingContent> = {
     ],
     coords: [27.006, 88.254],
   },
+  'Mirik Lake (Sumendu Lake)': {
+    about:
+      'Sumendu Lake in Mirik, commonly called Mirik Lake, sits at 1,494 m wrapped by lush tea gardens and tall cryptomeria pine groves. An 80-foot arched rainbow footbridge, the Indreni Pull, crosses the 1.25 km long lake, connecting the quiet forested western ridge with the lively walking promenade and lakeside flower gardens on the east. Visitors enjoy boating across the placid mountain waters, pony rides along the bank, and hot local snacks from nearby stalls.',
+    gallery: [
+      'https://images.unsplash.com/photo-1506744038136-46273834b3fb',
+      'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05',
+      'https://images.unsplash.com/photo-1441974231531-c6227db76b6e',
+    ],
+    coords: [26.8906, 88.1755],
+  },
+  'Mirik Lake': {
+    about:
+      'Sumendu Lake in Mirik, commonly called Mirik Lake, sits at 1,494 m wrapped by lush tea gardens and tall cryptomeria pine groves. An 80-foot arched rainbow footbridge, the Indreni Pull, crosses the 1.25 km long lake, connecting the quiet forested western ridge with the lively walking promenade and lakeside flower gardens on the east. Visitors enjoy boating across the placid mountain waters, pony rides along the bank, and hot local snacks from nearby stalls.',
+    gallery: [
+      'https://images.unsplash.com/photo-1506744038136-46273834b3fb',
+      'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05',
+      'https://images.unsplash.com/photo-1441974231531-c6227db76b6e',
+    ],
+    coords: [26.8906, 88.1755],
+  },
+  'Simana Border Viewpoint': {
+    about:
+      'Simana Viewpoint is perched directly on the Indo-Nepal international border ridge at an elevation of approximately 2,360 m along the scenic Darjeeling-Mirik highway. The open plateau offers commanding panoramic vistas of the winding hill roads, the Mechi River valley, and the Nepali border town of Pashupatinagar nestled in the hills below. Travelers stop here for steaming Darjeeling tea, authentic Himalayan churpi, and fresh hot momos while admiring views spanning two nations.',
+    gallery: [
+      'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b',
+      'https://images.unsplash.com/photo-1486870591958-9b9d0d1dda99',
+      'https://images.unsplash.com/photo-1519681393784-d120267933ba',
+    ],
+    coords: [26.9388, 88.1561],
+  },
+  'Simana Border': {
+    about:
+      'Simana Viewpoint is perched directly on the Indo-Nepal international border ridge at an elevation of approximately 2,360 m along the scenic Darjeeling-Mirik highway. The open plateau offers commanding panoramic vistas of the winding hill roads, the Mechi River valley, and the Nepali border town of Pashupatinagar nestled in the hills below. Travelers stop here for steaming Darjeeling tea, authentic Himalayan churpi, and fresh hot momos while admiring views spanning two nations.',
+    gallery: [
+      'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b',
+      'https://images.unsplash.com/photo-1486870591958-9b9d0d1dda99',
+      'https://images.unsplash.com/photo-1519681393784-d120267933ba',
+    ],
+    coords: [26.9388, 88.1561],
+  },
 
   // ---------------- Homestays ----------------
   'Mist & Pine Homestay': {
@@ -441,7 +481,7 @@ export function contentFor(
 
 /**
  * The admin-authored visitor information on a tourist spot (see the Tourist Spots tab
- * of the admin console). All fields are optional — `has` says whether the detail page
+ * of the admin console). All fields are optional  `has` says whether the detail page
  * has anything worth giving a section to.
  */
 export function spotInfoFor(item: any): {

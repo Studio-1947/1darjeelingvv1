@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
 
 // vi.stubEnv + vi.resetModules() + a dynamic import is how config.ts (which reads process.env at
-// module load and throws on bad production combinations) is exercised — same approach as
+// module load and throws on bad production combinations) is exercised  same approach as
 // otpRealProvider.test.ts.
 
 // Everything config.ts validates *before* it reaches the MOCK_PAYMENTS guard. Without these the
@@ -36,7 +36,7 @@ describe('MOCK_PAYMENTS production guard', () => {
     await expect(importConfig()).rejects.toThrow(/MOCK_PAYMENTS must be set explicitly/);
   });
 
-  it('allows an explicit MOCK_PAYMENTS=true in production — the documented pre-go-live state', async () => {
+  it('allows an explicit MOCK_PAYMENTS=true in production  the documented pre-go-live state', async () => {
     stubProductionBaseline();
     vi.stubEnv('MOCK_PAYMENTS', 'true');
 

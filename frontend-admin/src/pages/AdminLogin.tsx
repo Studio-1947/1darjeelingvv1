@@ -70,7 +70,7 @@ export default function AdminLogin() {
                 data-testid="admin-login-password"
                 className="flex-1 bg-transparent outline-none py-0.5 text-ink text-sm"
               />
-              {/* type="button" is essential — a bare <button> inside a form defaults to
+              {/* type="button" is essential  a bare <button> inside a form defaults to
                   type="submit", so revealing the password would submit the login instead. */}
               <button
                 type="button"

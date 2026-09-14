@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Heart, Share2, Map, Check, Sparkles, X, Copy, ExternalLink } from 'lucide-react';
+import { Heart, ShareNetwork as Share2, MapTrifold as Map, Check, Calendar, X, Copy, ArrowSquareOut as ExternalLink } from '@phosphor-icons/react';
 import { useAuth } from '@/context/AuthContext';
 import { fetchFavorites, SavedListing } from '@/lib/favorites';
 import api from '@/lib/api';
@@ -98,7 +98,7 @@ export default function Saved() {
               data-testid="build-itinerary-cta"
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-gold text-ink font-extrabold text-sm btn-hover shadow-sm"
             >
-              <Sparkles size={16} /> Build Day 1/2/3 Trip
+              <Calendar size={16} /> Plan Day 1/2/3 Trip
             </button>
             <button
               onClick={() => setShowPlanModal(true)}

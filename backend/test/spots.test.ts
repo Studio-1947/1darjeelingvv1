@@ -9,7 +9,7 @@ vi.mock('../src/lib/s3', () => ({
     const { Readable } = await import('stream');
     return { stream: Readable.from([Buffer.from('test-file-bytes')]), contentType: 'image/png' };
   }),
-  deletePrivate: vi.fn(async () => {}),
+  deletePrivate: vi.fn(async () => { }),
 }));
 
 import { app } from '../src/app';
@@ -39,7 +39,7 @@ async function createSpot(token: string, overrides: Record<string, any> = {}) {
   return res.body.item;
 }
 
-describe('tourist spots — only an admin can write them', () => {
+describe('tourist spots  only an admin can write them', () => {
   it('rejects an active provider creating a spot through the listings route', async () => {
     const { token } = await onboardActiveProvider({ name: 'Spot Squatting Provider' });
     const res = await request(app)
@@ -125,7 +125,7 @@ describe('tourist spots — only an admin can write them', () => {
   });
 });
 
-describe('tourist spots — admin CRUD', () => {
+describe('tourist spots  admin CRUD', () => {
   it('creates a spot with its editorial fields and returns it in the admin list', async () => {
     const admin = await loginAdmin();
     const title = uniqueTitle('Tiger Hill');
@@ -283,7 +283,7 @@ describe('tourist spots — admin CRUD', () => {
   });
 });
 
-describe('tourist spots — publishing controls public visibility', () => {
+describe('tourist spots  publishing controls public visibility', () => {
   it('hides a draft spot from the public list and detail routes, and shows it again once published', async () => {
     const admin = await loginAdmin();
     const spot = await createSpot(admin, { extras: { published: false } });
@@ -295,7 +295,7 @@ describe('tourist spots — publishing controls public visibility', () => {
     const detail = await request(app).get(`/api/listings/${spot.id}`);
     expect(detail.status).toBe(404);
 
-    // The admin can still see it — that is the whole point of a draft.
+    // The admin can still see it  that is the whole point of a draft.
     const adminList = await request(app).get('/api/admin/spots').set('Authorization', `Bearer ${admin}`);
     expect(adminList.body.items.some((s: any) => s.id === spot.id)).toBe(true);
 
@@ -348,7 +348,7 @@ describe('tourist spots — publishing controls public visibility', () => {
   });
 
   // Regression: a spot written before lib/spots.ts existed (the seeder inserts `extras: {}`)
-  // has no `featured` key, so `extras->>'featured' = 'true'` evaluates to NULL — and Postgres
+  // has no `featured` key, so `extras->>'featured' = 'true'` evaluates to NULL  and Postgres
   // sorts NULLS FIRST under DESC. That put every legacy spot ahead of the genuinely featured
   // ones on the live /spots feed. The test above missed it because all three of its rows carry
   // the key explicitly, so their order relative to each other was still correct.
@@ -361,7 +361,7 @@ describe('tourist spots — publishing controls public visibility', () => {
         id,
         title: uniqueTitle('Legacy Seeded Spot'),
         type: 'spot',
-        description: 'Inserted the way the seeder does it — bare extras.',
+        description: 'Inserted the way the seeder does it  bare extras.',
         location: 'Darjeeling',
         price: 0,
         image: '',

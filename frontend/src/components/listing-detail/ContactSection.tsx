@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Phone, MessageCircle, Navigation, CalendarPlus } from 'lucide-react';
+import { Phone, ChatCircle as MessageCircle, NavigationArrow as Navigation, CalendarPlus } from '@phosphor-icons/react';
 import { Screen, SectionHead, ALIGN_TEXT, ALIGN_BLOCK } from './primitives';
 
 /**

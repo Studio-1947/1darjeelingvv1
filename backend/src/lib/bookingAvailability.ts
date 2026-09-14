@@ -3,7 +3,7 @@ import { schema } from '../db';
 import { BOOKING_HOLD_MINUTES } from '../config';
 
 /**
- * Homestay availability — the single source of truth for "are these dates taken?".
+ * Homestay availability  the single source of truth for "are these dates taken?".
  *
  * Two callers need the same answer and must not drift apart:
  *   - POST /bookings, deciding whether to let a checkout start at all;
@@ -11,7 +11,7 @@ import { BOOKING_HOLD_MINUTES } from '../config';
  *     actually be confirmed.
  *
  * Only homestays are date-exclusive. A driver can be hired by two people on the same day, a
- * café does not run out of dates, and a spot is a public place — so every other listing type
+ * café does not run out of dates, and a spot is a public place  so every other listing type
  * is always available and this module is not consulted for them.
  */
 
@@ -36,7 +36,7 @@ export function holdCutoff(now: Date = new Date()): string {
  * The SQL predicate for "this row blocks the requested range on this listing".
  *
  * Half-open interval comparison (`existing.checkIn < requested.checkOut AND existing.checkOut >
- * requested.checkIn`) so a checkout on the same day as the next guest's check-in is NOT a clash —
+ * requested.checkIn`) so a checkout on the same day as the next guest's check-in is NOT a clash 
  * that is a normal back-to-back turnover, and the pre-existing test for it stays green.
  *
  * `excludeBookingId` exists for the settlement path, where the booking being confirmed is itself
@@ -53,12 +53,12 @@ function blockingPredicate(
     lt(schema.bookings.checkIn, checkOut),
     gt(schema.bookings.checkOut, checkIn),
     or(
-      // Paid for and belonging to a guest — blocks unconditionally.
+      // Paid for and belonging to a guest  blocks unconditionally.
       eq(schema.bookings.status, 'confirmed'),
       // The host has agreed to take these nights. Blocks unconditionally too, and deliberately
       // NOT subject to the hold window: a host who accepts has promised the room, and a promise
       // that silently expires fifteen minutes later is worse than no acceptance at all. If the
-      // guest never pays, the host cancels — which is a decision someone makes, not a timeout.
+      // guest never pays, the host cancels  which is a decision someone makes, not a timeout.
       eq(schema.bookings.status, 'accepted'),
       // A checkout still in flight. `createdAt` is an ISO-8601 UTC string for every row this app
       // writes, so lexicographic ordering is chronological ordering and a text comparison is a
@@ -77,7 +77,7 @@ function blockingPredicate(
 
 type BookingRow = typeof schema.bookings.$inferSelect;
 
-/** Anything with `.select()` — the live db, or a transaction handle from db.transaction(). */
+/** Anything with `.select()`  the live db, or a transaction handle from db.transaction(). */
 type Queryable = {
   select: (typeof import('../db'))['db']['select'];
 };
@@ -85,7 +85,7 @@ type Queryable = {
 /**
  * Returns the booking that blocks this range, or null when the dates are free.
  *
- * Pass a transaction handle as `runner` to have the read participate in that transaction — which
+ * Pass a transaction handle as `runner` to have the read participate in that transaction  which
  * is what makes the settlement check meaningful (see lockListingForBooking).
  */
 export async function findBlockingBooking(
@@ -112,7 +112,7 @@ export async function findBlockingBooking(
  * them into a queue, so the second one reads the first one's committed result and correctly finds
  * the clash.
  *
- * The listing row is used purely as the mutex — nothing about it is modified.
+ * The listing row is used purely as the mutex  nothing about it is modified.
  */
 export async function lockListingForBooking(
   tx: { execute: (query: any) => Promise<unknown> },

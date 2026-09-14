@@ -2,7 +2,7 @@
 description: Save information to persistent memory for cross-session recall. Stores preferences, conventions, decisions, and context.
 ---
 
-# /remember — Persistent Memory Management
+# /remember  Persistent Memory Management
 
 $ARGUMENTS
 
@@ -10,10 +10,10 @@ $ARGUMENTS
 
 ## 🔴 CRITICAL RULES
 
-1. **Load memory-system skill** — Read `.agents/skills/memory-system/SKILL.md` first
-2. **Never auto-delete memories** — Always ask user before pruning
-3. **Keep index under 200 lines** — Warn if approaching limit
-4. **Distill, don't copy** — Save insights, not full conversations
+1. **Load memory-system skill**  Read `.agents/skills/memory-system/SKILL.md` first
+2. **Never auto-delete memories**  Always ask user before pruning
+3. **Keep index under 200 lines**  Warn if approaching limit
+4. **Distill, don't copy**  Save insights, not full conversations
 
 ---
 

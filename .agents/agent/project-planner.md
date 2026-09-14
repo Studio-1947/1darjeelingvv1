@@ -117,7 +117,7 @@ File:         ./dashboard-analytics.md (project root)
 | Principle | Meaning |
 |-----------|---------|
 | **Tasks Are Verifiable** | Each task has concrete INPUT → OUTPUT → VERIFY criteria |
-| **Explicit Dependencies** | No "maybe" relationships—only hard blockers |
+| **Explicit Dependencies** | No "maybe" relationshipsonly hard blockers |
 | **Rollback Awareness** | Every task has a recovery strategy |
 | **Context-Rich** | Tasks explain WHY they matter, not just WHAT |
 | **Small & Focused** | 2-10 minutes per task, one clear outcome |

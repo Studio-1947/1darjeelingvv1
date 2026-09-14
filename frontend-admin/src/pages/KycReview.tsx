@@ -69,7 +69,7 @@ function ReviewDialog({ target, busy, error, onCancel, onConfirm }: {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const confirmRef = useRef<HTMLButtonElement>(null);
 
-  // Focus the primary control on open — the reason box when there is one, otherwise the confirm
+  // Focus the primary control on open  the reason box when there is one, otherwise the confirm
   // button so Enter/Escape work immediately for a pure confirmation.
   useEffect(() => {
     (needsReason ? textareaRef.current : confirmRef.current)?.focus();
@@ -112,7 +112,7 @@ function ReviewDialog({ target, busy, error, onCancel, onConfirm }: {
           {title}
         </h2>
         <p className="mt-1 text-sm text-ink-soft">
-          {doc.business_name || 'Unnamed business'} — {doc.doc_type}
+          {doc.business_name || 'Unnamed business'}  {doc.doc_type}
         </p>
 
         {isCorrective && (
@@ -126,14 +126,14 @@ function ReviewDialog({ target, busy, error, onCancel, onConfirm }: {
 
         {needsReason && (
           <label className="block mt-4">
-            <span className="text-xs font-semibold text-ink-soft">Reason — the provider will see this</span>
+            <span className="text-xs font-semibold text-ink-soft">Reason  the provider will see this</span>
             <textarea
               ref={textareaRef}
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               rows={3}
               data-testid="kyc-review-reason"
-              placeholder="e.g. The document is blurry — please re-upload a clearer scan."
+              placeholder="e.g. The document is blurry  please re-upload a clearer scan."
               className="mt-1 w-full px-3 py-2.5 rounded-xl border border-[var(--line)] bg-white outline-none text-ink text-sm resize-none focus:ring-2 focus:ring-flag/20 transition-all"
               // Ctrl/Cmd+Enter submits, matching the muscle memory of most comment boxes.
               onKeyDown={(e) => {
@@ -141,7 +141,7 @@ function ReviewDialog({ target, busy, error, onCancel, onConfirm }: {
               }}
             />
             <span className="mt-1 block text-[11px] text-ink-soft">
-              Required — the provider needs to know what to fix.
+              Required  the provider needs to know what to fix.
             </span>
           </label>
         )}
@@ -171,9 +171,8 @@ function ReviewDialog({ target, busy, error, onCancel, onConfirm }: {
             onClick={submit}
             disabled={busy || reasonMissing}
             data-testid="kyc-review-confirm"
-            className={`inline-flex items-center gap-1.5 px-5 py-2 rounded-full text-white text-sm font-bold btn-hover disabled:opacity-50 disabled:cursor-not-allowed ${
-              isReject ? 'bg-flag' : 'bg-pine'
-            }`}
+            className={`inline-flex items-center gap-1.5 px-5 py-2 rounded-full text-white text-sm font-bold btn-hover disabled:opacity-50 disabled:cursor-not-allowed ${isReject ? 'bg-flag' : 'bg-pine'
+              }`}
           >
             {busy ? <Loader2 size={14} className="animate-spin" /> : null}
             {confirmLabel}
@@ -204,7 +203,7 @@ export default function KycReview() {
   const pendingObjectUrls = useRef<Set<string>>(new Set());
 
   // Returns the fetched page (or null on failure) so callers that need to react to what came
-  // back — e.g. `review()` deciding whether the current page just became empty — don't have to
+  // back  e.g. `review()` deciding whether the current page just became empty  don't have to
   // read `docs`/`total` state right after calling this, which wouldn't yet reflect the update.
   const load = useCallback(async (): Promise<{ documents: AdminKycDoc[]; total: number } | null> => {
     setLoading(true);
@@ -245,7 +244,7 @@ export default function KycReview() {
   };
 
   // Posts the decision to the API and refreshes the page. Returns an error message on failure
-  // (rather than setting state itself) so each caller can decide where to surface it — the page
+  // (rather than setting state itself) so each caller can decide where to surface it  the page
   // banner for the frictionless immediate-approve path, or inside the dialog for everything else.
   const submitReview = async (
     doc: AdminKycDoc,
@@ -275,7 +274,7 @@ export default function KycReview() {
     setReviewError(null);
 
     // Approving a still-`pending` document is the one no-friction path: nothing to collect, nothing
-    // being overturned — so it submits straight away, as it always did. Everything else (any
+    // being overturned  so it submits straight away, as it always did. Everything else (any
     // rejection, or any decision that overturns an existing one) opens the in-app dialog to gather
     // a reason and/or confirm the override, replacing the old native prompt()/confirm() pair.
     const isCorrective = doc.status !== 'pending';
@@ -381,11 +380,10 @@ export default function KycReview() {
             aria-selected={statusFilter === key}
             data-testid={`kyc-filter-${key}`}
             onClick={() => changeStatusFilter(key)}
-            className={`px-4 py-1.5 rounded-full text-xs font-bold border transition-colors ${
-              statusFilter === key
+            className={`px-4 py-1.5 rounded-full text-xs font-bold border transition-colors ${statusFilter === key
                 ? 'bg-pine text-white border-pine'
                 : 'text-ink-soft border-[var(--line)] hover:bg-mist'
-            }`}
+              }`}
           >
             {label}
           </button>
@@ -437,7 +435,7 @@ export default function KycReview() {
                     </span>
                   </div>
                   <div className="text-sm text-ink-soft">
-                    {d.owner_name || 'Unknown owner'} — {d.doc_type}
+                    {d.owner_name || 'Unknown owner'}  {d.doc_type}
                   </div>
                   {d.status === 'rejected' && d.rejection_reason && (
                     <div className="text-xs text-flag mt-0.5">Reason: {d.rejection_reason}</div>

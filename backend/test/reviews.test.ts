@@ -76,6 +76,51 @@ describe('reviews', () => {
     expect(list.body.reviews[0].comment).toBe('better on a second visit');
   });
 
+  it('stores and returns photos attached to a review', async () => {
+    const { token } = await registerUser({ name: 'Photo Guest' });
+    const listing = await createListing();
+    const photos = ['https://example.com/a.jpg', 'https://example.com/b.jpg'];
+
+    const post = await request(app).post('/api/reviews')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ listing_id: listing.id, rating: 4, comment: 'Loved it', photos });
+    expect(post.status).toBe(200);
+    expect(post.body.review.photos).toEqual(photos);
+
+    const list = await request(app).get(`/api/reviews/listing/${listing.id}`);
+    expect(list.body.reviews[0].photos).toEqual(photos);
+  });
+
+  it('replaces photos on a second submit rather than appending them', async () => {
+    const { token } = await registerUser({ name: 'Reshoot Guest' });
+    const listing = await createListing();
+
+    await request(app).post('/api/reviews').set('Authorization', `Bearer ${token}`)
+      .send({ listing_id: listing.id, rating: 3, photos: ['https://example.com/first.jpg'] });
+    await request(app).post('/api/reviews').set('Authorization', `Bearer ${token}`)
+      .send({ listing_id: listing.id, rating: 4, photos: ['https://example.com/second.jpg'] });
+
+    const list = await request(app).get(`/api/reviews/listing/${listing.id}`);
+    expect(list.body.reviews[0].photos).toEqual(['https://example.com/second.jpg']);
+  });
+
+  it('rejects malformed photos', async () => {
+    const { token } = await registerUser({ name: 'Bad Photo Guest' });
+    const listing = await createListing();
+
+    const notArray = await request(app).post('/api/reviews').set('Authorization', `Bearer ${token}`)
+      .send({ listing_id: listing.id, rating: 3, photos: 'not-an-array' });
+    expect(notArray.status).toBe(400);
+
+    const badUrl = await request(app).post('/api/reviews').set('Authorization', `Bearer ${token}`)
+      .send({ listing_id: listing.id, rating: 3, photos: ['not-a-url'] });
+    expect(badUrl.status).toBe(400);
+
+    const tooMany = await request(app).post('/api/reviews').set('Authorization', `Bearer ${token}`)
+      .send({ listing_id: listing.id, rating: 3, photos: Array(7).fill('https://example.com/x.jpg') });
+    expect(tooMany.status).toBe(400);
+  });
+
   it('lets a user delete their own review but not someone else\'s', async () => {
     const { token: owner } = await registerUser({ name: 'Review Owner' });
     const { token: other } = await registerUser({ name: 'Review Stranger' });

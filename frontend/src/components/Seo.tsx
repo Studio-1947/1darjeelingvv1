@@ -89,7 +89,7 @@ export function useSeo({ title, description, image, canonical, ogType = 'website
 
   const brand = t('brand');
   const tagline = t('brand_tagline');
-  const fullTitle = title ? `${title} — ${brand}` : `${brand} — ${tagline}`;
+  const fullTitle = title ? `${title}  ${brand}` : `${brand}  ${tagline}`;
   const desc = description || t('seo.default_description');
   // Query strings are tracking and filter state, never a distinct document; a
   // canonical that carried them would split one listing across a dozen URLs.

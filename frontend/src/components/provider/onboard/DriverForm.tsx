@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { MapPin } from 'lucide-react';
+import { MapPin } from '@phosphor-icons/react';
 import { VEHICLE_TYPES } from '@/constants/listingOptions';
 import ChipToggleGroup from '../ChipToggleGroup';
 import AvatarUploader from '../AvatarUploader';

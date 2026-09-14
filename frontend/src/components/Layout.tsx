@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import BottomNav from '@/components/BottomNav';
+import { Toaster } from 'sonner';
 
 export default function Layout({ children }) {
   const { t } = useTranslation();
@@ -28,6 +29,7 @@ export default function Layout({ children }) {
       <main id="main" tabIndex={-1} className="flex-1 pb-[var(--bottom-nav-h)] lg:pb-0 focus:outline-none">{children}</main>
       <Footer />
       <BottomNav />
+      <Toaster position="top-center" richColors closeButton />
     </div>
   );
 }

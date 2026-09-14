@@ -21,7 +21,7 @@ import type { NotificationTemplate } from '../messaging';
  *     notification is a queryable fact rather than an absence nobody can see.
  */
 
-const SIGNATURE = '— aangan · By studio 1947';
+const SIGNATURE = ' aangan · By studio 1947';
 
 /**
  * A date range rendered for a human, tolerant of the non-homestay bookings that have no dates.
@@ -29,7 +29,7 @@ const SIGNATURE = '— aangan · By studio 1947';
  * Returns a bare noun phrase with no leading preposition, because the caller supplies that. The
  * two single-date branches used to carry their own "on", which read correctly nowhere it was
  * actually used: every call site says "confirmed for {stay}", so a taxi booking announced itself
- * as "confirmed for on a date to be arranged". Worth fixing now rather than later — this string
+ * as "confirmed for on a date to be arranged". Worth fixing now rather than later  this string
  * goes into WhatsApp templates, and changing an approved template means another review.
  */
 function formatStay(checkIn: string | null, checkOut: string | null): string {
@@ -44,7 +44,7 @@ export interface BookingParties {
   booking: BookingRow;
   guestName: string;
   guestPhone: string;
-  /** Null when the listing has no reachable owner — an admin-authored listing, typically. */
+  /** Null when the listing has no reachable owner  an admin-authored listing, typically. */
   hostName: string | null;
   hostPhone: string | null;
 }
@@ -70,7 +70,7 @@ async function deliver(
 /**
  * Tells the guest and the host that a booking is confirmed, and records what happened.
  *
- * Each recipient is attempted independently — a host with no phone number on file, or a gateway
+ * Each recipient is attempted independently  a host with no phone number on file, or a gateway
  * that rejects one number, must not cost the other party their message.
  */
 export async function notifyBookingConfirmed(parties: BookingParties): Promise<void> {
@@ -80,7 +80,7 @@ export async function notifyBookingConfirmed(parties: BookingParties): Promise<v
     // An explicit operator choice (see config.ts), which startup already logged loudly. Recorded
     // on the row too, so a booking with no notification has a stated reason rather than a blank.
     await db.update(schema.bookings)
-      .set({ notifyError: 'NOTIFY_BOOKINGS=false — notifications are switched off' })
+      .set({ notifyError: 'NOTIFY_BOOKINGS=false  notifications are switched off' })
       .where(eq(schema.bookings.id, booking.id));
     return;
   }
@@ -130,7 +130,7 @@ export async function notifyBookingConfirmed(parties: BookingParties): Promise<v
     .where(eq(schema.bookings.id, booking.id));
 
   if (errors.length > 0) {
-    log.error(`[notify] booking ${booking.id} confirmed but not fully announced — ${errors.join('; ')}`);
+    log.error(`[notify] booking ${booking.id} confirmed but not fully announced  ${errors.join('; ')}`);
   }
 }
 
@@ -138,7 +138,7 @@ export async function notifyBookingConfirmed(parties: BookingParties): Promise<v
  * Tells the guest their booking was cancelled, and whether their money is coming back.
  *
  * Used by the cancel route and by the double-booking guard in payments.ts, which cancels a
- * booking the guest has already paid for — the one case where silence would be indefensible.
+ * booking the guest has already paid for  the one case where silence would be indefensible.
  */
 export async function notifyBookingCancelled(
   booking: BookingRow,
@@ -161,7 +161,7 @@ export async function notifyBookingCancelled(
   );
 
   if (!result.ok) {
-    log.error(`[notify] could not tell the guest that booking ${booking.id} was cancelled — ${result.error}`);
+    log.error(`[notify] could not tell the guest that booking ${booking.id} was cancelled  ${result.error}`);
     await db.update(schema.bookings)
       .set({ notifyError: `cancellation: ${result.error}`.slice(0, 500) })
       .where(eq(schema.bookings.id, booking.id));

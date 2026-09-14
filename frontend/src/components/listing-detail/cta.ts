@@ -1,4 +1,4 @@
-import { ArrowRight, Phone, Store, Coffee, Ticket, Leaf, Mountain } from 'lucide-react';
+import { ArrowRight, Phone, Storefront as Store, Coffee, Ticket, Leaf, Mountains as Mountain } from '@phosphor-icons/react';
 
 // Contextual CTA per listing type: i18n key, icon, and button colour.
 export const CTA_CONFIG = {

@@ -93,6 +93,6 @@ credentials.json
 *.key
 .credentials
 
-# Generated at deploy time by deploy/init-letsencrypt.sh — not source
+# Generated at deploy time by deploy/init-letsencrypt.sh  not source
 deploy/nginx/conf.d/
 deploy/certbot/

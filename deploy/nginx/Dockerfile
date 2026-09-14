@@ -27,7 +27,7 @@ COPY frontend/ .
 # The Sentry DSN, by contrast, HAS to be a build arg. Create React App inlines REACT_APP_*
 # variables into the bundle at build time, so it cannot be read from the container's environment
 # at runtime like every backend setting is. Supplied by the compose files from the stack's .env;
-# absent, the frontend simply reports nothing. A DSN is not a secret — it is a write-only
+# absent, the frontend simply reports nothing. A DSN is not a secret  it is a write-only
 # ingestion endpoint and is visible in the shipped bundle by design.
 ARG REACT_APP_SENTRY_DSN=""
 ARG VITE_SENTRY_DSN=""
@@ -47,7 +47,7 @@ RUN npm run build
 FROM nginx:1.27-alpine
 RUN rm -f /etc/nginx/conf.d/default.conf
 COPY deploy/nginx/app.conf /etc/nginx/conf.d/app.conf
-# Header/CSP fragments included BY app.conf. They must land outside conf.d — the stock nginx.conf
+# Header/CSP fragments included BY app.conf. They must land outside conf.d  the stock nginx.conf
 # auto-includes conf.d/*.conf at http level, which would apply these add_headers globally (to the
 # /api proxy responses too) instead of only in the static locations that include them.
 COPY deploy/nginx/snippets/ /etc/nginx/snippets/

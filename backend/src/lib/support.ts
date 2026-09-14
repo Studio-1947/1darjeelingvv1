@@ -9,7 +9,7 @@ export interface SupportUser {
 }
 
 /**
- * Exemption means "has already paid us" — not "claims to be a business".
+ * Exemption means "has already paid us"  not "claims to be a business".
  *
  * `role` flips to 'provider' the moment /providers/onboard is submitted, which is BEFORE the
  * ₹99 registration fee is paid. Exempting on role alone would therefore let any tourist submit
@@ -21,7 +21,7 @@ export function isExemptFromSupport(user: SupportUser): boolean {
   return user.role === 'provider' && user.providerPaid === true;
 }
 
-/** A stored value that is absent or unparseable means "not active" — never throw on bad data. */
+/** A stored value that is absent or unparseable means "not active"  never throw on bad data. */
 export function isSupportActive(user: SupportUser, now: Date = new Date()): boolean {
   if (!user.supportExpiresAt) return false;
   const expiry = Date.parse(user.supportExpiresAt);
@@ -34,7 +34,7 @@ export function isSupportActive(user: SupportUser, now: Date = new Date()): bool
  *
  * Two consequences that are both deliberate. Renewing early extends the remaining window
  * rather than truncating it, so nobody is punished for paying ahead of time. And a payment
- * settled twice — the webhook and the browser callback race by design — can never shorten
+ * settled twice  the webhook and the browser callback race by design  can never shorten
  * someone's access, even if settlePaymentOnce's guard were ever bypassed.
  */
 export function computeSupportExpiry(

@@ -3,11 +3,11 @@
  *
  * Sentry instruments http/express/postgres by patching those modules as they load, so an init
  * that runs after they have been required silently captures far less. That ordering requirement
- * is also why this file reads `process.env` directly instead of importing `./config` — pulling
+ * is also why this file reads `process.env` directly instead of importing `./config`  pulling
  * config in would drag Razorpay (and therefore `http`) in ahead of the patching.
  *
  * WHY THIS EXISTS: 1darjeeling.in was down for 25 hours in August 2026 and nobody knew. Nothing
- * in the stack reported anything, because nothing was watching. This covers one half of that —
+ * in the stack reported anything, because nothing was watching. This covers one half of that 
  * errors thrown by a RUNNING server. It cannot report a server that never started, which is what
  * actually happened; an external uptime check on /api/health is the other half, and neither
  * substitutes for the other. See README "Monitoring".
@@ -28,7 +28,7 @@ const APP_ENV = process.env.APP_ENV?.trim() || 'development';
 /**
  * The label errors are filed under, which is NOT the same question as APP_ENV.
  *
- * Both deployed stacks run APP_ENV=production, and correctly so — staging has to exercise
+ * Both deployed stacks run APP_ENV=production, and correctly so  staging has to exercise
  * production behaviour to be worth anything. But that means APP_ENV cannot tell them apart, and
  * without this every error from the staging box would arrive tagged `production`, sitting in the
  * same stream as real incidents. The one thing an operator needs from an alert at 2am is whether
@@ -52,7 +52,7 @@ if (DSN) {
     // Raise deliberately and temporarily if a latency question needs answering.
     tracesSampleRate: Number(process.env.SENTRY_TRACES_SAMPLE_RATE || 0),
 
-    // Sentry's own PII switch — off means it does not attach IP addresses, cookies or user
+    // Sentry's own PII switch  off means it does not attach IP addresses, cookies or user
     // identity of its own accord. beforeSend below is the belt to this pair of braces; neither is
     // trusted alone, because this codebase handles government ID documents.
     sendDefaultPii: false,
@@ -79,7 +79,7 @@ if (DSN) {
 
       // Stack-local variables are the quietest leak of the lot: a frame inside the KYC upload
       // handler holds the decoded document buffer, and Sentry attaches those variables when it
-      // can. Drop them wholesale — the stack trace itself is what makes a report actionable.
+      // can. Drop them wholesale  the stack trace itself is what makes a report actionable.
       for (const exception of event.exception?.values ?? []) {
         for (const frame of exception.stacktrace?.frames ?? []) {
           frame.vars = undefined;
@@ -90,7 +90,7 @@ if (DSN) {
     },
 
     beforeBreadcrumb(breadcrumb) {
-      // HTTP breadcrumbs record every outbound call made before the error, URLs included — that
+      // HTTP breadcrumbs record every outbound call made before the error, URLs included  that
       // is where an OTP-send to a provider, complete with the phone number, would show up.
       if (breadcrumb.category === 'http' && breadcrumb.data?.url) {
         breadcrumb.data.url = scrubUrl(String(breadcrumb.data.url));

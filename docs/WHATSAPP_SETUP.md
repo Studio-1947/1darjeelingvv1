@@ -1,4 +1,4 @@
-# WhatsApp Cloud API — registration and setup
+# WhatsApp Cloud API  registration and setup
 
 How to get 1 Darjeeling sending login codes and booking messages over WhatsApp, talking to Meta
 directly with no aggregator in between.
@@ -6,7 +6,7 @@ directly with no aggregator in between.
 **Why this instead of SMS.** An SMS to an Indian number must come from a DLT-registered sender,
 and that registration is a queue measured in weeks. WhatsApp is OTT rather than SMS, so DLT does
 not apply to it at all. Meta also lets an *unverified* business send to 250 unique recipients per
-rolling 24 hours — well above our volume — so there is no business-verification queue to clear
+rolling 24 hours  well above our volume  so there is no business-verification queue to clear
 before launch either.
 
 **What we give up.** Someone without WhatsApp on their number cannot receive a code, and there is
@@ -22,12 +22,12 @@ who holds the WhatsApp account.
 
 | | **Meta direct** (`MESSAGING_PROVIDER=whatsapp`) | **Interakt** (`MESSAGING_PROVIDER=interakt`) |
 |---|---|---|
-| Setup | This whole document — app, number registration, two-step PIN, system-user token | Their console; you get an API key |
+| Setup | This whole document  app, number registration, two-step PIN, system-user token | Their console; you get an API key |
 | Cost per message | Meta's rate | Meta's rate plus a margin, on a subscription |
 | Templates | Created in WhatsApp Manager | Created in Meta, then synced into Interakt |
 | Rate limits | The 250/24h unverified cap, then Meta's tiers | Also a per-minute API cap by plan |
 | Parties involved | You and Meta | You, Interakt, and Meta |
-| DLT | Not applicable — this is not SMS | Not applicable either |
+| DLT | Not applicable  this is not SMS | Not applicable either |
 
 **Interakt is the shortcut through §1–§6 of this document.** If you would rather not register a
 number against the Cloud API yourself, sign up with Interakt, get the key, and set:
@@ -39,7 +39,7 @@ INTERAKT_OTP_TEMPLATE=one_darjeeling_login
 INTERAKT_COUNTRY_CODE=+91
 ```
 
-You still need §7 and §8 — the templates are Meta's either way, created against your Meta
+You still need §7 and §8  the templates are Meta's either way, created against your Meta
 business account and synced into Interakt.
 
 Two things specific to Interakt, both of which cost an hour if nobody warns you:
@@ -48,7 +48,7 @@ Two things specific to Interakt, both of which cost an hour if nobody warns you:
   is the usual first mistake and presents as a flat `401` with no other clue.
 - **It wants the country code and subscriber number as separate fields**, unlike every other
   provider here. Numbers on `INTERAKT_COUNTRY_CODE` are split automatically. A number carrying a
-  *different* country code is **refused** rather than guessed at — guessing where a country code
+  *different* country code is **refused** rather than guessed at  guessing where a country code
   ends does not fail loudly, it delivers a login code to a stranger abroad. If the app starts
   serving another country, that is the setting to change.
 
@@ -59,14 +59,14 @@ The rest of this document is the Meta-direct path.
 ## Before you start
 
 **The phone number is a one-way decision.** A number registered to the Cloud API can no longer be
-used in the normal WhatsApp or WhatsApp Business app — not on any phone, not ever, until you
+used in the normal WhatsApp or WhatsApp Business app  not on any phone, not ever, until you
 deregister it. If the number is currently in use on WhatsApp you must delete that WhatsApp account
 first. Use a number nobody on the team is chatting to guests from.
 
 You will also need:
 
 - A Meta account with a **Business portfolio** (business.facebook.com)
-- A published **privacy policy URL** — `https://1darjeeling.in/privacy`, which already returns 200
+- A published **privacy policy URL**  `https://1darjeeling.in/privacy`, which already returns 200
 - The number able to receive one SMS or voice call, once, during verification
 
 ---
@@ -74,7 +74,7 @@ You will also need:
 ## 1. Create the Meta app
 
 1. Go to **developers.facebook.com → My Apps → Create App**.
-2. Pick the use case **"Connect with customers through WhatsApp"**. Not "Other" — this one wires
+2. Pick the use case **"Connect with customers through WhatsApp"**. Not "Other"  this one wires
    the WhatsApp product up for you.
 3. Attach it to your business portfolio when asked.
 
@@ -85,8 +85,8 @@ In the app dashboard, open **WhatsApp → API Setup**. Meta creates a WhatsApp B
 
 Write down:
 
-- **WhatsApp Business Account ID** — needed to create templates
-- **Phone number ID** — this is `WHATSAPP_PHONE_NUMBER_ID`, and it is *not* the phone number
+- **WhatsApp Business Account ID**  needed to create templates
+- **Phone number ID**  this is `WHATSAPP_PHONE_NUMBER_ID`, and it is *not* the phone number
   itself. It is a long numeric id shown next to the number.
 
 The test number sends to at most five recipients you nominate, and it is the fastest way to prove
@@ -97,7 +97,7 @@ your plumbing works before the real number is through verification. Use it.
 **WhatsApp Manager → Phone numbers → Add phone number.**
 
 - Enter the number and choose a **display name**. This is what recipients see. Meta reviews it
-  against its own naming rules, and a name that looks nothing like your business gets rejected —
+  against its own naming rules, and a name that looks nothing like your business gets rejected 
   "1 Darjeeling" is fine.
 - Verify by SMS or voice call.
 
@@ -108,7 +108,7 @@ passes you cannot complete the next step.
 ## 4. Set a two-step verification PIN
 
 **WhatsApp Manager → Phone numbers → your number → Settings → Two-step verification.** Choose a
-six-digit PIN and store it somewhere you will still have it — you need it to register the number
+six-digit PIN and store it somewhere you will still have it  you need it to register the number
 now, and again if you ever move it.
 
 ## 5. Register the number for the Cloud API
@@ -139,7 +139,7 @@ like one of these, but the check is a heuristic, not a guarantee.
    - `whatsapp_business_messaging`
    - `whatsapp_business_management`
    - `business_management`
-4. Choose **never expires**. Copy it once — it is not shown again.
+4. Choose **never expires**. Copy it once  it is not shown again.
 
 That token is `WHATSAPP_ACCESS_TOKEN`.
 
@@ -149,7 +149,7 @@ That token is `WHATSAPP_ACCESS_TOKEN`.
 > **`docs/WHATSAPP_TEMPLATES.md`**. This section explains the login one; that file is what you
 > actually paste.
 
-Authentication templates are a fixed shape. **You cannot write your own body copy** — Meta
+Authentication templates are a fixed shape. **You cannot write your own body copy**  Meta
 supplies "*{{1}}* is your verification code." and you only choose the options around it. That is
 deliberate on their part and there is no way around it.
 
@@ -184,12 +184,12 @@ Authentication templates are usually approved within minutes.
 
 ## 8. Create the three booking templates
 
-These are **UTILITY**, not authentication, so you do write the copy — and the copy is already
+These are **UTILITY**, not authentication, so you do write the copy  and the copy is already
 written. **`docs/WHATSAPP_TEMPLATES.md` has all four templates ready to paste**, with bodies whose
 placeholder order matches what the code actually sends, plus the curl call for each.
 
 Do not improvise the bodies. Placeholders are positional, the adapter fills them in the order
-`backend/src/lib/notifications.ts` builds them, and nothing at runtime checks the two agree — a
+`backend/src/lib/notifications.ts` builds them, and nothing at runtime checks the two agree  a
 mismatch sends successfully with the values in the wrong slots and no error anywhere.
 `backend/test/notificationVars.test.ts` pins that order, so if you change it a test tells you.
 
@@ -202,7 +202,7 @@ Create one each for:
 | Guest, booking cancelled | `WHATSAPP_BOOKING_CANCELLED_GUEST_TEMPLATE` |
 
 Utility templates take longer to review than authentication ones. If they are not ready, ship with
-`NOTIFY_BOOKINGS=false` — the backend refuses to boot with notifications on and templates missing,
+`NOTIFY_BOOKINGS=false`  the backend refuses to boot with notifications on and templates missing,
 which is the correct behaviour and not a bug to work around.
 
 ## 9. Configure and deploy
@@ -226,7 +226,7 @@ WHATSAPP_BOOKING_CANCELLED_GUEST_TEMPLATE=...
 half-configured switch crash-loops the stack rather than failing at the first login.
 
 Confirm the language code matches the template exactly. A template created as `en` and sent as
-`en_US` fails with *"Template name does not exist in the translation"* — which reads like the
+`en_US` fails with *"Template name does not exist in the translation"*  which reads like the
 template is missing when it is only the locale that is wrong.
 
 ## 10. Prove it end to end
@@ -238,7 +238,7 @@ curl -X POST https://1darjeeling.in/api/auth/otp/send \
 ```
 
 You want `{"sent":true,"channel":"whatsapp"}` **and** the message on the handset. `sent: true`
-alone is not proof — the whole messaging layer exists so that "sent" is never recorded for
+alone is not proof  the whole messaging layer exists so that "sent" is never recorded for
 something Meta did not confirm, so trust it, but look at the phone the first time anyway.
 
 ---
@@ -263,8 +263,8 @@ See `1-Darjeeling-Mobile-App/docs/PLAY_STORE.md` §1.
 
 ## Going back to SMS
 
-The MSG91 adapter is untouched and still tested. If you need SMS — because of the 250 cap, or a
-user without WhatsApp — complete DLT registration, set the `MSG91_*` variables, and switch
+The MSG91 adapter is untouched and still tested. If you need SMS  because of the 250 cap, or a
+user without WhatsApp  complete DLT registration, set the `MSG91_*` variables, and switch
 `MESSAGING_PROVIDER=msg91`. No code change.
 
 A try-WhatsApp-then-fall-back-to-SMS composite provider would be a third adapter wrapping the

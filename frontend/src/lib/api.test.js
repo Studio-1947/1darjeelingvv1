@@ -1,7 +1,7 @@
 // Guards the production API base URL. REACT_APP_BACKEND_URL is inlined by CRA at
 // build time; when it is absent (as it is in the Nginx image build) an unguarded
 // template literal produces the literal string "undefined/api", which the browser
-// resolves against the origin as https://<host>/undefined/api/... — nginx then
+// resolves against the origin as https://<host>/undefined/api/...  nginx then
 // serves that through the SPA catch-all and answers POSTs with 405 Not Allowed.
 //
 // Deliberately a .js file: the repo has no @types/jest, and adding it churns
