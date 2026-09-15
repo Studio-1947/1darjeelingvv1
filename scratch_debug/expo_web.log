@@ -1,0 +1,47 @@
+
+> aangan@1.0.0 web
+> expo start --web
+
+env: load .env
+env: export EXPO_PUBLIC_API_URL EXPO_PUBLIC_WEB_URL
+Starting project at C:\xampp\htdocs\1darjeelingvv1\1-Darjeeling-Mobile-App
+Starting Metro Bundler
+
+Waiting on http://localhost:8081
+
+An update for expo is available: 57.0.16 → ~57.0.22
+21 other packages may need updating. Run npx expo install --check for details.
+Logs for your project will appear below.
+Web Bundled 18726ms node_modules\expo-router\entry.js (1527 modules)
+Web  INFO  %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+Web  LOG  Running application "main" with appParams:
+ {"hydrate": undefined, "rootTag": "#root"} 
+Development-level warnings: ON.
+Performance optimizations: OFF.
+Web  WARN  "shadow*" style props are deprecated. Use "boxShadow".
+Web  WARN  Animated: `useNativeDriver` is not supported because the native animated module is missing. Falling back to JS-based animation. To resolve this, add `RCTAnimation` module to this app, or remove `useNativeDriver`. Make sure to run `bundle exec pod install` first. Read more about autolinking: https://github.com/react-native-community/cli/blob/master/docs/autolinking.md
+Web Bundled 76ms node_modules\expo-router\entry.js (1 module)
+Web  INFO  %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+Web  LOG  Running application "main" with appParams:
+ {"hydrate": undefined, "rootTag": "#root"} 
+Development-level warnings: ON.
+Performance optimizations: OFF.
+Web  WARN  "shadow*" style props are deprecated. Use "boxShadow".
+Web  WARN  Animated: `useNativeDriver` is not supported because the native animated module is missing. Falling back to JS-based animation. To resolve this, add `RCTAnimation` module to this app, or remove `useNativeDriver`. Make sure to run `bundle exec pod install` first. Read more about autolinking: https://github.com/react-native-community/cli/blob/master/docs/autolinking.md
+Web  WARN  props.pointerEvents is deprecated. Use style.pointerEvents
+Web  WARN  Cannot record touch end without a touch start.
+ Touch End: {"identifier":0,"pageX":818,"pageY":253,"timestamp":4406.699999999255}
+ Touch Bank: []
+Web  WARN  Cannot record touch end without a touch start.
+ Touch End: {"identifier":0,"pageX":944,"pageY":475,"timestamp":5476.5}
+ Touch Bank: []
+Web Bundled 74ms node_modules\expo-router\entry.js (1 module)
+Web  INFO  %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+Web  LOG  Running application "main" with appParams:
+ {"hydrate": undefined, "rootTag": "#root"} 
+Development-level warnings: ON.
+Performance optimizations: OFF.
+Web  WARN  "shadow*" style props are deprecated. Use "boxShadow".
+Web  WARN  Animated: `useNativeDriver` is not supported because the native animated module is missing. Falling back to JS-based animation. To resolve this, add `RCTAnimation` module to this app, or remove `useNativeDriver`. Make sure to run `bundle exec pod install` first. Read more about autolinking: https://github.com/react-native-community/cli/blob/master/docs/autolinking.md
+Web  WARN  props.pointerEvents is deprecated. Use style.pointerEvents
+Terminated
