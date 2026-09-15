@@ -61,8 +61,9 @@ export function isPlausiblePhone(raw: unknown): boolean {
 /**
  * The canonical form of a number, for counting only.
  *
- * India is the platform's only market and both clients send +91, so the common national spellings
- * are folded onto it: a bare ten-digit mobile, and the same with a trunk `0` in front. Anything
+ * India was the platform's original market, so its legacy national spellings are folded onto
+ * +91: a bare ten-digit mobile, and the same with a trunk `0` in front. Regional clients now send
+ * Nepal, Bangladesh, and Bhutan numbers explicitly in E.164 form. Anything
  * else is normalised only as far as stripping separators, which still collapses the spacing
  * variants without guessing at a country that was never stated.
  *

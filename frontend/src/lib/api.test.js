@@ -4,9 +4,9 @@
 // resolves against the origin as https://<host>/undefined/api/... — nginx then
 // serves that through the SPA catch-all and answers POSTs with 405 Not Allowed.
 //
-// Deliberately a .js file: the repo has no @types/jest, and adding it churns
-// ~1700 lines of yarn.lock. tsconfig has checkJs off, so this stays out of the
-// production type-check while jest still runs it.
+// Deliberately a .js file so it stays outside the production type-check.
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
 const ENV_KEY = 'REACT_APP_BACKEND_URL';
 
 describe('API_BASE', () => {
@@ -14,44 +14,54 @@ describe('API_BASE', () => {
 
   afterEach(() => {
     process.env[ENV_KEY] = original;
-    jest.resetModules();
+    vi.unstubAllEnvs();
+    vi.resetModules();
   });
 
-  const loadApiBase = () => {
-    jest.resetModules();
-    return require('./api').API_BASE;
+  const loadApiBase = async () => {
+    vi.resetModules();
+    return (await import('./api')).API_BASE;
   };
 
-  it('falls back to a same-origin relative path when the backend URL is unset', () => {
+  it('falls back to a same-origin relative path when the backend URL is unset', async () => {
     delete process.env[ENV_KEY];
-    const base = loadApiBase();
+    vi.stubEnv('VITE_BACKEND_URL', '');
+    const base = await loadApiBase();
 
     expect(base).toBe('/api');
     expect(base).not.toContain('undefined');
   });
 
-  it('honours an explicitly configured backend URL', () => {
-    process.env[ENV_KEY] = 'http://localhost:8000';
-    expect(loadApiBase()).toBe('http://localhost:8000/api');
+  it('prefers an explicitly configured Vite backend URL', async () => {
+    const { resolveBackendUrl } = await import('./api');
+    expect(resolveBackendUrl('http://localhost:8000', 'http://legacy:8000')).toBe('http://localhost:8000');
+  });
+
+  it('supports the legacy build-time URL while deployments migrate', async () => {
+    const { resolveBackendUrl } = await import('./api');
+    expect(resolveBackendUrl(undefined, 'http://legacy:8000')).toBe('http://legacy:8000');
   });
 });
 
 describe('isSupportRequiredError', () => {
-  const { isSupportRequiredError } = require('./api');
+  const load = async () => (await import('./api')).isSupportRequiredError;
 
-  it('recognises the support-required 402', () => {
+  it('recognises the support-required 402', async () => {
+    const isSupportRequiredError = await load();
     expect(isSupportRequiredError({
       response: { status: 402, data: { code: 'support_required' } },
     })).toBe(true);
   });
 
-  it('ignores a 402 that is not about support', () => {
+  it('ignores a 402 that is not about support', async () => {
+    const isSupportRequiredError = await load();
     expect(isSupportRequiredError({
       response: { status: 402, data: { code: 'something_else' } },
     })).toBe(false);
   });
 
-  it('ignores other statuses and malformed errors', () => {
+  it('ignores other statuses and malformed errors', async () => {
+    const isSupportRequiredError = await load();
     expect(isSupportRequiredError({ response: { status: 403, data: { code: 'support_required' } } })).toBe(false);
     expect(isSupportRequiredError({})).toBe(false);
     expect(isSupportRequiredError(null)).toBe(false);

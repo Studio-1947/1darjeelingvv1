@@ -58,10 +58,6 @@ jobs:
           fi
           echo "migrations are in sync with schema.ts"
 
-      - name: Create test database and apply migrations
-        working-directory: backend
-        run: npm run test:setup
-
       - name: Typecheck
         working-directory: backend
         run: npx tsc --noEmit

@@ -59,6 +59,15 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error('[test-db] setup failed:', err?.message || err);
+  const code = err?.code || err?.errors?.[0]?.code;
+  if (code === 'ECONNREFUSED') {
+    const target = new URL(ADMIN_URL);
+    console.error(
+      `[test-db] PostgreSQL is not reachable on ${target.hostname}:${target.port || '5432'}. Start it with ` +
+      '`docker compose up -d postgres`, then run `npm test` again.',
+    );
+  } else {
+    console.error('[test-db] setup failed:', err?.message || err);
+  }
   process.exit(1);
 });

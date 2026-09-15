@@ -12,6 +12,7 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "test:setup": "tsx scripts/setup-test-db.ts",
+    "pretest": "npm run test:setup",
     "test": "vitest run"
   },
   "keywords": [],

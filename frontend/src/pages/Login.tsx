@@ -6,6 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import { Phone, KeyRound } from 'lucide-react';
 import Logo from '@/components/Logo';
 import Seo from '@/components/Seo';
+import { nationalPhone, OTP_COUNTRIES, otpPhone } from '@/lib/phoneRegions';
 
 // Google Identity Services client ID from env
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
@@ -33,6 +34,7 @@ export default function Login() {
 
   const [step, setStep] = useState(1);
   const [phone, setPhone] = useState('');
+  const [countryCode, setCountryCode] = useState('+91');
   const [otp, setOtp] = useState('');
   const [name, setName] = useState('');
   const [role, setRole] = useState(() => {
@@ -52,6 +54,8 @@ export default function Login() {
   const [verificationData, setVerificationData] = useState<any>(null);
   const [googleBusy, setGoogleBusy] = useState(false);
   const gisLoaded = useRef(false);
+  const country = OTP_COUNTRIES.find((item) => item.code === countryCode) ?? OTP_COUNTRIES[0];
+  const canonicalPhone = otpPhone(phone, country);
 
   // Initialize Google Identity Services once and prompt the One Tap UI.
   const handleGoogleSignIn = useCallback(async (idToken: string) => {
@@ -91,9 +95,10 @@ export default function Login() {
 
   const sendOtp = async (e) => {
     e.preventDefault();
+    if (!canonicalPhone) return;
     setBusy(true); setErr('');
     try {
-      const { data } = await api.post('/auth/otp/send', { phone, channel: 'whatsapp' });
+      const { data } = await api.post('/auth/otp/send', { phone: canonicalPhone, channel: 'whatsapp' });
       setMockOtp(data.mock_otp);
       setSentChannel(data.channel || '');
       setUserExists(!!data.exists);
@@ -104,9 +109,10 @@ export default function Login() {
 
   const verify = async (e) => {
     e.preventDefault();
+    if (!canonicalPhone) return;
     setBusy(true); setErr('');
     try {
-      const { data } = await api.post('/auth/otp/verify', { phone, otp, name, role });
+      const { data } = await api.post('/auth/otp/verify', { phone: canonicalPhone, otp, name, role });
       if (role === 'tourist' && data.user.role === 'provider') {
         setVerificationData(data);
         setShowConfirmSwitch(true);
@@ -219,10 +225,14 @@ export default function Login() {
               <span className="text-xs font-semibold text-ink-soft">{t('auth.phone_label')}</span>
               <div className="mt-1 flex items-center gap-2 px-3 py-2 rounded-xl border border-[var(--line)] bg-white">
                 <Phone size={16} className="text-ink-soft" />
-                <input value={phone} onChange={(e) => setPhone(e.target.value)} required
+                <select value={countryCode} onChange={(e) => { setCountryCode(e.target.value); setPhone(''); }}
+                  aria-label="Country calling code" className="max-w-40 bg-transparent text-sm font-semibold outline-none">
+                  {OTP_COUNTRIES.map((item) => <option key={item.code} value={item.code}>{item.flag} {item.country} {item.code}</option>)}
+                </select>
+                <input value={phone} onChange={(e) => setPhone(nationalPhone(e.target.value, country))} required
                   type="tel" inputMode="tel" autoComplete="tel"
                   aria-describedby="login-phone-hint"
-                  data-testid="login-phone" placeholder={t('auth.phone_placeholder')}
+                  data-testid="login-phone" placeholder={'0'.repeat(country.nationalDigits)}
                   className="flex-1 bg-transparent outline-none py-1" />
               </div>
               <span id="login-phone-hint" data-testid="login-phone-hint" className="mt-1.5 block text-xs text-ink-soft">
@@ -230,7 +240,7 @@ export default function Login() {
               </span>
             </label>
 
-            <button disabled={busy} data-testid="login-send-otp"
+            <button disabled={busy || !canonicalPhone} data-testid="login-send-otp"
               className="w-full py-3 rounded-full bg-pine text-white font-bold btn-hover disabled:opacity-60">
               {busy ? t('common.loading') : t('auth.send_otp')}
             </button>
@@ -243,7 +253,7 @@ export default function Login() {
                 leaving the visitor to check both. */}
             {sentChannel && (
               <p data-testid="login-sent-via" className="text-sm text-ink-soft">
-                {t(sentChannel === 'whatsapp' ? 'auth.sent_whatsapp' : 'auth.sent_sms', { phone })}
+                {t(sentChannel === 'whatsapp' ? 'auth.sent_whatsapp' : 'auth.sent_sms', { phone: canonicalPhone })}
               </p>
             )}
             {mockOtp && (
