@@ -1,11 +1,11 @@
-// Plain .js for the same reason as api.test.js — the repo has no @types/jest.
+// Plain .js for the same reason as api.test.js  the repo has no @types/jest.
 //
 // The translation-parity suite that used to live here went away with Hindi, Bengali and Nepali
 // (English-only, decided Sep 2026). What remains is the check that was never about translation:
 //
 //   LegalDocument reads `sections` with { returnObjects: true } and guards with
 //   `Array.isArray(...) ? ... : []` so a malformed namespace degrades to an EMPTY PAGE rather
-//   than throwing. That guard is right — a legal page must not white-screen — but it means a
+//   than throwing. That guard is right  a legal page must not white-screen  but it means a
 //   typo produces a blank Terms page that nobody notices until a payment gateway's reviewer
 //   opens it and rejects the account.
 const en = require('./en.json');
@@ -22,7 +22,7 @@ describe('legal documents render with content', () => {
       expect(typeof doc.updated).toBe('string');
 
       // Both are read with { returnObjects: true } and silently become [] if they are not
-      // arrays — which is exactly the blank-page failure this guards.
+      // arrays  which is exactly the blank-page failure this guards.
       expect(Array.isArray(doc.intro)).toBe(true);
       expect(doc.intro.length).toBeGreaterThan(0);
       expect(Array.isArray(doc.sections)).toBe(true);

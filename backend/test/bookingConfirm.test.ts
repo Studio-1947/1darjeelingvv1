@@ -4,11 +4,11 @@ import { app } from '../src/app';
 import { registerUser, onboardActiveProvider, loginAdmin } from './helpers';
 
 /**
- * Host acceptance — PATCH /api/bookings/:id/confirm.
+ * Host acceptance  PATCH /api/bookings/:id/confirm.
  *
  * The rule this suite pins down: accepting is the host saying yes, and it is NOT the same thing
  * as the booking being confirmed. Payment still confirms. What acceptance buys the guest is that
- * the dates stop being available to anyone else, unconditionally — a pending booking only holds
+ * the dates stop being available to anyone else, unconditionally  a pending booking only holds
  * them for the length of the checkout window.
  */
 
@@ -101,7 +101,7 @@ describe('host acceptance of a booking request', () => {
     expect(res.body.booking.status).toBe('accepted');
   });
 
-  it('is idempotent — accepting twice is not an error', async () => {
+  it('is idempotent  accepting twice is not an error', async () => {
     const { hostToken, listing } = await homestayWithHost('Twice Host');
     const { token: guest } = await registerUser({ name: 'Guest Five' });
     const bookingId = await requestBooking(guest, listing.id, '2030-05-10', '2030-05-12');
@@ -129,7 +129,7 @@ describe('host acceptance of a booking request', () => {
     const { token: guest } = await registerUser({ name: 'Guest Seven' });
     const bookingId = await requestBooking(guest, listing.id, '2030-07-10', '2030-07-12');
 
-    // The guest pays before the host gets to the request — normal on an instant-confirm rate.
+    // The guest pays before the host gets to the request  normal on an instant-confirm rate.
     const order = await request(app).post('/api/payments/order')
       .set('Authorization', `Bearer ${guest}`)
       .send({ flow: 'booking_commission', reference_id: bookingId });
@@ -191,7 +191,7 @@ describe('host acceptance of a booking request', () => {
     const mine = await request(app).get('/api/bookings/me').set('Authorization', `Bearer ${guest}`);
     const row = mine.body.items.find((b: any) => b.id === bookingId);
     expect(row.status).toBe('confirmed');
-    // The acceptance is still on the record after payment — it is history, not a transient flag.
+    // The acceptance is still on the record after payment  it is history, not a transient flag.
     expect(row.accepted_at).toBeTruthy();
   });
 

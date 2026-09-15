@@ -30,7 +30,24 @@ const DeleteAccount = lazy(() => import('@/pages/DeleteAccount'));
 const Contact = lazy(() => import('@/pages/Contact'));
 const NotFound = lazy(() => import('@/pages/NotFound'));
 
+// How long the splash in index.html stays up once the app has mounted - long enough for its
+// hand-drawn wordmark reveal (1.8s, kept in sync with that markup) to actually finish playing
+// rather than being cut off on a fast load.
+const SPLASH_MIN_VISIBLE_MS = 1800;
+
 export default function App() {
+  React.useEffect(() => {
+    const splash = document.getElementById('app-splash');
+    if (!splash) return;
+    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    const delay = reduceMotion ? 0 : SPLASH_MIN_VISIBLE_MS;
+    const hide = setTimeout(() => {
+      splash.classList.add('app-splash-hide');
+      setTimeout(() => splash.remove(), 300);
+    }, delay);
+    return () => clearTimeout(hide);
+  }, []);
+
   return (
     <AuthProvider>
       <FavoritesProvider>

@@ -137,7 +137,7 @@ describe('support gate on tourist creates', () => {
   });
 
   it('402s a provider who has not paid the registration fee', async () => {
-    // role is already 'provider' but providerPaid is false — the loophole the exemption
+    // role is already 'provider' but providerPaid is false  the loophole the exemption
     // rule exists to close.
     const { token } = await registerUser({ name: 'Unpaid Provider', role: 'provider' });
     const listing = await createListing();
@@ -173,7 +173,7 @@ describe('support gate on tourist creates', () => {
       .set('Authorization', `Bearer ${token}`)
       .send({ listing_id: listing.id });
 
-    // Expire them. There is no API for this — the fee only ever moves the expiry forward — so
+    // Expire them. There is no API for this  the fee only ever moves the expiry forward  so
     // the test reaches into the DB directly, which is the only way to exercise a lapse without
     // waiting a year.
     await db.update(schema.users)

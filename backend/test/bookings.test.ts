@@ -119,7 +119,7 @@ describe('bookings', () => {
   // This pair replaces a test that asserted overlapping pending_payment bookings were ALWAYS
   // allowed. That was the double-booking bug written down as an expectation: it let two guests
   // both open checkout for the same nights, and nothing downstream stopped them both paying.
-  // The rule now is a time-boxed hold — see lib/bookingAvailability.ts.
+  // The rule now is a time-boxed hold  see lib/bookingAvailability.ts.
   it('holds the dates against another guest while a checkout is still in its hold window', async () => {
     const { token: firstGuest } = await registerUser({ name: 'Unpaid Guest' });
     const listing = await createListing({ title: 'Pending Overlap Homestay' });
@@ -163,7 +163,7 @@ describe('bookings', () => {
   });
 
   it('does not hold dates for listing types that are not date-exclusive', async () => {
-    // A driver can take two fares on one day and a café does not run out of dates — the hold
+    // A driver can take two fares on one day and a café does not run out of dates  the hold
     // applies to homestays only, so this must not regress into blocking everything.
     const { token: firstGuest } = await registerUser({ name: 'First Rider' });
     const listing = await createListing({ title: 'Shared Driver' });

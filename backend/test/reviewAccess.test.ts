@@ -5,7 +5,7 @@ import request from 'supertest';
 // reviewer can get into an app whose only credential is an SMS to an Indian phone.
 //
 // It is a deliberate backdoor, so what needs guarding is not that it works but that it stays
-// NARROW — one number, one code, and no widening as the code is refactored. Everything here runs
+// NARROW  one number, one code, and no widening as the code is refactored. Everything here runs
 // with MESSAGING_PROVIDER=msg91, i.e. MOCK_OTP false, because that is the only configuration in
 // which this feature is meant to exist at all: under mock mode `123456` already logs in as
 // anyone and the exception would be indistinguishable from the rule.
@@ -62,11 +62,11 @@ describe('the reviewer can sign in', () => {
 
   it('sends nothing when the review number asks for a code', async () => {
     // A real dispatch here would spend from the daily budget and deliver a code to a number the
-    // reviewer does not hold — and it would not be the code the Play Console gave them.
+    // reviewer does not hold  and it would not be the code the Play Console gave them.
     let dispatches = 0;
     const previous = setProviderForTests({
       name: 'stub-counting-provider',
-      init() {},
+      init() { },
       async sendOtp() {
         dispatches += 1;
         return { ref: 'stub-ref', channel: 'sms' };
@@ -121,7 +121,7 @@ describe('the exception does not widen', () => {
     expect(res.body.token).toBeUndefined();
   });
 
-  it('still rejects 123456 — this feature does not reopen the universal bypass', async () => {
+  it('still rejects 123456  this feature does not reopen the universal bypass', async () => {
     const res = await request(app)
       .post('/api/auth/otp/verify')
       .send({ phone: REVIEW_PHONE, otp: '123456', name: 'Play Reviewer' });

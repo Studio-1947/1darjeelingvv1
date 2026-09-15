@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Phone, MessageCircle, XCircle, Loader2 } from 'lucide-react';
+import { Phone, ChatCircle as MessageCircle, XCircle, CircleNotch as Loader2 } from '@phosphor-icons/react';
 import { StatusPill } from './widgets';
 
 /** One booking in the provider's list: guest, dates, and contact + cancel actions. */

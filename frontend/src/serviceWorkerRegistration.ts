@@ -4,8 +4,8 @@
 
 const isLocalhost = Boolean(
   window.location.hostname === 'localhost' ||
-    window.location.hostname === '[::1]' ||
-    window.location.hostname.match(/^127(?:\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3}$/)
+  window.location.hostname === '[::1]' ||
+  window.location.hostname.match(/^127(?:\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3}$/)
 );
 
 type Config = {
@@ -17,7 +17,7 @@ export function register(config?: Config) {
   if (process.env.NODE_ENV === 'production' && 'serviceWorker' in navigator) {
     // import.meta.env.BASE_URL is Vite's equivalent of CRA's PUBLIC_URL. Unlike PUBLIC_URL it
     // always carries a trailing slash, hence no separate '/' when building swUrl below. Reading
-    // process.env.PUBLIC_URL here would throw ReferenceError in a production build — `process`
+    // process.env.PUBLIC_URL here would throw ReferenceError in a production build  `process`
     // does not exist in the browser and Vite only substitutes NODE_ENV.
     const base = import.meta.env.BASE_URL || '/';
     const publicUrl = new URL(base, window.location.href);

@@ -10,7 +10,7 @@ const REQUEST_TIMEOUT_MS = 10_000;
  * SMTP email provider via Nodemailer.
  *
  * Used for transactional emails (booking confirmations, receipts, etc.).
- * When SMTP_HOST is not set, the provider is not registered — so it cannot be
+ * When SMTP_HOST is not set, the provider is not registered  so it cannot be
  * accidentally selected. Email sending is optional: if SMTP is not configured,
  * booking notifications still work via SMS/WhatsApp, just without the email copy.
  */
@@ -23,7 +23,7 @@ export function createSmtpProvider(env: NodeJS.ProcessEnv): MessagingProvider {
 
     init() {
       requireCredentials('smtp', env, ['SMTP_HOST']);
-      // Port 25 (plain), 465 (SSL), 587 (STARTTLS) — all handled by nodemailer.
+      // Port 25 (plain), 465 (SSL), 587 (STARTTLS)  all handled by nodemailer.
       transporter = nodemailer.createTransport({
         host: env.SMTP_HOST!.trim(),
         port: parseInt(env.SMTP_PORT || '587', 10),
@@ -38,34 +38,34 @@ export function createSmtpProvider(env: NodeJS.ProcessEnv): MessagingProvider {
 
     /**
      * OTPs are delivered via SMS/WhatsApp, not email. This method exists to satisfy the
-     * interface but is never called for OTP delivery — the OTP messaging provider (msg91,
+     * interface but is never called for OTP delivery  the OTP messaging provider (msg91,
      * whatsapp, etc.) handles that. If a caller does reach this path, it is a bug.
      */
     async sendOtp({ phone, otp, channel }: OtpMessage) {
-      log.warn(`[smtp] sendOtp called for ****${phone.slice(-4)} — OTPs should be delivered via SMS/WhatsApp, not email`);
+      log.warn(`[smtp] sendOtp called for ****${phone.slice(-4)}  OTPs should be delivered via SMS/WhatsApp, not email`);
       return { channel: 'email' };
     },
 
     /**
      * Delivers a transactional email. The template text is provided by the caller,
-     * so the SMTP provider does not need its own template system — it just sends.
+     * so the SMTP provider does not need its own template system  it just sends.
      */
     async sendNotification({ phone, template, text, vars }: NotificationMessage) {
       const toEmail = vars.email || vars.to_email;
       if (!toEmail) {
-        // No email address — this is expected when the user only has a phone number.
+        // No email address  this is expected when the user only has a phone number.
         // SMS/WhatsApp still sends the notification; email is best-effort.
-        log.info(`[smtp] No email address for notification template=${template} phone=****${phone.slice(-4)} — skipping email`);
+        log.info(`[smtp] No email address for notification template=${template} phone=****${phone.slice(-4)}  skipping email`);
         return { channel: 'email_skipped' };
       }
 
       const subjectMap: Record<string, string> = {
-        booking_confirmed_guest: 'Booking Confirmed — aangan',
-        booking_confirmed_host: 'New Booking — aangan',
-        booking_cancelled_guest: 'Booking Cancelled — aangan',
+        booking_confirmed_guest: 'Booking Confirmed  aangan',
+        booking_confirmed_host: 'New Booking  aangan',
+        booking_cancelled_guest: 'Booking Cancelled  aangan',
       };
 
-      const subject = subjectMap[template] || `aangan — ${template.replace(/_/g, ' ')}`;
+      const subject = subjectMap[template] || `aangan  ${template.replace(/_/g, ' ')}`;
 
       const htmlBody = `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #1a1a1a;">

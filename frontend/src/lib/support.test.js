@@ -18,7 +18,7 @@ describe('isExemptFromSupport', () => {
 });
 
 describe('needsSupport', () => {
-  it('is false without a user — logged-out browsing is free', () => {
+  it('is false without a user  logged-out browsing is free', () => {
     expect(needsSupport(null)).toBe(false);
     expect(needsSupport(undefined)).toBe(false);
   });

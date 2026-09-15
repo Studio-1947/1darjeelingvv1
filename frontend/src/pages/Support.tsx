@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation, Navigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { HeartHandshake, Check } from 'lucide-react';
+import { HandHeart as HeartHandshake, Check } from '@phosphor-icons/react';
 import { useAuth } from '@/context/AuthContext';
 import { createPaymentOrder, completeMockPayment, payWithRazorpay } from '@/lib/api';
 import { needsSupport } from '@/lib/support';
@@ -18,17 +18,20 @@ export default function Support() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [payModal, setPayModal] = useState<any>(null);
+  // Set the instant "not now" is clicked  see browseAnonymously below for why the
+  // `!user` redirect needs this to stay off during that specific transition.
+  const [leaving, setLeaving] = useState(false);
 
   // Where SupportGate intercepted them. Rebuilt from pathname + search + hash so a query-bearing
   // URL like /search?q=momo survives the round trip; falling back to the feed keeps a direct
   // visit sensible.
   const from = (location.state as any)?.from;
 
-  // The 402 interceptor (frontend/src/lib/api.ts) has no router access — it does a full page
-  // navigation — so it can't carry state.from and instead appends the destination as a `next`
+  // The 402 interceptor (frontend/src/lib/api.ts) has no router access  it does a full page
+  // navigation  so it can't carry state.from and instead appends the destination as a `next`
   // query param. Unlike state.from (which only this app's own SupportGate produces), `next` is
   // attacker-suppliable: anyone can send a link to /support?next=.... Only accept it if it is a
-  // same-origin relative path — starting with a single '/' and NOT with '//' or '/\', both of
+  // same-origin relative path  starting with a single '/' and NOT with '//' or '/\', both of
   // which a browser/URL parser treats as protocol-relative and resolves to a different host.
   // Anything else is rejected and we fall back to '/'.
   const rawNext = new URLSearchParams(location.search).get('next');
@@ -49,9 +52,17 @@ export default function Support() {
     refresh();
   }, [refresh]);
 
-  if (!user) return <Navigate to="/login" replace />;
+  // `leaving` guards this: clicking "not now" below calls logout() then navigate('/'), and
+  // React doesn't commit those two updates as one atomic step  a render can land in between
+  // where user is already null but the location hasn't moved off /support yet (confirmed by
+  // driving a real browser: without this guard that render hits this branch, mounts
+  // <Navigate to="/login">, and its effect fires navigate('/login') a beat after our own
+  // navigate('/'), overwriting it  "not now" silently lands on the login screen instead of
+  // the homepage). leaving suppresses the branch for exactly that window; once the location
+  // actually changes, Support unmounts and the flag stops mattering.
+  if (!user && !leaving) return <Navigate to="/login" replace />;
 
-  // Fee already active (paid just now in another tab, settled by webhook while away, etc.) —
+  // Fee already active (paid just now in another tab, settled by webhook while away, etc.) 
   // don't show the pay screen again, just send them on to where they were headed.
   if (!needsSupport(user)) return <Navigate to={destination} replace />;
 
@@ -109,8 +120,9 @@ export default function Support() {
   };
 
   // The escape hatch. A hard gate on a logged-in user with no way out is a trap: they cannot
-  // pay, cannot browse, cannot leave. Public browsing was always free — this makes it reachable.
+  // pay, cannot browse, cannot leave. Public browsing was always free  this makes it reachable.
   const browseAnonymously = () => {
+    setLeaving(true);
     logout();
     nav('/', { replace: true });
   };
@@ -122,7 +134,12 @@ export default function Support() {
           <div className="mx-auto w-14 h-14 rounded-2xl bg-pine text-white grid place-items-center">
             <HeartHandshake size={26} />
           </div>
-          <h1 className="mt-4 font-display font-extrabold text-2xl md:text-3xl text-ink leading-tight">
+          {t('support.eyebrow') && (
+            <div className="mt-4 text-xs font-bold uppercase tracking-widest text-pine">
+              {t('support.eyebrow')}
+            </div>
+          )}
+          <h1 className="mt-1 font-display font-extrabold text-2xl md:text-3xl text-ink leading-tight">
             {t('support.title')}
           </h1>
         </div>

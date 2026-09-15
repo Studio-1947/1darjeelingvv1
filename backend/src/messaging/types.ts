@@ -42,16 +42,16 @@ export interface MessagingProvider {
 
   /**
    * Resolves only on confirmed handoff to the provider. Throws MessageDeliveryError on
-   * any failure — a resolved promise is what allows the route to report `sent: true`.
+   * any failure  a resolved promise is what allows the route to report `sent: true`.
    * The returned `channel` is the channel actually used for delivery, which may differ
-   * from the one requested in `msg` — the caller must report what happened, not what was
+   * from the one requested in `msg`  the caller must report what happened, not what was
    * asked for.
    */
   sendOtp(msg: OtpMessage): Promise<{ ref?: string; channel: string }>;
 
   /**
    * Delivers a transactional notification. Same contract as sendOtp: resolves only on confirmed
-   * handoff, throws MessageDeliveryError otherwise — so a caller can never record "notified"
+   * handoff, throws MessageDeliveryError otherwise  so a caller can never record "notified"
    * for a message that was not sent. This is the half of the messaging layer that booking
    * confirmations needed and did not have (INVESTIGATION.md §6.A).
    */

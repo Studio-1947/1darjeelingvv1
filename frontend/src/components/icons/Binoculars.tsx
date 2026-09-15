@@ -1,9 +1,9 @@
 import React from 'react';
 
 /**
- * Hand-drawn binoculars. Matches the lucide-react icon API (size / strokeWidth /
+ * Hand-drawn binoculars. Matches the common icon API (size / strokeWidth /
  * className, stroke inherits currentColor) so it can drop into icon slots
- * alongside the lucide set.
+ * alongside the rest of the set.
  */
 export default function Binoculars({ size = 24, strokeWidth = 2, className = '', ...rest }) {
   return (

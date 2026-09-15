@@ -26,8 +26,8 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 /**
  * Unambiguous when read aloud or off a screen: no O/0, I/1, S/5, or Z/2, which is the whole
  * point of a code a traveller reads to a friend across a table. Z was the one pair that got
- * missed — its own test caught it, but only on the ~18% of runs that happened to draw a Z.
- * 29^6 is ~6e8 — sparse enough that the retry loop below effectively never runs twice at this
+ * missed  its own test caught it, but only on the ~18% of runs that happened to draw a Z.
+ * 29^6 is ~6e8  sparse enough that the retry loop below effectively never runs twice at this
  * app's scale.
  */
 const ALPHABET = 'ABCDEFGHJKLMNPQRTUVWXY2346789';
@@ -74,7 +74,7 @@ export async function generateReferralCode(): Promise<string> {
 /**
  * Gives a user a code if they do not have one, and returns it.
  *
- * Idempotent, and safe to call on every read of the referral screen — which is how accounts
+ * Idempotent, and safe to call on every read of the referral screen  which is how accounts
  * created before this feature existed get one, without a backfill migration that would have to
  * generate a million unique strings in a single statement.
  */
@@ -99,7 +99,7 @@ export async function assignReferralCode(userId: string): Promise<string> {
   throw new Error('[referrals] could not assign a referral code');
 }
 
-/** Monotonic, exactly like computeSupportExpiry — a reward may only push the expiry outwards. */
+/** Monotonic, exactly like computeSupportExpiry  a reward may only push the expiry outwards. */
 function extendedExpiry(existing: string | null | undefined, days: number, now: Date): string {
   const nowMs = now.getTime();
   const existingMs = existing ? Date.parse(existing) : NaN;
@@ -109,7 +109,7 @@ function extendedExpiry(existing: string | null | undefined, days: number, now: 
 
 export interface RedemptionResult {
   ok: boolean;
-  /** Why it was declined. Server-side only — the route never blocks a signup on this. */
+  /** Why it was declined. Server-side only  the route never blocks a signup on this. */
   reason?: 'unknown_code' | 'self_referral' | 'already_referred';
   rewardDays?: number;
 }
@@ -119,7 +119,7 @@ export interface RedemptionResult {
  *
  * **Never throws, and never blocks registration.** This runs inside the signup path, after the
  * account exists. A mistyped code, a race, or a database hiccup must cost the user their reward
- * at worst — not their account. Every decline is returned as a reason and logged, so a support
+ * at worst  not their account. Every decline is returned as a reason and logged, so a support
  * question has an answer.
  */
 export async function redeemReferralCode(
@@ -178,7 +178,7 @@ export async function redeemReferralCode(
       .set({ supportExpiresAt: extendedExpiry(referee.supportExpiresAt, days, now) })
       .where(eq(schema.users.id, refereeId));
 
-    log.info(`[referrals] ${code} redeemed — both sides extended by ${days} days`);
+    log.info(`[referrals] ${code} redeemed  both sides extended by ${days} days`);
     return { ok: true, rewardDays: days };
   } catch (err) {
     // Includes the unique-violation race above, which is a correct outcome, not a fault.

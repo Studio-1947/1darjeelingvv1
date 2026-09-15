@@ -1,12 +1,12 @@
 /**
  * Creates the isolated test database and syncs the schema into it.
  *
- * The suite talks to `one_darjeeling_test` (see vitest.config.ts) — a separate database from the
+ * The suite talks to `one_darjeeling_test` (see vitest.config.ts)  a separate database from the
  * dev one, because test setup TRUNCATEs every table between tests. Previously this database had
  * to be created by hand and nothing said so, which meant `npm test` failed on a fresh clone and
  * could not run in CI at all.
  *
- * Uses `drizzle-kit migrate` — the exact command production runs (backend/Dockerfile) — rather
+ * Uses `drizzle-kit migrate`  the exact command production runs (backend/Dockerfile)  rather
  * than `push`. That difference matters: push builds the schema straight from schema.ts, so a
  * developer who edits schema.ts and forgets `npm run db:generate` would still get a green suite
  * while production came up missing the column. Migrating here means the tests run against
@@ -24,7 +24,7 @@ const ADMIN_URL = process.env.TEST_ADMIN_DATABASE_URL || 'postgres://postgres:po
 const TEST_DB = process.env.TEST_DB_NAME || 'one_darjeeling_test';
 const TEST_URL = process.env.TEST_DATABASE_URL || `postgres://postgres:postgres@localhost:5432/${TEST_DB}`;
 
-// Identifier, not a value — it can't be a bound parameter, so it's quoted defensively instead.
+// Identifier, not a value  it can't be a bound parameter, so it's quoted defensively instead.
 function quoteIdent(name: string): string {
   if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) {
     throw new Error(`Refusing unsafe database name: ${name}`);

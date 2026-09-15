@@ -38,7 +38,7 @@ const router = Router();
  *             properties:
  *               listing_id: { type: string }
  *     responses:
- *       200: { description: Saved (idempotent — saving an already-saved listing is a no-op) }
+ *       200: { description: Saved (idempotent  saving an already-saved listing is a no-op) }
  *       402:
  *         description: The caller's annual platform support fee is not active
  *         content:
@@ -63,14 +63,14 @@ router.get('/', authenticateToken, async (req: Request, res: Response) => {
   const providerIds = [...new Set(listings.map(l => l.providerId))];
   const providerRows = providerIds.length > 0
     ? await db.select({ id: schema.providers.id, kycStatus: schema.providers.kycStatus, status: schema.providers.status })
-        .from(schema.providers)
-        .where(inArray(schema.providers.id, providerIds))
+      .from(schema.providers)
+      .where(inArray(schema.providers.id, providerIds))
     : [];
   const providerById = new Map(providerRows.map(p => [p.id, p]));
 
   // Preserve the favorites order (newest saved first); a listing that was deleted since it was
   // saved simply drops out rather than surfacing as a broken card. A spot that has since been
-  // unpublished drops out for the same reason — it 404s on its detail page, so leaving the card
+  // unpublished drops out for the same reason  it 404s on its detail page, so leaving the card
   // here would show content an admin has deliberately pulled and link nowhere.
   const items = rows
     .map(r => listingById.get(r.listingId))
@@ -109,7 +109,7 @@ router.get('/', authenticateToken, async (req: Request, res: Response) => {
  *     responses:
  *       200: { description: Array of saved listing ids }
  */
-// A lightweight companion to GET / — the frontend loads this once so every save button on a page
+// A lightweight companion to GET /  the frontend loads this once so every save button on a page
 // can reflect its state without each one fetching the full enriched list.
 router.get('/ids', authenticateToken, async (req: Request, res: Response) => {
   const rows = await db.select({ listingId: schema.favorites.listingId })
@@ -125,7 +125,7 @@ router.post('/', authenticateToken, requireActiveSupport, async (req: Request, r
   if (!listing_id) return res.status(400).json({ detail: 'listing_id is required' });
 
   const [listing] = await db.select().from(schema.listings).where(eq(schema.listings.id, listing_id)).limit(1);
-  // An unpublished spot is not publicly addressable, so it cannot be saved either — otherwise a
+  // An unpublished spot is not publicly addressable, so it cannot be saved either  otherwise a
   // guessed id would put a draft card in someone's saved list.
   if (!listing || (listing.type === SPOT_TYPE && !isSpotPublished(listing.extras))) {
     return res.status(404).json({ detail: 'Listing not found' });
@@ -151,7 +151,7 @@ router.post('/', authenticateToken, requireActiveSupport, async (req: Request, r
  *         required: true
  *         schema: { type: string }
  *     responses:
- *       200: { description: Removed (idempotent — removing a listing that wasn't saved is a no-op) }
+ *       200: { description: Removed (idempotent  removing a listing that wasn't saved is a no-op) }
  */
 // Unsave a listing. Idempotent: removing something not saved is a no-op success.
 router.delete('/:listingId', authenticateToken, async (req: Request, res: Response) => {

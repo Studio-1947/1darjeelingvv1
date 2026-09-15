@@ -17,7 +17,7 @@ const accepted = (id = 'itk-1') => ({ result: true, id, message: 'Message sent s
 
 describe('splitting a stored number into what Interakt wants', () => {
   // This is the sharp edge of the adapter: Interakt takes country code and subscriber number as
-  // separate fields, and a wrong split does not error — it messages a real person somewhere else.
+  // separate fields, and a wrong split does not error  it messages a real person somewhere else.
   it('splits the canonical +91 form both clients send', () => {
     expect(splitPhone('+919876543210', '+91')).toEqual({ countryCode: '+91', phoneNumber: '9876543210' });
   });
@@ -64,7 +64,7 @@ describe('splitting a stored number into what Interakt wants', () => {
   });
 });
 
-describe('interakt adapter — sending a code', () => {
+describe('interakt adapter  sending a code', () => {
   it('returns the provider reference on success', async () => {
     const fetchImpl = vi.fn().mockResolvedValue(jsonResponse(accepted('itk-99')));
     const provider = createInteraktProvider(ENV, fetchImpl as unknown as typeof fetch);
@@ -130,9 +130,9 @@ describe('interakt adapter — sending a code', () => {
   });
 });
 
-describe('interakt adapter — refusing to claim a send it cannot vouch for', () => {
+describe('interakt adapter  refusing to claim a send it cannot vouch for', () => {
   it('throws when Interakt answers 200 with result:false', async () => {
-    // The same trap MSG91 sets with type:"error" — a 2xx alone is not an accepted message.
+    // The same trap MSG91 sets with type:"error"  a 2xx alone is not an accepted message.
     const fetchImpl = vi.fn().mockResolvedValue(
       jsonResponse({ result: false, message: 'Template not found' })
     );
@@ -170,7 +170,7 @@ describe('interakt adapter — refusing to claim a send it cannot vouch for', ()
   });
 });
 
-describe('interakt adapter — booking notifications', () => {
+describe('interakt adapter  booking notifications', () => {
   const NOTIFY_ENV = {
     ...ENV,
     INTERAKT_BOOKING_CONFIRMED_GUEST_TEMPLATE: 'booking_confirmed_guest',
@@ -209,7 +209,7 @@ describe('interakt adapter — booking notifications', () => {
   });
 });
 
-describe('interakt adapter — configuration', () => {
+describe('interakt adapter  configuration', () => {
   it('rejects incomplete configuration at init', () => {
     const provider = createInteraktProvider({ INTERAKT_API_KEY: 'k' });
     expect(() => provider.init()).toThrow(/INTERAKT_OTP_TEMPLATE/);

@@ -15,7 +15,7 @@ export const users = pgTable('users', {
   password: text('password'),
   // Set atomically after a successful WhatsApp OTP verification.
   phoneVerifiedAt: text('phone_verified_at'),
-  // The user's own invite code. Server-generated and unique — the app used to derive one from
+  // The user's own invite code. Server-generated and unique  the app used to derive one from
   // the first name (`ASHA-1D`), which collides on every second Asha and could not be looked up.
   // Nullable because rows created before referrals existed have none until they are backfilled.
   referralCode: text('referral_code').unique(),
@@ -82,7 +82,7 @@ export const providers = pgTable('providers', {
   createdAt: text('created_at').notNull(),
   activatedAt: text('activated_at'),
 }, (t) => ({
-  // At most one provider row per user, ever — enforced at the DB level so the onboard route's
+  // At most one provider row per user, ever  enforced at the DB level so the onboard route's
   // read-then-write conflict check can't lose a race (two concurrent onboards both reading "no
   // existing row" and both inserting). Also closes the status hole where only 'active' and
   // 'pending_payment' were checked in app code: a 'suspended' provider could otherwise create a
@@ -120,7 +120,7 @@ export const bookings = pgTable('bookings', {
   // 'pending_payment' | 'accepted' | 'confirmed' | 'cancelled'.
   //
   // `accepted` is the host's answer to a request: they have agreed to take the booking, but the
-  // guest has not paid yet, so it is not `confirmed`. Payment is what confirms — that has not
+  // guest has not paid yet, so it is not `confirmed`. Payment is what confirms  that has not
   // changed. An instant-confirm rate skips `accepted` entirely, going straight from
   // pending_payment to confirmed when the commission settles.
   status: text('status').notNull(),
@@ -128,7 +128,7 @@ export const bookings = pgTable('bookings', {
   confirmedAt: text('confirmed_at'),
   // When the host accepted. Null on an instant booking, which no host ever saw.
   acceptedAt: text('accepted_at'),
-  // Who has actually been told this booking is confirmed. Null means "not notified" — which used
+  // Who has actually been told this booking is confirmed. Null means "not notified"  which used
   // to be the silent, invisible state of EVERY production booking (see INVESTIGATION.md §6.A):
   // the guest paid, the row said confirmed, and nobody was ever informed. Persisting the outcome
   // is what turns a failed notification into something an operator can find and re-send, rather
@@ -145,7 +145,7 @@ export const favorites = pgTable('favorites', {
   listingId: text('listing_id').references(() => listings.id, { onDelete: 'cascade' }).notNull(),
   createdAt: text('created_at').notNull(),
 }, (t) => ({
-  // A user can favorite a listing at most once — enforced at the DB level so a double-tap or two
+  // A user can favorite a listing at most once  enforced at the DB level so a double-tap or two
   // concurrent POSTs can't create duplicate rows (the add route relies on this via onConflictDoNothing).
   userListingUnique: uniqueIndex('favorites_user_id_listing_id_unique').on(t.userId, t.listingId),
 }));
@@ -156,11 +156,12 @@ export const reviews = pgTable('reviews', {
   listingId: text('listing_id').references(() => listings.id, { onDelete: 'cascade' }).notNull(),
   rating: integer('rating').notNull(), // 1..5, validated in the route
   comment: text('comment').default('').notNull(),
+  photos: jsonb('photos').$type<string[]>().default([]).notNull(),
   authorName: text('author_name').notNull(), // snapshot of the reviewer's name at write time
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at'),
 }, (t) => ({
-  // One review per (user, listing) — a second submit edits the first (upsert) instead of stacking.
+  // One review per (user, listing)  a second submit edits the first (upsert) instead of stacking.
   userListingUnique: uniqueIndex('reviews_user_id_listing_id_unique').on(t.userId, t.listingId),
   // Listing detail and the rating aggregates both read reviews by listing, so index that lookup.
   listingIdx: index('reviews_listing_id_idx').on(t.listingId),
@@ -180,7 +181,7 @@ export const payments = pgTable('payments', {
   createdAt: text('created_at').notNull(),
   paidAt: text('paid_at'),
   // Refund trail. `status` becomes 'refunded' only once the gateway has accepted; a row that is
-  // still 'paid' but carries a refundReason is money the platform owes and has not returned —
+  // still 'paid' but carries a refundReason is money the platform owes and has not returned 
   // that combination is exactly what listUnreturnedPayments() reports. See lib/refunds.ts.
   refundId: text('refund_id'),
   refundedAt: text('refunded_at'),
@@ -193,7 +194,7 @@ export const kycDocuments = pgTable('kyc_documents', {
   id: text('id').primaryKey(),
   providerId: text('provider_id').references(() => providers.id, { onDelete: 'cascade' }).notNull(),
   docType: text('doc_type').notNull(),
-  fileKey: text('file_key').notNull(),        // object key in the PRIVATE bucket — never a public URL
+  fileKey: text('file_key').notNull(),        // object key in the PRIVATE bucket  never a public URL
   contentType: text('content_type').notNull(),
   status: text('status').notNull(),           // 'pending' | 'approved' | 'rejected'
   rejectionReason: text('rejection_reason'),
@@ -201,7 +202,7 @@ export const kycDocuments = pgTable('kyc_documents', {
   reviewedAt: text('reviewed_at'),
   reviewedBy: text('reviewed_by'),
 }, (t) => ({
-  // Exactly one row per (provider, docType) — enforced at the DB level so concurrent uploads
+  // Exactly one row per (provider, docType)  enforced at the DB level so concurrent uploads
   // of the same docType can't both insert, which previously let approved/pending duplicates
   // coexist and made the Verified badge flap depending on unordered row read order.
   providerDocTypeUnique: uniqueIndex('kyc_documents_provider_doc_type_unique').on(t.providerId, t.docType),
@@ -210,7 +211,7 @@ export const kycDocuments = pgTable('kyc_documents', {
 // Durable daily counters for OTP sends. Separate from middleware/rateLimiter.ts on purpose: that
 // limiter is in-memory and per-process, so its windows reset on every deploy and are invisible to
 // a second container. That is acceptable for a per-minute burst guard and useless for a daily
-// spend cap, which is what stands between a real SMS provider and a billing attack — an attacker
+// spend cap, which is what stands between a real SMS provider and a billing attack  an attacker
 // who can trigger a redeploy, or simply wait one out, gets a fresh budget.
 //
 // One row per (scope, day). `scope` is either 'global' or `phone:<number>`; keeping both in one

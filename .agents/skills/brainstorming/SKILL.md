@@ -22,12 +22,12 @@ allowed-tools: Read, Glob, Grep
 | Update/change request | 🛑 Confirm scope |
 | Vague requirements | 🛑 Ask purpose, users, constraints |
 
-### 🧠 Memory Check (2026.5.13 — Before Questioning)
+### 🧠 Memory Check (2026.5.13  Before Questioning)
 
 > Before asking questions, check if past context exists:
 
 ```
-0. CHECK MEMORY — Does .agents/memory/MEMORY.md exist?
+0. CHECK MEMORY  Does .agents/memory/MEMORY.md exist?
    → YES: Read index. Apply relevant past decisions silently.
           Skip questions already answered in memory.
    → NO: Proceed with standard Socratic Gate.
@@ -57,7 +57,7 @@ allowed-tools: Read, Glob, Grep
 | **Questions Reveal Consequences** | Each question connects to an architectural decision |
 | **Context Before Content** | Understand greenfield/feature/refactor/debug context first |
 | **Minimum Viable Questions** | Each question must eliminate implementation paths |
-| **Generate Data, Not Assumptions** | Don't guess—ask with trade-offs |
+| **Generate Data, Not Assumptions** | Don't guessask with trade-offs |
 
 ### Question Generation Process
 

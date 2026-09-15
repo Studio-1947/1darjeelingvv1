@@ -6,14 +6,14 @@ import { toPublicUser, type PublicUser } from '../lib/publicUser';
 import { eq } from 'drizzle-orm';
 import { JWT_SECRET } from '../config';
 
-// OWASP's floor for PBKDF2-HMAC-SHA512. (The widely-quoted 600,000 is the SHA256 figure — using
+// OWASP's floor for PBKDF2-HMAC-SHA512. (The widely-quoted 600,000 is the SHA256 figure  using
 // it here would be ~3x the intended work factor for no benefit.) Measured ~120ms per hash, which
 // is fine for admin login: it happens rarely and is exactly the operation worth making slow.
 const PBKDF2_DIGEST = 'sha512';
 const PBKDF2_ITERATIONS = 210_000;
 const PBKDF2_KEYLEN = 64;
 
-// Hashes are self-describing — `pbkdf2$<digest>$<iterations>$<salt>$<hash>` — so the work factor
+// Hashes are self-describing  `pbkdf2$<digest>$<iterations>$<salt>$<hash>`  so the work factor
 // can be raised later without locking out existing users: verification reads the parameters from
 // the stored value rather than assuming today's constants.
 const PREFIX = 'pbkdf2';
@@ -61,8 +61,8 @@ export function needsRehash(storedHash: string): boolean {
  *
  * Two things this type is doing, both of which used to be missing.
  *
- * It is a TYPE. `user?: any` meant 49 reads across the routes — 38 of them
- * `req.user.id` — were unchecked, on the one object whose shape decides who a request is
+ * It is a TYPE. `user?: any` meant 49 reads across the routes  38 of them
+ * `req.user.id`  were unchecked, on the one object whose shape decides who a request is
  * allowed to act as.
  *
  * And it is the PUBLIC shape. `authenticateToken` used to put the raw Drizzle row here, which
@@ -76,7 +76,7 @@ export type AuthenticatedUser = PublicUser;
  * Non-optional deliberately, and the invariant is real rather than wishful: every route that
  * reads `req.user` is mounted behind `authenticateToken`, which answers 401 and never calls
  * next() unless it has set this. Typing it optional instead would put a `!` on 49 call sites
- * and improve nothing — the useful checking here is of the SHAPE, so a typo in a property name
+ * and improve nothing  the useful checking here is of the SHAPE, so a typo in a property name
  * or a change to the user row is caught at compile time.
  *
  * `requireActiveSupport` still guards for absence at runtime. That is not redundancy to remove:

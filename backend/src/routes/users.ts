@@ -91,7 +91,7 @@ router.patch('/me', authenticateToken, async (req: Request, res: Response) => {
  *                 reward_days: { type: integer }
  */
 // The code is assigned lazily here as well as at registration, so accounts created before
-// referrals existed get one the first time they open the invite screen — no backfill needed.
+// referrals existed get one the first time they open the invite screen  no backfill needed.
 router.get('/me/referrals', authenticateToken, async (req: Request, res: Response) => {
   const code = await assignReferralCode(req.user.id);
   const joined = await countReferrals(req.user.id);
@@ -108,7 +108,7 @@ router.delete('/me', authenticateToken, async (req: Request, res: Response) => {
   // Before the provider rows go: the kyc_documents rows cascade off them, and once they are
   // gone there is no way left to find the identity documents those rows point at in storage.
   await deleteKycFilesOwnedBy(uid);
-  // Covers listings filed under the user's id *and* under their provider id — see the helper.
+  // Covers listings filed under the user's id *and* under their provider id  see the helper.
   await deleteListingsOwnedBy(uid);
   // Cascading deletes on schema will clean up providers, bookings, and payments, but let's be explicit
   await db.delete(schema.providers).where(eq(schema.providers.userId, uid));

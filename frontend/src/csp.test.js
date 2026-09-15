@@ -1,4 +1,4 @@
-// Plain .js for the same reason as api.test.js — the repo has no @types/jest.
+// Plain .js for the same reason as api.test.js  the repo has no @types/jest.
 //
 // The Content-Security-Policy in deploy/nginx/app.conf is enforced by the browser, in production,
 // on a machine none of the test suites run on. Nothing else in this repo can catch a mistake in
@@ -8,7 +8,7 @@
 //
 //   1. index.html carried an inline <script>, which `script-src 'self'` blocks outright.
 //   2. frame-src listed only Razorpay, so the OpenStreetMap iframe on every listing detail
-//      page was blocked — the map silently went blank.
+//      page was blocked  the map silently went blank.
 //
 // app.conf declares TWO policies, one per static location, and they are deliberately different:
 // the public SPA loads Razorpay and an OpenStreetMap iframe, the admin console loads neither and
@@ -41,12 +41,12 @@ function locationBlock(conf, locationPrefix) {
  * The CSP that applies inside a given `location <prefix> {` block.
  *
  * Reading "the first CSP in the file" instead of this is what made the first version of these
- * tests fail against the admin policy — which has no frame-src at all, because it needs none.
+ * tests fail against the admin policy  which has no frame-src at all, because it needs none.
  *
  * The policies now live in deploy/nginx/snippets/ and reach each location through an `include`,
  * because add_header does not inherit into a location that declares one of its own and all four
  * static locations therefore have to restate the whole header set. This follows the include
- * rather than reading app.conf alone — which is what these tests used to do, and why they
+ * rather than reading app.conf alone  which is what these tests used to do, and why they
  * started throwing at import time the moment the snippets landed.
  */
 function cspFor(locationPrefix) {
@@ -90,7 +90,7 @@ const adminCsp = cspFor('/admin/');
 describe('public SPA Content-Security-Policy', () => {
   it('blocks inline scripts, and index.html therefore has none', () => {
     // If script-src ever gains 'unsafe-inline' this assertion should be revisited deliberately,
-    // not quietly deleted — it is most of what the policy buys.
+    // not quietly deleted  it is most of what the policy buys.
     expect(directiveSources(publicCsp, 'script-src')).not.toContain("'unsafe-inline'");
 
     // Comments are stripped first: the explanatory comment above the shim's <script src=...> tag
@@ -123,7 +123,7 @@ describe('public SPA Content-Security-Policy', () => {
   it('still allows listing images from wherever they were sourced', () => {
     // Listing photos come from Cloudinary, Pexels, Unsplash, TripAdvisor, MinIO and more,
     // depending on who created the listing. A narrow img-src would blank a photo whenever
-    // someone used a new host — a worse failure than the one it would prevent.
+    // someone used a new host  a worse failure than the one it would prevent.
     expect(directiveSources(publicCsp, 'img-src')).toContain('https:');
   });
 });
@@ -158,7 +158,7 @@ describe('both policies', () => {
 describe('search indexing', () => {
   // The same image serves both stacks, so only the Host header distinguishes the real site from
   // staging. If this map ever stops naming the canonical domain, the production site starts
-  // sending itself noindex — a failure with no visible symptom until traffic disappears weeks later.
+  // sending itself noindex  a failure with no visible symptom until traffic disappears weeks later.
   const conf = fs.readFileSync(NGINX_CONF, 'utf8');
   const mapBlock = conf.match(/map\s+\$host\s+\$robots_tag\s*\{([^}]+)\}/);
 
@@ -168,7 +168,7 @@ describe('search indexing', () => {
 
   it('exempts the canonical domain and noindexes everything else by default', () => {
     const body = mapBlock[1];
-    // The canonical domain must map to an empty value — nginx omits an add_header whose value is
+    // The canonical domain must map to an empty value  nginx omits an add_header whose value is
     // empty, so the real site sends no X-Robots-Tag at all rather than a weaker explicit "index".
     expect(body).toMatch(/aanganerp\\?\.in\$?["\s]*""/);
     // Default-deny: a new staging host or a raw-IP request is non-indexable without anyone
@@ -192,7 +192,7 @@ describe('search indexing', () => {
 
   it('pairs the shared headers with a policy in every static location', () => {
     // The two snippets are what stop the four static locations drifting apart, so a location that
-    // pulls in one and forgets the other is the failure mode they were split to prevent — an
+    // pulls in one and forgets the other is the failure mode they were split to prevent  an
     // asset location silently running with no CSP at all.
     const blocks = ['/static/', '/', '/admin/assets/', '/admin/'];
     for (const prefix of blocks) {

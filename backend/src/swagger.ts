@@ -10,7 +10,7 @@ const options: swaggerJsdoc.Options = {
       description: 'REST API for the aangan tourism + local marketplace platform (auth, providers, listings, bookings, payments, admin).',
     },
     servers: [
-      // Relative URL — resolves against whichever origin actually served
+      // Relative URL  resolves against whichever origin actually served
       // /api-docs, so "Try it out" hits the right host in both local dev
       // (http://localhost:8000) and production (https://<domain>) without
       // hardcoding either one.

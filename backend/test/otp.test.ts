@@ -16,7 +16,7 @@ afterEach(() => {
 function failingProvider(message: string) {
   return {
     name: 'failing',
-    init() {},
+    init() { },
     async sendOtp(): Promise<{ ref?: string }> {
       throw new MessageDeliveryError('failing', message);
     },
@@ -154,7 +154,7 @@ describe('POST /auth/otp/verify attempt cap', () => {
     // Ordered exactly as /otp/verify orders it, and for the same reason. `phone` stopped being
     // the primary key when each send became its own challenge row: a resend no longer updates
     // the old row, it inserts a second one and leaves the first alive on purpose. An unordered
-    // limit(1) therefore returns whichever of the two rows the planner feels like — it was
+    // limit(1) therefore returns whichever of the two rows the planner feels like  it was
     // handing back the spent challenge (attempts: 1) and failing this assertion. The claim being
     // made is about the NEWEST unconsumed challenge, so the query has to say so.
     const [rec] = await db.select().from(schema.otps)

@@ -1,6 +1,6 @@
 export type DocRequirement = { docType: string; label: string; required: boolean };
 
-// v1 matrix — approved in the design spec (§3). Single source of truth for
+// v1 matrix  approved in the design spec (§3). Single source of truth for
 // backend validation, completion math, and the frontend checklist.
 const IDENTITY: DocRequirement[] = [
   { docType: 'aadhaar', label: 'Aadhaar card', required: true },
@@ -36,7 +36,7 @@ export const KYC_REQUIREMENTS: Record<string, DocRequirement[]> = {
 };
 
 export function requirementsFor(businessType: string): readonly DocRequirement[] {
-  // Defensive copy — the array in KYC_REQUIREMENTS is the shared, single source of truth for
+  // Defensive copy  the array in KYC_REQUIREMENTS is the shared, single source of truth for
   // every consumer; a caller mutating what we return here must never corrupt it for the rest.
   return [...(KYC_REQUIREMENTS[businessType] ?? [])];
 }

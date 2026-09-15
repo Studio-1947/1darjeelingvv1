@@ -69,6 +69,10 @@ html, body, #root {
   min-height: 100%;
 }
 
+html, body {
+  overflow-x: hidden;
+}
+
 body {
   margin: 0;
   background: var(--bg);
@@ -167,6 +171,29 @@ html[lang="ne"] h1, html[lang="ne"] h2, html[lang="ne"] h3, html[lang="ne"] h4 {
 
 @media (prefers-reduced-motion: reduce) {
   .border-light::after { animation: none; opacity: 0; }
+}
+
+/* aangan wordmark: a one-shot reveal on mount. The clip-path wipes the mark
+   in from the left; each path's stroke is normalised to length 1 via its
+   `pathLength` attribute and traces in over the same span, so the outline
+   appears to be drawn right at the reveal edge rather than just sliding in. */
+.wordmark-draw {
+  clip-path: inset(0 100% 0 0);
+  animation: wordmark-reveal 1.8s ease-out forwards;
+}
+.wordmark-draw path {
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: wordmark-trace 1.8s ease-out forwards;
+}
+@keyframes wordmark-reveal { to { clip-path: inset(0 0 0 0); } }
+@keyframes wordmark-trace { to { stroke-dashoffset: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .wordmark-draw { animation: none; clip-path: none; }
+  .wordmark-draw path { animation: none; stroke-dashoffset: 0; }
 }
 
 .chip {

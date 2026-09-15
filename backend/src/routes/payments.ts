@@ -14,7 +14,7 @@ import { refundPaymentsFor } from '../lib/refunds';
 
 const router = Router();
 
-// The DB rows are camelCase (drizzle), but every response the frontend reads is snake_case —
+// The DB rows are camelCase (drizzle), but every response the frontend reads is snake_case 
 // see providers.ts / bookings.ts. The confirmation record has to follow the same convention or
 // the success modal silently renders `undefined` for every renamed column.
 function serializeProvider(p: typeof schema.providers.$inferSelect) {
@@ -72,14 +72,14 @@ async function handlePaymentSuccess(flow: string, referenceId: string, userId: s
     // Confirming is not a plain UPDATE, because two guests can reach this point at the same
     // instant for the same homestay and the same nights. The hold window in POST /bookings makes
     // that rare; this makes it impossible. See lib/bookingAvailability.ts for why the listing row
-    // lock is what actually serialises them — an overlap check on its own cannot, since each
+    // lock is what actually serialises them  an overlap check on its own cannot, since each
     // transaction reads a snapshot taken before the other committed.
     const settlement = await db.transaction(async (tx) => {
       const [target] = await tx.select().from(schema.bookings)
         .where(eq(schema.bookings.id, referenceId)).limit(1);
       if (!target) return { outcome: 'missing' as const };
 
-      // Already confirmed by an earlier delivery of the same payment — nothing to redo.
+      // Already confirmed by an earlier delivery of the same payment  nothing to redo.
       if (target.status === 'confirmed') return { outcome: 'confirmed' as const, booking: target };
 
       if (isDateExclusive(target.listingType) && target.checkIn && target.checkOut) {
@@ -93,7 +93,7 @@ async function handlePaymentSuccess(flow: string, referenceId: string, userId: s
         // would send two parties to one room just as surely as a confirmed clash would.
         if (clash && (clash.status === 'confirmed' || clash.status === 'accepted')) {
           // Someone else's payment landed first. The guest has already been charged, so the only
-          // honest resolution is to cancel this one and give the money back — confirming both
+          // honest resolution is to cancel this one and give the money back  confirming both
           // would send two parties to one room.
           const [cancelled] = await tx.update(schema.bookings)
             .set({ status: 'cancelled' })
@@ -139,12 +139,12 @@ async function handlePaymentSuccess(flow: string, referenceId: string, userId: s
 
       if (conflicted) {
         // Charged for dates that are no longer available. Return the money first, then tell them
-        // — in that order, so the message can state truthfully whether the refund went through.
+        //  in that order, so the message can state truthfully whether the refund went through.
         const outcomes = await refundPaymentsFor('booking_commission', booking.id, 'double-booked: dates taken by another guest');
         const refunded = outcomes.some(o => o.refunded);
         await notifyBookingCancelled(booking, bookingUser?.phone || '', bookingUser?.name || 'Guest', refunded);
         log.error(
-          `[booking] ${booking.id} was paid for but the dates were taken first — cancelled and ` +
+          `[booking] ${booking.id} was paid for but the dates were taken first  cancelled and ` +
           `${refunded ? 'refunded' : 'REFUND FAILED, money still held'}.`
         );
       } else {
@@ -194,7 +194,7 @@ async function handlePaymentSuccess(flow: string, referenceId: string, userId: s
     return { supportExpiresAt };
   } else if (flow === 'donation') {
     // Deliberately grants nothing. No expiry, no listing, no booking, no entitlement of any kind
-    // — a donation is a gift, and giving one must never become a way to buy access. The amount
+    //  a donation is a gift, and giving one must never become a way to buy access. The amount
     // is returned only so the thank-you screen can name the figure; the authoritative record is
     // the payments row settlePaymentOnce has already marked paid.
     return { amount };
@@ -236,7 +236,7 @@ async function assertOwnsReference(
   }
 
   if (flow === 'platform_support') {
-    // The reference is the payer themselves — there is no other entity to own. Requiring the
+    // The reference is the payer themselves  there is no other entity to own. Requiring the
     // match is what stops someone creating a ₹12 order that credits a different account.
     if (referenceId !== userId) {
       return { status: 403, detail: 'You can only pay the support fee for your own account' };
@@ -246,7 +246,7 @@ async function assertOwnsReference(
 
   if (flow === 'donation') {
     // Same shape as platform_support: a gift has no entity behind it, so the payer is the
-    // reference. It grants nothing, so a mismatch is not exploitable for access — but an order
+    // reference. It grants nothing, so a mismatch is not exploitable for access  but an order
     // attributed to the wrong account would still corrupt the record of who gave what.
     if (referenceId !== userId) {
       return { status: 403, detail: 'You can only donate from your own account' };
@@ -263,12 +263,12 @@ async function assertOwnsReference(
  * Marks an order paid and runs its side effects at most once.
  *
  * With webhooks enabled, a successful payment is reported twice by design: once by the browser
- * callback into /verify, once by Razorpay into /webhook — and they race. The conditional
+ * callback into /verify, once by Razorpay into /webhook  and they race. The conditional
  * `WHERE status <> 'paid'` is the lock: whoever wins gets a row back and runs the side effects;
  * the loser gets zero rows and skips them. Without this, provider_registration would insert a
  * duplicate listing per delivery.
  *
- * Always uses the *stored* flow/referenceId (see INVESTIGATION.md §1.5) — never caller input.
+ * Always uses the *stored* flow/referenceId (see INVESTIGATION.md §1.5)  never caller input.
  */
 async function settlePaymentOnce(payment: PaymentRow, gatewayPaymentId: string) {
   const settled = await db.update(schema.payments)
@@ -280,7 +280,7 @@ async function settlePaymentOnce(payment: PaymentRow, gatewayPaymentId: string) 
     return { alreadySettled: true as const, record: null };
   }
 
-  // Every argument comes from the STORED row, never from caller input — see the note above and
+  // Every argument comes from the STORED row, never from caller input  see the note above and
   // INVESTIGATION.md §1.5. That includes the amount: echoing a client-supplied figure back as
   // "thank you for ₹X" would let anyone fake a receipt for a sum they never paid.
   const record = await handlePaymentSuccess(
@@ -300,7 +300,7 @@ async function settlePaymentOnce(payment: PaymentRow, gatewayPaymentId: string) 
  *   post:
  *     summary: Create a payment order (mock or real Razorpay depending on MOCK_PAYMENTS)
  *     description: >
- *       The reference_id must name something the caller owns — their own provider for
+ *       The reference_id must name something the caller owns  their own provider for
  *       provider_registration, or their own booking for booking_commission. The amount is set
  *       server-side from the flow and is never taken from the client.
  *     tags: [Payments]
@@ -368,7 +368,7 @@ router.post('/order', authenticateToken, async (req: Request, res: Response) => 
 
   // Bind the reference to the caller at the point it enters the system. §1.5 stopped an order
   // being *redeemed* against someone else's reference, but without this an attacker could simply
-  // create the order that way — paying ₹1 to confirm a stranger's booking, or ₹99 to activate a
+  // create the order that way  paying ₹1 to confirm a stranger's booking, or ₹99 to activate a
   // provider that isn't theirs. The order is the record of record, so it has to be right here.
   const ownershipError = await assertOwnsReference(flow, reference_id, req.user.id);
   if (ownershipError) {
@@ -592,7 +592,7 @@ router.post('/verify', authenticateToken, async (req: Request, res: Response) =>
     return res.status(403).json({ detail: 'Not authorized to complete this payment' });
   }
 
-  // See /mock/complete — the order, not the request body, decides what gets settled.
+  // See /mock/complete  the order, not the request body, decides what gets settled.
   if (payment.flow !== flow || payment.referenceId !== reference_id) {
     return res.status(400).json({ detail: 'Flow and reference ID do not match this order' });
   }
@@ -612,7 +612,7 @@ router.post('/verify', authenticateToken, async (req: Request, res: Response) =>
     return res.status(400).json({ detail: 'Invalid payment signature' });
   }
 
-  // May race the webhook for the same order — settlePaymentOnce makes that safe.
+  // May race the webhook for the same order  settlePaymentOnce makes that safe.
   const { alreadySettled } = await settlePaymentOnce(payment, razorpay_payment_id);
   res.json({ ok: true, status: 'paid', already: alreadySettled });
 });
@@ -621,13 +621,13 @@ router.post('/verify', authenticateToken, async (req: Request, res: Response) =>
  * @openapi
  * /payments/webhook:
  *   post:
- *     summary: Razorpay webhook receiver — called by Razorpay's servers, not by the app
+ *     summary: Razorpay webhook receiver  called by Razorpay's servers, not by the app
  *     description: >
  *       Authenticated by the X-Razorpay-Signature header (HMAC-SHA256 of the raw request body
  *       using RAZORPAY_WEBHOOK_SECRET), NOT by a bearer token. This is the authoritative record
  *       of payment: the browser callback into /payments/verify is best-effort and is lost if the
  *       customer closes the tab, so without this endpoint those payments are charged by Razorpay
- *       but never settled in the app. Safe to deliver more than once — settlement is idempotent.
+ *       but never settled in the app. Safe to deliver more than once  settlement is idempotent.
  *       Handles payment.captured and order.paid; every other event is acknowledged and ignored.
  *     tags: [Payments]
  *     requestBody:
@@ -637,7 +637,7 @@ router.post('/verify', authenticateToken, async (req: Request, res: Response) =>
  *           schema: { type: object, description: "Raw Razorpay event payload" }
  *     responses:
  *       200:
- *         description: Event processed, ignored, or already settled — Razorpay stops retrying
+ *         description: Event processed, ignored, or already settled  Razorpay stops retrying
  *         content:
  *           application/json:
  *             schema:
@@ -651,10 +651,10 @@ router.post('/verify', authenticateToken, async (req: Request, res: Response) =>
  *       503:
  *         description: RAZORPAY_WEBHOOK_SECRET not configured
  */
-// Razorpay webhook. NOTE: no authenticateToken — Razorpay has no session; the signature is the auth.
+// Razorpay webhook. NOTE: no authenticateToken  Razorpay has no session; the signature is the auth.
 router.post('/webhook', async (req: Request, res: Response) => {
   if (!RAZORPAY_WEBHOOK_SECRET) {
-    log.error('[webhook] received but RAZORPAY_WEBHOOK_SECRET is not configured — ignoring');
+    log.error('[webhook] received but RAZORPAY_WEBHOOK_SECRET is not configured  ignoring');
     return res.status(503).json({ detail: 'Webhook not configured' });
   }
 
@@ -667,7 +667,7 @@ router.post('/webhook', async (req: Request, res: Response) => {
   // express.json. The signature covers the precise bytes Razorpay sent, so re-serialising parsed
   // JSON (different key order/whitespace) would produce a different HMAC and never verify.
   if (!Buffer.isBuffer(req.body)) {
-    log.error('[webhook] body is not raw — express.raw is not mounted for this path');
+    log.error('[webhook] body is not raw  express.raw is not mounted for this path');
     return res.status(500).json({ detail: 'Webhook body parser misconfigured' });
   }
   const raw = req.body;
@@ -676,7 +676,7 @@ router.post('/webhook', async (req: Request, res: Response) => {
   const expectedBuf = Buffer.from(expected, 'utf8');
   const providedBuf = Buffer.from(signature, 'utf8');
   if (expectedBuf.length !== providedBuf.length || !crypto.timingSafeEqual(expectedBuf, providedBuf)) {
-    log.error('[webhook] signature mismatch — rejecting');
+    log.error('[webhook] signature mismatch  rejecting');
     return res.status(400).json({ detail: 'Invalid webhook signature' });
   }
 
@@ -697,7 +697,7 @@ router.post('/webhook', async (req: Request, res: Response) => {
     return res.json({ ok: true, ignored: eventType });
   }
   if (!orderId) {
-    log.error(`[webhook] ${eventType} carried no order id — acknowledging`);
+    log.error(`[webhook] ${eventType} carried no order id  acknowledging`);
     return res.json({ ok: true, ignored: eventType });
   }
 
@@ -705,7 +705,7 @@ router.post('/webhook', async (req: Request, res: Response) => {
     const [payment] = await db.select().from(schema.payments).where(eq(schema.payments.orderId, orderId)).limit(1);
     if (!payment) {
       // Not ours (or created against another environment sharing these keys). Ack so it stops.
-      log.error(`[webhook] ${eventType} for unknown order ${orderId} — acknowledging`);
+      log.error(`[webhook] ${eventType} for unknown order ${orderId}  acknowledging`);
       return res.json({ ok: true, unknown_order: true });
     }
 

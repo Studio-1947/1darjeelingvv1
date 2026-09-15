@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import { useNavigate, Navigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { HeartHandshake, Check, ArrowLeft } from 'lucide-react';
+import { HandHeart as HeartHandshake, Check, ArrowLeft } from '@phosphor-icons/react';
 import { useAuth } from '@/context/AuthContext';
 import { createPaymentOrder, completeMockPayment, payWithRazorpay } from '@/lib/api';
 import MockPaymentModal from '@/components/MockPaymentModal';
 import { useSeo } from '@/components/Seo';
 
 // Mirrors DONATION_MIN_PAISE / DONATION_MAX_PAISE in backend/src/config.ts. This copy exists to
-// give immediate feedback, not to enforce anything — the server's check is the real one, and it
+// give immediate feedback, not to enforce anything  the server's check is the real one, and it
 // re-validates every amount regardless of what happens here.
 const MIN_PAISE = 1000;
 const MAX_PAISE = 10_000_000;
@@ -32,7 +32,7 @@ export default function Donate() {
   // destination so logging in returns them here rather than dumping them on the feed.
   if (!user) return <Navigate to={`/login?next=${encodeURIComponent('/donate')}`} replace />;
 
-  // A custom entry always wins over a preset — it is the field the user touched most recently in
+  // A custom entry always wins over a preset  it is the field the user touched most recently in
   // any flow that reaches here, and silently charging the preset instead would be theft-adjacent.
   const customPaise = custom.trim() === '' ? null : Math.round(Number(custom) * 100);
   const amountPaise = customPaise !== null ? customPaise : selected;
@@ -146,9 +146,8 @@ export default function Donate() {
                   onClick={() => { setSelected(p); setCustom(''); setErr(''); }}
                   data-testid={`donate-preset-${p}`}
                   aria-pressed={active}
-                  className={`py-2.5 rounded-xl border font-bold text-sm ${
-                    active ? 'border-pine bg-pine/10 text-pine' : 'border-[var(--line)] text-ink-soft'
-                  }`}
+                  className={`py-2.5 rounded-xl border font-bold text-sm ${active ? 'border-pine bg-pine/10 text-pine' : 'border-[var(--line)] text-ink-soft'
+                    }`}
                 >
                   ₹{rupees(p)}
                 </button>
@@ -182,7 +181,7 @@ export default function Donate() {
         >
           {busy
             ? t('common.loading')
-            : t('donate.cta', { amount: valid && amountPaise !== null ? rupees(amountPaise) : '—' })}
+            : t('donate.cta', { amount: valid && amountPaise !== null ? rupees(amountPaise) : '' })}
         </button>
 
         <p className="mt-3 text-[11px] text-center text-ink-soft">{t('donate.note')}</p>

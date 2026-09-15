@@ -1,12 +1,16 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Star, Loader2, Trash2, Camera, Image as ImageIcon, X } from 'lucide-react';
+import { Star, CircleNotch as Loader2, Trash as Trash2, Camera, Image as ImageIcon, X } from '@phosphor-icons/react';
+import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
 import { fetchReviews, postReview, deleteReview, Review, ReviewSummary } from '@/lib/reviews';
 import { uploadImages } from '@/lib/uploadImage';
 import { ReviewSkeleton, LoadingStatus, repeat } from '@/components/skeletons';
 import { ALIGN_TEXT, ALIGN_ROW, ALIGN_BLOCK, SCREEN_COL } from './primitives';
+
+// Matches MAX_REVIEW_PHOTOS in backend/src/routes/reviews.ts.
+const MAX_REVIEW_PHOTOS = 6;
 
 /** Read-only row of five stars for a given rating (supports halves via rounding). */
 function Stars({ value, size = 16 }: { value: number; size?: number }) {
@@ -87,27 +91,50 @@ export default function ReviewsSection({ item }: { item: any }) {
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
+    const remaining = MAX_REVIEW_PHOTOS - photos.length;
+    if (remaining <= 0) {
+      toast.error(t('reviews.photo_limit', { count: MAX_REVIEW_PHOTOS, defaultValue: 'You can attach up to {{count}} photos.' }));
+      e.target.value = '';
+      return;
+    }
+    const selected = Array.from(files).slice(0, remaining);
     setUploadingPhotos(true);
     setError('');
     try {
-      const urls = await uploadImages(files);
+      const urls = await uploadImages(selected);
       setPhotos((prev) => [...prev, ...urls]);
+      toast.success(t('reviews.photo_uploaded', 'Photo attached successfully!'));
     } catch (err: any) {
-      setError(err?.message || t('reviews.upload_failed'));
+      const msg = typeof err === 'string' ? err : (err?.message || t('reviews.upload_failed', 'Upload failed'));
+      setError(msg);
+      toast.error(msg);
     } finally {
       setUploadingPhotos(false);
     }
   };
 
   const submit = async () => {
-    if (rating < 1) { setError(t('reviews.pick_rating')); return; }
+    if (rating < 1) {
+      const msg = t('reviews.pick_rating');
+      setError(msg);
+      toast.error(msg);
+      return;
+    }
     setSubmitting(true);
     setError('');
     try {
+      const isUpdate = !!myReview;
       await postReview(item.id, rating, comment.trim(), photos);
+      toast.success(
+        isUpdate
+          ? t('reviews.updated_toast', 'Your review has been updated!')
+          : t('reviews.posted_toast', 'Thank you! Your review has been posted.')
+      );
       await load();
     } catch (e: any) {
-      setError(e?.response?.data?.detail || t('reviews.save_failed'));
+      const errMsg = e?.response?.data?.detail || t('reviews.save_failed');
+      setError(errMsg);
+      toast.error(errMsg);
     } finally {
       setSubmitting(false);
     }
@@ -121,7 +148,10 @@ export default function ReviewsSection({ item }: { item: any }) {
       setRating(0);
       setComment('');
       setPhotos([]);
+      toast.success(t('reviews.removed_toast', 'Your review has been removed.'));
       await load();
+    } catch (e: any) {
+      toast.error(e?.response?.data?.detail || 'Failed to remove review');
     } finally {
       setSubmitting(false);
     }
@@ -190,33 +220,42 @@ export default function ReviewsSection({ item }: { item: any }) {
                       </button>
                     </div>
                   ))}
-                  <label className="w-16 h-16 rounded-xl border-2 border-dashed border-[var(--line)] hover:border-pine grid place-items-center cursor-pointer bg-white text-ink-soft hover:text-pine transition-colors">
-                    {uploadingPhotos ? (
-                      <Loader2 size={18} className="animate-spin" />
-                    ) : (
-                      <div className="flex flex-col items-center gap-0.5">
-                        <Camera size={18} />
-                        <span className="text-[9px] font-bold">{t('reviews.add_photo')}</span>
-                      </div>
-                    )}
-                    <input
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      onChange={handlePhotoUpload}
-                      disabled={uploadingPhotos || submitting}
-                      className="hidden"
-                    />
-                  </label>
+                  {photos.length < MAX_REVIEW_PHOTOS && (
+                    <label className="w-16 h-16 rounded-xl border-2 border-dashed border-[var(--line)] hover:border-pine grid place-items-center cursor-pointer bg-white text-ink-soft hover:text-pine transition-colors">
+                      {uploadingPhotos ? (
+                        <Loader2 size={18} className="animate-spin" />
+                      ) : (
+                        <div className="flex flex-col items-center gap-0.5">
+                          <Camera size={18} />
+                          <span className="text-[9px] font-bold">{t('reviews.add_photo')}</span>
+                        </div>
+                      )}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={handlePhotoUpload}
+                        disabled={uploadingPhotos || submitting}
+                        className="hidden"
+                      />
+                    </label>
+                  )}
                 </div>
               </div>
 
               {error && <p className="mt-2 text-sm text-flag font-semibold">{error}</p>}
-              <button onClick={submit} disabled={submitting || uploadingPhotos} data-testid="review-submit"
-                className="mt-4 inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-pine text-white font-bold btn-hover disabled:opacity-60">
-                {submitting ? <Loader2 size={15} className="animate-spin" /> : null}
-                {myReview ? t('reviews.update_cta') : t('reviews.post')}
-              </button>
+              <div className="mt-4 flex items-center gap-3 flex-wrap">
+                <button onClick={submit} disabled={submitting || uploadingPhotos} data-testid="review-submit"
+                  className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-pine text-white font-bold btn-hover disabled:opacity-60">
+                  {submitting ? <Loader2 size={15} className="animate-spin" /> : null}
+                  {myReview ? t('reviews.update_cta') : t('reviews.post')}
+                </button>
+                {myReview && (
+                  <span className="text-xs text-ink-soft">
+                    {t('reviews.single_review_hint', 'Editing your existing review')}
+                  </span>
+                )}
+              </div>
             </div>
           ) : (
             <div className={`${ALIGN_TEXT}`}>

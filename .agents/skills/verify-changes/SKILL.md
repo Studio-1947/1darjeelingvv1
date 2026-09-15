@@ -1,12 +1,12 @@
 ---
 name: verify-changes
 description: Prove code works by running it, not just checking it exists. Verification through execution rather than inspection. Use after writing or modifying code to ensure it actually functions correctly.
-when_to_use: "After writing code, completing a feature, or fixing a bug. When the user says 'does this work?', 'test this', 'verify', or when /verify workflow is invoked. NOT for writing new code — for proving existing code works."
+when_to_use: "After writing code, completing a feature, or fixing a bug. When the user says 'does this work?', 'test this', 'verify', or when /verify workflow is invoked. NOT for writing new code  for proving existing code works."
 allowed-tools: Read, Bash, Grep, Glob
 effort: medium
 ---
 
-# Verify Changes — Prove Code Works
+# Verify Changes  Prove Code Works
 
 > "Code that exists" ≠ "Code that works." This skill ensures changes are verified through execution.
 
@@ -85,9 +85,9 @@ python script.py --test
 ## Verification Checklist by Project Type
 
 ### Web Application
-- [ ] `npm run build` — compiles without errors
-- [ ] `npm run lint` — no linting errors
-- [ ] `npm run test` — all tests pass
+- [ ] `npm run build`  compiles without errors
+- [ ] `npm run lint`  no linting errors
+- [ ] `npm run test`  all tests pass
 - [ ] Dev server starts successfully
 - [ ] Changed pages render correctly
 - [ ] No console errors in browser

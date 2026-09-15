@@ -8,7 +8,7 @@ import { nextPhone } from './helpers';
 /**
  * `/auth/otp/send` used to check only that `phone` was present. Any string was reserved against
  * the daily OTP budget and handed to the messaging provider, and in mock mode the universal code
- * then verified it — so an account could exist whose identity was "not-a-number", and the
+ * then verified it  so an account could exist whose identity was "not-a-number", and the
  * per-phone limits keyed on that raw string could be reset by picking a different one.
  */
 
@@ -30,7 +30,7 @@ describe('POST /auth/otp/send rejects what is not a phone number', () => {
     expect(res.body.detail).toMatch(/phone number/i);
   });
 
-  it('spends nothing on a rejected number — no OTP row is written', async () => {
+  it('spends nothing on a rejected number  no OTP row is written', async () => {
     await request(app).post('/api/auth/otp/send').send({ phone: 'not-a-number' });
     const [row] = await db
       .select()

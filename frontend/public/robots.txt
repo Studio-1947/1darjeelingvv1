@@ -1,4 +1,4 @@
-# aangan — https://aangan.in
+# aangan  https://aangan.in
 #
 # The whole public site is meant to be found: tourists reach a homestay or a viewpoint through
 # search far more often than by typing the domain. Only the surfaces that are private, personal,
@@ -7,7 +7,7 @@
 User-agent: *
 Allow: /
 
-# Admin console — never useful in an index, and no reason to advertise its existence.
+# Admin console  never useful in an index, and no reason to advertise its existence.
 Disallow: /admin
 Disallow: /admin/
 

@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { MapPin } from 'lucide-react';
+import { MapPin } from '@phosphor-icons/react';
 import { CAFE_AMENITIES, SHOP_AMENITIES, CAFE_TAGS, SHOP_TAGS } from '@/constants/listingOptions';
 import ChipToggleGroup, { toggleIn } from '../ChipToggleGroup';
 import AmenityPicker from '../AmenityPicker';

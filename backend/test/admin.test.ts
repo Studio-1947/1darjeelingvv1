@@ -64,9 +64,9 @@ describe('admin provider status update', () => {
   // This is the real admin suspend path: `frontend-admin/src/pages/Admin.tsx`'s
   // handleToggleProviderStatus sends exactly the string 'suspended' when suspending an
   // active provider. A previous version of this suite only exercised 'pending_payment',
-  // which passed even though 'suspended' — the value the client actually sends — was
+  // which passed even though 'suspended'  the value the client actually sends  was
   // rejected by the route's allow-list. Send the exact string the UI sends.
-  it('accepts a valid status transition to suspended — the exact string the admin UI sends', async () => {
+  it('accepts a valid status transition to suspended  the exact string the admin UI sends', async () => {
     const { providerId } = await onboardActiveProvider({ name: 'Status Suspend Provider' });
     const admin = await loginAdmin();
     const res = await request(app)

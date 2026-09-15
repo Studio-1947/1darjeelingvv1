@@ -3,8 +3,8 @@ import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
-import { Phone, KeyRound } from 'lucide-react';
-import Logo from '@/components/Logo';
+import { Phone, Key as KeyRound, Compass, Storefront } from '@phosphor-icons/react';
+import Wordmark from '@/components/Wordmark';
 import Seo from '@/components/Seo';
 import { nationalPhone, OTP_COUNTRIES, otpPhone } from '@/lib/phoneRegions';
 
@@ -118,7 +118,7 @@ export default function Login() {
         setShowConfirmSwitch(true);
       } else {
         login(data.token, data.user);
-        if (data.user.role === 'provider') {
+        if (role === 'provider' || data.user.role === 'provider') {
           if (data.user.providerPaid) {
             nav('/provider/dashboard');
           } else {
@@ -137,8 +137,7 @@ export default function Login() {
       <Seo title={t('auth.welcome')} noindex />
       <div className="mist-panel p-6 md:p-8">
         <div className="text-center mb-6">
-          <Logo className="mx-auto w-16 h-16" />
-          <div className="mt-2 font-display font-extrabold text-lg text-ink">{t('brand')}</div>
+          <Wordmark className="mx-auto h-10 w-auto text-ink" />
           <h1 className="mt-4 font-display font-extrabold text-3xl text-ink">{t('auth.welcome')}</h1>
           <p className="text-sm text-ink-soft mt-1">{t('brand_tagline')}</p>
         </div>
@@ -203,14 +202,18 @@ export default function Login() {
 
         {step === 1 && !showConfirmSwitch && (
           <form onSubmit={sendOtp} className="space-y-4" data-testid="login-step-1">
-            <div className="grid grid-cols-2 gap-2 p-1 rounded-full bg-mist">
+            <div className="grid grid-cols-2 gap-3">
               <button type="button" onClick={() => setRole('tourist')} data-testid="role-tourist"
-                className={`py-2 rounded-full text-sm font-bold ${role === 'tourist' ? 'bg-white text-pine shadow-sm' : 'text-ink-soft'}`}>
-                {t('auth.role_tourist')}
+                className={`text-left p-3 rounded-2xl border transition-colors ${role === 'tourist' ? 'border-pine bg-pine/5 shadow-sm' : 'border-[var(--line)] bg-white hover:border-pine/40'}`}>
+                <Compass size={22} weight={role === 'tourist' ? 'fill' : 'regular'} className={role === 'tourist' ? 'text-pine' : 'text-ink-soft'} />
+                <div className={`mt-2 text-sm font-bold ${role === 'tourist' ? 'text-pine' : 'text-ink'}`}>{t('auth.role_tourist')}</div>
+                <div className="mt-0.5 text-xs text-ink-soft leading-snug">{t('auth.role_tourist_desc')}</div>
               </button>
               <button type="button" onClick={() => setRole('provider')} data-testid="role-provider"
-                className={`py-2 rounded-full text-sm font-bold ${role === 'provider' ? 'bg-white text-pine shadow-sm' : 'text-ink-soft'}`}>
-                {t('auth.role_provider')}
+                className={`text-left p-3 rounded-2xl border transition-colors ${role === 'provider' ? 'border-pine bg-pine/5 shadow-sm' : 'border-[var(--line)] bg-white hover:border-pine/40'}`}>
+                <Storefront size={22} weight={role === 'provider' ? 'fill' : 'regular'} className={role === 'provider' ? 'text-pine' : 'text-ink-soft'} />
+                <div className={`mt-2 text-sm font-bold ${role === 'provider' ? 'text-pine' : 'text-ink'}`}>{t('auth.role_provider')}</div>
+                <div className="mt-0.5 text-xs text-ink-soft leading-snug">{t('auth.role_provider_desc')}</div>
               </button>
             </div>
 

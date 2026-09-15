@@ -30,7 +30,7 @@ export async function registerUser(opts: {
   name: string;
   role?: 'tourist' | 'provider';
   phone?: string;
-  /** Set false to get a tourist who has NOT paid — for tests that exercise the gate itself. */
+  /** Set false to get a tourist who has NOT paid  for tests that exercise the gate itself. */
   paySupport?: boolean;
 }) {
   const phone = opts.phone || nextPhone();

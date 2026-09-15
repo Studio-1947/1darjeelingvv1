@@ -44,7 +44,7 @@ describe('booking cancellation', () => {
   it('lets the provider who owns the listing cancel (decline) a booking on it', async () => {
     const { token: providerToken } = await onboardActiveProvider({ name: 'Declining Provider' });
     // A homestay, not a spot: tourist spots are admin-owned curated content, so a provider
-    // cannot own one — see lib/spots.ts. The listing only has to be provider-owned here.
+    // cannot own one  see lib/spots.ts. The listing only has to be provider-owned here.
     const listingRes = await request(app)
       .post('/api/listings')
       .set('Authorization', `Bearer ${providerToken}`)
@@ -59,7 +59,7 @@ describe('booking cancellation', () => {
     expect(res.body.booking.status).toBe('cancelled');
   });
 
-  it('is idempotent — cancelling an already-cancelled booking succeeds', async () => {
+  it('is idempotent  cancelling an already-cancelled booking succeeds', async () => {
     const { token } = await registerUser({ name: 'Double Canceller' });
     const listing = await createListing();
     const bookingId = await createBooking(token, listing.id);

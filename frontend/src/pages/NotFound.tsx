@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Compass, Home, Search } from 'lucide-react';
+import { Compass, House as Home, MagnifyingGlass as Search } from '@phosphor-icons/react';
 import Seo from '@/components/Seo';
 import { CATEGORIES } from '@/constants/categories';
 

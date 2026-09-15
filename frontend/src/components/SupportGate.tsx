@@ -6,14 +6,14 @@ import { needsSupport } from '@/lib/support';
 /**
  * Paths that must stay reachable while gated.
  *
- * /support     — the screen that lifts the gate; redirecting it to itself is a loop.
- * /login       — Login has its own redirect-when-authenticated effect; letting the gate fight
+ * /support      the screen that lifts the gate; redirecting it to itself is a loop.
+ * /login        Login has its own redirect-when-authenticated effect; letting the gate fight
  *                it produces a loop, and a gated user may legitimately want to switch accounts.
- * /privacy     — linked from the support screen, and a policy page behind a paywall is absurd.
- * /provider/onboard — an unpaid provider needs support (providerPaid is false) but this is
+ * /privacy      linked from the support screen, and a policy page behind a paywall is absurd.
+ * /provider/onboard  an unpaid provider needs support (providerPaid is false) but this is
  *                exactly where Login sends them to pay the ₹99. Gating it would deadlock
  *                provider onboarding entirely.
- * /donate      — telling someone who wants to give us money that they must first pay ₹12 for
+ * /donate       telling someone who wants to give us money that they must first pay ₹12 for
  *                the privilege is self-defeating. Donations grant nothing, so allowing this
  *                cannot become a way around the gate.
  */

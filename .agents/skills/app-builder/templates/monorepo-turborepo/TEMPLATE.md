@@ -44,16 +44,16 @@ project-name/
 | Concept | Description |
 |---------|-------------|
 | Workspaces | Globs declared in `pnpm-workspace.yaml` |
-| Pipeline | `turbo.json` `tasks` graph (NOT `pipeline` — renamed in v2) |
+| Pipeline | `turbo.json` `tasks` graph (NOT `pipeline`  renamed in v2) |
 | Caching | Remote/local task caching |
 | Dependencies | `workspace:*` protocol, `@repo/*` namespace |
-| Env mode | v2 is strict — declare task `env`/`globalEnv` or caching breaks |
+| Env mode | v2 is strict  declare task `env`/`globalEnv` or caching breaks |
 
 ---
 
 ## Turbo Tasks (turbo.json)
 
-> `tasks` is the v2 key. The `pipeline` key was renamed — migrate with `npx @turbo/codemod rename-pipeline`.
+> `tasks` is the v2 key. The `pipeline` key was renamed  migrate with `npx @turbo/codemod rename-pipeline`.
 
 | Task | Depends On |
 |------|------------|

@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { db, schema } from '../db';
-// lt/gt/and moved out with the inline overlap query — the date comparison now lives in
+// lt/gt/and moved out with the inline overlap query  the date comparison now lives in
 // lib/bookingAvailability.ts, shared with the settlement path so the two cannot drift.
 import { eq, desc, inArray } from 'drizzle-orm';
 import { authenticateToken } from '../middleware/auth';
@@ -63,7 +63,7 @@ const router = Router();
  *             schema: { $ref: '#/components/schemas/Error' }
  *       409:
  *         description: >
- *           Homestay is unavailable for the requested range — either already confirmed-booked, or
+ *           Homestay is unavailable for the requested range  either already confirmed-booked, or
  *           held by another guest's checkout that is still inside its hold window.
  *         content:
  *           application/json:
@@ -94,7 +94,7 @@ router.post('/', authenticateToken, requireActiveSupport, async (req: Request, r
   if (isDateExclusive(listing_type)) {
     // Blocks on confirmed bookings AND on checkouts still inside their hold window. Checking only
     // confirmed rows (as this did before) meant two guests could both open checkout for the same
-    // nights, both pay, and both be confirmed — the settlement path in payments.ts is the second
+    // nights, both pay, and both be confirmed  the settlement path in payments.ts is the second
     // half of that fix, for the case where both get past this point at once.
     const blocking = await findBlockingBooking(db, listing_id, check_in, check_out);
     if (blocking) {
@@ -173,7 +173,7 @@ router.get('/me', authenticateToken, async (req: Request, res: Response) => {
   const enrichedBookings = [];
   for (const b of bookings) {
     const [listing] = await db.select().from(schema.listings).where(eq(schema.listings.id, b.listingId)).limit(1);
-    
+
     let listingReturn = null;
     if (listing) {
       listingReturn = {
@@ -358,7 +358,7 @@ router.get('/provider', authenticateToken, async (req: Request, res: Response) =
  * Does this caller own the listing a booking was made against?
  *
  * The listing's providerId can be a provider id or a bare user id (admin-created listings), so
- * both are accepted. Shared by cancel and confirm, which must agree on who the host is — two
+ * both are accepted. Shared by cancel and confirm, which must agree on who the host is  two
  * copies of this would eventually let someone confirm a booking they cannot cancel.
  */
 async function ownsListingFor(
@@ -396,7 +396,7 @@ const bookingShape = (b: typeof schema.bookings.$inferSelect) => ({
  *   patch:
  *     summary: Accept a booking request (host or admin only)
  *     description: >
- *       Moves a `pending_payment` booking to `accepted` — the host has agreed to take it. This
+ *       Moves a `pending_payment` booking to `accepted`  the host has agreed to take it. This
  *       does NOT confirm the booking: payment is still what confirms, and the status becomes
  *       `confirmed` when the commission settles. An accepted booking holds its dates
  *       unconditionally, unlike a pending one, which expires with the checkout hold window.
@@ -424,7 +424,7 @@ router.patch('/:id/confirm', authenticateToken, async (req: Request, res: Respon
     return res.status(403).json({ detail: 'Only the host of this listing can accept this booking' });
   }
 
-  // Idempotent, and already-confirmed is a success rather than an error — the guest paid before
+  // Idempotent, and already-confirmed is a success rather than an error  the guest paid before
   // the host got to the request, which is a normal race on an instant-confirm rate.
   if (booking.status === 'accepted' || booking.status === 'confirmed') {
     return res.json({ booking: bookingShape(booking) });
@@ -434,7 +434,7 @@ router.patch('/:id/confirm', authenticateToken, async (req: Request, res: Respon
   }
 
   // Accepting takes the dates off the market unconditionally, so it has to be serialised against
-  // the settlement path the same way that path serialises against itself — otherwise a host could
+  // the settlement path the same way that path serialises against itself  otherwise a host could
   // accept one guest at the same instant another guest's payment confirms the same nights.
   const outcome = await db.transaction(async (tx) => {
     if (isDateExclusive(booking.listingType) && booking.checkIn && booking.checkOut) {
@@ -481,7 +481,7 @@ router.patch('/:id/cancel', authenticateToken, async (req: Request, res: Respons
     .returning();
 
   // Give back whatever was paid for this booking. Before this, cancelling flipped the status and
-  // kept the money with no record that anything was owed — refundPaymentsFor is idempotent and a
+  // kept the money with no record that anything was owed  refundPaymentsFor is idempotent and a
   // no-op for a booking that never got past pending_payment, so this is safe on every path.
   const outcomes = await refundPaymentsFor(
     'booking_commission',
@@ -490,7 +490,7 @@ router.patch('/:id/cancel', authenticateToken, async (req: Request, res: Respons
   );
   const refunded = outcomes.some(o => o.refunded);
 
-  // Only worth telling the guest when there was something to tell them about — a booking that
+  // Only worth telling the guest when there was something to tell them about  a booking that
   // never reached confirmation was never announced in the first place.
   if (booking.status === 'confirmed') {
     const [guest] = await db.select().from(schema.users).where(eq(schema.users.id, booking.userId)).limit(1);

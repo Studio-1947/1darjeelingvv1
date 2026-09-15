@@ -9,7 +9,7 @@ vi.mock('../src/lib/s3', () => ({
     const { Readable } = await import('stream');
     return { stream: Readable.from([Buffer.from('test-file-bytes')]), contentType: 'image/png' };
   }),
-  deletePrivate: vi.fn(async () => {}),
+  deletePrivate: vi.fn(async () => { }),
 }));
 
 import { app } from '../src/app';
@@ -33,7 +33,7 @@ async function providerWithKyc(name: string) {
     expect(up.status).toBe(200);
   }
 
-  // The file key is deliberately never returned by the API — kyc.test.ts asserts that — so the
+  // The file key is deliberately never returned by the API  kyc.test.ts asserts that  so the
   // only way to know what should have been deleted is to read it straight out of the table.
   const docs = await db
     .select({ fileKey: schema.kycDocuments.fileKey })
@@ -103,7 +103,7 @@ describe('deleting an account takes the KYC documents with it', () => {
   });
 
   it('deletes an account that never uploaded anything', async () => {
-    // No provider rows at all — the lookup must short-circuit rather than query on an empty
+    // No provider rows at all  the lookup must short-circuit rather than query on an empty
     // id list, which is a SQL error in some drivers rather than an empty result.
     const { registerUser } = await import('./helpers');
     const { token, user } = await registerUser({ name: 'Plain Tourist', role: 'tourist' });

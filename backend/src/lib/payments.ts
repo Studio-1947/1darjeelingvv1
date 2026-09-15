@@ -7,7 +7,7 @@ export type AmountResolution =
 const rupees = (paise: number) => (paise / 100).toLocaleString('en-IN');
 
 /**
- * Decides how much an order is for — the single place in the system permitted to do so.
+ * Decides how much an order is for  the single place in the system permitted to do so.
  *
  * Every flow but one has a fixed price, taken from AMOUNTS and never from the caller. A donation
  * is the exception by nature: the giver chooses. That makes it the only path where a
@@ -34,7 +34,7 @@ export function resolveAmount(flow: string, body: any): AmountResolution {
 
   const raw = body?.amount;
 
-  // Deliberately no coercion. Number('  5000  ') is 5000 and Number('1e9') is a billion — a
+  // Deliberately no coercion. Number('  5000  ') is 5000 and Number('1e9') is a billion  a
   // string that looks like money must be rejected, not quietly turned into a charge.
   if (typeof raw !== 'number' || !Number.isFinite(raw) || !Number.isInteger(raw)) {
     return {

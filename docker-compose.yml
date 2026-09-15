@@ -37,6 +37,20 @@ services:
       - postgres
       - minio
 
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: 1darjeeling_frontend
+    restart: on-failure
+    ports:
+      - "3000:3000"
+    environment:
+      - VITE_BACKEND_PROXY_URL=http://backend:8000
+      - REACT_APP_BACKEND_URL=http://localhost:8000
+    depends_on:
+      - backend
+
   minio:
     image: minio/minio:latest
     container_name: 1darjeeling_minio

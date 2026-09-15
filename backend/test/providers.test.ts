@@ -18,7 +18,7 @@ function onboardPayload(overrides: Record<string, any> = {}) {
 
 describe('provider onboarding guards', () => {
   // Onboarding a second time while the first provider is still pending_payment (onboarded, but
-  // payment never completed) used to 409 unconditionally — stranding the user, since the
+  // payment never completed) used to 409 unconditionally  stranding the user, since the
   // frontend only creates a payment order from a *successful* onboard response, so there was no
   // way to resume. It must now be idempotent: the existing row is updated in place and returned
   // with 200, and no second row is created (the DB's unique index on providers.user_id would
@@ -44,14 +44,14 @@ describe('provider onboarding guards', () => {
     expect(second.body.provider.description).toBe('Updated on resume');
     expect(second.body.provider.status).toBe('pending_payment');
 
-    // Exactly one row for this user, with the resumed details — not two.
+    // Exactly one row for this user, with the resumed details  not two.
     const rows = await db.select().from(schema.providers).where(eq(schema.providers.userId, user.id));
     expect(rows.length).toBe(1);
     expect(rows[0].id).toBe(firstProviderId);
     expect(rows[0].businessName).toBe('Resumed Business');
 
     // The now-resumed provider can proceed straight to creating the payment order, same as a
-    // fresh onboard — the frontend flow (useProviderOnboard.ts) needs no special-casing.
+    // fresh onboard  the frontend flow (useProviderOnboard.ts) needs no special-casing.
     const orderRes = await request(app)
       .post('/api/payments/order')
       .set('Authorization', `Bearer ${token}`)

@@ -7,7 +7,7 @@ vi.mock('../src/lib/s3', () => ({
     const { Readable } = await import('stream');
     return { stream: Readable.from([Buffer.from('test-file-bytes')]), contentType: 'image/png' };
   }),
-  deletePrivate: vi.fn(async () => {}),
+  deletePrivate: vi.fn(async () => { }),
 }));
 
 import { app } from '../src/app';
@@ -222,7 +222,7 @@ describe('listings read endpoints', () => {
 
   // The real admin suspend path (frontend-admin's Admin.tsx sends exactly 'suspended', not
   // 'pending_payment') must drop the Verified badge the same way the test above covers for
-  // pending_payment — the display rule is `status === 'active'`, so any non-active status,
+  // pending_payment  the display rule is `status === 'active'`, so any non-active status,
   // including the one the UI actually sends, must flip it off.
   it('suspending a verified provider (active -> suspended) drops provider_verified on their listings, on both routes', async () => {
     const { token, providerId } = await onboardVerifiedShopProvider('Suspended Verified Owner');

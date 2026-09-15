@@ -1,10 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Search, MapPin, Navigation, Calendar, Users, Home as HomeIcon, Car, Loader2, Minus, Plus, X } from 'lucide-react';
+import { MagnifyingGlass as Search, MapPin, NavigationArrow as Navigation, Calendar, Users, House as HomeIcon, Car, CircleNotch as Loader2, Minus, Plus, X } from '@phosphor-icons/react';
 import api from '@/lib/api';
 import { todayStr, addDays, isBadRange, formatDay, formatRange } from '@/lib/dates';
 import { writeTrip } from '@/lib/tripParams';
+import WeatherForecast from '@/components/WeatherForecast';
 
 const PLACES: { name: string; alt?: string[] }[] = [
   // Darjeeling and around
@@ -167,8 +169,8 @@ export default function BookingWidget() {
           .join('  ·  ')
       : '';
 
-  const submit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const submit = (e?: React.FormEvent) => {
+    if (e?.preventDefault) e.preventDefault();
     setPanelOpen(false);
     setShowSuggest(false);
 
@@ -192,13 +194,16 @@ export default function BookingWidget() {
     return nav(`/search?${params}`);
   };
 
+  // Whatever the visitor is typing as their destination, on whichever tab is active.
+  const destinationQuery = tab === 'driver' ? (to.trim() || from.trim()) : q;
+
   const pillLabel = 'text-[10px] font-bold uppercase tracking-wider text-white/60';
   const pillField =
     'mt-1 flex items-center gap-2 border border-white/20 rounded-xl px-3 py-2.5 bg-black/30 focus-within:border-white/50 transition-colors';
 
   return (
     <form onSubmit={submit} data-testid="booking-widget" className="relative w-full">
-      <div ref={containerRef} className="relative w-full max-w-4xl mx-auto">
+      <div ref={containerRef} className="relative w-full">
         {/* ========================================================================= */}
         {/* DESKTOP & TABLET WIDGET (md+)                                             */}
         {/* ========================================================================= */}
@@ -521,300 +526,313 @@ export default function BookingWidget() {
           </div>
 
           {/* Mobile Bottom Sheet Modal */}
-          {panelOpen && (
-            <div className="fixed inset-0 z-50 flex flex-col justify-end">
-              {/* Backdrop */}
-              <div
-                className="fixed inset-0 bg-black/80 backdrop-blur-sm transition-opacity"
-                onClick={() => setPanelOpen(false)}
-              />
+          {panelOpen &&
+            typeof document !== 'undefined' &&
+            createPortal(
+              <div className="fixed inset-0 z-[70] flex flex-col justify-end">
+                {/* Backdrop */}
+                <div
+                  className="fixed inset-0 bg-black/80 backdrop-blur-sm transition-opacity"
+                  onClick={() => setPanelOpen(false)}
+                />
 
-              {/* Sheet Card */}
-              <div
-                id="booking-widget-panel-mobile"
-                data-testid="booking-widget-pill-panel"
-                aria-hidden={!panelOpen}
-                className="relative z-10 w-full bg-[#14201A] border-t border-white/20 rounded-t-[28px] max-h-[85vh] flex flex-col shadow-2xl animate-in slide-in-from-bottom duration-300 overflow-hidden"
-              >
-                {/* Header with drag indicator & close */}
-                <div className="flex items-center justify-between px-5 pt-4 pb-2 border-b border-white/10 flex-shrink-0">
-                  <div
-                    role="tablist"
-                    aria-label={t('widget.change_category')}
-                    className="flex gap-1 p-1 rounded-full bg-white/10"
-                  >
-                    {tabs.map(({ key, label, Icon }) => (
-                      <button
-                        key={key}
-                        type="button"
-                        role="tab"
-                        aria-selected={tab === key}
-                        onClick={() => setTab(key)}
-                        data-testid={`booking-widget-tab-${key}-menu`}
-                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-colors ${
-                          tab === key ? 'bg-white text-pine shadow-sm' : 'text-white/70'
-                        }`}
-                      >
-                        <Icon size={14} /> {label}
-                      </button>
-                    ))}
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => setPanelOpen(false)}
-                    aria-label="Close search options"
-                    className="w-8 h-8 rounded-full bg-white/10 text-white flex items-center justify-center active:scale-90"
-                  >
-                    <X size={18} />
-                  </button>
-                </div>
-
-                {/* Scrollable Form Body */}
-                <div className="flex-1 overflow-y-auto p-5 space-y-4">
-                  {/* Destination / Route */}
-                  {tab === 'driver' ? (
-                    <div className="space-y-3">
-                      <label className="block">
-                        <span className={pillLabel}>{t('widget.from')}</span>
-                        <div className={pillField}>
-                          <MapPin size={16} className="text-white/60 flex-shrink-0" />
-                          <input
-                            value={from}
-                            onChange={(e) => {
-                              setFrom(e.target.value);
-                              setActiveField('from');
-                              setShowSuggest(true);
-                            }}
-                            onFocus={() => {
-                              setActiveField('from');
-                              setShowSuggest(true);
-                            }}
-                            placeholder={t('widget.from_placeholder')}
-                            data-testid="booking-widget-pill-from"
-                            className="flex-1 min-w-0 bg-transparent outline-none text-sm text-white placeholder:text-white/40"
-                          />
-                        </div>
-                      </label>
-
-                      <label className="block">
-                        <span className={pillLabel}>{t('widget.to')}</span>
-                        <div className={pillField}>
-                          <Navigation size={16} className="text-white/60 flex-shrink-0" />
-                          <input
-                            value={to}
-                            onChange={(e) => {
-                              setTo(e.target.value);
-                              setActiveField('to');
-                              setShowSuggest(true);
-                            }}
-                            onFocus={() => {
-                              setActiveField('to');
-                              setShowSuggest(true);
-                            }}
-                            placeholder={t('widget.to_placeholder')}
-                            role="combobox"
-                            aria-expanded={showSuggest}
-                            aria-controls="booking-widget-pill-suggest"
-                            data-testid="booking-widget-pill-to"
-                            className="flex-1 min-w-0 bg-transparent outline-none text-sm text-white placeholder:text-white/40"
-                          />
-                        </div>
-                      </label>
-                    </div>
-                  ) : (
-                    <label className="block">
-                      <span className={pillLabel}>{t('widget.destination')}</span>
-                      <div className={pillField}>
-                        <MapPin size={16} className="text-white/60 flex-shrink-0" />
-                        <input
-                          value={q}
-                          onChange={(e) => {
-                            setQ(e.target.value);
-                            setActiveField('q');
-                            setShowSuggest(true);
-                          }}
-                          onFocus={() => {
-                            setActiveField('q');
-                            setShowSuggest(true);
-                          }}
-                          placeholder={t('widget.destination_placeholder')}
-                          role="combobox"
-                          aria-expanded={showSuggest}
-                          aria-controls="booking-widget-pill-suggest"
-                          data-testid="booking-widget-pill-where"
-                          className="flex-1 min-w-0 bg-transparent outline-none text-sm text-white placeholder:text-white/40"
-                        />
-                        {q && (
-                          <button type="button" onClick={() => setQ('')} className="text-white/40 p-1">
-                            <X size={14} />
-                          </button>
-                        )}
-                      </div>
-                    </label>
-                  )}
-
-                  {/* Suggestions List */}
-                  {showSuggest && (
+                {/* Sheet Card */}
+                <div
+                  id="booking-widget-panel-mobile"
+                  data-testid="booking-widget-pill-panel"
+                  aria-hidden={!panelOpen}
+                  className="relative z-10 w-full bg-[#14201A] border-t border-white/20 rounded-t-[28px] max-h-[85vh] flex flex-col shadow-2xl animate-in slide-in-from-bottom duration-300 overflow-hidden"
+                >
+                  {/* Header with drag indicator & close */}
+                  <div className="flex items-center justify-between px-5 pt-4 pb-2 border-b border-white/10 flex-shrink-0">
                     <div
-                      id="booking-widget-pill-suggest"
-                      data-testid="booking-widget-pill-suggest"
-                      className="p-3 bg-white/5 border border-white/10 rounded-2xl space-y-2"
+                      role="tablist"
+                      aria-label={t('widget.change_category')}
+                      className="flex gap-1 p-1 rounded-full bg-white/10"
                     >
-                      {placeMatches.length > 0 && (
-                        <div className="text-[10px] font-bold uppercase tracking-widest text-white/60">
-                          {t('widget.popular')}
-                        </div>
-                      )}
-                      <div className="flex flex-wrap gap-1.5">
-                        {placeMatches.slice(0, 10).map((p) => (
-                          <button
-                            key={p}
-                            type="button"
-                            onMouseDown={(e) => e.preventDefault()}
-                            onClick={() => pickPlace(p)}
-                            data-testid={`booking-widget-pill-place-${p}`}
-                            className="px-3 py-1.5 rounded-full border border-white/20 bg-white/10 text-xs font-bold text-white active:bg-white/30"
-                          >
-                            {p}
-                          </button>
-                        ))}
-                      </div>
-
-                      {(matching || matches.length > 0) && (
-                        <div className="flex items-center gap-1.5 pt-2 text-[10px] font-bold uppercase tracking-widest text-white/60 border-t border-white/10">
-                          {t('widget.matching')}
-                          {matching && <Loader2 size={11} className="animate-spin" />}
-                        </div>
-                      )}
-                      {matches.map((m) => (
+                      {tabs.map(({ key, label, Icon }) => (
                         <button
-                          key={m.id}
+                          key={key}
                           type="button"
-                          onMouseDown={(e) => e.preventDefault()}
-                          onClick={() => {
-                            setPanelOpen(false);
-                            nav(`/listing/${m.id}`);
-                          }}
-                          data-testid={`booking-widget-pill-listing-${m.id}`}
-                          className="w-full flex items-start gap-2.5 px-2 py-2 rounded-xl text-left text-white active:bg-white/10"
+                          role="tab"
+                          aria-selected={tab === key}
+                          onClick={() => setTab(key)}
+                          data-testid={`booking-widget-tab-${key}-menu`}
+                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-colors ${
+                            tab === key ? 'bg-white text-pine shadow-sm' : 'text-white/70'
+                          }`}
                         >
-                          <Search size={14} className="flex-shrink-0 mt-1 text-white/60" />
-                          <span className="min-w-0 flex-1">
-                            <span className="block text-sm font-bold truncate">{m.title}</span>
-                            <span className="block text-xs text-white/60 truncate">{m.location}</span>
-                          </span>
+                          <Icon size={14} /> {label}
                         </button>
                       ))}
                     </div>
-                  )}
 
-                  {/* Dates */}
-                  {tab === 'driver' ? (
-                    <label className="block">
-                      <span className={pillLabel}>{t('widget.date')}</span>
-                      <div className={pillField}>
-                        <Calendar size={16} className="text-white/60 flex-shrink-0" />
-                        <input
-                          type="date"
-                          value={checkIn}
-                          min={today}
-                          onChange={(e) => pickCheckIn(e.target.value)}
-                          data-testid="booking-widget-date"
-                          className="flex-1 min-w-0 bg-transparent outline-none text-sm text-white [color-scheme:dark]"
-                        />
+                    <button
+                      type="button"
+                      onClick={() => setPanelOpen(false)}
+                      aria-label="Close search options"
+                      className="w-8 h-8 rounded-full bg-white/10 text-white flex items-center justify-center active:scale-90"
+                    >
+                      <X size={18} />
+                    </button>
+                  </div>
+
+                  {/* Scrollable Form Body */}
+                  <div className="flex-1 overflow-y-auto p-5 space-y-4">
+                    {/* Destination / Route */}
+                    {tab === 'driver' ? (
+                      <div className="space-y-3">
+                        <label className="block">
+                          <span className={pillLabel}>{t('widget.from')}</span>
+                          <div className={pillField}>
+                            <MapPin size={16} className="text-white/60 flex-shrink-0" />
+                            <input
+                              value={from}
+                              onChange={(e) => {
+                                setFrom(e.target.value);
+                                setActiveField('from');
+                                setShowSuggest(true);
+                              }}
+                              onFocus={() => {
+                                setActiveField('from');
+                                setShowSuggest(true);
+                              }}
+                              placeholder={t('widget.from_placeholder')}
+                              data-testid="booking-widget-pill-from"
+                              className="flex-1 min-w-0 bg-transparent outline-none text-sm text-white placeholder:text-white/40"
+                            />
+                          </div>
+                        </label>
+
+                        <label className="block">
+                          <span className={pillLabel}>{t('widget.to')}</span>
+                          <div className={pillField}>
+                            <Navigation size={16} className="text-white/60 flex-shrink-0" />
+                            <input
+                              value={to}
+                              onChange={(e) => {
+                                setTo(e.target.value);
+                                setActiveField('to');
+                                setShowSuggest(true);
+                              }}
+                              onFocus={() => {
+                                setActiveField('to');
+                                setShowSuggest(true);
+                              }}
+                              placeholder={t('widget.to_placeholder')}
+                              role="combobox"
+                              aria-expanded={showSuggest}
+                              aria-controls="booking-widget-pill-suggest"
+                              data-testid="booking-widget-pill-to"
+                              className="flex-1 min-w-0 bg-transparent outline-none text-sm text-white placeholder:text-white/40"
+                            />
+                          </div>
+                        </label>
                       </div>
-                    </label>
-                  ) : (
-                    <div className="grid grid-cols-2 gap-2">
-                      <label className="block min-w-0">
-                        <span className={pillLabel}>{t('booking.checkin')}</span>
+                    ) : (
+                      <label className="block">
+                        <span className={pillLabel}>{t('widget.destination')}</span>
                         <div className={pillField}>
+                          <MapPin size={16} className="text-white/60 flex-shrink-0" />
+                          <input
+                            value={q}
+                            onChange={(e) => {
+                              setQ(e.target.value);
+                              setActiveField('q');
+                              setShowSuggest(true);
+                            }}
+                            onFocus={() => {
+                              setActiveField('q');
+                              setShowSuggest(true);
+                            }}
+                            placeholder={t('widget.destination_placeholder')}
+                            role="combobox"
+                            aria-expanded={showSuggest}
+                            aria-controls="booking-widget-pill-suggest"
+                            data-testid="booking-widget-pill-where"
+                            className="flex-1 min-w-0 bg-transparent outline-none text-sm text-white placeholder:text-white/40"
+                          />
+                          {q && (
+                            <button type="button" onClick={() => setQ('')} className="text-white/40 p-1">
+                              <X size={14} />
+                            </button>
+                          )}
+                        </div>
+                      </label>
+                    )}
+
+                    {/* Suggestions List */}
+                    {showSuggest && (
+                      <div
+                        id="booking-widget-pill-suggest"
+                        data-testid="booking-widget-pill-suggest"
+                        className="p-3 bg-white/5 border border-white/10 rounded-2xl space-y-2"
+                      >
+                        {placeMatches.length > 0 && (
+                          <div className="text-[10px] font-bold uppercase tracking-widest text-white/60">
+                            {t('widget.popular')}
+                          </div>
+                        )}
+                        <div className="flex flex-wrap gap-1.5">
+                          {placeMatches.slice(0, 10).map((p) => (
+                            <button
+                              key={p}
+                              type="button"
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => pickPlace(p)}
+                              data-testid={`booking-widget-pill-place-${p}`}
+                              className="px-3 py-1.5 rounded-full border border-white/20 bg-white/10 text-xs font-bold text-white active:bg-white/30"
+                            >
+                              {p}
+                            </button>
+                          ))}
+                        </div>
+
+                        {(matching || matches.length > 0) && (
+                          <div className="flex items-center gap-1.5 pt-2 text-[10px] font-bold uppercase tracking-widest text-white/60 border-t border-white/10">
+                            {t('widget.matching')}
+                            {matching && <Loader2 size={11} className="animate-spin" />}
+                          </div>
+                        )}
+                        {matches.map((m) => (
+                          <button
+                            key={m.id}
+                            type="button"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => {
+                              setPanelOpen(false);
+                              nav(`/listing/${m.id}`);
+                            }}
+                            data-testid={`booking-widget-pill-listing-${m.id}`}
+                            className="w-full flex items-start gap-2.5 px-2 py-2 rounded-xl text-left text-white active:bg-white/10"
+                          >
+                            <Search size={14} className="flex-shrink-0 mt-1 text-white/60" />
+                            <span className="min-w-0 flex-1">
+                              <span className="block text-sm font-bold truncate">{m.title}</span>
+                              <span className="block text-xs text-white/60 truncate">{m.location}</span>
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Dates */}
+                    {tab === 'driver' ? (
+                      <label className="block">
+                        <span className={pillLabel}>{t('widget.date')}</span>
+                        <div className={pillField}>
+                          <Calendar size={16} className="text-white/60 flex-shrink-0" />
                           <input
                             type="date"
                             value={checkIn}
                             min={today}
                             onChange={(e) => pickCheckIn(e.target.value)}
-                            data-testid="booking-widget-checkin"
-                            className="w-full bg-transparent outline-none text-xs text-white [color-scheme:dark]"
+                            data-testid="booking-widget-date"
+                            className="flex-1 min-w-0 bg-transparent outline-none text-sm text-white [color-scheme:dark]"
                           />
                         </div>
                       </label>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-2">
+                        <label className="block min-w-0">
+                          <span className={pillLabel}>{t('booking.checkin')}</span>
+                          <div className={pillField}>
+                            <input
+                              type="date"
+                              value={checkIn}
+                              min={today}
+                              onChange={(e) => pickCheckIn(e.target.value)}
+                              data-testid="booking-widget-checkin"
+                              className="w-full bg-transparent outline-none text-xs text-white [color-scheme:dark]"
+                            />
+                          </div>
+                        </label>
 
-                      <label className="block min-w-0">
-                        <span className={pillLabel}>{t('booking.checkout')}</span>
-                        <div className={pillField}>
-                          <input
-                            type="date"
-                            value={checkOut}
-                            min={checkIn ? addDays(checkIn, 1) : today}
-                            onChange={(e) => setCheckOut(e.target.value)}
-                            data-testid="booking-widget-checkout"
-                            className="w-full bg-transparent outline-none text-xs text-white [color-scheme:dark]"
-                          />
-                        </div>
-                      </label>
-                    </div>
-                  )}
-
-                  {/* Guests */}
-                  <div>
-                    <span className={pillLabel}>{t('widget.number_of_guests')}</span>
-                    <div className={`${pillField} justify-between`}>
-                      <div className="flex items-center gap-2">
-                        <Users size={16} className="text-white/60 flex-shrink-0" />
-                        <input
-                          type="text"
-                          inputMode="numeric"
-                          maxLength={String(MAX_GUESTS).length}
-                          aria-label={t('widget.number_of_guests')}
-                          value={guests}
-                          onChange={(e) => changeGuests(typedGuests(e.target.value))}
-                          onBlur={() => setGuests(String(guestCount))}
-                          data-testid="booking-widget-guests"
-                          className="w-10 bg-transparent outline-none text-sm font-bold text-center text-white"
-                        />
+                        <label className="block min-w-0">
+                          <span className={pillLabel}>{t('booking.checkout')}</span>
+                          <div className={pillField}>
+                            <input
+                              type="date"
+                              value={checkOut}
+                              min={checkIn ? addDays(checkIn, 1) : today}
+                              onChange={(e) => setCheckOut(e.target.value)}
+                              data-testid="booking-widget-checkout"
+                              className="w-full bg-transparent outline-none text-xs text-white [color-scheme:dark]"
+                            />
+                          </div>
+                        </label>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => changeGuests(String(Math.max(1, guestCount - 1)))}
-                          disabled={guestCount <= 1}
-                          aria-label={t('widget.guests_less')}
-                          data-testid="booking-widget-guests-minus"
-                          className="w-8 h-8 rounded-full border border-white/25 grid place-items-center text-white active:scale-95 disabled:opacity-30"
-                        >
-                          <Minus size={14} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => changeGuests(String(Math.min(MAX_GUESTS, guestCount + 1)))}
-                          disabled={guestCount >= MAX_GUESTS}
-                          aria-label={t('widget.guests_more')}
-                          data-testid="booking-widget-guests-plus"
-                          className="w-8 h-8 rounded-full border border-white/25 grid place-items-center text-white active:scale-95 disabled:opacity-30"
-                        >
-                          <Plus size={14} />
-                        </button>
+                    )}
+
+                    {/* Guests */}
+                    <div>
+                      <span className={pillLabel}>{t('widget.number_of_guests')}</span>
+                      <div className={`${pillField} justify-between`}>
+                        <div className="flex items-center gap-2">
+                          <Users size={16} className="text-white/60 flex-shrink-0" />
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            maxLength={String(MAX_GUESTS).length}
+                            aria-label={t('widget.number_of_guests')}
+                            value={guests}
+                            onChange={(e) => changeGuests(typedGuests(e.target.value))}
+                            onBlur={() => setGuests(String(guestCount))}
+                            data-testid="booking-widget-guests"
+                            className="w-10 bg-transparent outline-none text-sm font-bold text-center text-white"
+                          />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => changeGuests(String(Math.max(1, guestCount - 1)))}
+                            disabled={guestCount <= 1}
+                            aria-label={t('widget.guests_less')}
+                            data-testid="booking-widget-guests-minus"
+                            className="w-8 h-8 rounded-full border border-white/25 grid place-items-center text-white active:scale-95 disabled:opacity-30"
+                          >
+                            <Minus size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => changeGuests(String(Math.min(MAX_GUESTS, guestCount + 1)))}
+                            disabled={guestCount >= MAX_GUESTS}
+                            aria-label={t('widget.guests_more')}
+                            data-testid="booking-widget-guests-plus"
+                            className="w-8 h-8 rounded-full border border-white/25 grid place-items-center text-white active:scale-95 disabled:opacity-30"
+                          >
+                            <Plus size={14} />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Sticky Bottom Search CTA */}
-                <div className="p-4 bg-[#14201A] border-t border-white/10 flex-shrink-0">
-                  <button
-                    type="submit"
-                    data-testid="booking-widget-panel-search"
-                    className="w-full py-3.5 rounded-full bg-flag text-white font-extrabold flex items-center justify-center gap-2 active:scale-98 shadow-lg"
+                  {/* Sticky Bottom Search CTA */}
+                  <div
+                    className="p-4 bg-[#14201A] border-t border-white/10 flex-shrink-0"
+                    style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
                   >
-                    <Search size={18} /> {t('widget.search')}
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => submit()}
+                      data-testid="booking-widget-panel-search"
+                      className="w-full py-3.5 rounded-full bg-flag text-white font-extrabold flex items-center justify-center gap-2 active:scale-98 shadow-lg text-sm"
+                    >
+                      <Search size={18} /> {t('widget.search')}
+                    </button>
+                  </div>
                 </div>
-              </div>
-            </div>
-          )}
+              </div>,
+              document.body,
+            )}
         </div>
+
+        {destinationQuery.trim().length >= 3 && (
+          <div className="mt-3 md:mt-4">
+            <WeatherForecast query={destinationQuery} />
+          </div>
+        )}
       </div>
     </form>
   );

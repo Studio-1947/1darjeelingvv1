@@ -8,11 +8,10 @@ import SmartImg from '@/components/SmartImg';
 import Seo from '@/components/Seo';
 import BookingWidget from '@/components/BookingWidget';
 import HeroMedia from '@/components/HeroMedia';
-import WeatherWidget from '@/components/WeatherWidget';
 import RouteEstimator from '@/components/RouteEstimator';
 import { CATEGORIES } from '@/constants/categories';
 import { FeedCardSkeleton, SpotTileSkeleton, StayTileSkeleton, LoadingStatus, repeat } from '@/components/skeletons';
-import { Mountain, ArrowRight, Sparkles, TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Mountains as Mountain, ArrowRight, Compass, TrendUp as TrendingUp, CaretLeft as ChevronLeft, CaretRight as ChevronRight } from '@phosphor-icons/react';
 
 const RED_PANDA = 'https://images.unsplash.com/photo-1542880941-1abfea46bba6';
 const HERO_POSTER = 'https://images.unsplash.com/photo-1544735716-392fe2489ffa';
@@ -184,10 +183,6 @@ export default function Discover() {
           <div className="mt-7 md:mt-10">
             <BookingWidget />
           </div>
-
-          <div className="mt-6">
-            <WeatherWidget />
-          </div>
         </div>
       </section>
 
@@ -314,7 +309,7 @@ export default function Discover() {
       {/* scroll-mt clears the sticky header when paging jumps back up here. */}
       <section ref={feedTopRef} className="mx-auto max-w-6xl px-4 md:px-6 pt-10 md:pt-14 scroll-mt-[calc(var(--header-h)+1rem)]">
         <div className="flex items-center gap-2">
-          <Sparkles size={18} className="text-flag" />
+          <Compass size={20} className="text-pine" />
           <h2 className="font-display font-extrabold text-2xl md:text-3xl text-ink">{t('home.explore_darjeeling')}</h2>
         </div>
 

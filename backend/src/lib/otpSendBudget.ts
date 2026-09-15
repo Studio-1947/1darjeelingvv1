@@ -42,7 +42,7 @@ export function secondsUntilUtcMidnight(now: Date): number {
  * Written as a single INSERT ... ON CONFLICT DO UPDATE ... RETURNING so the read and the write
  * are one statement: two concurrent sends cannot both read 9, both write 10, and both proceed.
  * The increment happens before the comparison, which means a request that is over the limit still
- * advances the counter. That is harmless — it is already over — and it keeps the statement atomic.
+ * advances the counter. That is harmless  it is already over  and it keeps the statement atomic.
  */
 async function increment(scope: string, day: string): Promise<number> {
   const result = await db.execute(sql`
@@ -62,7 +62,7 @@ async function decrement(scope: string, day: string): Promise<void> {
 }
 
 /**
- * Yesterday's rows are dead weight — one per phone that ever requested a code. Swept on the first
+ * Yesterday's rows are dead weight  one per phone that ever requested a code. Swept on the first
  * send of each UTC day (the only moment the global counter comes back as 1), which is one delete
  * per day rather than a scheduled job to operate or a row that accumulates forever.
  */
@@ -85,7 +85,7 @@ export async function reserveOtpSend(
 ): Promise<OtpSendReservation> {
   const enabled = opts.enabled ?? RATE_LIMIT_ENABLED;
   if (!enabled) {
-    return { ok: true, release: async () => {} };
+    return { ok: true, release: async () => { } };
   }
 
   const now = opts.now ?? new Date();

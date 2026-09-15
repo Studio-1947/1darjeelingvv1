@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { X, Loader2 } from 'lucide-react';
+import { X, CircleNotch as Loader2 } from '@phosphor-icons/react';
 
 // 'spot' is deliberately absent: tourist spots are curated content authored only in the admin
 // console, and the backend rejects a spot created by anyone but an admin (backend/src/lib/spots.ts).

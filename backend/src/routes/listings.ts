@@ -28,7 +28,7 @@ const DEFAULT_PAGE_SIZE = 60;
  *
  * These columns land in a typed table (`price` is a NOT NULL integer, `title` is NOT NULL), so
  * without this a wrong-typed field became a driver error and a 500 on what is really a bad
- * request. `partial` is for PATCH/PUT, where an absent key means "leave it alone" — but a key
+ * request. `partial` is for PATCH/PUT, where an absent key means "leave it alone"  but a key
  * that *is* present still has to be valid, which is what stops a spot being blanked out through
  * the generic update route.
  */
@@ -142,10 +142,10 @@ const router = Router();
  *   post:
  *     summary: Create a listing
  *     description: >
- *       Callers must be an active provider (listing is created under their own provider id — any
+ *       Callers must be an active provider (listing is created under their own provider id  any
  *       provider_id in the body is ignored) or an admin (may set provider_id explicitly). Other
  *       authenticated users (e.g. tourists) are rejected. `type=spot` is admin-only: tourist spots
- *       are curated content, so a provider creating one gets a 403 — use /admin/spots instead.
+ *       are curated content, so a provider creating one gets a 403  use /admin/spots instead.
  *     tags: [Listings]
  *     security: [{ bearerAuth: [] }]
  *     requestBody:
@@ -163,7 +163,7 @@ const router = Router();
  *               price: { type: integer, default: 0 }
  *               image: { type: string }
  *               tags: { type: array, items: { type: string } }
- *               provider_id: { type: string, description: "Admin only — ignored for non-admin callers" }
+ *               provider_id: { type: string, description: "Admin only  ignored for non-admin callers" }
  *               extras: { type: object }
  *     responses:
  *       200:
@@ -216,7 +216,7 @@ router.get('/', async (req: Request, res: Response) => {
     ? Math.min(requestedLimit, MAX_PAGE_SIZE)
     : DEFAULT_PAGE_SIZE;
 
-  // Draft spots must never surface on a public read — this route has no auth, so the
+  // Draft spots must never surface on a public read  this route has no auth, so the
   // predicate is unconditional here and admins get their drafts from /admin/spots instead.
   const conditions = [publicSpotVisibility()];
   if (type) {
@@ -242,8 +242,8 @@ router.get('/', async (req: Request, res: Response) => {
   const providerIds = [...new Set(items.map(item => item.providerId))];
   const providerRows = providerIds.length > 0
     ? await db.select({ id: schema.providers.id, kycStatus: schema.providers.kycStatus, status: schema.providers.status })
-        .from(schema.providers)
-        .where(inArray(schema.providers.id, providerIds))
+      .from(schema.providers)
+      .where(inArray(schema.providers.id, providerIds))
     : [];
   const providerById = new Map(providerRows.map(p => [p.id, p]));
   const ratingByListing = await ratingsForListings(items.map(i => i.id));
@@ -315,10 +315,10 @@ router.get('/:id', async (req: Request, res: Response) => {
   }
 
   const [provider] = await db.select({
-      kycStatus: schema.providers.kycStatus,
-      status: schema.providers.status,
-      contactPhone: schema.providers.contactPhone,
-    })
+    kycStatus: schema.providers.kycStatus,
+    status: schema.providers.status,
+    contactPhone: schema.providers.contactPhone,
+  })
     .from(schema.providers)
     .where(eq(schema.providers.id, item.providerId))
     .limit(1);
@@ -429,7 +429,7 @@ router.post('/', authenticateToken, async (req: Request, res: Response) => {
 
 // Helper to verify listing management permissions
 async function canManageListing(req: Request, listing: typeof schema.listings.$inferSelect): Promise<boolean> {
-  // A spot is admin-owned content — a provider must not be able to edit or delete one even
+  // A spot is admin-owned content  a provider must not be able to edit or delete one even
   // if a spot row somehow carries their provider id (e.g. legacy data or a seeded row).
   if (listing.type === SPOT_TYPE) return canWriteSpots(req.user.role);
   if (req.user.role === 'admin') return true;

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Car, Navigation, Clock, ShieldCheck, ArrowRight, MapPin, Zap, Mountain } from 'lucide-react';
+import { Car, NavigationArrow as Navigation, Clock, ShieldCheck, ArrowRight, MapPin, Lightning as Zap, Mountains as Mountain } from '@phosphor-icons/react';
 import api from '@/lib/api';
 
 export interface RouteDetail {
@@ -269,31 +269,29 @@ export default function RouteEstimator() {
       </div>
 
       {/* Interactive Vehicle Selection Chips */}
-      <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+      <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
         <button
           type="button"
           onClick={() => setVehicleType('hatchback')}
-          className={`px-3 py-2.5 rounded-xl border flex items-center justify-between transition-all cursor-pointer ${
-            vehicleType === 'hatchback'
-              ? 'bg-white text-ink border-white font-extrabold shadow-md scale-[1.02]'
+          className={`px-3 py-2.5 rounded-xl border flex items-center justify-between transition-all cursor-pointer ${vehicleType === 'hatchback'
+              ? 'bg-white text-ink border-white font-extrabold shadow-md scale-[1.01]'
               : 'bg-white/5 text-white/80 border-white/10 hover:bg-white/10'
-          }`}
+            }`}
         >
-          <span>Hatchback / Sedan (Dzire)</span>
-          <span className="font-bold">Ref. ₹{info.hatchbackFare.toLocaleString('en-IN')}</span>
+          <span className="truncate mr-2">Hatchback / Sedan (Dzire)</span>
+          <span className="font-bold flex-shrink-0">Ref. ₹{info.hatchbackFare.toLocaleString('en-IN')}</span>
         </button>
 
         <button
           type="button"
           onClick={() => setVehicleType('suv')}
-          className={`px-3 py-2.5 rounded-xl border flex items-center justify-between transition-all cursor-pointer ${
-            vehicleType === 'suv'
-              ? 'bg-gold text-ink border-gold font-extrabold shadow-md scale-[1.02]'
+          className={`px-3 py-2.5 rounded-xl border flex items-center justify-between transition-all cursor-pointer ${vehicleType === 'suv'
+              ? 'bg-gold text-ink border-gold font-extrabold shadow-md scale-[1.01]'
               : 'bg-white/5 text-white/80 border-white/10 hover:bg-white/10'
-          }`}
+            }`}
         >
-          <span>SUV (Innova / Bolero)</span>
-          <span className="font-bold">Ref. ₹{info.suvFare.toLocaleString('en-IN')}</span>
+          <span className="truncate mr-2">SUV (Innova / Bolero)</span>
+          <span className="font-bold flex-shrink-0">Ref. ₹{info.suvFare.toLocaleString('en-IN')}</span>
         </button>
       </div>
 
@@ -306,7 +304,7 @@ export default function RouteEstimator() {
       <div className="mt-3 p-3 rounded-2xl bg-white/5 border border-white/10 text-white/80 text-xs flex items-start gap-2.5 leading-relaxed">
         <span className="text-gold font-bold flex-shrink-0 mt-0.5">ℹ️</span>
         <div>
-          <span className="font-extrabold text-white">Direct Local Connection:</span> 1 Darjeeling connects travelers directly with independent local drivers. Fares listed are standard local reference rates for guidance — not direct booking fees or Uber/Ola style automated cab dispatches.
+          <span className="font-extrabold text-white">Direct Local Connection:</span> 1 Darjeeling connects travelers directly with independent local drivers. Fares listed are standard local reference rates for guidance  not direct booking fees or Uber/Ola style automated cab dispatches.
         </div>
       </div>
 

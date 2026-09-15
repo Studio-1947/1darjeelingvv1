@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Bookmark, Share2, Star, X } from 'lucide-react';
+import { Bookmark, ShareNetwork as Share2, Star, X } from '@phosphor-icons/react';
 import { useAuth } from '@/context/AuthContext';
 
 /** The actions that require an account. Each maps to its own copy and icon. */

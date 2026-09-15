@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Navigation, Receipt } from 'lucide-react';
+import { NavigationArrow as Navigation, Receipt } from '@phosphor-icons/react';
 import { Screen, SectionHead, ALIGN_TEXT, ALIGN_BLOCK } from './primitives';
 import { BookingFlow } from './useBookingFlow';
 import { todayStr, addDays, isBadRange } from '@/lib/dates';
@@ -62,7 +62,7 @@ function PriceBreakdown({ item, unit, nights, guests }: {
             )}
           </span>
           <span className="font-bold text-ink whitespace-nowrap">
-            {needsDates ? '—' : `₹${stayTotal.toLocaleString('en-IN')}`}
+            {needsDates ? '' : `₹${stayTotal.toLocaleString('en-IN')}`}
           </span>
         </div>
       )}
@@ -149,14 +149,34 @@ export function ReserveSection({ item, unit, bookable, cta, booking, onOpenMaps 
                   </label>
                 </div>
               )}
-              <label className="block text-left">
-                <span className="text-xs font-semibold text-ink-soft">{t('booking.guests')}</span>
-                <input type="number" min="1" value={form.guests} onChange={(e) => updateForm({ guests: Number(e.target.value) || 1 })}
-                  aria-invalid={!!errors.guests} aria-describedby={errors.guests ? 'booking-error-guests' : undefined}
-                  data-testid="booking-guests"
-                  className={`mt-1 w-full px-3 py-3 rounded-xl border bg-white outline-none ${errors.guests ? 'border-flag' : 'border-[var(--line)]'}`} />
-                <FieldError id="booking-error-guests" message={errors.guests} />
-              </label>
+              {(() => {
+                const maxGuests = item.type === 'driver' ? (item.extras?.seats || 6) : (item.guests || item.extras?.capacity || 10);
+                return (
+                  <label className="block text-left">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-ink-soft">{t('booking.guests')}</span>
+                      <span className="text-[11px] text-ink-soft font-medium">
+                        Max {maxGuests} {item.type === 'driver' ? 'passengers' : 'guests'}
+                      </span>
+                    </div>
+                    <input
+                      type="number"
+                      min="1"
+                      max={maxGuests}
+                      value={form.guests}
+                      onChange={(e) => {
+                        const val = Math.min(maxGuests, Math.max(1, Number(e.target.value) || 1));
+                        updateForm({ guests: val });
+                      }}
+                      aria-invalid={!!errors.guests}
+                      aria-describedby={errors.guests ? 'booking-error-guests' : undefined}
+                      data-testid="booking-guests"
+                      className={`mt-1 w-full px-3 py-3 rounded-xl border bg-white outline-none ${errors.guests ? 'border-flag' : 'border-[var(--line)]'}`}
+                    />
+                    <FieldError id="booking-error-guests" message={errors.guests} />
+                  </label>
+                );
+              })()}
               <label className="block text-left">
                 <span className="text-xs font-semibold text-ink-soft">{t('booking.notes')}</span>
                 <textarea value={form.notes} onChange={(e) => updateForm({ notes: e.target.value })}
@@ -201,7 +221,10 @@ export function MobileStickyBar({ item, unit, bookable, cta, busy, onBook, onOpe
   const bare = !bookable && !(item.price > 0);
 
   return (
-    <div className="lg:hidden fixed bottom-16 inset-x-0 z-30 px-4 pb-3">
+    <div
+      className="lg:hidden fixed inset-x-0 z-30 px-4 pb-2"
+      style={{ bottom: 'calc(var(--bottom-nav-h) + 0.5rem)' }}
+    >
       {bare ? (
         <button
           onClick={onOpenMaps}

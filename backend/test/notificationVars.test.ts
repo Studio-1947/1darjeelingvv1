@@ -5,12 +5,12 @@ import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
  *
  * Meta (and MSG91's DLT templates before it) fill {{1}}, {{2}}, ... strictly by position, from
  * the ORDER of the keys in the `vars` object built here. Nothing at runtime checks that the
- * order matches the template that was approved — a mismatch sends successfully with the values
+ * order matches the template that was approved  a mismatch sends successfully with the values
  * in the wrong slots, so a host reads "New booking at Asha Rai" and no error appears anywhere.
  *
  * That makes key order load-bearing in a way it normally is not, and invisible to every other
  * test. This file is the guard. If you change an order here, change the template body in
- * docs/WHATSAPP_TEMPLATES.md too — and remember an approved template goes back for review.
+ * docs/WHATSAPP_TEMPLATES.md too  and remember an approved template goes back for review.
  */
 
 const recorded: Array<{ phone: string; template: string; vars: Record<string, string>; text: string }> = [];
@@ -64,7 +64,7 @@ function latest(template: string) {
 }
 
 describe('booking_confirmed_guest', () => {
-  it('passes name, listing, stay, host — in that order', async () => {
+  it('passes name, listing, stay, host  in that order', async () => {
     recorded.length = 0;
     await notifyBookingConfirmed({
       booking: booking(),
@@ -85,7 +85,7 @@ describe('booking_confirmed_guest', () => {
   });
 
   it('still fills the host slot with a whole sentence when the listing has no owner', async () => {
-    // {{4}} is a sentence, not a name — the template must give it its own line and add no
+    // {{4}} is a sentence, not a name  the template must give it its own line and add no
     // punctuation of its own, because both branches already end in a full stop.
     recorded.length = 0;
     await notifyBookingConfirmed({
@@ -101,7 +101,7 @@ describe('booking_confirmed_guest', () => {
 });
 
 describe('booking_confirmed_host', () => {
-  it('passes listing, guest, guest_phone, stay, guests — a different order from the guest message', async () => {
+  it('passes listing, guest, guest_phone, stay, guests  a different order from the guest message', async () => {
     recorded.length = 0;
     await notifyBookingConfirmed({
       booking: booking(),
@@ -118,7 +118,7 @@ describe('booking_confirmed_host', () => {
 });
 
 describe('booking_cancelled_guest', () => {
-  it('passes name, listing, stay, refund — in that order', async () => {
+  it('passes name, listing, stay, refund  in that order', async () => {
     recorded.length = 0;
     await notifyBookingCancelled(booking(), '+919876543210', 'Asha Rai', true);
 
@@ -139,7 +139,7 @@ describe('booking_cancelled_guest', () => {
 
 describe('the stay phrase reads correctly in the sentence it lands in', () => {
   // Every call site says "for {stay}", so the value must be a bare noun phrase. It used to carry
-  // its own "on", which produced "confirmed for on a date to be arranged" for taxi bookings —
+  // its own "on", which produced "confirmed for on a date to be arranged" for taxi bookings 
   // harmless-looking until it is frozen into an approved template.
   it('renders a full range', async () => {
     recorded.length = 0;

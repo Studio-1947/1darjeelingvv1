@@ -8,7 +8,7 @@ import { log } from '../config';
  * Removes the listings belonging to a user, whether they were created under the user's own id
  * or under one of their provider rows.
  *
- * `listings.provider_id` is plain text with no foreign key — it holds a user id for
+ * `listings.provider_id` is plain text with no foreign key  it holds a user id for
  * admin-created rows and a *provider* id for provider-created ones (see routes/listings.ts).
  * Deleting only `provider_id = <user id>` therefore missed every listing a provider had
  * actually published, leaving public, bookable rows pointing at an account that no longer
@@ -37,12 +37,12 @@ export async function deleteListingsOwnedBy(userId: string): Promise<string[]> {
 }
 
 /**
- * Removes the KYC documents a user uploaded — the objects, not just the rows.
+ * Removes the KYC documents a user uploaded  the objects, not just the rows.
  *
  * `kyc_documents` cascades from `providers`, so deleting an account already took the rows away.
  * Nothing took the FILES. Those live in the private bucket under `file_key`, which no database
  * cascade can reach, so every identity document ever uploaded outlived the account that
- * uploaded it — the one category of data where that matters most.
+ * uploaded it  the one category of data where that matters most.
  *
  * Must run BEFORE the provider rows are deleted: the file keys are only reachable through them,
  * and once the cascade fires there is nothing left to look the objects up by.
