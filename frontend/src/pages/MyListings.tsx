@@ -7,7 +7,6 @@ import { Storefront as Store, Plus, Trash as Trash2, Pencil, ArrowSquareOut as E
 import ListingFormModal from '@/components/ListingFormModal';
 import EditListingModal from '@/components/provider/dashboard/EditListingModal';
 import { useSeo } from '@/components/Seo';
-import { MobileScreen, Touch } from '@/components/mobile';
 
 export default function MyListings() {
   const { t } = useTranslation();
@@ -136,8 +135,7 @@ export default function MyListings() {
   const isBusinessActive = provider.status === 'active';
 
   return (
-    <>
-    <div className="hidden lg:block mx-auto max-w-6xl px-4 md:px-6 py-6 md:py-10 pb-24 lg:pb-12">
+    <div className="mx-auto max-w-6xl px-4 md:px-6 py-6 md:py-10 pb-24 lg:pb-12">
       {/* Header Block */}
       <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
         <div>
@@ -298,66 +296,5 @@ export default function MyListings() {
         onSubmit={handleSaveListing}
       />
     </div>
-
-    {/* ============================================================= */}
-    {/* MOBILE MY LISTINGS (< lg) - matches RN's listings.tsx: a plain  */}
-    {/* list (photo/title/location/price/edit/delete) over the same    */}
-    {/* CRUD already built for desktop - no new business logic.        */}
-    {/* ============================================================= */}
-    <MobileScreen tone="light" className="block lg:hidden pb-[calc(var(--bottom-nav-h)+1rem)]">
-      <div className="px-[var(--mu-gutter)] pt-6">
-        <div className="flex items-center justify-between gap-3">
-          <h1 className="font-[family-name:var(--mu-font-display)] font-black text-2xl text-[var(--mu-ink)] tracking-tight">
-            {t('mobileProviderAccount.row_listings')}
-          </h1>
-          <Touch
-            onClick={() => setListingModal({ open: true, editing: null })}
-            data-testid="add-listing-cta-mobile"
-            className="flex items-center gap-1 px-3.5 py-2 rounded-[var(--mu-r-chip)]"
-            style={{ background: 'var(--mu-green)' }}
-          >
-            <Plus size={14} className="text-[var(--mu-cream)]" />
-            <span className="text-xs font-bold text-[var(--mu-cream)]">{t('mobileProviderAccount.add_listing')}</span>
-          </Touch>
-        </div>
-
-        {listings.length === 0 ? (
-          <div className="mt-8 text-center">
-            <p className="text-sm text-[var(--mu-text-muted)]">{t('category.empty')}</p>
-          </div>
-        ) : (
-          <div className="mt-4 space-y-2.5">
-            {listings.map((l) => (
-              <div key={l.id} data-testid={`my-listing-card-mobile-${l.id}`} className="rounded-[var(--mu-r-card-xs)] border border-[var(--mu-border)] bg-[var(--mu-surface)] overflow-hidden flex gap-3 p-3">
-                <div className="w-16 h-16 rounded-[var(--mu-r-tile-sm)] overflow-hidden bg-[var(--mu-canvas)] flex-shrink-0">
-                  {l.image ? <img src={l.image} alt="" className="w-full h-full object-cover" /> : (
-                    <div className="w-full h-full grid place-items-center text-[var(--mu-text-faint)]"><Store size={20} /></div>
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-bold text-[var(--mu-ink)] truncate">{l.title}</div>
-                  <div className="mt-0.5 flex items-center gap-1 text-xs text-[var(--mu-text-muted)] truncate">
-                    <MapPin size={11} className="flex-shrink-0" /> <span className="truncate">{l.location}</span>
-                  </div>
-                  {l.price > 0 && (
-                    <div className="mt-1 text-sm font-extrabold text-[var(--mu-green)]">₹{l.price.toLocaleString('en-IN')}</div>
-                  )}
-                  <div className="mt-2 flex items-center gap-3">
-                    <Link to={`/listing/${l.id}`} className="text-xs font-bold" style={{ color: 'var(--mu-green)' }}>{t('mobileProviderAccount.view_listing')}</Link>
-                    <Touch onClick={() => setSelectedListing(l)} data-testid={`edit-listing-mobile-${l.id}`} className="flex items-center gap-1 text-xs font-bold text-[var(--mu-text-muted)]">
-                      <Pencil size={11} /> {t('common.edit')}
-                    </Touch>
-                    <Touch onClick={() => handleDeleteListing(l.id)} data-testid={`delete-listing-mobile-${l.id}`} className="flex items-center gap-1 text-xs font-bold" style={{ color: 'var(--mu-danger)' }}>
-                      <Trash2 size={11} /> {t('common.delete')}
-                    </Touch>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </MobileScreen>
-    </>
   );
 }

@@ -12,21 +12,14 @@ import Support from '@/pages/Support';
 import Donate from '@/pages/Donate';
 import Discover from '@/pages/Discover';
 import Category from '@/pages/Category';
-import Nature from '@/pages/Nature';
-import Culture from '@/pages/Culture';
-import Eat from '@/pages/Eat';
 import ListingDetail from '@/pages/ListingDetail';
 import Login from '@/pages/Login';
 import ProviderOnboard from '@/pages/ProviderOnboard';
 import ProviderDashboard from '@/pages/ProviderDashboard';
-import ProviderAccount from '@/pages/ProviderAccount';
-import ProviderChats from '@/pages/ProviderChats';
 import TouristDashboard from '@/pages/TouristDashboard';
 import MyTrips from '@/pages/MyTrips';
 import MyListings from '@/pages/MyListings';
 import Saved from '@/pages/Saved';
-import Refer from '@/pages/Refer';
-import Notifications from '@/pages/Notifications';
 import Responsible from '@/pages/Responsible';
 import About from '@/pages/About';
 import Privacy from '@/pages/Privacy';
@@ -71,9 +64,6 @@ export default function App() {
                   <Route path="/cafes" element={<Category typeOverride="cafe" />} />
                   <Route path="/events" element={<Category typeOverride="event" />} />
                   <Route path="/biodiversity" element={<Category typeOverride="biodiversity" />} />
-                  <Route path="/nature" element={<Nature />} />
-                  <Route path="/culture" element={<Culture />} />
-                  <Route path="/eat" element={<Eat />} />
                   <Route path="/search" element={<Category typeOverride={undefined} />} />
                   <Route path="/listing/:id" element={<ListingDetail />} />
                   <Route path="/login" element={<Login />} />
@@ -81,14 +71,10 @@ export default function App() {
                   <Route path="/donate" element={<Donate />} />
                   <Route path="/provider/onboard" element={<ProviderOnboard />} />
                   <Route path="/provider/dashboard" element={<ProviderDashboard />} />
-                  <Route path="/provider/account" element={<ProviderAccount />} />
-                  <Route path="/provider/chats" element={<ProviderChats />} />
                   <Route path="/dashboard" element={<TouristDashboard />} />
                   <Route path="/my-trips" element={<MyTrips />} />
                   <Route path="/my-listings" element={<MyListings />} />
                   <Route path="/saved" element={<Saved />} />
-                  <Route path="/refer" element={<Refer />} />
-                  <Route path="/notifications" element={<Notifications />} />
                   <Route path="/responsible" element={<Responsible />} />
                   <Route path="/about" element={<About />} />
                   <Route path="/privacy" element={<Privacy />} />

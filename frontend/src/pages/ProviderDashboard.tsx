@@ -17,7 +17,6 @@ import type { KycProfile } from '@/lib/kyc';
 import AvatarUploader from '@/components/provider/AvatarUploader';
 import { uploadImage } from '@/lib/uploadImage';
 import { useSeo } from '@/components/Seo';
-import { MobileScreen, MobileSheet, Touch, Slab } from '@/components/mobile';
 
 // The edit-listing tile names what the provider is actually configuring. Only
 // a homestay has a "stay"; a driver's listing is a profile of themselves, their
@@ -44,7 +43,6 @@ export default function ProviderDashboard() {
   const [loading, setLoading] = useState(true);
   const [listingModal, setListingModal] = useState<{ open: boolean; editing: any | null }>({ open: false, editing: null });
   const [kycProfile, setKycProfile] = useState<KycProfile | null>(null);
-  const [mobileKycOpen, setMobileKycOpen] = useState(false);
 
   const loadDashboard = React.useCallback(async () => {
     try {
@@ -135,16 +133,6 @@ export default function ProviderDashboard() {
     await loadDashboard();
   };
 
-  // Mobile-only: PATCH /bookings/:id/confirm is a real, working endpoint
-  // (moves pending_payment -> accepted - the host agreeing to take the
-  // booking, before the guest's own payment moves it to confirmed) that the
-  // existing desktop BookingCard never exposed a UI for - same pattern as
-  // Phase 5's delete-account/referral discoveries.
-  const handleAcceptBooking = async (bookingId: string) => {
-    await api.patch(`/bookings/${bookingId}/confirm`);
-    await loadDashboard();
-  };
-
   if (authLoading || loading) return <div className="p-10 text-center text-ink-soft">{t('common.loading')}</div>;
 
   if (!provider) {
@@ -161,13 +149,9 @@ export default function ProviderDashboard() {
   }
 
   const active = provider.status === 'active';
-  // "Needs action" for the mobile dashboard, matching RN's pendingRequests: a
-  // booking the host hasn't accepted yet.
-  const needsAction = bookings.filter((b: any) => b.status === 'pending_payment');
 
   return (
-    <>
-    <div className="hidden lg:block mx-auto max-w-6xl px-4 md:px-6 py-6 md:py-10">
+    <div className="mx-auto max-w-6xl px-4 md:px-6 py-6 md:py-10">
       {/* Header block */}
       <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
         <div>
@@ -372,79 +356,6 @@ export default function ProviderDashboard() {
         onSubmit={handleSaveListing}
       />
     </div>
-
-    {/* ============================================================= */}
-    {/* MOBILE PROVIDER DASHBOARD (< lg) - matches RN's dashboard.tsx    */}
-    {/* structurally, but keeps only real data. RN's own occupancy%/     */}
-    {/* earnings/ratings/seat-tracking/scan-chart/calendar/review-quote  */}
-    {/* stats are hardcoded constants with zero backend support (see the */}
-    {/* Phase 6 plan) - none of that is ported. Only the real pending-   */}
-    {/* request count, real bookings, and real KYC completion% show up.  */}
-    {/* ============================================================= */}
-    <MobileScreen tone="light" className="block lg:hidden pb-[calc(var(--bottom-nav-h)+1rem)]">
-      <div className="px-[var(--mu-gutter)] pt-6">
-        <h1 className="font-[family-name:var(--mu-font-display)] font-black text-2xl text-[var(--mu-ink)] tracking-tight">
-          {provider.business_name}
-        </h1>
-        <p className="mt-0.5 text-xs text-[var(--mu-text-muted)]">
-          {t(`categories.${provider.business_type}`, { defaultValue: provider.business_type })} · {provider.location}
-        </p>
-
-        <div className="mt-3.5 rounded-[var(--mu-r-card)] px-[17px] py-3.5" style={{ background: 'var(--mu-ink)' }}>
-          <span className="font-[family-name:var(--mu-font-mono)] text-[10px] font-semibold uppercase tracking-wide text-[var(--mu-sage)]">
-            {active ? t('mobileProviderDashboard.plan_active') : t('mobileProviderDashboard.plan_inactive')}
-          </span>
-          <div className="mt-1 font-[family-name:var(--mu-font-display)] font-black text-xl" style={{ color: 'var(--mu-lime)' }}>
-            {needsAction.length} {t('mobileProviderDashboard.new_requests')}
-          </div>
-        </div>
-
-        {kycProfile && (
-          <Touch onClick={() => setMobileKycOpen(true)} className="mt-2.5 w-full flex items-center gap-3 rounded-[var(--mu-r-card-xs)] border border-[var(--mu-border)] bg-[var(--mu-surface)] px-4 py-3">
-            <span className="flex-1 text-left text-sm font-semibold text-[var(--mu-ink)]">{t('mobileProviderDashboard.kyc_teaser')}</span>
-            <span className="text-xs font-bold text-[var(--mu-green)]">
-              {Math.round(kycProfile.completion_percent || 0)}% {t('mobileProviderDashboard.kyc_complete')} ›
-            </span>
-          </Touch>
-        )}
-      </div>
-
-      <div className="mt-4 px-[var(--mu-gutter)]">
-        <Slab>{t('mobileProviderDashboard.needs_action')}</Slab>
-        <div className="mt-2 space-y-2.5">
-          {needsAction.length === 0 ? (
-            <p className="py-6 text-center text-sm text-[var(--mu-text-muted)]">{t('mobileProviderDashboard.no_requests')}</p>
-          ) : (
-            needsAction.map((b: any) => (
-              <div key={b.id} className="rounded-[var(--mu-r-card-xs)] border border-[var(--mu-border)] bg-[var(--mu-surface)] px-4 py-3.5">
-                <div className="text-sm font-bold text-[var(--mu-ink)]">{b.listing?.title || b.listing_title}</div>
-                <div className="mt-0.5 text-xs text-[var(--mu-text-muted)]">
-                  {b.customer?.name || t('pd.guest_fallback')} · {b.customer?.phone}
-                </div>
-                {b.check_in && (
-                  <div className="mt-1 text-xs text-[var(--mu-text-faint)]">
-                    {b.check_in}{b.check_out && ` → ${b.check_out}`}
-                  </div>
-                )}
-                <div className="mt-3 flex gap-2">
-                  <Touch onClick={() => handleAcceptBooking(b.id)} className="flex-1 py-2 rounded-[var(--mu-r-chip)] text-center" style={{ background: 'var(--mu-green)' }}>
-                    <span className="text-xs font-bold text-[var(--mu-cream)]">{t('mobileProviderDashboard.accept')}</span>
-                  </Touch>
-                  <Touch onClick={() => handleCancelBooking(b.id)} className="flex-1 py-2 rounded-[var(--mu-r-chip)] border border-[var(--mu-border-strong)] text-center">
-                    <span className="text-xs font-bold text-[var(--mu-text-body)]">{t('mobileProviderDashboard.decline')}</span>
-                  </Touch>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-
-      <MobileSheet open={mobileKycOpen} onClose={() => setMobileKycOpen(false)} title={t('mobileProviderDashboard.kyc_teaser')}>
-        <KycSection onProfileChange={setKycProfile} />
-      </MobileSheet>
-    </MobileScreen>
-    </>
   );
 }
 

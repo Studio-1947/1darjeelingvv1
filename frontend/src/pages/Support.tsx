@@ -4,10 +4,9 @@ import { useTranslation } from 'react-i18next';
 import { HandHeart as HeartHandshake, Check } from '@phosphor-icons/react';
 import { useAuth } from '@/context/AuthContext';
 import { createPaymentOrder, completeMockPayment, payWithRazorpay } from '@/lib/api';
-import { needsSupport, isSupportActive } from '@/lib/support';
+import { needsSupport } from '@/lib/support';
 import MockPaymentModal from '@/components/MockPaymentModal';
 import { useSeo } from '@/components/Seo';
-import { MobileScreen, PrimaryButton as MobilePrimaryButton } from '@/components/mobile';
 
 export default function Support() {
   const { t } = useTranslation();
@@ -129,8 +128,7 @@ export default function Support() {
   };
 
   return (
-    <>
-    <div className="hidden lg:block mx-auto max-w-md px-4 md:px-8 py-8 md:py-14">
+    <div className="mx-auto max-w-md px-4 md:px-8 py-8 md:py-14">
       <div className="mist-panel p-6 md:p-8" data-testid="support-screen">
         <div className="text-center">
           <div className="mx-auto w-14 h-14 rounded-2xl bg-pine text-white grid place-items-center">
@@ -192,53 +190,5 @@ export default function Support() {
         prefill={{ upi: `${(user.name || 'traveller').toLowerCase().replace(/\s+/g, '')}@ybl` }}
       />
     </div>
-
-    {/* ============================================================= */}
-    {/* MOBILE PASS (< lg) - matches RN's pass.tsx. Reuses startPayment/ */}
-    {/* finishMockPayment/busy/err/payModal entirely unchanged - this   */}
-    {/* page only renders when needsSupport(user) is true (the guard    */}
-    {/* above redirects otherwise), so there's no "already active"     */}
-    {/* state to represent here - Profile's Pass card already shows    */}
-    {/* that. */}
-    {/* ============================================================= */}
-    <MobileScreen tone="ink" className="block lg:hidden min-h-screen flex flex-col pb-[calc(var(--bottom-nav-h)+1rem)]">
-      <div className="flex-1 px-6 pt-8">
-        <span className="inline-block px-3 py-1 rounded-full bg-[var(--mu-cream)] text-[10px] font-bold tracking-wider text-[var(--mu-green-deep)]">
-          {t('mobilePass.tag')}
-        </span>
-        <h1 className="mt-3.5 font-[family-name:var(--mu-font-display)] font-black text-[32px] leading-[1.05] text-[var(--mu-cream)] tracking-tight">
-          {t('mobileHome.pass_title_pre')} <span style={{ color: 'var(--mu-lime)' }}>{t('mobileHome.pass_title_price')}</span>
-        </h1>
-
-        <div className="mt-5 rounded-[var(--mu-r-hero)] px-5 py-[18px]" style={{ background: 'var(--mu-green-deep)', border: '1px solid var(--mu-lime-glow)' }}>
-          <div className="flex items-baseline justify-between">
-            <span className="font-[family-name:var(--mu-font-display)] font-bold text-[15px] text-[var(--mu-cream)]">{t('mobilePass.name')}</span>
-            <span className="font-[family-name:var(--mu-font-display)] font-black text-2xl" style={{ color: 'var(--mu-lime)' }}>
-              ₹12<span className="ml-0.5 text-xs font-semibold text-[var(--mu-text-on-dark-muted)]">/year</span>
-            </span>
-          </div>
-          <div className="mt-3.5 space-y-2">
-            {[t('mobilePass.perk1'), t('mobilePass.perk2'), t('mobilePass.perk3'), t('mobilePass.perk4')].map((perk) => (
-              <div key={perk} className="text-[13px] text-[var(--mu-text-on-dark-soft)]">✓ {perk}</div>
-            ))}
-          </div>
-        </div>
-
-        <p className="mt-3.5 text-[11.5px] leading-relaxed text-[var(--mu-text-on-dark-faint)]">{t('mobilePass.footer')}</p>
-      </div>
-
-      <div className="px-6 pb-8 pt-2">
-        {err && <p className="mb-2.5 text-[12.5px] text-center" style={{ color: 'var(--mu-orange)' }}>{err}</p>}
-        <MobilePrimaryButton
-          onClick={startPayment}
-          disabled={busy}
-          className="w-full !bg-[var(--mu-lime)] !text-[var(--mu-lime-ink)]"
-        >
-          {busy ? t('mobilePass.buying') : t('mobilePass.cta')}
-        </MobilePrimaryButton>
-        <p className="mt-2.5 text-xs text-center text-[var(--mu-text-on-dark-faint)]">{t('mobileHome.pass_browse_free')}</p>
-      </div>
-    </MobileScreen>
-    </>
   );
 }

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Heart, ShareNetwork as Share2, MapTrifold as Map, Check, Calendar, X, Copy, ArrowSquareOut as ExternalLink } from '@phosphor-icons/react';
 import { useAuth } from '@/context/AuthContext';
@@ -8,7 +8,6 @@ import api from '@/lib/api';
 import ListingCard from '@/components/ListingCard';
 import TripPlannerModal from '@/components/TripPlannerModal';
 import { useSeo } from '@/components/Seo';
-import { MobileScreen, MobilePhoto } from '@/components/mobile';
 
 /**
  * Wishlist / Saved places with shareable Trip Plan itinerary feature.
@@ -80,8 +79,7 @@ export default function Saved() {
   const spotsAndCafes = items.filter((i) => i.type !== 'homestay' && i.type !== 'driver');
 
   return (
-    <>
-    <div className="hidden lg:block mx-auto max-w-6xl px-4 md:px-6 py-6 md:py-8 pb-24 lg:pb-12">
+    <div className="mx-auto max-w-6xl px-4 md:px-6 py-6 md:py-8 pb-24 lg:pb-12">
       <div className="flex flex-wrap items-end justify-between gap-4 mb-6">
         <div>
           <div className="text-[11px] font-bold uppercase tracking-widest text-flag flex items-center gap-1.5">
@@ -201,40 +199,5 @@ export default function Saved() {
         savedTitles={items.map((i) => i.title)}
       />
     </div>
-
-    {/* ============================================================= */}
-    {/* MOBILE SAVED (< lg) - matches RN's saved.tsx exactly: a plain   */}
-    {/* row list only. The share/itinerary-builder features above stay */}
-    {/* desktop-only, per the Phase 5 decision. */}
-    {/* ============================================================= */}
-    <MobileScreen tone="light" className="block lg:hidden pb-[calc(var(--bottom-nav-h)+1rem)]">
-      <div className="px-[var(--mu-gutter)] pt-6">
-        <h1 className="font-[family-name:var(--mu-font-display)] font-black text-2xl text-[var(--mu-ink)] tracking-tight">
-          {t('saved.title')}
-        </h1>
-      </div>
-
-      <div className="mt-3.5 px-[var(--mu-gutter)] space-y-2.5">
-        {items.length === 0 ? (
-          <p className="py-10 text-center text-sm text-[var(--mu-text-muted)]">{t('saved.empty')}</p>
-        ) : (
-          items.map((item) => (
-            <Link key={item.id} to={`/listing/${item.id}`} className="block">
-              <div className="flex gap-3 items-center rounded-[var(--mu-r-card-xs)] border border-[var(--mu-border)] bg-[var(--mu-surface)] p-2.5">
-                <MobilePhoto src={item.image} alt={item.title} radius="var(--mu-r-tile)" className="w-[84px] h-[84px] flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <div className="font-[family-name:var(--mu-font-display)] font-bold text-sm text-[var(--mu-ink)] truncate">{item.title}</div>
-                  <div className="mt-0.5 text-[11.5px] text-[var(--mu-text-muted)] truncate">{item.location}</div>
-                  {item.price > 0 && (
-                    <div className="mt-1 font-bold text-[13px]" style={{ color: 'var(--mu-green)' }}>₹{item.price}</div>
-                  )}
-                </div>
-              </div>
-            </Link>
-          ))
-        )}
-      </div>
-    </MobileScreen>
-    </>
   );
 }

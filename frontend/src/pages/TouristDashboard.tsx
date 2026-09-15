@@ -3,11 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
-import { useFavorites } from '@/context/FavoritesContext';
-import { isSupportActive } from '@/lib/support';
 import { SignOut as LogOut, Storefront as Store, Compass, Phone, ArrowRight, Ticket, Calendar, XCircle, CircleNotch as Loader2 } from '@phosphor-icons/react';
 import { useSeo } from '@/components/Seo';
-import { MobileScreen, Monogram, Touch, PrimaryButton as MobilePrimaryButton, MobileSheet } from '@/components/mobile';
 
 function StatusPill({ status }) {
   const { t } = useTranslation();
@@ -30,24 +27,8 @@ export default function TouristDashboard() {
   const [loading, setLoading] = useState(true);
   const [confirmingId, setConfirmingId] = useState<string | null>(null); // booking awaiting cancel confirmation
   const [busyId, setBusyId] = useState<string | null>(null);
-  const { ids: savedIds } = useFavorites();
-  // Mobile-only: RN's profile.tsx has a real delete-account action this app
-  // never exposed a UI for (DELETE /users/me already works server-side).
-  const [deleteOpen, setDeleteOpen] = useState(false);
-  const [deleteBusy, setDeleteBusy] = useState(false);
 
   const loadBookings = useCallback(() => api.get('/bookings/me').then((r) => setBookings(r.data.items || [])), []);
-
-  const deleteAccount = async () => {
-    setDeleteBusy(true);
-    try {
-      await api.delete('/users/me');
-      logout();
-      nav('/');
-    } finally {
-      setDeleteBusy(false);
-    }
-  };
 
   useEffect(() => {
     if (authLoading) return;
@@ -72,8 +53,7 @@ export default function TouristDashboard() {
   const past = bookings.filter((b) => b.check_in && new Date(b.check_in) < new Date(new Date().setHours(0, 0, 0, 0)));
 
   return (
-    <>
-    <div className="hidden lg:block mx-auto max-w-6xl px-4 md:px-6 py-6 md:py-10">
+    <div className="mx-auto max-w-6xl px-4 md:px-6 py-6 md:py-10">
       {/* Profile header */}
       <div className="flex items-center gap-4 md:gap-5 mb-8">
         <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-gradient-to-br from-pine to-pine-dark text-white grid place-items-center font-display font-extrabold text-3xl">
@@ -205,111 +185,5 @@ export default function TouristDashboard() {
         </div>
       </div>
     </div>
-
-    {/* ============================================================= */}
-    {/* MOBILE PROFILE (< lg) - matches RN's profile.tsx: identity,     */}
-    {/* Pass card, stats, rows, provider prompt, sign out + a new       */}
-    {/* delete-account action (DELETE /users/me already worked, had no  */}
-    {/* UI anywhere until now). Language row is dropped - English-only. */}
-    {/* ============================================================= */}
-    <MobileScreen tone="light" className="block lg:hidden pb-[calc(var(--bottom-nav-h)+1rem)]">
-      <div className="px-[var(--mu-gutter)] pt-6">
-        <div className="flex items-center gap-3.5">
-          <Monogram label={user.name || '?'} className="w-[62px] h-[62px] text-2xl flex-shrink-0" />
-          <div className="flex-1 min-w-0">
-            <div className="font-[family-name:var(--mu-font-display)] font-black text-xl text-[var(--mu-ink)] truncate">
-              {user.name || t('dashboard.traveller')}
-            </div>
-            <div className="text-xs text-[var(--mu-text-muted)]">{user.phone}</div>
-          </div>
-        </div>
-
-        <Link to="/support" className="block mt-3.5">
-          <div className="rounded-[var(--mu-r-card)] px-[17px] py-3.5" style={{ background: 'var(--mu-ink)' }}>
-            <span className="font-[family-name:var(--mu-font-mono)] text-[10px] font-semibold uppercase tracking-wide text-[var(--mu-sage)]">
-              {isSupportActive(user) ? t('mobileProfile.pass_active') : t('mobileProfile.pass_inactive')}
-            </span>
-            {isSupportActive(user) ? (
-              <div className="mt-1 font-[family-name:var(--mu-font-display)] font-black text-base text-[var(--mu-lime)]">
-                {t('mobileProfile.member_till')} {new Date(user.supportExpiresAt).toLocaleDateString()}
-              </div>
-            ) : (
-              <div className="mt-1 font-[family-name:var(--mu-font-display)] font-black text-base text-[var(--mu-lime)]">
-                {t('mobileProfile.pass_get_it')}
-              </div>
-            )}
-          </div>
-        </Link>
-
-        <div className="mt-2.5 flex gap-2.5">
-          <Link to="/my-trips" className="flex-1">
-            <div className="rounded-[var(--mu-r-card-xs)] border border-[var(--mu-border)] bg-[var(--mu-surface)] py-2.5 text-center">
-              <div className="font-[family-name:var(--mu-font-display)] font-black text-[17px] text-[var(--mu-green)]">{bookings.length}</div>
-              <div className="text-[10.5px] text-[var(--mu-text-muted)]">{t('mobileProfile.stat_trips')}</div>
-            </div>
-          </Link>
-          <Link to="/saved" className="flex-1">
-            <div className="rounded-[var(--mu-r-card-xs)] border border-[var(--mu-border)] bg-[var(--mu-surface)] py-2.5 text-center">
-              <div className="font-[family-name:var(--mu-font-display)] font-black text-[17px] text-[var(--mu-green)]">{savedIds.size}</div>
-              <div className="text-[10.5px] text-[var(--mu-text-muted)]">{t('mobileProfile.row_saved')}</div>
-            </div>
-          </Link>
-        </div>
-
-        <div className="mt-2.5 rounded-[var(--mu-r-card)] border border-[var(--mu-border)] bg-[var(--mu-surface)] overflow-hidden">
-          <Link to="/refer" className="flex items-center px-4 py-3 border-b border-[var(--mu-border)]">
-            <span className="flex-1 text-sm font-semibold text-[var(--mu-ink)]">{t('mobileProfile.row_refer')}</span>
-            <span className="text-xs font-bold" style={{ color: 'var(--mu-orange)' }}>›</span>
-          </Link>
-          <Link to="/saved" className="flex items-center px-4 py-3 border-b border-[var(--mu-border)]">
-            <span className="flex-1 text-sm font-semibold text-[var(--mu-ink)]">{t('mobileProfile.row_saved')}</span>
-            <span className="text-xs text-[var(--mu-text-faint)]">{savedIds.size} ›</span>
-          </Link>
-          <Link to="/terms" className="flex items-center px-4 py-3">
-            <span className="flex-1 text-sm font-semibold text-[var(--mu-ink)]">{t('mobileProfile.row_legal')}</span>
-            <span className="text-xs text-[var(--mu-text-faint)]">›</span>
-          </Link>
-        </div>
-
-        <Link
-          to={user.role === 'provider' ? '/provider/dashboard' : '/provider/onboard'}
-          className="block mt-2.5 rounded-[var(--mu-r-card-sm)] px-4 py-3"
-          style={{ background: 'var(--mu-green-tint)' }}
-        >
-          <div className="flex items-center gap-3">
-            <span className="text-lg">🏔</span>
-            <div className="flex-1 min-w-0">
-              <div className="text-[13px] font-bold" style={{ color: 'var(--mu-green)' }}>
-                {user.role === 'provider' ? t('mobileProfile.switch_to_provider') : t('mobileProfile.provider_prompt_title')}
-              </div>
-              <div className="text-[11.5px] text-[var(--mu-text-body)]">{t('mobileProfile.provider_prompt_body')}</div>
-            </div>
-            <span className="font-black text-[15px]" style={{ color: 'var(--mu-green)' }}>→</span>
-          </div>
-        </Link>
-
-        <div className="mt-6 pb-2 space-y-3.5">
-          <Touch onClick={() => { logout(); nav('/'); }} className="w-full text-center text-sm font-bold" style={{ color: 'var(--mu-green)' }}>
-            {t('mobileProfile.sign_out')}
-          </Touch>
-          <Touch onClick={() => setDeleteOpen(true)} className="w-full text-center text-xs text-[var(--mu-text-faint)]">
-            {t('mobileProfile.delete_account')}
-          </Touch>
-        </div>
-      </div>
-
-      <MobileSheet open={deleteOpen} onClose={() => setDeleteOpen(false)} title={t('mobileProfile.delete_account_title')}>
-        <p className="text-sm text-[var(--mu-text-body)]">{t('mobileProfile.delete_account_body')}</p>
-        <div className="mt-5 space-y-2.5">
-          <MobilePrimaryButton onClick={deleteAccount} disabled={deleteBusy} className="w-full !bg-[var(--mu-danger)]">
-            {deleteBusy ? t('mobileProfile.deleting_account') : t('mobileProfile.delete_account_confirm')}
-          </MobilePrimaryButton>
-          <Touch onClick={() => setDeleteOpen(false)} disabled={deleteBusy} className="w-full text-center text-sm font-semibold text-[var(--mu-text-muted)]">
-            {t('mobileProfile.cancel')}
-          </Touch>
-        </div>
-      </MobileSheet>
-    </MobileScreen>
-    </>
   );
 }
