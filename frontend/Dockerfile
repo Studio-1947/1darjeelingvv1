@@ -11,7 +11,7 @@ RUN yarn install --frozen-lockfile || yarn install || npm install
 # Copy application files
 COPY . .
 
-# Expose the port CRA/Craco uses by default
+# Expose the Vite development-server port
 EXPOSE 3000
 
 # Set environment variables for development

@@ -24,4 +24,18 @@ export default defineConfig({
     environment: 'node',
     globals: true,
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return undefined;
+          if (id.includes('@sentry')) return 'vendor-monitoring';
+          if (id.includes('leaflet')) return 'vendor-maps';
+          if (id.includes('framer-motion') || id.includes('gsap') || id.includes('/ogl/')) return 'vendor-motion';
+          if (id.includes('@radix-ui') || id.includes('lucide-react')) return 'vendor-ui';
+          return undefined;
+        },
+      },
+    },
+  },
 });

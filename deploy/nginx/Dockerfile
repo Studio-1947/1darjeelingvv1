@@ -24,7 +24,7 @@ COPY frontend/ .
 # same-origin '/api' base, which app.conf proxies to the backend. Setting it to
 # an absolute URL here would hard-code the public hostname into the bundle.
 #
-# The Sentry DSN, by contrast, HAS to be a build arg. Create React App inlines REACT_APP_*
+# The Sentry DSN, by contrast, HAS TO be a build arg. Vite inlines VITE_*
 # variables into the bundle at build time, so it cannot be read from the container's environment
 # at runtime like every backend setting is. Supplied by the compose files from the stack's .env;
 # absent, the frontend simply reports nothing. A DSN is not a secret — it is a write-only
