@@ -7,6 +7,7 @@ import BasicInfoStep from '@/components/provider/onboard/BasicInfoStep';
 import DriverForm from '@/components/provider/onboard/DriverForm';
 import HomestayForm from '@/components/provider/onboard/HomestayForm';
 import CafeShopForm from '@/components/provider/onboard/CafeShopForm';
+import MobileProviderOnboardScreen from '@/components/mobile/ProviderOnboardScreen';
 import { useSeo } from '@/components/Seo';
 
 /**
@@ -28,7 +29,8 @@ export default function ProviderOnboard() {
 
   return (
     <>
-      {stepScreen}
+      <div className="hidden lg:block">{stepScreen}</div>
+      <MobileProviderOnboardScreen o={o} />
 
       <MockPaymentModal
         open={!!o.payModal}

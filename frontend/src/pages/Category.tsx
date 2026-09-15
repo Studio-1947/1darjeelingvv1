@@ -13,6 +13,7 @@ import { routesCoverTrip } from '@/lib/routeFares';
 import { readTrip, hasTrip, tripSuffix } from '@/lib/tripParams';
 import { cardCtaKey } from '@/lib/cardCta';
 import { formatDay, formatRange } from '@/lib/dates';
+import { MobileStaysScreen, MobileRidesScreen } from '@/components/mobile';
 
 const TYPE_MAP = {
   spots: 'spot',
@@ -204,8 +205,15 @@ export default function Category({ typeOverride }) {
     </div>
   );
 
+  // Mobile-ported types get a dedicated RN-matching screen below `lg`; every
+  // other type (spot/shop/cafe/event/biodiversity/search) is completely
+  // unaffected and keeps rendering the tree below at every breakpoint, same
+  // as before Phase 3 - see the Phase 3 plan's "Key reuse discovery".
+  const mobilePorted = type === 'homestay' || type === 'driver';
+
   return (
-    <div className="mx-auto max-w-6xl px-4 md:px-6 py-6 md:py-8">
+    <>
+    <div className={`mx-auto max-w-6xl px-4 md:px-6 py-6 md:py-8 ${mobilePorted ? 'hidden lg:block' : ''}`}>
       <Seo
         title={searching ? `${t('category.search')}: ${routeTrip || q}` : (type ? t(`categories.${type}`) : t('nav.discover'))}
         noindex={searching || hasTrip(trip)}
@@ -323,5 +331,24 @@ export default function Category({ typeOverride }) {
         </div>
       )}
     </div>
+
+    {type === 'homestay' && (
+      <MobileStaysScreen
+        className="block lg:hidden"
+        results={results}
+        loading={loading}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        sortOrder={sortOrder}
+        onSortChange={setSortOrder}
+        maxPrice={maxPrice}
+        onMaxPriceChange={setMaxPrice}
+        onReset={resetFilters}
+      />
+    )}
+    {type === 'driver' && (
+      <MobileRidesScreen className="block lg:hidden" results={results} loading={loading} />
+    )}
+    </>
   );
 }

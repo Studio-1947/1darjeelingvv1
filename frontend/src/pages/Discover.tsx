@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import api from '@/lib/api';
 import { listingImage, sizedImage } from '@/lib/listingContent';
@@ -11,7 +11,10 @@ import HeroMedia from '@/components/HeroMedia';
 import RouteEstimator from '@/components/RouteEstimator';
 import { CATEGORIES } from '@/constants/categories';
 import { FeedCardSkeleton, SpotTileSkeleton, StayTileSkeleton, LoadingStatus, repeat } from '@/components/skeletons';
-import { Mountains as Mountain, ArrowRight, Compass, TrendUp as TrendingUp, CaretLeft as ChevronLeft, CaretRight as ChevronRight } from '@phosphor-icons/react';
+import { Mountains as Mountain, ArrowRight, Compass, TrendUp as TrendingUp, CaretLeft as ChevronLeft, CaretRight as ChevronRight, Ticket as PassIcon } from '@phosphor-icons/react';
+import { useAuth } from '@/context/AuthContext';
+import { isSupportActive } from '@/lib/support';
+import { MobileScreen, MobilePhoto, HomeHeaderActions, MobileSearchWidget, FilterPill, Card, Touch, Tag, Rating, Slab } from '@/components/mobile';
 
 const RED_PANDA = 'https://images.unsplash.com/photo-1542880941-1abfea46bba6';
 const HERO_POSTER = 'https://images.unsplash.com/photo-1544735716-392fe2489ffa';
@@ -56,9 +59,17 @@ function pageWindow(current: number, count: number): (number | null)[] {
 
 export default function Discover() {
   const { t } = useTranslation();
+  const nav = useNavigate();
+  const { user } = useAuth();
   const [feed, setFeed] = useState([]);
   const [spots, setSpots] = useState([]);
   const [homestays, setHomestays] = useState([]);
+  // Mobile Home only (see the block lg:hidden tree below) - a single live
+  // species listing for the biodiversity spotlight, and a small cafe sample
+  // for the "cafes near you" quick tile's count, matching RN's
+  // useListings('biodiversity', {limit:1}) / useListings('cafe', {limit:24}).
+  const [spotlight, setSpotlight] = useState(null);
+  const [cafes, setCafes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [feedType, setFeedType] = useState('all');
   const [feedPage, setFeedPage] = useState(0);
@@ -123,13 +134,17 @@ export default function Discover() {
     (async () => {
       try {
         const load = async () => {
-          const [f, s, h] = await Promise.all([
+          const [f, s, h, bio, c] = await Promise.all([
             api.get('/listings', { params: { limit: 40 } }),
             api.get('/listings', { params: { type: 'spot', limit: 8 } }),
             api.get('/listings', { params: { type: 'homestay', limit: 8 } }),
+            api.get('/listings', { params: { type: 'biodiversity', limit: 1 } }),
+            api.get('/listings', { params: { type: 'cafe', limit: 24 } }),
           ]);
           setSpots(s.data.items || []);
           setHomestays(h.data.items || []);
+          setSpotlight((bio.data.items || [])[0] || null);
+          setCafes(c.data.items || []);
           // interleave a feed with variety: homestay, spot, cafe, biodiversity...
           const all = f.data.items || [];
           const ordered = [
@@ -157,9 +172,28 @@ export default function Discover() {
     })();
   }, []);
 
+  // Mobile Home greeting - no weather data source: RN's own useWeather() calls
+  // GET /api/weather, which doesn't exist on this shared backend, so RN's real
+  // behavior against it is the static greeting fallback. Porting that fallback
+  // rather than wiring a new Open-Meteo-based greeting keeps this honest to
+  // what RN actually does today, not a feature it has but can't reach.
+  const greeting = useMemo(() => {
+    const h = new Date().getHours();
+    if (h < 12) return t('mobileHome.greet_morning');
+    if (h < 17) return t('mobileHome.greet_afternoon');
+    return t('mobileHome.greet_evening');
+  }, [t]);
+  const firstName = user?.name ? user.name.split(' ')[0] : t('mobileHome.traveller');
+  const featuredStay = homestays[0];
+
   return (
     <div>
       <Seo description={t('seo.home_description')} />
+
+      {/* ============================================================= */}
+      {/* DESKTOP & TABLET HOME (lg+) - unchanged                        */}
+      {/* ============================================================= */}
+      <div className="hidden lg:block">
 
       {/* HERO / Booking widget - starts at y=0 and carries the header height as
           padding, since the bar is drawn on top of the video. */}
@@ -447,6 +481,139 @@ export default function Discover() {
           <img src={sizedImage(RED_PANDA, 400)} alt="" className="absolute -right-8 -bottom-8 md:right-6 md:bottom-6 w-40 h-40 md:w-52 md:h-52 rounded-full object-cover border-4 border-white/20 opacity-90" />
         </div>
       </section>
+
+      </div>
+
+      {/* ============================================================= */}
+      {/* MOBILE HOME (< lg) - matches 1-Darjeeling-Mobile-App's          */}
+      {/* app/(tourist)/home.tsx structure: greeting, search, featured    */}
+      {/* stay, biodiversity spotlight, two quick tiles, pass nudge.      */}
+      {/* Ends there - no deals strip/RouteEstimator/carousel/grid/feed   */}
+      {/* on mobile, per the Phase 2 plan's "match RN exactly" decision.  */}
+      {/* ============================================================= */}
+      <MobileScreen tone="light" className="block lg:hidden pb-[calc(var(--bottom-nav-h)+1rem)]">
+        <div className="px-[var(--mu-gutter)] pt-4">
+          <div className="flex items-start gap-3">
+            <div className="flex-1 min-w-0">
+              <div className="text-[13px] text-[var(--mu-text-muted)]">
+                {greeting} {firstName} 👋
+              </div>
+              {/* RN's headline here is a weather line from a backend endpoint
+                  (GET /api/weather) this shared backend doesn't have - its own
+                  fallback is a static, fabricated-sounding sentence ("Darjeeling
+                  is misty ☁ 14°"), which this codebase's "never fabricate"
+                  principle argues against porting even as a fallback. The
+                  existing, real brand tagline fills the same visual slot instead. */}
+              <div className="mt-0.5 font-[family-name:var(--mu-font-display)] font-black text-2xl leading-tight text-[var(--mu-ink)] tracking-tight">
+                {t('brand_tagline')}
+              </div>
+            </div>
+            <HomeHeaderActions />
+          </div>
+
+          <div className="mt-3.5">
+            <MobileSearchWidget />
+          </div>
+        </div>
+
+        {/* Filter pills - RN's home filters (All/Stays/Rides/Eat/Nature). Eat has
+            no combined cafes+shops route yet, so it points at /cafes as a
+            placeholder (see Phase 2 plan). */}
+        <div className="mt-3.5 flex gap-2 px-[var(--mu-gutter)] pb-1 overflow-x-auto no-scrollbar">
+          <FilterPill active>{t('mobileHome.filter_all')}</FilterPill>
+          <FilterPill onClick={() => nav('/homestays')}>🏠 {t('nav.stays')}</FilterPill>
+          <FilterPill onClick={() => nav('/drivers')}>🚕 {t('nav.rides')}</FilterPill>
+          <FilterPill onClick={() => nav('/eat')}>☕ {t('mobileHome.filter_eat')}</FilterPill>
+          <FilterPill onClick={() => nav('/nature')}>🌿 {t('nav.nature')}</FilterPill>
+        </div>
+
+        <div className="mt-3 px-[var(--mu-gutter)] space-y-3">
+          {/* Featured stay - omitted rather than faked when nothing is live. */}
+          {featuredStay && (
+            <Link to={`/listing/${featuredStay.id}`}>
+              <Card className="overflow-hidden">
+                <div className="relative">
+                  <MobilePhoto src={listingImage(featuredStay, 800, 500)} alt={featuredStay.title} className="h-32" radius="0" />
+                  <Tag className="absolute top-2.5 left-3">{t('mobileHome.rating_new')}</Tag>
+                </div>
+                <div className="px-4 pt-3 pb-3.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="flex-1 min-w-0 truncate font-[family-name:var(--mu-font-display)] font-bold text-[16.5px] text-[var(--mu-ink)]">
+                      {featuredStay.title}
+                    </span>
+                    <Rating value={featuredStay.rating} />
+                  </div>
+                  <div className="mt-0.5 text-xs text-[var(--mu-text-muted)]">
+                    {featuredStay.location} · ₹{featuredStay.price}{t('common.per_head')}
+                  </div>
+                </div>
+              </Card>
+            </Link>
+          )}
+
+          {/* Biodiversity spotlight - a real species listing, or nothing. */}
+          {spotlight && (
+            <Link to={`/listing/${spotlight.id}`}>
+              <div className="rounded-[var(--mu-r-card)] px-[18px] pt-[15px] pb-[14px]" style={{ background: 'var(--mu-green)' }}>
+                <Slab className="text-[var(--mu-sage)]">{t('mobileHome.spotlight_label')}</Slab>
+                <div className="mt-1.5 font-[family-name:var(--mu-font-display)] font-black text-[18.5px] leading-snug text-[var(--mu-cream)]">
+                  {spotlight.title}
+                </div>
+                <div className="mt-2.5 flex items-center justify-between gap-2">
+                  <span className="flex-1 min-w-0 truncate text-xs text-[var(--mu-text-on-dark-muted)]">
+                    {spotlight.location}
+                  </span>
+                  <span className="px-4 py-2 rounded-[var(--mu-r-chip)]" style={{ background: 'var(--mu-lime)' }}>
+                    <span className="text-xs font-bold" style={{ color: 'var(--mu-lime-ink)' }}>
+                      {t('mobileHome.spotlight_open')}
+                    </span>
+                  </span>
+                </div>
+              </div>
+            </Link>
+          )}
+
+          {/* Two quick tiles - each carries a real photo and a count it can
+              stand behind, never a fabricated stat. */}
+          <div className="flex gap-3">
+            <Link to="/culture" className="flex-1">
+              <Card className="p-3">
+                <MobilePhoto src={listingImage(spots[0], 300, 200)} alt="" radius="var(--mu-r-tile-sm)" className="h-[50px]" />
+                <div className="mt-2 text-[13px] font-bold text-[var(--mu-ink)]">{t('mobileHome.toy_train_title')}</div>
+              </Card>
+            </Link>
+            <Link to="/eat" className="flex-1">
+              <Card className="p-3">
+                <MobilePhoto src={listingImage(cafes[0], 300, 200)} alt="" radius="var(--mu-r-tile-sm)" className="h-[50px]" />
+                <div className="mt-2 text-[13px] font-bold text-[var(--mu-ink)]">{t('mobileHome.cafes_title')}</div>
+                {cafes.length > 0 && (
+                  <div className="text-[11.5px] text-[var(--mu-text-faint)]">
+                    {cafes.length} {t('mobileHome.cafes_listed')}
+                  </div>
+                )}
+              </Card>
+            </Link>
+          </div>
+
+          {/* Pass nudge - only until the user has one, matching RN's
+              {!state.hasPass ? ... : null}. Guarded for anonymous visitors:
+              isSupportActive expects a user object, not null. */}
+          {!(user && isSupportActive(user)) && (
+            <Link to="/support">
+              <div className="flex items-center gap-3 rounded-[var(--mu-r-card-sm)] px-4 py-3.5" style={{ background: 'var(--mu-green-tint)' }}>
+                <PassIcon size={20} className="text-[var(--mu-green)] flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="text-[13px] font-bold text-[var(--mu-green)]">
+                    {t('mobileHome.pass_title_pre')} {t('mobileHome.pass_title_price')}
+                  </div>
+                  <div className="mt-0.5 text-[11.5px] text-[var(--mu-text-body)]">{t('mobileHome.pass_browse_free')}</div>
+                </div>
+                <span className="font-bold text-base text-[var(--mu-green)]">→</span>
+              </div>
+            </Link>
+          )}
+        </div>
+      </MobileScreen>
     </div>
   );
 }

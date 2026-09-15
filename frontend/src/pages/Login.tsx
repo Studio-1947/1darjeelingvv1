@@ -3,9 +3,10 @@ import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
-import { Phone, Key as KeyRound, Compass, Storefront } from '@phosphor-icons/react';
+import { Phone, Key as KeyRound, Compass, Storefront, Check } from '@phosphor-icons/react';
 import Wordmark from '@/components/Wordmark';
 import Seo from '@/components/Seo';
+import { MobileScreen, PrimaryButton as MobilePrimaryButton, Touch, Slab } from '@/components/mobile';
 
 // Google Identity Services client ID from env
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
@@ -35,6 +36,13 @@ export default function Login() {
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
   const [name, setName] = useState('');
+  // Mobile-only fields/state (the desktop tree never sets these, so they're
+  // harmless there): the invite-code field RN has that this app's desktop
+  // Login never exposed, and the language/phone/otp step RN's onboarding
+  // sequence triggers when reaching /login on mobile - see the Phase 4 plan.
+  const [invite, setInvite] = useState('');
+  const [mobileStep, setMobileStep] = useState<'language' | 'phone' | 'otp'>('language');
+  const otpRef = useRef<HTMLInputElement>(null);
   const [role, setRole] = useState(() => {
     const r = sp.get('role');
     if (r === 'provider' || r === 'tourist') return r;
@@ -89,8 +97,11 @@ export default function Login() {
     loadGis();
   }, []);
 
-  const sendOtp = async (e) => {
-    e.preventDefault();
+  // `e` is optional: the desktop tree calls these from a <form onSubmit>
+  // (a real event), the mobile tree's buttons are plain onClick (no event) -
+  // see mobile/ui.tsx's Touch, which is always type="button".
+  const sendOtp = async (e?: React.FormEvent) => {
+    e?.preventDefault();
     setBusy(true); setErr('');
     try {
       const { data } = await api.post('/auth/otp/send', { phone, channel: 'whatsapp' });
@@ -98,15 +109,19 @@ export default function Login() {
       setSentChannel(data.channel || '');
       setUserExists(!!data.exists);
       setStep(2);
+      setMobileStep('otp');
     } catch (e) { setErr(e?.response?.data?.detail || t('auth.send_failed')); }
     finally { setBusy(false); }
   };
 
-  const verify = async (e) => {
-    e.preventDefault();
+  const verify = async (e?: React.FormEvent) => {
+    e?.preventDefault();
     setBusy(true); setErr('');
     try {
-      const { data } = await api.post('/auth/otp/verify', { phone, otp, name, role });
+      const { data } = await api.post('/auth/otp/verify', {
+        phone, otp, name, role,
+        ...(invite.trim() ? { referral_code: invite.trim() } : {}),
+      });
       if (role === 'tourist' && data.user.role === 'provider') {
         setVerificationData(data);
         setShowConfirmSwitch(true);
@@ -127,8 +142,13 @@ export default function Login() {
   };
 
   return (
-    <div className="mx-auto max-w-md px-4 md:px-8 py-8 md:py-14">
-      <Seo title={t('auth.welcome')} noindex />
+    <>
+    <Seo title={t('auth.welcome')} noindex />
+
+    {/* ============================================================= */}
+    {/* DESKTOP & TABLET LOGIN (lg+) - unchanged                       */}
+    {/* ============================================================= */}
+    <div className="hidden lg:block mx-auto max-w-md px-4 md:px-8 py-8 md:py-14">
       <div className="mist-panel p-6 md:p-8">
         <div className="text-center mb-6">
           <Wordmark className="mx-auto h-10 w-auto text-ink" />
@@ -339,5 +359,212 @@ export default function Login() {
         </p>
       </div>
     </div>
+
+    {/* ============================================================= */}
+    {/* MOBILE LOGIN (< lg) - matches RN's language.tsx -> login.tsx    */}
+    {/* sequence, triggered by reaching /login (no mandatory app-launch */}
+    {/* gate - see the Phase 4 plan). Reuses all existing state/handlers.*/}
+    {/* ============================================================= */}
+    {!showConfirmSwitch && mobileStep === 'language' && (
+      <MobileScreen tone="green" className="block lg:hidden min-h-screen flex flex-col pb-[calc(var(--bottom-nav-h)+1rem)]">
+        <div className="flex-1 px-7 pt-9">
+          <span className="inline-block px-3 py-1 rounded-full bg-[var(--mu-cream)] text-[10px] font-bold tracking-wider text-[var(--mu-green-deep)]">
+            {t('mobileAuth.lang_greeting')}
+          </span>
+          <h1 className="mt-4 font-[family-name:var(--mu-font-display)] font-black text-[32px] leading-[1.05] text-[var(--mu-cream)] tracking-tight">
+            {t('mobileAuth.lang_title')}
+          </h1>
+          <p className="mt-2.5 text-[13px] text-[var(--mu-text-on-dark-muted)]">{t('mobileAuth.lang_subtitle')}</p>
+
+          <div className="mt-6 flex items-center gap-3 rounded-[var(--mu-r-card-sm)] bg-[var(--mu-cream)] px-[18px] py-3.5">
+            <div className="flex-1">
+              <div className="text-[16px] font-semibold text-[var(--mu-ink)]">{t('mobileAuth.lang_option')}</div>
+              <div className="mt-0.5 text-xs text-[var(--mu-text-muted)]">{t('mobileAuth.lang_option_sub')}</div>
+            </div>
+            <div className="w-[22px] h-[22px] rounded-full bg-[var(--mu-green)] flex items-center justify-center flex-shrink-0">
+              <Check size={12} weight="bold" className="text-[var(--mu-cream)]" />
+            </div>
+          </div>
+        </div>
+        <div className="px-7 pb-9 pt-2">
+          <MobilePrimaryButton onClick={() => setMobileStep('phone')} className="w-full !bg-[var(--mu-lime)] !text-[var(--mu-lime-ink)]">
+            {t('mobileAuth.continue')} →
+          </MobilePrimaryButton>
+        </div>
+      </MobileScreen>
+    )}
+
+    {!showConfirmSwitch && mobileStep !== 'language' && (
+      <MobileScreen tone="light" className="block lg:hidden min-h-screen flex flex-col pb-[calc(var(--bottom-nav-h)+1rem)]">
+        <div className="flex-1 px-6 pt-8">
+          <div className="w-14 h-14 rounded-[var(--mu-r-avatar)] bg-[var(--mu-green)] flex items-center justify-center -rotate-[4deg]">
+            <Wordmark className="h-6 w-auto text-[var(--mu-cream)]" />
+          </div>
+          <h1 className="mt-4 font-[family-name:var(--mu-font-display)] font-black text-[28px] text-[var(--mu-ink)] tracking-tight">
+            {t('mobileAuth.login_title')}
+          </h1>
+          <p className="mt-2 text-[13px] text-[var(--mu-text-muted)]">
+            {mobileStep === 'phone' ? t('mobileAuth.login_subtitle') : t('auth.sent_whatsapp', { phone })}
+          </p>
+
+          {mobileStep === 'phone' && (
+            <div className="mt-5 space-y-3">
+              <div className="grid grid-cols-2 gap-2.5">
+                <Touch
+                  onClick={() => setRole('tourist')}
+                  className={`text-left p-3 rounded-[var(--mu-r-card-xs)] border ${role === 'tourist' ? 'border-[var(--mu-green)] bg-[var(--mu-green-tint)]' : 'border-[var(--mu-border)] bg-[var(--mu-surface)]'}`}
+                >
+                  <Compass size={20} weight={role === 'tourist' ? 'fill' : 'regular'} className={role === 'tourist' ? 'text-[var(--mu-green)]' : 'text-[var(--mu-text-muted)]'} />
+                  <div className="mt-1.5 text-sm font-bold text-[var(--mu-ink)]">{t('auth.role_tourist')}</div>
+                </Touch>
+                <Touch
+                  onClick={() => setRole('provider')}
+                  className={`text-left p-3 rounded-[var(--mu-r-card-xs)] border ${role === 'provider' ? 'border-[var(--mu-green)] bg-[var(--mu-green-tint)]' : 'border-[var(--mu-border)] bg-[var(--mu-surface)]'}`}
+                >
+                  <Storefront size={20} weight={role === 'provider' ? 'fill' : 'regular'} className={role === 'provider' ? 'text-[var(--mu-green)]' : 'text-[var(--mu-text-muted)]'} />
+                  <div className="mt-1.5 text-sm font-bold text-[var(--mu-ink)]">{t('auth.role_provider')}</div>
+                </Touch>
+              </div>
+
+              <div className="flex items-center gap-2 rounded-[var(--mu-r-card-xs)] border border-[var(--mu-border)] bg-[var(--mu-surface)] px-3.5 py-3">
+                <Phone size={16} className="text-[var(--mu-text-muted)] flex-shrink-0" />
+                <input
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  type="tel" inputMode="tel" autoComplete="tel"
+                  placeholder={t('auth.phone_placeholder')}
+                  className="flex-1 min-w-0 bg-transparent outline-none text-[15px] font-semibold text-[var(--mu-ink)]"
+                />
+              </div>
+
+              {/* RN's invite-code field - a real, working backend feature
+                  (referral_code on /auth/otp/verify) the desktop tree never
+                  exposed a UI for. */}
+              <div className="rounded-[var(--mu-r-card-xs)] border border-[var(--mu-border)] bg-[var(--mu-surface)] px-3.5 py-2.5">
+                <Slab>{t('mobileAuth.invite_label')}</Slab>
+                <input
+                  value={invite}
+                  onChange={(e) => setInvite(e.target.value.toUpperCase())}
+                  maxLength={12}
+                  placeholder={t('mobileAuth.invite_placeholder')}
+                  className="mt-0.5 w-full bg-transparent outline-none text-sm font-semibold text-[var(--mu-ink)]"
+                />
+              </div>
+            </div>
+          )}
+
+          {mobileStep === 'otp' && (
+            <div className="mt-5 space-y-4">
+              <div>
+                <Slab>{t('mobileAuth.otp_label')}</Slab>
+                <div className="relative mt-2 flex gap-2" onClick={() => otpRef.current?.focus()}>
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className={`w-[46px] h-[54px] rounded-[var(--mu-r-card-xs)] border flex items-center justify-center font-[family-name:var(--mu-font-display)] font-black text-lg text-[var(--mu-ink)] bg-[var(--mu-surface)] ${otp[i] ? 'border-2 border-[var(--mu-green)]' : 'border-[var(--mu-border)]'}`}
+                    >
+                      {otp[i] || ''}
+                    </div>
+                  ))}
+                  <input
+                    ref={otpRef}
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    inputMode="numeric"
+                    maxLength={6}
+                    aria-label={t('mobileAuth.otp_label')}
+                    className="absolute inset-0 w-full h-full opacity-0"
+                  />
+                </div>
+              </div>
+
+              {mockOtp && (
+                <Touch onClick={() => setOtp(mockOtp)} className="text-[11px] font-mono text-[var(--mu-text-faint)]">
+                  MOCK MODE · TAP TO FILL {mockOtp}
+                </Touch>
+              )}
+
+              {!userExists && (
+                <label className="block">
+                  <Slab>{t('auth.name')}</Slab>
+                  <input
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder={t('auth.name_placeholder')}
+                    className="mt-1 w-full px-3.5 py-2.5 rounded-[var(--mu-r-card-xs)] border border-[var(--mu-border)] bg-[var(--mu-surface)] text-sm text-[var(--mu-ink)] outline-none"
+                  />
+                </label>
+              )}
+
+              <div className="flex items-center gap-1.5 text-xs text-[var(--mu-text-muted)]">
+                <span>{t('mobileAuth.otp_resend_prompt')}</span>
+                <Touch onClick={() => sendOtp()} className="font-bold text-[var(--mu-green)]">
+                  {t('mobileAuth.otp_resend')}
+                </Touch>
+              </div>
+
+              <Touch onClick={() => { setMobileStep('phone'); setOtp(''); setErr(''); }} className="text-xs font-semibold text-[var(--mu-green)]">
+                ← {t('mobileAuth.change_number')}
+              </Touch>
+            </div>
+          )}
+
+          {err && <p className="mt-4 text-sm font-semibold text-[var(--mu-danger)]">{err}</p>}
+        </div>
+
+        <div className="px-6 pb-8 pt-3">
+          <MobilePrimaryButton
+            onClick={() => (mobileStep === 'phone' ? sendOtp() : verify())}
+            disabled={busy || (mobileStep === 'phone' ? !phone.trim() : otp.length !== 6)}
+            className="w-full"
+          >
+            {busy ? t('common.loading') : mobileStep === 'phone' ? t('auth.send_otp') : t('auth.verify')}
+          </MobilePrimaryButton>
+          <p className="mt-3 text-[11px] text-center text-[var(--mu-text-faint)]">{t('mobileAuth.legal')}</p>
+        </div>
+      </MobileScreen>
+    )}
+
+    {/* Confirm-switch (mobile) - RN has no equivalent screen; restyled to
+        --mu-* tokens for visual consistency only, same business logic. */}
+    {showConfirmSwitch && verificationData && (
+      <MobileScreen tone="light" className="block lg:hidden min-h-screen flex flex-col justify-center px-6 pb-[calc(var(--bottom-nav-h)+1rem)]">
+        <p className="text-sm text-[var(--mu-text-muted)]">{t('auth.provider_exists')}</p>
+        <p className="mt-2 text-sm font-semibold text-[var(--mu-ink)]">{t('auth.which_dashboard')}</p>
+        <div className="mt-5 space-y-3">
+          <Touch
+            onClick={() => {
+              localStorage.setItem(`unlocked_traveller_${verificationData.user.id}`, 'true');
+              login(verificationData.token, verificationData.user);
+              nav('/dashboard');
+            }}
+            className="w-full py-3 rounded-[var(--mu-r-chip)] border border-[var(--mu-green)] text-sm font-bold text-[var(--mu-green)]"
+          >
+            {t('auth.go_traveller')}
+          </Touch>
+          <MobilePrimaryButton
+            onClick={() => {
+              login(verificationData.token, verificationData.user);
+              nav(verificationData.user.providerPaid ? '/provider/dashboard' : '/provider/onboard');
+            }}
+            className="w-full"
+          >
+            {t('auth.go_business')}
+          </MobilePrimaryButton>
+        </div>
+        <Touch
+          onClick={() => {
+            setShowConfirmSwitch(false);
+            setVerificationData(null);
+            setStep(1);
+            setMobileStep('phone');
+          }}
+          className="mt-4 text-xs text-[var(--mu-text-muted)] text-center"
+        >
+          {t('auth.cancel_change_number')}
+        </Touch>
+      </MobileScreen>
+    )}
+    </>
   );
 }

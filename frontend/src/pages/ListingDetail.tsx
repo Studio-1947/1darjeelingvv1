@@ -17,12 +17,13 @@ import {
   HostSection, DriverSection, BestTimeSection, RoutesSection, LocationSection,
   HighlightsSection, VisitInfoSection,
 } from '@/components/listing-detail/sections';
-import { ReserveSection, MobileStickyBar } from '@/components/listing-detail/ReserveSection';
+import { ReserveSection } from '@/components/listing-detail/ReserveSection';
 import ContactSection from '@/components/listing-detail/ContactSection';
 import ReviewsSection from '@/components/listing-detail/ReviewsSection';
 import AudioGuide from '@/components/AudioGuide';
 import { ctaFor } from '@/components/listing-detail/cta';
 import { useBookingFlow } from '@/components/listing-detail/useBookingFlow';
+import { MobileListingDetailScreen } from '@/components/mobile';
 
 /**
  * Public listing detail page: a stack of full-screen sections chosen by the
@@ -126,20 +127,21 @@ export default function ListingDetail() {
     : t('detail.offers');
 
   return (
-    <div className="pb-28 lg:pb-0">
-      {/* Every listing used to inherit the site-wide title and description, so
-          Ghum Monastery and a Lebong homestay were indistinguishable to Google
-          and to a WhatsApp link preview - only the <h1> differed (QA 3.4). The
-          canonical is spelled out because a listing is reached with a trip's
-          dates attached, and those must not fragment it into separate URLs. */}
-      <Seo
-        title={item.title}
-        description={c.about || item.description}
-        image={listingImage(item, 1200, 630)}
-        canonical={`${window.location.origin}/listing/${item.id}`}
-        ogType={bookable ? 'product' : 'place'}
-      />
+    <>
+    {/* Every listing used to inherit the site-wide title and description, so
+        Ghum Monastery and a Lebong homestay were indistinguishable to Google
+        and to a WhatsApp link preview - only the <h1> differed (QA 3.4). The
+        canonical is spelled out because a listing is reached with a trip's
+        dates attached, and those must not fragment it into separate URLs. */}
+    <Seo
+      title={item.title}
+      description={c.about || item.description}
+      image={listingImage(item, 1200, 630)}
+      canonical={`${window.location.origin}/listing/${item.id}`}
+      ogType={bookable ? 'product' : 'place'}
+    />
 
+    <div className="hidden lg:block">
       <DetailHero item={item} unit={unit} onShare={shareIt} />
 
       <AboutSection
@@ -207,26 +209,44 @@ export default function ListingDetail() {
       {contactable && <ContactSection item={item} onOpenMaps={openMaps} />}
 
       <ReviewsSection item={item} />
-
-      <MobileStickyBar item={item} unit={unit} bookable={bookable} cta={cta} busy={booking.busy}
-        onBook={booking.doBook} onOpenMaps={openMaps} />
-
-      <MockPaymentModal
-        open={!!booking.payModal}
-        onClose={() => booking.setPayModal(null)}
-        amount={booking.payModal?.amount || 0}
-        title={t('booking.pay_confirm')}
-        description={booking.payModal?.description || ''}
-        onPay={booking.finishMockPayment}
-        prefill={{ upi: `${(booking.user?.name || 'traveller').toLowerCase().replace(/\s+/g, '')}@ybl` }}
-      />
-      <BookingConfirmation
-        open={!!booking.confirm?.open}
-        onClose={() => { booking.setConfirm(null); nav('/dashboard'); }}
-        mode="booking"
-        data={booking.confirm?.data}
-        onView={() => { booking.setConfirm(null); nav('/dashboard'); }}
-      />
     </div>
+
+    <MobileListingDetailScreen
+      item={item}
+      unit={unit}
+      bookable={bookable}
+      contactable={contactable}
+      cta={cta}
+      booking={booking}
+      onOpenMaps={openMaps}
+      onShare={shareIt}
+      amenities={amenities}
+      host={host}
+      c={c}
+      spotInfo={spotInfo}
+      isSpot={isSpot}
+      gallery={gallery}
+      personSrc={personSrc}
+      driverSrc={driverSrc}
+      offersTitle={offersTitle}
+    />
+
+    <MockPaymentModal
+      open={!!booking.payModal}
+      onClose={() => booking.setPayModal(null)}
+      amount={booking.payModal?.amount || 0}
+      title={t('booking.pay_confirm')}
+      description={booking.payModal?.description || ''}
+      onPay={booking.finishMockPayment}
+      prefill={{ upi: `${(booking.user?.name || 'traveller').toLowerCase().replace(/\s+/g, '')}@ybl` }}
+    />
+    <BookingConfirmation
+      open={!!booking.confirm?.open}
+      onClose={() => { booking.setConfirm(null); nav('/dashboard'); }}
+      mode="booking"
+      data={booking.confirm?.data}
+      onView={() => { booking.setConfirm(null); nav('/dashboard'); }}
+    />
+    </>
   );
 }

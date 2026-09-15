@@ -1,0 +1,70 @@
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
+
+/*
+ * Design tokens ported from 1-Darjeeling-Mobile-App's src/theme/{colors,index}.ts.
+ * Scoped under .mobile-ui rather than :root or a bare media query, so the
+ * mobile-app port never repaints the desktop token set (--bg, --pine, etc.)
+ * for components that haven't been ported yet.
+ */
+.mobile-ui {
+  --mu-font-display: 'Bricolage Grotesque', 'Google Sans', system-ui, sans-serif;
+  --mu-font-body: 'Instrument Sans', 'Google Sans', system-ui, sans-serif;
+  --mu-font-mono: ui-monospace, Menlo, 'Google Sans Code', monospace;
+
+  --mu-bg: #FAFAF7;
+  --mu-canvas: #E9E7E2;
+  --mu-green: #2C5E3B;
+  --mu-green-deep: #1E4029;
+  --mu-lime: #C6E86B;
+  --mu-lime-ink: #1E3312;
+  --mu-lime-glow: rgba(198, 232, 107, 0.30);
+  --mu-ink: #17211B;
+  --mu-cream: #F4F1E7;
+  --mu-orange: #E07B39;
+  --mu-orange-soft: #FBEED9;
+  --mu-orange-ink: #A86416;
+  --mu-danger: #B0483A;
+  --mu-text: #17211B;
+  --mu-text-body: #4C473B;
+  --mu-text-muted: #75705F;
+  --mu-text-faint: #9A958A;
+  --mu-text-mono: #8F8A7C;
+  --mu-text-on-dark-muted: #BFD3B3;
+  --mu-text-on-dark-faint: #8F9A8A;
+  --mu-text-on-dark-soft: #DCE8D4;
+  --mu-nav-inactive-dark: #7D8A7F;
+  --mu-surface: #FFFFFF;
+  --mu-border: #ECEAE2;
+  --mu-border-strong: #D9D5CA;
+  --mu-border-dashed: #C9C4B6;
+  --mu-green-tint: #EEF3EC;
+  --mu-green-tint-border: #C9D6BF;
+  --mu-sage: #9DBE8D;
+  --mu-sage-soft: #DCE8D4;
+  --mu-ph-a: #E6E3DB;
+  --mu-ph-b: #EFECE5;
+  --mu-on-dark-line: rgba(244, 241, 231, 0.30);
+  --mu-on-dark-line-soft: rgba(244, 241, 231, 0.16);
+  --mu-on-dark-fill: rgba(244, 241, 231, 0.08);
+  --mu-on-dark-fill-strong: rgba(244, 241, 231, 0.12);
+  --mu-on-dark-glass: rgba(244, 241, 231, 0.14);
+
+  --mu-r-chip: 999px;
+  --mu-r-card: 22px;
+  --mu-r-card-sm: 18px;
+  --mu-r-card-xs: 16px;
+  --mu-r-tile: 14px;
+  --mu-r-tile-sm: 12px;
+  --mu-r-sheet: 28px;
+  --mu-r-avatar: 20px;
+  --mu-r-hero: 24px;
+
+  --mu-gutter: 22px;
+
+  --mu-shadow-card: 0 8px 24px rgba(23, 33, 27, 0.06);
+  --mu-shadow-search: 0 2px 8px rgba(23, 33, 27, 0.04);
+  --mu-shadow-sheet: 0 -12px 40px rgba(23, 33, 27, 0.30);
+
+  font-family: var(--mu-font-body);
+  color: var(--mu-ink);
+}

@@ -1,148 +1,55 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import React from 'react';
+import { useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { House as Home, Ticket, Storefront as Store, SquaresFour as LayoutGrid, User, CaretUp as ChevronUp } from '@phosphor-icons/react';
+import { House, Buildings, Taxi, Leaf, SquaresFour, Gauge, Calendar, ChatCircle, User } from '@phosphor-icons/react';
 import { useAuth } from '@/context/AuthContext';
-import CategorySheet from '@/components/CategorySheet';
+import MobileTabBar, { TabItem } from '@/components/mobile/TabBar';
 
 /**
- * Mobile bottom tab bar - the app's primary navigation below `lg`.
+ * Mobile bottom tab bar - the app's primary navigation below `lg`, restructured
+ * to match 1-Darjeeling-Mobile-App's tourist tab bar: Home / Stays / Rides /
+ * Nature / Culture. Trips, Notifications and Profile no longer live here -
+ * they move to `mobile/HomeHeaderActions.tsx`, rendered in the mobile Home
+ * header (Phase 2), matching RN's HomeHeaderActions pattern.
  *
- * Destinations: Home, My Trips / My Listings, Type, Account.
- * Service providers get "My Listings" (/my-listings) while tourists get "My Trips" (/my-trips).
- * Account routes to the user dashboard (/dashboard or /provider/dashboard).
+ * Stays and Rides reuse the existing /homestays and /drivers category routes
+ * unchanged. Nature and Culture are new routes wrapping /biodiversity and
+ * /events+/spots respectively (see pages/Nature.tsx, pages/Culture.tsx).
+ *
+ * The old "Type" tab (CategorySheet toggle) is retired: these four tabs
+ * already cover 4 of its 7 categories, and Shops/Cafes become reachable via
+ * Home's search surface (Phase 2) and /search - matching how RN routes
+ * "everything else" through its eat.tsx screen rather than a raw category grid.
+ *
+ * Phase 6: signed-in providers see a completely different tab set (Dashboard/
+ * Bookings/Chats/Account), matching RN's separate provider tab group
+ * (app/(provider)/_layout.tsx) - provider mode is a genuinely separate app
+ * section there, not a tourist-tabs-plus-a-link afterthought. Labels stay
+ * identical across business roles rather than RN's role-varying middle-tab
+ * text ("Post Trip"/"Deals") - RN's own research confirms those route to the
+ * same underlying screens as the homestay labels, just relabeled.
  */
 export default function BottomNav() {
   const { t } = useTranslation();
-  const { user } = useAuth();
   const { pathname } = useLocation();
-  const [typeOpen, setTypeOpen] = useState(false);
+  const { user } = useAuth();
 
-  // Close the Type sheet whenever route changes
-  useEffect(() => {
-    setTypeOpen(false);
-  }, [pathname]);
+  const items: TabItem[] = user?.role === 'provider'
+    ? [
+        { key: 'dashboard', to: '/provider/dashboard', label: t('nav.dashboard'), icon: Gauge, testId: 'bottom-nav-provider-dashboard' },
+        { key: 'bookings', to: '/provider/dashboard', label: t('mobileProviderDashboard.tab_bookings'), icon: Calendar, testId: 'bottom-nav-provider-bookings' },
+        { key: 'chats', to: '/provider/chats', label: t('mobileProviderChats.tab'), icon: ChatCircle, testId: 'bottom-nav-provider-chats' },
+        { key: 'account', to: '/provider/account', label: t('nav.account'), icon: User, testId: 'bottom-nav-provider-account' },
+      ]
+    : [
+        { key: 'home', to: '/', label: t('nav.home'), icon: House, testId: 'bottom-nav-home' },
+        { key: 'stays', to: '/homestays', label: t('nav.stays'), icon: Buildings, testId: 'bottom-nav-stays' },
+        { key: 'rides', to: '/drivers', label: t('nav.rides'), icon: Taxi, testId: 'bottom-nav-rides' },
+        { key: 'nature', to: '/nature', label: t('nav.nature'), icon: Leaf, testId: 'bottom-nav-nature' },
+        { key: 'culture', to: '/culture', label: t('nav.culture'), icon: SquaresFour, testId: 'bottom-nav-culture' },
+      ];
 
-  const isProvider = user?.role === 'provider';
+  const activeKey = items.find((it) => it.to === pathname)?.key ?? '';
 
-  const tripsOrListingsTarget = isProvider
-    ? '/my-listings'
-    : (user ? '/my-trips' : '/login?next=/my-trips');
-
-  const accountTarget = user
-    ? (isProvider ? '/provider/dashboard' : '/dashboard')
-    : '/login?next=/dashboard';
-
-  const handleNavClick = () => {
-    setTypeOpen(false);
-  };
-
-  /**
-   * Which routes each tab represents - deliberately separate from where the tab
-   * *sends* you.
-   *
-   * NavLink derives "active" from the link's own pathname, and while logged out
-   * both Trips and Account point at /login?next=... . On /login that matched
-   * twice, so two tabs lit up at once and neither was where the visitor was.
-   * Matching on the destination a tab stands for fixes that: /login belongs to
-   * no tab, so none highlight - which is honest, since sign-in isn't one of the
-   * four places this bar navigates to.
-   */
-  const homeMatch = ['/'];
-  const tripsMatch = isProvider ? ['/my-listings'] : ['/my-trips'];
-  const accountMatch = ['/dashboard', '/provider/dashboard'];
-
-  // An open sheet is the current context, so it owns the highlight outright -
-  // otherwise Home and Type both read as selected while the sheet covers Home.
-  const activeFor = (routes: string[]) => !typeOpen && routes.includes(pathname);
-
-  const tabCls = (isActive: boolean) =>
-    `flex flex-col items-center justify-center gap-0.5 py-2.5 min-w-0 text-[10px] font-bold transition-all duration-150 active:scale-95 ${
-      isActive ? 'text-flag font-extrabold' : 'text-ink-soft hover:text-ink'
-    }`;
-
-  const homeActive = activeFor(homeMatch);
-  const tripsActive = activeFor(tripsMatch);
-  const accountActive = activeFor(accountMatch);
-
-  return (
-    <>
-      <CategorySheet open={typeOpen} onClose={() => setTypeOpen(false)} />
-
-      <nav
-        data-testid="bottom-nav"
-        className="lg:hidden fixed bottom-0 inset-x-0 z-50 bg-white/95 backdrop-blur-xl border-t border-[var(--line)] shadow-[0_-4px_20px_rgba(0,0,0,0.06)]"
-        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
-      >
-        <div className="grid grid-cols-4">
-          {/* Plain Link rather than NavLink throughout: the active state is
-              computed above, so NavLink's own pathname matching would only
-              fight it. aria-current carries the state to assistive tech. */}
-          <Link
-            to="/"
-            data-testid="bottom-nav-home"
-            onClick={handleNavClick}
-            aria-current={homeActive ? 'page' : undefined}
-            className={tabCls(homeActive)}
-          >
-            <Home size={20} weight={homeActive ? 'bold' : 'regular'} className="flex-shrink-0" />
-            <span className="truncate max-w-full px-0.5">{t('nav.home')}</span>
-          </Link>
-
-          <Link
-            to={tripsOrListingsTarget}
-            data-testid="bottom-nav-trips"
-            onClick={handleNavClick}
-            aria-current={tripsActive ? 'page' : undefined}
-            className={tabCls(tripsActive)}
-          >
-            {isProvider ? (
-              <Store size={20} weight={tripsActive ? 'bold' : 'regular'} className="flex-shrink-0" />
-            ) : (
-              <Ticket size={20} weight={tripsActive ? 'bold' : 'regular'} className="flex-shrink-0" />
-            )}
-            <span className="truncate max-w-full px-0.5">
-              {isProvider ? (t('nav.my_listings') || 'My Listings') : (t('nav.trips') || 'My Trips')}
-            </span>
-          </Link>
-
-          {/* A toggle, not a route - it opens the category sheet. Labelled
-              "Categories" to match the sheet it opens, which is headed
-              "DISCOVER / Categories"; the tab used to say "Type" and nothing on
-              the other side of the tap repeated the word (QA 4.1). */}
-          <button
-            type="button"
-            onClick={() => setTypeOpen((v) => !v)}
-            data-testid="bottom-nav-type"
-            aria-expanded={typeOpen}
-            aria-haspopup="dialog"
-            className={tabCls(typeOpen)}
-          >
-            <span className="relative flex-shrink-0">
-              <LayoutGrid size={20} weight={typeOpen ? 'bold' : 'regular'} />
-              <ChevronUp
-                size={11}
-                weight="bold"
-                className={`absolute -top-2 left-1/2 -translate-x-1/2 transition-transform duration-200 ${
-                  typeOpen ? 'rotate-180' : ''
-                }`}
-              />
-            </span>
-            <span className="truncate max-w-full px-0.5">{t('nav.categories')}</span>
-          </button>
-
-          <Link
-            to={accountTarget}
-            data-testid="bottom-nav-account"
-            onClick={handleNavClick}
-            aria-current={accountActive ? 'page' : undefined}
-            className={tabCls(accountActive)}
-          >
-            <User size={20} weight={accountActive ? 'bold' : 'regular'} className="flex-shrink-0" />
-            <span className="truncate max-w-full px-0.5">{t('nav.account')}</span>
-          </Link>
-        </div>
-      </nav>
-    </>
-  );
+  return <MobileTabBar items={items} activeKey={activeKey} dark={activeKey === 'nature'} />;
 }

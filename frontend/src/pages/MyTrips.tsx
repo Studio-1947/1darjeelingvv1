@@ -5,6 +5,7 @@ import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { useSeo } from '@/components/Seo';
 import { Ticket, Calendar, ArrowRight, XCircle, CircleNotch as Loader2, Compass, Phone, CheckCircle as CheckCircle2, Clock, MapPin, Storefront as Store, SignIn as LogIn } from '@phosphor-icons/react';
+import { MobileScreen, FilterPill } from '@/components/mobile';
 
 function StatusPill({ status, isPast }: { status: string; isPast: boolean }) {
   const { t } = useTranslation();
@@ -44,6 +45,9 @@ export default function MyTrips() {
   const [tabFilter, setTabFilter] = useState<'all' | 'upcoming' | 'completed' | 'cancelled'>('all');
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  // Mobile-only: RN's trips.tsx has a binary Upcoming/Past split rather than
+  // this page's existing 4-way all/upcoming/completed/cancelled filter.
+  const [mobileTab, setMobileTab] = useState<'upcoming' | 'past'>('upcoming');
 
   const loadBookings = useCallback(() => {
     return api.get('/bookings/me')
@@ -118,8 +122,12 @@ export default function MyTrips() {
   else if (tabFilter === 'completed') filteredBookings = completedList;
   else if (tabFilter === 'cancelled') filteredBookings = cancelledList;
 
+  const pastList = [...completedList, ...cancelledList];
+  const mobileList = mobileTab === 'upcoming' ? upcomingList : pastList;
+
   return (
-    <div className="mx-auto max-w-6xl px-4 md:px-6 py-6 md:py-10 pb-24 lg:pb-12">
+    <>
+    <div className="hidden lg:block mx-auto max-w-6xl px-4 md:px-6 py-6 md:py-10 pb-24 lg:pb-12">
       {/* Banner for service providers */}
       {user.role === 'provider' && (
         <div className="mb-6 p-4 rounded-2xl bg-gradient-to-r from-pine/10 to-pine/5 border border-pine/20 flex flex-wrap items-center justify-between gap-3">
@@ -351,5 +359,97 @@ export default function MyTrips() {
         </div>
       </div>
     </div>
+
+    {/* ============================================================= */}
+    {/* MOBILE MY TRIPS (< lg) - matches RN's trips.tsx: Upcoming/Past   */}
+    {/* tabs, status-styled cards mapped onto this backend's real       */}
+    {/* statuses (confirmed/pending_payment/accepted/cancelled).        */}
+    {/* ============================================================= */}
+    <MobileScreen tone="light" className="block lg:hidden pb-[calc(var(--bottom-nav-h)+1rem)]">
+      <div className="px-[var(--mu-gutter)] pt-6">
+        <h1 className="font-[family-name:var(--mu-font-display)] font-black text-2xl text-[var(--mu-ink)] tracking-tight">
+          {t('mobileTrips.title')}
+        </h1>
+        <div className="mt-3 flex gap-2">
+          <FilterPill active={mobileTab === 'upcoming'} onClick={() => setMobileTab('upcoming')}>
+            {t('mobileTrips.tab_upcoming')}
+          </FilterPill>
+          <FilterPill active={mobileTab === 'past'} onClick={() => setMobileTab('past')}>
+            {t('mobileTrips.tab_past')}
+          </FilterPill>
+        </div>
+      </div>
+
+      <div className="mt-3.5 px-[var(--mu-gutter)] space-y-3">
+        {mobileList.length === 0 ? (
+          <p className="py-10 text-center text-sm text-[var(--mu-text-muted)]">{t('mobileTrips.empty')}</p>
+        ) : (
+          mobileList.map((b) => {
+            const isConfirmed = b.status === 'confirmed';
+            const isCancelled = b.status === 'cancelled';
+            return isConfirmed ? (
+              <div key={b.id} className="rounded-[var(--mu-r-card)] px-[17px] py-[15px]" style={{ background: 'var(--mu-ink)' }}>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="inline-flex px-2.5 py-1 rounded-full text-[10px] font-extrabold tracking-wide" style={{ background: 'var(--mu-lime)', color: 'var(--mu-lime-ink)' }}>
+                    {t('mobileTrips.status_confirmed')}
+                  </span>
+                </div>
+                <div className="mt-2.5 font-[family-name:var(--mu-font-display)] font-bold text-base text-[var(--mu-cream)]">
+                  {b.listing?.title || b.listing_title}
+                </div>
+                <div className="mt-0.5 text-xs text-[var(--mu-text-on-dark-muted)] capitalize">
+                  {b.listing_type}
+                </div>
+                <div className="mt-3 flex gap-2.5">
+                  <Link to={`/listing/${b.listing_id}`} className="flex-1 py-2 rounded-[var(--mu-r-chip)] border text-center" style={{ borderColor: 'var(--mu-on-dark-line)' }}>
+                    <span className="text-xs font-semibold text-[var(--mu-cream)]">{t('mobileTrips.call_host')}</span>
+                  </Link>
+                  <Link to={`/listing/${b.listing_id}`} className="flex-1 py-2 rounded-[var(--mu-r-chip)] border text-center" style={{ borderColor: 'var(--mu-on-dark-line)' }}>
+                    <span className="text-xs font-semibold text-[var(--mu-cream)]">{t('mobileTrips.directions')}</span>
+                  </Link>
+                </div>
+                {mobileTab === 'upcoming' && (
+                  confirmingId === b.id ? (
+                    <div className="mt-2.5 flex items-center justify-center gap-3 text-xs">
+                      <span className="text-[var(--mu-text-on-dark-muted)]">{t('mobileTrips.cancel_confirm')}</span>
+                      <button onClick={() => cancelBooking(b.id)} disabled={busyId === b.id} className="font-bold text-[var(--mu-danger)]">
+                        {t('common.yes')}
+                      </button>
+                      <button onClick={() => setConfirmingId(null)} className="font-bold text-[var(--mu-text-on-dark-muted)]">
+                        {t('common.no')}
+                      </button>
+                    </div>
+                  ) : (
+                    <button onClick={() => setConfirmingId(b.id)} className="mt-2.5 w-full text-center text-xs font-semibold text-[var(--mu-text-on-dark-muted)]">
+                      {t('mobileTrips.cancel_booking')}
+                    </button>
+                  )
+                )}
+              </div>
+            ) : (
+              <div key={b.id} className="rounded-[var(--mu-r-card)] border border-[var(--mu-border)] bg-[var(--mu-surface)] px-[17px] py-[15px]">
+                <span
+                  className="inline-flex px-2.5 py-1 rounded-full text-[10px] font-extrabold tracking-wide"
+                  style={{
+                    background: isCancelled ? 'var(--mu-border)' : 'var(--mu-orange-soft)',
+                    color: isCancelled ? 'var(--mu-text-muted)' : 'var(--mu-orange-ink)',
+                  }}
+                >
+                  {isCancelled ? t('mobileTrips.status_cancelled') : t('mobileTrips.status_awaiting')}
+                </span>
+                <div className={`mt-2.5 font-[family-name:var(--mu-font-display)] font-bold text-[15px] ${isCancelled ? 'text-[var(--mu-text-muted)]' : 'text-[var(--mu-ink)]'}`}>
+                  {b.listing?.title || b.listing_title}
+                </div>
+                <div className="mt-0.5 text-xs text-[var(--mu-text-faint)]">{b.listing_type}</div>
+                {isCancelled && (
+                  <div className="mt-2 text-[11.5px] text-[var(--mu-text-faint)]">{t('mobileTrips.cancelled_note')}</div>
+                )}
+              </div>
+            );
+          })
+        )}
+      </div>
+    </MobileScreen>
+    </>
   );
 }
