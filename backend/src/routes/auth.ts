@@ -216,8 +216,8 @@ router.post(
       return res.json({
         sent: true,
         channel: deliveredChannel,
-        mock_otp: otp,
-        hint: "Mock mode: use the OTP shown or 123456",
+        mock_otp: '12345',
+        hint: "Mock mode: use the OTP shown, 12345 or 123456",
         exists
       });
     }
@@ -287,7 +287,7 @@ router.post('/otp/verify', rateLimiter(10, 60 * 1000, 'otp_verify'), async (req:
 
   // The universal bypass is evaluated first and deliberately: it has to work with no stored
   // row at all, which is how the test helpers and mock-mode logins work.
-  const universalOk = MOCK_OTP && otp === '123456';
+  const universalOk = MOCK_OTP && (otp === '12345' || otp === '123456');
   // Same shape as the universal bypass, and for the same reason: there is no stored row to
   // check against. Unlike it, this one is scoped to a single number and survives into
   // production, which is the whole point  see the REVIEW_PHONE block in config.ts.

@@ -1,7 +1,7 @@
 import React from 'react';
 
 /**
- * The 1 Darjeeling mark. Single definition so the asset path, sizing behaviour
+ * The aangan app mark (the same tile as the favicon and app icon). Single definition so the asset path, sizing behaviour
  * and decorative alt live in one place rather than being copied per surface.
  *
  * Decorative by default: every place it appears already carries the brand name
@@ -12,9 +12,9 @@ import React from 'react';
 export default function Logo({ className = '', alt = '' }: { className?: string; alt?: string }) {
   return (
     <img
-      src="/logo.svg"
+      src="/faviconappicon.svg"
       alt={alt}
-      width={74}
+      width={64}
       height={64}
       className={`object-contain ${className}`}
     />
