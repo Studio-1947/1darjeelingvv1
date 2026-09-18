@@ -96,3 +96,6 @@ credentials.json
 # Generated at deploy time by deploy/init-letsencrypt.sh  not source
 deploy/nginx/conf.d/
 deploy/certbot/
+
+# Debug artifacts / temp screenshots
+scratch_debug/
