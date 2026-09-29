@@ -12,6 +12,7 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "test:setup": "tsx scripts/setup-test-db.ts",
+    "pretest": "npm run test:setup",
     "test": "vitest run"
   },
   "keywords": [],
@@ -28,7 +29,7 @@
     "express": "^5.2.1",
     "google-auth-library": "^11.0.2",
     "jsonwebtoken": "^9.0.3",
-    "nodemailer": "^9.1.0",
+    "nodemailer": "^9.1.1",
     "one-darjeeling-root": "file:..",
     "pg": "^8.22.0",
     "razorpay": "^2.9.6",
@@ -53,5 +54,11 @@
     "tsx": "^4.23.1",
     "typescript": "^5.5.4",
     "vitest": "^4.1.10"
+  },
+  "overrides": {
+    "brace-expansion": "5.0.12",
+    "fast-uri": "3.1.8",
+    "js-yaml": "4.3.2",
+    "qs": "6.16.0"
   }
 }

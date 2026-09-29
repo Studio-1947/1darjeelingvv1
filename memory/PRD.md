@@ -72,7 +72,7 @@ Darjeeling tourism today is fragmented across informal channels  WhatsApp groups
 | In-app messaging | ❌ Not implemented | Contact is via Call/WhatsApp deep links only |
 | Real WhatsApp/SMS OTP delivery | ❌ Not implemented | Mock only |
 | Full local-shop checkout (cart, pay full order value) | ❌ Not implemented | Shops are discovery-only; no cart/order flow |
-| Automated tests | ✅ Done | 147 Vitest + Supertest tests against an isolated Postgres test DB, covering auth, listings, bookings, payments, admin, provider profile completion, and KYC upload/review |
+| Automated tests | ✅ Done | 502 backend tests, 37 public-web tests, and 16 mobile tests; CI builds the admin app as well |
 
 ## 6. Auth model
 
@@ -141,9 +141,9 @@ See root `README.md` for local setup and `INVESTIGATION.md` for known dependency
 ## 12. Non-functional / operational notes
 
 - **i18n**: 4 languages shipped (`en`, `bn`, `hi`, `ne`) via `react-i18next`, translation files in `frontend/src/locales/`.
-- **PWA**: installable (manifest present, standalone display, themed), and now has a real offline app shell  a Workbox service worker (only registered in production builds, never in `yarn start` dev mode) precaches the built JS/CSS/HTML and remote listing images, with an SPA navigation fallback so client-side routing keeps working offline. API data itself is deliberately *not* cached (offline shell, not offline data  full cached-listings support is still P2, see §13).
-- **Security posture**: tracked separately and in more depth in `INVESTIGATION.md` at the repo root  that document is the living record of what's been fixed and what's still open (as of this writing: authorization gaps on listings/payments/seeding have been fixed; stale `.env.example`/dependency issues remain open).
-- **Automated backend test suite** exists (Vitest + Supertest, isolated test database) covering auth, listings, bookings, payments, admin, provider profile completion, and KYC upload/review  147 tests as of this writing. No frontend automated tests yet.
+- **PWA**: installable (manifest present, standalone display, themed), and now has a real offline app shell — a Workbox service worker (only registered in production builds, never in `yarn start` dev mode) precaches the built JS/CSS/HTML and remote listing images, with an SPA navigation fallback so client-side routing keeps working offline. API data itself is deliberately *not* cached (offline shell, not offline data — full cached-listings support is still P2, see §13).
+- **Security posture**: tracked separately and in more depth in `INVESTIGATION.md` at the repo root — that document is the living record of what's been fixed and what's still open (as of this writing: authorization gaps on listings/payments/seeding have been fixed; stale `.env.example`/dependency issues remain open).
+- **Automated verification** covers the backend (502 Vitest + Supertest tests against an isolated Postgres database), public web (37 Vitest tests), and mobile app (16 Jest tests). The admin app is typechecked and built in CI but does not yet have its own behavioral test suite.
 
 ## 13. Backlog / next actions
 

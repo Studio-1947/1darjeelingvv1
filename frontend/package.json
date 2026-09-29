@@ -34,11 +34,10 @@
     "@radix-ui/react-tooltip": "1.2.4",
     "@sentry/react": "^10.69.0",
     "@tanstack/react-query": "5.56.2",
-    "axios": "1.16.0",
+    "axios": "1.18.0",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
     "cmdk": "1.1.1",
-    "cra-template": "1.2.0",
     "dayjs": "1.11.13",
     "embla-carousel-react": "8.6.0",
     "framer-motion": "11.18.0",
@@ -55,8 +54,7 @@
     "react-i18next": "^17.0.9",
     "react-leaflet": "^5.0.0",
     "react-resizable-panels": "3.0.1",
-    "react-router-dom": "7.15.0",
-    "react-scripts": "5.0.1",
+    "react-router-dom": "7.18.2",
     "recharts": "3.6.0",
     "sonner": "2.0.3",
     "swr": "2.3.8",
@@ -74,7 +72,8 @@
     "start": "vite",
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run"
   },
   "browserslist": {
     "production": [
@@ -89,7 +88,6 @@
     ]
   },
   "devDependencies": {
-    "@babel/plugin-proposal-private-property-in-object": "7.21.11",
     "@eslint/js": "9.23.0",
     "@types/leaflet": "^1.9.21",
     "@types/lodash": "4.17.24",
@@ -108,10 +106,11 @@
     "postcss": "8.5.10",
     "tailwindcss": "3.4.17",
     "typescript": "5.5.4",
-    "vite": "^6.2.0"
+    "vite": "^6.2.0",
+    "vitest": "^3.2.4"
   },
   "resolutions": {
-    "react-router": "7.15.0",
+    "react-router": "7.18.2",
     "node-forge": "1.4.0",
     "fast-uri": "3.1.2",
     "flatted": "3.4.2",
@@ -131,7 +130,7 @@
     "webpack-dev-server": "5.2.4",
     "resolve-url-loader": "5.0.0",
     "**/resolve-url-loader/postcss": "8.5.10",
-    "**/axios/form-data": "4.0.4",
+    "**/axios/form-data": "4.0.6",
     "**/jsdom/form-data": "3.0.4",
     "**/postcss-svgo/svgo": "2.8.1",
     "**/webpack-dev-server/ws": "8.20.1",
@@ -144,7 +143,6 @@
     "**/@istanbuljs/load-nyc-config/js-yaml": "3.14.2",
     "**/css-loader/postcss": "8.5.10",
     "**/css-minimizer-webpack-plugin/postcss": "8.5.10",
-    "**/react-scripts/postcss": "8.5.10",
     "**/filelist/minimatch": "5.1.8",
     "**/anymatch/picomatch": "2.3.2",
     "**/micromatch/picomatch": "2.3.2",

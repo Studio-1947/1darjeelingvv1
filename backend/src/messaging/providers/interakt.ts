@@ -38,6 +38,7 @@ const MAX_QUOTED_BODY = 200;
  * discovering that codes silently stopped arriving on some handsets.
  */
 const MAX_OTP_LENGTH = 15;
+const SUPPORTED_COUNTRY_CODES = ['+977', '+975', '+880', '+91'] as const;
 
 /**
  * Interakt wants the country code and the subscriber number as separate fields, and this app
@@ -51,9 +52,8 @@ const MAX_OTP_LENGTH = 15;
  *   9876543210     → (default, as typed)     a bare national number
  *   09876543210    → (default, minus trunk)  the domestic dialling spelling
  *
- * Anything else carrying a different country code is REFUSED rather than guessed at. Splitting
- * an arbitrary E.164 needs a numbering-plan table, and a wrong guess here does not fail  it
- * delivers a code to a real person in another country. A loud failure is the safer wrong answer.
+ * Explicit E.164 numbers are matched against the supported regional calling codes. Other country
+ * codes are refused rather than guessed: a wrong split can deliver a login code to a stranger.
  */
 export function splitPhone(
   raw: string,
@@ -61,21 +61,20 @@ export function splitPhone(
 ): { countryCode: string; phoneNumber: string } {
   const trimmed = raw.trim().replace(/[\s()\-.]/g, '');
   const cc = defaultCountryCode.startsWith('+') ? defaultCountryCode : `+${defaultCountryCode}`;
-  const ccDigits = cc.slice(1);
 
   if (trimmed.startsWith('+')) {
     const digits = trimmed.slice(1);
     if (!/^[0-9]+$/.test(digits)) {
       throw new MessageDeliveryError('interakt', `not a phone number: "${raw}"`);
     }
-    if (digits.startsWith(ccDigits)) {
-      return { countryCode: cc, phoneNumber: digits.slice(ccDigits.length) };
+    const supportedCode = SUPPORTED_COUNTRY_CODES.find((code) => digits.startsWith(code.slice(1)));
+    if (supportedCode) {
+      return { countryCode: supportedCode, phoneNumber: digits.slice(supportedCode.length - 1) };
     }
     throw new MessageDeliveryError(
       'interakt',
-      `cannot split "${raw}" into country code and subscriber number: it is not ${cc}, and ` +
-      `guessing where the country code ends would risk delivering a login code to the wrong ` +
-      `person. Set INTERAKT_COUNTRY_CODE if this app now serves another country.`
+      `cannot split "${raw}": supported country codes are ${SUPPORTED_COUNTRY_CODES.join(', ')}, ` +
+      `and guessing where the country code ends would risk delivering a login code to the wrong person.`
     );
   }
 
