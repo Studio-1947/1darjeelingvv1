@@ -6,7 +6,7 @@ import { db, schema } from '../src/db';
 import { eq } from 'drizzle-orm';
 import { registerUser, nextPhone } from './helpers';
 import { normaliseCode } from '../src/lib/referrals';
-import { REFERRAL_REWARD_DAYS } from '../src/config';
+import { LIFETIME_SUPPORT_EXPIRY, REFERRAL_REWARD_DAYS } from '../src/config';
 
 /**
  * Referrals: the reward the app has advertised since before anything could pay it out.
@@ -73,9 +73,30 @@ describe('invite codes', () => {
   });
 });
 
+/** Unpaid time on the pass, as a referral reward would leave it. */
+async function giveTime(userId: string, days: number) {
+  await db.update(schema.users)
+    .set({ supportExpiresAt: new Date(Date.now() + days * DAY_MS).toISOString() })
+    .where(eq(schema.users.id, userId));
+}
+
 describe('redeeming a code', () => {
+  it('leaves a paid lifetime pass exactly as it was', async () => {
+    const referrer = await registerUser({ name: 'Lifetime Referrer' });
+    const code = await codeFor(referrer.token);
+    const before = await expiryOf(referrer.user.id);
+    expect(before).toBe(LIFETIME_SUPPORT_EXPIRY);
+
+    await signUpWith(code, 'Friend Of Lifetime');
+
+    expect(await expiryOf(referrer.user.id)).toBe(LIFETIME_SUPPORT_EXPIRY);
+  });
+
   it('extends both sides and records the referral', async () => {
-    const referrer = await registerUser({ name: 'Referrer' });
+    // A referrer who has not bought the ₹1 lifetime pass but holds some time  the case where a
+    // reward still means something (for a paid pass it changes nothing; see below).
+    const referrer = await registerUser({ name: 'Referrer', paySupport: false });
+    await giveTime(referrer.user.id, 10);
     const code = await codeFor(referrer.token);
     const before = await expiryOf(referrer.user.id);
 
@@ -97,7 +118,8 @@ describe('redeeming a code', () => {
   });
 
   it('accepts a code typed in lower case with punctuation', async () => {
-    const referrer = await registerUser({ name: 'Sloppy Referrer' });
+    const referrer = await registerUser({ name: 'Sloppy Referrer', paySupport: false });
+    await giveTime(referrer.user.id, 10);
     const code = await codeFor(referrer.token);
     const before = await expiryOf(referrer.user.id);
 

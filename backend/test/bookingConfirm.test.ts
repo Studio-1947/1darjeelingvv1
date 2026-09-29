@@ -129,13 +129,9 @@ describe('host acceptance of a booking request', () => {
     const { token: guest } = await registerUser({ name: 'Guest Seven' });
     const bookingId = await requestBooking(guest, listing.id, '2030-07-10', '2030-07-12');
 
-    // The guest pays before the host gets to the request  normal on an instant-confirm rate.
-    const order = await request(app).post('/api/payments/order')
-      .set('Authorization', `Bearer ${guest}`)
-      .send({ flow: 'booking_commission', reference_id: bookingId });
-    await request(app).post('/api/payments/mock/complete')
-      .set('Authorization', `Bearer ${guest}`)
-      .send({ order_id: order.body.order.id, flow: 'booking_commission', reference_id: bookingId });
+    // The guest checks out before the host gets to the request  normal on an instant-confirm rate.
+    await request(app).post(`/api/bookings/${bookingId}/checkout`)
+      .set('Authorization', `Bearer ${guest}`);
 
     const res = await request(app).patch(`/api/bookings/${bookingId}/confirm`).set('Authorization', `Bearer ${hostToken}`);
     expect(res.status).toBe(200);
@@ -173,25 +169,21 @@ describe('host acceptance of a booking request', () => {
     expect(next.status).toBe(200);
   });
 
-  it('confirms normally once the accepted booking is paid for', async () => {
+  it('confirms normally once the guest checks out an accepted booking', async () => {
     const { hostToken, listing } = await homestayWithHost('Paid Host');
     const { token: guest } = await registerUser({ name: 'Paying Guest' });
     const bookingId = await requestBooking(guest, listing.id, '2030-10-10', '2030-10-12');
 
     await request(app).patch(`/api/bookings/${bookingId}/confirm`).set('Authorization', `Bearer ${hostToken}`);
 
-    const order = await request(app).post('/api/payments/order')
-      .set('Authorization', `Bearer ${guest}`)
-      .send({ flow: 'booking_commission', reference_id: bookingId });
-    const done = await request(app).post('/api/payments/mock/complete')
-      .set('Authorization', `Bearer ${guest}`)
-      .send({ order_id: order.body.order.id, flow: 'booking_commission', reference_id: bookingId });
+    const done = await request(app).post(`/api/bookings/${bookingId}/checkout`)
+      .set('Authorization', `Bearer ${guest}`);
     expect(done.status).toBe(200);
 
     const mine = await request(app).get('/api/bookings/me').set('Authorization', `Bearer ${guest}`);
     const row = mine.body.items.find((b: any) => b.id === bookingId);
     expect(row.status).toBe('confirmed');
-    // The acceptance is still on the record after payment  it is history, not a transient flag.
+    // The acceptance is still on the record after checkout  it is history, not a transient flag.
     expect(row.accepted_at).toBeTruthy();
   });
 

@@ -120,18 +120,12 @@ export async function createConfirmedBooking(opts: {
   }
   const bookingId = bookingRes.body.booking.id as string;
 
-  const orderRes = await request(app)
-    .post('/api/payments/order')
-    .set('Authorization', `Bearer ${opts.token}`)
-    .send({ flow: 'booking_commission', reference_id: bookingId });
-  const orderId = orderRes.body.order.id as string;
-
-  const completeRes = await request(app)
-    .post('/api/payments/mock/complete')
-    .set('Authorization', `Bearer ${opts.token}`)
-    .send({ order_id: orderId, flow: 'booking_commission', reference_id: bookingId });
-  if (completeRes.status !== 200) {
-    throw new Error(`complete failed: ${completeRes.status} ${JSON.stringify(completeRes.body)}`);
+  // Bookings are free: checkout is what the ₹1 commission payment used to be.
+  const checkoutRes = await request(app)
+    .post(`/api/bookings/${bookingId}/checkout`)
+    .set('Authorization', `Bearer ${opts.token}`);
+  if (checkoutRes.status !== 200) {
+    throw new Error(`checkout failed: ${checkoutRes.status} ${JSON.stringify(checkoutRes.body)}`);
   }
 
   return bookingId;

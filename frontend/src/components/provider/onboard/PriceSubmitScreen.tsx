@@ -2,7 +2,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Screen, Eyebrow } from './layout';
 
-/** Final onboarding screen: starting price, the ₹99 fee note, submit + back. */
+/** Final onboarding screen: starting price, the ₹1 first-year fee note, submit + back. */
 export default function PriceSubmitScreen({
   tone = 'white',
   n,

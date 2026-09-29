@@ -22,6 +22,17 @@ export function resolveAmount(flow: string, body: any): AmountResolution {
     return { error: { status: 400, detail: 'Invalid payment flow' } };
   }
 
+  // Bookings stopped carrying a fee. Named rather than left to fall through to "Invalid payment
+  // flow", so an older client that still tries to pay one is told why.
+  if (flow === 'booking_commission') {
+    return {
+      error: {
+        status: 410,
+        detail: 'Bookings are free. Confirm with POST /api/bookings/:id/checkout instead.',
+      },
+    };
+  }
+
   if (flow !== 'donation') {
     const amount = AMOUNTS[flow];
     if (!amount) {

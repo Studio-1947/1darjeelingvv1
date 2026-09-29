@@ -10,6 +10,8 @@ import { findBlockingBooking, isDateExclusive, lockListingForBooking } from '../
 import { refundPaymentsFor } from '../lib/refunds';
 import { notifyBookingCancelled } from '../lib/notifications';
 import { routeParam } from '../lib/routeParam';
+import { isListingHostLapsed } from '../lib/hostPlan';
+import { settleBookingConfirmation } from '../lib/bookingConfirmation';
 
 const router = Router();
 
@@ -89,6 +91,11 @@ router.post('/', authenticateToken, requireActiveSupport, async (req: Request, r
   const [listing] = await db.select().from(schema.listings).where(eq(schema.listings.id, listing_id)).limit(1);
   if (!listing) {
     return res.status(404).json({ detail: 'Listing not found' });
+  }
+  // A host whose yearly plan has lapsed is not taking bookings until they renew. Their listing is
+  // already out of the public feed; this covers a guest holding an old link.
+  if (await isListingHostLapsed(listing.providerId)) {
+    return res.status(409).json({ detail: 'This listing is not taking bookings right now' });
   }
 
   if (isDateExclusive(listing_type)) {
@@ -458,6 +465,56 @@ router.patch('/:id/confirm', authenticateToken, async (req: Request, res: Respon
   }
 
   res.json({ booking: bookingShape(outcome.booking) });
+});
+
+/**
+ * @openapi
+ * /bookings/{id}/checkout:
+ *   post:
+ *     summary: Confirm a booking (free)
+ *     description: >
+ *       Bookings carry no fee. This is the step the ₹1 commission payment used to be: it confirms
+ *       the booking under the listing lock (so two guests cannot both take the same nights) and
+ *       sends both parties their confirmation. Only the guest who made the booking can call it,
+ *       and it needs the ₹1 aangan pass like creating the booking does. Idempotent: an
+ *       already-confirmed booking is returned as it is.
+ *     tags: [Bookings]
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: "The confirmed booking, as `{ booking }`" }
+ *       402: { description: The aangan pass has not been paid }
+ *       403: { description: Not the guest who made this booking }
+ *       404: { description: Booking not found }
+ *       409: { description: "The booking is cancelled, the host is not taking bookings, or the dates went to another guest (the booking is then cancelled)" }
+ */
+router.post('/:id/checkout', authenticateToken, requireActiveSupport, async (req: Request, res: Response) => {
+  const [booking] = await db.select().from(schema.bookings).where(eq(schema.bookings.id, routeParam(req, 'id'))).limit(1);
+  if (!booking) return res.status(404).json({ detail: 'Booking not found' });
+  if (booking.userId !== req.user.id) {
+    return res.status(403).json({ detail: 'You can only confirm your own booking' });
+  }
+  if (booking.status === 'cancelled') {
+    return res.status(409).json({ detail: 'This booking was cancelled' });
+  }
+  if (booking.status !== 'confirmed') {
+    const [listing] = await db.select({ providerId: schema.listings.providerId })
+      .from(schema.listings).where(eq(schema.listings.id, booking.listingId)).limit(1);
+    if (listing && (await isListingHostLapsed(listing.providerId))) {
+      return res.status(409).json({ detail: 'This listing is not taking bookings right now' });
+    }
+  }
+
+  const record = await settleBookingConfirmation(booking.id, req.user.id, { paid: false });
+  if (!record) return res.status(404).json({ detail: 'Booking not found' });
+  if (record.conflict) {
+    return res.status(409).json({ detail: 'These dates have already gone to another guest', booking: record });
+  }
+  res.json({ booking: record });
 });
 
 router.patch('/:id/cancel', authenticateToken, async (req: Request, res: Response) => {
