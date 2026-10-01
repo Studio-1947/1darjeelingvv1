@@ -47,10 +47,10 @@ Two things specific to Interakt, both of which cost an hour if nobody warns you:
 - **The API key is already base64.** It goes after `Basic ` verbatim. Encoding it a second time
   is the usual first mistake and presents as a flat `401` with no other clue.
 - **It wants the country code and subscriber number as separate fields**, unlike every other
-  provider here. Numbers on `INTERAKT_COUNTRY_CODE` are split automatically. A number carrying a
-  *different* country code is **refused** rather than guessed at  guessing where a country code
-  ends does not fail loudly, it delivers a login code to a stranger abroad. If the app starts
-  serving another country, that is the setting to change.
+  provider here. Explicit E.164 numbers for India (`+91`), Nepal (`+977`), Bangladesh (`+880`),
+  and Bhutan (`+975`) are split safely. `INTERAKT_COUNTRY_CODE` is only the default for legacy
+  numbers without a calling code. Other international codes are refused rather than guessed,
+  because a wrong split can deliver a login code to a stranger.
 
 The rest of this document is the Meta-direct path.
 

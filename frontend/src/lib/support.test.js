@@ -1,5 +1,5 @@
-// Plain .js for the same reason as api.test.js  the repo has no @types/jest.
-const { isExemptFromSupport, isSupportActive, needsSupport } = require('./support');
+// Plain .js for the same reason as api.test.js — the repo has no @types/jest.
+import { isExemptFromSupport, isSupportActive, needsSupport } from './support';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const future = () => new Date(Date.now() + 30 * DAY_MS).toISOString();

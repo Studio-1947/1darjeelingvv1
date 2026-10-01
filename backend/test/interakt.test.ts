@@ -39,11 +39,20 @@ describe('splitting a stored number into what Interakt wants', () => {
     expect(splitPhone('+9771234567', '+977')).toEqual({ countryCode: '+977', phoneNumber: '1234567' });
   });
 
+  it.each([
+    ['+919876543210', '+91', '9876543210'],
+    ['+9779812345678', '+977', '9812345678'],
+    ['+8801712345678', '+880', '1712345678'],
+    ['+97517123456', '+975', '17123456'],
+  ])('recognises supported regional number %s', (raw, countryCode, phoneNumber) => {
+    expect(splitPhone(raw, '+91')).toEqual({ countryCode, phoneNumber });
+  });
+
   it('accepts a code configured without its plus', () => {
     expect(splitPhone('+919876543210', '91')).toEqual({ countryCode: '+91', phoneNumber: '9876543210' });
   });
 
-  it('REFUSES a foreign number rather than guessing where the country code ends', () => {
+  it('refuses an unsupported foreign number rather than guessing where the country code ends', () => {
     // Guessing would send someone else's login code to a stranger. Failing is the safer answer.
     expect(() => splitPhone('+447700900123', '+91')).toThrow(MessageDeliveryError);
     expect(() => splitPhone('+447700900123', '+91')).toThrow(/cannot split/);

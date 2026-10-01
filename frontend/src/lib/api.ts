@@ -2,19 +2,14 @@ import axios from 'axios';
 import { SUPPORT_ROUTE } from './support';
 
 // Empty by default so the API is called same-origin ('/api') and nginx proxies it
-// to the backend. Without the fallback, CRA inlines a missing var as the literal
-// string "undefined" and every request goes to /undefined/api/... instead.
-const getBackendUrl = () => {
-  const metaEnv = (import.meta as any).env;
-  if (metaEnv && metaEnv.VITE_BACKEND_URL) {
-    return metaEnv.VITE_BACKEND_URL;
-  }
-  if (typeof process !== 'undefined' && process.env && process.env.REACT_APP_BACKEND_URL) {
-    return process.env.REACT_APP_BACKEND_URL;
-  }
-  return '';
-};
-const BACKEND_URL = getBackendUrl();
+// to the backend. Keep the legacy variable temporarily for older local environments.
+export const resolveBackendUrl = (viteUrl?: string, legacyUrl?: string) =>
+  viteUrl || legacyUrl || '';
+
+const BACKEND_URL = resolveBackendUrl(
+  import.meta.env.VITE_BACKEND_URL,
+  typeof process !== 'undefined' ? process.env?.REACT_APP_BACKEND_URL : undefined,
+);
 export const API_BASE = `${BACKEND_URL}/api`;
 
 const api = axios.create({ baseURL: API_BASE });

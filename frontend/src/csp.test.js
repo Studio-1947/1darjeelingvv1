@@ -170,7 +170,7 @@ describe('search indexing', () => {
     const body = mapBlock[1];
     // The canonical domain must map to an empty value  nginx omits an add_header whose value is
     // empty, so the real site sends no X-Robots-Tag at all rather than a weaker explicit "index".
-    expect(body).toMatch(/1darjeeling\\?\.in\$?["\s]*""/);
+    expect(body).toMatch(/aanganerp\\?\.in\$?["\s]*""/);
     // Default-deny: a new staging host or a raw-IP request is non-indexable without anyone
     // remembering to add it here.
     expect(body).toMatch(/default\s+"noindex, nofollow"/);
@@ -185,7 +185,7 @@ describe('search indexing', () => {
     expect((common.match(/add_header\s+X-Robots-Tag\s+\$robots_tag\s+always;/g) || []).length).toBe(1);
 
     const includers = conf.match(/include\s+\/etc\/nginx\/snippets\/headers-common\.conf;/g) || [];
-    expect(includers.length).toBe(4);
+    expect(includers.length).toBe(5);
 
     expect(locationBlock(conf, '/one-darjeeling/')).toMatch(/add_header\s+X-Robots-Tag\s+\$robots_tag\s+always;/);
   });

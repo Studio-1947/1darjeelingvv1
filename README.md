@@ -141,8 +141,7 @@ The migration is what runs in production (`backend/Dockerfile`'s `CMD` runs `dri
 
 ```sh
 cd backend
-npm run test:setup   # creates one_darjeeling_test + applies migrations (idempotent, needs Postgres up)
-npm test             # vitest
+npm test             # creates/migrates one_darjeeling_test, then runs Vitest
 ```
 
 Tests run against `one_darjeeling_test`, a **separate database** from your dev one, because the suite truncates every table between tests. Re-run `test:setup` after adding a migration.
