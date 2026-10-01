@@ -1475,5 +1475,17 @@
         }
       }
     ]
+  },
+  "policies": {
+    "title": "Policies",
+    "lead": "Every policy that applies when you use aangan as a traveller or as a host, in one place.",
+    "docs": {
+      "privacy": "What we collect, why, and how to have it deleted.",
+      "terms": "The rules for using aangan, for travellers and for hosts.",
+      "refunds": "Cancellations, refunds and who to ask about a payment.",
+      "responsible": "How we ask travellers and hosts to treat the hills and the people in them.",
+      "contact": "How to reach us, including the grievance officer.",
+      "delete_account": "How to close your account and remove your data."
+    }
   }
 }

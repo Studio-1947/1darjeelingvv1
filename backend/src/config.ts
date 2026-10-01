@@ -157,7 +157,7 @@ function requirePositiveInt(name: string, raw: string | undefined, fallback: num
 
 // How long an issued OTP stays valid, and how many wrong guesses it tolerates before it must
 // be reissued. Enforced in routes/auth.ts.
-export const OTP_TTL_SECONDS = requirePositiveInt('OTP_TTL_SECONDS', process.env.OTP_TTL_SECONDS, 300);
+export const OTP_TTL_SECONDS = requirePositiveInt('OTP_TTL_SECONDS', process.env.OTP_TTL_SECONDS, 600);
 export const OTP_MAX_ATTEMPTS = requirePositiveInt('OTP_MAX_ATTEMPTS', process.env.OTP_MAX_ATTEMPTS, 5);
 
 // Daily ceilings on OTP sends, enforced against durable counters in lib/otpSendBudget.ts.

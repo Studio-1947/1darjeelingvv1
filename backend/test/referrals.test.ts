@@ -49,7 +49,7 @@ describe('invite codes', () => {
     const first = await codeFor(token);
     const second = await codeFor(token);
 
-    expect(first).toMatch(/^[A-Z0-9]{6}$/);
+    expect(first).toMatch(/^ANG26-[A-Z0-9]{6}$/);
     expect(second).toBe(first);
   });
 
@@ -62,12 +62,19 @@ describe('invite codes', () => {
   it('uses an alphabet with no lookalike characters', async () => {
     // A code is read aloud across a table; O/0 and I/1 are how that goes wrong.
     const code = await codeFor((await registerUser({ name: 'Readable' })).token);
-    expect(code).not.toMatch(/[OISZ01]/);
+    expect(code.slice('ANG26-'.length)).not.toMatch(/[OISZ01]/);
+  });
+
+  it('starts every new code with ANG26-', async () => {
+    const code = await codeFor((await registerUser({ name: 'Prefixed' })).token);
+    expect(code).toMatch(/^ANG26-[A-Z0-9]{6}$/);
   });
 
   it('normalises what people actually paste', () => {
-    expect(normaliseCode('  ab2-c3d ')).toBe('AB2C3D');
-    expect(normaliseCode('ASHA-1D')).toBe('ASHA1D');
+    expect(normaliseCode('  ab2-c3d ')).toBe('ANG26-AB2C3D');
+    expect(normaliseCode('ASHA-1D-X')).toBe('ASHA1DX');
+    expect(normaliseCode(' ang26 k7q-4mx ')).toBe('ANG26-K7Q4MX');
+    expect(normaliseCode('ANG26K7Q4MX')).toBe('ANG26-K7Q4MX');
     expect(normaliseCode('')).toBeNull();
     expect(normaliseCode(undefined)).toBeNull();
   });

@@ -33,20 +33,34 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const ALPHABET = 'ABCDEFGHJKLMNPQRTUVWXY2346789';
 const CODE_LENGTH = 6;
 
+/**
+ * Every code reads `ANG26-XXXXXX`, so a code is recognisably aangan's when it turns up in a
+ * WhatsApp thread. Codes issued before the prefix were bare six-character strings; migration 0016
+ * prefixed them in place, and normaliseCode prefixes one typed bare, so a code shared before the
+ * change still redeems.
+ */
+export const CODE_PREFIX = 'ANG26';
+
 function randomCode(): string {
   const bytes = crypto.randomBytes(CODE_LENGTH);
   let out = '';
   for (let i = 0; i < CODE_LENGTH; i += 1) out += ALPHABET[bytes[i] % ALPHABET.length];
-  return out;
+  return `${CODE_PREFIX}-${out}`;
 }
 
 /**
  * Normalises a code as typed. People send these over WhatsApp, so they arrive with stray
- * spaces, in lower case, and sometimes with the old `NAME-1D` shape pasted around them.
+ * spaces, in lower case, without the hyphen, or as the bare six characters of a code shared
+ * before the prefix existed. All of those come back in the stored `ANG26-XXXXXX` form. Anything
+ * else is returned as cleaned, and will simply not match.
  */
 export function normaliseCode(raw: unknown): string | null {
   if (typeof raw !== 'string') return null;
   const cleaned = raw.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (cleaned.length === CODE_PREFIX.length + CODE_LENGTH && cleaned.startsWith(CODE_PREFIX)) {
+    return `${CODE_PREFIX}-${cleaned.slice(CODE_PREFIX.length)}`;
+  }
+  if (cleaned.length === CODE_LENGTH) return `${CODE_PREFIX}-${cleaned}`;
   return cleaned.length > 0 ? cleaned : null;
 }
 

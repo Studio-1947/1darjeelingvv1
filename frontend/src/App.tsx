@@ -27,6 +27,7 @@ import Terms from '@/pages/Terms';
 import Refunds from '@/pages/Refunds';
 import DeleteAccount from '@/pages/DeleteAccount';
 import Contact from '@/pages/Contact';
+import Policies from '@/pages/Policies';
 import NotFound from '@/pages/NotFound';
 
 // How long the splash in index.html stays up once the app has mounted - long enough for its
@@ -85,6 +86,7 @@ export default function App() {
                   <Route path="/refunds" element={<Refunds />} />
                   <Route path="/delete-account" element={<DeleteAccount />} />
                   <Route path="/contact" element={<Contact />} />
+                  <Route path="/policies" element={<Policies />} />
                   {/* Anything else. Without this the router matched nothing and
                       rendered an empty <main> between the header and footer. */}
                   <Route path="*" element={<NotFound />} />

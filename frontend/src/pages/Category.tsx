@@ -6,7 +6,7 @@ import FeedCard from '@/components/FeedCard';
 import SmartImg from '@/components/SmartImg';
 import Seo from '@/components/Seo';
 import { FeedCardSkeleton, GridTileSkeleton, LoadingStatus, repeat } from '@/components/skeletons';
-import { SquaresFour as LayoutGrid, Rows as Rows3, MapPin, ArrowRight, CalendarDots as CalendarRange, Users, MagnifyingGlass as SearchIcon } from '@phosphor-icons/react';
+import { SquaresFour as LayoutGrid, Rows as Rows3, MapPin, ArrowRight, CalendarDots as CalendarRange, Users, MagnifyingGlass as SearchIcon, Mountains as Mountain } from '@phosphor-icons/react';
 import CategoryFilterBar from '@/components/CategoryFilterBar';
 import { contentFor, listingImage } from '@/lib/listingContent';
 import { routesCoverTrip } from '@/lib/routeFares';
@@ -23,6 +23,51 @@ const TYPE_MAP = {
   events: 'event',
   biodiversity: 'biodiversity',
 };
+
+const OFFBEAT_PLACES = [
+  {
+    name: 'Lamahatta',
+    line: 'Pine forest park with a small lake at the top',
+    tag: 'Pine Forest',
+    image: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800&q=80',
+  },
+  {
+    name: 'Takdah',
+    line: 'Old cantonment village with an orchid centre',
+    tag: 'Heritage Village',
+    image: 'https://images.unsplash.com/photo-1544735716-392fe2489ffa?w=800&q=80',
+  },
+  {
+    name: 'Sittong',
+    line: 'Orange orchards, best in the winter harvest',
+    tag: 'Orange Valley',
+    image: 'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=800&q=80',
+  },
+  {
+    name: 'Chatakpur',
+    line: 'Eco-village inside Senchal Wildlife Sanctuary',
+    tag: 'Eco Sanctuary',
+    image: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=800&q=80',
+  },
+  {
+    name: 'Tinchuley',
+    line: 'Village viewpoints over the Teesta valley',
+    tag: 'Teesta Views',
+    image: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800&q=80',
+  },
+  {
+    name: 'Mungpoo',
+    line: 'Cinchona plantations and the Tagore house',
+    tag: 'Cinchona & Tagore',
+    image: 'https://images.unsplash.com/photo-1584395631446-e41b0fc3f68d?w=800&q=80',
+  },
+  {
+    name: 'Lepchajagat',
+    line: 'Forest hamlet on the road to Sukhiapokhri',
+    tag: 'Quiet Hamlet',
+    image: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=800&q=80',
+  },
+];
 
 export default function Category({ typeOverride }) {
   const { t, i18n } = useTranslation();
@@ -251,6 +296,48 @@ export default function Category({ typeOverride }) {
             </span>
           )}
         </div>
+      )}
+
+      {/* Offbeat rail when viewing Spots */}
+      {type === 'spot' && !searching && (
+        <section className="mb-8 pt-1">
+          <div className="flex items-end justify-between mb-3">
+            <div>
+              <div className="text-[11px] font-bold uppercase tracking-widest text-flag">{t('home.hidden_gems', 'HIDDEN GEMS')}</div>
+              <h2 className="font-display font-extrabold text-xl md:text-2xl text-ink mt-0.5">{t('home.offbeat', 'Offbeat & Quiet Villages')}</h2>
+              <p className="text-xs text-ink-soft mt-0.5">{t('home.offbeat_sub', 'Quieter villages a day trip or a night away from town')}</p>
+            </div>
+          </div>
+          <div className="flex gap-3 md:gap-4 overflow-x-auto no-scrollbar -mx-4 px-4 md:mx-0 md:px-0 pb-2">
+            {OFFBEAT_PLACES.map((place) => (
+              <Link
+                key={place.name}
+                to={`/discover?q=${encodeURIComponent(place.name)}`}
+                className="flex-shrink-0 w-[70%] sm:w-[45%] md:w-[28%] rounded-2xl overflow-hidden bg-white border border-[var(--line)] btn-hover"
+              >
+                <div className="aspect-[4/5] relative bg-mist overflow-hidden">
+                  <SmartImg src={place.image} alt={place.name} className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-black/35" />
+                  <div className="absolute top-3 left-3 right-3 flex items-center justify-between">
+                    <span className="px-2.5 py-0.5 rounded-full bg-black/50 backdrop-blur border border-white/20 text-[10px] font-bold text-white tracking-wider flex items-center gap-1">
+                      <MapPin size={10} weight="fill" /> {place.tag}
+                    </span>
+                    <span className="w-6 h-6 rounded-full bg-black/40 backdrop-blur border border-white/20 grid place-items-center text-white">
+                      <ArrowRight size={12} className="-rotate-45" />
+                    </span>
+                  </div>
+                  <div className="absolute bottom-0 inset-x-0 p-3 md:p-4 text-white">
+                    <div className="font-display font-extrabold text-lg md:text-xl leading-tight drop-shadow">{place.name}</div>
+                    <div className="text-xs text-white/85 line-clamp-2 mt-1 leading-snug">{place.line}</div>
+                    <div className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white text-pine font-bold text-xs">
+                      <Mountain size={12} weight="fill" /> {t('cta.explore', 'Explore')}
+                    </div>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
       )}
 
       {/* Universal Search & Filter Component */}
