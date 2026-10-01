@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { isHostPlanLive } from '../lib/hostPlan';
 import { v4 as uuidv4 } from 'uuid';
 import { db, schema } from '../db';
 import { eq } from 'drizzle-orm';
@@ -220,7 +221,11 @@ router.get('/me', authenticateToken, async (req: Request, res: Response) => {
     extras: provider.extras,
     status: provider.status,
     created_at: provider.createdAt,
-    activated_at: provider.activatedAt
+    activated_at: provider.activatedAt,
+    // The host's yearly plan: when the current year ends, and whether it is live right now.
+    // A registered host whose plan has lapsed renews through the `provider_renewal` flow.
+    plan_expires_at: provider.planExpiresAt,
+    plan_active: isHostPlanLive(provider),
   };
 
   res.json({ provider: providerReturn });

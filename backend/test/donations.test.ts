@@ -101,7 +101,7 @@ describe('donation settlement', () => {
   });
 
   it('does not lift the support gate', async () => {
-    // Same property, observed from the outside: a donor who has not paid the ₹12 is still gated.
+    // Same property, observed from the outside: a donor who has not paid the ₹1 pass is still gated.
     const { token, user } = await registerUser({ name: 'Gated Gopal', paySupport: false });
     const listing = await createListing();
 
@@ -150,6 +150,6 @@ describe('fixed-price flows are unaffected by the amount field', () => {
 
     const res = await order(token, { flow: 'platform_support', reference_id: user.id, amount: 1 });
     expect(res.status).toBe(200);
-    expect(res.body.amount).toBe(1200);
+    expect(res.body.amount).toBe(100);
   });
 });

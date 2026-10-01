@@ -216,8 +216,8 @@ router.post(
       return res.json({
         sent: true,
         channel: deliveredChannel,
-        mock_otp: otp,
-        hint: "Mock mode: use the OTP shown or 123456",
+        mock_otp: '123456',
+        hint: 'Mock mode: use the OTP shown or 123456',
         exists
       });
     }

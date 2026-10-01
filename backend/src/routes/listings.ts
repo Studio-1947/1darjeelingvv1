@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { hostPlanVisibility, isListingHostLapsed } from '../lib/hostPlan';
 import { v4 as uuidv4 } from 'uuid';
 import { db, schema } from '../db';
 import { eq, or, and, ilike, inArray } from 'drizzle-orm';
@@ -218,7 +219,8 @@ router.get('/', async (req: Request, res: Response) => {
 
   // Draft spots must never surface on a public read  this route has no auth, so the
   // predicate is unconditional here and admins get their drafts from /admin/spots instead.
-  const conditions = [publicSpotVisibility()];
+  // Nor may a lapsed host's listings: they leave the feed until the host renews (lib/hostPlan.ts).
+  const conditions = [publicSpotVisibility(), hostPlanVisibility()];
   if (type) {
     conditions.push(eq(schema.listings.type, type));
   }
@@ -311,6 +313,10 @@ router.get('/:id', async (req: Request, res: Response) => {
   // A draft spot is unpublished content: it must not be reachable by guessing/keeping its id
   // either, so it 404s here exactly as it is filtered out of the list route above.
   if (item.type === SPOT_TYPE && !isSpotPublished(item.extras)) {
+    return res.status(404).json({ detail: 'Not found' });
+  }
+  // Hidden with the rest of the feed while its host's plan has lapsed.
+  if (await isListingHostLapsed(item.providerId)) {
     return res.status(404).json({ detail: 'Not found' });
   }
 

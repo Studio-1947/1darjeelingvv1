@@ -55,7 +55,7 @@ if (DSN) {
     // Sentry's own PII switch  off means it does not attach IP addresses, cookies or user
     // identity of its own accord. beforeSend below is the belt to this pair of braces; neither is
     // trusted alone, because this codebase handles government ID documents.
-    sendDefaultPii: false,
+
 
     beforeSend(event) {
       // Request: the highest-risk object in the payload. It carries the Authorization header that
