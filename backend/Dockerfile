@@ -1,9 +1,14 @@
-FROM node:20-slim
+FROM node:22-slim
 
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm install
+# argon2 may need to build from source when a prebuilt binary is unavailable.
+# Keep the toolchain in the build image so Docker builds work on every platform.
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends python3 make g++ \
+  && rm -rf /var/lib/apt/lists/* \
+  && npm install
 
 COPY . .
 RUN npm run build

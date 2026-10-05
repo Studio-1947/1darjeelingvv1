@@ -315,9 +315,10 @@ export const rzpClient = RAZORPAY_KEY_SECRET ? new Razorpay({
 // Fixed prices, in paise. `donation` is deliberately absent: its presence here would imply a
 // fixed price, and the whole point of a donation is that the giver chooses. See lib/payments.ts.
 export const AMOUNTS: Record<string, number> = {
-  provider_registration: 9900,
+  provider_registration: 100,
+  provider_renewal: 49900,
   booking_commission: 100,
-  platform_support: 1200
+  platform_support: 100
 };
 
 // Bounds on a donation, in paise. The floor stops dust-spam orders; the ceiling is a sanity guard

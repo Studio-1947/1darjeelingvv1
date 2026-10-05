@@ -81,6 +81,7 @@ export const providers = pgTable('providers', {
   kycStatus: text('kyc_status').default('none').notNull(),
   createdAt: text('created_at').notNull(),
   activatedAt: text('activated_at'),
+  planExpiresAt: text('plan_expires_at'),
 }, (t) => ({
   // At most one provider row per user, ever  enforced at the DB level so the onboard route's
   // read-then-write conflict check can't lose a race (two concurrent onboards both reading "no

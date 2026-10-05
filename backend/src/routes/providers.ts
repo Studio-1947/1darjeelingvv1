@@ -220,7 +220,9 @@ router.get('/me', authenticateToken, async (req: Request, res: Response) => {
     extras: provider.extras,
     status: provider.status,
     created_at: provider.createdAt,
-    activated_at: provider.activatedAt
+    activated_at: provider.activatedAt,
+    plan_expires_at: provider.planExpiresAt,
+    plan_active: provider.status === 'active' && (!provider.planExpiresAt || Date.parse(provider.planExpiresAt) > Date.now()),
   };
 
   res.json({ provider: providerReturn });

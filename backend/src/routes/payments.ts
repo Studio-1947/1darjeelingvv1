@@ -34,6 +34,8 @@ function serializeProvider(p: typeof schema.providers.$inferSelect) {
     status: p.status,
     created_at: p.createdAt,
     activated_at: p.activatedAt,
+    plan_expires_at: p.planExpiresAt,
+    plan_active: p.status === 'active' && (!p.planExpiresAt || Date.parse(p.planExpiresAt) > Date.now()),
   };
 }
 
@@ -41,7 +43,7 @@ function serializeProvider(p: typeof schema.providers.$inferSelect) {
 async function handlePaymentSuccess(flow: string, referenceId: string, userId: string, amount: number) {
   if (flow === 'provider_registration') {
     await db.update(schema.providers)
-      .set({ status: 'active', activatedAt: new Date().toISOString() })
+      .set({ status: 'active', activatedAt: new Date().toISOString(), planExpiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString() })
       .where(eq(schema.providers.id, referenceId));
 
     await db.update(schema.users)
@@ -68,6 +70,18 @@ async function handlePaymentSuccess(flow: string, referenceId: string, userId: s
       await db.insert(schema.listings).values(listing);
     }
     return p ? serializeProvider(p) : null;
+  } else if (flow === 'provider_renewal') {
+    const [provider] = await db.select().from(schema.providers).where(eq(schema.providers.id, referenceId)).limit(1);
+    if (!provider) return null;
+    const now = Date.now();
+    const base = provider.planExpiresAt && Date.parse(provider.planExpiresAt) > now
+      ? Date.parse(provider.planExpiresAt)
+      : now;
+    const [renewed] = await db.update(schema.providers)
+      .set({ status: 'active', planExpiresAt: new Date(base + 365 * 24 * 60 * 60 * 1000).toISOString() })
+      .where(eq(schema.providers.id, referenceId))
+      .returning();
+    return renewed ? serializeProvider(renewed) : null;
   } else if (flow === 'booking_commission') {
     // Confirming is not a plain UPDATE, because two guests can reach this point at the same
     // instant for the same homestay and the same nights. The hold window in POST /bookings makes
@@ -232,6 +246,13 @@ async function assertOwnsReference(
     if (booking.userId !== userId) {
       return { status: 403, detail: 'You can only pay for your own booking' };
     }
+    return null;
+  }
+
+  if (flow === 'provider_renewal') {
+    const [provider] = await db.select().from(schema.providers).where(eq(schema.providers.id, referenceId)).limit(1);
+    if (!provider) return { status: 404, detail: 'Provider not found' };
+    if (provider.userId !== userId) return { status: 403, detail: 'You can only renew your own provider plan' };
     return null;
   }
 
