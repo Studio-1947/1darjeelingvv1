@@ -19,7 +19,44 @@ export const users = pgTable('users', {
   // the first name (`ASHA-1D`), which collides on every second Asha and could not be looked up.
   // Nullable because rows created before referrals existed have none until they are backfilled.
   referralCode: text('referral_code').unique(),
+  // What the traveller picked on the "pick your vibe" screen (ids like 'nature', 'food'). Kept on
+  // the account so it survives a reinstall or a second phone; the client owns the vocabulary.
+  interests: jsonb('interests').$type<string[]>().default([]).notNull(),
 });
+
+/**
+ * The in-app activity feed. One row per event a user should see, written server-side when the
+ * thing happens, so a host accepting a request reaches a guest whose app is closed.
+ */
+export const notifications = pgTable('notifications', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  // 'booking_accepted' | 'booking_confirmed' | 'booking_cancelled' | 'booking_request' | ...
+  kind: text('kind').notNull(),
+  title: text('title').notNull(),
+  body: text('body').notNull(),
+  // The booking (or other row) this is about, so the app can deep-link.
+  refId: text('ref_id'),
+  readAt: text('read_at'),
+  createdAt: text('created_at').notNull(),
+}, (t) => ({
+  userCreatedIdx: index('notifications_user_id_created_at_idx').on(t.userId, t.createdAt),
+}));
+
+/**
+ * Expo push tokens, one row per device. Registered so a delivery worker can be added later;
+ * nothing sends to these yet.
+ */
+export const pushTokens = pgTable('push_tokens', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  token: text('token').notNull().unique(),
+  platform: text('platform').notNull(), // 'ios' | 'android' | 'web'
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+}, (t) => ({
+  userIdx: index('push_tokens_user_id_idx').on(t.userId),
+}));
 
 /**
  * Who invited whom, and what it bought them.

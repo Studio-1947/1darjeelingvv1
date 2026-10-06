@@ -10,6 +10,7 @@ import { computeSupportExpiry } from '../lib/support';
 import { resolveAmount } from '../lib/payments';
 import { findBlockingBooking, isDateExclusive, lockListingForBooking } from '../lib/bookingAvailability';
 import { notifyBookingCancelled, notifyBookingConfirmed } from '../lib/notifications';
+import { addInAppNotification, resolveHostUserId } from '../lib/inApp';
 import { refundPaymentsFor } from '../lib/refunds';
 
 const router = Router();
@@ -152,6 +153,12 @@ async function handlePaymentSuccess(flow: string, referenceId: string, userId: s
       const hostName = (providerInfo as any)?.business_name || (providerInfo as any)?.name || null;
 
       if (conflicted) {
+        await addInAppNotification(booking.userId, {
+          kind: 'booking_cancelled',
+          title: 'Booking cancelled',
+          body: `The dates for ${booking.listingTitle} went to another guest first, so your booking was cancelled.`,
+          refId: booking.id,
+        });
         // Charged for dates that are no longer available. Return the money first, then tell them
         //  in that order, so the message can state truthfully whether the refund went through.
         const outcomes = await refundPaymentsFor('booking_commission', booking.id, 'double-booked: dates taken by another guest');
@@ -165,6 +172,18 @@ async function handlePaymentSuccess(flow: string, referenceId: string, userId: s
         // Fire-and-forget would reintroduce exactly the bug this replaces: an unobserved promise
         // whose rejection nobody sees. notifyBookingConfirmed never throws and records its own
         // outcome, so awaiting it is safe and makes the result visible on the booking row.
+        await addInAppNotification(booking.userId, {
+          kind: 'booking_confirmed',
+          title: 'Booking confirmed',
+          body: `Your booking for ${booking.listingTitle} is confirmed.`,
+          refId: booking.id,
+        });
+        await addInAppNotification(await resolveHostUserId(listing?.providerId), {
+          kind: 'booking_confirmed',
+          title: 'Booking confirmed',
+          body: `${bookingUser?.name || 'A guest'} confirmed a booking for ${booking.listingTitle}.`,
+          refId: booking.id,
+        });
         await notifyBookingConfirmed({
           booking,
           guestName: bookingUser?.name || 'Guest',

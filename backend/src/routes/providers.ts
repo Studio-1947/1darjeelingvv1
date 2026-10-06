@@ -228,4 +228,95 @@ router.get('/me', authenticateToken, async (req: Request, res: Response) => {
   res.json({ provider: providerReturn });
 });
 
+/**
+ * @openapi
+ * /providers/me:
+ *   patch:
+ *     summary: Edit the caller's provider profile
+ *     description: Business name, description, location, contact phone, starting price, map pin and UPI id. Type and status are not editable here.
+ *     tags: [Providers]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: The updated provider }
+ *       400: { description: A field failed validation }
+ *       404: { description: The caller has no provider profile }
+ */
+router.patch('/me', authenticateToken, async (req: Request, res: Response) => {
+  const providersList = await db.select().from(schema.providers).where(eq(schema.providers.userId, req.user.id));
+  const provider = providersList.find(p => p.status === 'active') || providersList[0];
+  if (!provider) return res.status(404).json({ detail: 'No provider profile to edit' });
+
+  const body = req.body || {};
+  const set: Partial<typeof schema.providers.$inferInsert> = {};
+
+  const text = (key: string, label: string): string | null | 'bad' => {
+    if (body[key] === undefined) return null;
+    if (typeof body[key] !== 'string' || !body[key].trim() || body[key].length > 2000) return 'bad';
+    return body[key].trim();
+  };
+  for (const [key, col, label] of [
+    ['business_name', 'businessName', 'Business name'],
+    ['description', 'description', 'Description'],
+    ['location', 'location', 'Location'],
+  ] as const) {
+    const v = text(key, label);
+    if (v === 'bad') return res.status(400).json({ detail: `${label} cannot be empty` });
+    if (v !== null) set[col] = v;
+  }
+
+  if (body.contact_phone !== undefined) {
+    if (!isPlausiblePhone(body.contact_phone)) {
+      return res.status(400).json({ detail: 'Contact phone must be a phone number travellers can call' });
+    }
+    set.contactPhone = String(body.contact_phone).trim();
+  }
+  if (body.price_from !== undefined) {
+    if (!Number.isInteger(body.price_from) || body.price_from < 0 || body.price_from > 1_000_000) {
+      return res.status(400).json({ detail: 'price_from must be a whole number of rupees' });
+    }
+    set.priceFrom = body.price_from;
+  }
+  for (const [key, col] of [['latitude', 'latitude'], ['longitude', 'longitude']] as const) {
+    if (body[key] === undefined) continue;
+    if (body[key] !== null && (typeof body[key] !== 'number' || !Number.isFinite(body[key]))) {
+      return res.status(400).json({ detail: `${key} must be a number or null` });
+    }
+    set[col] = body[key];
+  }
+  if (body.upi !== undefined) {
+    if (typeof body.upi !== 'string' || body.upi.length > 100 || (body.upi && !/^[\w.\-]{2,}@[a-zA-Z]{2,}$/.test(body.upi.trim()))) {
+      return res.status(400).json({ detail: 'UPI id must look like name@bank' });
+    }
+    const extras = { ...(provider.extras || {}) };
+    if (body.upi.trim()) extras.upi = body.upi.trim();
+    else delete extras.upi;
+    set.extras = extras;
+  }
+
+  if (Object.keys(set).length === 0) return res.status(400).json({ detail: 'Nothing to update' });
+
+  const [updated] = await db.update(schema.providers).set(set).where(eq(schema.providers.id, provider.id)).returning();
+  res.json({
+    provider: {
+      id: updated.id,
+      user_id: updated.userId,
+      business_name: updated.businessName,
+      business_type: updated.businessType,
+      description: updated.description,
+      location: updated.location,
+      latitude: updated.latitude,
+      longitude: updated.longitude,
+      contact_phone: updated.contactPhone,
+      price_from: updated.priceFrom,
+      images: updated.images,
+      extras: updated.extras,
+      status: updated.status,
+      created_at: updated.createdAt,
+      activated_at: updated.activatedAt,
+      plan_expires_at: updated.planExpiresAt,
+      plan_active: updated.status === 'active' && (!updated.planExpiresAt || Date.parse(updated.planExpiresAt) > Date.now()),
+    },
+  });
+});
+
 export default router;
