@@ -10,6 +10,7 @@ import { findBlockingBooking, isDateExclusive, lockListingForBooking } from '../
 import { refundPaymentsFor } from '../lib/refunds';
 import { notifyBookingCancelled } from '../lib/notifications';
 import { routeParam } from '../lib/routeParam';
+import { addInAppNotification, resolveHostUserId } from '../lib/inApp';
 
 const router = Router();
 
@@ -118,6 +119,15 @@ router.post('/', authenticateToken, requireActiveSupport, async (req: Request, r
   };
 
   await db.insert(schema.bookings).values(booking);
+
+  // The host's feed hears about the request straight away, even though it is unpaid, because the
+  // provider inbox already lists it and they would otherwise see it there with no prompt.
+  await addInAppNotification(await resolveHostUserId(listing.providerId), {
+    kind: 'booking_request',
+    title: 'New booking request',
+    body: `${req.user.name || 'A guest'} asked about ${listing.title}.`,
+    refId: booking.id,
+  });
 
   const bookingReturn = {
     id: booking.id,
@@ -283,9 +293,15 @@ router.get('/provider', authenticateToken, async (req: Request, res: Response) =
     .where(inArray(schema.bookings.listingId, listingIds))
     .orderBy(desc(schema.bookings.createdAt));
 
+  const guestIds = [...new Set(bookings.map(b => b.userId))];
+  const guests = guestIds.length
+    ? await db.select().from(schema.users).where(inArray(schema.users.id, guestIds))
+    : [];
+  const guestById = new Map(guests.map(g => [g.id, g]));
+
   const enrichedBookings = [];
   for (const b of bookings) {
-    const [customer] = await db.select().from(schema.users).where(eq(schema.users.id, b.userId)).limit(1);
+    const customer = guestById.get(b.userId);
     const listingMatch = listingsMap.find(l => l.id === b.listingId) || null;
     enrichedBookings.push({
       id: b.id,
@@ -457,6 +473,13 @@ router.patch('/:id/confirm', authenticateToken, async (req: Request, res: Respon
     return res.status(409).json({ detail: 'These dates have already gone to another guest' });
   }
 
+  await addInAppNotification(booking.userId, {
+    kind: 'booking_accepted',
+    title: 'Your request was accepted',
+    body: `The host accepted your request for ${booking.listingTitle}. Pay the ₹1 to confirm it.`,
+    refId: booking.id,
+  });
+
   res.json({ booking: bookingShape(outcome.booking) });
 });
 
@@ -489,6 +512,26 @@ router.patch('/:id/cancel', authenticateToken, async (req: Request, res: Respons
     `booking cancelled by ${req.user.role === 'admin' ? 'admin' : booking.userId === req.user.id ? 'guest' : 'host'}`
   );
   const refunded = outcomes.some(o => o.refunded);
+
+  // The feed, unlike WhatsApp, is cheap and silent, so whoever did not press the button hears
+  // about it whatever state the booking was in.
+  if (booking.userId !== req.user.id) {
+    await addInAppNotification(booking.userId, {
+      kind: 'booking_cancelled',
+      title: 'Booking cancelled',
+      body: `Your booking for ${booking.listingTitle} was cancelled by the host.`,
+      refId: booking.id,
+    });
+  } else if (booking.status === 'confirmed' || booking.status === 'accepted') {
+    const [listing] = await db.select({ providerId: schema.listings.providerId })
+      .from(schema.listings).where(eq(schema.listings.id, booking.listingId)).limit(1);
+    await addInAppNotification(await resolveHostUserId(listing?.providerId), {
+      kind: 'booking_cancelled',
+      title: 'Booking cancelled',
+      body: `A guest cancelled their booking for ${booking.listingTitle}.`,
+      refId: booking.id,
+    });
+  }
 
   // Only worth telling the guest when there was something to tell them about  a booking that
   // never reached confirmation was never announced in the first place.

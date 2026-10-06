@@ -16,7 +16,7 @@ const REQUEST_TIMEOUT_MS = 10_000;
  */
 export function createSmtpProvider(env: NodeJS.ProcessEnv): MessagingProvider {
   // Build the transporter at init time so a bad config fails at boot.
-  let transporter: nodemailer.Transporter;
+  let transporter: ReturnType<typeof nodemailer.createTransport>;
 
   return {
     name: 'smtp',

@@ -20,7 +20,7 @@ export function requireActiveSupport(req: Request, res: Response, next: NextFunc
   }
 
   return res.status(402).json({
-    detail: 'A ₹12 annual platform support fee is required before you can do this.',
+    detail: 'A ₹1 lifetime platform support fee is required before you can do this.',
     code: 'support_required'
   });
 }

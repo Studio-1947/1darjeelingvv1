@@ -26,8 +26,8 @@ describe('resolveAmount  fixed-price flows', () => {
   it('ignores an amount supplied by the client', () => {
     // The whole point of the map. A client that names its own price for a fixed flow is
     // either confused or hostile; either way the body is not consulted.
-    expect(ok(resolveAmount('platform_support', { amount: 1 }))).toBe(1200);
-    expect(ok(resolveAmount('provider_registration', { amount: 1 }))).toBe(9900);
+    expect(ok(resolveAmount('platform_support', { amount: 1 }))).toBe(100);
+    expect(ok(resolveAmount('provider_registration', { amount: 1 }))).toBe(100);
     expect(ok(resolveAmount('booking_commission', { amount: 999999 }))).toBe(100);
   });
 

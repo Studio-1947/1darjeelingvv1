@@ -150,6 +150,6 @@ describe('fixed-price flows are unaffected by the amount field', () => {
 
     const res = await order(token, { flow: 'platform_support', reference_id: user.id, amount: 1 });
     expect(res.status).toBe(200);
-    expect(res.body.amount).toBe(1200);
+    expect(res.body.amount).toBe(100);
   });
 });

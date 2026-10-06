@@ -19,7 +19,44 @@ export const users = pgTable('users', {
   // the first name (`ASHA-1D`), which collides on every second Asha and could not be looked up.
   // Nullable because rows created before referrals existed have none until they are backfilled.
   referralCode: text('referral_code').unique(),
+  // What the traveller picked on the "pick your vibe" screen (ids like 'nature', 'food'). Kept on
+  // the account so it survives a reinstall or a second phone; the client owns the vocabulary.
+  interests: jsonb('interests').$type<string[]>().default([]).notNull(),
 });
+
+/**
+ * The in-app activity feed. One row per event a user should see, written server-side when the
+ * thing happens, so a host accepting a request reaches a guest whose app is closed.
+ */
+export const notifications = pgTable('notifications', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  // 'booking_accepted' | 'booking_confirmed' | 'booking_cancelled' | 'booking_request' | ...
+  kind: text('kind').notNull(),
+  title: text('title').notNull(),
+  body: text('body').notNull(),
+  // The booking (or other row) this is about, so the app can deep-link.
+  refId: text('ref_id'),
+  readAt: text('read_at'),
+  createdAt: text('created_at').notNull(),
+}, (t) => ({
+  userCreatedIdx: index('notifications_user_id_created_at_idx').on(t.userId, t.createdAt),
+}));
+
+/**
+ * Expo push tokens, one row per device. Registered so a delivery worker can be added later;
+ * nothing sends to these yet.
+ */
+export const pushTokens = pgTable('push_tokens', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  token: text('token').notNull().unique(),
+  platform: text('platform').notNull(), // 'ios' | 'android' | 'web'
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+}, (t) => ({
+  userIdx: index('push_tokens_user_id_idx').on(t.userId),
+}));
 
 /**
  * Who invited whom, and what it bought them.
@@ -81,6 +118,7 @@ export const providers = pgTable('providers', {
   kycStatus: text('kyc_status').default('none').notNull(),
   createdAt: text('created_at').notNull(),
   activatedAt: text('activated_at'),
+  planExpiresAt: text('plan_expires_at'),
 }, (t) => ({
   // At most one provider row per user, ever  enforced at the DB level so the onboard route's
   // read-then-write conflict check can't lose a race (two concurrent onboards both reading "no
@@ -224,3 +262,20 @@ export const otpSendCounters = pgTable('otp_send_counters', {
 }, (t) => ({
   scopeDayPk: primaryKey({ columns: [t.scope, t.day] }),
 }));
+
+/**
+ * Home-screen promotion cards ("Trending"). Editable by an admin without a client release; the
+ * app keeps a built-in set to fall back on when none are active or the server is unreachable.
+ */
+export const promotions = pgTable('promotions', {
+  id: text('id').primaryKey(),
+  tag: text('tag').notNull(), // the small pill, e.g. '25% OFF'
+  title: text('title').notNull(),
+  subtitle: text('subtitle').notNull(),
+  image: text('image').notNull(),
+  // An in-app path such as '/category/homestay'.
+  link: text('link').notNull(),
+  sortOrder: integer('sort_order').default(0).notNull(),
+  active: boolean('active').default(true).notNull(),
+  createdAt: text('created_at').notNull(),
+});

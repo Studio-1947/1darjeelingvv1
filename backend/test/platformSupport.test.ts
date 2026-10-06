@@ -44,7 +44,7 @@ async function me(token: string) {
 }
 
 describe('platform_support payment flow', () => {
-  it('charges 1200 paise regardless of anything in the request body', async () => {
+  it('charges 100 paise regardless of anything in the request body', async () => {
     const { token, user } = await registerUser({ name: 'Support Payer', paySupport: false });
     const res = await request(app)
       .post('/api/payments/order')
@@ -52,8 +52,8 @@ describe('platform_support payment flow', () => {
       .send({ flow: 'platform_support', reference_id: user.id, amount: 1 });
 
     expect(res.status).toBe(200);
-    expect(res.body.amount).toBe(1200);
-    expect(res.body.order.amount).toBe(1200);
+    expect(res.body.amount).toBe(100);
+    expect(res.body.order.amount).toBe(100);
   });
 
   it('refuses an order that references another user', async () => {

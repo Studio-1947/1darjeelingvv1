@@ -133,6 +133,7 @@ router.post(
         supportExpiresAt: null,
         password: null,
         phoneVerifiedAt: null,
+        interests: [],
         referralCode: null,
       };
 
