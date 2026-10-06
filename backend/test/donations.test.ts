@@ -101,7 +101,7 @@ describe('donation settlement', () => {
   });
 
   it('does not lift the support gate', async () => {
-    // Same property, observed from the outside: a donor who has not paid the ₹12 is still gated.
+    // Same property, observed from the outside: a donor who has not paid the ₹1 pass is still gated.
     const { token, user } = await registerUser({ name: 'Gated Gopal', paySupport: false });
     const listing = await createListing();
 

@@ -6,45 +6,26 @@ import { eq, and, ne } from 'drizzle-orm';
 import { authenticateToken } from '../middleware/auth';
 import { rateLimiter } from '../middleware/rateLimiter';
 import { AMOUNTS, MOCK_PAYMENTS, rzpClient, RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, RAZORPAY_WEBHOOK_SECRET, IS_PROD, log } from '../config';
-import { computeSupportExpiry } from '../lib/support';
+import { lifetimeSupportExpiry } from '../lib/support';
+import { computeHostPlanExpiry } from '../lib/hostPlan';
+import { serializeProvider } from '../lib/providerShape';
+import { settleBookingConfirmation } from '../lib/bookingConfirmation';
 import { resolveAmount } from '../lib/payments';
-import { findBlockingBooking, isDateExclusive, lockListingForBooking } from '../lib/bookingAvailability';
-import { notifyBookingCancelled, notifyBookingConfirmed } from '../lib/notifications';
-import { addInAppNotification, resolveHostUserId } from '../lib/inApp';
-import { refundPaymentsFor } from '../lib/refunds';
 
 const router = Router();
-
-// The DB rows are camelCase (drizzle), but every response the frontend reads is snake_case 
-// see providers.ts / bookings.ts. The confirmation record has to follow the same convention or
-// the success modal silently renders `undefined` for every renamed column.
-function serializeProvider(p: typeof schema.providers.$inferSelect) {
-  return {
-    id: p.id,
-    user_id: p.userId,
-    business_name: p.businessName,
-    business_type: p.businessType,
-    description: p.description,
-    location: p.location,
-    latitude: p.latitude,
-    longitude: p.longitude,
-    contact_phone: p.contactPhone,
-    price_from: p.priceFrom,
-    images: p.images,
-    extras: p.extras,
-    status: p.status,
-    created_at: p.createdAt,
-    activated_at: p.activatedAt,
-    plan_expires_at: p.planExpiresAt,
-    plan_active: p.status === 'active' && (!p.planExpiresAt || Date.parse(p.planExpiresAt) > Date.now()),
-  };
-}
 
 // Common after-payment trigger side effects function
 async function handlePaymentSuccess(flow: string, referenceId: string, userId: string, amount: number) {
   if (flow === 'provider_registration') {
+    // The ₹1 first year. assertOwnsReference only lets a provider that has never been activated
+    // pay this, so it runs once per host and creates their listing once.
+    const [before] = await db.select().from(schema.providers).where(eq(schema.providers.id, referenceId)).limit(1);
     await db.update(schema.providers)
-      .set({ status: 'active', activatedAt: new Date().toISOString(), planExpiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString() })
+      .set({
+        status: 'active',
+        activatedAt: new Date().toISOString(),
+        planExpiresAt: computeHostPlanExpiry(before?.planExpiresAt),
+      })
       .where(eq(schema.providers.id, referenceId));
 
     await db.update(schema.users)
@@ -72,154 +53,26 @@ async function handlePaymentSuccess(flow: string, referenceId: string, userId: s
     }
     return p ? serializeProvider(p) : null;
   } else if (flow === 'provider_renewal') {
-    const [provider] = await db.select().from(schema.providers).where(eq(schema.providers.id, referenceId)).limit(1);
-    if (!provider) return null;
-    const now = Date.now();
-    const base = provider.planExpiresAt && Date.parse(provider.planExpiresAt) > now
-      ? Date.parse(provider.planExpiresAt)
-      : now;
+    // ₹499 for another year. Extends from the current expiry when renewing early, from now when
+    // the plan has already lapsed, so the host's listings come back the moment this settles.
+    const [p] = await db.select().from(schema.providers).where(eq(schema.providers.id, referenceId)).limit(1);
+    if (!p) return null;
     const [renewed] = await db.update(schema.providers)
-      .set({ status: 'active', planExpiresAt: new Date(base + 365 * 24 * 60 * 60 * 1000).toISOString() })
+      .set({ planExpiresAt: computeHostPlanExpiry(p.planExpiresAt) })
       .where(eq(schema.providers.id, referenceId))
       .returning();
-    return renewed ? serializeProvider(renewed) : null;
+    return serializeProvider(renewed);
   } else if (flow === 'booking_commission') {
-    // Confirming is not a plain UPDATE, because two guests can reach this point at the same
-    // instant for the same homestay and the same nights. The hold window in POST /bookings makes
-    // that rare; this makes it impossible. See lib/bookingAvailability.ts for why the listing row
-    // lock is what actually serialises them  an overlap check on its own cannot, since each
-    // transaction reads a snapshot taken before the other committed.
-    const settlement = await db.transaction(async (tx) => {
-      const [target] = await tx.select().from(schema.bookings)
-        .where(eq(schema.bookings.id, referenceId)).limit(1);
-      if (!target) return { outcome: 'missing' as const };
-
-      // Already confirmed by an earlier delivery of the same payment  nothing to redo.
-      if (target.status === 'confirmed') return { outcome: 'confirmed' as const, booking: target };
-
-      if (isDateExclusive(target.listingType) && target.checkIn && target.checkOut) {
-        await lockListingForBooking(tx, target.listingId);
-
-        const clash = await findBlockingBooking(
-          tx, target.listingId, target.checkIn, target.checkOut, target.id
-        );
-        // `accepted` counts as taken here for the same reason it blocks in the predicate: the
-        // host has already promised those nights to someone else, so confirming this payment
-        // would send two parties to one room just as surely as a confirmed clash would.
-        if (clash && (clash.status === 'confirmed' || clash.status === 'accepted')) {
-          // Someone else's payment landed first. The guest has already been charged, so the only
-          // honest resolution is to cancel this one and give the money back  confirming both
-          // would send two parties to one room.
-          const [cancelled] = await tx.update(schema.bookings)
-            .set({ status: 'cancelled' })
-            .where(eq(schema.bookings.id, target.id))
-            .returning();
-          return { outcome: 'conflict' as const, booking: cancelled };
-        }
-      }
-
-      const [confirmed] = await tx.update(schema.bookings)
-        .set({ status: 'confirmed', confirmedAt: new Date().toISOString() })
-        .where(eq(schema.bookings.id, target.id))
-        .returning();
-      return { outcome: 'confirmed' as const, booking: confirmed };
-    });
-
-    if (settlement.outcome === 'missing') return null;
-
-    const booking = settlement.booking;
-    const conflicted = settlement.outcome === 'conflict';
-    if (booking) {
-      const [listing] = await db.select().from(schema.listings).where(eq(schema.listings.id, booking.listingId)).limit(1);
-      let providerInfo = null;
-
-      if (listing) {
-        const [prov] = await db.select().from(schema.providers).where(eq(schema.providers.id, listing.providerId)).limit(1);
-        if (prov) {
-          providerInfo = serializeProvider(prov);
-        } else {
-          const [userProv] = await db.select().from(schema.users).where(eq(schema.users.id, listing.providerId)).limit(1);
-          if (userProv) {
-            providerInfo = { name: userProv.name, phone: userProv.phone };
-          }
-        }
-      }
-
-      const [bookingUser] = await db.select().from(schema.users).where(eq(schema.users.id, userId)).limit(1);
-
-      // The host's reachable number: a full provider row carries one, an admin-authored listing
-      // falls back to the owning user's phone, and some listings have neither.
-      const hostPhone = (providerInfo as any)?.contact_phone || (providerInfo as any)?.phone || null;
-      const hostName = (providerInfo as any)?.business_name || (providerInfo as any)?.name || null;
-
-      if (conflicted) {
-        await addInAppNotification(booking.userId, {
-          kind: 'booking_cancelled',
-          title: 'Booking cancelled',
-          body: `The dates for ${booking.listingTitle} went to another guest first, so your booking was cancelled.`,
-          refId: booking.id,
-        });
-        // Charged for dates that are no longer available. Return the money first, then tell them
-        //  in that order, so the message can state truthfully whether the refund went through.
-        const outcomes = await refundPaymentsFor('booking_commission', booking.id, 'double-booked: dates taken by another guest');
-        const refunded = outcomes.some(o => o.refunded);
-        await notifyBookingCancelled(booking, bookingUser?.phone || '', bookingUser?.name || 'Guest', refunded);
-        log.error(
-          `[booking] ${booking.id} was paid for but the dates were taken first  cancelled and ` +
-          `${refunded ? 'refunded' : 'REFUND FAILED, money still held'}.`
-        );
-      } else {
-        // Fire-and-forget would reintroduce exactly the bug this replaces: an unobserved promise
-        // whose rejection nobody sees. notifyBookingConfirmed never throws and records its own
-        // outcome, so awaiting it is safe and makes the result visible on the booking row.
-        await addInAppNotification(booking.userId, {
-          kind: 'booking_confirmed',
-          title: 'Booking confirmed',
-          body: `Your booking for ${booking.listingTitle} is confirmed.`,
-          refId: booking.id,
-        });
-        await addInAppNotification(await resolveHostUserId(listing?.providerId), {
-          kind: 'booking_confirmed',
-          title: 'Booking confirmed',
-          body: `${bookingUser?.name || 'A guest'} confirmed a booking for ${booking.listingTitle}.`,
-          refId: booking.id,
-        });
-        await notifyBookingConfirmed({
-          booking,
-          guestName: bookingUser?.name || 'Guest',
-          guestPhone: bookingUser?.phone || '',
-          hostName,
-          hostPhone,
-        });
-      }
-
-      return {
-        conflict: conflicted,
-        id: booking.id,
-        user_id: booking.userId,
-        listing_id: booking.listingId,
-        listing_type: booking.listingType,
-        listing_title: booking.listingTitle,
-        check_in: booking.checkIn,
-        check_out: booking.checkOut,
-        guests: booking.guests,
-        notes: booking.notes,
-        status: booking.status,
-        created_at: booking.createdAt,
-        confirmed_at: booking.confirmedAt,
-        listing,
-        provider: providerInfo
-      };
-    }
+    // Legacy: bookings are free now and confirm through POST /bookings/:id/checkout. This branch
+    // stays only so an order created before that change still confirms its booking when it
+    // settles, and refunds it if the dates went to someone else first.
+    return settleBookingConfirmation(referenceId, userId, { paid: true });
   } else if (flow === 'platform_support') {
-    // Read-then-write rather than a single UPDATE ... GREATEST(...) expression. Two DIFFERENT
-    // orders settling for the same user in the same instant could each read the same starting
-    // value, costing the user one of the two years. At ₹12 a year and with settlement already
-    // serialised per order by settlePaymentOnce, that race is not worth the untestable SQL.
+    // The ₹1 lifetime pass. Settling it twice is harmless: both writes store the same date.
     const [u] = await db.select().from(schema.users).where(eq(schema.users.id, userId)).limit(1);
     if (!u) return null;
 
-    const supportExpiresAt = computeSupportExpiry(u.supportExpiresAt);
+    const supportExpiresAt = lifetimeSupportExpiry();
     await db.update(schema.users)
       .set({ supportExpiresAt })
       .where(eq(schema.users.id, userId));
@@ -246,13 +99,27 @@ async function assertOwnsReference(
   referenceId: string,
   userId: string
 ): Promise<{ status: number; detail: string } | null> {
-  if (flow === 'provider_registration') {
+  if (flow === 'provider_registration' || flow === 'provider_renewal') {
     const [provider] = await db.select().from(schema.providers).where(eq(schema.providers.id, referenceId)).limit(1);
     if (!provider) {
       return { status: 404, detail: 'Provider not found' };
     }
     if (provider.userId !== userId) {
       return { status: 403, detail: 'You can only pay for your own provider registration' };
+    }
+    // Registration is the ₹1 first year and happens once. Paying it again on a host that has
+    // already been activated would buy a year for ₹1 instead of ₹499 (and used to insert a
+    // duplicate listing), so a registered host is sent to the renewal instead.
+    if (flow === 'provider_registration' && provider.activatedAt) {
+      return { status: 409, detail: 'This business is already registered. Renew the plan instead.' };
+    }
+    if (flow === 'provider_renewal') {
+      if (!provider.activatedAt) {
+        return { status: 409, detail: 'Finish registering before renewing.' };
+      }
+      if (provider.status === 'suspended') {
+        return { status: 403, detail: 'This business is suspended. Contact support.' };
+      }
     }
     return null;
   }
@@ -268,16 +135,9 @@ async function assertOwnsReference(
     return null;
   }
 
-  if (flow === 'provider_renewal') {
-    const [provider] = await db.select().from(schema.providers).where(eq(schema.providers.id, referenceId)).limit(1);
-    if (!provider) return { status: 404, detail: 'Provider not found' };
-    if (provider.userId !== userId) return { status: 403, detail: 'You can only renew your own provider plan' };
-    return null;
-  }
-
   if (flow === 'platform_support') {
     // The reference is the payer themselves  there is no other entity to own. Requiring the
-    // match is what stops someone creating a ₹12 order that credits a different account.
+    // match is what stops someone creating a ₹1 order that credits a different account.
     if (referenceId !== userId) {
       return { status: 403, detail: 'You can only pay the support fee for your own account' };
     }
@@ -353,8 +213,8 @@ async function settlePaymentOnce(payment: PaymentRow, gatewayPaymentId: string) 
  *             type: object
  *             required: [flow, reference_id]
  *             properties:
- *               flow: { type: string, enum: [provider_registration, booking_commission, platform_support, donation] }
- *               reference_id: { type: string, description: "Provider id (provider_registration), booking id (booking_commission), or the caller's own user id (platform_support, donation)" }
+ *               flow: { type: string, enum: [provider_registration, provider_renewal, platform_support, donation] }
+ *               reference_id: { type: string, description: "Provider id (provider_registration, provider_renewal), or the caller's own user id (platform_support, donation)" }
  *               amount: { type: integer, description: "Amount in paise. ONLY read for flow=donation, where it must be an integer between 1000 (₹10) and 10000000 (₹1,00,000). Ignored for every other flow, whose price is fixed server-side." }
  *     responses:
  *       200:
@@ -408,8 +268,8 @@ router.post('/order', authenticateToken, async (req: Request, res: Response) => 
 
   // Bind the reference to the caller at the point it enters the system. §1.5 stopped an order
   // being *redeemed* against someone else's reference, but without this an attacker could simply
-  // create the order that way  paying ₹1 to confirm a stranger's booking, or ₹99 to activate a
-  // provider that isn't theirs. The order is the record of record, so it has to be right here.
+  // create the order that way  paying ₹1 to activate a provider that isn't theirs, or to renew
+  // someone else's plan. The order is the record of record, so it has to be right here.
   const ownershipError = await assertOwnsReference(flow, reference_id, req.user.id);
   if (ownershipError) {
     return res.status(ownershipError.status).json({ detail: ownershipError.detail });
@@ -495,7 +355,7 @@ router.post('/order', authenticateToken, async (req: Request, res: Response) => 
  *             required: [order_id, flow, reference_id]
  *             properties:
  *               order_id: { type: string }
- *               flow: { type: string, enum: [provider_registration, booking_commission, platform_support, donation] }
+ *               flow: { type: string, enum: [provider_registration, provider_renewal, platform_support, donation] }
  *               reference_id: { type: string }
  *     responses:
  *       200:
@@ -583,7 +443,7 @@ router.post('/mock/complete', authenticateToken, rateLimiter(10, 60 * 1000, 'moc
  *               razorpay_order_id: { type: string }
  *               razorpay_payment_id: { type: string }
  *               razorpay_signature: { type: string }
- *               flow: { type: string, enum: [provider_registration, booking_commission, platform_support, donation] }
+ *               flow: { type: string, enum: [provider_registration, provider_renewal, platform_support, donation] }
  *               reference_id: { type: string }
  *     responses:
  *       200:

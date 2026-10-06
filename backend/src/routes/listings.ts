@@ -1,11 +1,11 @@
 import { Router, Request, Response } from 'express';
+import { hostPlanVisibility, isListingHostLapsed } from '../lib/hostPlan';
 import { v4 as uuidv4 } from 'uuid';
 import { db, schema } from '../db';
 import { eq, or, and, ilike, inArray } from 'drizzle-orm';
 import { authenticateToken } from '../middleware/auth';
 import { storeBase64Image, ImageUploadError } from '../lib/imageUpload';
 import { routeParam } from '../lib/routeParam';
-import { blockedRanges, isDateExclusive } from '../lib/bookingAvailability';
 import {
   SPOT_TYPE, SPOT_FORBIDDEN_MESSAGE, canWriteSpots, parseSpotExtras,
   isSpotPublished, publicSpotVisibility, spotOrdering, SpotValidationError,
@@ -219,7 +219,8 @@ router.get('/', async (req: Request, res: Response) => {
 
   // Draft spots must never surface on a public read  this route has no auth, so the
   // predicate is unconditional here and admins get their drafts from /admin/spots instead.
-  const conditions = [publicSpotVisibility()];
+  // Nor may a lapsed host's listings: they leave the feed until the host renews (lib/hostPlan.ts).
+  const conditions = [publicSpotVisibility(), hostPlanVisibility()];
   if (type) {
     conditions.push(eq(schema.listings.type, type));
   }
@@ -314,6 +315,10 @@ router.get('/:id', async (req: Request, res: Response) => {
   if (item.type === SPOT_TYPE && !isSpotPublished(item.extras)) {
     return res.status(404).json({ detail: 'Not found' });
   }
+  // Hidden with the rest of the feed while its host's plan has lapsed.
+  if (await isListingHostLapsed(item.providerId)) {
+    return res.status(404).json({ detail: 'Not found' });
+  }
 
   const [provider] = await db.select({
     kycStatus: schema.providers.kycStatus,
@@ -351,51 +356,6 @@ router.get('/:id', async (req: Request, res: Response) => {
   };
 
   res.json({ item: itemReturn });
-});
-
-/**
- * @openapi
- * /listings/{id}/availability:
- *   get:
- *     summary: Dates on a homestay that are already taken or held
- *     description: Public, and dates only. Other listing types are never date-exclusive and return no ranges.
- *     tags: [Listings]
- *     parameters:
- *       - { in: query, name: from, schema: { type: string, format: date }, description: Defaults to today }
- *       - { in: query, name: to, schema: { type: string, format: date }, description: Defaults to 120 days after from; at most 366 days }
- *     responses:
- *       200: { description: "{ listing_id, from, to, ranges: [{ check_in, check_out, state: booked|hold }] }" }
- *       400: { description: Bad or inverted dates }
- *       404: { description: Listing not found }
- */
-router.get('/:id/availability', async (req: Request, res: Response) => {
-  const id = routeParam(req, 'id');
-  const [item] = await db.select({ id: schema.listings.id, type: schema.listings.type })
-    .from(schema.listings).where(eq(schema.listings.id, id)).limit(1);
-  if (!item) return res.status(404).json({ detail: 'Not found' });
-
-  const isoDate = /^\d{4}-\d{2}-\d{2}$/;
-  const day = 86_400_000;
-  const today = new Date().toISOString().slice(0, 10);
-  const from = typeof req.query.from === 'string' ? req.query.from : today;
-  // Validate `from` before deriving a default `to` from it: an unparseable date makes
-  // toISOString() throw, which would surface as a 500 rather than the 400 it deserves.
-  if (!isoDate.test(from) || Number.isNaN(Date.parse(from))) {
-    return res.status(400).json({ detail: 'from and to must be dates like 2026-12-31' });
-  }
-  const to = typeof req.query.to === 'string'
-    ? req.query.to
-    : new Date(Date.parse(from) + 120 * day).toISOString().slice(0, 10);
-
-  if (!isoDate.test(to) || Number.isNaN(Date.parse(to))) {
-    return res.status(400).json({ detail: 'from and to must be dates like 2026-12-31' });
-  }
-  if (Date.parse(to) <= Date.parse(from) || Date.parse(to) - Date.parse(from) > 366 * day) {
-    return res.status(400).json({ detail: 'to must be after from, within 366 days' });
-  }
-
-  const ranges = isDateExclusive(item.type) ? await blockedRanges(db, id, from, to) : [];
-  res.json({ listing_id: id, from, to, ranges });
 });
 
 // Create a new listing

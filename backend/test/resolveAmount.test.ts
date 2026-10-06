@@ -19,8 +19,14 @@ function err(result: ReturnType<typeof resolveAmount>) {
 describe('resolveAmount  fixed-price flows', () => {
   it('takes the amount from the server-side map', () => {
     expect(ok(resolveAmount('provider_registration', {}))).toBe(AMOUNTS.provider_registration);
-    expect(ok(resolveAmount('booking_commission', {}))).toBe(AMOUNTS.booking_commission);
+    expect(ok(resolveAmount('provider_renewal', {}))).toBe(AMOUNTS.provider_renewal);
     expect(ok(resolveAmount('platform_support', {}))).toBe(AMOUNTS.platform_support);
+  });
+
+  it('charges the current prices: ₹1 pass, ₹1 first host year, ₹499 renewal', () => {
+    expect(ok(resolveAmount('platform_support', {}))).toBe(100);
+    expect(ok(resolveAmount('provider_registration', {}))).toBe(100);
+    expect(ok(resolveAmount('provider_renewal', {}))).toBe(49900);
   });
 
   it('ignores an amount supplied by the client', () => {
@@ -28,7 +34,13 @@ describe('resolveAmount  fixed-price flows', () => {
     // either confused or hostile; either way the body is not consulted.
     expect(ok(resolveAmount('platform_support', { amount: 1 }))).toBe(100);
     expect(ok(resolveAmount('provider_registration', { amount: 1 }))).toBe(100);
-    expect(ok(resolveAmount('booking_commission', { amount: 999999 }))).toBe(100);
+    expect(ok(resolveAmount('provider_renewal', { amount: 1 }))).toBe(49900);
+  });
+
+  it('refuses the retired booking commission with 410, not a generic 400', () => {
+    const e = err(resolveAmount('booking_commission', {}));
+    expect(e.status).toBe(410);
+    expect(e.detail).toMatch(/checkout/);
   });
 
   it('rejects an unknown flow', () => {

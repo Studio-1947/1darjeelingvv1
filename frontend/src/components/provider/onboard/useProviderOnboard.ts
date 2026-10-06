@@ -7,7 +7,7 @@ import { RouteFare, startingPriceFrom } from '@/lib/routeFares';
 
 /**
  * All state and side effects for provider onboarding: the multi-step form,
- * image uploads, submission, and the ₹99 registration payment flow. The step
+ * image uploads, submission, and the ₹1 first-year registration payment. The step
  * screens are pure layout over the object this hook returns.
  */
 export function useProviderOnboard() {
@@ -181,7 +181,7 @@ export function useProviderOnboard() {
           key_id: orderRes.key_id,
           flow: 'provider_registration',
           reference_id: providerId,
-          description: '₹99 one-time provider registration',
+          description: 'aangan host plan · first year (₹1)',
           prefill: { contact: user.phone, name: user.name },
         });
         await refresh();

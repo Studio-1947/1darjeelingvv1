@@ -8,9 +8,7 @@ export default defineConfig({
     hookTimeout: 15000,
     fileParallelism: false,
     env: {
-      // Lets Windows developers run the isolated test database on a non-default
-      // port when a local PostgreSQL service already owns 5432.
-      DATABASE_URL: process.env.TEST_DATABASE_URL || 'postgres://postgres:postgres@localhost:5432/one_darjeeling_test',
+      DATABASE_URL: 'postgres://postgres:postgres@localhost:5432/one_darjeeling_test',
       PORT: '8001',
       JWT_SECRET: 'test_jwt_secret_do_not_use_in_prod',
       MOCK_PAYMENTS: 'true',

@@ -6,6 +6,7 @@ import { nextPhone } from './helpers';
 import { db, schema } from '../src/db';
 import { and, desc, eq, isNull } from 'drizzle-orm';
 import { OTP_MAX_ATTEMPTS } from '../src/config';
+import { hashOtp } from '../src/lib/otpHash';
 
 const realProvider = getProvider();
 
@@ -79,9 +80,14 @@ describe('POST /auth/otp/send delivery', () => {
   });
 });
 
+// Mock mode returns the universal code 123456, which verify accepts before it looks at expiry or
+// the attempt cap. These tests need a code that only the stored row can validate, so plant one.
+const KNOWN_OTP = '654321';
+
 async function issueOtp(phone: string): Promise<string> {
-  const res = await request(app).post('/api/auth/otp/send').send({ phone });
-  return res.body.mock_otp as string;
+  await request(app).post('/api/auth/otp/send').send({ phone });
+  await db.update(schema.otps).set({ otpHash: await hashOtp(KNOWN_OTP) }).where(eq(schema.otps.phone, phone));
+  return KNOWN_OTP;
 }
 
 describe('POST /auth/otp/verify expiry', () => {
@@ -89,7 +95,7 @@ describe('POST /auth/otp/verify expiry', () => {
     const phone = nextPhone();
     const otp = await issueOtp(phone);
 
-    // Backdate the issue time past the 300s window.
+    // Move the expiry into the past, whatever the configured window.
     const stale = new Date(Date.now() - 301 * 1000).toISOString();
     await db.update(schema.otps).set({ expiresAt: stale }).where(eq(schema.otps.phone, phone));
 

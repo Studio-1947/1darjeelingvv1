@@ -1,4 +1,4 @@
-import nodemailer from 'nodemailer';
+import nodemailer, { Transporter } from 'nodemailer';
 import { MessagingProvider, NotificationMessage, OtpMessage } from '../types';
 import { requireCredentials } from '../providerConfig';
 import { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM } from '../../config';
@@ -16,7 +16,7 @@ const REQUEST_TIMEOUT_MS = 10_000;
  */
 export function createSmtpProvider(env: NodeJS.ProcessEnv): MessagingProvider {
   // Build the transporter at init time so a bad config fails at boot.
-  let transporter: ReturnType<typeof nodemailer.createTransport>;
+  let transporter: Transporter;
 
   return {
     name: 'smtp',

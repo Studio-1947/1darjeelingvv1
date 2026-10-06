@@ -4,6 +4,7 @@ import { eq } from 'drizzle-orm';
 import { app } from '../src/app';
 import { db, schema } from '../src/db';
 import { nextPhone, registerUser, createListing, onboardActiveProvider } from './helpers';
+import { LIFETIME_SUPPORT_EXPIRY } from '../src/config';
 
 describe('support column', () => {
   // Registers through the raw endpoint rather than the registerUser helper on purpose: a later
@@ -44,7 +45,7 @@ async function me(token: string) {
 }
 
 describe('platform_support payment flow', () => {
-  it('charges 100 paise regardless of anything in the request body', async () => {
+  it('charges 100 paise (₹1) regardless of anything in the request body', async () => {
     const { token, user } = await registerUser({ name: 'Support Payer', paySupport: false });
     const res = await request(app)
       .post('/api/payments/order')
@@ -68,32 +69,27 @@ describe('platform_support payment flow', () => {
     expect(res.status).toBe(403);
   });
 
-  it('stamps an expiry 365 days out when settled', async () => {
+  it('grants the pass for life when settled', async () => {
     const { token, user } = await registerUser({ name: 'First Timer', paySupport: false });
-    const before = Date.now();
 
     const { completeRes } = await paySupport(token, user.id);
     expect(completeRes.status).toBe(200);
 
-    const expiry = Date.parse((await me(token)).supportExpiresAt);
-    expect(expiry - before).toBeGreaterThan(364 * DAY_MS);
-    expect(expiry - before).toBeLessThan(366 * DAY_MS);
+    expect((await me(token)).supportExpiresAt).toBe(LIFETIME_SUPPORT_EXPIRY);
   });
 
-  it('extends the existing window when paid a second time', async () => {
-    const { token, user } = await registerUser({ name: 'Renewer', paySupport: false });
+  it('turns time a user already had (a referral reward, an old yearly pass) into a lifetime pass', async () => {
+    const { token, user } = await registerUser({ name: 'Upgrader', paySupport: false });
+    await db.update(schema.users)
+      .set({ supportExpiresAt: new Date(Date.now() + 30 * DAY_MS).toISOString() })
+      .where(eq(schema.users.id, user.id));
 
     await paySupport(token, user.id);
-    const first = Date.parse((await me(token)).supportExpiresAt);
 
-    await paySupport(token, user.id);
-    const second = Date.parse((await me(token)).supportExpiresAt);
-
-    expect(second - first).toBeGreaterThan(364 * DAY_MS);
-    expect(second - first).toBeLessThan(366 * DAY_MS);
+    expect((await me(token)).supportExpiresAt).toBe(LIFETIME_SUPPORT_EXPIRY);
   });
 
-  it('does not extend the window when the same order settles twice', async () => {
+  it('does not change the expiry when the same order settles twice', async () => {
     const { token, user } = await registerUser({ name: 'Double Settler', paySupport: false });
     const { orderId } = await paySupport(token, user.id);
     const afterFirst = (await me(token)).supportExpiresAt;
@@ -173,9 +169,8 @@ describe('support gate on tourist creates', () => {
       .set('Authorization', `Bearer ${token}`)
       .send({ listing_id: listing.id });
 
-    // Expire them. There is no API for this  the fee only ever moves the expiry forward  so
-    // the test reaches into the DB directly, which is the only way to exercise a lapse without
-    // waiting a year.
+    // Expire them. There is no API for this (a paid pass never lapses; only unpaid time such as
+    // a referral reward does) so the test reaches into the DB directly.
     await db.update(schema.users)
       .set({ supportExpiresAt: new Date(Date.now() - DAY_MS).toISOString() })
       .where(eq(schema.users.id, user.id));

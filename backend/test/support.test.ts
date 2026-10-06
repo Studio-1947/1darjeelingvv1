@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   isExemptFromSupport,
   isSupportActive,
-  computeSupportExpiry,
+  lifetimeSupportExpiry,
 } from '../src/lib/support';
 import { requireActiveSupport } from '../src/middleware/support';
 
@@ -51,35 +51,19 @@ describe('isSupportActive', () => {
   });
 });
 
-describe('computeSupportExpiry', () => {
-  const now = new Date('2026-07-22T00:00:00.000Z');
-
-  it('grants 365 days from now for a first payment', () => {
-    const result = computeSupportExpiry(null, now);
-    expect(Date.parse(result) - now.getTime()).toBe(365 * DAY_MS);
+describe('lifetimeSupportExpiry', () => {
+  // The pass is ₹1 once, for life. The rolling-window rules it used to follow now belong to the
+  // host plan  see hostPlan.test.ts.
+  it('is a date that never arrives', () => {
+    expect(Date.parse(lifetimeSupportExpiry())).toBeGreaterThan(Date.parse('9999-01-01T00:00:00.000Z'));
   });
 
-  it('extends an existing future window instead of restarting it', () => {
-    const existing = new Date(now.getTime() + 100 * DAY_MS).toISOString();
-    const result = computeSupportExpiry(existing, now);
-    expect(Date.parse(result) - now.getTime()).toBe(465 * DAY_MS);
+  it('keeps a paid pass active', () => {
+    expect(isSupportActive({ role: 'tourist', supportExpiresAt: lifetimeSupportExpiry() })).toBe(true);
   });
 
-  it('restarts from now when the existing window has already lapsed', () => {
-    const existing = new Date(now.getTime() - 30 * DAY_MS).toISOString();
-    const result = computeSupportExpiry(existing, now);
-    expect(Date.parse(result) - now.getTime()).toBe(365 * DAY_MS);
-  });
-
-  it('never moves an expiry backwards', () => {
-    const existing = new Date(now.getTime() + 500 * DAY_MS).toISOString();
-    const result = computeSupportExpiry(existing, now);
-    expect(Date.parse(result)).toBeGreaterThan(Date.parse(existing));
-  });
-
-  it('ignores an unparseable existing value and grants a full window', () => {
-    const result = computeSupportExpiry('garbage', now);
-    expect(Date.parse(result) - now.getTime()).toBe(365 * DAY_MS);
+  it('is in the same ISO format as every other stored expiry', () => {
+    expect(lifetimeSupportExpiry()).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
   });
 });
 

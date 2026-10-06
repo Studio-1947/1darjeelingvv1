@@ -42,13 +42,13 @@
   "support": {
     "eyebrow": "the invitation",
     "title": "Come into the aangan",
-    "amount_line": "A year of homestays, rides, cafés and quiet corners, from people who actually live in the hills.",
-    "body": "₹12 keeps it running for the year. Listings stay free for the families and small businesses on it.",
-    "cta": "Step in · ₹12 for the year",
-    "reassurance": "Valid for one year. Nothing auto-charges.",
+    "amount_line": "Homestays, rides, cafés and quiet corners, from people who actually live in the hills.",
+    "body": "₹1, once, and aangan is yours for life. Booking is free, and the families and small businesses on it list for ₹1 in their first year.",
+    "cta": "Step in · ₹1 for life",
+    "reassurance": "One payment, never again. Nothing auto-charges.",
     "skip": "Not now, just browsing",
     "modal_title": "Platform support fee",
-    "modal_duration": "· 1 year",
+    "modal_duration": "· lifetime",
     "privacy_link": "privacy policy",
     "error": "Payment could not be completed. Please try again."
   },
@@ -69,7 +69,7 @@
     "eyebrow": "Under the shadow of Kanchenjunga",
     "title_1": "One Darjeeling.",
     "title_2": "Every experience.",
-    "subtitle": "Homestays, drivers, tea gardens, cafes, cultural festivals and Himalayan biodiversity - in a single app.",
+    "subtitle": "Homestays, drivers, local tours, tourist guides, cafes, cultural festivals and Himalayan biodiversity - in a single app.",
     "cta_explore": "Start exploring",
     "cta_provider": "List your service"
   },
@@ -199,7 +199,7 @@
   },
   "provider": {
     "onboard_title": "List your business",
-    "onboard_sub": "Reach thousands of travellers for a one-time ₹99 fee.",
+    "onboard_sub": "Reach thousands of travellers. ₹1 for your first year, then ₹499 a year.",
     "business_name": "Business name",
     "business_type": "Business type",
     "description": "Description",
@@ -207,7 +207,7 @@
     "contact": "Contact phone",
     "price_from": "Starting price (₹)",
     "image_url": "Image URL",
-    "submit_pay": "Pay ₹99 & list",
+    "submit_pay": "Pay ₹1 & list",
     "active": "Active",
     "pending": "Payment pending",
     "dashboard_title": "Provider dashboard",
@@ -261,8 +261,8 @@
     "checkout": "Check-out",
     "guests": "Guests",
     "notes": "Notes (optional)",
-    "fee_note": "A ₹1 platform fee applies per booking.",
-    "pay_confirm": "Confirm with ₹1",
+    "fee_note": "Booking on aangan is free.",
+    "pay_confirm": "Confirm booking",
     "success": "Booking confirmed!",
     "status": {
       "confirmed": "Confirmed",
@@ -583,7 +583,7 @@
     "stay_local": "Stay local",
     "explore_darjeeling": "Explore Darjeeling",
     "see_all": "See all",
-    "one_time_fee": "₹99 · one-time",
+    "one_time_fee": "₹1 · first year",
     "deals": {
       "monsoon": {
         "title": "Monsoon escapes",
@@ -829,6 +829,17 @@
     "remove_route": "Remove {{route}}"
   },
   "pd": {
+    "plan_label": "Host plan",
+    "plan_valid_until": "Live until {{date}}",
+    "plan_renew_body": "Renew any time for ₹499 a year. Renewing early adds the year on top.",
+    "plan_ends_soon_one": "Ends in {{count}} day. Renew for ₹499 to keep your listings live.",
+    "plan_ends_soon_other": "Ends in {{count}} days. Renew for ₹499 to keep your listings live.",
+    "plan_lapsed_title": "Your plan has ended",
+    "plan_lapsed_body": "Your listings are hidden from travellers and not taking bookings. Renew for ₹499 to bring them back straight away.",
+    "plan_renew_cta": "Renew · ₹499 a year",
+    "plan_renew_title": "Renew your host plan",
+    "plan_renewing": "Renewing…",
+    "plan_renew_failed": "The renewal didn't go through. Try again.",
     "no_business_title": "No business yet",
     "no_business_note": "Onboard your business to start receiving bookings.",
     "switch_traveller": "Switch to Traveller",
@@ -902,7 +913,7 @@
     "starting_price_note": "from your cheapest route"
   },
   "ob": {
-    "fee_chip": "₹99 · One-time fee",
+    "fee_chip": "₹1 · first year",
     "list_business": "List Your Business",
     "get_started": "Get started by entering your basic business details.",
     "business_name": "Business Name",
@@ -919,7 +930,7 @@
     "next": "Next: Update Profile",
     "no_cover_photo": "No Cover Photo Uploaded (Click Top Right)",
     "upload_cover": "Upload Cover Photo",
-    "submit_pay": "Submit & Pay ₹99",
+    "submit_pay": "Submit & Pay ₹1",
     "back_basic": "Back to Basic Info",
     "location_area": "Location / Area",
     "full_address": "Full Address",
@@ -952,7 +963,7 @@
       "breakfast_question": "Is Breakfast Included in this price?",
       "breakfast_yes": "Yes, Breakfast Included",
       "breakfast_no": "No, Breakfast Extra / Not Included",
-      "fee_note": "A one-time platform fee of ₹99 is charged to list your stay profile live on the homepage directory."
+      "fee_note": "Listing your stay costs ₹1 for the first year, then ₹499 a year to keep it live on the homepage directory."
     },
     "dr": {
       "type_label": "Driver",
@@ -986,7 +997,7 @@
       "complete": "Complete & go live",
       "price_label": "Starting Rate (₹/Day)",
       "price_suffix": "/ day onwards",
-      "fee_note": "A one-time platform fee of ₹99 is charged to list your driver profile live on the 1 Darjeeling directory.",
+      "fee_note": "Listing your driver profile costs ₹1 for the first year, then ₹499 a year to keep it live on the 1 Darjeeling directory.",
       "rates_label": "Your Route Rates",
       "rates_note": "Set a fare for each route you operate. Travellers see these on your profile, and the lowest becomes your public starting rate.",
       "rates_empty": "No routes yet  add the routes you operate in step 03 above, then price them here.",
@@ -1024,8 +1035,8 @@
       "price_shop": "Average Item Price (₹)",
       "suffix_cafe": "per person",
       "suffix_shop": "onwards",
-      "fee_note_cafe": "A one-time platform fee of ₹99 lists your café live on the 1 Darjeeling directory.",
-      "fee_note_shop": "A one-time platform fee of ₹99 lists your shop live on the 1 Darjeeling directory."
+      "fee_note_cafe": "Listing your café costs ₹1 for the first year, then ₹499 a year to keep it live on the 1 Darjeeling directory.",
+      "fee_note_shop": "Listing your shop costs ₹1 for the first year, then ₹499 a year to keep it live on the 1 Darjeeling directory."
     }
   },
   "pay": {
@@ -1202,16 +1213,16 @@
         "p": "All amounts below are what you pay to the Platform. They are separate from, and additional to, whatever you pay the local business for the stay, ride or goods themselves.",
         "sub": [
           {
-            "h": "3.1 Traveller Support & Convenience Fee  ₹12 per year",
-            "p": "An annual fee that keeps a traveller account able to make booking requests, save listings and leave reviews. It runs for 365 days from the date of payment and does not renew automatically."
+            "h": "3.1 Traveller Pass  ₹1, once, for life",
+            "p": "A single payment that lets a traveller account make booking requests, save listings and leave reviews. It does not expire and does not renew, so it is never charged again."
           },
           {
-            "h": "3.2 Booking Confirmation Fee  ₹1 per booking",
-            "p": "Charged when you confirm a booking request. It covers passing your request to the business and notifying both sides. It is not a deposit, and it is not part of the price of your stay."
+            "h": "3.2 Bookings  free",
+            "p": "There is no fee for making or confirming a booking. What you pay for the stay, ride or goods themselves is paid directly to the business."
           },
           {
-            "h": "3.3 Business Registration Fee  ₹99, one time",
-            "p": "Paid once by a local business to activate its listing. It does not expire and is not a commission on bookings."
+            "h": "3.3 Business Listing Plan  ₹1 for the first year, then ₹499 per year",
+            "p": "A local business pays ₹1 to activate its listing for its first year, and ₹499 for each year after that. The plan does not renew automatically: if a year ends without renewal, the business's listings are hidden from travellers and stop taking bookings until it renews. It is not a commission on bookings."
           },
           {
             "h": "3.4 Donations  voluntary, ₹10 to ₹1,00,000",
@@ -1223,9 +1234,9 @@
       {
         "h": "4. Bookings",
         "items": [
-          "A booking begins as a request. It is confirmed once the booking confirmation fee is paid, at which point both you and the business are notified.",
+          "A booking begins as a request. It is confirmed when you confirm it at checkout, at which point both you and the business are notified. Confirming a booking is free.",
           "For homestays, confirmed dates are held exclusively. While a checkout is in progress, those dates are held briefly against other travellers so two people cannot pay for the same room; an abandoned checkout releases them again.",
-          "If two travellers reach payment for the same homestay and the same dates at the same moment, only the first can be confirmed. The second booking is cancelled automatically and the fee refunded  see the Refund & Cancellation Policy.",
+          "If two travellers confirm the same homestay for the same dates at the same moment, only the first can be confirmed. The second booking is cancelled automatically and that traveller is told.",
           "A confirmed booking is a confirmed request to the business. Check-in times, house rules, extra charges and payment for the stay itself are matters between you and the business."
         ]
       },
@@ -1308,7 +1319,7 @@
         "p": "A booking can be cancelled at any time before it takes place, from your dashboard, by the business, or by our team.",
         "items": [
           "A booking still awaiting payment can simply be cancelled  nothing has been charged.",
-          "A confirmed booking can be cancelled by you, by the business, or by us. The ₹1 booking confirmation fee is refunded in full and automatically, whoever cancels and whatever the reason.",
+          "A confirmed booking can be cancelled by you, by the business, or by us. Bookings are free, so there is no booking fee to refund.",
           "If the business cancels on you, we will help you find an alternative wherever we can."
         ]
       },
@@ -1316,8 +1327,7 @@
         "h": "2. Automatic Refunds",
         "p": "Some refunds need no request at all  the Platform issues them itself:",
         "items": [
-          "Double booking: if two travellers pay for the same homestay and the same dates at the same moment, only the first is confirmed. The second is cancelled automatically and the fee refunded in full, and we tell that traveller what happened.",
-          "Cancellation of a confirmed booking: the booking confirmation fee is returned automatically as part of the cancellation.",
+          "A booking fee paid before bookings became free: if that booking is cancelled, or loses its dates to another traveller who confirmed first, the fee is refunded in full automatically.",
           "Duplicate charges: if a technical fault charges you twice for one thing, the duplicate is refunded in full."
         ]
       },
@@ -1325,16 +1335,16 @@
         "h": "3. The Fees, One by One",
         "sub": [
           {
-            "h": "3.1 Booking Confirmation Fee  ₹1",
-            "p": "Refunded in full whenever the booking is cancelled, by any party, at any time before the stay. No request needed."
+            "h": "3.1 Bookings  free",
+            "p": "Bookings carry no fee, so there is nothing to refund when one is cancelled. A booking fee paid before bookings became free is still refunded in full if that booking is cancelled, by any party, before the stay."
           },
           {
-            "h": "3.2 Traveller Support & Convenience Fee  ₹12 per year",
-            "p": "Refundable in full within 7 days of payment if you have not used it to confirm any booking. After 7 days, or once it has been used, it is not refundable  it has already delivered the access it pays for. It runs 365 days and does not auto-renew, so there is no recurring charge to cancel."
+            "h": "3.2 Traveller Pass  ₹1, for life",
+            "p": "Refundable in full within 7 days of payment if you have not used it to confirm any booking. After 7 days, or once it has been used, it is not refundable  it has already delivered the access it pays for. It is a single payment that never renews, so there is no recurring charge to cancel."
           },
           {
-            "h": "3.3 Business Registration Fee  ₹99",
-            "p": "Refundable in full within 7 days of payment if your listing has not yet gone live. Once the listing is published and visible to travellers, the fee is not refundable. If we reject or remove your listing for a reason that is not a breach of our Terms, we refund it in full regardless of when."
+            "h": "3.3 Business Listing Plan  ₹1 for the first year, ₹499 per year after",
+            "p": "Each payment is refundable in full within 7 days if your listing has not yet gone live that year. Once the listing is published and visible to travellers, that year's payment is not refundable. If we reject or remove your listing for a reason that is not a breach of our Terms, we refund the current year in full regardless of when. The plan never renews automatically."
           },
           {
             "h": "3.4 Donations",
@@ -1465,5 +1475,17 @@
         }
       }
     ]
+  },
+  "policies": {
+    "title": "Policies",
+    "lead": "Every policy that applies when you use aangan as a traveller or as a host, in one place.",
+    "docs": {
+      "privacy": "What we collect, why, and how to have it deleted.",
+      "terms": "The rules for using aangan, for travellers and for hosts.",
+      "refunds": "Cancellations, refunds and who to ask about a payment.",
+      "responsible": "How we ask travellers and hosts to treat the hills and the people in them.",
+      "contact": "How to reach us, including the grievance officer.",
+      "delete_account": "How to close your account and remove your data."
+    }
   }
 }

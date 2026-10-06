@@ -20,7 +20,7 @@ import * as path from 'path';
 import * as Sentry from '@sentry/node';
 import { scrubHeaders, scrubUrl, scrubValue } from './lib/scrub';
 
-dotenv.config({ path: path.join(__dirname, '../.env') });
+dotenv.config({ path: path.join(__dirname, '../.env'), quiet: true });
 
 const DSN = process.env.SENTRY_DSN?.trim();
 const APP_ENV = process.env.APP_ENV?.trim() || 'development';
@@ -51,6 +51,11 @@ if (DSN) {
     // continuous stream of URLs and timings rather than the exceptional events this is here for.
     // Raise deliberately and temporarily if a latency question needs answering.
     tracesSampleRate: Number(process.env.SENTRY_TRACES_SAMPLE_RATE || 0),
+
+    // Sentry's own PII switch  off means it does not attach IP addresses, cookies or user
+    // identity of its own accord. beforeSend below is the belt to this pair of braces; neither is
+    // trusted alone, because this codebase handles government ID documents.
+
 
     beforeSend(event) {
       // Request: the highest-risk object in the payload. It carries the Authorization header that

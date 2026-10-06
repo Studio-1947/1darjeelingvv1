@@ -3,7 +3,8 @@ import request from 'supertest';
 import { eq } from 'drizzle-orm';
 import { app } from '../src/app';
 import { db, schema } from '../src/db';
-import { registerUser, createListing, createConfirmedBooking, loginAdmin } from './helpers';
+import { v4 as uuidv4 } from 'uuid';
+import { registerUser, createListing, loginAdmin } from './helpers';
 
 /**
  * The three defects that made taking real bookings unsafe, each pinned by a test:
@@ -12,23 +13,43 @@ import { registerUser, createListing, createConfirmedBooking, loginAdmin } from 
  *  - a confirmed booking told neither the guest nor the host, and reported no error;
  *  - money taken for a booking could never be given back.
  *
- * See INVESTIGATION.md §6.A, lib/bookingAvailability.ts, lib/notifications.ts, lib/refunds.ts.
+ * See lib/bookingAvailability.ts, lib/bookingConfirmation.ts, lib/notifications.ts, lib/refunds.ts.
  */
 
-/** Drives a booking all the way to a settled payment, returning the booking id and order id. */
+/**
+ * Settles a ₹1 booking-commission order of the kind created before bookings became free.
+ *
+ * New orders for that flow are refused now, but one created before the switch can still settle
+ * afterwards, and it must still confirm, lose a race correctly and be refunded. So the order row
+ * is written as the old /payments/order would have written it, then settled the normal way.
+ */
 async function payForBooking(token: string, bookingId: string) {
-  const orderRes = await request(app)
-    .post('/api/payments/order')
-    .set('Authorization', `Bearer ${token}`)
-    .send({ flow: 'booking_commission', reference_id: bookingId });
-  expect(orderRes.status).toBe(200);
-  const orderId = orderRes.body.order.id as string;
+  const [booking] = await db.select().from(schema.bookings).where(eq(schema.bookings.id, bookingId)).limit(1);
+  const orderId = `mock_order_legacy_${uuidv4().replace(/-/g, '').slice(0, 12)}`;
+  await db.insert(schema.payments).values({
+    id: uuidv4(),
+    userId: booking.userId,
+    flow: 'booking_commission',
+    referenceId: bookingId,
+    amount: 100,
+    orderId,
+    status: 'created',
+    mock: true,
+    createdAt: new Date().toISOString(),
+  });
 
   const completeRes = await request(app)
     .post('/api/payments/mock/complete')
     .set('Authorization', `Bearer ${token}`)
     .send({ order_id: orderId, flow: 'booking_commission', reference_id: bookingId });
   return { orderId, completeRes };
+}
+
+/** The free confirmation every booking goes through now. */
+async function checkout(token: string, bookingId: string) {
+  return request(app)
+    .post(`/api/bookings/${bookingId}/checkout`)
+    .set('Authorization', `Bearer ${token}`);
 }
 
 async function createBooking(token: string, listingId: string, checkIn: string, checkOut: string) {
@@ -110,12 +131,36 @@ describe('double-booking', () => {
   });
 });
 
+describe('double-booking on the free checkout', () => {
+  it('confirms exactly one of two overlapping checkouts and cancels the other', async () => {
+    const listing = await createListing({ title: 'Free Contested Homestay' });
+    const { token: guestA } = await registerUser({ name: 'Free Guest A' });
+    const { token: guestB } = await registerUser({ name: 'Free Guest B' });
+
+    const bookingA = await createBooking(guestA, listing.id, '2027-12-01', '2027-12-05');
+    await expireHold(bookingA);
+    const bookingB = await createBooking(guestB, listing.id, '2027-12-02', '2027-12-04');
+
+    const first = await checkout(guestA, bookingA);
+    expect(first.status).toBe(200);
+
+    const second = await checkout(guestB, bookingB);
+    expect(second.status).toBe(409);
+    expect(second.body.booking.conflict).toBe(true);
+
+    const [rowA] = await db.select().from(schema.bookings).where(eq(schema.bookings.id, bookingA)).limit(1);
+    const [rowB] = await db.select().from(schema.bookings).where(eq(schema.bookings.id, bookingB)).limit(1);
+    expect(rowA.status).toBe('confirmed');
+    expect(rowB.status).toBe('cancelled');
+  });
+});
+
 describe('booking notifications', () => {
   it('records that the guest was told when a booking is confirmed', async () => {
     const listing = await createListing({ title: 'Notified Homestay' });
     const { token } = await registerUser({ name: 'Told Guest' });
     const bookingId = await createBooking(token, listing.id, '2027-06-01', '2027-06-03');
-    await payForBooking(token, bookingId);
+    await checkout(token, bookingId);
 
     const [row] = await db.select().from(schema.bookings).where(eq(schema.bookings.id, bookingId)).limit(1);
     // The whole point of §6.A: a confirmed booking must carry evidence that someone was told.
@@ -128,7 +173,7 @@ describe('booking notifications', () => {
     const listing = await createListing({ title: 'Hostless Homestay' });
     const { token } = await registerUser({ name: 'Guest Without Host' });
     const bookingId = await createBooking(token, listing.id, '2027-07-01', '2027-07-03');
-    await payForBooking(token, bookingId);
+    await checkout(token, bookingId);
 
     const [row] = await db.select().from(schema.bookings).where(eq(schema.bookings.id, bookingId)).limit(1);
     expect(row.status).toBe('confirmed');
@@ -136,7 +181,7 @@ describe('booking notifications', () => {
   });
 });
 
-describe('refunds', () => {
+describe('refunds (legacy paid bookings)', () => {
   it('returns the money when a confirmed booking is cancelled', async () => {
     const listing = await createListing({ title: 'Cancellable Homestay' });
     const { token, user } = await registerUser({ name: 'Cancelling Guest' });
@@ -187,10 +232,8 @@ describe('refunds', () => {
   it('lets an admin refund a settled payment, and refuses to do it twice', async () => {
     const listing = await createListing({ title: 'Admin Refund Homestay' });
     const { token } = await registerUser({ name: 'Admin Refunded Guest' });
-    const bookingId = await createConfirmedBooking({
-      token, listingId: listing.id, listingType: 'homestay',
-      checkIn: '2027-11-01', checkOut: '2027-11-04',
-    });
+    const bookingId = await createBooking(token, listing.id, '2027-11-01', '2027-11-04');
+    await payForBooking(token, bookingId);
     const [payment] = await db.select().from(schema.payments)
       .where(eq(schema.payments.referenceId, bookingId)).limit(1);
 
