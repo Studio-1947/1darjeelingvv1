@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { isHostPlanLive } from '../lib/hostPlan';
 import { v4 as uuidv4 } from 'uuid';
 import { db, schema } from '../db';
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import { authenticateToken } from '../middleware/auth';
 import { KYC_REQUIREMENTS } from '../lib/kycRequirements';
 
@@ -229,6 +229,54 @@ router.get('/me', authenticateToken, async (req: Request, res: Response) => {
   };
 
   res.json({ provider: providerReturn });
+});
+
+/**
+ * @openapi
+ * /providers/me/stats:
+ *   get:
+ *     summary: Headline numbers for the caller's own business
+ *     description: Listing count, review count and average rating across the caller's listings, and their bookings by state.
+ *     tags: [Providers]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: The numbers; all zero for a business with no listings yet }
+ */
+router.get('/me/stats', authenticateToken, async (req: Request, res: Response) => {
+  const providersList = await db.select({ id: schema.providers.id })
+    .from(schema.providers).where(eq(schema.providers.userId, req.user.id));
+  // listings.provider_id holds either a provider row id or a user id, so match both.
+  const ownIds = [req.user.id, ...providersList.map(p => p.id)];
+  const listings = await db.select({ id: schema.listings.id })
+    .from(schema.listings).where(inArray(schema.listings.providerId, ownIds));
+  const listingIds = listings.map(l => l.id);
+
+  const empty = {
+    listings: 0, review_count: 0, average_rating: 0,
+    bookings: { total: 0, confirmed: 0, accepted: 0, pending: 0, cancelled: 0 },
+  };
+  if (listingIds.length === 0) return res.json(empty);
+
+  const reviews = await db.select({ rating: schema.reviews.rating })
+    .from(schema.reviews).where(inArray(schema.reviews.listingId, listingIds));
+  const bookings = await db.select({ status: schema.bookings.status })
+    .from(schema.bookings).where(inArray(schema.bookings.listingId, listingIds));
+
+  const count = (s: string) => bookings.filter(b => b.status === s).length;
+  res.json({
+    listings: listingIds.length,
+    review_count: reviews.length,
+    average_rating: reviews.length
+      ? Math.round((reviews.reduce((a, r) => a + r.rating, 0) / reviews.length) * 10) / 10
+      : 0,
+    bookings: {
+      total: bookings.length,
+      confirmed: count('confirmed'),
+      accepted: count('accepted'),
+      pending: count('pending_payment'),
+      cancelled: count('cancelled'),
+    },
+  });
 });
 
 /**

@@ -104,6 +104,37 @@ export async function findBlockingBooking(
 }
 
 /**
+ * The date ranges on a listing that are not free, for a calendar to draw.
+ *
+ * Uses the same blocking rule as `findBlockingBooking` (confirmed, accepted, and checkouts still
+ * inside their hold window) so a calendar can never show a night as free that a booking would
+ * then refuse. Returns dates and a coarse state only: no guest, no booking id.
+ */
+export async function blockedRanges(
+  runner: Queryable,
+  listingId: string,
+  from: string,
+  to: string
+): Promise<{ check_in: string; check_out: string; state: 'booked' | 'hold' }[]> {
+  const rows = await runner
+    .select({
+      checkIn: schema.bookings.checkIn,
+      checkOut: schema.bookings.checkOut,
+      status: schema.bookings.status,
+    })
+    .from(schema.bookings)
+    .where(blockingPredicate(listingId, from, to))
+    .orderBy(schema.bookings.checkIn);
+  return rows
+    .filter((r) => r.checkIn && r.checkOut)
+    .map((r) => ({
+      check_in: r.checkIn as string,
+      check_out: r.checkOut as string,
+      state: r.status === 'pending_payment' ? ('hold' as const) : ('booked' as const),
+    }));
+}
+
+/**
  * Serialises every concurrent confirmation for one listing.
  *
  * The overlap check alone cannot prevent a double booking: two transactions confirming DIFFERENT

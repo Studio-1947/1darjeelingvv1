@@ -183,3 +183,126 @@ describe('PATCH /providers/me', () => {
     expect((await request(app).patch('/api/providers/me').set(auth(token)).send({ location: 'x' })).status).toBe(404);
   });
 });
+
+describe('GET /listings/:id/availability', () => {
+  it('shows taken and held nights for a homestay, and nothing else', async () => {
+    const { loginAdmin } = await import('./helpers');
+    const admin = await loginAdmin();
+    const made = await request(app).post('/api/listings').set(auth(admin)).send({
+      title: 'Calendar Homestay', type: 'homestay', description: 'd', location: 'Darjeeling',
+      provider_id: 'admin-seed-provider',
+    });
+    expect(made.status).toBe(200);
+    const id = made.body.item.id as string;
+
+    const guest = await registerUser({ name: 'Calendar Guest' });
+    const book = (ci: string, co: string) => request(app).post('/api/bookings').set(auth(guest.token))
+      .send({ listing_id: id, listing_type: 'homestay', check_in: ci, check_out: co });
+
+    const held = await book('2031-06-10', '2031-06-12');
+    expect(held.status).toBe(200);
+    const accepted = await book('2031-06-20', '2031-06-22');
+    await request(app).patch(`/api/bookings/${accepted.body.booking.id}/confirm`).set(auth(admin));
+
+    const res = await request(app).get(`/api/listings/${id}/availability?from=2031-06-01&to=2031-06-30`);
+    expect(res.status).toBe(200);
+    expect(res.body.ranges).toEqual([
+      { check_in: '2031-06-10', check_out: '2031-06-12', state: 'hold' },
+      { check_in: '2031-06-20', check_out: '2031-06-22', state: 'booked' },
+    ]);
+    // Dates and state only: nothing that identifies the guest or the booking.
+    expect(JSON.stringify(res.body)).not.toContain(held.body.booking.id);
+
+    // A window that does not touch them is empty, and back-to-back turnover is not a clash.
+    const clear = await request(app).get(`/api/listings/${id}/availability?from=2031-06-12&to=2031-06-20`);
+    expect(clear.body.ranges).toEqual([]);
+  });
+
+  it('is empty for a non-homestay, 404s unknown ids, and rejects bad windows', async () => {
+    const spot = await createListing({ title: 'Always Open' });
+    expect((await request(app).get(`/api/listings/${spot.id}/availability`)).body.ranges).toEqual([]);
+    expect((await request(app).get('/api/listings/nope/availability')).status).toBe(404);
+    for (const q of ['from=nope', 'from=2031-06-10&to=2031-06-01', 'from=2031-01-01&to=2033-01-01']) {
+      expect((await request(app).get(`/api/listings/${spot.id}/availability?${q}`)).status).toBe(400);
+    }
+  });
+});
+
+describe('promotions', () => {
+  it('serves the seeded cards publicly, in order', async () => {
+    const res = await request(app).get('/api/promotions');
+    expect(res.status).toBe(200);
+    expect(res.body.items.map((p: any) => p.title)).toEqual([
+      'Monsoon escapes', 'Sunrise at Tiger Hill', 'Tea garden tours',
+    ]);
+  });
+
+  it('is admin-only to change, validates, and hides inactive cards', async () => {
+    const { loginAdmin } = await import('./helpers');
+    const admin = await loginAdmin();
+    const user = await registerUser({ name: 'Not Admin' });
+    const card = { tag: 'NEW', title: 'Festival', subtitle: 'Dates inside', image: 'https://example.com/a.jpg', link: '/category/event' };
+
+    expect((await request(app).post('/api/promotions').send(card)).status).toBe(401);
+    expect((await request(app).post('/api/promotions').set(auth(user.token)).send(card)).status).toBe(403);
+
+    for (const bad of [
+      { ...card, link: 'https://evil.example' },
+      { ...card, link: '//evil.example' },
+      { ...card, image: 'http://insecure.example/a.jpg' },
+      { ...card, title: '' },
+    ]) {
+      expect((await request(app).post('/api/promotions').set(auth(admin)).send(bad)).status).toBe(400);
+    }
+
+    const made = await request(app).post('/api/promotions').set(auth(admin)).send({ ...card, sort_order: -1 });
+    expect(made.status).toBe(200);
+    const id = made.body.item.id as string;
+    expect((await request(app).get('/api/promotions')).body.items[0].title).toBe('Festival');
+
+    await request(app).patch(`/api/promotions/${id}`).set(auth(admin)).send({ active: false });
+    expect((await request(app).get('/api/promotions')).body.items.some((p: any) => p.id === id)).toBe(false);
+
+    expect((await request(app).delete(`/api/promotions/${id}`).set(auth(admin))).status).toBe(200);
+    expect((await request(app).delete(`/api/promotions/${id}`).set(auth(admin))).status).toBe(404);
+  });
+});
+
+describe('GET /providers/me/stats', () => {
+  it('is all zero for someone with no listings', async () => {
+    const { token } = await registerUser({ name: 'No Listings' });
+    const res = await request(app).get('/api/providers/me/stats').set(auth(token));
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ listings: 0, review_count: 0, average_rating: 0 });
+    expect((await request(app).get('/api/providers/me/stats')).status).toBe(401);
+  });
+
+  it('counts the host\'s own listings, reviews and bookings only', async () => {
+    const { onboardActiveProvider } = await import('./helpers');
+    const host = await onboardActiveProvider({ name: 'Stats Host' });
+    // The helper may already give the host a listing, so measure what this test adds.
+    const before = (await request(app).get('/api/providers/me/stats').set(auth(host.token))).body.listings as number;
+    const mine = await request(app).post('/api/listings').set(auth(host.token)).send({
+      title: 'My Stay', type: 'homestay', description: 'd', location: 'Darjeeling',
+    });
+    expect(mine.status).toBe(200);
+    const other = await createListing({ title: 'Someone Elses' });
+
+    const guest = await registerUser({ name: 'Reviewer' });
+    for (const [id, rating] of [[mine.body.item.id, 5], [mine.body.item.id, 4]] as const) {
+      // One review per guest per listing, so use two guests.
+      const g = rating === 5 ? guest : await registerUser({ name: 'Reviewer Two' });
+      await request(app).post('/api/reviews').set(auth(g.token)).send({ listing_id: id, rating });
+    }
+    await request(app).post('/api/reviews').set(auth(guest.token)).send({ listing_id: other.id, rating: 1 });
+    await request(app).post('/api/bookings').set(auth(guest.token)).send({
+      listing_id: mine.body.item.id, listing_type: 'homestay', check_in: '2031-08-01', check_out: '2031-08-03',
+    });
+
+    const res = await request(app).get('/api/providers/me/stats').set(auth(host.token));
+    expect(res.body.listings).toBe(before + 1);
+    expect(res.body.review_count).toBe(2);
+    expect(res.body.average_rating).toBe(4.5);
+    expect(res.body.bookings).toMatchObject({ total: 1, pending: 1, confirmed: 0 });
+  });
+});

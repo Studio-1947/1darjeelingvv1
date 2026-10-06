@@ -265,3 +265,20 @@ export const otpSendCounters = pgTable('otp_send_counters', {
 }, (t) => ({
   scopeDayPk: primaryKey({ columns: [t.scope, t.day] }),
 }));
+
+/**
+ * Home-screen promotion cards ("Trending"). Editable by an admin without a client release; the
+ * app keeps a built-in set to fall back on when none are active or the server is unreachable.
+ */
+export const promotions = pgTable('promotions', {
+  id: text('id').primaryKey(),
+  tag: text('tag').notNull(), // the small pill, e.g. '25% OFF'
+  title: text('title').notNull(),
+  subtitle: text('subtitle').notNull(),
+  image: text('image').notNull(),
+  // An in-app path such as '/category/homestay'.
+  link: text('link').notNull(),
+  sortOrder: integer('sort_order').default(0).notNull(),
+  active: boolean('active').default(true).notNull(),
+  createdAt: text('created_at').notNull(),
+});
