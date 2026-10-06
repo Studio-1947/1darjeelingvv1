@@ -293,9 +293,15 @@ router.get('/provider', authenticateToken, async (req: Request, res: Response) =
     .where(inArray(schema.bookings.listingId, listingIds))
     .orderBy(desc(schema.bookings.createdAt));
 
+  const guestIds = [...new Set(bookings.map(b => b.userId))];
+  const guests = guestIds.length
+    ? await db.select().from(schema.users).where(inArray(schema.users.id, guestIds))
+    : [];
+  const guestById = new Map(guests.map(g => [g.id, g]));
+
   const enrichedBookings = [];
   for (const b of bookings) {
-    const [customer] = await db.select().from(schema.users).where(eq(schema.users.id, b.userId)).limit(1);
+    const customer = guestById.get(b.userId);
     const listingMatch = listingsMap.find(l => l.id === b.listingId) || null;
     enrichedBookings.push({
       id: b.id,
