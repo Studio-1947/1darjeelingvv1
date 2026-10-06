@@ -3,7 +3,7 @@ import * as dotenv from 'dotenv';
 import * as path from 'path';
 import { isPlausiblePhone } from './lib/phone';
 
-dotenv.config({ path: path.join(__dirname, '../.env') });
+dotenv.config({ path: path.join(__dirname, '../.env'), quiet: true });
 
 // Logging setup  defined first so the startup validation below can use it.
 export const log = {

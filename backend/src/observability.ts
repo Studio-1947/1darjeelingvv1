@@ -20,7 +20,7 @@ import * as path from 'path';
 import * as Sentry from '@sentry/node';
 import { scrubHeaders, scrubUrl, scrubValue } from './lib/scrub';
 
-dotenv.config({ path: path.join(__dirname, '../.env') });
+dotenv.config({ path: path.join(__dirname, '../.env'), quiet: true });
 
 const DSN = process.env.SENTRY_DSN?.trim();
 const APP_ENV = process.env.APP_ENV?.trim() || 'development';
