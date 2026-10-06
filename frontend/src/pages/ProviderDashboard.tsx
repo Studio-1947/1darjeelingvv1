@@ -9,6 +9,7 @@ import { StatCard } from '@/components/provider/dashboard/widgets';
 import BookingCard from '@/components/provider/dashboard/BookingCard';
 import EditListingModal from '@/components/provider/dashboard/EditListingModal';
 import KycSection from '@/components/provider/dashboard/KycSection';
+import HostPlanCard from '@/components/provider/dashboard/HostPlanCard';
 import VerifiedBadge from '@/components/provider/VerifiedBadge';
 import ProfileCompletionBar from '@/components/provider/ProfileCompletionBar';
 import { getMyProfile } from '@/lib/kyc';
@@ -176,6 +177,8 @@ export default function ProviderDashboard() {
           {kycProfile?.kyc_status === 'verified' && <VerifiedBadge size="md" />}
         </div>
       </div>
+
+      <HostPlanCard provider={provider} user={user} onRenewed={loadDashboard} />
 
       {/* Stats grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">

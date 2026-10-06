@@ -6,15 +6,6 @@ import { Screen, SectionHead, ALIGN_TEXT, ALIGN_BLOCK } from './primitives';
 import { BookingFlow } from './useBookingFlow';
 import { todayStr, addDays, isBadRange } from '@/lib/dates';
 
-/**
- * What the platform actually charges to confirm a booking, in rupees.
- *
- * Mirrors AMOUNTS.booking_commission in backend/src/config.ts (10000 paise → ₹1).
- * The server is the authority on what gets charged; this is only what we promise
- * beforehand, and the two must not drift - see the breakdown below.
- */
-const BOOKING_FEE = 1;
-
 /** Inline validation message under a field. Nothing rendered when there's no error. */
 function FieldError({ id, message }: { id: string; message?: string }) {
   if (!message) return null;
@@ -29,12 +20,11 @@ function FieldError({ id, message }: { id: string; message?: string }) {
  * What this booking costs, itemised, before anything is committed.
  *
  * The widget previously showed no total at all: a visitor pressed Reserve Now
- * having seen "₹1800 / head" and nothing else, while /refunds separately
- * disclosed a ₹1 booking confirmation fee they never saw in the flow (QA 3.3).
+ * having seen "₹1800 / head" and nothing else.
  *
- * The two halves are deliberately kept apart rather than summed into one number.
- * Only the ₹1 goes through Razorpay now; the stay itself is settled with the host.
- * A single "Total: ₹7,201" would imply we are collecting all of it.
+ * Booking through aangan is free, so the only money here is the stay itself,
+ * which is settled with the host. The note under it says so, so nobody expects
+ * a charge at the end.
  */
 function PriceBreakdown({ item, unit, nights, guests }: {
   item: any; unit: string; nights: number; guests: number;
@@ -75,14 +65,9 @@ function PriceBreakdown({ item, unit, nights, guests }: {
         <p className="mt-1 text-xs text-ink-soft">{t('booking.paid_to_host')}</p>
       )}
 
-      <div className="mt-4 pt-3 border-t border-[var(--line)] flex items-start justify-between gap-4 text-sm">
-        <span className="text-ink-soft">{t('booking.confirmation_fee')}</span>
-        <span className="font-bold text-ink whitespace-nowrap">₹{BOOKING_FEE}</span>
-      </div>
-      <div className="mt-2 flex items-start justify-between gap-4">
-        <span className="text-sm font-bold text-ink">{t('booking.payable_now')}</span>
-        <span className="font-display font-extrabold text-lg text-ink whitespace-nowrap">₹{BOOKING_FEE}</span>
-      </div>
+      <p className="mt-4 pt-3 border-t border-[var(--line)] text-sm font-semibold text-pine">
+        {t('booking.fee_note')}
+      </p>
 
       <Link to="/refunds" className="mt-3 inline-block text-xs font-semibold text-pine underline">
         {t('booking.fees_and_refunds')}

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import api, { createPaymentOrder, completeMockPayment, payWithRazorpay } from '@/lib/api';
+import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { readTrip } from '@/lib/tripParams';
 
@@ -62,7 +62,7 @@ function initialForm(id: string, search: string): BookingForm {
 }
 
 /**
- * Booking form state and the book → pay (mock or Razorpay) → confirm flow
+ * Booking form state and the book → confirm flow (bookings are free; there is no payment step)
  * for a listing. `msg` doubles as the general feedback line under the form;
  * `errors` holds the per-field ones.
  */
@@ -76,7 +76,6 @@ export function useBookingFlow(item: any, id: string) {
   const [errors, setErrors] = useState<BookingErrors>({});
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
-  const [payModal, setPayModal] = useState(null); // { order, amount, description, bookingId }
   const [confirm, setConfirm] = useState(null); // { open, data }
 
   // Moving between listings has to start a fresh form; the hook is not remounted
@@ -157,45 +156,16 @@ export function useBookingFlow(item: any, id: string) {
         guests: Number(form.guests) || 1,
         notes: form.notes,
       });
-      const bookingId = data.booking.id;
-      const orderRes = await createPaymentOrder({ flow: 'booking_commission', reference_id: bookingId });
-      if (orderRes.mock) {
-        setPayModal({
-          amount: orderRes.amount,
-          order: orderRes.order,
-          description: `platform fee - ${item.title}`,
-          bookingId,
-        });
-      } else {
-        await payWithRazorpay({
-          order: orderRes.order,
-          key_id: orderRes.key_id,
-          flow: 'booking_commission',
-          reference_id: bookingId,
-          description: `₹1 platform fee - ${item.title}`,
-          prefill: { contact: user.phone, name: user.name },
-        });
-        clearDraft(id);
-        setMsg(t('booking.success'));
-        setTimeout(() => nav('/dashboard'), 1200);
-      }
+      // Bookings are free: checkout confirms under the server's listing lock (so two guests
+      // cannot both take the same nights) and notifies both sides. No payment step.
+      const { data: checkout } = await api.post(`/bookings/${data.booking.id}/checkout`);
+      clearDraft(id);
+      setConfirm({ open: true, data: checkout.booking });
     } catch (e) {
       setMsg(e?.response?.data?.detail || e.message || t('booking.failed'));
     } finally {
       setBusy(false);
     }
-  };
-
-  const finishMockPayment = async () => {
-    if (!payModal) return;
-    const res = await completeMockPayment({
-      order_id: payModal.order.id,
-      flow: 'booking_commission',
-      reference_id: payModal.bookingId,
-    });
-    clearDraft(id);
-    setPayModal(null);
-    setConfirm({ open: true, data: res.record });
   };
 
   // Editing a field clears its own complaint; leaving the message up while the
@@ -215,9 +185,8 @@ export function useBookingFlow(item: any, id: string) {
     errors,
     busy,
     msg, setMsg,
-    payModal, setPayModal,
     confirm, setConfirm,
-    doBook, finishMockPayment,
+    doBook,
   };
 }
 

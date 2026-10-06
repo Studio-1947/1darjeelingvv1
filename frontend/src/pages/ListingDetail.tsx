@@ -8,7 +8,6 @@ import { ListingDetailSkeleton, LoadingStatus } from '@/components/skeletons';
 import { amenitiesFor, hostFor } from '@/lib/listingMeta';
 import { contentFor, listingImage, galleryImagesFor, personImageFor, spotInfoFor } from '@/lib/listingContent';
 import Seo from '@/components/Seo';
-import MockPaymentModal from '@/components/MockPaymentModal';
 import BookingConfirmation from '@/components/BookingConfirmation';
 import DetailHero from '@/components/listing-detail/DetailHero';
 import type { ShareOutcome } from '@/lib/share';
@@ -211,15 +210,6 @@ export default function ListingDetail() {
       <MobileStickyBar item={item} unit={unit} bookable={bookable} cta={cta} busy={booking.busy}
         onBook={booking.doBook} onOpenMaps={openMaps} />
 
-      <MockPaymentModal
-        open={!!booking.payModal}
-        onClose={() => booking.setPayModal(null)}
-        amount={booking.payModal?.amount || 0}
-        title={t('booking.pay_confirm')}
-        description={booking.payModal?.description || ''}
-        onPay={booking.finishMockPayment}
-        prefill={{ upi: `${(booking.user?.name || 'traveller').toLowerCase().replace(/\s+/g, '')}@ybl` }}
-      />
       <BookingConfirmation
         open={!!booking.confirm?.open}
         onClose={() => { booking.setConfirm(null); nav('/dashboard'); }}

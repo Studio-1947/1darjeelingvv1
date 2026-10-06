@@ -11,9 +11,9 @@ import { needsSupport } from '@/lib/support';
  *                it produces a loop, and a gated user may legitimately want to switch accounts.
  * /privacy      linked from the support screen, and a policy page behind a paywall is absurd.
  * /provider/onboard  an unpaid provider needs support (providerPaid is false) but this is
- *                exactly where Login sends them to pay the ₹99. Gating it would deadlock
+ *                exactly where Login sends them to pay the ₹1 first year. Gating it would deadlock
  *                provider onboarding entirely.
- * /donate       telling someone who wants to give us money that they must first pay ₹12 for
+ * /donate       telling someone who wants to give us money that they must first pay ₹1 for
  *                the privilege is self-defeating. Donations grant nothing, so allowing this
  *                cannot become a way around the gate.
  */

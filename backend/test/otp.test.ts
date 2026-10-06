@@ -89,7 +89,7 @@ describe('POST /auth/otp/verify expiry', () => {
     const phone = nextPhone();
     const otp = await issueOtp(phone);
 
-    // Backdate the issue time past the 300s window.
+    // Move the expiry into the past, whatever the configured window.
     const stale = new Date(Date.now() - 301 * 1000).toISOString();
     await db.update(schema.otps).set({ expiresAt: stale }).where(eq(schema.otps.phone, phone));
 

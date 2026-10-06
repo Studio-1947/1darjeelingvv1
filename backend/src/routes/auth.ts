@@ -216,8 +216,8 @@ router.post(
       return res.json({
         sent: true,
         channel: deliveredChannel,
-        mock_otp: otp,
-        hint: "Mock mode: use the OTP shown or 123456",
+        mock_otp: '123456',
+        hint: 'Mock mode: use the OTP shown or 123456',
         exists
       });
     }
@@ -336,7 +336,6 @@ router.post('/otp/verify', rateLimiter(10, 60 * 1000, 'otp_verify'), async (req:
       supportExpiresAt: null,
       password: null,
       phoneVerifiedAt: new Date().toISOString(),
-      interests: [],
       // Minted at registration so the invite screen never has to wait on a write.
       referralCode: await generateReferralCode()
     };

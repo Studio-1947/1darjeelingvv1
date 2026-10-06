@@ -157,7 +157,7 @@ function requirePositiveInt(name: string, raw: string | undefined, fallback: num
 
 // How long an issued OTP stays valid, and how many wrong guesses it tolerates before it must
 // be reissued. Enforced in routes/auth.ts.
-export const OTP_TTL_SECONDS = requirePositiveInt('OTP_TTL_SECONDS', process.env.OTP_TTL_SECONDS, 300);
+export const OTP_TTL_SECONDS = requirePositiveInt('OTP_TTL_SECONDS', process.env.OTP_TTL_SECONDS, 600);
 export const OTP_MAX_ATTEMPTS = requirePositiveInt('OTP_MAX_ATTEMPTS', process.env.OTP_MAX_ATTEMPTS, 5);
 
 // Daily ceilings on OTP sends, enforced against durable counters in lib/otpSendBudget.ts.
@@ -190,8 +190,8 @@ export const JWT_SECRET = requireRealValueInProd('JWT_SECRET', process.env.JWT_S
 // Defaulting to true is right in dev and wrong in production, for the same reason APP_ENV refuses
 // to default above: an absent variable is an operator mistake, not a request for simulated
 // payments. Left as a silent default, one forgotten line in an env file lets any authenticated
-// caller settle their own order through /payments/mock/complete  granting themselves the ₹12
-// support fee, or activating a provider for ₹0.
+// caller settle their own order through /payments/mock/complete  granting themselves the ₹1
+// lifetime pass, or activating a provider for ₹0.
 //
 // An EXPLICIT MOCK_PAYMENTS=true still boots in production, with the warning below. That is a
 // documented pre-go-live state (see .env.production.example and deploy/VPS-RUNBOOK.md) and stays
@@ -314,30 +314,38 @@ export const rzpClient = RAZORPAY_KEY_SECRET ? new Razorpay({
 
 // Fixed prices, in paise. `donation` is deliberately absent: its presence here would imply a
 // fixed price, and the whole point of a donation is that the giver chooses. See lib/payments.ts.
+//
+//   platform_support       ₹1    once, for life — the tourist pass
+//   provider_registration  ₹1    a host's first year
+//   provider_renewal       ₹499  every year after that
+//
+// `booking_commission` is gone: bookings are free and confirm through POST /bookings/:id/checkout.
+// Its settlement branch in payments.ts stays so an order created before the change still settles.
 export const AMOUNTS: Record<string, number> = {
+  platform_support: 100,
   provider_registration: 100,
   provider_renewal: 49900,
-  booking_commission: 100,
-  platform_support: 100
 };
+
+// How long one host payment (registration or renewal) keeps a host's listings live, in days.
+export const HOST_PLAN_DAYS = 365;
 
 // Bounds on a donation, in paise. The floor stops dust-spam orders; the ceiling is a sanity guard
 // so a fat-fingered extra zero is refused here rather than reaching the gateway.
 export const DONATION_MIN_PAISE = 1000;        // ₹10
 export const DONATION_MAX_PAISE = 10_000_000;  // ₹1,00,000
 
-// Tourist platform support & convenience fee window, in days.
-// See docs/superpowers/specs/2026-07-22-tourist-platform-support-fee-design.md
-export const SUPPORT_DURATION_DAYS = 365;
+// The tourist pass is paid once and never lapses. It is stored as an expiry like any other so
+// every existing "is it active?" check keeps working; this is simply a date nobody will reach.
+export const LIFETIME_SUPPORT_EXPIRY = '9999-12-31T23:59:59.999Z';
 
 // What each side of a referral gets when a code is redeemed, in days. The app has always
 // advertised "+3 months", so that is the default; it is a knob because the number is a
 // marketing decision and changing it must not need a deploy of new code.
 //
 // Applied to `supportExpiresAt` for BOTH parties, monotonically  see lib/referrals.ts. There
-// is deliberately no provider-side reward: `providerPaid` is a boolean with no expiry to
-// extend, so "1 month free on your ₹99 plan" cannot be honoured without a plan-renewal model
-// that does not exist yet. The app's copy no longer promises it.
+// is deliberately no provider-side reward. For a tourist who has paid the ₹1 lifetime pass the
+// reward changes nothing; it matters to someone who has not paid yet, as time to try the app.
 export const REFERRAL_REWARD_DAYS = requirePositiveInt(
   'REFERRAL_REWARD_DAYS',
   process.env.REFERRAL_REWARD_DAYS,

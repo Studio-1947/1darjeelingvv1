@@ -110,22 +110,15 @@
     {
       "idx": 15,
       "version": "7",
-      "when": 1790927000000,
-      "tag": "0015_provider_plan_expiry",
+      "when": 1790263630378,
+      "tag": "0015_host_plan_and_lifetime_pass",
       "breakpoints": true
     },
     {
       "idx": 16,
       "version": "7",
-      "when": 1791000000000,
-      "tag": "0016_app_wiring",
-      "breakpoints": true
-    },
-    {
-      "idx": 17,
-      "version": "7",
-      "when": 1791100000000,
-      "tag": "0017_promotions",
+      "when": 1790700000000,
+      "tag": "0016_referral_code_prefix",
       "breakpoints": true
     }
   ]
