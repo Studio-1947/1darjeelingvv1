@@ -20,6 +20,7 @@ export interface UserRowLike {
   avatar?: string | null;
   createdAt: string;
   supportExpiresAt?: string | null;
+  interests?: string[] | null;
   [key: string]: unknown;
 }
 
@@ -34,6 +35,7 @@ export interface PublicUser {
   avatar: string | null;
   createdAt: string;
   supportExpiresAt: string | null;
+  interests: string[];
 }
 
 export function toPublicUser(user: UserRowLike): PublicUser {
@@ -48,5 +50,6 @@ export function toPublicUser(user: UserRowLike): PublicUser {
     avatar: user.avatar ?? null,
     createdAt: user.createdAt,
     supportExpiresAt: user.supportExpiresAt ?? null,
+    interests: Array.isArray(user.interests) ? user.interests : [],
   };
 }

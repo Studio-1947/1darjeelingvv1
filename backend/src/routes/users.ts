@@ -1,7 +1,8 @@
 import { Router, Request, Response } from 'express';
 import { db, schema } from '../db';
 import { REFERRAL_REWARD_DAYS } from '../config';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
+import { v4 as uuidv4 } from 'uuid';
 import { authenticateToken } from '../middleware/auth';
 import { deleteListingsOwnedBy, deleteKycFilesOwnedBy } from '../lib/accountCleanup';
 import { toPublicUser } from '../lib/publicUser';
@@ -28,6 +29,7 @@ const router = Router();
  *               email: { type: string }
  *               language: { type: string }
  *               avatar: { type: string }
+ *               interests: { type: array, items: { type: string } }
  *     responses:
  *       200:
  *         description: Updated user
@@ -56,6 +58,18 @@ router.patch('/me', authenticateToken, async (req: Request, res: Response) => {
   const patch = req.body || {};
   const allowed = ['name', 'email', 'language', 'avatar'];
   const updateFields: Record<string, any> = {};
+
+  // Interests are a short list of plain ids. Validated rather than trusted: this lands in a jsonb
+  // column and is echoed back to every client, so anything but short strings is refused outright.
+  if (patch.interests !== undefined) {
+    const ids = patch.interests;
+    const ok = Array.isArray(ids) && ids.length <= 20 &&
+      ids.every((i: unknown) => typeof i === 'string' && /^[a-z0-9_-]{1,32}$/i.test(i));
+    if (!ok) {
+      return res.status(400).json({ detail: 'interests must be an array of up to 20 short ids' });
+    }
+    updateFields.interests = [...new Set(ids as string[])];
+  }
 
   for (const key of allowed) {
     if (patch[key] !== undefined) {
@@ -117,6 +131,59 @@ router.delete('/me', authenticateToken, async (req: Request, res: Response) => {
   await db.delete(schema.users).where(eq(schema.users.id, uid));
 
   res.json({ deleted: true });
+});
+
+/**
+ * @openapi
+ * /users/me/push-token:
+ *   post:
+ *     summary: Register this device's push token
+ *     tags: [Users]
+ *     security: [{ bearerAuth: [] }]
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [token, platform]
+ *             properties:
+ *               token: { type: string }
+ *               platform: { type: string, enum: [ios, android, web] }
+ *     responses:
+ *       200: { description: Registered }
+ *   delete:
+ *     summary: Remove a push token, e.g. on sign-out
+ *     tags: [Users]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: Removed }
+ */
+// A token belongs to a device, and a device changes hands: if someone else signs in on the same
+// phone the token moves to them, rather than leaving the previous account receiving their alerts.
+router.post('/me/push-token', authenticateToken, async (req: Request, res: Response) => {
+  const { token, platform } = req.body || {};
+  if (typeof token !== 'string' || token.length < 10 || token.length > 300) {
+    return res.status(400).json({ detail: 'A valid push token is required' });
+  }
+  if (!['ios', 'android', 'web'].includes(platform)) {
+    return res.status(400).json({ detail: 'platform must be ios, android or web' });
+  }
+  const now = new Date().toISOString();
+  await db.insert(schema.pushTokens)
+    .values({ id: uuidv4(), userId: req.user.id, token, platform, createdAt: now, updatedAt: now })
+    .onConflictDoUpdate({
+      target: schema.pushTokens.token,
+      set: { userId: req.user.id, platform, updatedAt: now },
+    });
+  res.json({ ok: true });
+});
+
+router.delete('/me/push-token', authenticateToken, async (req: Request, res: Response) => {
+  const token = typeof req.body?.token === 'string' ? req.body.token : String(req.query.token || '');
+  if (!token) return res.status(400).json({ detail: 'token is required' });
+  await db.delete(schema.pushTokens)
+    .where(and(eq(schema.pushTokens.token, token), eq(schema.pushTokens.userId, req.user.id)));
+  res.json({ ok: true });
 });
 
 export default router;

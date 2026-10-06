@@ -120,6 +120,13 @@
       "when": 1790700000000,
       "tag": "0016_referral_code_prefix",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1791000000000,
+      "tag": "0016_app_wiring",
+      "breakpoints": true
     }
   ]
 }

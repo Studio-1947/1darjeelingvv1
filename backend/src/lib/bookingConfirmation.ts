@@ -3,6 +3,7 @@ import { db, schema } from '../db';
 import { log } from '../config';
 import { findBlockingBooking, isDateExclusive, lockListingForBooking } from './bookingAvailability';
 import { notifyBookingCancelled, notifyBookingConfirmed } from './notifications';
+import { addInAppNotification, resolveHostUserId } from './inApp';
 import { refundPaymentsFor } from './refunds';
 import { serializeProvider } from './providerShape';
 
@@ -93,6 +94,12 @@ export async function settleBookingConfirmation(
   const hostName = providerInfo?.business_name || providerInfo?.name || null;
 
   if (conflicted) {
+    await addInAppNotification(booking.userId, {
+      kind: 'booking_cancelled',
+      title: 'Booking cancelled',
+      body: `The dates for ${booking.listingTitle} went to another guest first, so your booking was cancelled.`,
+      refId: booking.id,
+    });
     if (paid) {
       // Charged for dates that are no longer available. Return the money first, then tell them
       //  in that order, so the message can state truthfully whether the refund went through.
@@ -105,6 +112,18 @@ export async function settleBookingConfirmation(
       );
     }
   } else {
+    await addInAppNotification(booking.userId, {
+      kind: 'booking_confirmed',
+      title: 'Booking confirmed',
+      body: `Your booking for ${booking.listingTitle} is confirmed.`,
+      refId: booking.id,
+    });
+    await addInAppNotification(await resolveHostUserId(listing?.providerId), {
+      kind: 'booking_confirmed',
+      title: 'Booking confirmed',
+      body: `${bookingUser?.name || 'A guest'} confirmed a booking for ${booking.listingTitle}.`,
+      refId: booking.id,
+    });
     // notifyBookingConfirmed never throws and records its own outcome on the booking row, so
     // awaiting it is safe and makes a message that did not go out a queryable fact.
     await notifyBookingConfirmed({
