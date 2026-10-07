@@ -88,6 +88,22 @@ export const INTERAKT_WEBHOOK_SECRET = process.env.INTERAKT_WEBHOOK_SECRET?.trim
 // to switch to real delivery with one variable.
 export const MOCK_OTP = MESSAGING_PROVIDER === 'mock';
 
+// The mock provider in production is not a degraded feature, it is an unauthenticated takeover of
+// every account: `123456` logs in as any phone number, registered or not, admin or not. It used to
+// log an error and boot anyway. Both deployed stacks run APP_ENV=production, so APP_ENV alone cannot
+// decide this; the operator has to say, in a variable that cannot be misread, that a bypass login
+// is what they want (a staging stack). Silence, or just naming the mock provider, is refused.
+export const ALLOW_MOCK_OTP = process.env.ALLOW_MOCK_OTP?.trim().toLowerCase() === 'true';
+if (IS_PROD && MOCK_OTP && !ALLOW_MOCK_OTP) {
+  throw new Error(
+    '[config] MESSAGING_PROVIDER=mock with APP_ENV=production leaves the 123456 universal code ' +
+    'live, so anyone can log in as any phone number. Set MESSAGING_PROVIDER to a provider that ' +
+    'actually delivers (interakt, msg91, whatsapp, smtp), ' +
+    'or, on a staging stack where a bypass login is what you want, set ALLOW_MOCK_OTP=true to say so. ' +
+    'It is not assumed.'
+  );
+}
+
 if (IS_PROD && MESSAGING_PROVIDER === 'interakt' && !INTERAKT_WEBHOOK_SECRET) {
   throw new Error('[config] INTERAKT_WEBHOOK_SECRET is required when MESSAGING_PROVIDER=interakt in production.');
 }
@@ -252,9 +268,9 @@ if (IS_PROD) {
   }
   if (MOCK_OTP) {
     log.error(
-      '[config] MESSAGING_PROVIDER=mock with APP_ENV=production  OTPs are not delivered and ' +
-      'the 123456 universal code is active, so anyone can log in as any phone number. ' +
-      'Set MESSAGING_PROVIDER to a real provider before taking real users.'
+      '[config] ALLOW_MOCK_OTP=true with APP_ENV=production  OTPs are not delivered and the ' +
+      '123456 universal code is active, so anyone can log in as any phone number. This stack ' +
+      'must not take real users. Set MESSAGING_PROVIDER to a real provider to end it.'
     );
   }
   if (!NOTIFY_BOOKINGS) {

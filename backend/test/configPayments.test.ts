@@ -9,6 +9,7 @@ import { describe, it, expect, afterEach, vi } from 'vitest';
 function stubProductionBaseline() {
   vi.stubEnv('APP_ENV', 'production');
   vi.stubEnv('JWT_SECRET', 'a_real_production_jwt_secret');
+  vi.stubEnv('MESSAGING_PROVIDER', 'interakt');
 }
 
 async function importConfig() {
