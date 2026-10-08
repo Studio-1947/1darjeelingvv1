@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { db, schema } from '../db';
 // lt/gt/and moved out with the inline overlap query  the date comparison now lives in
 // lib/bookingAvailability.ts, shared with the settlement path so the two cannot drift.
-import { eq, desc, inArray } from 'drizzle-orm';
+import { eq, desc, inArray, and } from 'drizzle-orm';
 import { authenticateToken } from '../middleware/auth';
 import { requireActiveSupport } from '../middleware/support';
 import { findBlockingBooking, isDateExclusive, lockListingForBooking } from '../lib/bookingAvailability';
@@ -175,7 +175,9 @@ router.post('/', authenticateToken, requireActiveSupport, async (req: Request, r
     guests: booking.guests,
     notes: booking.notes,
     status: booking.status,
-    created_at: booking.createdAt
+    created_at: booking.createdAt,
+    voucher_id: booking.voucherId,
+    applied_discount: booking.appliedDiscount
   };
 
   res.json({ booking: bookingReturn });
@@ -245,6 +247,8 @@ router.get('/me', authenticateToken, async (req: Request, res: Response) => {
       created_at: b.createdAt,
       confirmed_at: b.confirmedAt,
       accepted_at: b.acceptedAt,
+      voucher_id: b.voucherId,
+      applied_discount: b.appliedDiscount,
       listing: listingReturn
     });
   }
@@ -352,6 +356,8 @@ router.get('/provider', authenticateToken, async (req: Request, res: Response) =
       created_at: b.createdAt,
       confirmed_at: b.confirmedAt,
       accepted_at: b.acceptedAt,
+      voucher_id: b.voucherId,
+      applied_discount: b.appliedDiscount,
       customer: customer ? { name: customer.name, phone: customer.phone } : null,
       listing: listingMatch
     });
