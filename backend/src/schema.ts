@@ -78,6 +78,17 @@ export const referrals = pgTable('referrals', {
   createdAt: text('created_at').notNull(),
 });
 
+export const vouchers = pgTable('vouchers', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  discountPercentage: integer('discount_percentage').notNull(),
+  tier: integer('tier').notNull(),
+  status: text('status').notNull(), // 'available' | 'used'
+  usedAt: text('used_at'),
+  usedOnBookingId: text('used_on_booking_id'),
+  createdAt: text('created_at').notNull(),
+});
+
 export const otps = pgTable('otps', {
   id: text('id').primaryKey(),
   phone: text('phone').notNull(),
@@ -178,6 +189,10 @@ export const bookings = pgTable('bookings', {
   providerNotifiedAt: text('provider_notified_at'),
   // Last delivery error, kept so the admin console can show why a notification is missing.
   notifyError: text('notify_error'),
+  // Voucher used on this booking.
+  voucherId: text('voucher_id'),
+  // Discount percentage applied (e.g. 10 for 10%) so the host knows they need to collect 10% less.
+  appliedDiscount: integer('applied_discount'),
 });
 
 export const favorites = pgTable('favorites', {

@@ -74,7 +74,7 @@ const router = Router();
  */
 // Create a booking
 router.post('/', authenticateToken, requireActiveSupport, async (req: Request, res: Response) => {
-  const { listing_id, listing_type, check_in, check_out, guests = 1, notes } = req.body;
+  const { listing_id, listing_type, check_in, check_out, guests = 1, notes, voucher_id } = req.body;
 
   if (!listing_id || !listing_type) {
     return res.status(400).json({ detail: 'Listing ID and type are required' });
@@ -87,6 +87,20 @@ router.post('/', authenticateToken, requireActiveSupport, async (req: Request, r
     if (new Date(check_out) <= new Date(check_in)) {
       return res.status(400).json({ detail: 'Check-out date must be after check-in date' });
     }
+  }
+
+  let validVoucher = null;
+  if (voucher_id) {
+    const [found] = await db
+      .select()
+      .from(schema.vouchers)
+      .where(and(eq(schema.vouchers.id, voucher_id), eq(schema.vouchers.userId, req.user.id)))
+      .limit(1);
+    
+    if (!found || found.status !== 'available') {
+      return res.status(400).json({ detail: 'Voucher is invalid, unavailable, or does not belong to you' });
+    }
+    validVoucher = found;
   }
 
   const [listing] = await db.select().from(schema.listings).where(eq(schema.listings.id, listing_id)).limit(1);
@@ -122,10 +136,24 @@ router.post('/', authenticateToken, requireActiveSupport, async (req: Request, r
     notes,
     status: 'pending_payment',
     createdAt: new Date().toISOString(),
-    confirmedAt: null
+    confirmedAt: null,
+    voucherId: validVoucher ? validVoucher.id : null,
+    appliedDiscount: validVoucher ? validVoucher.discountPercentage : null,
   };
 
-  await db.insert(schema.bookings).values(booking);
+  // Run the booking insert and voucher burn in a transaction to prevent double spending
+  await db.transaction(async (tx) => {
+    await tx.insert(schema.bookings).values(booking);
+    if (validVoucher) {
+      await tx.update(schema.vouchers)
+        .set({
+          status: 'used',
+          usedAt: new Date().toISOString(),
+          usedOnBookingId: booking.id,
+        })
+        .where(eq(schema.vouchers.id, validVoucher.id));
+    }
+  });
 
   // The host's feed hears about the request straight away, even though it is unpaid, because the
   // provider inbox already lists it and they would otherwise see it there with no prompt.

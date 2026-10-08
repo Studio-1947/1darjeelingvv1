@@ -112,6 +112,41 @@ router.get('/me/referrals', authenticateToken, async (req: Request, res: Respons
   res.json({ code, joined, reward_days: REFERRAL_REWARD_DAYS });
 });
 
+/**
+ * @openapi
+ * /users/me/vouchers:
+ *   get:
+ *     summary: Get all available discount vouchers for the caller
+ *     tags: [Users]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200:
+ *         description: List of available vouchers
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id: { type: string }
+ *                   discountPercentage: { type: integer }
+ *                   tier: { type: integer }
+ *                   createdAt: { type: string }
+ */
+router.get('/me/vouchers', authenticateToken, async (req: Request, res: Response) => {
+  const availableVouchers = await db
+    .select()
+    .from(schema.vouchers)
+    .where(
+      and(
+        eq(schema.vouchers.userId, req.user.id),
+        eq(schema.vouchers.status, 'available')
+      )
+    );
+  res.json(availableVouchers);
+});
+
 // Delete User Account and cleanup
 router.delete('/me', authenticateToken, async (req: Request, res: Response) => {
   const uid = req.user.id;

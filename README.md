@@ -105,13 +105,13 @@ REACT_APP_BACKEND_URL=http://localhost:8000
 
 `backend/.env` also accepts MinIO/S3 object-storage variables. All are optional in dev — unset, they default to exactly what `docker-compose.yml`'s `minio` service already provides, so `docker compose up -d minio` + the defaults below is enough to exercise uploads locally with no extra config:
 
-| Var | Default | Purpose |
-| --- | --- | --- |
-| `MINIO_ENDPOINT` | `http://localhost:9000` | S3-compatible endpoint the backend talks to |
-| `MINIO_ACCESS_KEY` / `MINIO_SECRET_KEY` | `minioadmin` / `minioadminpassword` | Credentials for that endpoint |
-| `MINIO_BUCKET` | `one-darjeeling` | **Public** bucket for listing images — bootstrapped on first upload with a public-read policy so the browser loads images directly from MinIO |
-| `MINIO_PUBLIC_URL` | `http://localhost:9000` | Base URL returned to the browser for objects in the public bucket |
-| `MINIO_KYC_BUCKET` | `one-darjeeling-kyc` | **Private** bucket for provider KYC documents (Aadhaar/PAN/business licences) — a separate bucket from `MINIO_BUCKET`, bootstrapped with *no* public-read policy. KYC objects are never returned as a direct URL; the only way to fetch one is the token-authenticated `GET /api/providers/kyc/:id/file` proxy, which allows only the owning provider or an admin |
+| Var                                     | Default                             | Purpose                                                                                                                                                                                                                                                                                                                                                           |
+| --------------------------------------- | ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `MINIO_ENDPOINT`                        | `http://localhost:9000`             | S3-compatible endpoint the backend talks to                                                                                                                                                                                                                                                                                                                       |
+| `MINIO_ACCESS_KEY` / `MINIO_SECRET_KEY` | `minioadmin` / `minioadminpassword` | Credentials for that endpoint                                                                                                                                                                                                                                                                                                                                     |
+| `MINIO_BUCKET`                          | `one-darjeeling`                    | **Public** bucket for listing images — bootstrapped on first upload with a public-read policy so the browser loads images directly from MinIO                                                                                                                                                                                                                     |
+| `MINIO_PUBLIC_URL`                      | `http://localhost:9000`             | Base URL returned to the browser for objects in the public bucket                                                                                                                                                                                                                                                                                                 |
+| `MINIO_KYC_BUCKET`                      | `one-darjeeling-kyc`                | **Private** bucket for provider KYC documents (Aadhaar/PAN/business licences) — a separate bucket from `MINIO_BUCKET`, bootstrapped with _no_ public-read policy. KYC objects are never returned as a direct URL; the only way to fetch one is the token-authenticated `GET /api/providers/kyc/:id/file` proxy, which allows only the owning provider or an admin |
 
 Both buckets are created automatically by the backend the first time something is uploaded to them — no manual `mc`/console setup needed for local dev.
 
@@ -203,7 +203,7 @@ Dashboard → **Settings → Webhooks → Add New Webhook**:
 
 | Field         | Value                                                     |
 | ------------- | --------------------------------------------------------- |
-| Webhook URL   | `https://aanganerp.in/api/payments/webhook`  |
+| Webhook URL   | `https://aanganerp.in/api/payments/webhook`               |
 | Secret        | Any long random string you generate — **you choose this** |
 | Active Events | `payment.captured` and `order.paid`                       |
 
@@ -381,9 +381,9 @@ It needs these **GitHub repo secrets** (Settings → Secrets and variables → A
 
 No registry secret is needed — `GITHUB_TOKEN` is issued per run. One optional repo **variable** (Settings → Secrets and variables → Actions → Variables):
 
-| Variable                | Value                                                                          |
-| ----------------------- | ------------------------------------------------------------------------------ |
-| `FRONTEND_SENTRY_DSN`   | Sentry DSN inlined into the frontend bundles at build time. Unset ⇒ no reporting. |
+| Variable              | Value                                                                             |
+| --------------------- | --------------------------------------------------------------------------------- |
+| `FRONTEND_SENTRY_DSN` | Sentry DSN inlined into the frontend bundles at build time. Unset ⇒ no reporting. |
 
 It is a variable rather than a secret deliberately: a DSN is a write-only ingestion endpoint and ships in the shipped JS by design. It moved here from the VPS's `.env` because the bundles are now built in CI, and a build arg cannot come from the deploy host.
 
@@ -416,7 +416,7 @@ Three behaviours are worth knowing before touching the booking or payment code, 
 replaced a defect that failed quietly. All three are covered by `backend/test/bookingIntegrity.test.ts`.
 
 **Homestay dates are held, then re-checked.** `POST /bookings` refuses dates that overlap a
-confirmed booking *or* another guest's checkout still inside its hold window
+confirmed booking _or_ another guest's checkout still inside its hold window
 (`BOOKING_HOLD_MINUTES`, default 15). Because two checkouts can both be legitimately open when they
 start, confirmation re-checks under a `FOR UPDATE` lock on the listing row — an overlap query alone
 cannot serialise them. If a paid booking loses that race it is cancelled, refunded, and the guest is
@@ -450,9 +450,18 @@ every booking, login and listing request failed. `GET /api/health` actually asks
 and answers **503** with the failing component named:
 
 ```json
-{"app":"1 Darjeeling","status":"degraded",
- "checks":{"database":{"ok":true,"ms":3},
-           "storage":{"ok":false,"ms":51,"error":"connect ECONNREFUSED 172.20.0.4:9000"}}}
+{
+  "app": "1 Darjeeling",
+  "status": "degraded",
+  "checks": {
+    "database": { "ok": true, "ms": 3 },
+    "storage": {
+      "ok": false,
+      "ms": 51,
+      "error": "connect ECONNREFUSED 172.20.0.4:9000"
+    }
+  }
+}
 ```
 
 Any monitor will do — UptimeRobot's free tier gives 5-minute checks and is enough. Configure it to
@@ -483,7 +492,7 @@ no configuration.
 **On personal data.** This platform holds Aadhaar/PAN scans, phone numbers and the JWTs that
 authenticate them, and an error report is assembled from exactly the material most likely to carry
 them. Everything is scrubbed before send — see `backend/src/lib/scrub.ts` and its test:
-Authorization headers, phone numbers, OTPs, uploaded documents and query-string *values* are
+Authorization headers, phone numbers, OTPs, uploaded documents and query-string _values_ are
 replaced; stack-frame local variables are dropped wholesale; browser Session Replay and
 performance tracing are deliberately not enabled at all. Read that test before loosening anything.
 
@@ -515,3 +524,15 @@ deployment. The two open items as of 2026-08-04 are both operational rather than
 
 The long-standing §6.A (booking confirmations notified nobody) is **closed** — see the section
 above.
+
+cd /var/www/1darjeeling-in
+git fetch origin && git reset --hard origin/prod
+docker compose -f docker-compose.in.yml build
+docker compose -f docker-compose.in.yml up -d --wait
+
+docker compose -f docker-compose.in.yml up -d --force-recreate backend
+sleep 10
+docker compose -f docker-compose.in.yml ps
+docker compose -f docker-compose.in.yml logs --tail 80 backend
+curl -i http://127.0.0.1:8092/api/health
+curl -i https://aanganerp.in/api/health
