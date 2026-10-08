@@ -120,6 +120,27 @@
       "when": 1790700000000,
       "tag": "0016_referral_code_prefix",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1791000000000,
+      "tag": "0017_app_wiring",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1791100000000,
+      "tag": "0018_promotions",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1791453746968,
+      "tag": "0019_keen_gertrude_yorkes",
+      "breakpoints": true
     }
   ]
 }
