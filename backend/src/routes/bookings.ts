@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { db, schema } from '../db';
 // lt/gt/and moved out with the inline overlap query  the date comparison now lives in
 // lib/bookingAvailability.ts, shared with the settlement path so the two cannot drift.
-import { eq, desc, inArray } from 'drizzle-orm';
+import { eq, desc, inArray, and } from 'drizzle-orm';
 import { authenticateToken } from '../middleware/auth';
 import { requireActiveSupport } from '../middleware/support';
 import { findBlockingBooking, isDateExclusive, lockListingForBooking } from '../lib/bookingAvailability';
