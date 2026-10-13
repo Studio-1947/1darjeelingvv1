@@ -133,6 +133,10 @@ export const providers = pgTable('providers', {
   // the first payment settles. Once it passes, the host's listings leave the public feed until
   // they renew. See lib/hostPlan.ts.
   planExpiresAt: text('plan_expires_at'),
+  // True for hosts who registered once admin approval was introduced: their listings stay out of
+  // the public feed, and refuse bookings, until kyc_status is 'verified'. Hosts who were already
+  // live keep the default (false) so the change cut nobody off. See lib/hostPlan.ts.
+  approvalRequired: boolean('approval_required').default(false).notNull(),
 }, (t) => ({
   // At most one provider row per user, ever  enforced at the DB level so the onboard route's
   // read-then-write conflict check can't lose a race (two concurrent onboards both reading "no

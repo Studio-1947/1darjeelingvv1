@@ -61,19 +61,36 @@ export function hostPlanVisibility(now: Date = new Date()) {
   return sql`NOT EXISTS (
     SELECT 1 FROM ${schema.providers}
     WHERE ${schema.providers.id} = ${schema.listings.providerId}
-      AND ${schema.providers.planExpiresAt} IS NOT NULL
-      AND ${schema.providers.planExpiresAt} <= ${now.toISOString()}
+      AND (
+        (${schema.providers.planExpiresAt} IS NOT NULL
+          AND ${schema.providers.planExpiresAt} <= ${now.toISOString()})
+        OR (${schema.providers.approvalRequired} AND ${schema.providers.kycStatus} <> 'verified')
+      )
   )`;
 }
 
 /**
- * Whether a listing's host has let their plan lapse. Listings with no provider row (spots,
- * admin-authored listings) never do.
+ * Admin approval: a host who registered under the approval rule is not public until their KYC is
+ * verified. Hosts who were already live have `approvalRequired` false and are never held back.
+ */
+export function isHostApprovalPending(row: { approvalRequired?: boolean | null; kycStatus?: string | null }): boolean {
+  return !!row.approvalRequired && row.kycStatus !== 'verified';
+}
+
+/**
+ * Whether a listing's host cannot take guests right now: their plan has lapsed, or they are
+ * still waiting for admin approval. Listings with no provider row (spots, admin-authored
+ * listings) never are.
  */
 export async function isListingHostLapsed(providerId: string, now: Date = new Date()): Promise<boolean> {
-  const [row] = await db.select({ status: schema.providers.status, planExpiresAt: schema.providers.planExpiresAt })
+  const [row] = await db.select({
+    status: schema.providers.status,
+    planExpiresAt: schema.providers.planExpiresAt,
+    approvalRequired: schema.providers.approvalRequired,
+    kycStatus: schema.providers.kycStatus,
+  })
     .from(schema.providers)
     .where(eq(schema.providers.id, providerId))
     .limit(1);
-  return !!row && isHostPlanLapsed(row, now);
+  return !!row && (isHostPlanLapsed(row, now) || isHostApprovalPending(row));
 }

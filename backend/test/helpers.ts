@@ -1,5 +1,7 @@
 import request from 'supertest';
+import { eq } from 'drizzle-orm';
 import { app } from '../src/app';
+import { db, schema } from '../src/db';
 
 let phoneCounter = 0;
 
@@ -66,7 +68,16 @@ export async function loginAdmin() {
   return res.body.token as string;
 }
 
-export async function onboardActiveProvider(opts: { name: string; businessType?: string }) {
+export async function onboardActiveProvider(opts: {
+  name: string;
+  businessType?: string;
+  /**
+   * New hosts stay out of the public feed until an admin verifies their KYC. Most tests are about
+   * something else and want a host who is simply live, so the helper clears the requirement
+   * (as if the host pre-dated the rule). Set true to keep the real new-host behaviour.
+   */
+  awaitingApproval?: boolean;
+}) {
   const businessType = opts.businessType || 'homestay';
   const { token, phone } = await registerUser({ name: opts.name, role: 'provider' });
 
@@ -95,6 +106,10 @@ export async function onboardActiveProvider(opts: { name: string; businessType?:
     .post('/api/payments/mock/complete')
     .set('Authorization', `Bearer ${token}`)
     .send({ order_id: orderId, flow: 'provider_registration', reference_id: providerId });
+
+  if (!opts.awaitingApproval) {
+    await db.update(schema.providers).set({ approvalRequired: false }).where(eq(schema.providers.id, providerId));
+  }
 
   return { token, providerId, phone };
 }

@@ -14,6 +14,9 @@ import { isListingHostLapsed } from '../lib/hostPlan';
 import { settleBookingConfirmation } from '../lib/bookingConfirmation';
 import { addInAppNotification, resolveHostUserId } from '../lib/inApp';
 
+/** Listing types guests contact directly rather than book. */
+const CONTACT_ONLY_TYPES = new Set(['cafe', 'shop']);
+
 const router = Router();
 
 // ============ BOOKINGS ============
@@ -106,6 +109,11 @@ router.post('/', authenticateToken, requireActiveSupport, async (req: Request, r
   const [listing] = await db.select().from(schema.listings).where(eq(schema.listings.id, listing_id)).limit(1);
   if (!listing) {
     return res.status(404).json({ detail: 'Listing not found' });
+  }
+  // Cafés and shops are contact-only: a guest rings them, nothing is reserved. Judged on the
+  // listing's own type, since the client-supplied one is just a claim.
+  if (CONTACT_ONLY_TYPES.has(listing.type) || CONTACT_ONLY_TYPES.has(listing_type)) {
+    return res.status(400).json({ detail: 'This kind of listing is contact-only and cannot be booked' });
   }
   // A host whose yearly plan has lapsed is not taking bookings until they renew. Their listing is
   // already out of the public feed; this covers a guest holding an old link.

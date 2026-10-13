@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { isHostPlanLive } from '../lib/hostPlan';
+import { isHostApprovalPending, isHostPlanLive } from '../lib/hostPlan';
 import { v4 as uuidv4 } from 'uuid';
 import { db, schema } from '../db';
 import { eq, inArray } from 'drizzle-orm';
@@ -131,6 +131,8 @@ router.post('/onboard', authenticateToken, async (req: Request, res: Response) =
         priceFrom: price_from,
         images,
         extras,
+        // An unpaid draft that predates the approval rule is brought under it before it goes live.
+        approvalRequired: true,
       })
       .where(eq(schema.providers.id, existing.id))
       .returning();
@@ -150,6 +152,7 @@ router.post('/onboard', authenticateToken, async (req: Request, res: Response) =
       images,
       extras,
       status: 'pending_payment',
+      approvalRequired: true,
       createdAt: new Date().toISOString(),
       activatedAt: null,
     }).returning();
@@ -226,6 +229,8 @@ router.get('/me', authenticateToken, async (req: Request, res: Response) => {
     // A registered host whose plan has lapsed renews through the `provider_renewal` flow.
     plan_expires_at: provider.planExpiresAt,
     plan_active: isHostPlanLive(provider),
+    kyc_status: provider.kycStatus,
+    approval_pending: isHostApprovalPending(provider),
   };
 
   res.json({ provider: providerReturn });
@@ -366,6 +371,8 @@ router.patch('/me', authenticateToken, async (req: Request, res: Response) => {
       activated_at: updated.activatedAt,
       plan_expires_at: updated.planExpiresAt,
       plan_active: updated.status === 'active' && (!updated.planExpiresAt || Date.parse(updated.planExpiresAt) > Date.now()),
+      kyc_status: updated.kycStatus,
+      approval_pending: isHostApprovalPending(updated),
     },
   });
 });
