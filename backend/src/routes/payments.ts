@@ -14,13 +14,23 @@ import { resolveAmount } from '../lib/payments';
 
 const router = Router();
 
+// What a settlement writes through: the shared pool, or the transaction settlePaymentOnce opens so
+// the paid flag and the entitlement it buys commit together or not at all.
+type Executor = Pick<typeof db, 'select' | 'update' | 'insert'>;
+
 // Common after-payment trigger side effects function
-async function handlePaymentSuccess(flow: string, referenceId: string, userId: string, amount: number) {
+async function handlePaymentSuccess(
+  flow: string,
+  referenceId: string,
+  userId: string,
+  amount: number,
+  tx: Executor = db
+) {
   if (flow === 'provider_registration') {
     // The ₹1 first year. assertOwnsReference only lets a provider that has never been activated
     // pay this, so it runs once per host and creates their listing once.
-    const [before] = await db.select().from(schema.providers).where(eq(schema.providers.id, referenceId)).limit(1);
-    await db.update(schema.providers)
+    const [before] = await tx.select().from(schema.providers).where(eq(schema.providers.id, referenceId)).limit(1);
+    await tx.update(schema.providers)
       .set({
         status: 'active',
         activatedAt: new Date().toISOString(),
@@ -28,11 +38,11 @@ async function handlePaymentSuccess(flow: string, referenceId: string, userId: s
       })
       .where(eq(schema.providers.id, referenceId));
 
-    await db.update(schema.users)
+    await tx.update(schema.users)
       .set({ providerPaid: true })
       .where(eq(schema.users.id, userId));
 
-    const [p] = await db.select().from(schema.providers).where(eq(schema.providers.id, referenceId)).limit(1);
+    const [p] = await tx.select().from(schema.providers).where(eq(schema.providers.id, referenceId)).limit(1);
     if (p) {
       const listing = {
         id: uuidv4(),
@@ -49,15 +59,15 @@ async function handlePaymentSuccess(flow: string, referenceId: string, userId: s
         extras: p.extras || {},
         createdAt: new Date().toISOString()
       };
-      await db.insert(schema.listings).values(listing);
+      await tx.insert(schema.listings).values(listing);
     }
     return p ? serializeProvider(p) : null;
   } else if (flow === 'provider_renewal') {
     // ₹499 for another year. Extends from the current expiry when renewing early, from now when
     // the plan has already lapsed, so the host's listings come back the moment this settles.
-    const [p] = await db.select().from(schema.providers).where(eq(schema.providers.id, referenceId)).limit(1);
+    const [p] = await tx.select().from(schema.providers).where(eq(schema.providers.id, referenceId)).limit(1);
     if (!p) return null;
-    const [renewed] = await db.update(schema.providers)
+    const [renewed] = await tx.update(schema.providers)
       .set({ planExpiresAt: computeHostPlanExpiry(p.planExpiresAt) })
       .where(eq(schema.providers.id, referenceId))
       .returning();
@@ -69,11 +79,11 @@ async function handlePaymentSuccess(flow: string, referenceId: string, userId: s
     return settleBookingConfirmation(referenceId, userId, { paid: true });
   } else if (flow === 'platform_support') {
     // The ₹1 lifetime pass. Settling it twice is harmless: both writes store the same date.
-    const [u] = await db.select().from(schema.users).where(eq(schema.users.id, userId)).limit(1);
+    const [u] = await tx.select().from(schema.users).where(eq(schema.users.id, userId)).limit(1);
     if (!u) return null;
 
     const supportExpiresAt = lifetimeSupportExpiry();
-    await db.update(schema.users)
+    await tx.update(schema.users)
       .set({ supportExpiresAt })
       .where(eq(schema.users.id, userId));
 
@@ -171,25 +181,48 @@ async function assertOwnsReference(
  * Always uses the *stored* flow/referenceId (see INVESTIGATION.md §1.5)  never caller input.
  */
 async function settlePaymentOnce(payment: PaymentRow, gatewayPaymentId: string) {
-  const settled = await db.update(schema.payments)
+  const markPaid = (ex: Executor) => ex.update(schema.payments)
     .set({ status: 'paid', paymentId: gatewayPaymentId, paidAt: new Date().toISOString() })
     .where(and(eq(schema.payments.orderId, payment.orderId), ne(schema.payments.status, 'paid')))
     .returning();
 
-  if (settled.length === 0) {
-    return { alreadySettled: true as const, record: null };
-  }
-
   // Every argument comes from the STORED row, never from caller input  see the note above and
   // INVESTIGATION.md §1.5. That includes the amount: echoing a client-supplied figure back as
   // "thank you for ₹X" would let anyone fake a receipt for a sum they never paid.
-  const record = await handlePaymentSuccess(
+  const fulfil = (ex: Executor) => handlePaymentSuccess(
     payment.flow,
     payment.referenceId,
     payment.userId,
-    payment.amount
+    payment.amount,
+    ex
   );
-  return { alreadySettled: false as const, record };
+
+  // Booking settlement runs its own transaction and refund logic on the shared pool, so it cannot
+  // join this one. Legacy only: no new booking orders can be created any more. If the settlement
+  // throws, the paid flag is rolled back so the webhook's retry can run it again, rather than
+  // being skipped as "already settled" for a payment whose booking was never confirmed.
+  if (payment.flow === 'booking_commission') {
+    const settled = await markPaid(db);
+    if (settled.length === 0) return { alreadySettled: true as const, record: null };
+    try {
+      return { alreadySettled: false as const, record: await fulfil(db) };
+    } catch (err) {
+      await db.update(schema.payments)
+        .set({ status: 'created', paymentId: null, paidAt: null })
+        .where(eq(schema.payments.orderId, payment.orderId));
+      throw err;
+    }
+  }
+
+  // Everything else commits atomically. If activating the host or granting the pass throws, the
+  // paid flag rolls back with it, so /verify and the webhook both fail loudly and Razorpay's
+  // retry runs the whole settlement again. Before this, the row stayed `paid`, every retry saw
+  // "already settled", and a charged customer was left with nothing.
+  return db.transaction(async (tx) => {
+    const settled = await markPaid(tx);
+    if (settled.length === 0) return { alreadySettled: true as const, record: null };
+    return { alreadySettled: false as const, record: await fulfil(tx) };
+  });
 }
 
 // ============ PAYMENTS ============
