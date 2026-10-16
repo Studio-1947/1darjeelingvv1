@@ -54,6 +54,14 @@ function requireRealValueInProd(name: string, value: string | undefined, devDefa
 
 export const PORT = process.env.PORT || 8000;
 
+// Optional provider-verification help line. When absent, clients omit the call action rather
+// than inventing a number that may not reach the verification team.
+const verificationSupportPhone = process.env.VERIFICATION_SUPPORT_PHONE?.trim() || '';
+if (verificationSupportPhone && !isPlausiblePhone(verificationSupportPhone)) {
+  throw new Error('[config] VERIFICATION_SUPPORT_PHONE must be a valid phone number when set.');
+}
+export const VERIFICATION_SUPPORT_PHONE = verificationSupportPhone || null;
+
 // Number of reverse proxies in front of Express, passed to app.set('trust proxy').
 // Production chain is: client -> system Nginx (host) -> nginx container -> backend, and both
 // Nginx layers append $proxy_add_x_forwarded_for, so there are exactly 2 trusted hops.

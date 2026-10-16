@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { db } from '../db';
 import * as schema from '../schema';
-import { eq, and, count, inArray, desc } from 'drizzle-orm';
+import { eq, and, count, inArray, desc, isNull } from 'drizzle-orm';
 import { SEED_LISTINGS } from '../seed_data';
 import { authenticateToken, requireAdmin, hashPassword } from '../middleware/auth';
 import { rateLimiter } from '../middleware/rateLimiter';
@@ -516,12 +516,17 @@ router.post('/admin/kyc/:id/review', authenticateToken, requireAdmin, async (req
   if (!doc) return res.status(404).json({ detail: 'Not found' });
 
   const status = decision === 'approve' ? 'approved' : 'rejected';
+  const reviewedAt = new Date().toISOString();
   await db.update(schema.kycDocuments).set({
     status,
     rejectionReason: decision === 'reject' ? (reason || null) : null,
-    reviewedAt: new Date().toISOString(),
+    reviewedAt,
     reviewedBy: req.user.id,
   }).where(eq(schema.kycDocuments.id, doc.id));
+
+  await db.update(schema.providers)
+    .set({ kycReviewStartedAt: reviewedAt })
+    .where(and(eq(schema.providers.id, doc.providerId), isNull(schema.providers.kycReviewStartedAt)));
 
   const kycStatus = await recomputeKycStatus(doc.providerId);
   res.json({

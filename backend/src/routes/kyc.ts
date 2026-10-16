@@ -7,7 +7,7 @@ import { authenticateToken } from '../middleware/auth';
 import { isAllowedDocType } from '../lib/kycRequirements';
 import { computeCompletion } from '../lib/profileCompletion';
 import { uploadPrivate, getPrivateObject, deletePrivate } from '../lib/s3';
-import { log } from '../config';
+import { log, VERIFICATION_SUPPORT_PHONE } from '../config';
 import { routeParam } from '../lib/routeParam';
 
 const router = Router();
@@ -59,6 +59,38 @@ function docOut(d: typeof schema.kycDocuments.$inferSelect) {
     rejection_reason: d.rejectionReason,
     uploaded_at: d.uploadedAt,
     reviewed_at: d.reviewedAt,
+  };
+}
+
+/** A provider-facing review state. It is derived from their own documents only, never from
+ * reviewer identity or internal queue detail. */
+function verificationOut(
+  provider: typeof schema.providers.$inferSelect,
+  docs: Array<typeof schema.kycDocuments.$inferSelect>,
+  checklist: ReturnType<typeof computeCompletion>['checklist'],
+  kycStatus: string
+) {
+  const requiredTypes = checklist.filter(item => item.kind === 'kyc' && item.required).map(item => item.key);
+  const requiredDocs = docs.filter(doc => requiredTypes.includes(doc.docType));
+  const submittedAt = requiredDocs.length ? requiredDocs.map(doc => doc.uploadedAt).sort().at(-1) ?? null : null;
+  const rejected = requiredDocs.find(doc => doc.status === 'rejected');
+  const status = kycStatus === 'verified'
+    ? 'approved'
+    : rejected
+      ? 'changes_requested'
+      : provider.kycReviewStartedAt
+        ? 'in_review'
+        : submittedAt
+          ? 'submitted'
+          : 'not_ready';
+
+  return {
+    status,
+    submitted_at: submittedAt,
+    review_started_at: provider.kycReviewStartedAt,
+    action_required: !!rejected,
+    action_message: rejected?.rejectionReason ?? null,
+    support_phone: VERIFICATION_SUPPORT_PHONE,
   };
 }
 
@@ -119,6 +151,7 @@ router.get('/me/profile', authenticateToken, async (req: Request, res: Response)
     kyc_status: kycStatus,
     checklist,
     documents: docs.map(docOut),
+    verification: verificationOut(provider, docs, checklist, kycStatus),
   });
 });
 

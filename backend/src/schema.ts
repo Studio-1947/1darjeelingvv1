@@ -137,6 +137,9 @@ export const providers = pgTable('providers', {
   // the public feed, and refuse bookings, until kyc_status is 'verified'. Hosts who were already
   // live keep the default (false) so the change cut nobody off. See lib/hostPlan.ts.
   approvalRequired: boolean('approval_required').default(false).notNull(),
+  // Written on the first administrator decision, so a submitted queue is not misrepresented as
+  // an active human review.
+  kycReviewStartedAt: text('kyc_review_started_at'),
 }, (t) => ({
   // At most one provider row per user, ever  enforced at the DB level so the onboard route's
   // read-then-write conflict check can't lose a race (two concurrent onboards both reading "no
