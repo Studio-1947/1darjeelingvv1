@@ -7,7 +7,7 @@ import { authenticateToken } from '../middleware/auth';
 import { rateLimiter } from '../middleware/rateLimiter';
 import { AMOUNTS, MOCK_PAYMENTS, rzpClient, RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, RAZORPAY_WEBHOOK_SECRET, IS_PROD, log } from '../config';
 import { lifetimeSupportExpiry } from '../lib/support';
-import { computeHostPlanExpiry } from '../lib/hostPlan';
+import { computeHostPlanExpiry, isHostPlanLive } from '../lib/hostPlan';
 import { serializeProvider } from '../lib/providerShape';
 import { settleBookingConfirmation } from '../lib/bookingConfirmation';
 import { resolveAmount } from '../lib/payments';
@@ -129,6 +129,9 @@ async function assertOwnsReference(
       }
       if (provider.status === 'suspended') {
         return { status: 403, detail: 'This business is suspended. Contact support.' };
+      }
+      if (isHostPlanLive(provider)) {
+        return { status: 409, detail: 'Your host plan is already active. Renewal is available after it ends.' };
       }
     }
     return null;
