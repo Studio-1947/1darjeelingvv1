@@ -7,6 +7,8 @@ import { authenticateToken } from '../middleware/auth';
 import { KYC_REQUIREMENTS } from '../lib/kycRequirements';
 
 import { isPlausiblePhone } from '../lib/phone';
+import { rateLimiter } from '../middleware/rateLimiter';
+import { googleMapsUrl, inServiceRegion, MapsLinkError, resolveMapsLink } from '../lib/mapsLink';
 
 const SELF_ONBOARDABLE_BUSINESS_TYPES = Object.keys(KYC_REQUIREMENTS);
 
@@ -65,6 +67,8 @@ const router = Router();
 // Register/Onboard a provider
 router.post('/onboard', authenticateToken, async (req: Request, res: Response) => {
   const { business_name, business_type, description, location, latitude = null, longitude = null, contact_phone, price_from = 0, images = [], extras = {} } = req.body;
+  // Location verification is granted only by POST /me/location/verify, never claimed by the caller.
+  if (extras && typeof extras === 'object') delete extras.location_verification;
 
   if (!business_name || !business_name.trim() || !business_type || !description || !description.trim() || !location || !location.trim() || !contact_phone || !contact_phone.trim()) {
     return res.status(400).json({ detail: 'Business name, type, description, location, and contact phone are required' });
@@ -297,6 +301,71 @@ router.get('/me/stats', authenticateToken, async (req: Request, res: Response) =
  *       400: { description: A field failed validation }
  *       404: { description: The caller has no provider profile }
  */
+/**
+ * POST /api/providers/me/location/verify  { maps_url }
+ *
+ * The host pastes the Google Maps link for their place (or "lat, lng"). We read the pin out of
+ * it, check it falls inside the area aangan serves, and save it on the provider and on every
+ * listing they own, flagged as verified. The flag can only be set here; listing and provider
+ * edits cannot grant it, and moving a pin by hand clears it.
+ */
+router.post(
+  '/me/location/verify',
+  authenticateToken,
+  rateLimiter(10, 60_000, 'maps_verify'),
+  async (req: Request, res: Response) => {
+    const providersList = await db.select().from(schema.providers).where(eq(schema.providers.userId, req.user.id));
+    const provider = providersList.find(p => p.status === 'active') || providersList[0];
+    if (!provider) return res.status(404).json({ detail: 'No provider profile to verify' });
+
+    let pin;
+    try {
+      pin = await resolveMapsLink(req.body?.maps_url);
+    } catch (err) {
+      if (err instanceof MapsLinkError) return res.status(400).json({ detail: err.message });
+      throw err;
+    }
+    if (!inServiceRegion(pin)) {
+      return res.status(400).json({
+        detail: 'That pin is outside the Darjeeling area we serve. Check you picked the right place in Google Maps.',
+      });
+    }
+
+    const verifiedAt = new Date().toISOString();
+    const verification = {
+      source: 'google_maps_link',
+      latitude: pin.latitude,
+      longitude: pin.longitude,
+      maps_url: googleMapsUrl(pin),
+      verified_at: verifiedAt,
+    };
+
+    await db.transaction(async (tx) => {
+      await tx
+        .update(schema.providers)
+        .set({
+          latitude: pin.latitude,
+          longitude: pin.longitude,
+          extras: { ...(provider.extras || {}), location_verification: verification },
+        })
+        .where(eq(schema.providers.id, provider.id));
+      const owned = await tx.select().from(schema.listings).where(eq(schema.listings.providerId, provider.id));
+      for (const listing of owned) {
+        await tx
+          .update(schema.listings)
+          .set({
+            latitude: pin.latitude,
+            longitude: pin.longitude,
+            extras: { ...(listing.extras || {}), location_verified: { verified_at: verifiedAt, source: 'google_maps_link' } },
+          })
+          .where(eq(schema.listings.id, listing.id));
+      }
+    });
+
+    res.json({ location: { verified: true, ...verification } });
+  }
+);
+
 router.patch('/me', authenticateToken, async (req: Request, res: Response) => {
   const providersList = await db.select().from(schema.providers).where(eq(schema.providers.userId, req.user.id));
   const provider = providersList.find(p => p.status === 'active') || providersList[0];
@@ -339,11 +408,17 @@ router.patch('/me', authenticateToken, async (req: Request, res: Response) => {
     }
     set[col] = body[key];
   }
+  if (body.latitude !== undefined || body.longitude !== undefined) {
+    // Moving the pin by hand voids the Google Maps verification that was done for the old one.
+    const withoutVerification = { ...(provider.extras || {}) };
+    delete withoutVerification.location_verification;
+    set.extras = withoutVerification;
+  }
   if (body.upi !== undefined) {
     if (typeof body.upi !== 'string' || body.upi.length > 100 || (body.upi && !/^[\w.\-]{2,}@[a-zA-Z]{2,}$/.test(body.upi.trim()))) {
       return res.status(400).json({ detail: 'UPI id must look like name@bank' });
     }
-    const extras = { ...(provider.extras || {}) };
+    const extras = { ...(set.extras ?? provider.extras ?? {}) };
     if (body.upi.trim()) extras.upi = body.upi.trim();
     else delete extras.upi;
     set.extras = extras;

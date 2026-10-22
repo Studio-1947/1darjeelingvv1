@@ -52,7 +52,10 @@ services:
       - backend
 
   minio:
-    image: minio/minio:latest
+    # minio/minio is no longer published on Docker Hub or quay.io. Chainguard's build is the same
+    # server; it runs non-root by default, so root is needed to write the named volume.
+    image: cgr.dev/chainguard/minio:latest
+    user: root
     container_name: 1darjeeling_minio
     restart: on-failure
     ports:

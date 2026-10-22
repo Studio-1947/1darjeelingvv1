@@ -6,10 +6,17 @@ import {
 } from '../src/lib/kycRequirements';
 
 describe('kycRequirements', () => {
-  it('driver requires 6 documents', () => {
+  it('driver requires Aadhaar, licence, RC, a vehicle selfie and a vehicle video', () => {
     expect(requiredDocTypes('driver').sort()).toEqual(
-      ['aadhaar', 'commercial_permit', 'driving_license', 'owner_photo', 'pan', 'vehicle_rc'].sort()
+      ['aadhaar', 'driver_vehicle_photo', 'driver_vehicle_video', 'driving_license', 'vehicle_rc'].sort()
     );
+  });
+
+  it('driver pollution certificate and insurance are optional, PAN is not asked for', () => {
+    const reqs = requirementsFor('driver');
+    expect(reqs.find(r => r.docType === 'pollution_certificate')?.required).toBe(false);
+    expect(reqs.find(r => r.docType === 'vehicle_insurance')?.required).toBe(false);
+    expect(isAllowedDocType('driver', 'pan')).toBe(false);
   });
 
   it('homestay has tourism_registration required and gst_certificate optional', () => {

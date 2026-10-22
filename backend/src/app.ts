@@ -65,6 +65,10 @@ app.use('/api/providers/me/kyc', rateLimiter(20, 60 * 1000, 'kyc_upload'));
 // which would otherwise consume the stream at its 100kb default.
 app.use('/api/providers/me/kyc', express.json({ limit: '8mb' }));
 
+// Verification videos arrive as the raw request body (no base64), up to the 25 MB the route
+// enforces. Only video types are consumed here; anything else falls through to a 400 in the route.
+app.use('/api/providers/me/kyc/video', express.raw({ type: ['video/mp4', 'video/quicktime', 'video/webm'], limit: '26mb' }));
+
 // Listing image uploads (POST /api/listings/upload) also carry a base64 data URL, but were never
 // given a raised limit  so they fell through to the global express.json() default of 100kb and
 // answered any real photo with a bare 413 `request entity too large`. Mirror the KYC path: rate

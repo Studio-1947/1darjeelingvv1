@@ -9,6 +9,8 @@ export type ChecklistItem = {
   kind: 'profile' | 'kyc';
   required: boolean;
   state: DocState;
+  /** Set for a KYC row that is a video, so a client opens the right picker. */
+  media?: 'video';
 };
 
 export type ProfileInput = {
@@ -104,6 +106,7 @@ export function computeCompletion(
       kind: 'kyc' as const,
       required: r.required,
       state: docState(byType.get(r.docType)),
+      ...(r.media ? { media: r.media } : {}),
     })),
   ];
 

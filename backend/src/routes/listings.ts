@@ -407,6 +407,8 @@ router.get('/:id/availability', async (req: Request, res: Response) => {
 // Create a new listing
 router.post('/', authenticateToken, async (req: Request, res: Response) => {
   const { title, type, description, location, latitude = null, longitude = null, price = 0, image = '', tags = [], provider_id, extras = {} } = req.body;
+  // Only POST /providers/me/location/verify may mark a listing's pin as verified.
+  if (extras && typeof extras === 'object') delete extras.location_verified;
   if (!title || !type || !description || !location) {
     return res.status(400).json({ detail: 'Title, type, description and location are required' });
   }
@@ -556,6 +558,20 @@ const updateListingHandler = async (req: Request, res: Response) => {
   // to reach the database and produce a listing with an unplottable pin.
   for (const axis of ['latitude', 'longitude'] as const) {
     if (updateFields[axis] !== undefined) updateFields[axis] = coord(updateFields[axis]);
+  }
+
+  // The verified-location flag is server-granted. A client-supplied extras object never carries
+  // it in, and moving the pin drops it, because the verification was of the old position.
+  const pinMoved = (['latitude', 'longitude'] as const).some(
+    (axis) => updateFields[axis] !== undefined && updateFields[axis] !== listing[axis]
+  );
+  const storedVerified = listing.extras?.location_verified;
+  if (updateFields.extras && typeof updateFields.extras === 'object' && !Array.isArray(updateFields.extras)) {
+    const { location_verified: _ignored, ...rest } = updateFields.extras;
+    updateFields.extras = storedVerified && !pinMoved ? { ...rest, location_verified: storedVerified } : rest;
+  } else if (pinMoved && storedVerified) {
+    const { location_verified: _dropped, ...rest } = listing.extras || {};
+    updateFields.extras = rest;
   }
 
   if (Object.keys(updateFields).length > 0) {
