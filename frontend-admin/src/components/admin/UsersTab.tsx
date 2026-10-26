@@ -1,16 +1,20 @@
 import { useState } from 'react';
 import { Check, X, Trash2, Users as UsersIcon, Store } from 'lucide-react';
 
+import CleanupPanel from './CleanupPanel';
+
 interface UsersTabProps {
   users: any[];
   onDeleteUser: (userId: string, name: string) => Promise<void>;
   onToggleProviderStatus: (providerId: string, currentStatus: string) => Promise<void>;
+  /** Called after a bulk clean-up so the lists reload. */
+  onCleaned?: () => void;
 }
 
 /**
  * UsersTab displays registered system users and businesses split into dedicated sections.
  */
-export default function UsersTab({ users, onDeleteUser, onToggleProviderStatus }: UsersTabProps) {
+export default function UsersTab({ users, onDeleteUser, onToggleProviderStatus, onCleaned }: UsersTabProps) {
   const [subTab, setSubTab] = useState<'individuals' | 'businesses'>('individuals');
 
   // Filter users based on role
@@ -19,6 +23,8 @@ export default function UsersTab({ users, onDeleteUser, onToggleProviderStatus }
 
   return (
     <div className="space-y-6">
+      <CleanupPanel onDone={() => onCleaned?.()} />
+
       {/* Segmented Control / Sub-tabs Switcher */}
       <div className="inline-flex p-1 bg-mist rounded-xl border border-[var(--line)]">
         <button

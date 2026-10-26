@@ -308,7 +308,7 @@ export default function Admin() {
 
       {/* Tab Panels */}
       {activeTab === 'overview' && <OverviewTab stats={stats} onSeed={handleSeed} />}
-      {activeTab === 'users' && <UsersTab users={usersList} onDeleteUser={handleDeleteUser} onToggleProviderStatus={handleToggleProviderStatus} />}
+      {activeTab === 'users' && <UsersTab users={usersList} onDeleteUser={handleDeleteUser} onToggleProviderStatus={handleToggleProviderStatus} onCleaned={() => loadAdminData({ background: true })} />}
       {/* Spots have their own authoring tab, so they're kept out of the provider-services table
           rather than appearing in two places with two different sets of controls. */}
       {activeTab === 'listings' && (
