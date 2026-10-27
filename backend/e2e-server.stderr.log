@@ -1,0 +1,3 @@
+[ERROR] 2026-10-26T13:42:16.269Z - Failed checking/creating KYC bucket: AggregateError
+[ERROR] 2026-10-26T13:42:16.348Z - Failed checking/creating MinIO bucket: AggregateError
+[ERROR] 2026-10-26T13:42:16.351Z - Object storage bootstrap failed at startup  uploads will retry on first use, and GET /api/health will report storage as down until it succeeds.
