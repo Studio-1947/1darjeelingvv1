@@ -29,13 +29,30 @@ async function providerMe(token: string) {
   return res.body.provider;
 }
 
-/** Uploads every document this host's business type requires, then has the admin approve each. */
+// The smallest thing the video route accepts as MP4: a box whose type, at offset 4, is "ftyp".
+const MP4 = Buffer.concat([Buffer.from([0, 0, 0, 0x18]), Buffer.from('ftypmp42'), Buffer.alloc(32)]);
+const IN_DARJEELING = 'https://www.google.com/maps/place/Stay/@27.036,88.2627,17z/data=!3d27.036!4d88.2627';
+
+/**
+ * Uploads every document this host's business type requires, then has the admin approve each. A
+ * homestay is only verified once its pin is confirmed too, so that is done as well.
+ */
 async function verify(token: string, providerId: string, admin: string): Promise<string[]> {
   const profile = await request(app).get('/api/providers/me/profile').set('Authorization', `Bearer ${token}`);
   const required = profile.body.checklist.filter((c: any) => c.kind === 'kyc' && c.required);
   for (const item of required) {
-    await request(app).post('/api/providers/me/kyc').set('Authorization', `Bearer ${token}`)
-      .send({ doc_type: item.key, file: PNG_DATA_URL, filename: `${item.key}.png` });
+    if (item.media === 'video') {
+      await request(app).post(`/api/providers/me/kyc/video?doc_type=${item.key}`)
+        .set('Authorization', `Bearer ${token}`).set('Content-Type', 'video/mp4').send(MP4);
+    } else {
+      await request(app).post('/api/providers/me/kyc').set('Authorization', `Bearer ${token}`)
+        .send({ doc_type: item.key, file: PNG_DATA_URL, filename: `${item.key}.png` });
+    }
+  }
+  const pin = profile.body.checklist.find((c: any) => c.kind === 'profile' && c.key === 'location');
+  if (pin && /Google Maps/.test(pin.label)) {
+    await request(app).post('/api/providers/me/location/verify')
+      .set('Authorization', `Bearer ${token}`).send({ maps_url: IN_DARJEELING });
   }
   const list = await request(app).get('/api/admin/kyc?status=pending').set('Authorization', `Bearer ${admin}`);
   const mine = list.body.documents.filter((d: any) => d.provider_id === providerId);

@@ -114,6 +114,9 @@ export async function recomputeKycStatus(providerId: string): Promise<string> {
   const providerListings = await db.select().from(schema.listings).where(eq(schema.listings.providerId, providerId));
   const hasListingImage = providerListings.some(l => !!l.image || (Array.isArray(l.extras?.images) && l.extras.images.length > 0));
   const hasListingDescription = providerListings.some(l => !!l.description && l.description.trim().length >= 20);
+  const listingLocationSources = providerListings
+    .map(l => (l.extras as any)?.location_verified?.source)
+    .filter((s): s is string => typeof s === 'string');
 
   const { kycStatus } = computeCompletion(
     {
@@ -126,6 +129,7 @@ export async function recomputeKycStatus(providerId: string): Promise<string> {
       extras: provider.extras,
       hasListingImage,
       hasListingDescription,
+      listingLocationSources,
     },
     docs.map(d => ({ docType: d.docType, status: d.status as any }))
   );
@@ -141,6 +145,9 @@ router.get('/me/profile', authenticateToken, async (req: Request, res: Response)
   const providerListings = await db.select().from(schema.listings).where(eq(schema.listings.providerId, provider.id));
   const hasListingImage = providerListings.some(l => !!l.image || (Array.isArray(l.extras?.images) && l.extras.images.length > 0));
   const hasListingDescription = providerListings.some(l => !!l.description && l.description.trim().length >= 20);
+  const listingLocationSources = providerListings
+    .map(l => (l.extras as any)?.location_verified?.source)
+    .filter((s): s is string => typeof s === 'string');
 
   const { completionPercent, checklist, kycStatus } = computeCompletion(
     {
@@ -153,6 +160,7 @@ router.get('/me/profile', authenticateToken, async (req: Request, res: Response)
       extras: provider.extras,
       hasListingImage,
       hasListingDescription,
+      listingLocationSources,
     },
     docs.map(d => ({ docType: d.docType, status: d.status as any }))
   );

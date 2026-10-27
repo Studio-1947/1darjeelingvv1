@@ -13,28 +13,18 @@ vi.mock('../src/lib/s3', () => ({
 import { app } from '../src/app';
 import { db, schema } from '../src/db';
 import { and, eq } from 'drizzle-orm';
-import { registerUser, onboardActiveProvider, loginAdmin, createListing } from './helpers';
+import { registerUser, onboardActiveProvider, loginAdmin, createListing, uploadRequiredDocs, captureLiveLocation } from './helpers';
 
 // 1x1 transparent PNG as a data URL
 const PNG_DATA_URL =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
-
-const SHOP_REQUIRED_DOC_TYPES = ['aadhaar', 'pan', 'owner_photo', 'trade_license'];
 
 // Fully onboards a 'shop' provider, uploads and admin-approves every required KYC
 // doc for that business type, leaving the provider's kycStatus === 'verified'.
 async function onboardVerifiedShopProvider(name: string) {
   const { token, providerId } = await onboardActiveProvider({ name, businessType: 'shop' });
 
-  for (const doc_type of SHOP_REQUIRED_DOC_TYPES) {
-    const up = await request(app)
-      .post('/api/providers/me/kyc')
-      .set('Authorization', `Bearer ${token}`)
-      .send({ doc_type, file: PNG_DATA_URL, filename: `${doc_type}.png` });
-    if (up.status !== 200) {
-      throw new Error(`kyc upload failed for ${doc_type}: ${up.status} ${JSON.stringify(up.body)}`);
-    }
-  }
+  const uploaded = await uploadRequiredDocs(token);
 
   const adminToken = await loginAdmin();
   const pending = await request(app)
@@ -42,7 +32,7 @@ async function onboardVerifiedShopProvider(name: string) {
     .query({ status: 'pending' })
     .set('Authorization', `Bearer ${adminToken}`);
   const docsForProvider = pending.body.documents.filter((d: any) => d.provider_id === providerId);
-  expect(docsForProvider.length).toBe(SHOP_REQUIRED_DOC_TYPES.length);
+  expect(docsForProvider.length).toBe(uploaded.length);
 
   for (const doc of docsForProvider) {
     const review = await request(app)
@@ -53,6 +43,10 @@ async function onboardVerifiedShopProvider(name: string) {
       throw new Error(`kyc review failed for ${doc.id}: ${review.status} ${JSON.stringify(review.body)}`);
     }
   }
+
+  // A shop is only verified once its location has been captured live as well.
+  const live = await captureLiveLocation(token);
+  if (live.status !== 200) throw new Error(`live capture failed: ${live.status} ${JSON.stringify(live.body)}`);
 
   return { token, providerId };
 }

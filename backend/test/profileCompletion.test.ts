@@ -8,7 +8,20 @@ const richProfile: ProfileInput = {
   priceFrom: 100,
   latitude: 27.0,
   longitude: 88.2,
+  // A shop's pin counts once it has been captured live from the premises.
+  extras: { location_verification: { source: 'live_capture' } },
 };
+
+/** Every document a shop has to have approved, in one list so the tests agree on it. */
+const SHOP_DOCS = [
+  'aadhaar',
+  'pan',
+  'owner_photo',
+  'trade_license',
+  'premises_photo_front',
+  'premises_photo_inside',
+  'premises_video',
+];
 
 describe('computeCompletion', () => {
   it('empty shop profile with no docs is 0% and kycStatus none', () => {
@@ -27,24 +40,14 @@ describe('computeCompletion', () => {
   });
 
   it('rich profile with all required shop docs approved is 100% and verified', () => {
-    const docs = [
-      { docType: 'aadhaar', status: 'approved' as const },
-      { docType: 'pan', status: 'approved' as const },
-      { docType: 'owner_photo', status: 'approved' as const },
-      { docType: 'trade_license', status: 'approved' as const },
-    ];
+    const docs = SHOP_DOCS.map((docType) => ({ docType, status: 'approved' as const }));
     const r = computeCompletion(richProfile, docs);
     expect(r.completionPercent).toBe(100);
     expect(r.kycStatus).toBe('verified');
   });
 
   it('all required docs uploaded but pending is submitted, not verified', () => {
-    const docs = [
-      { docType: 'aadhaar', status: 'pending' as const },
-      { docType: 'pan', status: 'pending' as const },
-      { docType: 'owner_photo', status: 'pending' as const },
-      { docType: 'trade_license', status: 'pending' as const },
-    ];
+    const docs = SHOP_DOCS.map((docType) => ({ docType, status: 'pending' as const }));
     const r = computeCompletion(richProfile, docs);
     expect(r.kycStatus).toBe('submitted');
     // pending docs do not fill the KYC portion
@@ -61,12 +64,7 @@ describe('computeCompletion', () => {
   });
 
   it('optional docs do not block 100%', () => {
-    const docs = [
-      { docType: 'aadhaar', status: 'approved' as const },
-      { docType: 'pan', status: 'approved' as const },
-      { docType: 'owner_photo', status: 'approved' as const },
-      { docType: 'trade_license', status: 'approved' as const },
-    ];
+    const docs = SHOP_DOCS.map((docType) => ({ docType, status: 'approved' as const }));
     const r = computeCompletion(richProfile, docs); // gst_certificate + fssai_license optional, absent
     expect(r.completionPercent).toBe(100);
   });
@@ -104,9 +102,38 @@ describe('computeCompletion', () => {
     expect(r.completionPercent).toBe(40);
   });
 
-  it('keeps the map-pin item for non-driver types', () => {
-    const r = computeCompletion({ ...richProfile, latitude: null, longitude: null }, []);
+  it('keeps the location item for non-driver types', () => {
+    const r = computeCompletion({ ...richProfile, extras: {}, latitude: null, longitude: null }, []);
     expect(r.checklist.find(c => c.key === 'location')?.state).toBe('missing');
     expect(r.completionPercent).toBe(30);
+  });
+
+  it('a shop location is only done once captured live, not by a pasted Google Maps pin', () => {
+    const viaLink = computeCompletion(
+      { ...richProfile, extras: { location_verification: { source: 'google_maps_link' } } },
+      []
+    );
+    const item = viaLink.checklist.find(c => c.key === 'location');
+    expect(item?.state).toBe('missing');
+    expect(item?.action).toBe('live_capture');
+
+    const live = computeCompletion(richProfile, []);
+    expect(live.checklist.find(c => c.key === 'location')?.state).toBe('done');
+  });
+
+  it('a shop with every document approved is partial, not verified, until its location is captured live', () => {
+    const docs = SHOP_DOCS.map((docType) => ({ docType, status: 'approved' as const }));
+    const noPin = computeCompletion({ ...richProfile, extras: {} }, docs);
+    expect(noPin.kycStatus).toBe('partial');
+    expect(computeCompletion(richProfile, docs).kycStatus).toBe('verified');
+  });
+
+  it('a homestay accepts a Google Maps link, from the provider or from a listing', () => {
+    const home = { ...richProfile, businessType: 'homestay', extras: {} };
+    const homeItem = (p: ProfileInput) => computeCompletion(p, []).checklist.find(c => c.key === 'location');
+    expect(homeItem(home)?.state).toBe('missing');
+    expect(homeItem(home)?.action).toBe('maps_link');
+    expect(homeItem({ ...home, extras: { location_verification: { source: 'google_maps_link' } } })?.state).toBe('done');
+    expect(homeItem({ ...home, listingLocationSources: ['google_maps_link'] })?.state).toBe('done');
   });
 });

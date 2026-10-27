@@ -5,6 +5,7 @@ import { findBlockingBooking, isDateExclusive, lockListingForBooking } from './b
 import { notifyBookingCancelled, notifyBookingConfirmed } from './notifications';
 import { addInAppNotification, resolveHostUserId } from './inApp';
 import { refundPaymentsFor } from './refunds';
+import { releaseVoucherForBooking } from './vouchers';
 import { serializeProvider } from './providerShape';
 
 type BookingRow = typeof schema.bookings.$inferSelect;
@@ -41,6 +42,8 @@ async function confirmUnderLock(bookingId: string) {
           .set({ status: 'cancelled' })
           .where(eq(schema.bookings.id, target.id))
           .returning();
+        // The guest never got these nights, so a voucher spent on the request goes back to them.
+        await releaseVoucherForBooking(tx, target.id);
         return { outcome: 'conflict' as const, booking: cancelled };
       }
     }
