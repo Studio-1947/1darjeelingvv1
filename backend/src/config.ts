@@ -354,6 +354,11 @@ export const AMOUNTS: Record<string, number> = {
 // How long one host payment (registration or renewal) keeps a host's listings live, in days.
 export const HOST_PLAN_DAYS = 365;
 
+// Renewal opens this many days before a plan ends (and stays open after it lapses). Earlier than
+// that, a second ₹499 would be a year bought by accident: a double tap, or a first payment still
+// settling. Both apps show the Renew button on the same window.
+export const HOST_RENEWAL_WINDOW_DAYS = 30;
+
 // Bounds on a donation, in paise. The floor stops dust-spam orders; the ceiling is a sanity guard
 // so a fat-fingered extra zero is refused here rather than reaching the gateway.
 export const DONATION_MIN_PAISE = 1000;        // ₹10

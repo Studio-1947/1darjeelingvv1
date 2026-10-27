@@ -16,6 +16,47 @@ function onboardPayload(overrides: Record<string, any> = {}) {
   };
 }
 
+describe('provider onboarding map pin', () => {
+  it('accepts a pin inside the service region and stores it', async () => {
+    const { token } = await registerUser({ name: 'Pinned Onboarder', role: 'provider' });
+    const res = await request(app)
+      .post('/api/providers/onboard')
+      .set('Authorization', `Bearer ${token}`)
+      .send(onboardPayload({ latitude: 27.0447, longitude: 88.2677 }));
+    expect(res.status).toBe(200);
+    expect(res.body.provider.latitude).toBeCloseTo(27.0447, 4);
+    expect(res.body.provider.longitude).toBeCloseTo(88.2677, 4);
+  });
+
+  it('refuses a pin outside the service region', async () => {
+    const { token } = await registerUser({ name: 'Far Away Onboarder', role: 'provider' });
+    const res = await request(app)
+      .post('/api/providers/onboard')
+      .set('Authorization', `Bearer ${token}`)
+      .send(onboardPayload({ latitude: 37.422, longitude: -122.084 }));
+    expect(res.status).toBe(400);
+    expect(res.body.detail).toMatch(/outside the area/i);
+  });
+
+  it('refuses half a pin', async () => {
+    const { token } = await registerUser({ name: 'Half Pin Onboarder', role: 'provider' });
+    const res = await request(app)
+      .post('/api/providers/onboard')
+      .set('Authorization', `Bearer ${token}`)
+      .send(onboardPayload({ latitude: 27.0447 }));
+    expect(res.status).toBe(400);
+  });
+
+  it('still allows onboarding with no pin at all', async () => {
+    const { token } = await registerUser({ name: 'Unpinned Onboarder', role: 'provider' });
+    const res = await request(app)
+      .post('/api/providers/onboard')
+      .set('Authorization', `Bearer ${token}`)
+      .send(onboardPayload());
+    expect(res.status).toBe(200);
+  });
+});
+
 describe('provider onboarding guards', () => {
   // Onboarding a second time while the first provider is still pending_payment (onboarded, but
   // payment never completed) used to 409 unconditionally  stranding the user, since the

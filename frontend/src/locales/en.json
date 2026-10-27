@@ -831,7 +831,7 @@
   "pd": {
     "plan_label": "Host plan",
     "plan_valid_until": "Live until {{date}}",
-    "plan_renew_body": "Renew any time for ₹499 a year. Renewing early adds the year on top.",
+    "plan_renew_body": "Renewal opens 30 days before your plan ends. It is ₹499 a year, and the new year starts when this one ends.",
     "plan_ends_soon_one": "Ends in {{count}} day. Renew for ₹499 to keep your listings live.",
     "plan_ends_soon_other": "Ends in {{count}} days. Renew for ₹499 to keep your listings live.",
     "plan_lapsed_title": "Your plan has ended",

@@ -3,7 +3,11 @@ import { hostPlanVisibility, isListingHostLapsed } from '../lib/hostPlan';
 import { v4 as uuidv4 } from 'uuid';
 import { db, schema } from '../db';
 import { eq, or, and, ilike, inArray } from 'drizzle-orm';
-import { authenticateToken } from '../middleware/auth';
+import { authenticateToken, optionalUser } from '../middleware/auth';
+import { canSeeProviderPhone } from '../lib/listingContact';
+import { rateLimiter } from '../middleware/rateLimiter';
+import { recomputeKycStatus } from './kyc';
+import { googleMapsUrl, inServiceRegion, MapsLinkError, resolveMapsLink } from '../lib/mapsLink';
 import { storeBase64Image, ImageUploadError } from '../lib/imageUpload';
 import { routeParam } from '../lib/routeParam';
 import { blockedRanges, isDateExclusive } from '../lib/bookingAvailability';
@@ -332,6 +336,13 @@ router.get('/:id', async (req: Request, res: Response) => {
 
   const rating = (await ratingsForListings([item.id])).get(item.id);
 
+  // A homestay's or a driver's number is the introduction a booking makes, so it is only handed to
+  // the people entitled to it (see lib/listingContact.ts). Everything else stays public.
+  const phoneVisible = await canSeeProviderPhone(
+    { id: item.id, type: item.type, providerId: item.providerId },
+    await optionalUser(req)
+  );
+
   const itemReturn = {
     id: item.id,
     title: item.title,
@@ -350,7 +361,10 @@ router.get('/:id', async (req: Request, res: Response) => {
     review_count: rating?.count ?? 0,
     // The provider's public contact line, so the detail page can offer call/WhatsApp for listings
     // that aren't booked online (shops, cafes, events). Only present when a provider row matches.
-    provider_phone: provider?.contactPhone ?? null,
+    provider_phone: phoneVisible ? (provider?.contactPhone ?? null) : null,
+    // Tells a client the number exists but is held back, so it can say "unlocks after booking"
+    // instead of "this provider has no contact line".
+    provider_phone_locked: !phoneVisible && Boolean(provider?.contactPhone),
     // Verified badge must never show for a provider an admin has suspended (flipped off
     // "active"), even if their kycStatus was previously computed as "verified".
     provider_verified: provider?.kycStatus === 'verified' && provider?.status === 'active'
@@ -460,6 +474,27 @@ router.post('/', authenticateToken, async (req: Request, res: Response) => {
     createdAt: new Date().toISOString()
   };
 
+  // A host who has already confirmed their pin should not have to do it again for each listing they
+  // add: with no coordinates of its own, a new listing takes the provider's verified pin. A
+  // listing that names its own coordinates keeps them, unverified, until it is verified itself.
+  if (listing.latitude == null && listing.longitude == null && req.user.role !== 'admin') {
+    const [owner] = await db.select({ extras: schema.providers.extras })
+      .from(schema.providers).where(eq(schema.providers.id, providerId)).limit(1);
+    const verification = (owner?.extras as any)?.location_verification;
+    if (
+      verification &&
+      typeof verification.latitude === 'number' &&
+      typeof verification.longitude === 'number'
+    ) {
+      listing.latitude = verification.latitude;
+      listing.longitude = verification.longitude;
+      listing.extras = {
+        ...(listing.extras || {}),
+        location_verified: { verified_at: verification.verified_at, source: verification.source },
+      };
+    }
+  }
+
   await db.insert(schema.listings).values(listing);
 
   const listingReturn = {
@@ -480,6 +515,64 @@ router.post('/', authenticateToken, async (req: Request, res: Response) => {
 
   res.json({ item: listingReturn });
 });
+
+/**
+ * POST /api/listings/:id/location/verify  { maps_url }
+ *
+ * Verifies the pin of ONE listing from a Google Maps link, for a host whose listings are in
+ * different places (a homestay up the hill and a café in town). POST /providers/me/location/verify
+ * stamps one pin on everything a provider owns, which is right for a single-site business and
+ * wrong for the rest. Same parsing, same service-area check, same flag; only this listing moves.
+ */
+router.post(
+  '/:id/location/verify',
+  authenticateToken,
+  rateLimiter(10, 60_000, 'maps_verify'),
+  async (req: Request, res: Response) => {
+    const [listing] = await db.select().from(schema.listings)
+      .where(eq(schema.listings.id, routeParam(req, 'id'))).limit(1);
+    if (!listing) return res.status(404).json({ detail: 'Not found' });
+    if (!(await canManageListing(req, listing))) {
+      return res.status(403).json({ detail: 'You can only verify the location of your own listing' });
+    }
+
+    let pin;
+    try {
+      pin = await resolveMapsLink(req.body?.maps_url);
+    } catch (err) {
+      if (err instanceof MapsLinkError) return res.status(400).json({ detail: err.message });
+      throw err;
+    }
+    if (!inServiceRegion(pin)) {
+      return res.status(400).json({
+        detail: 'That pin is outside the Darjeeling area we serve. Check you picked the right place in Google Maps.',
+      });
+    }
+
+    const verifiedAt = new Date().toISOString();
+    const [updated] = await db.update(schema.listings)
+      .set({
+        latitude: pin.latitude,
+        longitude: pin.longitude,
+        extras: { ...(listing.extras || {}), location_verified: { verified_at: verifiedAt, source: 'google_maps_link' } },
+      })
+      .where(eq(schema.listings.id, listing.id))
+      .returning();
+
+    // A homestay is only "verified" once a pin is, so the status is worked out again now.
+    await recomputeKycStatus(listing.providerId);
+
+    res.json({
+      location: {
+        verified: true,
+        latitude: updated.latitude,
+        longitude: updated.longitude,
+        maps_url: googleMapsUrl(pin),
+        verified_at: verifiedAt,
+      },
+    });
+  }
+);
 
 // Helper to verify listing management permissions
 async function canManageListing(req: Request, listing: typeof schema.listings.$inferSelect): Promise<boolean> {
@@ -577,6 +670,8 @@ const updateListingHandler = async (req: Request, res: Response) => {
   if (Object.keys(updateFields).length > 0) {
     await db.update(schema.listings).set(updateFields).where(eq(schema.listings.id, listing.id));
   }
+  // Moving a verified pin took the verification with it, and a homestay's status depends on it.
+  if (pinMoved && storedVerified) await recomputeKycStatus(listing.providerId);
 
   const [updated] = await db.select().from(schema.listings).where(eq(schema.listings.id, listing.id)).limit(1);
   // Another admin can delete the row between the update and this read; answer 404 rather than

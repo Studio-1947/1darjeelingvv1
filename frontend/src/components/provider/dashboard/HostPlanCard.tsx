@@ -4,15 +4,20 @@ import { CalendarCheck, WarningCircle } from '@phosphor-icons/react';
 import { createPaymentOrder, completeMockPayment, payWithRazorpay } from '@/lib/api';
 import MockPaymentModal from '@/components/MockPaymentModal';
 
-/** Within this many days of the end, the card starts nudging the host to renew. */
+/**
+ * Within this many days of the end, renewal opens and the card starts nudging the host to renew.
+ * Mirrors HOST_RENEWAL_WINDOW_DAYS on the server, which refuses an earlier renewal (409) so a
+ * second ₹499 is never bought by accident.
+ */
 const RENEW_SOON_DAYS = 30;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
  * The host's yearly plan: ₹1 for the first year, ₹499 for each year after.
  *
- * Shows when the current year ends and offers the ₹499 renewal. Renewing early adds the year on
- * top of what is left, so there is no reason to wait. Once the year has ended the host's listings
+ * Shows when the current year ends and offers the ₹499 renewal once it opens, 30 days before the
+ * end. Renewing inside that window adds the year on top of what is left. Once the year has ended
+ * the host's listings
  * are hidden from travellers and stop taking bookings (the server enforces that, see
  * backend/src/lib/hostPlan.ts), and this card says so plainly.
  */
@@ -33,6 +38,8 @@ export default function HostPlanCard({ provider, user, onRenewed }: {
   const daysLeft = Math.ceil((expiry - Date.now()) / DAY_MS);
   const soon = !lapsed && daysLeft <= RENEW_SOON_DAYS;
   const until = new Date(expiry).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+  // Before the window opens the server would answer 409, so the button is not offered at all.
+  const canRenew = lapsed || soon;
 
   const renew = async () => {
     setBusy(true);
@@ -101,14 +108,16 @@ export default function HostPlanCard({ provider, user, onRenewed }: {
           {err && <p className="mt-1 text-sm font-semibold text-flag">{err}</p>}
         </div>
       </div>
-      <button
-        onClick={renew}
-        disabled={busy}
-        data-testid="host-plan-renew"
-        className="inline-flex items-center justify-center rounded-full bg-ink text-white font-bold text-sm px-5 py-2.5 disabled:opacity-60 hover:opacity-90 transition-opacity"
-      >
-        {busy ? t('pd.plan_renewing') : t('pd.plan_renew_cta')}
-      </button>
+      {canRenew && (
+        <button
+          onClick={renew}
+          disabled={busy}
+          data-testid="host-plan-renew"
+          className="inline-flex items-center justify-center rounded-full bg-ink text-white font-bold text-sm px-5 py-2.5 disabled:opacity-60 hover:opacity-90 transition-opacity"
+        >
+          {busy ? t('pd.plan_renewing') : t('pd.plan_renew_cta')}
+        </button>
+      )}
 
       <MockPaymentModal
         open={!!payModal}

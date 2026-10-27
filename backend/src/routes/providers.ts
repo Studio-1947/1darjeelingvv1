@@ -8,6 +8,8 @@ import { KYC_REQUIREMENTS } from '../lib/kycRequirements';
 
 import { isPlausiblePhone } from '../lib/phone';
 import { rateLimiter } from '../middleware/rateLimiter';
+import { normaliseVehicleNumber, VEHICLE_TYPE_MAX_LENGTH } from '../lib/vehicleNumber';
+import { recomputeKycStatus } from './kyc';
 import { googleMapsUrl, inServiceRegion, MapsLinkError, resolveMapsLink } from '../lib/mapsLink';
 
 const SELF_ONBOARDABLE_BUSINESS_TYPES = Object.keys(KYC_REQUIREMENTS);
@@ -70,6 +72,35 @@ router.post('/onboard', authenticateToken, async (req: Request, res: Response) =
   // Location verification is granted only by POST /me/location/verify, never claimed by the caller.
   if (extras && typeof extras === 'object') delete extras.location_verification;
 
+  // A driver can say what they drive and its number. Both are optional here (older apps never sent
+  // them) but checked when present, so a mistyped plate is refused instead of shown to travellers.
+  if (extras && typeof extras === 'object') {
+    if (business_type === 'driver') {
+      if (extras.vehicle_number !== undefined && String(extras.vehicle_number).trim() !== '') {
+        const plate = normaliseVehicleNumber(extras.vehicle_number);
+        if (!plate) {
+          return res.status(400).json({ detail: 'That vehicle number does not look right. Copy it from your number plate, for example WB 74 A 1234.' });
+        }
+        extras.vehicle_number = plate;
+      } else {
+        delete extras.vehicle_number;
+      }
+      if (extras.vehicle !== undefined && String(extras.vehicle).trim() !== '') {
+        const vehicle = String(extras.vehicle).trim();
+        if (vehicle.length > VEHICLE_TYPE_MAX_LENGTH) {
+          return res.status(400).json({ detail: `Vehicle type must be ${VEHICLE_TYPE_MAX_LENGTH} characters or fewer` });
+        }
+        extras.vehicle = vehicle;
+      } else {
+        delete extras.vehicle;
+      }
+    } else {
+      // Only a driver has a vehicle; anything else sent under these names is dropped, not stored.
+      delete extras.vehicle_number;
+      delete extras.vehicle;
+    }
+  }
+
   if (!business_name || !business_name.trim() || !business_type || !description || !description.trim() || !location || !location.trim() || !contact_phone || !contact_phone.trim()) {
     return res.status(400).json({ detail: 'Business name, type, description, location, and contact phone are required' });
   }
@@ -118,6 +149,17 @@ router.post('/onboard', authenticateToken, async (req: Request, res: Response) =
 
   const normalizedLatitude = typeof latitude === 'number' ? latitude : null;
   const normalizedLongitude = typeof longitude === 'number' ? longitude : null;
+  // A pin sent at signup is the host's own claim, so it has to land where aangan operates. The
+  // verify routes below apply the same box; without it a listing could be pinned on another
+  // continent and still be published.
+  if (
+    (normalizedLatitude !== null || normalizedLongitude !== null) &&
+    (normalizedLatitude === null ||
+      normalizedLongitude === null ||
+      !inServiceRegion({ latitude: normalizedLatitude, longitude: normalizedLongitude }))
+  ) {
+    return res.status(400).json({ detail: 'That map pin is outside the area aangan covers. Pick a place in the Darjeeling region.' });
+  }
 
   let provider: typeof schema.providers.$inferSelect;
   if (existing) {
@@ -362,6 +404,95 @@ router.post(
       }
     });
 
+    // A homestay is only "verified" once its pin is, so the status is worked out again now that it is.
+    await recomputeKycStatus(provider.id);
+
+    res.json({ location: { verified: true, ...verification } });
+  }
+);
+
+/** A reading less precise than this says nothing about which building the phone is in. */
+export const LIVE_CAPTURE_MAX_ACCURACY_M = 100;
+
+/**
+ * POST /api/providers/me/location/live  { latitude, longitude, accuracy }
+ *
+ * The host's phone reports where it is, standing in their café or shop, and that becomes the
+ * verified pin on the provider and on every listing they own. It is the proof a pasted Google Maps
+ * link cannot give: the link shows a place the host chose, the capture shows where they actually are.
+ *
+ * The server cannot see the GPS, so it checks what it can: the position is inside the area aangan
+ * serves, the phone says it is accurate enough to tell one building from the next, and the time is
+ * the server's own. A phone running a mock-location app can still lie; the premises photos and
+ * video that sit beside this in the verification are what an admin checks it against.
+ */
+router.post(
+  '/me/location/live',
+  authenticateToken,
+  rateLimiter(10, 60_000, 'live_location'),
+  async (req: Request, res: Response) => {
+    const providersList = await db.select().from(schema.providers).where(eq(schema.providers.userId, req.user.id));
+    const provider = providersList.find(p => p.status === 'active') || providersList[0];
+    if (!provider) return res.status(404).json({ detail: 'No provider profile to verify' });
+
+    const { latitude, longitude, accuracy, mocked } = req.body ?? {};
+    // Android marks a reading that came from a mock-location app. The phone is the only thing that
+    // can say so, and a determined cheat will not, but an honest tester with a spoofer left on will.
+    if (mocked === true) {
+      return res.status(400).json({ detail: 'Your phone is using a mock location. Turn it off and capture your real location.' });
+    }
+    if (typeof latitude !== 'number' || typeof longitude !== 'number' || !Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+      return res.status(400).json({ detail: 'Send the latitude and longitude your phone reports.' });
+    }
+    if (typeof accuracy !== 'number' || !Number.isFinite(accuracy) || accuracy <= 0) {
+      return res.status(400).json({ detail: 'Send how accurate the reading is, in metres.' });
+    }
+    if (accuracy > LIVE_CAPTURE_MAX_ACCURACY_M) {
+      return res.status(400).json({
+        detail: `Your phone could only place you within ${Math.round(accuracy)} m. Go outside or near a window, wait a few seconds and try again.`,
+      });
+    }
+    const pin = { latitude, longitude };
+    if (!inServiceRegion(pin)) {
+      return res.status(400).json({
+        detail: 'Your phone says you are outside the Darjeeling area we serve. Capture your location while you are at your premises.',
+      });
+    }
+
+    const verifiedAt = new Date().toISOString();
+    const verification = {
+      source: 'live_capture',
+      latitude,
+      longitude,
+      accuracy_m: Math.round(accuracy),
+      maps_url: googleMapsUrl(pin),
+      verified_at: verifiedAt,
+    };
+
+    await db.transaction(async (tx) => {
+      await tx
+        .update(schema.providers)
+        .set({
+          latitude,
+          longitude,
+          extras: { ...(provider.extras || {}), location_verification: verification },
+        })
+        .where(eq(schema.providers.id, provider.id));
+      const owned = await tx.select().from(schema.listings).where(eq(schema.listings.providerId, provider.id));
+      for (const listing of owned) {
+        await tx
+          .update(schema.listings)
+          .set({
+            latitude,
+            longitude,
+            extras: { ...(listing.extras || {}), location_verified: { verified_at: verifiedAt, source: 'live_capture' } },
+          })
+          .where(eq(schema.listings.id, listing.id));
+      }
+    });
+
+    await recomputeKycStatus(provider.id);
+
     res.json({ location: { verified: true, ...verification } });
   }
 );
@@ -427,6 +558,10 @@ router.patch('/me', authenticateToken, async (req: Request, res: Response) => {
   if (Object.keys(set).length === 0) return res.status(400).json({ detail: 'Nothing to update' });
 
   const [updated] = await db.update(schema.providers).set(set).where(eq(schema.providers.id, provider.id)).returning();
+  // Moving the pin voided its verification, which a homestay's "verified" status depends on.
+  if (body.latitude !== undefined || body.longitude !== undefined) {
+    updated.kycStatus = await recomputeKycStatus(provider.id);
+  }
   res.json({
     provider: {
       id: updated.id,

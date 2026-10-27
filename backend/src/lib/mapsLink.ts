@@ -92,7 +92,10 @@ export function isGoogleMapsUrl(url: URL): boolean {
   if (url.protocol !== 'https:') return false;
   if (isShortLink(url)) return true;
   const host = url.hostname;
-  const google = /^(www\.|maps\.)?google\.(com|co\.in|in)$/.test(host);
+  // maps.google.com is the Maps host itself, and its links live at the root (`/?q=lat,lng`);
+  // on the main google domains Maps is only under /maps.
+  if (/^maps\.google\.(com|co\.in|in)$/.test(host)) return true;
+  const google = /^(www\.)?google\.(com|co\.in|in)$/.test(host);
   return google && url.pathname.startsWith('/maps');
 }
 

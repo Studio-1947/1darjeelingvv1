@@ -14,7 +14,7 @@ import { app } from '../src/app';
 import { db, schema } from '../src/db';
 import { and, eq } from 'drizzle-orm';
 import { deletePrivate, uploadPrivate, getPrivateObject } from '../src/lib/s3';
-import { onboardActiveProvider, registerUser, loginAdmin } from './helpers';
+import { onboardActiveProvider, registerUser, loginAdmin, uploadRequiredDocs, captureLiveLocation } from './helpers';
 
 // 1x1 transparent PNG as a data URL
 const PNG_DATA_URL =
@@ -24,16 +24,10 @@ const PNG_DATA_URL =
 const PDF_DATA_URL =
   'data:application/pdf;base64,' + Buffer.from('%PDF-1.4\n%mock pdf for tests\n').toString('base64');
 
-const SHOP_REQUIRED_DOC_TYPES = ['aadhaar', 'pan', 'owner_photo', 'trade_license'];
-
 // Uploads and admin-approves every required shop doc for `providerId`, leaving the provider
 // verified. Used by the revocation/downgrade tests, which all need to start from "verified".
 async function verifyShopProvider(token: string, providerId: string) {
-  for (const t of SHOP_REQUIRED_DOC_TYPES) {
-    const up = await request(app).post('/api/providers/me/kyc').set('Authorization', `Bearer ${token}`)
-      .send({ doc_type: t, file: PNG_DATA_URL, filename: `${t}.png` });
-    if (up.status !== 200) throw new Error(`upload failed for ${t}: ${up.status} ${JSON.stringify(up.body)}`);
-  }
+  await uploadRequiredDocs(token);
   const adminToken = await loginAdmin();
   const list = await request(app).get('/api/admin/kyc?status=pending').set('Authorization', `Bearer ${adminToken}`);
   const mine = list.body.documents.filter((d: any) => d.provider_id === providerId);
@@ -42,6 +36,9 @@ async function verifyShopProvider(token: string, providerId: string) {
       .set('Authorization', `Bearer ${adminToken}`).send({ decision: 'approve' });
     if (r.status !== 200) throw new Error(`approve failed for ${d.doc_type}: ${r.status} ${JSON.stringify(r.body)}`);
   }
+  // A shop is only verified once its location has been captured live as well.
+  const live = await captureLiveLocation(token);
+  if (live.status !== 200) throw new Error(`live capture failed: ${live.status} ${JSON.stringify(live.body)}`);
 }
 
 // Recursively scans a serialized response for values shaped like a storage object key

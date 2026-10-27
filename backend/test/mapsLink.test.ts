@@ -46,6 +46,14 @@ describe('isGoogleMapsUrl', () => {
     expect(isGoogleMapsUrl(new URL('https://evil.example/maps'))).toBe(false);
     expect(isGoogleMapsUrl(new URL('https://google.com.evil.example/maps'))).toBe(false);
   });
+
+  it('accepts maps.google.com at its root path, where its own links live', () => {
+    expect(isGoogleMapsUrl(new URL('https://maps.google.com/?q=27.036,88.2627'))).toBe(true);
+    expect(isGoogleMapsUrl(new URL('https://maps.google.co.in/?ll=27.036,88.2627'))).toBe(true);
+    // The main google domains are still Maps only under /maps.
+    expect(isGoogleMapsUrl(new URL('https://www.google.com/?q=27.036,88.2627'))).toBe(false);
+    expect(isGoogleMapsUrl(new URL('https://maps.google.com.evil.example/?q=1,2'))).toBe(false);
+  });
 });
 
 describe('resolveMapsLink', () => {
