@@ -80,6 +80,7 @@ describe('blocks', () => {
     expect(block.status).toBe(201);
     const ids = await request(app).get('/api/users/me/blocks').set(auth(reader));
     expect(ids.body.user_ids).toEqual([bad.user_id]);
+    expect(ids.body.users).toEqual([expect.objectContaining({ id: bad.user_id, name: 'Troll' })]);
 
     const seen = await request(app).get(`/api/reviews/listing/${listing.id}`).set(auth(reader));
     expect(seen.body.reviews.map((r: { comment: string }) => r.comment)).toEqual(['Lovely place']);

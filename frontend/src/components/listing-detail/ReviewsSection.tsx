@@ -19,7 +19,7 @@ function Stars({ value, size = 16 }: { value: number; size?: number }) {
   return (
     <span className="inline-flex items-center gap-0.5" aria-label={t('reviews.out_of_5', { value })}>
       {[1, 2, 3, 4, 5].map((s) => (
-        <Star key={s} size={size} className={s <= Math.round(value) ? 'fill-gold text-gold' : 'text-ink-soft/40'} />
+        <Star key={s} size={size} weight={s <= Math.round(value) ? 'fill' : 'regular'} className={s <= Math.round(value) ? 'text-gold' : 'text-ink-soft/40'} />
       ))}
     </span>
   );
@@ -43,7 +43,7 @@ function StarPicker({ value, onChange }: { value: number; onChange: (v: number) 
           onClick={() => onChange(s)}
           className="btn-hover"
         >
-          <Star size={26} className={s <= (hover || value) ? 'fill-gold text-gold' : 'text-ink-soft/40'} />
+          <Star size={26} weight={s <= (hover || value) ? 'fill' : 'regular'} className={s <= (hover || value) ? 'text-gold' : 'text-ink-soft/40'} />
         </button>
       ))}
     </div>

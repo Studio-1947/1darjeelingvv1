@@ -1508,5 +1508,11 @@
     "cancel": "Cancel",
     "sent": "Thanks. Our team will look into it.",
     "failed": "Could not send that. Please try again."
+  },
+  "blocked": {
+    "title": "Blocked people",
+    "explain": "You don't see reviews from these people. Unblock someone to see their reviews again.",
+    "unblock": "Unblock",
+    "unblocked": "{{name}} is unblocked."
   }
 }

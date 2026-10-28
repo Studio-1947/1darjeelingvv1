@@ -86,7 +86,7 @@ export default function DetailHero({ item, unit, onShare }: {
           <button onClick={handleLike} data-testid="detail-like"
             aria-label={t('common.save')} aria-pressed={liked}
             className="w-11 h-11 rounded-full bg-white/95 backdrop-blur grid place-items-center btn-hover">
-            <Heart size={18} className={liked ? 'fill-flag text-flag' : 'text-ink'} />
+            <Heart size={18} weight={liked ? 'fill' : 'regular'} className={liked ? 'text-flag' : 'text-ink'} />
           </button>
           <button onClick={handleShare} data-testid="detail-share" aria-label={t('feed.share')}
             className="w-11 h-11 rounded-full bg-white/95 backdrop-blur grid place-items-center btn-hover">
