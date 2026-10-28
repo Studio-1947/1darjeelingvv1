@@ -37,7 +37,8 @@
     "refunds": "Refunds",
     "contact": "Contact",
     "all_listings": "All listings",
-    "delete_account": "Delete Account"
+    "delete_account": "Delete Account",
+    "feed": "Host feed"
   },
   "support": {
     "eyebrow": "the invitation",
@@ -678,10 +679,49 @@
     "found_elsewhere_note": "Not in this category, but it might be what you were looking for."
   },
   "feed": {
-    "no_reviews": "No reviews",
-    "share": "Share",
-    "rated_aria": "Rated {{rating}} out of 5 from {{count}} reviews",
-    "no_reviews_aria": "No reviews yet"
+    "label": "From our hosts",
+    "title": "Host feed",
+    "subtitle": "What's new at homestays, cafés, shops and with drivers across Darjeeling, in their own words.",
+    "strip_title": "From our hosts",
+    "see_all": "See all",
+    "compose_title": "Share an update",
+    "edit_title": "Edit your post",
+    "compose_placeholder": "What's special at your place right now? A new room, a seasonal dish, the view this morning…",
+    "add_photo": "Photo",
+    "remove_photo": "Remove photo",
+    "about_which": "Which listing is this about? (optional)",
+    "about_none": "None",
+    "post": "Post",
+    "save": "Save",
+    "posted": "Posted to the feed.",
+    "updated": "Post updated.",
+    "post_failed": "Could not save the post. Please try again.",
+    "upload_failed": "Photo upload failed.",
+    "edit": "Edit post",
+    "delete": "Delete post",
+    "delete_confirm": "Delete this post? This cannot be undone.",
+    "deleted": "Post deleted.",
+    "hidden_notice": "Hidden from the feed by the aangan team",
+    "cannot_post_unverified": "You can post to the feed once our team has verified your documents.",
+    "cannot_post_plan": "Your host plan is not active, so you cannot post right now. Renew it from",
+    "empty": "No posts yet. Hosts will share what's new at their places here.",
+    "load_failed": "Could not load the feed.",
+    "retry": "Try again",
+    "load_more": "Load more",
+    "read_more": "Read more",
+    "show_less": "Show less",
+    "about_listing": "About",
+    "verified_host": "Verified host",
+    "photo_alt": "Photo from {{name}}",
+    "host_cta": "Run a homestay, café, shop or taxi?",
+    "just_now": "just now",
+    "minutes_ago": "{{count}} min ago",
+    "hours_ago": "{{count}} h ago",
+    "days_ago": "{{count}} d ago",
+    "type_homestay": "Homestay",
+    "type_driver": "Driver",
+    "type_cafe": "Café",
+    "type_shop": "Shop"
   },
   "contact": {
     "title": "Contact Us",
@@ -869,7 +909,8 @@
     "wa_guest_message": "Hi {{name}}, this is regarding your booking for {{listing}} on 1 Darjeeling.",
     "configure_profile": "Configure Profile",
     "configure_cafe": "Configure Cafe",
-    "configure_shop": "Configure Shop"
+    "configure_shop": "Configure Shop",
+    "post_update": "Post an update"
   },
   "lf": {
     "edit_title": "Edit listing",
@@ -1501,17 +1542,18 @@
     "reason_spam": "Spam",
     "reason_other": "Something else",
     "details_placeholder": "Anything else? (optional)",
-    "block_explain": "You can also block {{name}}. You will no longer see their reviews.",
+    "block_explain": "You can also block {{name}}. You will no longer see their reviews or posts.",
     "block_cta": "Block {{name}}",
-    "blocked": "{{name}} is blocked. Their reviews are hidden for you.",
+    "blocked": "{{name}} is blocked. Their reviews and posts are hidden for you.",
     "send": "Send report",
     "cancel": "Cancel",
     "sent": "Thanks. Our team will look into it.",
-    "failed": "Could not send that. Please try again."
+    "failed": "Could not send that. Please try again.",
+    "post_title": "Report this post"
   },
   "blocked": {
     "title": "Blocked people",
-    "explain": "You don't see reviews from these people. Unblock someone to see their reviews again.",
+    "explain": "You don't see reviews or posts from these people. Unblock someone to see them again.",
     "unblock": "Unblock",
     "unblocked": "{{name}} is unblocked."
   }

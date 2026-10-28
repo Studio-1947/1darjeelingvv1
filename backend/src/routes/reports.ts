@@ -16,13 +16,13 @@ const router = Router();
 // a block hides the blocked person's reviews from the blocker.
 
 export const REPORT_REASONS = ['spam', 'fake', 'offensive', 'unsafe', 'other'] as const;
-const TARGET_TYPES = ['listing', 'review'] as const;
+const TARGET_TYPES = ['listing', 'review', 'post'] as const;
 const MAX_DETAILS_LEN = 1000;
 
 type TargetType = (typeof TARGET_TYPES)[number];
 
 async function targetExists(type: TargetType, id: string): Promise<boolean> {
-  const table = type === 'listing' ? schema.listings : schema.reviews;
+  const table = type === 'listing' ? schema.listings : type === 'review' ? schema.reviews : schema.hostPosts;
   const [row] = await db.select({ id: table.id }).from(table).where(eq(table.id, id)).limit(1);
   return Boolean(row);
 }
@@ -42,7 +42,7 @@ async function targetExists(type: TargetType, id: string): Promise<boolean> {
  *             type: object
  *             required: [target_type, target_id, reason]
  *             properties:
- *               target_type: { type: string, enum: [listing, review] }
+ *               target_type: { type: string, enum: [listing, review, post] }
  *               target_id: { type: string }
  *               reason: { type: string, enum: [spam, fake, offensive, unsafe, other] }
  *               details: { type: string, maxLength: 1000 }
@@ -55,7 +55,7 @@ async function targetExists(type: TargetType, id: string): Promise<boolean> {
 router.post('/reports', authenticateToken, async (req: Request, res: Response) => {
   const { target_type, target_id, reason, details = '' } = req.body ?? {};
   if (!TARGET_TYPES.includes(target_type)) {
-    return res.status(400).json({ detail: 'target_type must be listing or review' });
+    return res.status(400).json({ detail: 'target_type must be listing, review or post' });
   }
   if (typeof target_id !== 'string' || !target_id.trim()) {
     return res.status(400).json({ detail: 'target_id is required' });

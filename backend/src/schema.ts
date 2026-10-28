@@ -336,3 +336,26 @@ export const userBlocks = pgTable('user_blocks', {
 }, (t) => ({
   pk: primaryKey({ columns: [t.blockerId, t.blockedId] }),
 }));
+
+/**
+ * The host feed: short posts a host writes about their place (what makes it special, what is new,
+ * what is in season). Anyone can read them; only a live, verified host can write them. A post
+ * leaves the feed on its own while its host's plan has lapsed or approval is pending, and an
+ * admin can hide one (`hiddenAt`) after a report without deleting it.
+ */
+export const hostPosts = pgTable('host_posts', {
+  id: text('id').primaryKey(),
+  providerId: text('provider_id').references(() => providers.id, { onDelete: 'cascade' }).notNull(),
+  userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  body: text('body').notNull(),
+  photos: jsonb('photos').$type<string[]>().default([]).notNull(),
+  // Optional: the listing the post is about. Kept when the listing goes, as plain text without it.
+  listingId: text('listing_id').references(() => listings.id, { onDelete: 'set null' }),
+  hiddenAt: text('hidden_at'),
+  hiddenReason: text('hidden_reason'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at'),
+}, (t) => ({
+  createdIdx: index('host_posts_created_at_idx').on(t.createdAt),
+  providerIdx: index('host_posts_provider_id_idx').on(t.providerId),
+}));
