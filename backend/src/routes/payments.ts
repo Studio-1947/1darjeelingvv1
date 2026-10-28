@@ -27,7 +27,7 @@ async function handlePaymentSuccess(
   tx: Executor = db
 ) {
   if (flow === 'provider_registration') {
-    // The ₹1 first year. assertOwnsReference only lets a provider that has never been activated
+    // The ₹499 first year. assertOwnsReference only lets a provider that has never been activated
     // pay this, so it runs once per host and creates their listing once.
     const [before] = await tx.select().from(schema.providers).where(eq(schema.providers.id, referenceId)).limit(1);
     await tx.update(schema.providers)
