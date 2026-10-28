@@ -654,7 +654,7 @@ router.patch('/:id/cancel', authenticateToken, async (req: Request, res: Respons
   // never reached confirmation was never announced in the first place.
   if (booking.status === 'confirmed') {
     const [guest] = await db.select().from(schema.users).where(eq(schema.users.id, booking.userId)).limit(1);
-    await notifyBookingCancelled(updated, guest?.phone || '', guest?.name || 'Guest', refunded);
+    await notifyBookingCancelled(updated, guest?.phone || '', guest?.name || 'Guest', refunded, guest?.email);
   }
 
   res.json({ booking: shape(updated), refunded });

@@ -54,6 +54,14 @@ function requireRealValueInProd(name: string, value: string | undefined, devDefa
 
 export const PORT = process.env.PORT || 8000;
 
+// Mobile app version policy, served by GET /api/app/version. Below APP_MIN_VERSION the app blocks
+// with "please update"; 0.0.0 (the default) retires nothing.
+export const APP_MIN_VERSION = process.env.APP_MIN_VERSION?.trim() || '0.0.0';
+export const APP_LATEST_VERSION = process.env.APP_LATEST_VERSION?.trim() || APP_MIN_VERSION;
+export const PLAY_STORE_URL =
+  process.env.PLAY_STORE_URL?.trim() || 'https://play.google.com/store/apps/details?id=io.aangan.app';
+export const APP_STORE_URL = process.env.APP_STORE_URL?.trim() || '';
+
 // Optional provider-verification help line. When absent, clients omit the call action rather
 // than inventing a number that may not reach the verification team.
 const verificationSupportPhone = process.env.VERIFICATION_SUPPORT_PHONE?.trim() || '';
@@ -405,3 +413,37 @@ if (IS_PROD && (!SMTP_HOST || !SMTP_PORT)) {
     'confirmations, receipts) will not be delivered. Set them or accept no email delivery.'
   );
 }
+
+// Email is its own channel, alongside WhatsApp/SMS rather than instead of it: it goes out whenever
+// SMTP_HOST is set, unless NOTIFY_EMAIL=false turns it off. Nothing else needs changing when the
+// SMTP credentials arrive. Check them with `npm run email:test -- you@example.com`.
+export const NOTIFY_EMAIL = Boolean(SMTP_HOST) && process.env.NOTIFY_EMAIL?.trim().toLowerCase() !== 'false';
+// Where the team hears about things that need a person: a new report of a listing or review.
+// Comma-separated. Unset means no alert email (reports are still in the admin list).
+export const ADMIN_ALERT_EMAILS = (process.env.ADMIN_ALERT_EMAIL || '')
+  .split(',')
+  .map((e) => e.trim())
+  .filter(Boolean);
+
+// ── Push notifications (Expo) ─────────────────────────────────────────────
+// Every in-app notification also goes to the person's phones through Expo's push service, which
+// needs no key. EXPO_ACCESS_TOKEN is optional (only if "enhanced push security" is turned on in
+// the Expo project). Off under APP_ENV=test so the suite never calls out; PUSH_ENABLED=false
+// turns it off anywhere.
+export const PUSH_ENABLED =
+  APP_ENV !== 'test' && process.env.PUSH_ENABLED?.trim().toLowerCase() !== 'false';
+export const EXPO_ACCESS_TOKEN = process.env.EXPO_ACCESS_TOKEN?.trim() || '';
+
+// ── Sign in with Apple ────────────────────────────────────────────────────
+// The token's audience: the iOS bundle id for the app, plus a Services ID if the website ever
+// offers Apple sign-in. Required by App Store guideline 4.8 because the app offers Google sign-in.
+// No secret is needed to verify a sign-in, only these ids.
+export const APPLE_AUDIENCES = (process.env.APPLE_CLIENT_IDS || 'io.aangan.app')
+  .split(',')
+  .map((e) => e.trim())
+  .filter(Boolean);
+
+log.info(
+  `[config] notification channels  whatsapp/sms: ${NOTIFY_BOOKINGS ? 'on' : 'off'}, ` +
+  `email: ${NOTIFY_EMAIL ? 'on' : 'off (SMTP_HOST not set)'}, push: ${PUSH_ENABLED ? 'on' : 'off'}`
+);

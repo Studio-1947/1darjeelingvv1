@@ -1487,5 +1487,26 @@
       "contact": "How to reach us, including the grievance officer.",
       "delete_account": "How to close your account and remove your data."
     }
+  },
+  "report": {
+    "listing_link": "Report this listing",
+    "review_link": "Report",
+    "listing_title": "Report this listing",
+    "review_title": "Report this review",
+    "intro": "Tell us what is wrong. The aangan team reviews every report, and the person is not told who sent it.",
+    "reason_label": "What is wrong?",
+    "reason_fake": "Fake or misleading",
+    "reason_offensive": "Rude or offensive",
+    "reason_unsafe": "Unsafe or a scam",
+    "reason_spam": "Spam",
+    "reason_other": "Something else",
+    "details_placeholder": "Anything else? (optional)",
+    "block_explain": "You can also block {{name}}. You will no longer see their reviews.",
+    "block_cta": "Block {{name}}",
+    "blocked": "{{name}} is blocked. Their reviews are hidden for you.",
+    "send": "Send report",
+    "cancel": "Cancel",
+    "sent": "Thanks. Our team will look into it.",
+    "failed": "Could not send that. Please try again."
   }
 }

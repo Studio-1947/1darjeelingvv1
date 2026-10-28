@@ -304,3 +304,35 @@ export const promotions = pgTable('promotions', {
   active: boolean('active').default(true).notNull(),
   createdAt: text('created_at').notNull(),
 });
+
+/**
+ * Something a signed-in person flagged as abusive, false or unsafe: a listing or a review. App
+ * Store and Play both require a way to report user content; an admin reviews these and resolves
+ * them. One open report per (reporter, target), so a repeated tap does not stack duplicates.
+ */
+export const reports = pgTable('reports', {
+  id: text('id').primaryKey(),
+  reporterId: text('reporter_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  targetType: text('target_type').notNull(), // 'listing' | 'review'
+  targetId: text('target_id').notNull(),
+  reason: text('reason').notNull(), // one of REPORT_REASONS in routes/reports.ts
+  details: text('details').default('').notNull(),
+  status: text('status').default('open').notNull(), // 'open' | 'resolved'
+  createdAt: text('created_at').notNull(),
+  resolvedAt: text('resolved_at'),
+}, (t) => ({
+  reporterTargetUnique: uniqueIndex('reports_reporter_target_unique').on(t.reporterId, t.targetType, t.targetId),
+  statusIdx: index('reports_status_idx').on(t.status),
+}));
+
+/**
+ * A person this user no longer wants to see. Their reviews are left out of every review list the
+ * blocker reads. Required alongside reporting for apps with user-generated content.
+ */
+export const userBlocks = pgTable('user_blocks', {
+  blockerId: text('blocker_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  blockedId: text('blocked_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  createdAt: text('created_at').notNull(),
+}, (t) => ({
+  pk: primaryKey({ columns: [t.blockerId, t.blockedId] }),
+}));
