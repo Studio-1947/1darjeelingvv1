@@ -155,6 +155,13 @@
       "when": 1792200000000,
       "tag": "0021_provider_verification_review",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1793180706277,
+      "tag": "0022_reports_and_blocks",
+      "breakpoints": true
     }
   ]
 }

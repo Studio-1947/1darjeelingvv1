@@ -54,6 +54,14 @@ function requireRealValueInProd(name: string, value: string | undefined, devDefa
 
 export const PORT = process.env.PORT || 8000;
 
+// Mobile app version policy, served by GET /api/app/version. Below APP_MIN_VERSION the app blocks
+// with "please update"; 0.0.0 (the default) retires nothing.
+export const APP_MIN_VERSION = process.env.APP_MIN_VERSION?.trim() || '0.0.0';
+export const APP_LATEST_VERSION = process.env.APP_LATEST_VERSION?.trim() || APP_MIN_VERSION;
+export const PLAY_STORE_URL =
+  process.env.PLAY_STORE_URL?.trim() || 'https://play.google.com/store/apps/details?id=io.aangan.app';
+export const APP_STORE_URL = process.env.APP_STORE_URL?.trim() || '';
+
 // Optional provider-verification help line. When absent, clients omit the call action rather
 // than inventing a number that may not reach the verification team.
 const verificationSupportPhone = process.env.VERIFICATION_SUPPORT_PHONE?.trim() || '';

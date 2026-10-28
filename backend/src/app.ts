@@ -23,6 +23,8 @@ import routeEstimatorRouter from './routes/routeEstimator';
 import weatherRouter from './routes/weather';
 import notificationsRouter from './routes/notifications';
 import promotionsRouter from './routes/promotions';
+import appVersionRouter from './routes/appVersion';
+import reportsRouter from './routes/reports';
 import interaktWebhookRouter from './routes/interaktWebhook';
 import { rateLimiter } from './middleware/rateLimiter';
 import { reportError } from './observability';
@@ -230,6 +232,8 @@ app.use('/api/routes', routeEstimatorRouter);
 app.use('/api/weather', weatherRouter);
 app.use('/api/notifications', notificationsRouter);
 app.use('/api/promotions', promotionsRouter);
+app.use('/api/app', appVersionRouter);
+app.use('/api', reportsRouter); // /api/reports, /api/users/me/blocks, /api/admin/reports
 app.use('/api', adminRouter); // Mount admin routes directly under /api (e.g. /api/admin/seed, /api/admin/stats)
 app.use('/api', adminSpotsRouter); // Admin-only tourist-spot CRUD (e.g. /api/admin/spots)
 
