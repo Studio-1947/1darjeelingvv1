@@ -99,3 +99,6 @@ deploy/certbot/
 
 # Debug artifacts / temp screenshots
 scratch_debug/
+
+# Local e2e server output
+backend/e2e-server.*.log

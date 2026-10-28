@@ -109,7 +109,7 @@ router.post('/reports', authenticateToken, async (req: Request, res: Response) =
  * @openapi
  * /users/me/blocks:
  *   get:
- *     summary: The ids of the people the current user has blocked
+ *     summary: The people the current user has blocked (ids, and names for an unblock list)
  *     tags: [Reports]
  *     security: [{ bearerAuth: [] }]
  *   post:
@@ -127,12 +127,18 @@ router.post('/reports', authenticateToken, async (req: Request, res: Response) =
  *               user_id: { type: string }
  */
 router.get('/users/me/blocks', authenticateToken, async (req: Request, res: Response) => {
+  // Names come with the ids so a "Blocked people" list can show who to unblock. Only the name the
+  // person already shows publicly on their reviews: no phone, no email.
   const rows = await db
-    .select({ id: schema.userBlocks.blockedId })
+    .select({ id: schema.userBlocks.blockedId, name: schema.users.name, blockedAt: schema.userBlocks.createdAt })
     .from(schema.userBlocks)
+    .innerJoin(schema.users, eq(schema.users.id, schema.userBlocks.blockedId))
     .where(eq(schema.userBlocks.blockerId, req.user!.id))
     .orderBy(desc(schema.userBlocks.createdAt));
-  res.json({ user_ids: rows.map((r) => r.id) });
+  res.json({
+    user_ids: rows.map((r) => r.id),
+    users: rows.map((r) => ({ id: r.id, name: r.name, blocked_at: r.blockedAt })),
+  });
 });
 
 router.post('/users/me/blocks', authenticateToken, async (req: Request, res: Response) => {

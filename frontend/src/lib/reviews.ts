@@ -47,3 +47,20 @@ export async function reportContent(input: {
 export async function blockUser(userId: string): Promise<void> {
   await api.post('/users/me/blocks', { user_id: userId });
 }
+
+export interface BlockedPerson {
+  id: string;
+  name: string;
+  blocked_at: string;
+}
+
+/** The people the signed-in user has blocked, newest first. */
+export async function listBlocked(): Promise<BlockedPerson[]> {
+  const { data } = await api.get('/users/me/blocks');
+  return data.users || [];
+}
+
+/** Shows this person's reviews to the signed-in user again. */
+export async function unblockUser(userId: string): Promise<void> {
+  await api.delete(`/users/me/blocks/${encodeURIComponent(userId)}`);
+}
