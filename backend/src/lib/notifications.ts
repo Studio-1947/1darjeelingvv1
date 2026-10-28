@@ -3,6 +3,7 @@ import { db, schema } from '../db';
 import { NOTIFY_BOOKINGS, log } from '../config';
 import { sendNotification } from '../messaging';
 import type { NotificationTemplate } from '../messaging';
+import { emailEnabled, renderEmail, sendEmail } from './email';
 
 /**
  * Telling people what happened to their booking.
@@ -47,6 +48,9 @@ export interface BookingParties {
   /** Null when the listing has no reachable owner  an admin-authored listing, typically. */
   hostName: string | null;
   hostPhone: string | null;
+  /** Optional email copies, sent whenever SMTP is configured, independent of NOTIFY_BOOKINGS. */
+  guestEmail?: string | null;
+  hostEmail?: string | null;
 }
 
 /**
@@ -70,57 +74,89 @@ async function deliver(
 /**
  * Tells the guest and the host that a booking is confirmed, and records what happened.
  *
- * Each recipient is attempted independently  a host with no phone number on file, or a gateway
- * that rejects one number, must not cost the other party their message.
+ * Two channels, each optional and independent: WhatsApp/SMS when NOTIFY_BOOKINGS is on, and email
+ * whenever SMTP is configured and the person has an address. A party counts as told if either
+ * reached them. Each recipient is attempted on its own, so one failure never costs the other.
  */
 export async function notifyBookingConfirmed(parties: BookingParties): Promise<void> {
-  const { booking, guestName, guestPhone, hostName, hostPhone } = parties;
-
-  if (!NOTIFY_BOOKINGS) {
-    // An explicit operator choice (see config.ts), which startup already logged loudly. Recorded
-    // on the row too, so a booking with no notification has a stated reason rather than a blank.
-    await db.update(schema.bookings)
-      .set({ notifyError: 'NOTIFY_BOOKINGS=false  notifications are switched off' })
-      .where(eq(schema.bookings.id, booking.id));
-    return;
-  }
+  const { booking, guestName, guestPhone, hostName, hostPhone, guestEmail, hostEmail } = parties;
 
   const stay = formatStay(booking.checkIn, booking.checkOut);
   const errors: string[] = [];
   const stamps: Partial<typeof schema.bookings.$inferInsert> = {};
+  const now = () => new Date().toISOString();
+  const guestContact = hostName && hostPhone ? `Host: ${hostName}, ${hostPhone}.` : 'The host will contact you.';
 
-  if (guestPhone) {
-    const contact = hostName && hostPhone ? `Host: ${hostName}, ${hostPhone}.` : 'The host will contact you.';
-    const result = await deliver(
-      guestPhone,
-      'booking_confirmed_guest',
-      { name: guestName, listing: booking.listingTitle, stay, host: contact },
-      `Your booking at ${booking.listingTitle} is confirmed for ${stay}. ${contact} ${SIGNATURE}`
-    );
-    if (result.ok) stamps.touristNotifiedAt = new Date().toISOString();
-    else errors.push(`guest: ${result.error}`);
-  } else {
-    errors.push('guest: no phone number on the account');
+  // ── Email ──
+  if (emailEnabled()) {
+    if (guestEmail) {
+      const r = await sendEmail({
+        to: guestEmail,
+        subject: `Booking confirmed: ${booking.listingTitle}`,
+        text: `Hi ${guestName}, your booking at ${booking.listingTitle} is confirmed for ${stay}. ${guestContact}`,
+        html: renderEmail('Your booking is confirmed', [
+          `Hi ${guestName},`,
+          `Your booking at ${booking.listingTitle} is confirmed for ${stay}.`,
+          guestContact,
+        ], 'You are receiving this because you booked on aangan.'),
+      });
+      if (r.ok) stamps.touristNotifiedAt = now();
+      else errors.push(`guest email: ${r.error}`);
+    }
+    if (hostEmail) {
+      const r = await sendEmail({
+        to: hostEmail,
+        subject: `New confirmed booking: ${booking.listingTitle}`,
+        text: `New confirmed booking at ${booking.listingTitle}: ${guestName} (${guestPhone}), ${stay}, ${booking.guests} guest(s).`,
+        html: renderEmail('You have a new booking', [
+          `${guestName} confirmed a booking at ${booking.listingTitle}.`,
+          `Dates: ${stay}. Guests: ${booking.guests}.`,
+          `Guest's phone: ${guestPhone || 'not shared'}.`,
+        ], 'You are receiving this because you host on aangan.'),
+      });
+      if (r.ok) stamps.providerNotifiedAt = now();
+      else errors.push(`host email: ${r.error}`);
+    }
   }
 
-  if (hostPhone) {
-    const result = await deliver(
-      hostPhone,
-      'booking_confirmed_host',
-      {
-        listing: booking.listingTitle,
-        guest: guestName,
-        guest_phone: guestPhone,
-        stay,
-        guests: String(booking.guests),
-      },
-      `New confirmed booking at ${booking.listingTitle}: ${guestName} (${guestPhone}), ` +
-      `${stay}, ${booking.guests} guest(s). ${SIGNATURE}`
-    );
-    if (result.ok) stamps.providerNotifiedAt = new Date().toISOString();
-    else errors.push(`host: ${result.error}`);
+  // ── WhatsApp / SMS ──
+  if (!NOTIFY_BOOKINGS) {
+    // An explicit operator choice (see config.ts), which startup already logged loudly. Recorded
+    // on the row too, so a booking with no message has a stated reason rather than a blank.
+    errors.push('NOTIFY_BOOKINGS=false  WhatsApp/SMS notifications are switched off');
   } else {
-    errors.push('host: no contact number for this listing');
+    if (guestPhone) {
+      const result = await deliver(
+        guestPhone,
+        'booking_confirmed_guest',
+        { name: guestName, listing: booking.listingTitle, stay, host: guestContact },
+        `Your booking at ${booking.listingTitle} is confirmed for ${stay}. ${guestContact} ${SIGNATURE}`
+      );
+      if (result.ok) stamps.touristNotifiedAt = now();
+      else errors.push(`guest: ${result.error}`);
+    } else {
+      errors.push('guest: no phone number on the account');
+    }
+
+    if (hostPhone) {
+      const result = await deliver(
+        hostPhone,
+        'booking_confirmed_host',
+        {
+          listing: booking.listingTitle,
+          guest: guestName,
+          guest_phone: guestPhone,
+          stay,
+          guests: String(booking.guests),
+        },
+        `New confirmed booking at ${booking.listingTitle}: ${guestName} (${guestPhone}), ` +
+        `${stay}, ${booking.guests} guest(s). ${SIGNATURE}`
+      );
+      if (result.ok) stamps.providerNotifiedAt = now();
+      else errors.push(`host: ${result.error}`);
+    } else {
+      errors.push('host: no contact number for this listing');
+    }
   }
 
   // One write for both outcomes. `notifyError` is cleared on a fully successful run so a
@@ -129,7 +165,7 @@ export async function notifyBookingConfirmed(parties: BookingParties): Promise<v
     .set({ ...stamps, notifyError: errors.length > 0 ? errors.join('; ').slice(0, 500) : null })
     .where(eq(schema.bookings.id, booking.id));
 
-  if (errors.length > 0) {
+  if (errors.length > 0 && NOTIFY_BOOKINGS) {
     log.error(`[notify] booking ${booking.id} confirmed but not fully announced  ${errors.join('; ')}`);
   }
 }
@@ -144,14 +180,28 @@ export async function notifyBookingCancelled(
   booking: BookingRow,
   guestPhone: string,
   guestName: string,
-  refunded: boolean
+  refunded: boolean,
+  guestEmail?: string | null
 ): Promise<void> {
-  if (!NOTIFY_BOOKINGS || !guestPhone) return;
-
   const stay = formatStay(booking.checkIn, booking.checkOut);
   const refundLine = refunded
     ? 'Your payment has been refunded and will reach your account in 5-7 working days.'
     : 'If you were charged, our team will contact you about the refund.';
+
+  if (guestEmail && emailEnabled()) {
+    await sendEmail({
+      to: guestEmail,
+      subject: `Booking cancelled: ${booking.listingTitle}`,
+      text: `Hi ${guestName}, your booking at ${booking.listingTitle} for ${stay} has been cancelled. ${refundLine}`,
+      html: renderEmail('Your booking was cancelled', [
+        `Hi ${guestName},`,
+        `Your booking at ${booking.listingTitle} for ${stay} has been cancelled.`,
+        refundLine,
+      ], 'You are receiving this because you booked on aangan.'),
+    });
+  }
+
+  if (!NOTIFY_BOOKINGS || !guestPhone) return;
 
   const result = await deliver(
     guestPhone,

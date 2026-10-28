@@ -5,6 +5,8 @@ import { and, desc, eq } from 'drizzle-orm';
 import { db, schema } from '../db';
 import { authenticateToken, requireAdmin } from '../middleware/auth';
 import { routeParam } from '../lib/routeParam';
+import { renderEmail, sendEmail } from '../lib/email';
+import { ADMIN_ALERT_EMAILS } from '../config';
 
 const router = Router();
 
@@ -81,6 +83,23 @@ router.post('/reports', authenticateToken, async (req: Request, res: Response) =
     })
     .onConflictDoNothing()
     .returning({ id: schema.reports.id });
+
+  // A new report reaches the team by email when ADMIN_ALERT_EMAIL and SMTP are set. Not awaited:
+  // the reporter should not wait on a mail server.
+  if (inserted.length && ADMIN_ALERT_EMAILS.length) {
+    const what = `${target_type} ${target_id}`;
+    void sendEmail({
+      to: ADMIN_ALERT_EMAILS,
+      subject: `New report: ${reason} (${target_type})`,
+      text: `A ${target_type} was reported as "${reason}". ${what}. ${details ? `Note: ${details}` : ''} Review it in the admin reports list.`,
+      html: renderEmail('Something was reported', [
+        `A ${target_type} was reported as "${reason}".`,
+        `Id: ${target_id}`,
+        details ? `Note from the reporter: ${details}` : 'No note was added.',
+        'Review it in the admin reports list (GET /api/admin/reports).',
+      ], 'You get this because your address is in ADMIN_ALERT_EMAIL.'),
+    });
+  }
 
   // A second report of the same thing by the same person is not an error: the first stands.
   res.status(inserted.length ? 201 : 200).json({ ok: true });

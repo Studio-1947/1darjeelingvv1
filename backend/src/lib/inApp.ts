@@ -2,6 +2,7 @@ import { eq } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
 import { db, schema } from '../db';
 import { log } from '../config';
+import { sendPushToUser } from './push';
 
 /**
  * Writes one row to a user's in-app activity feed.
@@ -25,6 +26,9 @@ export async function addInAppNotification(
       readAt: null,
       createdAt: new Date().toISOString(),
     });
+    // The same message to the person's phones. Not awaited: a push is a courtesy, and the request
+    // that caused it (a booking, a payment) should not wait on Expo's servers.
+    void sendPushToUser(userId, { title: n.title, body: n.body, data: { kind: n.kind, refId: n.refId ?? null } });
   } catch (err) {
     log.error(`[inapp] could not record "${n.kind}" for user ${userId}: ${(err as Error)?.message || err}`);
   }

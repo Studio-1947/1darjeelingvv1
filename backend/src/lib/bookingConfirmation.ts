@@ -108,7 +108,7 @@ export async function settleBookingConfirmation(
       //  in that order, so the message can state truthfully whether the refund went through.
       const outcomes = await refundPaymentsFor('booking_commission', booking.id, 'double-booked: dates taken by another guest');
       const refunded = outcomes.some(o => o.refunded);
-      await notifyBookingCancelled(booking, bookingUser?.phone || '', bookingUser?.name || 'Guest', refunded);
+      await notifyBookingCancelled(booking, bookingUser?.phone || '', bookingUser?.name || 'Guest', refunded, bookingUser?.email);
       log.error(
         `[booking] ${booking.id} was paid for but the dates were taken first  cancelled and ` +
         `${refunded ? 'refunded' : 'REFUND FAILED, money still held'}.`
@@ -121,7 +121,11 @@ export async function settleBookingConfirmation(
       body: `Your booking for ${booking.listingTitle} is confirmed.`,
       refId: booking.id,
     });
-    await addInAppNotification(await resolveHostUserId(listing?.providerId), {
+    const hostUserId = await resolveHostUserId(listing?.providerId);
+    const [hostUser] = hostUserId
+      ? await db.select({ email: schema.users.email }).from(schema.users).where(eq(schema.users.id, hostUserId)).limit(1)
+      : [];
+    await addInAppNotification(hostUserId, {
       kind: 'booking_confirmed',
       title: 'Booking confirmed',
       body: `${bookingUser?.name || 'A guest'} confirmed a booking for ${booking.listingTitle}.`,
@@ -135,6 +139,8 @@ export async function settleBookingConfirmation(
       guestPhone: bookingUser?.phone || '',
       hostName,
       hostPhone,
+      guestEmail: bookingUser?.email,
+      hostEmail: hostUser?.email,
     });
   }
 

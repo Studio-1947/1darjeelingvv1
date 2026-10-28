@@ -7,6 +7,7 @@ import { swaggerSpec } from './swagger';
 // Import router modules
 import authRouter from './routes/auth';
 import googleAuthRouter from './routes/googleAuth';
+import appleAuthRouter from './routes/appleAuth';
 import usersRouter from './routes/users';
 import providersRouter from './routes/providers';
 import listingsRouter from './routes/listings';
@@ -217,6 +218,7 @@ app.get('/api/health', async (_req: Request, res: Response) => {
 // ============ MOUNT ROUTERS ============
 app.use('/api/auth', authRouter);
 app.use('/api/auth/google', googleAuthRouter);
+app.use('/api/auth/apple', appleAuthRouter);
 app.use('/api/users', usersRouter);
 app.use('/api/providers', kycRouter);
 app.use('/api/providers', providersRouter);
