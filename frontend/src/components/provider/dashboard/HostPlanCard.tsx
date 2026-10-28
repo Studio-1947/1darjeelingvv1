@@ -7,15 +7,15 @@ import MockPaymentModal from '@/components/MockPaymentModal';
 /**
  * Within this many days of the end, renewal opens and the card starts nudging the host to renew.
  * Mirrors HOST_RENEWAL_WINDOW_DAYS on the server, which refuses an earlier renewal (409) so a
- * second ₹499 is never bought by accident.
+ * second ₹999 is never bought by accident.
  */
 const RENEW_SOON_DAYS = 30;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
- * The host's yearly plan: ₹1 for the first year, ₹499 for each year after.
+ * The host's yearly plan: ₹499 for the first year, ₹999 for each year after.
  *
- * Shows when the current year ends and offers the ₹499 renewal once it opens, 30 days before the
+ * Shows when the current year ends and offers the ₹999 renewal once it opens, 30 days before the
  * end. Renewing inside that window adds the year on top of what is left. Once the year has ended
  * the host's listings
  * are hidden from travellers and stop taking bookings (the server enforces that, see

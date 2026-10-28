@@ -138,14 +138,14 @@ describe('host plan: ₹1 first year, ₹499 after', () => {
     expect((await providerMe(token)).plan_expires_at).toBe(before);
   });
 
-  it('renews for ₹499 inside the last 30 days and adds a year on top of what is left', async () => {
+  it('renews for ₹999 inside the last 30 days and adds a year on top of what is left', async () => {
     const { token, providerId } = await onboardActiveProvider({ name: 'Window Renewer' });
     const endsInTenDays = new Date(Date.now() + 10 * DAY_MS).toISOString();
     await db.update(schema.providers).set({ planExpiresAt: endsInTenDays }).where(eq(schema.providers.id, providerId));
 
     const { order, complete } = await pay(token, 'provider_renewal', providerId);
     expect(order.status).toBe(200);
-    expect(order.body.amount).toBe(49900);
+    expect(order.body.amount).toBe(99900);
     expect(complete!.status).toBe(200);
 
     const after = Date.parse((await providerMe(token)).plan_expires_at);
@@ -159,7 +159,7 @@ describe('host plan: ₹1 first year, ₹499 after', () => {
 
     const { order, complete } = await pay(token, 'provider_renewal', providerId);
     expect(order.status).toBe(200);
-    expect(order.body.amount).toBe(49900);
+    expect(order.body.amount).toBe(99900);
     expect(complete!.status).toBe(200);
 
     const after = Date.parse((await providerMe(token)).plan_expires_at);

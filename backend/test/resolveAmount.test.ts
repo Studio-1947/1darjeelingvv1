@@ -23,18 +23,18 @@ describe('resolveAmount  fixed-price flows', () => {
     expect(ok(resolveAmount('platform_support', {}))).toBe(AMOUNTS.platform_support);
   });
 
-  it('charges the current prices: ₹1 pass, ₹1 first host year, ₹499 renewal', () => {
+  it('charges the current prices: ₹1 pass, ₹499 first host year, ₹999 renewal', () => {
     expect(ok(resolveAmount('platform_support', {}))).toBe(100);
-    expect(ok(resolveAmount('provider_registration', {}))).toBe(100);
-    expect(ok(resolveAmount('provider_renewal', {}))).toBe(49900);
+    expect(ok(resolveAmount('provider_registration', {}))).toBe(49900);
+    expect(ok(resolveAmount('provider_renewal', {}))).toBe(99900);
   });
 
   it('ignores an amount supplied by the client', () => {
     // The whole point of the map. A client that names its own price for a fixed flow is
     // either confused or hostile; either way the body is not consulted.
     expect(ok(resolveAmount('platform_support', { amount: 1 }))).toBe(100);
-    expect(ok(resolveAmount('provider_registration', { amount: 1 }))).toBe(100);
-    expect(ok(resolveAmount('provider_renewal', { amount: 1 }))).toBe(49900);
+    expect(ok(resolveAmount('provider_registration', { amount: 1 }))).toBe(49900);
+    expect(ok(resolveAmount('provider_renewal', { amount: 1 }))).toBe(99900);
   });
 
   it('refuses the retired booking commission with 410, not a generic 400', () => {

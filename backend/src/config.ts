@@ -340,22 +340,22 @@ export const rzpClient = RAZORPAY_KEY_SECRET ? new Razorpay({
 // fixed price, and the whole point of a donation is that the giver chooses. See lib/payments.ts.
 //
 //   platform_support       ₹1    once, for life — the tourist pass
-//   provider_registration  ₹1    a host's first year
-//   provider_renewal       ₹499  every year after that
+//   provider_registration  ₹499  a host's first year (launch price; usually ₹999)
+//   provider_renewal       ₹999  every year after that
 //
 // `booking_commission` is gone: bookings are free and confirm through POST /bookings/:id/checkout.
 // Its settlement branch in payments.ts stays so an order created before the change still settles.
 export const AMOUNTS: Record<string, number> = {
   platform_support: 100,
-  provider_registration: 100,
-  provider_renewal: 49900,
+  provider_registration: 49900,
+  provider_renewal: 99900,
 };
 
 // How long one host payment (registration or renewal) keeps a host's listings live, in days.
 export const HOST_PLAN_DAYS = 365;
 
 // Renewal opens this many days before a plan ends (and stays open after it lapses). Earlier than
-// that, a second ₹499 would be a year bought by accident: a double tap, or a first payment still
+// that, a second ₹999 would be a year bought by accident: a double tap, or a first payment still
 // settling. Both apps show the Renew button on the same window.
 export const HOST_RENEWAL_WINDOW_DAYS = 30;
 
