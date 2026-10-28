@@ -94,8 +94,8 @@ async function listingOf(providerId: string) {
   return row;
 }
 
-describe('host plan: ₹1 first year, ₹499 after', () => {
-  it('registers for ₹1 and starts a one-year plan', async () => {
+describe('host plan: ₹499 first year, ₹999 after', () => {
+  it('registers for ₹499 and starts a one-year plan', async () => {
     const before = Date.now();
     const { token } = await onboardActiveProvider({ name: 'New Host' });
     const provider = await providerMe(token);
@@ -108,7 +108,7 @@ describe('host plan: ₹1 first year, ₹499 after', () => {
 
     const [payment] = await db.select().from(schema.payments)
       .where(eq(schema.payments.referenceId, provider.id)).limit(1);
-    expect(payment.amount).toBe(100);
+    expect(payment.amount).toBe(49900);
   });
 
   it('refuses a second ₹1 registration once registered, so a year cannot be bought for ₹1', async () => {
