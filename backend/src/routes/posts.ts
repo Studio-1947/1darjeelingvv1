@@ -207,6 +207,25 @@ router.get('/me', authenticateToken, async (req: Request, res: Response) => {
   res.json({ can_post: reason === null, reason, posts: rows.map((r) => postOut(r, { includeModeration: true })) });
 });
 
+/**
+ * @openapi
+ * /posts/admin/list:
+ *   get:
+ *     summary: Every post, hidden ones included, newest first (admin)
+ *     tags: [Feed]
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - { in: query, name: hidden, schema: { type: string, enum: ['1'] }, description: "Only hidden posts" }
+ */
+router.get('/admin/list', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
+  const onlyHidden = req.query.hidden === '1';
+  const rows = (await selectRows()
+    .where(onlyHidden ? sql`${schema.hostPosts.hiddenAt} IS NOT NULL` : undefined)
+    .orderBy(desc(schema.hostPosts.createdAt))
+    .limit(200)) as Row[];
+  res.json({ posts: rows.map((r) => postOut(r, { includeModeration: true })) });
+});
+
 router.post('/', authenticateToken, rateLimiter(20, 60 * 60 * 1000, 'post_create'), async (req: Request, res: Response) => {
   const provider = await myProvider(req.user!.id);
   if (!provider) return res.status(403).json({ detail: 'Only hosts can post to the feed', code: 'not_a_host' });

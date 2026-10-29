@@ -175,8 +175,10 @@ router.post('/', authenticateToken, requireActiveSupport, async (req: Request, r
  *       404: { description: No such review owned by the caller }
  */
 router.delete('/:id', authenticateToken, async (req: Request, res: Response) => {
+  // Your own review, or any review as an admin acting on a report.
+  const id = eq(schema.reviews.id, routeParam(req, 'id'));
   const deleted = await db.delete(schema.reviews)
-    .where(and(eq(schema.reviews.id, routeParam(req, 'id')), eq(schema.reviews.userId, req.user.id)))
+    .where(req.user.role === 'admin' ? id : and(id, eq(schema.reviews.userId, req.user.id)))
     .returning();
   if (deleted.length === 0) return res.status(404).json({ detail: 'Review not found' });
   res.json({ ok: true });
