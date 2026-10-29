@@ -8,7 +8,7 @@ const REASONS: ReportReason[] = ['fake', 'offensive', 'unsafe', 'spam', 'other']
 
 export type ReportTarget =
   | { type: 'listing'; id: string }
-  | { type: 'review'; id: string; authorId: string; authorName: string };
+  | { type: 'review' | 'post'; id: string; authorId: string; authorName: string };
 
 /**
  * Report a listing or a review, and for a review, block its author. The same choices as the
@@ -63,7 +63,7 @@ export default function ReportDialog({
   };
 
   const block = async () => {
-    if (target?.type !== 'review') return;
+    if (target?.type !== 'review' && target?.type !== 'post') return;
     setBusy('block');
     setError('');
     try {
@@ -106,7 +106,7 @@ export default function ReportDialog({
 
         <div className="pr-10">
           <h2 id="report-title" className="font-display font-bold text-xl text-ink">
-            {target.type === 'review' ? t('report.review_title') : t('report.listing_title')}
+            {target.type === 'review' ? t('report.review_title') : target.type === 'post' ? t('report.post_title') : t('report.listing_title')}
           </h2>
           <p className="mt-2 text-sm text-ink-soft">{t('report.intro')}</p>
         </div>
@@ -139,7 +139,7 @@ export default function ReportDialog({
           className="w-full px-3 py-2.5 rounded-xl border border-[var(--line)] bg-white outline-none text-ink text-sm resize-none focus:ring-2 focus:ring-pine/20"
         />
 
-        {target.type === 'review' && (
+        {(target.type === 'review' || target.type === 'post') && (
           <div className="border-t border-[var(--line)] pt-4">
             <p className="text-sm text-ink-soft">{t('report.block_explain', { name: target.authorName })}</p>
             <button

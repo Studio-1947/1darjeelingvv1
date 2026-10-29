@@ -22,6 +22,7 @@ const TouristDashboard = lazy(() => import('@/pages/TouristDashboard'));
 const MyTrips = lazy(() => import('@/pages/MyTrips'));
 const MyListings = lazy(() => import('@/pages/MyListings'));
 const Saved = lazy(() => import('@/pages/Saved'));
+const Feed = lazy(() => import('@/pages/Feed'));
 const Responsible = lazy(() => import('@/pages/Responsible'));
 const About = lazy(() => import('@/pages/About'));
 const Privacy = lazy(() => import('@/pages/Privacy'));
@@ -77,6 +78,7 @@ export default function App() {
                   <Route path="/my-trips" element={<MyTrips />} />
                   <Route path="/my-listings" element={<MyListings />} />
                   <Route path="/saved" element={<Saved />} />
+                  <Route path="/feed" element={<Feed />} />
                   <Route path="/responsible" element={<Responsible />} />
                   <Route path="/about" element={<About />} />
                   <Route path="/privacy" element={<Privacy />} />
@@ -113,6 +115,7 @@ export default function App() {
                     <Route path="/my-trips" element={<MyTrips />} />
                     <Route path="/my-listings" element={<MyListings />} />
                     <Route path="/saved" element={<Saved />} />
+                  <Route path="/feed" element={<Feed />} />
                     <Route path="/responsible" element={<Responsible />} />
                     <Route path="/about" element={<About />} />
                     <Route path="/privacy" element={<Privacy />} />

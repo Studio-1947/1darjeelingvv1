@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 
 import { db, schema } from '../db';
 import { authenticateToken, requireAdmin } from '../middleware/auth';
@@ -16,13 +16,13 @@ const router = Router();
 // a block hides the blocked person's reviews from the blocker.
 
 export const REPORT_REASONS = ['spam', 'fake', 'offensive', 'unsafe', 'other'] as const;
-const TARGET_TYPES = ['listing', 'review'] as const;
+const TARGET_TYPES = ['listing', 'review', 'post'] as const;
 const MAX_DETAILS_LEN = 1000;
 
 type TargetType = (typeof TARGET_TYPES)[number];
 
 async function targetExists(type: TargetType, id: string): Promise<boolean> {
-  const table = type === 'listing' ? schema.listings : schema.reviews;
+  const table = type === 'listing' ? schema.listings : type === 'review' ? schema.reviews : schema.hostPosts;
   const [row] = await db.select({ id: table.id }).from(table).where(eq(table.id, id)).limit(1);
   return Boolean(row);
 }
@@ -42,7 +42,7 @@ async function targetExists(type: TargetType, id: string): Promise<boolean> {
  *             type: object
  *             required: [target_type, target_id, reason]
  *             properties:
- *               target_type: { type: string, enum: [listing, review] }
+ *               target_type: { type: string, enum: [listing, review, post] }
  *               target_id: { type: string }
  *               reason: { type: string, enum: [spam, fake, offensive, unsafe, other] }
  *               details: { type: string, maxLength: 1000 }
@@ -55,7 +55,7 @@ async function targetExists(type: TargetType, id: string): Promise<boolean> {
 router.post('/reports', authenticateToken, async (req: Request, res: Response) => {
   const { target_type, target_id, reason, details = '' } = req.body ?? {};
   if (!TARGET_TYPES.includes(target_type)) {
-    return res.status(400).json({ detail: 'target_type must be listing or review' });
+    return res.status(400).json({ detail: 'target_type must be listing, review or post' });
   }
   if (typeof target_id !== 'string' || !target_id.trim()) {
     return res.status(400).json({ detail: 'target_id is required' });
@@ -174,11 +174,83 @@ router.delete('/users/me/blocks/:userId', authenticateToken, async (req: Request
   res.json({ ok: true });
 });
 
+/** What a report points at, for the admin list: enough to judge it without opening anything. */
+async function targetSummaries(rows: { targetType: string; targetId: string }[]) {
+  const ids = (type: string) => [...new Set(rows.filter((r) => r.targetType === type).map((r) => r.targetId))];
+  const out = new Map<string, Record<string, unknown>>();
+
+  const listingIds = ids('listing');
+  if (listingIds.length) {
+    const ls = await db
+      .select({ id: schema.listings.id, title: schema.listings.title, type: schema.listings.type, location: schema.listings.location })
+      .from(schema.listings)
+      .where(inArray(schema.listings.id, listingIds));
+    for (const l of ls) out.set('listing:' + l.id, { title: l.title, type: l.type, location: l.location });
+  }
+
+  const reviewIds = ids('review');
+  if (reviewIds.length) {
+    const rs = await db
+      .select({
+        id: schema.reviews.id,
+        comment: schema.reviews.comment,
+        rating: schema.reviews.rating,
+        authorName: schema.reviews.authorName,
+        authorId: schema.reviews.userId,
+        listingId: schema.reviews.listingId,
+        listingTitle: schema.listings.title,
+      })
+      .from(schema.reviews)
+      .leftJoin(schema.listings, eq(schema.listings.id, schema.reviews.listingId))
+      .where(inArray(schema.reviews.id, reviewIds));
+    for (const r of rs) {
+      out.set('review:' + r.id, {
+        text: r.comment,
+        rating: r.rating,
+        author_name: r.authorName,
+        author_id: r.authorId,
+        listing_id: r.listingId,
+        listing_title: r.listingTitle,
+      });
+    }
+  }
+
+  const postIds = ids('post');
+  if (postIds.length) {
+    const ps = await db
+      .select({
+        id: schema.hostPosts.id,
+        body: schema.hostPosts.body,
+        photos: schema.hostPosts.photos,
+        hiddenAt: schema.hostPosts.hiddenAt,
+        authorId: schema.hostPosts.userId,
+        hostName: schema.providers.businessName,
+      })
+      .from(schema.hostPosts)
+      .innerJoin(schema.providers, eq(schema.providers.id, schema.hostPosts.providerId))
+      .where(inArray(schema.hostPosts.id, postIds));
+    for (const p of ps) {
+      out.set('post:' + p.id, {
+        text: p.body,
+        photos: p.photos,
+        hidden: Boolean(p.hiddenAt),
+        author_name: p.hostName,
+        author_id: p.authorId,
+      });
+    }
+  }
+  return out;
+}
+
 /**
  * @openapi
  * /admin/reports:
  *   get:
- *     summary: Reports for an admin to review, open ones first
+ *     summary: Reports for an admin to review, newest first, with what each one points at
+ *     description: >
+ *       Each report carries `target` (a short preview of the listing, review or post, or null if it
+ *       was deleted since), `reporter_name`, and `open_reports_on_target` so repeat reports of one
+ *       thing stand out.
  *     tags: [Reports]
  *     security: [{ bearerAuth: [] }]
  *     parameters:
@@ -189,17 +261,34 @@ router.delete('/users/me/blocks/:userId', authenticateToken, async (req: Request
 router.get('/admin/reports', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
   const status = req.query.status === 'resolved' ? 'resolved' : 'open';
   const rows = await db
-    .select()
+    .select({ report: schema.reports, reporterName: schema.users.name })
     .from(schema.reports)
+    .leftJoin(schema.users, eq(schema.users.id, schema.reports.reporterId))
     .where(eq(schema.reports.status, status))
     .orderBy(desc(schema.reports.createdAt))
     .limit(200);
+
+  const reports = rows.map((r) => r.report);
+  const targets = await targetSummaries(reports);
+  const openCounts = new Map<string, number>();
+  if (reports.length) {
+    const counts = await db
+      .select({ type: schema.reports.targetType, id: schema.reports.targetId, n: sql<number>`count(*)::int` })
+      .from(schema.reports)
+      .where(eq(schema.reports.status, 'open'))
+      .groupBy(schema.reports.targetType, schema.reports.targetId);
+    for (const c of counts) openCounts.set(c.type + ':' + c.id, c.n);
+  }
+
   res.json({
-    reports: rows.map((r) => ({
+    reports: rows.map(({ report: r, reporterName }) => ({
       id: r.id,
       reporter_id: r.reporterId,
+      reporter_name: reporterName,
       target_type: r.targetType,
       target_id: r.targetId,
+      target: targets.get(r.targetType + ':' + r.targetId) ?? null,
+      open_reports_on_target: openCounts.get(r.targetType + ':' + r.targetId) ?? 0,
       reason: r.reason,
       details: r.details,
       status: r.status,
@@ -213,18 +302,25 @@ router.get('/admin/reports', authenticateToken, requireAdmin, async (req: Reques
  * @openapi
  * /admin/reports/{id}/resolve:
  *   post:
- *     summary: Mark a report as dealt with
+ *     summary: Mark a report as dealt with. With ?all=1, every open report on the same item too.
  *     tags: [Reports]
  *     security: [{ bearerAuth: [] }]
  */
 router.post('/admin/reports/:id/resolve', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
-  const [row] = await db
+  const [report] = await db.select().from(schema.reports).where(eq(schema.reports.id, routeParam(req, 'id'))).limit(1);
+  if (!report) return res.status(404).json({ detail: 'Report not found' });
+  const now = new Date().toISOString();
+  const all = req.query.all === '1' || req.query.all === 'true';
+  const resolved = await db
     .update(schema.reports)
-    .set({ status: 'resolved', resolvedAt: new Date().toISOString() })
-    .where(eq(schema.reports.id, routeParam(req, 'id')))
+    .set({ status: 'resolved', resolvedAt: now })
+    .where(
+      all
+        ? and(eq(schema.reports.targetType, report.targetType), eq(schema.reports.targetId, report.targetId), eq(schema.reports.status, 'open'))
+        : eq(schema.reports.id, report.id)
+    )
     .returning({ id: schema.reports.id });
-  if (!row) return res.status(404).json({ detail: 'Report not found' });
-  res.json({ ok: true });
+  res.json({ ok: true, resolved: resolved.length });
 });
 
 export default router;
