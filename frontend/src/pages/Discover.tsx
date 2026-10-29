@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import api from '@/lib/api';
+import { webPathFor } from '@/lib/promotions';
 import { listingImage, sizedImage } from '@/lib/listingContent';
 import FeedCard from '@/components/FeedCard';
 import SmartImg from '@/components/SmartImg';
@@ -17,15 +18,12 @@ import { Mountains as Mountain, ArrowRight, Compass, TrendUp as TrendingUp, Care
 const RED_PANDA = 'https://images.unsplash.com/photo-1542880941-1abfea46bba6';
 const HERO_POSTER = 'https://images.unsplash.com/photo-1544735716-392fe2489ffa';
 
-// Each deal sits on a real photo of what it sells rather than a flat colour
-// block; the gradient stays underneath as the fallback while the image loads.
-// Copy lives in the locale files under home.deals.<key> - resolved at render so
-// it follows the language switcher.
-const DEALS = [
-  { key: 'monsoon', color: 'from-pine to-pine-dark', to: '/homestays', image: 'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05' },
-  { key: 'sunrise', color: 'from-flag to-[#8a1e1e]', to: '/drivers', image: 'https://images.unsplash.com/photo-1544735716-392fe2489ffa' },
-  { key: 'tea', color: 'from-gold to-[#c69108]', to: '/spots', image: 'https://images.pexels.com/photos/103875/pexels-photo-103875.jpeg' },
-];
+// The Trending strip shows the promotions an admin has switched on (GET /api/promotions), so what
+// it claims ("25% OFF", "BEST SELLER") is something someone chose to say, and can be taken down
+// without a release. Nothing active means no strip, never a built-in stand-in.
+// Each card sits on its own photo; the gradient underneath shows while the image loads.
+type Promotion = { id: string; tag: string; title: string; subtitle: string; image: string; link: string };
+const DEAL_COLORS = ['from-pine to-pine-dark', 'from-flag to-[#8a1e1e]', 'from-gold to-[#c69108]'];
 
 // Six fills three rows of the two-column desktop grid exactly, and is about as
 // far as anyone scrolls a phone before wanting a control rather than more feed.
@@ -57,6 +55,10 @@ function pageWindow(current: number, count: number): (number | null)[] {
 
 export default function Discover() {
   const { t } = useTranslation();
+  const [deals, setDeals] = useState<Promotion[]>([]);
+  useEffect(() => {
+    api.get('/promotions').then((r) => setDeals(r.data.items || [])).catch(() => setDeals([]));
+  }, []);
   const [feed, setFeed] = useState([]);
   const [spots, setSpots] = useState([]);
   const [homestays, setHomestays] = useState([]);
@@ -189,27 +191,31 @@ export default function Discover() {
 
       {/* Deals strip (MMT-style) */}
       <section className="mx-auto max-w-6xl px-4 md:px-6 pt-6 md:pt-8">
-        <div className="flex items-center gap-2 mb-3">
-          <TrendingUp size={18} className="text-flag" />
-          <h2 className="font-display font-extrabold text-lg md:text-xl text-ink">{t('home.trending')}</h2>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-          {DEALS.map((d) => (
-            <Link key={d.key} to={d.to} data-testid={`deal-${d.key}`}
-              className={`relative overflow-hidden rounded-2xl p-4 md:p-5 text-white bg-gradient-to-br ${d.color} btn-hover min-h-[110px] flex flex-col justify-between`}>
-              <img src={sizedImage(d.image, 600)} alt="" aria-hidden="true" loading="lazy"
-                className="absolute inset-0 w-full h-full object-cover" />
-              {/* Keeps the title and tag legible over whatever the photo does. */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/35 to-black/20" />
-              <span className="relative inline-block w-fit px-2 py-0.5 rounded-full bg-white/25 backdrop-blur text-[10px] font-extrabold tracking-wider">{t(`home.deals.${d.key}.tag`)}</span>
-              <div className="relative">
-                <div className="font-display font-extrabold text-xl md:text-2xl leading-tight">{t(`home.deals.${d.key}.title`)}</div>
-                <div className="text-sm text-white/90 mt-0.5">{t(`home.deals.${d.key}.sub`)}</div>
-              </div>
-              <ArrowRight size={18} className="absolute top-4 right-4 opacity-80" />
-            </Link>
-          ))}
-        </div>
+        {deals.length > 0 && (
+          <>
+            <div className="flex items-center gap-2 mb-3">
+              <TrendingUp size={18} className="text-flag" />
+              <h2 className="font-display font-extrabold text-lg md:text-xl text-ink">{t('home.trending')}</h2>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+              {deals.map((d, i) => (
+                <Link key={d.id} to={webPathFor(d.link)} data-testid={`deal-${d.id}`}
+                  className={`relative overflow-hidden rounded-2xl p-4 md:p-5 text-white bg-gradient-to-br ${DEAL_COLORS[i % DEAL_COLORS.length]} btn-hover min-h-[110px] flex flex-col justify-between`}>
+                  <img src={sizedImage(d.image, 600)} alt="" aria-hidden="true" loading="lazy"
+                    className="absolute inset-0 w-full h-full object-cover" />
+                  {/* Keeps the title and tag legible over whatever the photo does. */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/35 to-black/20" />
+                  <span className="relative inline-block w-fit px-2 py-0.5 rounded-full bg-white/25 backdrop-blur text-[10px] font-extrabold tracking-wider">{d.tag}</span>
+                  <div className="relative">
+                    <div className="font-display font-extrabold text-xl md:text-2xl leading-tight">{d.title}</div>
+                    <div className="text-sm text-white/90 mt-0.5">{d.subtitle}</div>
+                  </div>
+                  <ArrowRight size={18} className="absolute top-4 right-4 opacity-80" />
+                </Link>
+              ))}
+            </div>
+          </>
+        )}
 
         {/* Route Estimator Section */}
         <div className="mt-8">

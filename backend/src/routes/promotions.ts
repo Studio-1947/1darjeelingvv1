@@ -34,6 +34,20 @@ router.get('/', async (_req: Request, res: Response) => {
   res.json({ items: rows.map(shape) });
 });
 
+/**
+ * @openapi
+ * /promotions/all:
+ *   get:
+ *     summary: Every promotion, active or not, for the admin panel
+ *     tags: [Promotions]
+ *     security: [{ bearerAuth: [] }]
+ */
+router.get('/all', authenticateToken, requireAdmin, async (_req: Request, res: Response) => {
+  const rows = await db.select().from(schema.promotions)
+    .orderBy(asc(schema.promotions.sortOrder), asc(schema.promotions.createdAt));
+  res.json({ items: rows.map(shape) });
+});
+
 // The link is followed by the app's own router, so it must be an in-app path rather than a URL
 // that would send a traveller to an arbitrary site. The image is shown as-is, so https only.
 function validate(body: any, partial: boolean): { ok: true; set: Record<string, any> } | { ok: false; detail: string } {
