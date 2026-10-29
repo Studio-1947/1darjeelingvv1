@@ -13,6 +13,7 @@
     "db:studio": "drizzle-kit studio",
     "test:setup": "tsx scripts/setup-test-db.ts",
     "email:test": "tsx scripts/email-test.ts",
+    "notify:test": "tsx scripts/notify-test.ts",
     "pretest": "npm run test:setup",
     "test": "vitest run"
   },
