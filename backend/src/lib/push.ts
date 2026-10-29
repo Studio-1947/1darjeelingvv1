@@ -44,7 +44,10 @@ export async function sendPushToUser(
           ...(EXPO_ACCESS_TOKEN ? { Authorization: `Bearer ${EXPO_ACCESS_TOKEN}` } : {}),
         },
         body: JSON.stringify(
-          tokens.map((to) => ({ to, title: n.title, body: n.body, data: n.data ?? {}, sound: 'default', channelId: 'default' }))
+          // No channelId: Android drops a notification aimed at a channel the phone never created, and
+          // the app only creates 'bookings' (lazily). Leaving it out lands on the channel Expo
+          // always creates, on every app version.
+          tokens.map((to) => ({ to, title: n.title, body: n.body, data: n.data ?? {}, sound: 'default' }))
         ),
         signal: controller.signal,
       });
