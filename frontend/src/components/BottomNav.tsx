@@ -9,12 +9,12 @@ import CategorySheet from '@/components/CategorySheet';
  * Mobile bottom tab bar - the app's primary navigation below `lg`.
  *
  * Destinations: Home, My Trips / My Listings, Type, Account.
- * Service providers get "My Listings" (/my-listings) while tourists get "My Trips" (/my-trips).
+ * Hosts on the business side get "My Listings" (/my-listings) while tourists get "My Trips" (/my-trips).
  * Account routes to the user dashboard (/dashboard or /provider/dashboard).
  */
 export default function BottomNav() {
   const { t } = useTranslation();
-  const { user } = useAuth();
+  const { user, isHostMode } = useAuth();
   const { pathname } = useLocation();
   const [typeOpen, setTypeOpen] = useState(false);
 
@@ -23,7 +23,9 @@ export default function BottomNav() {
     setTypeOpen(false);
   }, [pathname]);
 
-  const isProvider = user?.role === 'provider';
+  // Follows the Traveller / Business mode, not the account: a host on the traveller side gets
+  // the traveller tabs, as in the app.
+  const isProvider = isHostMode;
 
   const tripsOrListingsTarget = isProvider
     ? '/my-listings'

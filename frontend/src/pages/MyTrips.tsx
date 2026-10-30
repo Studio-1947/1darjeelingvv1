@@ -37,7 +37,7 @@ function StatusPill({ status, isPast }: { status: string; isPast: boolean }) {
 export default function MyTrips() {
   const { t, i18n } = useTranslation();
   useSeo({ title: t('nav.my_trips'), noindex: true });
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, isHostMode } = useAuth();
   const nav = useNavigate();
   const [bookings, setBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -121,7 +121,7 @@ export default function MyTrips() {
   return (
     <div className="mx-auto max-w-6xl px-4 md:px-6 py-6 md:py-10 pb-24 lg:pb-12">
       {/* Banner for service providers */}
-      {user.role === 'provider' && (
+      {isHostMode && (
         <div className="mb-6 p-4 rounded-2xl bg-gradient-to-r from-pine/10 to-pine/5 border border-pine/20 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
             <Store size={18} className="text-pine flex-shrink-0" />

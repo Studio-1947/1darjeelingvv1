@@ -13,24 +13,24 @@ const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
 export default function Login() {
   const { t } = useTranslation();
-  const { login, user } = useAuth();
+  const { login, user, mode } = useAuth();
   const nav = useNavigate();
   const [sp] = useSearchParams();
   const next = sp.get('next') || '/';
 
+  // Set once sign-in on this page succeeds: that path navigates by itself, and this effect
+  // must not then send them somewhere else.
+  const signedInHere = useRef(false);
+
+  // Already signed in: carry on from the side they were last using.
   useEffect(() => {
-    if (user) {
-      if (user.role === 'provider') {
-        if (user.providerPaid) {
-          nav('/provider/dashboard');
-        } else {
-          nav('/provider/onboard');
-        }
-      } else {
-        nav(next);
-      }
+    if (!user || signedInHere.current) return;
+    if (user.role === 'provider' && mode === 'provider') {
+      nav(user.providerPaid ? '/provider/dashboard' : '/provider/onboard');
+    } else {
+      nav(next);
     }
-  }, [user, nav, next]);
+  }, [user, mode, nav, next]);
 
   const [step, setStep] = useState(1);
   const [phone, setPhone] = useState('');
@@ -50,29 +50,36 @@ export default function Login() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [userExists, setUserExists] = useState(false);
-  const [showConfirmSwitch, setShowConfirmSwitch] = useState(false);
-  const [verificationData, setVerificationData] = useState<any>(null);
   const [googleBusy, setGoogleBusy] = useState(false);
   const gisLoaded = useRef(false);
   const country = OTP_COUNTRIES.find((item) => item.code === countryCode) ?? OTP_COUNTRIES[0];
   const canonicalPhone = otpPhone(phone, country);
 
+  // The choice made above decides which side opens, as the app's Traveller / Host switch does.
+  // A host who picked Traveller gets the traveller side with no second question; they can switch
+  // to their business from the profile menu at any time. Picking Business opens the business
+  // side, or onboarding for someone who has not set one up yet.
+  const finishSignIn = useCallback((data) => {
+    signedInHere.current = true;
+    login(data.token, data.user, role);
+    if (role === 'provider') {
+      nav(data.user.role === 'provider' && data.user.providerPaid ? '/provider/dashboard' : '/provider/onboard');
+    } else {
+      nav(next);
+    }
+  }, [login, nav, next, role]);
+
   // Initialize Google Identity Services once and prompt the One Tap UI.
   const handleGoogleSignIn = useCallback(async (idToken: string) => {
     try {
       const { data } = await api.post('/auth/google', { idToken, role });
-      login(data.token, data.user);
-      if (data.user.role === 'provider') {
-        nav(data.user.providerPaid ? '/provider/dashboard' : '/provider/onboard');
-      } else {
-        nav(next);
-      }
+      finishSignIn(data);
     } catch (e: any) {
       setErr(e?.response?.data?.detail || 'Google sign-in failed');
     } finally {
       setGoogleBusy(false);
     }
-  }, [login, nav, next, role]);
+  }, [finishSignIn, role]);
 
   // Load the GIS script once and initialize.
   useEffect(() => {
@@ -113,21 +120,7 @@ export default function Login() {
     setBusy(true); setErr('');
     try {
       const { data } = await api.post('/auth/otp/verify', { phone: canonicalPhone, otp, name, role });
-      if (role === 'tourist' && data.user.role === 'provider') {
-        setVerificationData(data);
-        setShowConfirmSwitch(true);
-      } else {
-        login(data.token, data.user);
-        if (role === 'provider' || data.user.role === 'provider') {
-          if (data.user.providerPaid) {
-            nav('/provider/dashboard');
-          } else {
-            nav('/provider/onboard');
-          }
-        } else {
-          nav(next);
-        }
-      }
+      finishSignIn(data);
     } catch (e) { setErr(e?.response?.data?.detail || t('auth.invalid_otp')); }
     finally { setBusy(false); }
   };
@@ -143,7 +136,7 @@ export default function Login() {
         </div>
 
         {/* Google Sign-In Button */}
-        {GOOGLE_CLIENT_ID && step === 1 && !showConfirmSwitch && (
+        {GOOGLE_CLIENT_ID && step === 1 && (
           <div className="space-y-4 mb-4">
             <button
               disabled={googleBusy || busy}
@@ -200,7 +193,7 @@ export default function Login() {
           </div>
         )}
 
-        {step === 1 && !showConfirmSwitch && (
+        {step === 1 && (
           <form onSubmit={sendOtp} className="space-y-4" data-testid="login-step-1">
             <div className="grid grid-cols-2 gap-3">
               <button type="button" onClick={() => setRole('tourist')} data-testid="role-tourist"
@@ -250,7 +243,7 @@ export default function Login() {
           </form>
         )}
 
-        {step === 2 && !showConfirmSwitch && (
+        {step === 2 && (
           <form onSubmit={verify} className="space-y-4" data-testid="login-step-2">
             {/* Names the app the code was actually sent through, rather than
                 leaving the visitor to check both. */}
@@ -289,57 +282,6 @@ export default function Login() {
             </button>
             <button type="button" onClick={() => setStep(1)} className="w-full text-xs text-ink-soft">← {t('auth.change_number')}</button>
           </form>
-        )}
-
-        {showConfirmSwitch && verificationData && (
-          <div className="space-y-6" data-testid="login-confirm-switch">
-            <p className="text-sm text-ink-soft">
-              {t('auth.provider_exists')}
-            </p>
-            <p className="text-sm text-ink font-semibold">
-              {t('auth.which_dashboard')}
-            </p>
-            <div className="space-y-3">
-              <button
-                type="button"
-                onClick={() => {
-                  localStorage.setItem(`unlocked_traveller_${verificationData.user.id}`, 'true');
-                  login(verificationData.token, verificationData.user);
-                  nav('/dashboard');
-                }}
-                className="w-full py-3 rounded-full border border-pine text-pine font-bold hover:bg-pine/5 transition-colors"
-                data-testid="choose-traveller"
-              >
-                {t('auth.go_traveller')}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  login(verificationData.token, verificationData.user);
-                  if (verificationData.user.providerPaid) {
-                    nav('/provider/dashboard');
-                  } else {
-                    nav('/provider/onboard');
-                  }
-                }}
-                className="w-full py-3 rounded-full bg-pine text-white font-bold btn-hover"
-                data-testid="choose-provider"
-              >
-                {t('auth.go_business')}
-              </button>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                setShowConfirmSwitch(false);
-                setVerificationData(null);
-                setStep(1);
-              }}
-              className="w-full text-xs text-ink-soft mt-4 text-center"
-            >
-              {t('auth.cancel_change_number')}
-            </button>
-          </div>
         )}
 
         {err && <p data-testid="login-error" className="mt-4 text-sm text-flag font-semibold text-center">{err}</p>}

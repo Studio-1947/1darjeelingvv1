@@ -11,7 +11,8 @@ import { User, Heart, ArrowLeft, Newspaper } from '@phosphor-icons/react';
 
 export default function Header() {
   const { t } = useTranslation();
-  const { user, logout } = useAuth();
+  const { user, logout, isHostMode, setMode } = useAuth();
+  const isHost = user?.role === 'provider';
   const [dropdownOpen, setDropdownOpen] = React.useState(false);
   const [avatarError, setAvatarError] = React.useState(false);
   const dropdownRef = React.useRef(null);
@@ -44,8 +45,15 @@ export default function Header() {
 
   const goProfile = () => {
     if (!user) return nav('/login');
-    if (user.role === 'provider') nav('/provider/dashboard');
+    if (isHostMode) nav('/provider/dashboard');
     else nav('/dashboard');
+  };
+
+  // A host moves between their trips and their business here, like the app's Profile switch.
+  const switchTo = (next: 'tourist' | 'provider') => {
+    setDropdownOpen(false);
+    setMode(next);
+    nav(next === 'provider' ? '/provider/dashboard' : '/dashboard');
   };
 
   return (
@@ -168,10 +176,12 @@ export default function Header() {
                 <div className="absolute right-0 mt-2 w-52 bg-white/95 backdrop-blur-xl border border-[var(--line)] rounded-2xl shadow-2xl py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200" data-testid="header-profile-dropdown">
                   <div className="px-4 py-2 border-b border-[var(--line)]">
                     <p className="text-sm font-bold text-ink truncate">{user.name}</p>
-                    <p className="text-[10px] uppercase tracking-wider font-bold text-ink-soft mt-0.5 capitalize">{user.role}</p>
+                    <p className="text-[10px] uppercase tracking-wider font-bold text-ink-soft mt-0.5" data-testid="header-mode">
+                      {isHostMode ? t('nav.mode_business') : t('nav.mode_traveller')}
+                    </p>
                   </div>
                   
-                  {user.role === 'provider' ? (
+                  {isHostMode ? (
                     <>
                       <button onClick={() => { setDropdownOpen(false); nav('/my-listings'); }}
                         className="w-full text-left px-4 py-2.5 text-sm text-ink hover:bg-mist font-semibold transition-colors">
@@ -185,6 +195,10 @@ export default function Header() {
                         className="w-full text-left px-4 py-2.5 text-sm text-ink hover:bg-mist font-semibold transition-colors">
                         {t('nav.my_trips') || 'My Trips'}
                       </button>
+                      <button onClick={() => switchTo('tourist')} data-testid="header-switch-traveller"
+                        className="w-full text-left px-4 py-2.5 text-sm text-pine hover:bg-mist font-bold transition-colors">
+                        {t('nav.switch_traveller')}
+                      </button>
                     </>
                   ) : (
                     <>
@@ -196,10 +210,17 @@ export default function Header() {
                         className="w-full text-left px-4 py-2.5 text-sm text-ink hover:bg-mist font-semibold transition-colors">
                         {t('nav.dashboard') || 'Dashboard'}
                       </button>
-                      <button onClick={() => { setDropdownOpen(false); nav('/provider/onboard'); }}
-                        className="w-full text-left px-4 py-2.5 text-sm text-pine hover:bg-mist font-bold transition-colors">
-                        {t('nav.host_with_us', 'List your Stay / Taxi')}
-                      </button>
+                      {isHost ? (
+                        <button onClick={() => switchTo('provider')} data-testid="header-switch-business"
+                          className="w-full text-left px-4 py-2.5 text-sm text-pine hover:bg-mist font-bold transition-colors">
+                          {t('nav.switch_business')}
+                        </button>
+                      ) : (
+                        <button onClick={() => { setDropdownOpen(false); nav('/provider/onboard'); }}
+                          className="w-full text-left px-4 py-2.5 text-sm text-pine hover:bg-mist font-bold transition-colors">
+                          {t('nav.host_with_us', 'List your Stay / Taxi')}
+                        </button>
+                      )}
                     </>
                   )}
                   

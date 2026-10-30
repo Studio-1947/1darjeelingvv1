@@ -22,8 +22,12 @@ function StatusPill({ status }) {
 export default function TouristDashboard() {
   const { t, i18n } = useTranslation();
   useSeo({ title: t('nav.dashboard'), noindex: true });
-  const { user, loading: authLoading, logout } = useAuth();
+  const { user, loading: authLoading, logout, setMode } = useAuth();
   const nav = useNavigate();
+
+  // This is the traveller side's home, so being here means travelling. A host who books a stay
+  // or opens this page sees the traveller header and tabs with it.
+  useEffect(() => { setMode('tourist'); }, [setMode]);
   const [bookings, setBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [confirmingId, setConfirmingId] = useState<string | null>(null); // booking awaiting cancel confirmation
@@ -231,10 +235,14 @@ export default function TouristDashboard() {
             <div className="font-display font-bold text-ink">{t('dashboard.cultural_events')}</div>
           </Link>
           {user.role === 'provider' ? (
-            <Link to="/provider/dashboard" className="rounded-2xl p-4 bg-gradient-to-br from-pine to-pine-dark text-white btn-hover">
-              <div className="w-10 h-10 rounded-full bg-white/15 text-white grid place-items-center mb-2"><Store size={18} /></div>
-              <div className="font-display font-bold">{t('nav.business_dashboard')}</div>
-            </Link>
+            // The traveller side shows no business pages, as in the app. A host still gets
+            // one way across, the same switch the profile menu has.
+            <button type="button" onClick={() => { setMode('provider'); nav('/provider/dashboard'); }}
+              data-testid="dashboard-switch-business"
+              className="text-left rounded-2xl p-4 bg-white border border-[var(--line)] btn-hover">
+              <div className="w-10 h-10 rounded-full bg-mist text-pine grid place-items-center mb-2"><Store size={18} /></div>
+              <div className="font-display font-bold text-ink">{t('nav.switch_business')}</div>
+            </button>
           ) : (
             <Link to="/provider/onboard" className="rounded-2xl p-4 bg-gradient-to-br from-pine to-pine-dark text-white btn-hover">
               <div className="w-10 h-10 rounded-full bg-white/15 text-white grid place-items-center mb-2"><Store size={18} /></div>
