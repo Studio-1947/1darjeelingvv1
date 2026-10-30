@@ -170,7 +170,7 @@ export default function ProviderDashboard() {
           >
             {t('pd.switch_traveller')}
           </button>
-          <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full font-bold text-xs ${active ? 'bg-pine/10 text-pine' : 'bg-gold/20 text-[#8a6b04]'}`}
+          <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full font-bold text-xs ${active ? 'bg-pine/10 text-pine-dark' : 'bg-gold/20 text-[#8a6b04]'}`}
             data-testid="provider-status">
             {active ? <CheckCircle2 size={14} /> : <Clock size={14} />} {active ? t('provider.active') : t('provider.pending')}
           </span>

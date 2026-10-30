@@ -28,7 +28,7 @@ export function StatCard({ label, value, sub, icon: Icon, tone = 'pine' }: {
 export function StatusPill({ status }) {
   const { t } = useTranslation();
   const map = {
-    confirmed: 'bg-pine/10 text-pine',
+    confirmed: 'bg-pine/10 text-pine-dark',
     pending_payment: 'bg-gold/20 text-[#8a6b04]',
     cancelled: 'bg-flag/10 text-flag',
   };

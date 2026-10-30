@@ -17,7 +17,7 @@
   "colors": {
     "background": "#FAFAFA",
     "surface": "#FFFFFF",
-    "primary": "#2C5E3B",
+    "primary": "#0D8074",
     "primary_foreground": "#FFFFFF",
     "secondary": "#C42E2E",
     "secondary_foreground": "#FFFFFF",
@@ -26,7 +26,7 @@
     "muted": "#F0F0F0",
     "muted_foreground": "#64748B",
     "border": "#E2E8F0",
-    "instructions": "Use Pine Green (#2C5E3B) as primary to represent Darjeeling's tea gardens and forests. Use Prayer Flag Red (#C42E2E) as secondary for interactive or high-visibility accents. Use warm Golden Yellow (#F0B90B) for highlights and badges. Background should be Mist White (#FAFAFA)."
+    "instructions": "Use bright Teal (#0D8074) as primary for buttons, links and accent fills - it is the brand color since 2026-10-30 and passes WCAG AA against white text. Its hover/pressed shade is deep Teal (#0A6459) and its bright accent shade is (#2DD4BF); text on teal tints uses #0A6459. Use Prayer Flag Red (#C42E2E) as secondary for interactive or high-visibility accents. Use warm Golden Yellow (#F0B90B) for highlights and badges. Background should be Mist White (#FAFAFA)."
   },
   "visual_enhancers": {
     "shadows": {

@@ -85,7 +85,7 @@ export default function MyListings() {
   if (!user) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-12 md:py-20 text-center">
-        <div className="w-16 h-16 rounded-full bg-pine/10 text-pine grid place-items-center mx-auto mb-4">
+        <div className="w-16 h-16 rounded-full bg-pine/10 text-pine-dark grid place-items-center mx-auto mb-4">
           <Store size={28} />
         </div>
         <h1 className="font-display font-extrabold text-2xl sm:text-3xl text-ink">Service Provider Listings</h1>
@@ -153,7 +153,7 @@ export default function MyListings() {
         <div className="flex items-center gap-3">
           <span
             className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full font-bold text-xs ${
-              isBusinessActive ? 'bg-pine/10 text-pine' : 'bg-gold/20 text-[#8a6b04]'
+              isBusinessActive ? 'bg-pine/10 text-pine-dark' : 'bg-gold/20 text-[#8a6b04]'
             }`}
           >
             {isBusinessActive ? <CheckCircle2 size={14} /> : <Clock size={14} />}

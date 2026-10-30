@@ -183,7 +183,7 @@ export function RouteSuggestions({ routes, onChange }: { routes: RouteFare[]; on
             }}
             className={`w-full text-left px-3 py-2 rounded-xl text-xs font-semibold border transition-colors ${
               added
-                ? 'bg-pine/10 text-pine border-pine'
+                ? 'bg-pine/10 text-pine-dark border-pine'
                 : 'bg-white text-ink-soft border-[var(--line)] hover:border-pine/40 hover:text-ink'
             }`}
           >

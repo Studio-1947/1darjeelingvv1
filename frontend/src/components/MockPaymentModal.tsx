@@ -69,7 +69,7 @@ export default function MockPaymentModal({ open, onClose, amount, title, descrip
                 { k: 'netbank', label: t('pay.netbanking') },
               ].map(({ k, label }) => (
                 <button key={k} onClick={() => setMethod(k)} data-testid={`mock-method-${k}`}
-                  className={`py-2.5 px-1 min-w-0 rounded-xl border font-bold text-xs leading-tight ${method === k ? 'border-pine bg-pine/10 text-pine' : 'border-[var(--line)] text-ink-soft'}`}>
+                  className={`py-2.5 px-1 min-w-0 rounded-xl border font-bold text-xs leading-tight ${method === k ? 'border-pine bg-pine/10 text-pine-dark' : 'border-[var(--line)] text-ink-soft'}`}>
                   {label}
                 </button>
               ))}

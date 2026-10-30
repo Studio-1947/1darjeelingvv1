@@ -43,7 +43,7 @@ export default function GalleryUploader({ images, uploading, onFilesSelected, on
         <label
           className={`aspect-[4/3] border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-colors ${
             compact ? 'rounded-xl gap-1' : 'rounded-2xl gap-2'
-          } ${uploading ? 'border-pine/50 bg-pine/5 text-pine' : 'border-[var(--line)] hover:border-flag/50 text-ink-soft hover:text-flag'}`}
+          } ${uploading ? 'border-pine/50 bg-pine/5 text-pine-dark' : 'border-[var(--line)] hover:border-flag/50 text-ink-soft hover:text-flag'}`}
         >
           {uploading ? (
             <>

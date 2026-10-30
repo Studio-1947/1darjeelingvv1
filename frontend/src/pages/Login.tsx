@@ -236,7 +236,7 @@ export default function Login() {
                   type="tel" inputMode="tel" autoComplete="tel"
                   aria-describedby="login-phone-hint"
                   data-testid="login-phone" placeholder={'0'.repeat(country.nationalDigits)}
-                  className="flex-1 bg-transparent outline-none py-1" />
+                  className="min-w-0 flex-1 bg-transparent outline-none py-1" />
               </div>
               <span id="login-phone-hint" data-testid="login-phone-hint" className="mt-1.5 block text-xs text-ink-soft">
                 {t('auth.phone_hint')}
@@ -271,7 +271,7 @@ export default function Login() {
                 <KeyRound size={16} className="text-ink-soft" />
                 <input value={otp} onChange={(e) => setOtp(e.target.value)} required maxLength={6}
                   data-testid="login-otp" placeholder="123456"
-                  className="flex-1 bg-transparent outline-none py-1 tracking-widest font-mono text-lg" />
+                  className="min-w-0 flex-1 bg-transparent outline-none py-1 tracking-widest font-mono text-lg" />
               </div>
             </label>
             {!userExists && (

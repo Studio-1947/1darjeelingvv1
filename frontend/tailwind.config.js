@@ -27,7 +27,12 @@ module.exports = {
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',
-        pine: { DEFAULT: '#2C5E3B', dark: '#1F4429', light: '#4E8261' },
+        // Brand primary, now a brighter teal family. Every primary button, chip,
+        // link and focus ring derives from these three shades:
+        //   DEFAULT - button fill; passes WCAG AA (4.5:1) against white text
+        //   dark    - hover / pressed fill, and text on light-teal tints
+        //   light   - bright accent shade for tints and non-text highlights
+        pine: { DEFAULT: '#0D8074', dark: '#0A6459', light: '#2DD4BF' },
         flag: '#C42E2E',
         gold: '#F0B90B',
         mist: '#EEF2ED',

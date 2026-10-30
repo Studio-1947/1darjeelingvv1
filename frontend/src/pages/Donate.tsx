@@ -146,7 +146,7 @@ export default function Donate() {
                   onClick={() => { setSelected(p); setCustom(''); setErr(''); }}
                   data-testid={`donate-preset-${p}`}
                   aria-pressed={active}
-                  className={`py-2.5 rounded-xl border font-bold text-sm ${active ? 'border-pine bg-pine/10 text-pine' : 'border-[var(--line)] text-ink-soft'
+                  className={`py-2.5 rounded-xl border font-bold text-sm ${active ? 'border-pine bg-pine/10 text-pine-dark' : 'border-[var(--line)] text-ink-soft'
                     }`}
                 >
                   ₹{rupees(p)}
@@ -168,7 +168,7 @@ export default function Donate() {
               inputMode="decimal"
               data-testid="donate-custom"
               placeholder="500"
-              className="flex-1 bg-transparent outline-none py-1 text-ink"
+              className="min-w-0 flex-1 bg-transparent outline-none py-1 text-ink"
             />
           </div>
         </label>

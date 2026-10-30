@@ -50,7 +50,7 @@ export default function AmenityPicker({
               onClick={() => onChange(toggleIn(selected, amenity))}
               className={`flex items-center text-left rounded-xl border font-semibold transition-all ${
                 compact ? 'gap-2.5 p-3 text-xs' : 'gap-3 p-4 text-sm'
-              } ${active ? 'bg-pine/10 text-pine border-pine font-bold' : 'bg-white text-ink border-[var(--line)]'}`}
+              } ${active ? 'bg-pine/10 text-pine-dark border-pine font-bold' : 'bg-white text-ink border-[var(--line)]'}`}
             >
               <input type="checkbox" checked={active} readOnly className="rounded border-[var(--line)] text-pine focus:ring-pine" />
               <span>{optionLabel(t, amenity)}</span>
