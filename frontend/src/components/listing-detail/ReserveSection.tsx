@@ -239,7 +239,7 @@ export function MobileStickyBar({ item, unit, bookable, cta, busy, onBook, onOpe
             className={`ml-auto flex-shrink-0 inline-flex items-center gap-1.5 px-4 sm:px-5 py-3 rounded-full font-extrabold text-sm whitespace-nowrap btn-hover ${bookable ? cta.color : 'bg-pine text-white'}`}
           >
             {bookable
-              ? <><CtaIcon size={16} /> {item.type === 'driver' ? t('cta.talk_to_driver') : t('cta.book_now')}</>
+              ? <>{item.type === 'driver' ? t('cta.talk_to_driver') : t('cta.book_now')} <CtaIcon size={16} /></>
               : <><Navigation size={16} /> {t('cta.get_directions')}</>}
           </button>
         </div>

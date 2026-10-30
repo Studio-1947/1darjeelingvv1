@@ -120,7 +120,7 @@ export default function HostPlanCard({ provider, user, onRenewed }: {
           onClick={renew}
           disabled={busy}
           data-testid="host-plan-renew"
-          className="inline-flex items-center justify-center rounded-full bg-ink text-white font-bold text-sm px-5 py-2.5 disabled:opacity-60 hover:opacity-90 transition-opacity"
+          className="inline-flex items-center justify-center rounded-full bg-pine text-white font-bold text-sm px-5 py-2.5 disabled:opacity-60 hover:opacity-90 transition-opacity"
         >
           {busy ? t('pd.plan_renewing') : registrationPending ? t('pd.plan_activate_cta') : t('pd.plan_renew_cta')}
         </button>

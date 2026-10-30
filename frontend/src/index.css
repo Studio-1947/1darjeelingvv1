@@ -226,3 +226,25 @@ input[type="submit"] {
   font-weight: 700 !important;
   letter-spacing: normal;
 }
+
+/* Button colour: #1F6656 on every filled button, on the site and in the app (colors.button).
+   Buttons are styled with bg-pine / from-pine utilities all over; this recolours exactly those
+   on buttons and pill links, without touching pine text, icons and badges elsewhere.
+   `!important` beats the hover:bg-pine-dark and gradient utilities they also carry.
+   Red (decline/delete), WhatsApp green and white or see-through buttons keep their colours. */
+:root {
+  --button: #1F6656;
+  --button-hover: #184F43;
+}
+button.bg-pine, a.bg-pine, [role="button"].bg-pine,
+button.from-pine, a.from-pine, [role="button"].from-pine {
+  background: var(--button) !important;
+  border-color: var(--button);
+}
+button.bg-pine:hover:not(:disabled), a.bg-pine:hover, [role="button"].bg-pine:hover,
+button.from-pine:hover:not(:disabled), a.from-pine:hover {
+  background: var(--button-hover) !important;
+}
+/* Outline buttons: the same green for their label and border. */
+button.text-pine, a.rounded-full.text-pine { color: var(--button); }
+button.border-pine, a.rounded-full.border-pine { border-color: var(--button); }
