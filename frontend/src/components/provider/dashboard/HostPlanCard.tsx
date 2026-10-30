@@ -31,30 +31,36 @@ export default function HostPlanCard({ provider, user, onRenewed }: {
   const [err, setErr] = useState('');
   const [payModal, setPayModal] = useState<any>(null);
 
-  if (!provider?.plan_expires_at) return null;
+  if (!provider) return null;
 
-  const expiry = Date.parse(provider.plan_expires_at);
-  const lapsed = !provider.plan_active;
+  // Paying the first year is what gives a business its plan expiry, and the server allows the
+  // registration payment per business (never activated), not per account. So a host whose earlier
+  // business is paid still sees Activate on a new one, rather than "Live until Invalid Date".
+  const registrationPending = !provider.plan_expires_at;
+  const expiry = registrationPending ? Number.NaN : Date.parse(provider.plan_expires_at);
+  const lapsed = !registrationPending && !provider.plan_active;
   const daysLeft = Math.ceil((expiry - Date.now()) / DAY_MS);
-  const soon = !lapsed && daysLeft <= RENEW_SOON_DAYS;
+  const soon = !registrationPending && !lapsed && daysLeft <= RENEW_SOON_DAYS;
   const until = new Date(expiry).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
   // Before the window opens the server would answer 409, so the button is not offered at all.
-  const canRenew = lapsed || soon;
+  const canRenew = registrationPending || lapsed || soon;
+  const flow = registrationPending ? 'provider_registration' : 'provider_renewal';
+  const paymentTitle = registrationPending ? t('pd.plan_activate_title') : t('pd.plan_renew_title');
 
   const renew = async () => {
     setBusy(true);
     setErr('');
     try {
-      const order = await createPaymentOrder({ flow: 'provider_renewal', reference_id: provider.id });
+      const order = await createPaymentOrder({ flow, reference_id: provider.id });
       if (order.mock) {
         setPayModal({ amount: order.amount, order: order.order });
       } else {
         await payWithRazorpay({
           order: order.order,
           key_id: order.key_id,
-          flow: 'provider_renewal',
+          flow,
           reference_id: provider.id,
-          description: t('pd.plan_renew_title'),
+          description: paymentTitle,
           prefill: { contact: user?.phone, name: user?.name },
         });
         await onRenewed();
@@ -71,7 +77,7 @@ export default function HostPlanCard({ provider, user, onRenewed }: {
 
   const finishMockPayment = async () => {
     try {
-      await completeMockPayment({ order_id: payModal.order.id, flow: 'provider_renewal', reference_id: provider.id });
+      await completeMockPayment({ order_id: payModal.order.id, flow, reference_id: provider.id });
       setPayModal(null);
       await onRenewed();
     } catch (e: any) {
@@ -81,7 +87,9 @@ export default function HostPlanCard({ provider, user, onRenewed }: {
     }
   };
 
-  const tone = lapsed
+  const tone = registrationPending
+    ? 'border-gold/40 bg-gold/10'
+    : lapsed
     ? 'border-flag/30 bg-flag/5'
     : soon
       ? 'border-gold/40 bg-gold/10'
@@ -92,14 +100,16 @@ export default function HostPlanCard({ provider, user, onRenewed }: {
       <div className="flex items-start gap-3 min-w-0">
         {lapsed
           ? <WarningCircle size={22} className="text-flag shrink-0 mt-0.5" />
-          : <CalendarCheck size={22} className="text-pine shrink-0 mt-0.5" />}
+          : <CalendarCheck size={22} className={`${registrationPending ? 'text-gold' : 'text-pine'} shrink-0 mt-0.5`} />}
         <div className="min-w-0">
-          <div className="text-[11px] font-bold uppercase tracking-widest text-ink-soft">{t('pd.plan_label')}</div>
+          <div className="text-[11px] font-bold uppercase tracking-widest text-ink-soft">{registrationPending ? t('pd.plan_activation_label') : t('pd.plan_label')}</div>
           <div className="mt-0.5 font-display font-extrabold text-lg text-ink">
-            {lapsed ? t('pd.plan_lapsed_title') : t('pd.plan_valid_until', { date: until })}
+            {registrationPending ? t('pd.plan_activate_title') : lapsed ? t('pd.plan_lapsed_title') : t('pd.plan_valid_until', { date: until })}
           </div>
           <p className="text-sm text-ink-soft">
-            {lapsed
+            {registrationPending
+              ? t('pd.plan_activate_body')
+              : lapsed
               ? t('pd.plan_lapsed_body')
               : soon
                 ? t('pd.plan_ends_soon', { count: Math.max(daysLeft, 0) })
@@ -115,7 +125,7 @@ export default function HostPlanCard({ provider, user, onRenewed }: {
           data-testid="host-plan-renew"
           className="inline-flex items-center justify-center rounded-full bg-ink text-white font-bold text-sm px-5 py-2.5 disabled:opacity-60 hover:opacity-90 transition-opacity"
         >
-          {busy ? t('pd.plan_renewing') : t('pd.plan_renew_cta')}
+          {busy ? t('pd.plan_renewing') : registrationPending ? t('pd.plan_activate_cta') : t('pd.plan_renew_cta')}
         </button>
       )}
 
@@ -123,7 +133,7 @@ export default function HostPlanCard({ provider, user, onRenewed }: {
         open={!!payModal}
         onClose={() => setPayModal(null)}
         amount={payModal?.amount || 0}
-        title={t('pd.plan_renew_title')}
+        title={paymentTitle}
         description={provider.business_name}
         onPay={finishMockPayment}
         prefill={{ upi: `${(user?.name || 'host').toLowerCase().replace(/\s+/g, '')}@ybl` }}

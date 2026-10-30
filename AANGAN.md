@@ -2,7 +2,7 @@
 
 > "aangan. Every experience." A tourism and local-marketplace platform for the Darjeeling hills.
 > This file describes the product and codebase **as they are now**. It replaces the earlier
-> "1 Darjeeling" docs. Current as of 2026-09-24 (pricing: ₹1 lifetime pass, free bookings, ₹1 then ₹499/year for hosts).
+> "1 Darjeeling" docs. Current as of 2026-10-30 (pricing: ₹1 yearly tourist pass, free bookings, ₹499 then ₹999/year for hosts).
 
 Tourists get one place to discover tourist spots, homestays, drivers, shops, cafés, events and
 Himalayan biodiversity, and to book homestays. Local businesses sign up as providers, pass KYC and
@@ -50,15 +50,14 @@ tables and both language pickers; its `t()` helper stays so all copy lives in on
   `trips` (mobile) and `MyTrips` (web). Guests can cancel a booking.
 - **Save** listings (`saved`), **review** them, and see **notifications** in the Activity feed.
   Mobile also sends on-device local notifications.
-- **Tourist pass**: **₹1 once, for life** (`platform_support`). The server refuses bookings,
+- **Tourist pass**: **₹1 for one year** (`platform_support`). The server refuses bookings,
   saves and reviews until it has been paid. A paid pass is stored as `support_expires_at =
-  9999-12-31T23:59:59.999Z` (`LIFETIME_SUPPORT_EXPIRY`), so every existing "is it active?" check
-  still works. On mobile the `pass` screen sells it. Registered providers and admins are exempt.
+  365 days (`SUPPORT_PASS_DAYS`). Renewing early extends from the existing expiry; renewing after
+  expiry starts a fresh year. On mobile the `pass` screen sells it. Registered providers and admins are exempt.
 - **Bookings are free.** There is no booking fee: a booking confirms through
   `POST /api/bookings/:id/checkout`.
 - **Refer** friends (`refer`, backed by `GET /api/users/me/referrals`). A referral gives both
-  sides 90 days of access, which only matters to someone who hasn't bought the ₹1 pass yet: it
-  never changes a lifetime pass. **Donate** (web
+  sides 90 days of access and extends an active tourist pass. **Donate** (web
   `Donate` page, ₹10 to ₹1,00,000).
 - **Profile** (mobile `profile`): profile photo (uploaded through `POST /api/listings/upload`, then
   saved with `PATCH /api/users/me`), a "finish your profile" checklist, the pass card, and a
@@ -97,9 +96,9 @@ client:
 
 | Flow | Amount | Who pays |
 | --- | --- | --- |
-| `platform_support` | ₹1, once, for life | Tourist (the "pass") |
-| `provider_registration` | ₹1 | Host, for their first year |
-| `provider_renewal` | ₹499 / year | Host, every year after |
+| `platform_support` | ₹1, valid for one year | Tourist (the "pass") |
+| `provider_registration` | ₹499 (launch price, usually ₹999) | Host, for their first year |
+| `provider_renewal` | ₹999 / year | Host, every year after |
 | Bookings | Free | No fee |
 | Donation | ₹10 to ₹1,00,000 | Anyone, optional |
 

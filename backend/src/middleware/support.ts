@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { isExemptFromSupport, isSupportActive } from '../lib/support';
 
 /**
- * Blocks the actions that cost the platform something until the ₹1 lifetime pass is paid.
+ * Blocks the actions that cost the platform something until the active ₹1 yearly pass is paid.
  * Mount AFTER authenticateToken, which is what puts the user row on the request.
  *
  * 402 rather than 403: the request is well-formed and the caller is who they claim to be  the

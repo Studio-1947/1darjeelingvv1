@@ -88,11 +88,21 @@ async function giveTime(userId: string, days: number) {
 }
 
 describe('redeeming a code', () => {
-  it('leaves a paid lifetime pass exactly as it was', async () => {
-    const referrer = await registerUser({ name: 'Lifetime Referrer' });
+  it('extends an active paid pass', async () => {
+    const referrer = await registerUser({ name: 'Paid Referrer' });
     const code = await codeFor(referrer.token);
     const before = await expiryOf(referrer.user.id);
-    expect(before).toBe(LIFETIME_SUPPORT_EXPIRY);
+
+    await signUpWith(code, 'Friend Of Paid');
+
+    expect(Date.parse((await expiryOf(referrer.user.id))!) - Date.parse(before!))
+      .toBeCloseTo(REFERRAL_REWARD_DAYS * DAY_MS, -4);
+  });
+
+  it('leaves an old lifetime pass unchanged, in the usual date format', async () => {
+    const referrer = await registerUser({ name: 'Lifetime Referrer' });
+    await db.update(schema.users).set({ supportExpiresAt: LIFETIME_SUPPORT_EXPIRY }).where(eq(schema.users.id, referrer.user.id));
+    const code = await codeFor(referrer.token);
 
     await signUpWith(code, 'Friend Of Lifetime');
 
@@ -100,8 +110,8 @@ describe('redeeming a code', () => {
   });
 
   it('extends both sides and records the referral', async () => {
-    // A referrer who has not bought the ₹1 lifetime pass but holds some time  the case where a
-    // reward still means something (for a paid pass it changes nothing; see below).
+    // A referrer who has not bought the ₹1 pass but holds some time still receives the same
+    // monotonic extension.
     const referrer = await registerUser({ name: 'Referrer', paySupport: false });
     await giveTime(referrer.user.id, 10);
     const code = await codeFor(referrer.token);

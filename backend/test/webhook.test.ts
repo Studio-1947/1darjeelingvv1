@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { LIFETIME_SUPPORT_EXPIRY } from '../src/config';
+import { SUPPORT_PASS_DAYS } from '../src/config';
 import crypto from 'crypto';
 import request from 'supertest';
 import { app } from '../src/app';
@@ -97,7 +97,9 @@ describe('razorpay webhook', () => {
     expect(res.body.already).toBe(false);
 
     const me = await request(app).get('/api/auth/me').set('Authorization', `Bearer ${token}`);
-    expect(me.body.user.supportExpiresAt).toBe(LIFETIME_SUPPORT_EXPIRY);
+    const expiry = Date.parse(me.body.user.supportExpiresAt);
+    expect(expiry - Date.now()).toBeGreaterThan((SUPPORT_PASS_DAYS - 1) * 24 * 60 * 60 * 1000);
+    expect(expiry - Date.now()).toBeLessThanOrEqual(SUPPORT_PASS_DAYS * 24 * 60 * 60 * 1000);
   });
 
   it('activates a provider on payment.captured', async () => {

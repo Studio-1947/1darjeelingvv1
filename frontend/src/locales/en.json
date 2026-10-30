@@ -48,12 +48,12 @@
     "eyebrow": "the invitation",
     "title": "Come into the aangan",
     "amount_line": "Homestays, rides, cafés and quiet corners, from people who actually live in the hills.",
-    "body": "₹1, once, and aangan is yours for life. Booking is free, and the families and small businesses on it list for ₹499 in their first year.",
-    "cta": "Step in · ₹1 for life",
-    "reassurance": "One payment, never again. Nothing auto-charges.",
+    "body": "₹1 for a year of aangan. Booking is free, and the families and small businesses on it list for ₹499 in their first year.",
+    "cta": "Step in · ₹1 for 1 year",
+    "reassurance": "Valid for one year. Nothing auto-charges.",
     "skip": "Not now, just browsing",
     "modal_title": "Platform support fee",
-    "modal_duration": "· lifetime",
+    "modal_duration": "· valid for 1 year",
     "privacy_link": "privacy policy",
     "error": "Payment could not be completed. Please try again."
   },
@@ -890,6 +890,10 @@
   },
   "pd": {
     "plan_label": "Host plan",
+    "plan_activation_label": "Payment pending",
+    "plan_activate_title": "Activate your host plan",
+    "plan_activate_body": "Pay ₹499 for your first year to publish listings and start receiving booking requests.",
+    "plan_activate_cta": "Pay ₹499 to activate",
     "plan_valid_until": "Live until {{date}}",
     "plan_renew_body": "Renewal opens 30 days before your plan ends. It is ₹999 a year, and the new year starts when this one ends.",
     "plan_ends_soon_one": "Ends in {{count}} day. Renew for ₹999 to keep your listings live.",
@@ -1274,8 +1278,8 @@
         "p": "All amounts below are what you pay to the Platform. They are separate from, and additional to, whatever you pay the local business for the stay, ride or goods themselves.",
         "sub": [
           {
-            "h": "3.1 Traveller Pass  ₹1, once, for life",
-            "p": "A single payment that lets a traveller account make booking requests, save listings and leave reviews. It does not expire and does not renew, so it is never charged again."
+            "h": "3.1 Traveller Pass  ₹1, valid for one year",
+            "p": "A payment gives a traveller account one year to make booking requests, save listings and leave reviews. It does not renew automatically; after it expires, you may buy another one-year pass."
           },
           {
             "h": "3.2 Bookings  free",
@@ -1400,8 +1404,8 @@
             "p": "Bookings carry no fee, so there is nothing to refund when one is cancelled. A booking fee paid before bookings became free is still refunded in full if that booking is cancelled, by any party, before the stay."
           },
           {
-            "h": "3.2 Traveller Pass  ₹1, for life",
-            "p": "Refundable in full within 7 days of payment if you have not used it to confirm any booking. After 7 days, or once it has been used, it is not refundable  it has already delivered the access it pays for. It is a single payment that never renews, so there is no recurring charge to cancel."
+            "h": "3.2 Traveller Pass  ₹1, valid for one year",
+            "p": "Refundable in full within 7 days of payment if you have not used it to confirm any booking. After 7 days, or once it has been used, it is not refundable  it has already delivered the access it pays for. It expires after one year and never renews automatically, so there is no recurring charge to cancel."
           },
           {
             "h": "3.3 Business Listing Plan  ₹499 for the first year, ₹999 per year after",
