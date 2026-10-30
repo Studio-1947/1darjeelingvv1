@@ -4,16 +4,21 @@ import path from 'path';
 import { db, schema } from '../db';
 import { eq, and } from 'drizzle-orm';
 import { authenticateToken } from '../middleware/auth';
-import { isAllowedDocType } from '../lib/kycRequirements';
+import { isAllowedDocType, isVideoDocType } from '../lib/kycRequirements';
 import { computeCompletion } from '../lib/profileCompletion';
 import { uploadPrivate, getPrivateObject, deletePrivate } from '../lib/s3';
-import { log } from '../config';
+import { log, VERIFICATION_SUPPORT_PHONE } from '../config';
 import { routeParam } from '../lib/routeParam';
 
 const router = Router();
 
 const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'application/pdf']);
 const MAX_BYTES = 5 * 1024 * 1024;
+// Verification videos are sent as the raw request body, not base64 in JSON: a phone clip would
+// be a third bigger encoded and have to be held in memory twice. 25 MB sits under the 30 MB
+// client_max_body_size on the production nginx, which would otherwise answer with a bare 413.
+const VIDEO_MIME = new Set(['video/mp4', 'video/quicktime', 'video/webm']);
+const MAX_VIDEO_BYTES = 25 * 1024 * 1024;
 // The 8mb JSON body limit for this path is applied in app.ts (mounted before the global
 // express.json(), which would otherwise consume the stream at its 100kb default).
 
@@ -36,6 +41,13 @@ const PDF_SIGNATURE_SEARCH_WINDOW = 1024;
 
 /** Whether `buffer`'s leading bytes match the standard signature for `mime`. */
 function matchesDeclaredType(buffer: Buffer, mime: string): boolean {
+  // MP4 and QuickTime files open with a box whose type, at offset 4, is "ftyp". WebM is EBML.
+  if (mime === 'video/mp4' || mime === 'video/quicktime') {
+    return buffer.length >= 12 && buffer.subarray(4, 8).toString('latin1') === 'ftyp';
+  }
+  if (mime === 'video/webm') {
+    return buffer.length >= 4 && buffer[0] === 0x1a && buffer[1] === 0x45 && buffer[2] === 0xdf && buffer[3] === 0xa3;
+  }
   const signature = MAGIC_BYTES[mime];
   if (!signature) return false;
   if (mime === 'application/pdf') {
@@ -62,6 +74,38 @@ function docOut(d: typeof schema.kycDocuments.$inferSelect) {
   };
 }
 
+/** A provider-facing review state. It is derived from their own documents only, never from
+ * reviewer identity or internal queue detail. */
+function verificationOut(
+  provider: typeof schema.providers.$inferSelect,
+  docs: Array<typeof schema.kycDocuments.$inferSelect>,
+  checklist: ReturnType<typeof computeCompletion>['checklist'],
+  kycStatus: string
+) {
+  const requiredTypes = checklist.filter(item => item.kind === 'kyc' && item.required).map(item => item.key);
+  const requiredDocs = docs.filter(doc => requiredTypes.includes(doc.docType));
+  const submittedAt = requiredDocs.length ? requiredDocs.map(doc => doc.uploadedAt).sort().at(-1) ?? null : null;
+  const rejected = requiredDocs.find(doc => doc.status === 'rejected');
+  const status = kycStatus === 'verified'
+    ? 'approved'
+    : rejected
+      ? 'changes_requested'
+      : provider.kycReviewStartedAt
+        ? 'in_review'
+        : submittedAt
+          ? 'submitted'
+          : 'not_ready';
+
+  return {
+    status,
+    submitted_at: submittedAt,
+    review_started_at: provider.kycReviewStartedAt,
+    action_required: !!rejected,
+    action_message: rejected?.rejectionReason ?? null,
+    support_phone: VERIFICATION_SUPPORT_PHONE,
+  };
+}
+
 /** Recompute and persist providers.kycStatus from current docs. Returns the new status. */
 export async function recomputeKycStatus(providerId: string): Promise<string> {
   const [provider] = await db.select().from(schema.providers).where(eq(schema.providers.id, providerId)).limit(1);
@@ -70,6 +114,9 @@ export async function recomputeKycStatus(providerId: string): Promise<string> {
   const providerListings = await db.select().from(schema.listings).where(eq(schema.listings.providerId, providerId));
   const hasListingImage = providerListings.some(l => !!l.image || (Array.isArray(l.extras?.images) && l.extras.images.length > 0));
   const hasListingDescription = providerListings.some(l => !!l.description && l.description.trim().length >= 20);
+  const listingLocationSources = providerListings
+    .map(l => (l.extras as any)?.location_verified?.source)
+    .filter((s): s is string => typeof s === 'string');
 
   const { kycStatus } = computeCompletion(
     {
@@ -82,6 +129,7 @@ export async function recomputeKycStatus(providerId: string): Promise<string> {
       extras: provider.extras,
       hasListingImage,
       hasListingDescription,
+      listingLocationSources,
     },
     docs.map(d => ({ docType: d.docType, status: d.status as any }))
   );
@@ -97,6 +145,9 @@ router.get('/me/profile', authenticateToken, async (req: Request, res: Response)
   const providerListings = await db.select().from(schema.listings).where(eq(schema.listings.providerId, provider.id));
   const hasListingImage = providerListings.some(l => !!l.image || (Array.isArray(l.extras?.images) && l.extras.images.length > 0));
   const hasListingDescription = providerListings.some(l => !!l.description && l.description.trim().length >= 20);
+  const listingLocationSources = providerListings
+    .map(l => (l.extras as any)?.location_verified?.source)
+    .filter((s): s is string => typeof s === 'string');
 
   const { completionPercent, checklist, kycStatus } = computeCompletion(
     {
@@ -109,6 +160,7 @@ router.get('/me/profile', authenticateToken, async (req: Request, res: Response)
       extras: provider.extras,
       hasListingImage,
       hasListingDescription,
+      listingLocationSources,
     },
     docs.map(d => ({ docType: d.docType, status: d.status as any }))
   );
@@ -119,6 +171,7 @@ router.get('/me/profile', authenticateToken, async (req: Request, res: Response)
     kyc_status: kycStatus,
     checklist,
     documents: docs.map(docOut),
+    verification: verificationOut(provider, docs, checklist, kycStatus),
   });
 });
 
@@ -130,33 +183,27 @@ router.get('/me/kyc', authenticateToken, async (req: Request, res: Response) => 
   res.json({ documents: docs.map(docOut) });
 });
 
-// POST /providers/me/kyc  upload/replace a doc
-router.post('/me/kyc', authenticateToken, async (req: Request, res: Response) => {
-  const provider = await ownActiveProvider(req.user.id);
-  if (!provider) return res.status(403).json({ detail: 'Only active providers can upload KYC documents' });
+const DEFAULT_EXT: Record<string, string> = {
+  'application/pdf': '.pdf',
+  'video/mp4': '.mp4',
+  'video/quicktime': '.mov',
+  'video/webm': '.webm',
+};
 
-  const { doc_type, file, filename } = req.body || {};
-  if (!doc_type || !file || !filename) {
-    return res.status(400).json({ detail: 'doc_type, file, and filename are required' });
-  }
-  if (!isAllowedDocType(provider.businessType, doc_type)) {
-    return res.status(400).json({ detail: `doc_type "${doc_type}" is not valid for a ${provider.businessType}` });
-  }
-
-  const match = String(file).match(/^data:([\w/+.-]+);base64,/);
-  const contentType = match ? match[1] : '';
-  if (!ALLOWED_MIME.has(contentType)) {
-    return res.status(400).json({ detail: 'File must be a JPEG, PNG, or PDF' });
-  }
-  const base64Data = String(file).replace(/^data:[\w/+.-]+;base64,/, '');
-  const buffer = Buffer.from(base64Data, 'base64');
-  if (buffer.length === 0) return res.status(400).json({ detail: 'Empty file' });
-  if (buffer.length > MAX_BYTES) return res.status(400).json({ detail: 'File exceeds 5 MB limit' });
-  if (!matchesDeclaredType(buffer, contentType)) {
-    return res.status(400).json({ detail: 'File contents do not match the declared file type' });
-  }
-
-  const ext = path.extname(filename) || (contentType === 'application/pdf' ? '.pdf' : '.jpg');
+/**
+ * Stores a verified file for a provider's document slot, replacing any previous one, and answers
+ * the request. Shared by the JSON upload (photos, PDFs) and the raw video upload so both get the
+ * same storage, locking, orphan clean-up and status recompute.
+ */
+async function storeKycDocument(
+  res: Response,
+  provider: typeof schema.providers.$inferSelect,
+  doc_type: string,
+  filename: string,
+  buffer: Buffer,
+  contentType: string
+) {
+  const ext = path.extname(filename) || DEFAULT_EXT[contentType] || '.jpg';
   const key = `${provider.id}/${doc_type}/${uuidv4()}${ext}`;
 
   try {
@@ -245,6 +292,70 @@ router.post('/me/kyc', authenticateToken, async (req: Request, res: Response) =>
 
   await recomputeKycStatus(provider.id);
   res.json({ document: docOut(doc) });
+}
+
+// POST /providers/me/kyc  upload/replace a doc
+router.post('/me/kyc', authenticateToken, async (req: Request, res: Response) => {
+  const provider = await ownActiveProvider(req.user.id);
+  if (!provider) return res.status(403).json({ detail: 'Only active providers can upload KYC documents' });
+
+  const { doc_type, file, filename } = req.body || {};
+  if (!doc_type || !file || !filename) {
+    return res.status(400).json({ detail: 'doc_type, file, and filename are required' });
+  }
+  if (!isAllowedDocType(provider.businessType, doc_type)) {
+    return res.status(400).json({ detail: `doc_type "${doc_type}" is not valid for a ${provider.businessType}` });
+  }
+
+  if (isVideoDocType(provider.businessType, doc_type)) {
+    return res.status(400).json({ detail: `"${doc_type}" is a video - upload it to /api/providers/me/kyc/video` });
+  }
+
+  const match = String(file).match(/^data:([\w/+.-]+);base64,/);
+  const contentType = match ? match[1] : '';
+  if (!ALLOWED_MIME.has(contentType)) {
+    return res.status(400).json({ detail: 'File must be a JPEG, PNG, or PDF' });
+  }
+  const base64Data = String(file).replace(/^data:[\w/+.-]+;base64,/, '');
+  const buffer = Buffer.from(base64Data, 'base64');
+  if (buffer.length === 0) return res.status(400).json({ detail: 'Empty file' });
+  if (buffer.length > MAX_BYTES) return res.status(400).json({ detail: 'File exceeds 5 MB limit' });
+  if (!matchesDeclaredType(buffer, contentType)) {
+    return res.status(400).json({ detail: 'File contents do not match the declared file type' });
+  }
+
+  return storeKycDocument(res, provider, doc_type, filename, buffer, contentType);
+});
+
+// POST /providers/me/kyc/video?doc_type=...  upload/replace a verification video. The body is the
+// raw file (Content-Type video/mp4, video/quicktime or video/webm); the original name travels in
+// the X-Filename header. Parsed by express.raw() in app.ts, mounted ahead of the JSON parser.
+router.post('/me/kyc/video', authenticateToken, async (req: Request, res: Response) => {
+  const provider = await ownActiveProvider(req.user.id);
+  if (!provider) return res.status(403).json({ detail: 'Only active providers can upload KYC documents' });
+
+  const doc_type = String(req.query.doc_type || '');
+  if (!doc_type || !isAllowedDocType(provider.businessType, doc_type)) {
+    return res.status(400).json({ detail: `doc_type "${doc_type}" is not valid for a ${provider.businessType}` });
+  }
+  if (!isVideoDocType(provider.businessType, doc_type)) {
+    return res.status(400).json({ detail: `"${doc_type}" is not a video document` });
+  }
+
+  const contentType = String(req.headers['content-type'] || '').split(';')[0].trim().toLowerCase();
+  if (!VIDEO_MIME.has(contentType)) {
+    return res.status(400).json({ detail: 'Video must be MP4, MOV or WebM' });
+  }
+  const buffer = Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0);
+  if (buffer.length === 0) return res.status(400).json({ detail: 'Empty file' });
+  if (buffer.length > MAX_VIDEO_BYTES) return res.status(400).json({ detail: 'Video exceeds 25 MB limit' });
+  if (!matchesDeclaredType(buffer, contentType)) {
+    return res.status(400).json({ detail: 'File contents do not match the declared file type' });
+  }
+
+  const filename =
+    path.basename(String(req.headers['x-filename'] || '')).slice(0, 120) || `${doc_type}${DEFAULT_EXT[contentType]}`;
+  return storeKycDocument(res, provider, doc_type, filename, buffer, contentType);
 });
 
 // DELETE /providers/me/kyc/:docType  owner removes a doc

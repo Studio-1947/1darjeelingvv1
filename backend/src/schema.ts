@@ -19,7 +19,44 @@ export const users = pgTable('users', {
   // the first name (`ASHA-1D`), which collides on every second Asha and could not be looked up.
   // Nullable because rows created before referrals existed have none until they are backfilled.
   referralCode: text('referral_code').unique(),
+  // What the traveller picked on the "pick your vibe" screen (ids like 'nature', 'food'). Kept on
+  // the account so it survives a reinstall or a second phone; the client owns the vocabulary.
+  interests: jsonb('interests').$type<string[]>().default([]).notNull(),
 });
+
+/**
+ * The in-app activity feed. One row per event a user should see, written server-side when the
+ * thing happens, so a host accepting a request reaches a guest whose app is closed.
+ */
+export const notifications = pgTable('notifications', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  // 'booking_accepted' | 'booking_confirmed' | 'booking_cancelled' | 'booking_request' | ...
+  kind: text('kind').notNull(),
+  title: text('title').notNull(),
+  body: text('body').notNull(),
+  // The booking (or other row) this is about, so the app can deep-link.
+  refId: text('ref_id'),
+  readAt: text('read_at'),
+  createdAt: text('created_at').notNull(),
+}, (t) => ({
+  userCreatedIdx: index('notifications_user_id_created_at_idx').on(t.userId, t.createdAt),
+}));
+
+/**
+ * Expo push tokens, one row per device. Registered so a delivery worker can be added later;
+ * nothing sends to these yet.
+ */
+export const pushTokens = pgTable('push_tokens', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  token: text('token').notNull().unique(),
+  platform: text('platform').notNull(), // 'ios' | 'android' | 'web'
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+}, (t) => ({
+  userIdx: index('push_tokens_user_id_idx').on(t.userId),
+}));
 
 /**
  * Who invited whom, and what it bought them.
@@ -38,6 +75,17 @@ export const referrals = pgTable('referrals', {
   code: text('code').notNull(),
   // What each side actually received, so the ledger explains the expiry it produced.
   rewardDays: integer('reward_days').notNull(),
+  createdAt: text('created_at').notNull(),
+});
+
+export const vouchers = pgTable('vouchers', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  discountPercentage: integer('discount_percentage').notNull(),
+  tier: integer('tier').notNull(),
+  status: text('status').notNull(), // 'available' | 'used'
+  usedAt: text('used_at'),
+  usedOnBookingId: text('used_on_booking_id'),
   createdAt: text('created_at').notNull(),
 });
 
@@ -85,6 +133,13 @@ export const providers = pgTable('providers', {
   // the first payment settles. Once it passes, the host's listings leave the public feed until
   // they renew. See lib/hostPlan.ts.
   planExpiresAt: text('plan_expires_at'),
+  // True for hosts who registered once admin approval was introduced: their listings stay out of
+  // the public feed, and refuse bookings, until kyc_status is 'verified'. Hosts who were already
+  // live keep the default (false) so the change cut nobody off. See lib/hostPlan.ts.
+  approvalRequired: boolean('approval_required').default(false).notNull(),
+  // Written on the first administrator decision, so a submitted queue is not misrepresented as
+  // an active human review.
+  kycReviewStartedAt: text('kyc_review_started_at'),
 }, (t) => ({
   // At most one provider row per user, ever  enforced at the DB level so the onboard route's
   // read-then-write conflict check can't lose a race (two concurrent onboards both reading "no
@@ -141,6 +196,10 @@ export const bookings = pgTable('bookings', {
   providerNotifiedAt: text('provider_notified_at'),
   // Last delivery error, kept so the admin console can show why a notification is missing.
   notifyError: text('notify_error'),
+  // Voucher used on this booking.
+  voucherId: text('voucher_id'),
+  // Discount percentage applied (e.g. 10 for 10%) so the host knows they need to collect 10% less.
+  appliedDiscount: integer('applied_discount'),
 });
 
 export const favorites = pgTable('favorites', {
@@ -227,4 +286,76 @@ export const otpSendCounters = pgTable('otp_send_counters', {
   count: integer('count').notNull().default(0),
 }, (t) => ({
   scopeDayPk: primaryKey({ columns: [t.scope, t.day] }),
+}));
+
+/**
+ * Home-screen promotion cards ("Trending"). Editable by an admin without a client release; the
+ * app keeps a built-in set to fall back on when none are active or the server is unreachable.
+ */
+export const promotions = pgTable('promotions', {
+  id: text('id').primaryKey(),
+  tag: text('tag').notNull(), // the small pill, e.g. '25% OFF'
+  title: text('title').notNull(),
+  subtitle: text('subtitle').notNull(),
+  image: text('image').notNull(),
+  // An in-app path such as '/category/homestay'.
+  link: text('link').notNull(),
+  sortOrder: integer('sort_order').default(0).notNull(),
+  active: boolean('active').default(true).notNull(),
+  createdAt: text('created_at').notNull(),
+});
+
+/**
+ * Something a signed-in person flagged as abusive, false or unsafe: a listing or a review. App
+ * Store and Play both require a way to report user content; an admin reviews these and resolves
+ * them. One open report per (reporter, target), so a repeated tap does not stack duplicates.
+ */
+export const reports = pgTable('reports', {
+  id: text('id').primaryKey(),
+  reporterId: text('reporter_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  targetType: text('target_type').notNull(), // 'listing' | 'review'
+  targetId: text('target_id').notNull(),
+  reason: text('reason').notNull(), // one of REPORT_REASONS in routes/reports.ts
+  details: text('details').default('').notNull(),
+  status: text('status').default('open').notNull(), // 'open' | 'resolved'
+  createdAt: text('created_at').notNull(),
+  resolvedAt: text('resolved_at'),
+}, (t) => ({
+  reporterTargetUnique: uniqueIndex('reports_reporter_target_unique').on(t.reporterId, t.targetType, t.targetId),
+  statusIdx: index('reports_status_idx').on(t.status),
+}));
+
+/**
+ * A person this user no longer wants to see. Their reviews are left out of every review list the
+ * blocker reads. Required alongside reporting for apps with user-generated content.
+ */
+export const userBlocks = pgTable('user_blocks', {
+  blockerId: text('blocker_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  blockedId: text('blocked_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  createdAt: text('created_at').notNull(),
+}, (t) => ({
+  pk: primaryKey({ columns: [t.blockerId, t.blockedId] }),
+}));
+
+/**
+ * The host feed: short posts a host writes about their place (what makes it special, what is new,
+ * what is in season). Anyone can read them; only a live, verified host can write them. A post
+ * leaves the feed on its own while its host's plan has lapsed or approval is pending, and an
+ * admin can hide one (`hiddenAt`) after a report without deleting it.
+ */
+export const hostPosts = pgTable('host_posts', {
+  id: text('id').primaryKey(),
+  providerId: text('provider_id').references(() => providers.id, { onDelete: 'cascade' }).notNull(),
+  userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  body: text('body').notNull(),
+  photos: jsonb('photos').$type<string[]>().default([]).notNull(),
+  // Optional: the listing the post is about. Kept when the listing goes, as plain text without it.
+  listingId: text('listing_id').references(() => listings.id, { onDelete: 'set null' }),
+  hiddenAt: text('hidden_at'),
+  hiddenReason: text('hidden_reason'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at'),
+}, (t) => ({
+  createdIdx: index('host_posts_created_at_idx').on(t.createdAt),
+  providerIdx: index('host_posts_provider_id_idx').on(t.providerId),
 }));

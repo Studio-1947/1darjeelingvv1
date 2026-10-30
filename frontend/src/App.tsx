@@ -8,27 +8,7 @@ import Layout from '@/components/Layout';
 import ScrollToTop from '@/components/ScrollToTop';
 import { LoginGateProvider } from '@/components/LoginGate';
 import SupportGate from '@/components/SupportGate';
-import Support from '@/pages/Support';
-import Donate from '@/pages/Donate';
-import Discover from '@/pages/Discover';
-import Category from '@/pages/Category';
-import ListingDetail from '@/pages/ListingDetail';
-import Login from '@/pages/Login';
-import ProviderOnboard from '@/pages/ProviderOnboard';
-import ProviderDashboard from '@/pages/ProviderDashboard';
-import TouristDashboard from '@/pages/TouristDashboard';
-import MyTrips from '@/pages/MyTrips';
-import MyListings from '@/pages/MyListings';
-import Saved from '@/pages/Saved';
-import Responsible from '@/pages/Responsible';
-import About from '@/pages/About';
-import Privacy from '@/pages/Privacy';
-import Terms from '@/pages/Terms';
-import Refunds from '@/pages/Refunds';
-import DeleteAccount from '@/pages/DeleteAccount';
-import Contact from '@/pages/Contact';
 import Policies from '@/pages/Policies';
-import NotFound from '@/pages/NotFound';
 
 const Support = lazy(() => import('@/pages/Support'));
 const Donate = lazy(() => import('@/pages/Donate'));
@@ -42,6 +22,7 @@ const TouristDashboard = lazy(() => import('@/pages/TouristDashboard'));
 const MyTrips = lazy(() => import('@/pages/MyTrips'));
 const MyListings = lazy(() => import('@/pages/MyListings'));
 const Saved = lazy(() => import('@/pages/Saved'));
+const Feed = lazy(() => import('@/pages/Feed'));
 const Responsible = lazy(() => import('@/pages/Responsible'));
 const About = lazy(() => import('@/pages/About'));
 const Privacy = lazy(() => import('@/pages/Privacy'));
@@ -97,6 +78,7 @@ export default function App() {
                   <Route path="/my-trips" element={<MyTrips />} />
                   <Route path="/my-listings" element={<MyListings />} />
                   <Route path="/saved" element={<Saved />} />
+                  <Route path="/feed" element={<Feed />} />
                   <Route path="/responsible" element={<Responsible />} />
                   <Route path="/about" element={<About />} />
                   <Route path="/privacy" element={<Privacy />} />
@@ -133,6 +115,7 @@ export default function App() {
                     <Route path="/my-trips" element={<MyTrips />} />
                     <Route path="/my-listings" element={<MyListings />} />
                     <Route path="/saved" element={<Saved />} />
+                  <Route path="/feed" element={<Feed />} />
                     <Route path="/responsible" element={<Responsible />} />
                     <Route path="/about" element={<About />} />
                     <Route path="/privacy" element={<Privacy />} />

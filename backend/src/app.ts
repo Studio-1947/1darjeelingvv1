@@ -7,6 +7,7 @@ import { swaggerSpec } from './swagger';
 // Import router modules
 import authRouter from './routes/auth';
 import googleAuthRouter from './routes/googleAuth';
+import appleAuthRouter from './routes/appleAuth';
 import usersRouter from './routes/users';
 import providersRouter from './routes/providers';
 import listingsRouter from './routes/listings';
@@ -15,10 +16,17 @@ import paymentsRouter from './routes/payments';
 import adminRouter from './routes/admin';
 import adminSpotsRouter from './routes/adminSpots';
 import geocodeRouter from './routes/geocode';
+import mapTilesRouter from './routes/mapTiles';
 import kycRouter from './routes/kyc';
 import favoritesRouter from './routes/favorites';
 import reviewsRouter from './routes/reviews';
+import postsRouter from './routes/posts';
 import routeEstimatorRouter from './routes/routeEstimator';
+import weatherRouter from './routes/weather';
+import notificationsRouter from './routes/notifications';
+import promotionsRouter from './routes/promotions';
+import appVersionRouter from './routes/appVersion';
+import reportsRouter from './routes/reports';
 import interaktWebhookRouter from './routes/interaktWebhook';
 import { rateLimiter } from './middleware/rateLimiter';
 import { reportError } from './observability';
@@ -61,6 +69,10 @@ app.use('/api/providers/me/kyc', rateLimiter(20, 60 * 1000, 'kyc_upload'));
 // bigger body limit than the global default. Must be mounted before express.json() below,
 // which would otherwise consume the stream at its 100kb default.
 app.use('/api/providers/me/kyc', express.json({ limit: '8mb' }));
+
+// Verification videos arrive as the raw request body (no base64), up to the 25 MB the route
+// enforces. Only video types are consumed here; anything else falls through to a 400 in the route.
+app.use('/api/providers/me/kyc/video', express.raw({ type: ['video/mp4', 'video/quicktime', 'video/webm'], limit: '26mb' }));
 
 // Listing image uploads (POST /api/listings/upload) also carry a base64 data URL, but were never
 // given a raised limit  so they fell through to the global express.json() default of 100kb and
@@ -207,6 +219,7 @@ app.get('/api/health', async (_req: Request, res: Response) => {
 // ============ MOUNT ROUTERS ============
 app.use('/api/auth', authRouter);
 app.use('/api/auth/google', googleAuthRouter);
+app.use('/api/auth/apple', appleAuthRouter);
 app.use('/api/users', usersRouter);
 app.use('/api/providers', kycRouter);
 app.use('/api/providers', providersRouter);
@@ -214,10 +227,17 @@ app.use('/api/listings', listingsRouter);
 app.use('/api/bookings', bookingsRouter);
 app.use('/api/favorites', favoritesRouter);
 app.use('/api/reviews', reviewsRouter);
+app.use('/api/posts', postsRouter);
 app.use('/api/payments', paymentsRouter);
 app.use('/api/webhooks/interakt', interaktWebhookRouter);
 app.use('/api/geocode', geocodeRouter);
+app.use('/api/maps/tiles', mapTilesRouter);
 app.use('/api/routes', routeEstimatorRouter);
+app.use('/api/weather', weatherRouter);
+app.use('/api/notifications', notificationsRouter);
+app.use('/api/promotions', promotionsRouter);
+app.use('/api/app', appVersionRouter);
+app.use('/api', reportsRouter); // /api/reports, /api/users/me/blocks, /api/admin/reports
 app.use('/api', adminRouter); // Mount admin routes directly under /api (e.g. /api/admin/seed, /api/admin/stats)
 app.use('/api', adminSpotsRouter); // Admin-only tourist-spot CRUD (e.g. /api/admin/spots)
 

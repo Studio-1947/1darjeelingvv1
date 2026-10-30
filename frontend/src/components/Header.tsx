@@ -7,7 +7,7 @@ import Wordmark from '@/components/Wordmark';
 import useGoBack from '@/hooks/useGoBack';
 import useHeroOverlay from '@/hooks/useHeroOverlay';
 import { CATEGORIES } from '@/constants/categories';
-import { User, Heart, ArrowLeft } from '@phosphor-icons/react';
+import { User, Heart, ArrowLeft, Newspaper } from '@phosphor-icons/react';
 
 export default function Header() {
   const { t } = useTranslation();
@@ -133,6 +133,11 @@ export default function Header() {
             reach, so the control a visitor actually looks for up here -
             sign-in - now sits in the bar itself. */}
         <div className="flex items-center gap-1.5 sm:gap-2.5 flex-shrink-0 ml-auto">
+          {/* The host feed, for everyone, signed in or not. */}
+          <Link to="/feed" data-testid="header-feed" aria-label={t('nav.feed')} title={t('nav.feed')}
+            className={`grid w-9 h-9 rounded-full place-items-center btn-hover ${onVideo ? 'text-white hover:bg-white/20' : 'text-ink hover:bg-mist'}`}>
+            <Newspaper size={18} />
+          </Link>
           {/* Saved has its own route from the profile menu and the tab bar, so
               below lg this shortcut only competes for the width login needs. */}
           {user && (

@@ -1,5 +1,7 @@
 import request from 'supertest';
+import { eq } from 'drizzle-orm';
 import { app } from '../src/app';
+import { db, schema } from '../src/db';
 
 let phoneCounter = 0;
 
@@ -66,7 +68,16 @@ export async function loginAdmin() {
   return res.body.token as string;
 }
 
-export async function onboardActiveProvider(opts: { name: string; businessType?: string }) {
+export async function onboardActiveProvider(opts: {
+  name: string;
+  businessType?: string;
+  /**
+   * New hosts stay out of the public feed until an admin verifies their KYC. Most tests are about
+   * something else and want a host who is simply live, so the helper clears the requirement
+   * (as if the host pre-dated the rule). Set true to keep the real new-host behaviour.
+   */
+  awaitingApproval?: boolean;
+}) {
   const businessType = opts.businessType || 'homestay';
   const { token, phone } = await registerUser({ name: opts.name, role: 'provider' });
 
@@ -95,6 +106,10 @@ export async function onboardActiveProvider(opts: { name: string; businessType?:
     .post('/api/payments/mock/complete')
     .set('Authorization', `Bearer ${token}`)
     .send({ order_id: orderId, flow: 'provider_registration', reference_id: providerId });
+
+  if (!opts.awaitingApproval) {
+    await db.update(schema.providers).set({ approvalRequired: false }).where(eq(schema.providers.id, providerId));
+  }
 
   return { token, providerId, phone };
 }
@@ -147,4 +162,46 @@ export async function createListing(opts: { title?: string } = {}) {
     throw new Error(`createListing failed: ${res.status} ${JSON.stringify(res.body)}`);
   }
   return res.body.item;
+}
+
+// 1x1 PNG and the smallest thing the video route accepts as MP4 (a box whose type at offset 4 is
+// "ftyp"). Good enough for the KYC routes, which check the type and the magic bytes, not the picture.
+const TINY_PNG_DATA_URL =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+const TINY_MP4 = Buffer.concat([Buffer.from([0, 0, 0, 0x18]), Buffer.from('ftypmp42'), Buffer.alloc(32)]);
+
+/**
+ * Uploads every document this provider's business type currently requires, reading the list from
+ * the profile checklist so a change to the matrix does not mean editing every test. Returns the
+ * document types it uploaded.
+ */
+export async function uploadRequiredDocs(token: string): Promise<string[]> {
+  const profile = await request(app).get('/api/providers/me/profile').set('Authorization', `Bearer ${token}`);
+  const required = profile.body.checklist.filter((c: any) => c.kind === 'kyc' && c.required);
+  for (const item of required) {
+    const up =
+      item.media === 'video'
+        ? await request(app)
+            .post(`/api/providers/me/kyc/video?doc_type=${item.key}`)
+            .set('Authorization', `Bearer ${token}`)
+            .set('Content-Type', 'video/mp4')
+            .send(TINY_MP4)
+        : await request(app)
+            .post('/api/providers/me/kyc')
+            .set('Authorization', `Bearer ${token}`)
+            .send({ doc_type: item.key, file: TINY_PNG_DATA_URL, filename: `${item.key}.png` });
+    if (up.status !== 200) throw new Error(`upload failed for ${item.key}: ${up.status} ${JSON.stringify(up.body)}`);
+  }
+  return required.map((c: any) => c.key as string);
+}
+
+/** A live capture from a phone standing in Darjeeling, the way a café or shop proves where it is. */
+export async function captureLiveLocation(
+  token: string,
+  reading: { latitude?: number; longitude?: number; accuracy?: number } = {}
+) {
+  return request(app)
+    .post('/api/providers/me/location/live')
+    .set('Authorization', `Bearer ${token}`)
+    .send({ latitude: 27.036, longitude: 88.2627, accuracy: 12, ...reading });
 }

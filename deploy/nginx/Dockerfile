@@ -5,7 +5,7 @@
 #
 # This normally runs on a GitHub runner, not the VPS — see the `images` job for why.
 
-FROM node:20-slim AS frontend-build
+FROM node:22-slim AS frontend-build
 WORKDIR /app
 COPY frontend/package.json frontend/yarn.lock ./
 # yarn 1.x gives each tarball request only 30s before it throws ESOCKETTIMEDOUT and fails the
@@ -35,7 +35,7 @@ ENV REACT_APP_SENTRY_DSN=$REACT_APP_SENTRY_DSN
 ENV VITE_SENTRY_DSN=${VITE_SENTRY_DSN:-$REACT_APP_SENTRY_DSN}
 RUN yarn build
 
-FROM node:20-slim AS admin-build
+FROM node:22-slim AS admin-build
 WORKDIR /app
 COPY frontend-admin/package.json frontend-admin/package-lock.json ./
 RUN npm ci

@@ -336,6 +336,7 @@ router.post('/otp/verify', rateLimiter(10, 60 * 1000, 'otp_verify'), async (req:
       supportExpiresAt: null,
       password: null,
       phoneVerifiedAt: new Date().toISOString(),
+      interests: [],
       // Minted at registration so the invite screen never has to wait on a write.
       referralCode: await generateReferralCode()
     };

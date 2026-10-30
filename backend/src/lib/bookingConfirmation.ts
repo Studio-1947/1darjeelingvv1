@@ -3,7 +3,9 @@ import { db, schema } from '../db';
 import { log } from '../config';
 import { findBlockingBooking, isDateExclusive, lockListingForBooking } from './bookingAvailability';
 import { notifyBookingCancelled, notifyBookingConfirmed } from './notifications';
+import { addInAppNotification, resolveHostUserId } from './inApp';
 import { refundPaymentsFor } from './refunds';
+import { releaseVoucherForBooking } from './vouchers';
 import { serializeProvider } from './providerShape';
 
 type BookingRow = typeof schema.bookings.$inferSelect;
@@ -40,6 +42,8 @@ async function confirmUnderLock(bookingId: string) {
           .set({ status: 'cancelled' })
           .where(eq(schema.bookings.id, target.id))
           .returning();
+        // The guest never got these nights, so a voucher spent on the request goes back to them.
+        await releaseVoucherForBooking(tx, target.id);
         return { outcome: 'conflict' as const, booking: cancelled };
       }
     }
@@ -93,18 +97,40 @@ export async function settleBookingConfirmation(
   const hostName = providerInfo?.business_name || providerInfo?.name || null;
 
   if (conflicted) {
+    await addInAppNotification(booking.userId, {
+      kind: 'booking_cancelled',
+      title: 'Booking cancelled',
+      body: `The dates for ${booking.listingTitle} went to another guest first, so your booking was cancelled.`,
+      refId: booking.id,
+    });
     if (paid) {
       // Charged for dates that are no longer available. Return the money first, then tell them
       //  in that order, so the message can state truthfully whether the refund went through.
       const outcomes = await refundPaymentsFor('booking_commission', booking.id, 'double-booked: dates taken by another guest');
       const refunded = outcomes.some(o => o.refunded);
-      await notifyBookingCancelled(booking, bookingUser?.phone || '', bookingUser?.name || 'Guest', refunded);
+      await notifyBookingCancelled(booking, bookingUser?.phone || '', bookingUser?.name || 'Guest', refunded, bookingUser?.email);
       log.error(
         `[booking] ${booking.id} was paid for but the dates were taken first  cancelled and ` +
         `${refunded ? 'refunded' : 'REFUND FAILED, money still held'}.`
       );
     }
   } else {
+    await addInAppNotification(booking.userId, {
+      kind: 'booking_confirmed',
+      title: 'Booking confirmed',
+      body: `Your booking for ${booking.listingTitle} is confirmed.`,
+      refId: booking.id,
+    });
+    const hostUserId = await resolveHostUserId(listing?.providerId);
+    const [hostUser] = hostUserId
+      ? await db.select({ email: schema.users.email }).from(schema.users).where(eq(schema.users.id, hostUserId)).limit(1)
+      : [];
+    await addInAppNotification(hostUserId, {
+      kind: 'booking_confirmed',
+      title: 'Booking confirmed',
+      body: `${bookingUser?.name || 'A guest'} confirmed a booking for ${booking.listingTitle}.`,
+      refId: booking.id,
+    });
     // notifyBookingConfirmed never throws and records its own outcome on the booking row, so
     // awaiting it is safe and makes a message that did not go out a queryable fact.
     await notifyBookingConfirmed({
@@ -113,6 +139,8 @@ export async function settleBookingConfirmation(
       guestPhone: bookingUser?.phone || '',
       hostName,
       hostPhone,
+      guestEmail: bookingUser?.email,
+      hostEmail: hostUser?.email,
     });
   }
 

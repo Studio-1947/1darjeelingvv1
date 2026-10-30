@@ -2,11 +2,11 @@ import { Router, Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { db } from '../db';
 import * as schema from '../schema';
-import { eq, and, count, inArray, desc } from 'drizzle-orm';
+import { eq, and, count, inArray, desc, isNull, or, ne } from 'drizzle-orm';
 import { SEED_LISTINGS } from '../seed_data';
 import { authenticateToken, requireAdmin, hashPassword } from '../middleware/auth';
 import { rateLimiter } from '../middleware/rateLimiter';
-import { ADMIN_BOOTSTRAP_SECRET } from '../config';
+import { ADMIN_BOOTSTRAP_SECRET, log } from '../config';
 import { recomputeKycStatus } from './kyc';
 import { deleteListingsOwnedBy, deleteKycFilesOwnedBy } from '../lib/accountCleanup';
 import { listUnreturnedPayments, refundPayment } from '../lib/refunds';
@@ -516,12 +516,17 @@ router.post('/admin/kyc/:id/review', authenticateToken, requireAdmin, async (req
   if (!doc) return res.status(404).json({ detail: 'Not found' });
 
   const status = decision === 'approve' ? 'approved' : 'rejected';
+  const reviewedAt = new Date().toISOString();
   await db.update(schema.kycDocuments).set({
     status,
     rejectionReason: decision === 'reject' ? (reason || null) : null,
-    reviewedAt: new Date().toISOString(),
+    reviewedAt,
     reviewedBy: req.user.id,
   }).where(eq(schema.kycDocuments.id, doc.id));
+
+  await db.update(schema.providers)
+    .set({ kycReviewStartedAt: reviewedAt })
+    .where(and(eq(schema.providers.id, doc.providerId), isNull(schema.providers.kycReviewStartedAt)));
 
   const kycStatus = await recomputeKycStatus(doc.providerId);
   res.json({
@@ -589,6 +594,113 @@ router.post('/admin/payments/:id/refund', authenticateToken, requireAdmin, async
   // told the money went back when it did not.
   if (outcome.error) return res.status(502).json({ detail: outcome.error, ...outcome });
   res.json(outcome);
+});
+
+// ============ DATA CLEAN-UP ============
+//
+// Clears live user data from the admin console without touching the database by hand. Built on
+// the same helpers as the single-user delete above, so listings go with their owners and the
+// uploaded KYC files are removed from storage too, which a SQL wipe cannot do.
+//
+// What is never touched: admin accounts, curated spots/events (owned by 'admin-seed-provider'),
+// promotions, and the env-based admin login (which has no database row).
+
+const DELETE_ALL_PHRASE = 'DELETE ALL USERS';
+
+async function nonAdminUserIds(): Promise<string[]> {
+  const rows = await db.select({ id: schema.users.id }).from(schema.users).where(ne(schema.users.role, 'admin'));
+  return rows.map(r => r.id);
+}
+
+/** GET /admin/cleanup/preview - what "delete all non-admin users" would remove. Changes nothing. */
+router.get('/admin/cleanup/preview', authenticateToken, requireAdmin, async (_req: Request, res: Response) => {
+  const userIds = await nonAdminUserIds();
+  const zero = { users: 0, travellers: 0, hosts: 0, listings: 0, bookings: 0, payments: 0, settled_payments: 0, kyc_documents: 0 };
+  if (userIds.length === 0) return res.json({ ...zero, phrase: DELETE_ALL_PHRASE });
+
+  const providers = await db.select({ id: schema.providers.id }).from(schema.providers).where(inArray(schema.providers.userId, userIds));
+  const providerIds = providers.map(p => p.id);
+  const ownerIds = [...userIds, ...providerIds];
+
+  const listings = await db.select({ id: schema.listings.id }).from(schema.listings).where(inArray(schema.listings.providerId, ownerIds));
+  const listingIds = listings.map(l => l.id);
+
+  const bookingWhere = listingIds.length
+    ? or(inArray(schema.bookings.userId, userIds), inArray(schema.bookings.listingId, listingIds))
+    : inArray(schema.bookings.userId, userIds);
+  const [bookings] = await db.select({ n: count() }).from(schema.bookings).where(bookingWhere);
+  const [payments] = await db.select({ n: count() }).from(schema.payments).where(inArray(schema.payments.userId, userIds));
+  const [settled] = await db.select({ n: count() }).from(schema.payments)
+    .where(and(inArray(schema.payments.userId, userIds), eq(schema.payments.status, 'paid')));
+  const [kyc] = providerIds.length
+    ? await db.select({ n: count() }).from(schema.kycDocuments).where(inArray(schema.kycDocuments.providerId, providerIds))
+    : [{ n: 0 }];
+  const [travellers] = await db.select({ n: count() }).from(schema.users).where(eq(schema.users.role, 'tourist'));
+
+  res.json({
+    users: userIds.length,
+    travellers: travellers.n,
+    hosts: providerIds.length,
+    listings: listingIds.length,
+    bookings: bookings.n,
+    payments: payments.n,
+    settled_payments: settled.n,
+    kyc_documents: kyc.n,
+    phrase: DELETE_ALL_PHRASE,
+  });
+});
+
+/**
+ * POST /admin/cleanup/users
+ *   { mode: 'all', confirm: 'DELETE ALL USERS' }   every non-admin account
+ *   { mode: 'selected', user_ids: [...] }          just those accounts (admins are skipped)
+ *
+ * Accounts are removed one at a time, so a failure part-way leaves the rest intact and is
+ * reported rather than hidden. Take a database backup first: this cannot be undone.
+ */
+router.post('/admin/cleanup/users', authenticateToken, requireAdmin, rateLimiter(5, 60_000, 'admin_cleanup'), async (req: Request, res: Response) => {
+  const { mode, user_ids, confirm } = req.body || {};
+
+  let targets: string[];
+  if (mode === 'all') {
+    if (confirm !== DELETE_ALL_PHRASE) {
+      return res.status(400).json({ detail: `Type "${DELETE_ALL_PHRASE}" to confirm.` });
+    }
+    targets = await nonAdminUserIds();
+  } else if (mode === 'selected') {
+    if (!Array.isArray(user_ids) || user_ids.length === 0 || user_ids.length > 500 || user_ids.some((id: unknown) => typeof id !== 'string')) {
+      return res.status(400).json({ detail: 'user_ids must be 1 to 500 account ids' });
+    }
+    const rows = await db.select({ id: schema.users.id }).from(schema.users)
+      .where(and(inArray(schema.users.id, user_ids as string[]), ne(schema.users.role, 'admin')));
+    targets = rows.map(r => r.id);
+  } else {
+    return res.status(400).json({ detail: 'mode must be "all" or "selected"' });
+  }
+
+  let deleted = 0;
+  const failed: string[] = [];
+  for (const id of targets) {
+    try {
+      await deleteListingsOwnedBy(id);
+      await deleteKycFilesOwnedBy(id);
+      await db.delete(schema.users).where(eq(schema.users.id, id));
+      deleted += 1;
+    } catch (err: any) {
+      failed.push(id);
+      log.error(`[admin-cleanup] could not delete user ${id}: ${err?.message || err}`);
+    }
+  }
+
+  if (mode === 'all') {
+    // Pending login codes and delivery logs belong to the people just removed.
+    await db.delete(schema.otps);
+    await db.delete(schema.otpSendCounters);
+    await db.delete(schema.interaktDeliveryEvents);
+  }
+
+  log.warn(`[admin-cleanup] admin=${req.user.id} mode=${mode} requested=${targets.length} deleted=${deleted} failed=${failed.length}`);
+  res.json({ deleted, failed: failed.length, failed_ids: failed });
 });
 
 export default router;

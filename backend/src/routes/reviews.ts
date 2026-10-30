@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { db, schema } from '../db';
 import { eq, and, desc } from 'drizzle-orm';
-import { authenticateToken } from '../middleware/auth';
+import { authenticateToken, optionalUser } from '../middleware/auth';
 import { requireActiveSupport } from '../middleware/support';
 import { SPOT_TYPE, isSpotPublished } from '../lib/spots';
 import { routeParam } from '../lib/routeParam';
@@ -61,10 +61,25 @@ function parseReviewPhotos(value: unknown): { photos: string[] } | { error: stri
  *       200: { description: 'Reviews (newest first) and a { count, average } summary' }
  */
 router.get('/listing/:listingId', async (req: Request, res: Response) => {
-  const rows = await db.select()
+  const all = await db.select()
     .from(schema.reviews)
     .where(eq(schema.reviews.listingId, routeParam(req, 'listingId')))
     .orderBy(desc(schema.reviews.createdAt));
+
+  // A signed-in reader never sees reviews by someone they blocked. The summary is counted over
+  // what they see, so the number and the list agree.
+  const viewer = await optionalUser(req);
+  let rows = all;
+  if (viewer) {
+    const blocked = await db
+      .select({ id: schema.userBlocks.blockedId })
+      .from(schema.userBlocks)
+      .where(eq(schema.userBlocks.blockerId, viewer.id));
+    if (blocked.length) {
+      const hidden = new Set(blocked.map((b) => b.id));
+      rows = all.filter((r) => !hidden.has(r.userId));
+    }
+  }
 
   const count = rows.length;
   const average = count === 0 ? 0 : Math.round((rows.reduce((s, r) => s + r.rating, 0) / count) * 10) / 10;
@@ -160,8 +175,10 @@ router.post('/', authenticateToken, requireActiveSupport, async (req: Request, r
  *       404: { description: No such review owned by the caller }
  */
 router.delete('/:id', authenticateToken, async (req: Request, res: Response) => {
+  // Your own review, or any review as an admin acting on a report.
+  const id = eq(schema.reviews.id, routeParam(req, 'id'));
   const deleted = await db.delete(schema.reviews)
-    .where(and(eq(schema.reviews.id, routeParam(req, 'id')), eq(schema.reviews.userId, req.user.id)))
+    .where(req.user.role === 'admin' ? id : and(id, eq(schema.reviews.userId, req.user.id)))
     .returning();
   if (deleted.length === 0) return res.status(404).json({ detail: 'Review not found' });
   res.json({ ok: true });

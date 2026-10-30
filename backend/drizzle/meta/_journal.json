@@ -120,6 +120,55 @@
       "when": 1790700000000,
       "tag": "0016_referral_code_prefix",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1791000000000,
+      "tag": "0017_app_wiring",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1791100000000,
+      "tag": "0018_promotions",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1791453746968,
+      "tag": "0019_keen_gertrude_yorkes",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1791500000000,
+      "tag": "0020_host_approval_gate",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1792200000000,
+      "tag": "0021_provider_verification_review",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1793180706277,
+      "tag": "0022_reports_and_blocks",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1793187482116,
+      "tag": "0023_host_posts",
+      "breakpoints": true
     }
   ]
 }

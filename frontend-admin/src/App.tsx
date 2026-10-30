@@ -4,12 +4,14 @@ import { AuthProvider, useAuth } from '@/context/AuthContext';
 import Admin from '@/pages/Admin';
 import AdminLogin from '@/pages/AdminLogin';
 import KycReview from '@/pages/KycReview';
+import Moderation from '@/pages/Moderation';
 
 // Nav entries shown for any authenticated admin page. Add new protected
 // pages here to have them appear in the top nav automatically.
 const NAV_LINKS = [
   { to: '/', label: 'Dashboard' },
   { to: '/kyc', label: 'KYC Review' },
+  { to: '/moderation', label: 'Moderation' },
 ];
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -65,6 +67,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <KycReview />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/moderation"
+            element={
+              <ProtectedRoute>
+                <Moderation />
               </ProtectedRoute>
             }
           />

@@ -37,13 +37,14 @@
     "refunds": "Refunds",
     "contact": "Contact",
     "all_listings": "All listings",
-    "delete_account": "Delete Account"
+    "delete_account": "Delete Account",
+    "feed": "Host feed"
   },
   "support": {
     "eyebrow": "the invitation",
     "title": "Come into the aangan",
     "amount_line": "Homestays, rides, cafés and quiet corners, from people who actually live in the hills.",
-    "body": "₹1, once, and aangan is yours for life. Booking is free, and the families and small businesses on it list for ₹1 in their first year.",
+    "body": "₹1, once, and aangan is yours for life. Booking is free, and the families and small businesses on it list for ₹499 in their first year.",
     "cta": "Step in · ₹1 for life",
     "reassurance": "One payment, never again. Nothing auto-charges.",
     "skip": "Not now, just browsing",
@@ -199,7 +200,7 @@
   },
   "provider": {
     "onboard_title": "List your business",
-    "onboard_sub": "Reach thousands of travellers. ₹1 for your first year, then ₹499 a year.",
+    "onboard_sub": "Reach thousands of travellers. ₹499 for your first year (usually ₹999), then ₹999 a year.",
     "business_name": "Business name",
     "business_type": "Business type",
     "description": "Description",
@@ -207,7 +208,7 @@
     "contact": "Contact phone",
     "price_from": "Starting price (₹)",
     "image_url": "Image URL",
-    "submit_pay": "Pay ₹1 & list",
+    "submit_pay": "Pay ₹499 & list",
     "active": "Active",
     "pending": "Payment pending",
     "dashboard_title": "Provider dashboard",
@@ -583,7 +584,7 @@
     "stay_local": "Stay local",
     "explore_darjeeling": "Explore Darjeeling",
     "see_all": "See all",
-    "one_time_fee": "₹1 · first year",
+    "one_time_fee": "₹499 · first year (was ₹999)",
     "deals": {
       "monsoon": {
         "title": "Monsoon escapes",
@@ -678,10 +679,49 @@
     "found_elsewhere_note": "Not in this category, but it might be what you were looking for."
   },
   "feed": {
-    "no_reviews": "No reviews",
-    "share": "Share",
-    "rated_aria": "Rated {{rating}} out of 5 from {{count}} reviews",
-    "no_reviews_aria": "No reviews yet"
+    "label": "From our hosts",
+    "title": "Host feed",
+    "subtitle": "What's new at homestays, cafés, shops and with drivers across Darjeeling, in their own words.",
+    "strip_title": "From our hosts",
+    "see_all": "See all",
+    "compose_title": "Share an update",
+    "edit_title": "Edit your post",
+    "compose_placeholder": "What's special at your place right now? A new room, a seasonal dish, the view this morning…",
+    "add_photo": "Photo",
+    "remove_photo": "Remove photo",
+    "about_which": "Which listing is this about? (optional)",
+    "about_none": "None",
+    "post": "Post",
+    "save": "Save",
+    "posted": "Posted to the feed.",
+    "updated": "Post updated.",
+    "post_failed": "Could not save the post. Please try again.",
+    "upload_failed": "Photo upload failed.",
+    "edit": "Edit post",
+    "delete": "Delete post",
+    "delete_confirm": "Delete this post? This cannot be undone.",
+    "deleted": "Post deleted.",
+    "hidden_notice": "Hidden from the feed by the aangan team",
+    "cannot_post_unverified": "You can post to the feed once our team has verified your documents.",
+    "cannot_post_plan": "Your host plan is not active, so you cannot post right now. Renew it from",
+    "empty": "No posts yet. Hosts will share what's new at their places here.",
+    "load_failed": "Could not load the feed.",
+    "retry": "Try again",
+    "load_more": "Load more",
+    "read_more": "Read more",
+    "show_less": "Show less",
+    "about_listing": "About",
+    "verified_host": "Verified host",
+    "photo_alt": "Photo from {{name}}",
+    "host_cta": "Run a homestay, café, shop or taxi?",
+    "just_now": "just now",
+    "minutes_ago": "{{count}} min ago",
+    "hours_ago": "{{count}} h ago",
+    "days_ago": "{{count}} d ago",
+    "type_homestay": "Homestay",
+    "type_driver": "Driver",
+    "type_cafe": "Café",
+    "type_shop": "Shop"
   },
   "contact": {
     "title": "Contact Us",
@@ -831,12 +871,12 @@
   "pd": {
     "plan_label": "Host plan",
     "plan_valid_until": "Live until {{date}}",
-    "plan_renew_body": "Renew any time for ₹499 a year. Renewing early adds the year on top.",
-    "plan_ends_soon_one": "Ends in {{count}} day. Renew for ₹499 to keep your listings live.",
-    "plan_ends_soon_other": "Ends in {{count}} days. Renew for ₹499 to keep your listings live.",
+    "plan_renew_body": "Renewal opens 30 days before your plan ends. It is ₹999 a year, and the new year starts when this one ends.",
+    "plan_ends_soon_one": "Ends in {{count}} day. Renew for ₹999 to keep your listings live.",
+    "plan_ends_soon_other": "Ends in {{count}} days. Renew for ₹999 to keep your listings live.",
     "plan_lapsed_title": "Your plan has ended",
-    "plan_lapsed_body": "Your listings are hidden from travellers and not taking bookings. Renew for ₹499 to bring them back straight away.",
-    "plan_renew_cta": "Renew · ₹499 a year",
+    "plan_lapsed_body": "Your listings are hidden from travellers and not taking bookings. Renew for ₹999 to bring them back straight away.",
+    "plan_renew_cta": "Renew · ₹999 a year",
     "plan_renew_title": "Renew your host plan",
     "plan_renewing": "Renewing…",
     "plan_renew_failed": "The renewal didn't go through. Try again.",
@@ -869,7 +909,8 @@
     "wa_guest_message": "Hi {{name}}, this is regarding your booking for {{listing}} on 1 Darjeeling.",
     "configure_profile": "Configure Profile",
     "configure_cafe": "Configure Cafe",
-    "configure_shop": "Configure Shop"
+    "configure_shop": "Configure Shop",
+    "post_update": "Post an update"
   },
   "lf": {
     "edit_title": "Edit listing",
@@ -913,7 +954,7 @@
     "starting_price_note": "from your cheapest route"
   },
   "ob": {
-    "fee_chip": "₹1 · first year",
+    "fee_chip": "₹499 · first year (was ₹999)",
     "list_business": "List Your Business",
     "get_started": "Get started by entering your basic business details.",
     "business_name": "Business Name",
@@ -930,7 +971,7 @@
     "next": "Next: Update Profile",
     "no_cover_photo": "No Cover Photo Uploaded (Click Top Right)",
     "upload_cover": "Upload Cover Photo",
-    "submit_pay": "Submit & Pay ₹1",
+    "submit_pay": "Submit & Pay ₹499",
     "back_basic": "Back to Basic Info",
     "location_area": "Location / Area",
     "full_address": "Full Address",
@@ -963,7 +1004,7 @@
       "breakfast_question": "Is Breakfast Included in this price?",
       "breakfast_yes": "Yes, Breakfast Included",
       "breakfast_no": "No, Breakfast Extra / Not Included",
-      "fee_note": "Listing your stay costs ₹1 for the first year, then ₹499 a year to keep it live on the homepage directory."
+      "fee_note": "Listing your stay costs ₹499 for the first year (usually ₹999), then ₹999 a year to keep it live on the homepage directory."
     },
     "dr": {
       "type_label": "Driver",
@@ -997,7 +1038,7 @@
       "complete": "Complete & go live",
       "price_label": "Starting Rate (₹/Day)",
       "price_suffix": "/ day onwards",
-      "fee_note": "Listing your driver profile costs ₹1 for the first year, then ₹499 a year to keep it live on the 1 Darjeeling directory.",
+      "fee_note": "Listing your driver profile costs ₹499 for the first year (usually ₹999), then ₹999 a year to keep it live on the 1 Darjeeling directory.",
       "rates_label": "Your Route Rates",
       "rates_note": "Set a fare for each route you operate. Travellers see these on your profile, and the lowest becomes your public starting rate.",
       "rates_empty": "No routes yet  add the routes you operate in step 03 above, then price them here.",
@@ -1035,8 +1076,8 @@
       "price_shop": "Average Item Price (₹)",
       "suffix_cafe": "per person",
       "suffix_shop": "onwards",
-      "fee_note_cafe": "Listing your café costs ₹1 for the first year, then ₹499 a year to keep it live on the 1 Darjeeling directory.",
-      "fee_note_shop": "Listing your shop costs ₹1 for the first year, then ₹499 a year to keep it live on the 1 Darjeeling directory."
+      "fee_note_cafe": "Listing your café costs ₹499 for the first year (usually ₹999), then ₹999 a year to keep it live on the 1 Darjeeling directory.",
+      "fee_note_shop": "Listing your shop costs ₹499 for the first year (usually ₹999), then ₹999 a year to keep it live on the 1 Darjeeling directory."
     }
   },
   "pay": {
@@ -1221,8 +1262,8 @@
             "p": "There is no fee for making or confirming a booking. What you pay for the stay, ride or goods themselves is paid directly to the business."
           },
           {
-            "h": "3.3 Business Listing Plan  ₹1 for the first year, then ₹499 per year",
-            "p": "A local business pays ₹1 to activate its listing for its first year, and ₹499 for each year after that. The plan does not renew automatically: if a year ends without renewal, the business's listings are hidden from travellers and stop taking bookings until it renews. It is not a commission on bookings."
+            "h": "3.3 Business Listing Plan  ₹499 for the first year, then ₹999 per year",
+            "p": "A local business pays ₹499 to activate its listing for its first year, and ₹999 for each year after that. The plan does not renew automatically: if a year ends without renewal, the business's listings are hidden from travellers and stop taking bookings until it renews. It is not a commission on bookings."
           },
           {
             "h": "3.4 Donations  voluntary, ₹10 to ₹1,00,000",
@@ -1343,7 +1384,7 @@
             "p": "Refundable in full within 7 days of payment if you have not used it to confirm any booking. After 7 days, or once it has been used, it is not refundable  it has already delivered the access it pays for. It is a single payment that never renews, so there is no recurring charge to cancel."
           },
           {
-            "h": "3.3 Business Listing Plan  ₹1 for the first year, ₹499 per year after",
+            "h": "3.3 Business Listing Plan  ₹499 for the first year, ₹999 per year after",
             "p": "Each payment is refundable in full within 7 days if your listing has not yet gone live that year. Once the listing is published and visible to travellers, that year's payment is not refundable. If we reject or remove your listing for a reason that is not a breach of our Terms, we refund the current year in full regardless of when. The plan never renews automatically."
           },
           {
@@ -1487,5 +1528,33 @@
       "contact": "How to reach us, including the grievance officer.",
       "delete_account": "How to close your account and remove your data."
     }
+  },
+  "report": {
+    "listing_link": "Report this listing",
+    "review_link": "Report",
+    "listing_title": "Report this listing",
+    "review_title": "Report this review",
+    "intro": "Tell us what is wrong. The aangan team reviews every report, and the person is not told who sent it.",
+    "reason_label": "What is wrong?",
+    "reason_fake": "Fake or misleading",
+    "reason_offensive": "Rude or offensive",
+    "reason_unsafe": "Unsafe or a scam",
+    "reason_spam": "Spam",
+    "reason_other": "Something else",
+    "details_placeholder": "Anything else? (optional)",
+    "block_explain": "You can also block {{name}}. You will no longer see their reviews or posts.",
+    "block_cta": "Block {{name}}",
+    "blocked": "{{name}} is blocked. Their reviews and posts are hidden for you.",
+    "send": "Send report",
+    "cancel": "Cancel",
+    "sent": "Thanks. Our team will look into it.",
+    "failed": "Could not send that. Please try again.",
+    "post_title": "Report this post"
+  },
+  "blocked": {
+    "title": "Blocked people",
+    "explain": "You don't see reviews or posts from these people. Unblock someone to see them again.",
+    "unblock": "Unblock",
+    "unblocked": "{{name}} is unblocked."
   }
 }

@@ -3,7 +3,7 @@ import * as dotenv from 'dotenv';
 import * as path from 'path';
 import { isPlausiblePhone } from './lib/phone';
 
-dotenv.config({ path: path.join(__dirname, '../.env') });
+dotenv.config({ path: path.join(__dirname, '../.env'), quiet: true });
 
 // Logging setup  defined first so the startup validation below can use it.
 export const log = {
@@ -54,6 +54,22 @@ function requireRealValueInProd(name: string, value: string | undefined, devDefa
 
 export const PORT = process.env.PORT || 8000;
 
+// Mobile app version policy, served by GET /api/app/version. Below APP_MIN_VERSION the app blocks
+// with "please update"; 0.0.0 (the default) retires nothing.
+export const APP_MIN_VERSION = process.env.APP_MIN_VERSION?.trim() || '0.0.0';
+export const APP_LATEST_VERSION = process.env.APP_LATEST_VERSION?.trim() || APP_MIN_VERSION;
+export const PLAY_STORE_URL =
+  process.env.PLAY_STORE_URL?.trim() || 'https://play.google.com/store/apps/details?id=io.aangan.app';
+export const APP_STORE_URL = process.env.APP_STORE_URL?.trim() || '';
+
+// Optional provider-verification help line. When absent, clients omit the call action rather
+// than inventing a number that may not reach the verification team.
+const verificationSupportPhone = process.env.VERIFICATION_SUPPORT_PHONE?.trim() || '';
+if (verificationSupportPhone && !isPlausiblePhone(verificationSupportPhone)) {
+  throw new Error('[config] VERIFICATION_SUPPORT_PHONE must be a valid phone number when set.');
+}
+export const VERIFICATION_SUPPORT_PHONE = verificationSupportPhone || null;
+
 // Number of reverse proxies in front of Express, passed to app.set('trust proxy').
 // Production chain is: client -> system Nginx (host) -> nginx container -> backend, and both
 // Nginx layers append $proxy_add_x_forwarded_for, so there are exactly 2 trusted hops.
@@ -87,6 +103,22 @@ export const INTERAKT_WEBHOOK_SECRET = process.env.INTERAKT_WEBHOOK_SECRET?.trim
 // APP_ENV, so a production-configured staging deployment stays usable while still being able
 // to switch to real delivery with one variable.
 export const MOCK_OTP = MESSAGING_PROVIDER === 'mock';
+
+// The mock provider in production is not a degraded feature, it is an unauthenticated takeover of
+// every account: `123456` logs in as any phone number, registered or not, admin or not. It used to
+// log an error and boot anyway. Both deployed stacks run APP_ENV=production, so APP_ENV alone cannot
+// decide this; the operator has to say, in a variable that cannot be misread, that a bypass login
+// is what they want (a staging stack). Silence, or just naming the mock provider, is refused.
+export const ALLOW_MOCK_OTP = process.env.ALLOW_MOCK_OTP?.trim().toLowerCase() === 'true';
+if (IS_PROD && MOCK_OTP && !ALLOW_MOCK_OTP) {
+  throw new Error(
+    '[config] MESSAGING_PROVIDER=mock with APP_ENV=production leaves the 123456 universal code ' +
+    'live, so anyone can log in as any phone number. Set MESSAGING_PROVIDER to a provider that ' +
+    'actually delivers (interakt, msg91, whatsapp, smtp), ' +
+    'or, on a staging stack where a bypass login is what you want, set ALLOW_MOCK_OTP=true to say so. ' +
+    'It is not assumed.'
+  );
+}
 
 if (IS_PROD && MESSAGING_PROVIDER === 'interakt' && !INTERAKT_WEBHOOK_SECRET) {
   throw new Error('[config] INTERAKT_WEBHOOK_SECRET is required when MESSAGING_PROVIDER=interakt in production.');
@@ -252,9 +284,9 @@ if (IS_PROD) {
   }
   if (MOCK_OTP) {
     log.error(
-      '[config] MESSAGING_PROVIDER=mock with APP_ENV=production  OTPs are not delivered and ' +
-      'the 123456 universal code is active, so anyone can log in as any phone number. ' +
-      'Set MESSAGING_PROVIDER to a real provider before taking real users.'
+      '[config] ALLOW_MOCK_OTP=true with APP_ENV=production  OTPs are not delivered and the ' +
+      '123456 universal code is active, so anyone can log in as any phone number. This stack ' +
+      'must not take real users. Set MESSAGING_PROVIDER to a real provider to end it.'
     );
   }
   if (!NOTIFY_BOOKINGS) {
@@ -316,19 +348,24 @@ export const rzpClient = RAZORPAY_KEY_SECRET ? new Razorpay({
 // fixed price, and the whole point of a donation is that the giver chooses. See lib/payments.ts.
 //
 //   platform_support       ₹1    once, for life — the tourist pass
-//   provider_registration  ₹1    a host's first year
-//   provider_renewal       ₹499  every year after that
+//   provider_registration  ₹499  a host's first year (launch price; usually ₹999)
+//   provider_renewal       ₹999  every year after that
 //
 // `booking_commission` is gone: bookings are free and confirm through POST /bookings/:id/checkout.
 // Its settlement branch in payments.ts stays so an order created before the change still settles.
 export const AMOUNTS: Record<string, number> = {
   platform_support: 100,
-  provider_registration: 100,
-  provider_renewal: 49900,
+  provider_registration: 49900,
+  provider_renewal: 99900,
 };
 
 // How long one host payment (registration or renewal) keeps a host's listings live, in days.
 export const HOST_PLAN_DAYS = 365;
+
+// Renewal opens this many days before a plan ends (and stays open after it lapses). Earlier than
+// that, a second ₹999 would be a year bought by accident: a double tap, or a first payment still
+// settling. Both apps show the Renew button on the same window.
+export const HOST_RENEWAL_WINDOW_DAYS = 30;
 
 // Bounds on a donation, in paise. The floor stops dust-spam orders; the ceiling is a sanity guard
 // so a fat-fingered extra zero is refused here rather than reaching the gateway.
@@ -376,3 +413,37 @@ if (IS_PROD && (!SMTP_HOST || !SMTP_PORT)) {
     'confirmations, receipts) will not be delivered. Set them or accept no email delivery.'
   );
 }
+
+// Email is its own channel, alongside WhatsApp/SMS rather than instead of it: it goes out whenever
+// SMTP_HOST is set, unless NOTIFY_EMAIL=false turns it off. Nothing else needs changing when the
+// SMTP credentials arrive. Check them with `npm run email:test -- you@example.com`.
+export const NOTIFY_EMAIL = Boolean(SMTP_HOST) && process.env.NOTIFY_EMAIL?.trim().toLowerCase() !== 'false';
+// Where the team hears about things that need a person: a new report of a listing or review.
+// Comma-separated. Unset means no alert email (reports are still in the admin list).
+export const ADMIN_ALERT_EMAILS = (process.env.ADMIN_ALERT_EMAIL || '')
+  .split(',')
+  .map((e) => e.trim())
+  .filter(Boolean);
+
+// ── Push notifications (Expo) ─────────────────────────────────────────────
+// Every in-app notification also goes to the person's phones through Expo's push service, which
+// needs no key. EXPO_ACCESS_TOKEN is optional (only if "enhanced push security" is turned on in
+// the Expo project). Off under APP_ENV=test so the suite never calls out; PUSH_ENABLED=false
+// turns it off anywhere.
+export const PUSH_ENABLED =
+  APP_ENV !== 'test' && process.env.PUSH_ENABLED?.trim().toLowerCase() !== 'false';
+export const EXPO_ACCESS_TOKEN = process.env.EXPO_ACCESS_TOKEN?.trim() || '';
+
+// ── Sign in with Apple ────────────────────────────────────────────────────
+// The token's audience: the iOS bundle id for the app, plus a Services ID if the website ever
+// offers Apple sign-in. Required by App Store guideline 4.8 because the app offers Google sign-in.
+// No secret is needed to verify a sign-in, only these ids.
+export const APPLE_AUDIENCES = (process.env.APPLE_CLIENT_IDS || 'io.aangan.app')
+  .split(',')
+  .map((e) => e.trim())
+  .filter(Boolean);
+
+log.info(
+  `[config] notification channels  whatsapp/sms: ${NOTIFY_BOOKINGS ? 'on' : 'off'}, ` +
+  `email: ${NOTIFY_EMAIL ? 'on' : 'off (SMTP_HOST not set)'}, push: ${PUSH_ENABLED ? 'on' : 'off'}`
+);

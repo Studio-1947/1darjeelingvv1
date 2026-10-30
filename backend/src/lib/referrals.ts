@@ -195,7 +195,24 @@ export async function redeemReferralCode(
       .set({ supportExpiresAt: extendedExpiry(referee.supportExpiresAt, days, now) })
       .where(eq(schema.users.id, refereeId));
 
-    log.info(`[referrals] ${code} redeemed  both sides extended by ${days} days`);
+    // Calculate the new total referrals for the referrer to determine the voucher discount.
+    const total = await countReferrals(referrer.id);
+    let discount = 10;
+    if (total >= 50) discount = 30;
+    else if (total >= 30) discount = 25;
+    else if (total >= 15) discount = 20;
+    else if (total >= 5) discount = 15;
+
+    await db.insert(schema.vouchers).values({
+      id: uuidv4(),
+      userId: referrer.id,
+      discountPercentage: discount,
+      tier: total,
+      status: 'available',
+      createdAt: now.toISOString(),
+    });
+
+    log.info(`[referrals] ${code} redeemed  both sides extended by ${days} days, referrer got ${discount}% voucher`);
     return { ok: true, rewardDays: days };
   } catch (err) {
     // Includes the unique-violation race above, which is a correct outcome, not a fault.

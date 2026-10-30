@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { db, schema } from '../db';
 // lt/gt/and moved out with the inline overlap query  the date comparison now lives in
 // lib/bookingAvailability.ts, shared with the settlement path so the two cannot drift.
-import { eq, desc, inArray } from 'drizzle-orm';
+import { eq, desc, inArray, and } from 'drizzle-orm';
 import { authenticateToken } from '../middleware/auth';
 import { requireActiveSupport } from '../middleware/support';
 import { findBlockingBooking, isDateExclusive, lockListingForBooking } from '../lib/bookingAvailability';
@@ -12,6 +12,11 @@ import { notifyBookingCancelled } from '../lib/notifications';
 import { routeParam } from '../lib/routeParam';
 import { isListingHostLapsed } from '../lib/hostPlan';
 import { settleBookingConfirmation } from '../lib/bookingConfirmation';
+import { addInAppNotification, resolveHostUserId } from '../lib/inApp';
+import { releaseVoucherForBooking } from '../lib/vouchers';
+
+/** Listing types guests contact directly rather than book. */
+const CONTACT_ONLY_TYPES = new Set(['cafe', 'shop']);
 
 const router = Router();
 
@@ -73,7 +78,7 @@ const router = Router();
  */
 // Create a booking
 router.post('/', authenticateToken, requireActiveSupport, async (req: Request, res: Response) => {
-  const { listing_id, listing_type, check_in, check_out, guests = 1, notes } = req.body;
+  const { listing_id, listing_type, check_in, check_out, guests = 1, notes, voucher_id } = req.body;
 
   if (!listing_id || !listing_type) {
     return res.status(400).json({ detail: 'Listing ID and type are required' });
@@ -88,9 +93,28 @@ router.post('/', authenticateToken, requireActiveSupport, async (req: Request, r
     }
   }
 
+  let validVoucher = null;
+  if (voucher_id) {
+    const [found] = await db
+      .select()
+      .from(schema.vouchers)
+      .where(and(eq(schema.vouchers.id, voucher_id), eq(schema.vouchers.userId, req.user.id)))
+      .limit(1);
+    
+    if (!found || found.status !== 'available') {
+      return res.status(400).json({ detail: 'Voucher is invalid, unavailable, or does not belong to you' });
+    }
+    validVoucher = found;
+  }
+
   const [listing] = await db.select().from(schema.listings).where(eq(schema.listings.id, listing_id)).limit(1);
   if (!listing) {
     return res.status(404).json({ detail: 'Listing not found' });
+  }
+  // Cafés and shops are contact-only: a guest rings them, nothing is reserved. Judged on the
+  // listing's own type, since the client-supplied one is just a claim.
+  if (CONTACT_ONLY_TYPES.has(listing.type) || CONTACT_ONLY_TYPES.has(listing_type)) {
+    return res.status(400).json({ detail: 'This kind of listing is contact-only and cannot be booked' });
   }
   // A host whose yearly plan has lapsed is not taking bookings until they renew. Their listing is
   // already out of the public feed; this covers a guest holding an old link.
@@ -121,10 +145,46 @@ router.post('/', authenticateToken, requireActiveSupport, async (req: Request, r
     notes,
     status: 'pending_payment',
     createdAt: new Date().toISOString(),
-    confirmedAt: null
+    confirmedAt: null,
+    voucherId: validVoucher ? validVoucher.id : null,
+    appliedDiscount: validVoucher ? validVoucher.discountPercentage : null,
   };
 
-  await db.insert(schema.bookings).values(booking);
+  // Run the booking insert and voucher burn in a transaction to prevent double spending
+  // The check above and this claim are separate statements, so two requests can both see the
+  // voucher as available. The update therefore re-checks `available` itself and says whether it
+  // won; the loser rolls back its booking row too.
+  const VOUCHER_TAKEN = Symbol('voucher-taken');
+  try {
+    await db.transaction(async (tx) => {
+      await tx.insert(schema.bookings).values(booking);
+      if (validVoucher) {
+        const claimed = await tx.update(schema.vouchers)
+          .set({
+            status: 'used',
+            usedAt: new Date().toISOString(),
+            usedOnBookingId: booking.id,
+          })
+          .where(and(eq(schema.vouchers.id, validVoucher.id), eq(schema.vouchers.status, 'available')))
+          .returning({ id: schema.vouchers.id });
+        if (claimed.length === 0) throw VOUCHER_TAKEN;
+      }
+    });
+  } catch (err) {
+    if (err === VOUCHER_TAKEN) {
+      return res.status(400).json({ detail: 'Voucher is invalid, unavailable, or does not belong to you' });
+    }
+    throw err;
+  }
+
+  // The host's feed hears about the request straight away, even though it is unpaid, because the
+  // provider inbox already lists it and they would otherwise see it there with no prompt.
+  await addInAppNotification(await resolveHostUserId(listing.providerId), {
+    kind: 'booking_request',
+    title: 'New booking request',
+    body: `${req.user.name || 'A guest'} asked about ${listing.title}.`,
+    refId: booking.id,
+  });
 
   const bookingReturn = {
     id: booking.id,
@@ -137,7 +197,9 @@ router.post('/', authenticateToken, requireActiveSupport, async (req: Request, r
     guests: booking.guests,
     notes: booking.notes,
     status: booking.status,
-    created_at: booking.createdAt
+    created_at: booking.createdAt,
+    voucher_id: booking.voucherId,
+    applied_discount: booking.appliedDiscount
   };
 
   res.json({ booking: bookingReturn });
@@ -207,6 +269,8 @@ router.get('/me', authenticateToken, async (req: Request, res: Response) => {
       created_at: b.createdAt,
       confirmed_at: b.confirmedAt,
       accepted_at: b.acceptedAt,
+      voucher_id: b.voucherId,
+      applied_discount: b.appliedDiscount,
       listing: listingReturn
     });
   }
@@ -290,9 +354,15 @@ router.get('/provider', authenticateToken, async (req: Request, res: Response) =
     .where(inArray(schema.bookings.listingId, listingIds))
     .orderBy(desc(schema.bookings.createdAt));
 
+  const guestIds = [...new Set(bookings.map(b => b.userId))];
+  const guests = guestIds.length
+    ? await db.select().from(schema.users).where(inArray(schema.users.id, guestIds))
+    : [];
+  const guestById = new Map(guests.map(g => [g.id, g]));
+
   const enrichedBookings = [];
   for (const b of bookings) {
-    const [customer] = await db.select().from(schema.users).where(eq(schema.users.id, b.userId)).limit(1);
+    const customer = guestById.get(b.userId);
     const listingMatch = listingsMap.find(l => l.id === b.listingId) || null;
     enrichedBookings.push({
       id: b.id,
@@ -308,6 +378,8 @@ router.get('/provider', authenticateToken, async (req: Request, res: Response) =
       created_at: b.createdAt,
       confirmed_at: b.confirmedAt,
       accepted_at: b.acceptedAt,
+      voucher_id: b.voucherId,
+      applied_discount: b.appliedDiscount,
       customer: customer ? { name: customer.name, phone: customer.phone } : null,
       listing: listingMatch
     });
@@ -464,6 +536,13 @@ router.patch('/:id/confirm', authenticateToken, async (req: Request, res: Respon
     return res.status(409).json({ detail: 'These dates have already gone to another guest' });
   }
 
+  await addInAppNotification(booking.userId, {
+    kind: 'booking_accepted',
+    title: 'Your request was accepted',
+    body: `The host accepted your request for ${booking.listingTitle}. Pay the ₹1 to confirm it.`,
+    refId: booking.id,
+  });
+
   res.json({ booking: bookingShape(outcome.booking) });
 });
 
@@ -537,6 +616,10 @@ router.patch('/:id/cancel', authenticateToken, async (req: Request, res: Respons
     .where(eq(schema.bookings.id, booking.id))
     .returning();
 
+  // A voucher is burned when the request is made. If the booking never reached `confirmed` the
+  // guest received nothing for it, so it goes back; a confirmed stay keeps its discount spent.
+  if (booking.status !== 'confirmed') await releaseVoucherForBooking(db, booking.id);
+
   // Give back whatever was paid for this booking. Before this, cancelling flipped the status and
   // kept the money with no record that anything was owed  refundPaymentsFor is idempotent and a
   // no-op for a booking that never got past pending_payment, so this is safe on every path.
@@ -547,11 +630,31 @@ router.patch('/:id/cancel', authenticateToken, async (req: Request, res: Respons
   );
   const refunded = outcomes.some(o => o.refunded);
 
+  // The feed, unlike WhatsApp, is cheap and silent, so whoever did not press the button hears
+  // about it whatever state the booking was in.
+  if (booking.userId !== req.user.id) {
+    await addInAppNotification(booking.userId, {
+      kind: 'booking_cancelled',
+      title: 'Booking cancelled',
+      body: `Your booking for ${booking.listingTitle} was cancelled by the host.`,
+      refId: booking.id,
+    });
+  } else if (booking.status === 'confirmed' || booking.status === 'accepted') {
+    const [listing] = await db.select({ providerId: schema.listings.providerId })
+      .from(schema.listings).where(eq(schema.listings.id, booking.listingId)).limit(1);
+    await addInAppNotification(await resolveHostUserId(listing?.providerId), {
+      kind: 'booking_cancelled',
+      title: 'Booking cancelled',
+      body: `A guest cancelled their booking for ${booking.listingTitle}.`,
+      refId: booking.id,
+    });
+  }
+
   // Only worth telling the guest when there was something to tell them about  a booking that
   // never reached confirmation was never announced in the first place.
   if (booking.status === 'confirmed') {
     const [guest] = await db.select().from(schema.users).where(eq(schema.users.id, booking.userId)).limit(1);
-    await notifyBookingCancelled(updated, guest?.phone || '', guest?.name || 'Guest', refunded);
+    await notifyBookingCancelled(updated, guest?.phone || '', guest?.name || 'Guest', refunded, guest?.email);
   }
 
   res.json({ booking: shape(updated), refunded });

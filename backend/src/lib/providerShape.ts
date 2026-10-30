@@ -1,5 +1,5 @@
 import { schema } from '../db';
-import { isHostPlanLive } from './hostPlan';
+import { isHostApprovalPending, isHostPlanLive } from './hostPlan';
 
 // The DB rows are camelCase (drizzle), but every response the frontend reads is snake_case 
 // see providers.ts / bookings.ts. The confirmation record has to follow the same convention or
@@ -21,6 +21,8 @@ export function serializeProvider(p: typeof schema.providers.$inferSelect) {
     status: p.status,
     plan_expires_at: p.planExpiresAt,
     plan_active: isHostPlanLive(p),
+    kyc_status: p.kycStatus,
+    approval_pending: isHostApprovalPending(p),
     created_at: p.createdAt,
     activated_at: p.activatedAt,
   };
