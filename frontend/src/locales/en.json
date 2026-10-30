@@ -688,6 +688,10 @@
     "found_elsewhere_note": "Not in this category, but it might be what you were looking for."
   },
   "feed": {
+    "no_reviews": "No reviews",
+    "no_reviews_aria": "No reviews yet",
+    "rated_aria": "Rated {{rating}} out of 5 from {{count}} reviews",
+    "share": "Share",
     "label": "From our hosts",
     "title": "Host feed",
     "subtitle": "What's new at homestays, cafés, shops and with drivers across Darjeeling, in their own words.",
@@ -733,6 +737,13 @@
     "type_shop": "Shop"
   },
   "contact": {
+    "whatsapp": "WhatsApp",
+    "call_organizer": "Call organizer",
+    "add_to_calendar": "Add to calendar",
+    "event_note": "Reach the organizer directly, add it to your calendar, or get directions.",
+    "place_note": "Drop by, or reach out directly before you go.",
+    "no_contact": "No direct contact listed - use directions below to visit in person.",
+    "wa_message": "Hi! I found {{title}} on aangan and would like to know more.",
     "title": "Contact Us",
     "updated": "Last updated: August 2026",
     "intro": [

@@ -213,3 +213,16 @@ html[lang="ne"] h1, html[lang="ne"] h2, html[lang="ne"] h3, html[lang="ne"] h4 {
   border: 1px solid var(--line);
   border-radius: 24px;
 }
+
+/* Every button reads the same: DM Sans bold, normal spacing, as the app's buttons do. Only the
+   size changes between small chips and big primary buttons. `!important` because the buttons
+   carry their own font-semibold / font-extrabold utilities, which would otherwise win.
+   Pill links (a.rounded-full) are buttons too, as far as anyone tapping them can tell. */
+button,
+[role="button"],
+a.rounded-full,
+input[type="submit"] {
+  font-family: inherit;
+  font-weight: 700 !important;
+  letter-spacing: normal;
+}
