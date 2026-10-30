@@ -688,6 +688,10 @@
     "found_elsewhere_note": "Not in this category, but it might be what you were looking for."
   },
   "feed": {
+    "no_reviews": "No reviews",
+    "no_reviews_aria": "No reviews yet",
+    "rated_aria": "Rated {{rating}} out of 5 from {{count}} reviews",
+    "share": "Share",
     "label": "From our hosts",
     "title": "Host feed",
     "subtitle": "What's new at homestays, cafés, shops and with drivers across Darjeeling, in their own words.",
@@ -1116,17 +1120,17 @@
   },
   "bc": {
     "booking_confirmed": "Booking confirmed",
-    "youre_live": "You’re live!",
+    "youre_live": "Plan active!",
     "trip_locked": "Trip locked in",
     "welcome": "Welcome to 1 Darjeeling",
     "booking_note": "Your {{type}} at {{title}} is confirmed. The host has been notified.",
-    "provider_note": "Your business is now listed and searchable by travellers.",
+    "provider_note": "Your host plan is paid. One step left before travellers can find you.",
     "guests_one": "{{count}} guest",
     "guests_other": "{{count}} guests",
     "booking_id": "Booking ID",
     "your_host": "Your host",
     "call_host": "Call host",
-    "provider_body": "Tourists can now discover you in the {{type}} category. You’ll receive bookings in your dashboard.",
+    "provider_body": "Upload your KYC documents from your dashboard. Once they are verified, your listing goes live in the {{type}} category and bookings arrive in your dashboard.",
     "view_bookings": "View my bookings",
     "go_dashboard": "Go to dashboard",
     "wa_message": "Hi! I just booked {{title}} on 1 Darjeeling. Booking ID: {{id}}"

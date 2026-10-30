@@ -304,7 +304,7 @@ export default function RouteEstimator() {
       <div className="mt-3 p-3 rounded-2xl bg-white/5 border border-white/10 text-white/80 text-xs flex items-start gap-2.5 leading-relaxed">
         <span className="text-gold font-bold flex-shrink-0 mt-0.5">ℹ️</span>
         <div>
-          <span className="font-extrabold text-white">Direct Local Connection:</span> 1 Darjeeling connects travelers directly with independent local drivers. Fares listed are standard local reference rates for guidance  not direct booking fees or Uber/Ola style automated cab dispatches.
+          <span className="font-extrabold text-white">Direct Local Connection:</span> aangan connects travelers directly with independent local drivers. Fares listed are standard local reference rates for guidance  not direct booking fees or Uber/Ola style automated cab dispatches.
         </div>
       </div>
 
