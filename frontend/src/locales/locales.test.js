@@ -52,3 +52,45 @@ describe('legal documents render with content', () => {
     expect(withContact.sort()).toEqual(['contact', 'data_deletion', 'privacy', 'refunds', 'terms']);
   });
 });
+
+// Every t('section.key') in the code must exist in en.json, unless the call carries its own
+// fallback text. Without one, a missing key renders as the raw key: the host's booking cards
+// and the booking confirmation said "contact.whatsapp" for weeks after the legal Contact page
+// replaced the old `contact` section and took seven button labels with it.
+describe('every text key the code uses exists', () => {
+  const fs = require('fs');
+  const path = require('path');
+  const has = (key) => {
+    let cur = en;
+    for (const part of key.split('.')) {
+      if (cur && typeof cur === 'object' && part in cur) cur = cur[part];
+      else if (cur && typeof cur === 'object' && `${part}_one` in cur) return true;
+      else return false;
+    }
+    return true;
+  };
+  const files = [];
+  const walk = (dir) => fs.readdirSync(dir, { withFileTypes: true }).forEach((d) => {
+    const full = path.join(dir, d.name);
+    if (d.isDirectory()) walk(full);
+    else if (/\.(tsx?|jsx?)$/.test(d.name) && !/\.test\./.test(d.name)) files.push(full);
+  });
+  walk(path.join(__dirname, '..'));
+
+  it('has no missing keys without fallback text', () => {
+    const missing = [];
+    // t('a.b') or t('a.b', { ... }) with no defaultValue, and no `|| 'text'` straight after.
+    const call = /\bt\(\s*'([A-Za-z0-9_]+\.[A-Za-z0-9_.]+)'\s*(\)|,\s*\{([^}]*)\}\s*\))/g;
+    for (const file of files) {
+      const src = fs.readFileSync(file, 'utf8');
+      let m;
+      while ((m = call.exec(src))) {
+        const [, key, , opts] = m;
+        if (opts && opts.includes('defaultValue')) continue;
+        if (/^\s*\|\|/.test(src.slice(call.lastIndex, call.lastIndex + 6))) continue;
+        if (!has(key)) missing.push(`${key} (${path.basename(file)})`);
+      }
+    }
+    expect(missing).toEqual([]);
+  });
+});

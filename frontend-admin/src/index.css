@@ -73,3 +73,11 @@ body {
     animation: none;
   }
 }
+/* Same rule as the public site: every button is DM Sans bold, only the size varies. */
+button,
+[role="button"],
+input[type="submit"] {
+  font-family: inherit;
+  font-weight: 700 !important;
+  letter-spacing: normal;
+}

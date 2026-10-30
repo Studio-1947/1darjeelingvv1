@@ -31,7 +31,7 @@ export function register(config?: Config) {
       if (isLocalhost) {
         checkValidServiceWorker(swUrl, config);
         navigator.serviceWorker.ready.then(() => {
-          console.log('1 Darjeeling is being served cache-first by a service worker.');
+          console.log('aangan is being served cache-first by a service worker.');
         });
       } else {
         registerValidSW(swUrl, config);
