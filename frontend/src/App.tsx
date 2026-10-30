@@ -33,9 +33,9 @@ const Contact = lazy(() => import('@/pages/Contact'));
 const NotFound = lazy(() => import('@/pages/NotFound'));
 
 // How long the splash in index.html stays up once the app has mounted - long enough for its
-// app-icon fade-in (0.8s, kept in sync with that markup) to finish rather than flash past on
-// a fast load.
-const SPLASH_MIN_VISIBLE_MS = 1000;
+// wordmark reveal (1.8s, kept in sync with that markup) to actually finish playing rather
+// than being cut off on a fast load.
+const SPLASH_MIN_VISIBLE_MS = 1800;
 
 export default function App() {
   React.useEffect(() => {

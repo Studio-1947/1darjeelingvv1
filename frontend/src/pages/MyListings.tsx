@@ -90,7 +90,7 @@ export default function MyListings() {
         </div>
         <h1 className="font-display font-extrabold text-2xl sm:text-3xl text-ink">Service Provider Listings</h1>
         <p className="text-ink-soft max-w-md mx-auto mt-2 text-sm">
-          Log in as a homestay host, driver, cafe, or local shop owner to manage your business listings on 1 Darjeeling.
+          Log in as a homestay host, driver, cafe, or local shop owner to manage your business listings on aangan.
         </p>
         <button
           onClick={() => nav('/login?next=/my-listings')}
@@ -109,7 +109,7 @@ export default function MyListings() {
         <div className="w-16 h-16 rounded-full bg-flag/10 text-flag grid place-items-center mx-auto mb-4">
           <Building2 size={28} />
         </div>
-        <h1 className="font-display font-extrabold text-2xl sm:text-3xl text-ink">List Your Business on 1 Darjeeling</h1>
+        <h1 className="font-display font-extrabold text-2xl sm:text-3xl text-ink">List Your Business on aangan</h1>
         <p className="text-ink-soft max-w-md mx-auto mt-2 text-sm leading-relaxed">
           Are you a local homestay owner, taxi driver, cafe owner, or local artisan in Darjeeling? Reach thousands of visitors with direct zero-commission bookings.
         </p>
