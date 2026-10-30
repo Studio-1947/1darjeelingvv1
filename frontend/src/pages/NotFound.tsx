@@ -35,7 +35,7 @@ export default function NotFound() {
 
       <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
         <Link to="/" data-testid="notfound-home"
-          className="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-flag text-white font-bold btn-hover">
+          className="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-pine text-white font-bold btn-hover">
           <Home size={16} /> {t('notfound.go_home')}
         </Link>
         <Link to="/search" data-testid="notfound-search"

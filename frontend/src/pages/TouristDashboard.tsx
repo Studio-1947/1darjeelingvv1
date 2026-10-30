@@ -96,7 +96,7 @@ export default function TouristDashboard() {
           <div className="mist-panel p-8 md:p-10 text-center">
             <p className="text-ink-soft">{t('dashboard.no_bookings')}</p>
             <div className="mt-4 flex flex-wrap gap-2 justify-center">
-              <Link to="/homestays" data-testid="empty-book-stay" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-flag text-white font-bold text-sm btn-hover">
+              <Link to="/homestays" data-testid="empty-book-stay" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-pine text-white font-bold text-sm btn-hover">
                 {t('dashboard.book_homestay')} <ArrowRight size={14} />
               </Link>
               <Link to="/drivers" data-testid="empty-book-driver" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-pine text-white font-bold text-sm btn-hover">
@@ -154,7 +154,65 @@ export default function TouristDashboard() {
         )}
       </div>
 
-      {/* Quick actions */}
+      {/* Notifications / Activity feed — mirrors mobile activity tab */}
+      {(() => {
+        const needsAction = bookings.filter((b) => b.status === 'pending_payment');
+        const recentConfirmed = bookings.filter((b) => b.status === 'confirmed').slice(0, 3);
+        const hasActivity = needsAction.length > 0 || recentConfirmed.length > 0;
+        if (!hasActivity) return null;
+        return (
+          <div className="mt-10">
+            <h2 className="font-display font-extrabold text-xl md:text-2xl text-ink mb-4 flex items-center gap-2">
+              <Ticket size={18} className="text-flag" /> Activity
+            </h2>
+            <div className="space-y-3">
+              {needsAction.map((b) => (
+                <div key={b.id} data-testid={`activity-pending-${b.id}`}
+                  className="flex items-center gap-3 p-4 rounded-2xl bg-gold/10 border border-gold/30">
+                  <div className="w-9 h-9 rounded-full bg-gold/20 text-[#8a6b04] grid place-items-center flex-shrink-0">
+                    <Calendar size={16} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-bold text-sm text-ink line-clamp-1">
+                      Booking awaiting confirmation
+                    </div>
+                    <div className="text-xs text-ink-soft mt-0.5 line-clamp-1">
+                      {b.listing?.title || b.listing_title} — waiting for host
+                    </div>
+                  </div>
+                  <Link to="/my-trips"
+                    className="text-xs font-bold text-pine hover:underline flex-shrink-0 flex items-center gap-1">
+                    View <ArrowRight size={11} />
+                  </Link>
+                </div>
+              ))}
+              {recentConfirmed.map((b) => (
+                <div key={b.id} data-testid={`activity-confirmed-${b.id}`}
+                  className="flex items-center gap-3 p-4 rounded-2xl bg-pine/5 border border-pine/20">
+                  <div className="w-9 h-9 rounded-full bg-pine/10 text-pine grid place-items-center flex-shrink-0">
+                    <Ticket size={16} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-bold text-sm text-ink line-clamp-1">
+                      Booking confirmed ✓
+                    </div>
+                    <div className="text-xs text-ink-soft mt-0.5 line-clamp-1">
+                      {b.listing?.title || b.listing_title}
+                      {b.check_in ? ` · Check-in ${b.check_in}` : ''}
+                    </div>
+                  </div>
+                  <Link to="/my-trips"
+                    className="text-xs font-bold text-pine hover:underline flex-shrink-0 flex items-center gap-1">
+                    View <ArrowRight size={11} />
+                  </Link>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
+      
       <div className="mt-10">
         <h2 className="font-display font-extrabold text-xl md:text-2xl text-ink mb-4 flex items-center gap-2">
           <Compass size={20} className="text-pine" /> {t('dashboard.quick_actions')}

@@ -133,10 +133,15 @@ export default function Header() {
             reach, so the control a visitor actually looks for up here -
             sign-in - now sits in the bar itself. */}
         <div className="flex items-center gap-1.5 sm:gap-2.5 flex-shrink-0 ml-auto">
-          {/* The host feed, for everyone, signed in or not. */}
-          <Link to="/feed" data-testid="header-feed" aria-label={t('nav.feed')} title={t('nav.feed')}
-            className={`grid w-9 h-9 rounded-full place-items-center btn-hover ${onVideo ? 'text-white hover:bg-white/20' : 'text-ink hover:bg-mist'}`}>
+          {/* The host feed is public, so it remains visible whether or not someone is signed in. */}
+          <Link
+            to="/feed"
+            data-testid="header-feed"
+            aria-label={t('nav.feed')}
+            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-full bg-pine px-2.5 text-white shadow-sm btn-hover sm:px-3"
+          >
             <Newspaper size={18} />
+            <span className="hidden xl:inline whitespace-nowrap">{t('nav.feed')}</span>
           </Link>
           {/* Saved has its own route from the profile menu and the tab bar, so
               below lg this shortcut only competes for the width login needs. */}
@@ -213,7 +218,7 @@ export default function Header() {
             </div>
           ) : (
             <Link to="/login" data-testid="header-login"
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-flag text-white font-semibold text-xs md:text-sm btn-hover">
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-pine text-white font-semibold text-xs md:text-sm btn-hover">
               {t('nav.login')}
             </Link>
           )}

@@ -239,7 +239,7 @@ export default function Category({ typeOverride }) {
             </Link>
             <div className="p-2 sm:p-3">
               <Link to={listingHref(it.id)} data-testid={`grid-cta-${it.id}`}
-                className="w-full inline-flex items-center justify-center gap-1.5 py-2 rounded-full bg-flag text-white font-bold text-xs btn-hover">
+                className="w-full inline-flex items-center justify-center gap-1.5 py-2 rounded-full bg-pine text-white font-bold text-xs btn-hover">
                 {t(cardCtaKey(it.type))} <ArrowRight size={12} />
               </Link>
             </div>

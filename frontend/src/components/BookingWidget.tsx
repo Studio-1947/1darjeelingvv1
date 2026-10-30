@@ -419,7 +419,7 @@ export default function BookingWidget() {
                 type="submit"
                 data-testid="booking-widget-search-compact"
                 aria-label={t('widget.search')}
-                className="h-full px-6 rounded-xl bg-flag text-white font-extrabold hover:bg-flag/90 flex items-center justify-center gap-2 shadow-lg btn-hover transition-all"
+                className="h-full px-6 rounded-xl bg-pine text-white font-extrabold hover:bg-pine/90 flex items-center justify-center gap-2 shadow-lg btn-hover transition-all"
               >
                 <Search size={18} />
                 <span>{t('widget.search')}</span>
@@ -519,7 +519,7 @@ export default function BookingWidget() {
               type="submit"
               data-testid="booking-widget-search-compact"
               aria-label={t('widget.search')}
-              className="flex-shrink-0 w-11 h-11 rounded-full bg-flag text-white flex items-center justify-center shadow-md active:scale-95 transition-transform"
+              className="flex-shrink-0 w-11 h-11 rounded-full bg-pine text-white flex items-center justify-center shadow-md active:scale-95 transition-transform"
             >
               <Search size={18} />
             </button>
@@ -817,7 +817,7 @@ export default function BookingWidget() {
                       type="button"
                       onClick={() => submit()}
                       data-testid="booking-widget-panel-search"
-                      className="w-full py-3.5 rounded-full bg-flag text-white font-extrabold flex items-center justify-center gap-2 active:scale-98 shadow-lg text-sm"
+                      className="w-full py-3.5 rounded-full bg-pine text-white font-extrabold flex items-center justify-center gap-2 active:scale-98 shadow-lg text-sm"
                     >
                       <Search size={18} /> {t('widget.search')}
                     </button>

@@ -27,7 +27,7 @@ module.exports = {
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',
-        pine: { DEFAULT: '#2C5E3B', dark: '#1F4429', light: '#4E8261' },
+        pine: { DEFAULT: '#007C85', dark: '#005F66', light: '#1597A1' },
         flag: '#C42E2E',
         gold: '#F0B90B',
         mist: '#EEF2ED',

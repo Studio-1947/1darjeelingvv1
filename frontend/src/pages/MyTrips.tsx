@@ -93,7 +93,7 @@ export default function MyTrips() {
         </p>
         <button
           onClick={() => nav('/login?next=/my-trips')}
-          className="mt-6 inline-flex items-center gap-2 px-6 py-3 rounded-full bg-flag text-white font-bold text-sm btn-hover shadow-md"
+          className="mt-6 inline-flex items-center gap-2 px-6 py-3 rounded-full bg-pine text-white font-bold text-sm btn-hover shadow-md"
         >
           <LogIn size={16} /> Log In to View Trips
         </button>
@@ -148,7 +148,7 @@ export default function MyTrips() {
             My Trips & Bookings
           </h1>
           <p className="text-xs sm:text-sm text-ink-soft mt-1">
-            Your journey history, upcoming reservations, and completed stays through 1 Darjeeling.
+            Your journey history, upcoming reservations, and completed stays through aangan.
           </p>
         </div>
       </div>
@@ -212,7 +212,7 @@ export default function MyTrips() {
           <div className="mt-6 flex flex-wrap gap-2.5 justify-center">
             <Link
               to="/homestays"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-flag text-white font-bold text-xs sm:text-sm btn-hover"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-pine text-white font-bold text-xs sm:text-sm btn-hover"
             >
               Browse Homestays <ArrowRight size={14} />
             </Link>

@@ -276,7 +276,7 @@ export default function TripPlannerModal({ open, onClose, savedTitles = [] }: Tr
             type="button"
             onClick={handleShareItinerary}
             data-testid="trip-planner-share"
-            className="px-5 py-2.5 rounded-full bg-flag text-white font-extrabold text-xs flex items-center gap-2 btn-hover shadow-md"
+            className="px-5 py-2.5 rounded-full bg-pine text-white font-extrabold text-xs flex items-center gap-2 btn-hover shadow-md"
           >
             {shareState === 'copied' ? <Check size={15} /> : <Share2 size={15} />}
             <span>{shareState === 'copied' ? 'Copied!' : 'Share Itinerary'}</span>

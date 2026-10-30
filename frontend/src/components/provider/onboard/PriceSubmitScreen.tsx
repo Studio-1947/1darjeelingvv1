@@ -109,7 +109,7 @@ export default function PriceSubmitScreen({
             <button
               onClick={onSubmit}
               disabled={disabled}
-              className="w-full py-4 rounded-full bg-flag text-white font-extrabold text-base btn-hover disabled:opacity-60"
+              className="w-full py-4 rounded-full bg-pine text-white font-extrabold text-base btn-hover disabled:opacity-60"
             >
               {busy ? t('common.processing') : t('ob.submit_pay')}
             </button>

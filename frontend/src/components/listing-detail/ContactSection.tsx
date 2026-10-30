@@ -63,7 +63,7 @@ export default function ContactSection({ item, onOpenMaps }: { item: any; onOpen
 
           {calUrl && (
             <a href={calUrl} target="_blank" rel="noreferrer" data-testid="contact-calendar"
-              className="w-full py-4 rounded-full font-bold btn-hover inline-flex items-center justify-center gap-2 bg-flag text-white">
+              className="w-full py-4 rounded-full font-bold btn-hover inline-flex items-center justify-center gap-2 bg-pine text-white">
               <CalendarPlus size={18} /> {t('contact.add_to_calendar')}
             </a>
           )}
