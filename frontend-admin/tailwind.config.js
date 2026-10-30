@@ -7,8 +7,10 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        display: ['"Google Sans"', '"Google Sans Display"', '"DM Sans"', 'system-ui', 'sans-serif'],
-        body: ['"Google Sans"', '"Google Sans Text"', '"DM Sans"', 'system-ui', 'sans-serif'],
+        // Same DM Sans as the website and the app (self-hosted, see src/index.css).
+        display: ['"DM Sans Variable"', '"DM Sans"', 'system-ui', 'sans-serif'],
+        body: ['"DM Sans Variable"', '"DM Sans"', 'system-ui', 'sans-serif'],
+        sans: ['"DM Sans Variable"', '"DM Sans"', 'system-ui', 'sans-serif'],
       },
       colors: {
         pine: { DEFAULT: '#2C5E3B', dark: '#1F4429', light: '#4E8261' },

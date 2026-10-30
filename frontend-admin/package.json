@@ -9,9 +9,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@fontsource-variable/dm-sans": "^5.3.0",
+    "aangan-root": "file:..",
     "axios": "^1.20.0",
     "lucide-react": "^1.52.0",
-    "aangan-root": "file:..",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "react-router-dom": "^7.18.4"

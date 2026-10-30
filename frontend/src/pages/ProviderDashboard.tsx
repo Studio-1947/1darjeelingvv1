@@ -33,8 +33,14 @@ const CONFIGURE_LABEL_KEY: Record<string, string> = {
 export default function ProviderDashboard() {
   const { t } = useTranslation();
   useSeo({ title: t('provider.dashboard_title'), noindex: true });
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, setMode } = useAuth();
   const nav = useNavigate();
+
+  // The business side's home: arriving here (after onboarding, from the feed, from a link)
+  // puts a host on the business side so the header and tabs match the page.
+  useEffect(() => {
+    if (user?.role === 'provider') setMode('provider');
+  }, [user, setMode]);
   const [provider, setProvider] = useState(null);
   const [stats, setStats] = useState({ total: 0, confirmed: 0, pending: 0, revenue: 0 });
   const [bookings, setBookings] = useState([]);
@@ -163,7 +169,7 @@ export default function ProviderDashboard() {
         <div className="flex items-center gap-3 flex-wrap">
           <button
             onClick={() => {
-              localStorage.setItem(`unlocked_traveller_${user.id}`, 'true');
+              setMode('tourist');
               nav('/dashboard');
             }}
             className="inline-flex items-center gap-1.5 text-xs font-semibold text-pine border border-pine/30 rounded-full px-3.5 py-1.5 hover:bg-pine/5 transition-colors"

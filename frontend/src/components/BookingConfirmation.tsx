@@ -72,7 +72,7 @@ export default function BookingConfirmation({ open, onClose, mode = 'booking', d
               <div className="flex items-center justify-between p-3 rounded-xl bg-mist">
                 <div>
                   <div className="text-[10px] uppercase tracking-widest text-ink-soft font-bold">{t('bc.booking_id')}</div>
-                  <div className="font-mono text-xs text-ink mt-0.5">{(booking.id || '').slice(0, 12)}…</div>
+                  <div className="tabular-nums text-xs text-ink mt-0.5">{(booking.id || '').slice(0, 12)}…</div>
                 </div>
                 <button onClick={copyId} data-testid="copy-booking-id" className="text-xs font-bold text-pine inline-flex items-center gap-1"><Copy size={12} /> {t('saved.copy')}</button>
               </div>

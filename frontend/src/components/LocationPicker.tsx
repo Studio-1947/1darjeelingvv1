@@ -217,7 +217,7 @@ export default function LocationPicker({ initialLat, initialLng, onLocationSelec
 
       <div className="mt-2 flex items-center justify-between gap-3 text-xs">
         <span className="text-ink-soft">{t('locationPicker.hint')}</span>
-        <span data-testid="location-readout" className="flex-shrink-0 font-mono font-semibold text-pine">
+        <span data-testid="location-readout" className="flex-shrink-0 tabular-nums font-semibold text-pine">
           {pos[0].toFixed(5)}, {pos[1].toFixed(5)}
         </span>
       </div>

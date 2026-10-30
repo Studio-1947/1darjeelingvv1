@@ -24,7 +24,7 @@ function autoBind(instance) {
   });
 }
 
-const DEFAULT_FONT = 'bold 30px Google Sans Flex';
+const DEFAULT_FONT = 'bold 30px "DM Sans", sans-serif';
 const DEFAULT_FONT_URL = 'https://fonts.googleapis.com/css2?family=Google+Sans+Flex:wght@400;700&display=swap';
 
 function deriveFontFamilyFromUrl(url) {
@@ -653,7 +653,7 @@ export default function CircularGallery({
   bend = 3,
   textColor = '#ffffff',
   borderRadius = 0.05,
-  font = 'bold 30px Google Sans Flex',
+  font = 'bold 30px "DM Sans", sans-serif',
   fontUrl = undefined,
   scrollSpeed = 2,
   scrollEase = 0.05

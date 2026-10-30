@@ -5,9 +5,12 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        display: ['"Google Sans"', '"Google Sans Display"', '"DM Sans"', 'system-ui', 'sans-serif'],
-        body: ['"Google Sans"', '"Google Sans Text"', '"DM Sans"', 'system-ui', 'sans-serif'],
-        deva: ['"Google Sans"', '"Noto Sans Devanagari"', '"DM Sans"', 'system-ui', 'sans-serif'],
+        // DM Sans everywhere, matching the app. Google Sans used to lead these stacks but was
+        // never loaded, so it only showed for people who had it installed.
+        display: ['"DM Sans"', '"Noto Sans Bengali"', '"Noto Sans Devanagari"', 'system-ui', 'sans-serif'],
+        body: ['"DM Sans"', '"Noto Sans Bengali"', '"Noto Sans Devanagari"', 'system-ui', 'sans-serif'],
+        sans: ['"DM Sans"', '"Noto Sans Bengali"', '"Noto Sans Devanagari"', 'system-ui', 'sans-serif'],
+        deva: ['"DM Sans"', '"Noto Sans Devanagari"', 'system-ui', 'sans-serif'],
       },
       borderRadius: {
         lg: 'var(--radius)',
