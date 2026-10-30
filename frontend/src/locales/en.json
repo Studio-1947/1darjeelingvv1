@@ -86,6 +86,9 @@
   "search": {
     "placeholder": "Search  place, shop or event"
   },
+  "estimator": {
+    "title": "Darjeeling Route & Driver Fare Guide"
+  },
   "common": {
     "book_now": "Reserve now",
     "view_details": "View details",

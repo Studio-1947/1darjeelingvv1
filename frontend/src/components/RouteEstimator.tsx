@@ -172,7 +172,7 @@ export default function RouteEstimator() {
   return (
     <div
       data-testid="route-estimator"
-      className="relative bg-gradient-to-br from-[#14201A] to-[#1F332A] rounded-3xl p-5 md:p-8 text-white border border-white/15 shadow-2xl border-light"
+      className="relative bg-gradient-to-br from-[#14201A] to-[#1F332A] rounded-3xl p-4 sm:p-5 md:p-8 text-white border border-white/15 shadow-2xl border-light"
     >
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
         <div className="flex items-center gap-3">
@@ -183,14 +183,14 @@ export default function RouteEstimator() {
             <div className="text-[10px] font-bold uppercase tracking-widest text-flag">
               {t('estimator.tag', 'TRANSIT & REFERENCE FARES')}
             </div>
-            <h3 className="font-display font-extrabold text-xl md:text-2xl text-white">
-              {t('estimator.title', 'Himalayan Route & Driver Fare Guide')}
+            <h3 className="font-display font-extrabold text-lg sm:text-xl md:text-2xl text-white leading-tight">
+              {t('estimator.title', 'Darjeeling Route & Driver Fare Guide')}
             </h3>
           </div>
         </div>
 
         {/* Driver availability badge */}
-        <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gold/20 border border-gold/40 text-gold text-xs font-extrabold">
+        <div className="inline-flex self-stretch sm:self-auto justify-center items-center gap-1.5 px-3 py-2 rounded-full bg-gold/20 border border-gold/40 text-gold text-xs font-extrabold">
           <Zap size={14} className="animate-pulse" />
           <span>{info.driverCount ? `${info.driverCount} Local Drivers Available` : 'Local Drivers Available'}</span>
         </div>
@@ -202,7 +202,7 @@ export default function RouteEstimator() {
           <span className="text-xs font-bold text-white/60 uppercase tracking-wider">
             {t('estimator.from', 'Pick Pickup Location')}
           </span>
-          <div className="mt-1 flex items-center gap-2 px-3 py-2.5 rounded-xl border border-white/20 bg-black/40 text-sm font-semibold">
+          <div className="mt-1 flex min-h-11 items-center gap-2 px-3 py-3 rounded-xl border border-white/20 bg-black/40 text-sm font-semibold">
             <MapPin size={16} className="text-pine flex-shrink-0" />
             <select
               value={fromHub}
@@ -222,7 +222,7 @@ export default function RouteEstimator() {
           <span className="text-xs font-bold text-white/60 uppercase tracking-wider">
             {t('estimator.to', 'Pick Drop Destination')}
           </span>
-          <div className="mt-1 flex items-center gap-2 px-3 py-2.5 rounded-xl border border-white/20 bg-black/40 text-sm font-semibold">
+          <div className="mt-1 flex min-h-11 items-center gap-2 px-3 py-3 rounded-xl border border-white/20 bg-black/40 text-sm font-semibold">
             <Navigation size={16} className="text-flag flex-shrink-0" />
             <select
               value={toHub}
@@ -256,7 +256,7 @@ export default function RouteEstimator() {
         </div>
 
         <div className="col-span-2 bg-white/10 border border-white/20 rounded-2xl p-3 flex flex-col justify-between">
-          <div className="text-[10px] font-bold text-gold uppercase tracking-wider flex items-center justify-between">
+          <div className="text-[10px] font-bold text-gold uppercase tracking-wider flex flex-col items-start gap-1 sm:flex-row sm:items-center sm:justify-between">
             <span className="flex items-center gap-1"><ShieldCheck size={13} /> Est. Reference Fare Range</span>
             <span className="text-[10px] text-white/60 font-semibold flex items-center gap-1">
               <Mountain size={11} /> {info.terrainDifficulty}
@@ -273,7 +273,7 @@ export default function RouteEstimator() {
         <button
           type="button"
           onClick={() => setVehicleType('hatchback')}
-          className={`px-3 py-2.5 rounded-xl border flex items-center justify-between transition-all cursor-pointer ${vehicleType === 'hatchback'
+          className={`min-h-11 px-3 py-3 rounded-xl border flex items-center justify-between transition-all cursor-pointer ${vehicleType === 'hatchback'
               ? 'bg-white text-ink border-white font-extrabold shadow-md scale-[1.01]'
               : 'bg-white/5 text-white/80 border-white/10 hover:bg-white/10'
             }`}
@@ -285,7 +285,7 @@ export default function RouteEstimator() {
         <button
           type="button"
           onClick={() => setVehicleType('suv')}
-          className={`px-3 py-2.5 rounded-xl border flex items-center justify-between transition-all cursor-pointer ${vehicleType === 'suv'
+          className={`min-h-11 px-3 py-3 rounded-xl border flex items-center justify-between transition-all cursor-pointer ${vehicleType === 'suv'
               ? 'bg-gold text-ink border-gold font-extrabold shadow-md scale-[1.01]'
               : 'bg-white/5 text-white/80 border-white/10 hover:bg-white/10'
             }`}
