@@ -6,7 +6,7 @@ import { eq, and, ne } from 'drizzle-orm';
 import { authenticateToken } from '../middleware/auth';
 import { rateLimiter } from '../middleware/rateLimiter';
 import { AMOUNTS, HOST_RENEWAL_WINDOW_DAYS, MOCK_PAYMENTS, rzpClient, RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, RAZORPAY_WEBHOOK_SECRET, IS_PROD, log } from '../config';
-import { lifetimeSupportExpiry } from '../lib/support';
+import { computeSupportPassExpiry } from '../lib/support';
 import { computeHostPlanExpiry, isHostPlanLive } from '../lib/hostPlan';
 import { serializeProvider } from '../lib/providerShape';
 import { settleBookingConfirmation } from '../lib/bookingConfirmation';
@@ -78,11 +78,12 @@ async function handlePaymentSuccess(
     // settles, and refunds it if the dates went to someone else first.
     return settleBookingConfirmation(referenceId, userId, { paid: true });
   } else if (flow === 'platform_support') {
-    // The ₹1 lifetime pass. Settling it twice is harmless: both writes store the same date.
+    // The ₹1 annual tourist pass. A duplicate settlement never reaches this point because the
+    // payment record is settled idempotently before entitlements are granted.
     const [u] = await tx.select().from(schema.users).where(eq(schema.users.id, userId)).limit(1);
     if (!u) return null;
 
-    const supportExpiresAt = lifetimeSupportExpiry();
+    const supportExpiresAt = computeSupportPassExpiry(u.supportExpiresAt);
     await tx.update(schema.users)
       .set({ supportExpiresAt })
       .where(eq(schema.users.id, userId));

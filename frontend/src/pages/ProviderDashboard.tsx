@@ -33,7 +33,7 @@ const CONFIGURE_LABEL_KEY: Record<string, string> = {
 export default function ProviderDashboard() {
   const { t } = useTranslation();
   useSeo({ title: t('provider.dashboard_title'), noindex: true });
-  const { user, loading: authLoading, setMode } = useAuth();
+  const { user, loading: authLoading, setMode, refresh } = useAuth();
   const nav = useNavigate();
 
   // The business side's home: arriving here (after onboarding, from the feed, from a link)
@@ -184,7 +184,7 @@ export default function ProviderDashboard() {
         </div>
       </div>
 
-      <HostPlanCard provider={provider} user={user} onRenewed={loadDashboard} />
+      <HostPlanCard provider={provider} user={user} onRenewed={async () => { await refresh(); await loadDashboard(); }} />
 
       {/* Stats grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">

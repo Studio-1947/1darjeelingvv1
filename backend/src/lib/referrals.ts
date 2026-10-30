@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
 
 import { db, schema } from '../db';
-import { LIFETIME_SUPPORT_EXPIRY, log, REFERRAL_REWARD_DAYS } from '../config';
+import { log, REFERRAL_REWARD_DAYS } from '../config';
 
 /**
  * Invite codes and what redeeming one is worth.
@@ -117,9 +117,6 @@ export async function assignReferralCode(userId: string): Promise<string> {
 function extendedExpiry(existing: string | null | undefined, days: number, now: Date): string {
   const nowMs = now.getTime();
   const existingMs = existing ? Date.parse(existing) : NaN;
-  // A lifetime pass has nothing left to extend, and adding days to it would push the date past
-  // year 9999, which toISOString() writes in a different (+010000-…) format.
-  if (!Number.isNaN(existingMs) && existingMs >= Date.parse(LIFETIME_SUPPORT_EXPIRY)) return existing!;
   const base = Number.isNaN(existingMs) || existingMs < nowMs ? nowMs : existingMs;
   return new Date(base + days * DAY_MS).toISOString();
 }

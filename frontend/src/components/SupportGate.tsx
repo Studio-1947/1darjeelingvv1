@@ -17,7 +17,7 @@ import { needsSupport } from '@/lib/support';
  *                the privilege is self-defeating. Donations grant nothing, so allowing this
  *                cannot become a way around the gate.
  */
-const ALWAYS_ALLOWED = ['/support', '/login', '/privacy', '/provider/onboard', '/donate'];
+const ALWAYS_ALLOWED = ['/support', '/login', '/privacy', '/provider/onboard', '/provider/dashboard', '/my-listings', '/donate'];
 
 // react-router matches routes case-insensitively and treats a trailing slash as equivalent to
 // none (no caseSensitive prop is set in App.tsx), so /Provider/Onboard/ renders the same route

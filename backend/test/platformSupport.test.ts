@@ -4,7 +4,7 @@ import { eq } from 'drizzle-orm';
 import { app } from '../src/app';
 import { db, schema } from '../src/db';
 import { nextPhone, registerUser, createListing, onboardActiveProvider } from './helpers';
-import { LIFETIME_SUPPORT_EXPIRY } from '../src/config';
+import { SUPPORT_PASS_DAYS } from '../src/config';
 
 describe('support column', () => {
   // Registers through the raw endpoint rather than the registerUser helper on purpose: a later
@@ -69,24 +69,28 @@ describe('platform_support payment flow', () => {
     expect(res.status).toBe(403);
   });
 
-  it('grants the pass for life when settled', async () => {
+  it('grants the pass for one year when settled', async () => {
     const { token, user } = await registerUser({ name: 'First Timer', paySupport: false });
 
     const { completeRes } = await paySupport(token, user.id);
     expect(completeRes.status).toBe(200);
 
-    expect((await me(token)).supportExpiresAt).toBe(LIFETIME_SUPPORT_EXPIRY);
+    const expiry = Date.parse((await me(token)).supportExpiresAt);
+    expect(expiry - Date.now()).toBeGreaterThan((SUPPORT_PASS_DAYS - 1) * DAY_MS);
+    expect(expiry - Date.now()).toBeLessThanOrEqual(SUPPORT_PASS_DAYS * DAY_MS);
   });
 
-  it('turns time a user already had (a referral reward, an old yearly pass) into a lifetime pass', async () => {
+  it('extends time a user already had when settled early', async () => {
     const { token, user } = await registerUser({ name: 'Upgrader', paySupport: false });
     await db.update(schema.users)
       .set({ supportExpiresAt: new Date(Date.now() + 30 * DAY_MS).toISOString() })
       .where(eq(schema.users.id, user.id));
 
+    const before = (await me(token)).supportExpiresAt;
     await paySupport(token, user.id);
+    const after = (await me(token)).supportExpiresAt;
 
-    expect((await me(token)).supportExpiresAt).toBe(LIFETIME_SUPPORT_EXPIRY);
+    expect(Date.parse(after) - Date.parse(before)).toBeCloseTo(SUPPORT_PASS_DAYS * DAY_MS, -4);
   });
 
   it('does not change the expiry when the same order settles twice', async () => {

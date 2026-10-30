@@ -6,7 +6,7 @@ import { db, schema } from '../src/db';
 import { eq } from 'drizzle-orm';
 import { registerUser, nextPhone } from './helpers';
 import { normaliseCode } from '../src/lib/referrals';
-import { LIFETIME_SUPPORT_EXPIRY, REFERRAL_REWARD_DAYS } from '../src/config';
+import { REFERRAL_REWARD_DAYS } from '../src/config';
 
 /**
  * Referrals: the reward the app has advertised since before anything could pay it out.
@@ -88,20 +88,20 @@ async function giveTime(userId: string, days: number) {
 }
 
 describe('redeeming a code', () => {
-  it('leaves a paid lifetime pass exactly as it was', async () => {
-    const referrer = await registerUser({ name: 'Lifetime Referrer' });
+  it('extends an active paid pass', async () => {
+    const referrer = await registerUser({ name: 'Paid Referrer' });
     const code = await codeFor(referrer.token);
     const before = await expiryOf(referrer.user.id);
-    expect(before).toBe(LIFETIME_SUPPORT_EXPIRY);
 
-    await signUpWith(code, 'Friend Of Lifetime');
+    await signUpWith(code, 'Friend Of Paid');
 
-    expect(await expiryOf(referrer.user.id)).toBe(LIFETIME_SUPPORT_EXPIRY);
+    expect(Date.parse((await expiryOf(referrer.user.id))!) - Date.parse(before!))
+      .toBeCloseTo(REFERRAL_REWARD_DAYS * DAY_MS, -4);
   });
 
   it('extends both sides and records the referral', async () => {
-    // A referrer who has not bought the ₹1 lifetime pass but holds some time  the case where a
-    // reward still means something (for a paid pass it changes nothing; see below).
+    // A referrer who has not bought the ₹1 pass but holds some time still receives the same
+    // monotonic extension.
     const referrer = await registerUser({ name: 'Referrer', paySupport: false });
     await giveTime(referrer.user.id, 10);
     const code = await codeFor(referrer.token);

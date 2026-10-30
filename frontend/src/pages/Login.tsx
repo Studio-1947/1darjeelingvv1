@@ -26,7 +26,7 @@ export default function Login() {
   useEffect(() => {
     if (!user || signedInHere.current) return;
     if (user.role === 'provider' && mode === 'provider') {
-      nav(user.providerPaid ? '/provider/dashboard' : '/provider/onboard');
+      nav('/provider/dashboard');
     } else {
       nav(next);
     }
@@ -58,12 +58,13 @@ export default function Login() {
   // The choice made above decides which side opens, as the app's Traveller / Host switch does.
   // A host who picked Traveller gets the traveller side with no second question; they can switch
   // to their business from the profile menu at any time. Picking Business opens the business
-  // side, or onboarding for someone who has not set one up yet.
+  // side. The dashboard directs a new business to onboarding and an existing unpaid
+  // business to its activation payment.
   const finishSignIn = useCallback((data) => {
     signedInHere.current = true;
     login(data.token, data.user, role);
     if (role === 'provider') {
-      nav(data.user.role === 'provider' && data.user.providerPaid ? '/provider/dashboard' : '/provider/onboard');
+      nav('/provider/dashboard');
     } else {
       nav(next);
     }

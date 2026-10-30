@@ -1,4 +1,6 @@
-import { LIFETIME_SUPPORT_EXPIRY } from '../config';
+import { SUPPORT_PASS_DAYS } from '../config';
+
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 export interface SupportUser {
   role: string;
@@ -28,10 +30,12 @@ export function isSupportActive(user: SupportUser, now: Date = new Date()): bool
 }
 
 /**
- * The expiry a settled tourist pass is given. The pass is a one-time ₹1 payment for life, so this
- * no longer depends on what was stored before: whatever time a user had (a referral reward, an
- * old yearly pass), paying replaces it with a date that never arrives.
+ * The expiry a settled tourist pass is given. Paying early extends from the current expiry;
+ * paying after it lapses starts a fresh one-year pass from the settlement time.
  */
-export function lifetimeSupportExpiry(): string {
-  return LIFETIME_SUPPORT_EXPIRY;
+export function computeSupportPassExpiry(existing: string | null | undefined, now: Date = new Date()): string {
+  const nowMs = now.getTime();
+  const existingMs = existing ? Date.parse(existing) : NaN;
+  const baseMs = Number.isNaN(existingMs) || existingMs < nowMs ? nowMs : existingMs;
+  return new Date(baseMs + SUPPORT_PASS_DAYS * DAY_MS).toISOString();
 }

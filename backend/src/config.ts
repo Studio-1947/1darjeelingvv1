@@ -347,7 +347,7 @@ export const rzpClient = RAZORPAY_KEY_SECRET ? new Razorpay({
 // Fixed prices, in paise. `donation` is deliberately absent: its presence here would imply a
 // fixed price, and the whole point of a donation is that the giver chooses. See lib/payments.ts.
 //
-//   platform_support       ₹1    once, for life — the tourist pass
+//   platform_support       ₹1    one year — the tourist pass
 //   provider_registration  ₹499  a host's first year (launch price; usually ₹999)
 //   provider_renewal       ₹999  every year after that
 //
@@ -372,17 +372,16 @@ export const HOST_RENEWAL_WINDOW_DAYS = 30;
 export const DONATION_MIN_PAISE = 1000;        // ₹10
 export const DONATION_MAX_PAISE = 10_000_000;  // ₹1,00,000
 
-// The tourist pass is paid once and never lapses. It is stored as an expiry like any other so
-// every existing "is it active?" check keeps working; this is simply a date nobody will reach.
-export const LIFETIME_SUPPORT_EXPIRY = '9999-12-31T23:59:59.999Z';
+// How long one tourist-pass payment keeps traveller actions unlocked, in days.
+export const SUPPORT_PASS_DAYS = 365;
 
 // What each side of a referral gets when a code is redeemed, in days. The app has always
 // advertised "+3 months", so that is the default; it is a knob because the number is a
 // marketing decision and changing it must not need a deploy of new code.
 //
 // Applied to `supportExpiresAt` for BOTH parties, monotonically  see lib/referrals.ts. There
-// is deliberately no provider-side reward. For a tourist who has paid the ₹1 lifetime pass the
-// reward changes nothing; it matters to someone who has not paid yet, as time to try the app.
+// is deliberately no provider-side reward. For a tourist, the reward extends an active pass
+// (or grants time before they pay), so it always remains useful.
 export const REFERRAL_REWARD_DAYS = requirePositiveInt(
   'REFERRAL_REWARD_DAYS',
   process.env.REFERRAL_REWARD_DAYS,

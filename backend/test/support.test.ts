@@ -2,8 +2,9 @@ import { describe, it, expect } from 'vitest';
 import {
   isExemptFromSupport,
   isSupportActive,
-  lifetimeSupportExpiry,
+  computeSupportPassExpiry,
 } from '../src/lib/support';
+import { SUPPORT_PASS_DAYS } from '../src/config';
 import { requireActiveSupport } from '../src/middleware/support';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -51,19 +52,24 @@ describe('isSupportActive', () => {
   });
 });
 
-describe('lifetimeSupportExpiry', () => {
-  // The pass is ₹1 once, for life. The rolling-window rules it used to follow now belong to the
-  // host plan  see hostPlan.test.ts.
-  it('is a date that never arrives', () => {
-    expect(Date.parse(lifetimeSupportExpiry())).toBeGreaterThan(Date.parse('9999-01-01T00:00:00.000Z'));
+describe('computeSupportPassExpiry', () => {
+  const now = new Date('2026-07-22T00:00:00.000Z');
+
+  it('grants one year from settlement when there is no active pass', () => {
+    const expiry = computeSupportPassExpiry(null, now);
+    expect(Date.parse(expiry) - now.getTime()).toBe(SUPPORT_PASS_DAYS * DAY_MS);
   });
 
-  it('keeps a paid pass active', () => {
-    expect(isSupportActive({ role: 'tourist', supportExpiresAt: lifetimeSupportExpiry() })).toBe(true);
+  it('extends from an active expiry when renewed early', () => {
+    const existing = new Date(now.getTime() + 30 * DAY_MS).toISOString();
+    const expiry = computeSupportPassExpiry(existing, now);
+    expect(Date.parse(expiry) - Date.parse(existing)).toBe(SUPPORT_PASS_DAYS * DAY_MS);
   });
 
-  it('is in the same ISO format as every other stored expiry', () => {
-    expect(lifetimeSupportExpiry()).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+  it('restarts from settlement once the pass has lapsed', () => {
+    const expired = new Date(now.getTime() - DAY_MS).toISOString();
+    const expiry = computeSupportPassExpiry(expired, now);
+    expect(Date.parse(expiry) - now.getTime()).toBe(SUPPORT_PASS_DAYS * DAY_MS);
   });
 });
 

@@ -6,12 +6,13 @@ import { useAuth } from '@/context/AuthContext';
 import { Storefront as Store, Plus, Trash as Trash2, Pencil, ArrowSquareOut as ExternalLink, ArrowRight, CheckCircle as CheckCircle2, Clock, ListBullets as LayoutList, CircleNotch as Loader2, Sparkle as Sparkles, Buildings as Building2, MapPin, Tag } from '@phosphor-icons/react';
 import ListingFormModal from '@/components/ListingFormModal';
 import EditListingModal from '@/components/provider/dashboard/EditListingModal';
+import HostPlanCard from '@/components/provider/dashboard/HostPlanCard';
 import { useSeo } from '@/components/Seo';
 
 export default function MyListings() {
   const { t } = useTranslation();
   useSeo({ title: t('nav.my_listings'), noindex: true });
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, refresh } = useAuth();
   const nav = useNavigate();
   
   const [provider, setProvider] = useState<any>(null);
@@ -69,6 +70,11 @@ export default function MyListings() {
   const handleDeleteListing = async (listingId: string) => {
     if (!window.confirm(t('pd.delete_confirm') || 'Delete this listing? This cannot be undone.')) return;
     await api.delete(`/listings/${listingId}`);
+    await loadData();
+  };
+
+  const refreshProviderAccess = async () => {
+    await refresh();
     await loadData();
   };
 
@@ -169,6 +175,8 @@ export default function MyListings() {
           </button>
         </div>
       </div>
+
+      <HostPlanCard provider={provider} user={user} onRenewed={refreshProviderAccess} />
 
       {/* Stats row */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 mb-8">
