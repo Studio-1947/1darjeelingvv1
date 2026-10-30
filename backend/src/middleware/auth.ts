@@ -138,3 +138,31 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction) {
   }
   next();
 }
+
+/**
+ * The caller, if the request carries a valid token, and null otherwise.
+ *
+ * For routes that are public but answer more to someone who is signed in. It never rejects: a
+ * missing, malformed or expired token is simply an anonymous caller, which is what a public route
+ * has always treated them as.
+ */
+export async function optionalUser(req: Request): Promise<AuthenticatedUser | null> {
+  const authHeader = req.headers['authorization'];
+  if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
+  try {
+    const payload = jwt.verify(authHeader.split(' ')[1], JWT_SECRET) as JwtPayload;
+    if (payload.sub === 'admin-system') {
+      return toPublicUser({
+        id: 'admin-system',
+        name: 'System Administrator',
+        phone: 'admin',
+        role: 'admin',
+        createdAt: new Date().toISOString(),
+      });
+    }
+    const [user] = await db.select().from(schema.users).where(eq(schema.users.id, payload.sub)).limit(1);
+    return user ? toPublicUser(user) : null;
+  } catch {
+    return null;
+  }
+}

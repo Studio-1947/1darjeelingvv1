@@ -11,16 +11,13 @@ vi.mock('../src/lib/s3', () => ({
 }));
 
 import { app } from '../src/app';
-import { onboardActiveProvider, loginAdmin } from './helpers';
+import { onboardActiveProvider, loginAdmin, uploadRequiredDocs, captureLiveLocation } from './helpers';
 
 const PNG_DATA_URL =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
 
 async function uploadAllShopDocs(token: string) {
-  for (const t of ['aadhaar', 'pan', 'owner_photo', 'trade_license']) {
-    await request(app).post('/api/providers/me/kyc').set('Authorization', `Bearer ${token}`)
-      .send({ doc_type: t, file: PNG_DATA_URL, filename: `${t}.png` });
-  }
+  await uploadRequiredDocs(token);
 }
 
 // Uploads and admin-approves every required shop doc, leaving the provider verified. Returns a
@@ -37,6 +34,9 @@ async function verifyShopProvider(token: string, providerId: string, adminToken:
       .set('Authorization', `Bearer ${adminToken}`).send({ decision: 'approve' });
     if (r.status !== 200) throw new Error(`approve failed for ${d.doc_type}: ${r.status} ${JSON.stringify(r.body)}`);
   }
+  // A shop is only verified once its location has been captured live as well.
+  const live = await captureLiveLocation(token);
+  if (live.status !== 200) throw new Error(`live capture failed: ${live.status} ${JSON.stringify(live.body)}`);
   return docIds;
 }
 
@@ -68,6 +68,11 @@ describe('admin KYC review', () => {
         .set('Authorization', `Bearer ${admin}`).send({ decision: 'approve' });
       expect(r.status).toBe(200);
     }
+    // Every document approved is not enough for a shop: its location has to be captured live too.
+    const before = await request(app).get('/api/providers/me/profile').set('Authorization', `Bearer ${prov.token}`);
+    expect(before.body.kyc_status).toBe('partial');
+    expect((await captureLiveLocation(prov.token)).status).toBe(200);
+
     const profile = await request(app).get('/api/providers/me/profile').set('Authorization', `Bearer ${prov.token}`);
     expect(profile.body.kyc_status).toBe('verified');
     expect(profile.body.completion_percent).toBeGreaterThanOrEqual(60);
@@ -186,13 +191,13 @@ describe('admin KYC review', () => {
     it('rejecting an optional doc does not block verified status when all required docs are approved', async () => {
       const prov = await onboardActiveProvider({ name: 'Prov Optional Reject', businessType: 'shop' });
       const admin = await loginAdmin();
-      await uploadAllShopDocs(prov.token);
+      const requiredCount = (await uploadRequiredDocs(prov.token)).length;
       await request(app).post('/api/providers/me/kyc').set('Authorization', `Bearer ${prov.token}`)
         .send({ doc_type: 'gst_certificate', file: PNG_DATA_URL, filename: 'gst.png' });
 
       const list = await request(app).get('/api/admin/kyc?status=pending').set('Authorization', `Bearer ${admin}`);
       const mine = list.body.documents.filter((d: any) => d.provider_id === prov.providerId);
-      expect(mine.length).toBe(5); // 4 required shop docs + the optional gst_certificate
+      expect(mine.length).toBe(requiredCount + 1); // every required shop doc + the optional gst_certificate
 
       for (const d of mine) {
         const decision = d.doc_type === 'gst_certificate' ? 'reject' : 'approve';
@@ -201,6 +206,7 @@ describe('admin KYC review', () => {
           .send(decision === 'reject' ? { decision, reason: 'Not required' } : { decision });
         expect(r.status).toBe(200);
       }
+      expect((await captureLiveLocation(prov.token)).status).toBe(200);
 
       const profile = await request(app).get('/api/providers/me/profile').set('Authorization', `Bearer ${prov.token}`);
       expect(profile.body.kyc_status).toBe('verified');
@@ -246,7 +252,7 @@ describe('admin KYC review', () => {
 
     it('limit and offset page through results without overlap, and status is filtered server-side', async () => {
       const prov = await onboardActiveProvider({ name: 'Prov Page B', businessType: 'shop' });
-      await uploadAllShopDocs(prov.token);
+      const requiredCount = (await uploadRequiredDocs(prov.token)).length;
       const admin = await loginAdmin();
 
       const all = await request(app)
@@ -254,7 +260,7 @@ describe('admin KYC review', () => {
         .query({ status: 'pending', limit: 100 })
         .set('Authorization', `Bearer ${admin}`);
       const mine = all.body.documents.filter((d: any) => d.provider_id === prov.providerId);
-      expect(mine.length).toBe(4);
+      expect(mine.length).toBe(requiredCount);
 
       const page1 = await request(app)
         .get('/api/admin/kyc')

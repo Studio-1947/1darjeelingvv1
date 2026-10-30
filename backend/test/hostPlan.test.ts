@@ -94,8 +94,8 @@ async function listingOf(providerId: string) {
   return row;
 }
 
-describe('host plan: ₹1 first year, ₹499 after', () => {
-  it('registers for ₹1 and starts a one-year plan', async () => {
+describe('host plan: ₹499 first year, ₹999 after', () => {
+  it('registers for ₹499 and starts a one-year plan', async () => {
     const before = Date.now();
     const { token } = await onboardActiveProvider({ name: 'New Host' });
     const provider = await providerMe(token);
@@ -108,7 +108,7 @@ describe('host plan: ₹1 first year, ₹499 after', () => {
 
     const [payment] = await db.select().from(schema.payments)
       .where(eq(schema.payments.referenceId, provider.id)).limit(1);
-    expect(payment.amount).toBe(100);
+    expect(payment.amount).toBe(49900);
   });
 
   it('refuses a second ₹1 registration once registered, so a year cannot be bought for ₹1', async () => {
@@ -122,18 +122,49 @@ describe('host plan: ₹1 first year, ₹499 after', () => {
     expect(rows).toHaveLength(1);
   });
 
-  it('renews for ₹499 and adds a year on top of the current one', async () => {
+  // Renewal opens 30 days before the year ends, not before: a host who taps Renew twice, or whose
+  // first payment is still settling, must not be charged for a second year they did not mean to
+  // buy. Both apps show the button on the same window; this is the server holding the line for
+  // anyone calling the API directly.
+  it('refuses to renew while the year has more than 30 days left, and takes no order', async () => {
     const { token, providerId } = await onboardActiveProvider({ name: 'Early Renewer' });
-    const first = Date.parse((await providerMe(token)).plan_expires_at);
+    const before = (await providerMe(token)).plan_expires_at;
+
+    const { order } = await pay(token, 'provider_renewal', providerId);
+    expect(order.status).toBe(409);
+    expect(order.body.detail).toMatch(/already active/i);
+    expect(order.body.detail).toMatch(/30 days/);
+
+    expect((await providerMe(token)).plan_expires_at).toBe(before);
+  });
+
+  it('renews for ₹999 inside the last 30 days and adds a year on top of what is left', async () => {
+    const { token, providerId } = await onboardActiveProvider({ name: 'Window Renewer' });
+    const endsInTenDays = new Date(Date.now() + 10 * DAY_MS).toISOString();
+    await db.update(schema.providers).set({ planExpiresAt: endsInTenDays }).where(eq(schema.providers.id, providerId));
 
     const { order, complete } = await pay(token, 'provider_renewal', providerId);
     expect(order.status).toBe(200);
-    expect(order.body.amount).toBe(49900);
+    expect(order.body.amount).toBe(99900);
     expect(complete!.status).toBe(200);
 
-    const second = Date.parse((await providerMe(token)).plan_expires_at);
-    expect(second - first).toBeGreaterThan(364 * DAY_MS);
-    expect(second - first).toBeLessThan(366 * DAY_MS);
+    const after = Date.parse((await providerMe(token)).plan_expires_at);
+    expect(after - Date.parse(endsInTenDays)).toBeGreaterThan(364 * DAY_MS);
+    expect(after - Date.parse(endsInTenDays)).toBeLessThan(366 * DAY_MS);
+  });
+
+  it('renews from now once the plan has lapsed', async () => {
+    const { token, providerId } = await onboardActiveProvider({ name: 'Lapsed Renewer' });
+    await lapse(providerId);
+
+    const { order, complete } = await pay(token, 'provider_renewal', providerId);
+    expect(order.status).toBe(200);
+    expect(order.body.amount).toBe(99900);
+    expect(complete!.status).toBe(200);
+
+    const after = Date.parse((await providerMe(token)).plan_expires_at);
+    expect(after - Date.now()).toBeGreaterThan(364 * DAY_MS);
+    expect(after - Date.now()).toBeLessThan(366 * DAY_MS);
   });
 
   it('refuses a renewal before the host has registered', async () => {

@@ -274,7 +274,14 @@ export default function ProviderDashboard() {
       {/* Listings */}
       {tab === 'listings' && (
         <div className="mt-6">
-          <div className="flex justify-end mb-4">
+          <div className="flex justify-end gap-2 mb-4">
+            <Link
+              to="/feed"
+              data-testid="post-update-cta"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-[var(--line)] text-ink font-bold text-xs btn-hover"
+            >
+              <Pencil size={14} /> {t('pd.post_update')}
+            </Link>
             <button
               onClick={() => setListingModal({ open: true, editing: null })}
               data-testid="add-listing-cta"

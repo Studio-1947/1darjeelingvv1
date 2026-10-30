@@ -5,7 +5,7 @@ import { db, schema } from '../db';
 import { eq, and, ne } from 'drizzle-orm';
 import { authenticateToken } from '../middleware/auth';
 import { rateLimiter } from '../middleware/rateLimiter';
-import { AMOUNTS, MOCK_PAYMENTS, rzpClient, RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, RAZORPAY_WEBHOOK_SECRET, IS_PROD, log } from '../config';
+import { AMOUNTS, HOST_RENEWAL_WINDOW_DAYS, MOCK_PAYMENTS, rzpClient, RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, RAZORPAY_WEBHOOK_SECRET, IS_PROD, log } from '../config';
 import { lifetimeSupportExpiry } from '../lib/support';
 import { computeHostPlanExpiry, isHostPlanLive } from '../lib/hostPlan';
 import { serializeProvider } from '../lib/providerShape';
@@ -27,7 +27,7 @@ async function handlePaymentSuccess(
   tx: Executor = db
 ) {
   if (flow === 'provider_registration') {
-    // The ₹1 first year. assertOwnsReference only lets a provider that has never been activated
+    // The ₹499 first year. assertOwnsReference only lets a provider that has never been activated
     // pay this, so it runs once per host and creates their listing once.
     const [before] = await tx.select().from(schema.providers).where(eq(schema.providers.id, referenceId)).limit(1);
     await tx.update(schema.providers)
@@ -131,7 +131,14 @@ async function assertOwnsReference(
         return { status: 403, detail: 'This business is suspended. Contact support.' };
       }
       if (isHostPlanLive(provider)) {
-        return { status: 409, detail: 'Your host plan is already active. Renewal is available after it ends.' };
+        const opensAt = Date.parse(provider.planExpiresAt as string) - HOST_RENEWAL_WINDOW_DAYS * 24 * 60 * 60 * 1000;
+        if (Date.now() < opensAt) {
+          const from = new Date(opensAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' });
+          return {
+            status: 409,
+            detail: `Your host plan is already active. Renewal opens ${HOST_RENEWAL_WINDOW_DAYS} days before it ends, on ${from}.`,
+          };
+        }
       }
     }
     return null;

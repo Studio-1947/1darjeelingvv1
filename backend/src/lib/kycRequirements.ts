@@ -36,21 +36,71 @@ export const KYC_REQUIREMENTS: Record<string, DocRequirement[]> = {
     { docType: 'pollution_certificate', label: 'Pollution certificate (PUC)', required: false },
     { docType: 'vehicle_insurance', label: 'Vehicle insurance', required: false },
   ],
+  // Homestays: the host and the property both have to be seen. The selfie is taken at the property
+  // with the building behind the host, two photos and a short video show the place itself, and the
+  // registration certificate and proof of ownership or tenancy back it up. The Google Maps pin is
+  // the sixth check; it is not a document, so it is required separately (see
+  // `requiresLocationVerification`).
   homestay: [
-    ...IDENTITY,
+    { docType: 'aadhaar', label: 'Aadhaar card', required: true },
+    { docType: 'pan', label: 'PAN card', required: true },
+    {
+      docType: 'owner_photo',
+      label: 'Selfie at your property (your homestay visible behind you)',
+      required: true,
+    },
     { docType: 'property_proof', label: 'Property proof (deed / rent / electricity bill)', required: true },
-    { docType: 'tourism_registration', label: 'Tourism / homestay registration', required: true },
+    { docType: 'tourism_registration', label: 'Homestay / tourism registration certificate', required: true },
+    { docType: 'property_photo_front', label: 'Photo of the property (front of the building)', required: true },
+    { docType: 'property_photo_room', label: 'Photo of a guest room', required: true },
+    {
+      docType: 'property_video',
+      label: 'Short property video (entrance, rooms, view)',
+      required: true,
+      media: 'video',
+    },
     { docType: 'gst_certificate', label: 'GST certificate', required: false },
   ],
+  // Cafés and shops are fixed premises a traveller walks into, so they are checked like one: the
+  // trade licence, the owner at the premises, photos of the front and the inside, a short video,
+  // and the location captured live from a phone standing there (see `locationMethodFor`).
   cafe: [
-    ...IDENTITY,
+    { docType: 'aadhaar', label: 'Aadhaar card', required: true },
+    { docType: 'pan', label: 'PAN card', required: true },
+    {
+      docType: 'owner_photo',
+      label: 'Selfie at your restaurant or café (the premises visible behind you)',
+      required: true,
+    },
     { docType: 'fssai_license', label: 'FSSAI food licence', required: true },
     { docType: 'trade_license', label: 'Shop & Establishment / trade licence', required: true },
+    { docType: 'premises_photo_front', label: 'Photo of the front (name board visible)', required: true },
+    { docType: 'premises_photo_inside', label: 'Photo of the inside (seating or counter)', required: true },
+    {
+      docType: 'premises_video',
+      label: 'Short video of the premises (entrance, inside, kitchen or counter)',
+      required: true,
+      media: 'video',
+    },
     { docType: 'gst_certificate', label: 'GST certificate', required: false },
   ],
   shop: [
-    ...IDENTITY,
+    { docType: 'aadhaar', label: 'Aadhaar card', required: true },
+    { docType: 'pan', label: 'PAN card', required: true },
+    {
+      docType: 'owner_photo',
+      label: 'Selfie at your shop (the shop visible behind you)',
+      required: true,
+    },
     { docType: 'trade_license', label: 'Shop & Establishment / trade licence', required: true },
+    { docType: 'premises_photo_front', label: 'Photo of the front (name board visible)', required: true },
+    { docType: 'premises_photo_inside', label: 'Photo of the inside (shelves or counter)', required: true },
+    {
+      docType: 'premises_video',
+      label: 'Short video of the shop (entrance, inside, what you sell)',
+      required: true,
+      media: 'video',
+    },
     { docType: 'fssai_license', label: 'FSSAI food licence', required: false },
     { docType: 'gst_certificate', label: 'GST certificate', required: false },
   ],
@@ -73,4 +123,24 @@ export function isVideoDocType(businessType: string, docType: string): boolean {
 
 export function requiredDocTypes(businessType: string): string[] {
   return requirementsFor(businessType).filter(d => d.required).map(d => d.docType);
+}
+
+export type LocationMethod = 'maps_link' | 'live_capture';
+
+/**
+ * How a business has to prove where it is before it counts as verified, or null if it does not.
+ *
+ * A homestay pastes the Google Maps link for its place. A café or shop captures its location live
+ * from a phone standing in the premises, which a pasted link cannot show. A driver works along
+ * routes and has no fixed place to prove.
+ */
+export function locationMethodFor(businessType: string): LocationMethod | null {
+  if (businessType === 'homestay') return 'maps_link';
+  if (businessType === 'cafe' || businessType === 'shop') return 'live_capture';
+  return null;
+}
+
+/** Whether the business has to prove its location before it counts as verified. */
+export function requiresLocationVerification(businessType: string): boolean {
+  return locationMethodFor(businessType) !== null;
 }

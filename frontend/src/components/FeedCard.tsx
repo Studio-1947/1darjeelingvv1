@@ -123,7 +123,7 @@ export default function FeedCard({ item, priority = false, tripSuffix = '' }) {
             ? t('feed.rated_aria', { rating: item.rating, count: item.review_count })
             : t('feed.no_reviews_aria')}
         >
-          <Star size={18} className={item.review_count > 0 ? 'fill-gold text-gold' : 'text-ink-soft'} />
+          <Star size={18} weight={item.review_count > 0 ? 'fill' : 'regular'} className={item.review_count > 0 ? 'text-gold' : 'text-ink-soft'} />
           {item.review_count > 0 ? (
             <span className="font-bold text-ink">{Number(item.rating).toFixed(1)}
               <span className="font-normal text-ink-soft"> ({item.review_count})</span>
@@ -133,7 +133,7 @@ export default function FeedCard({ item, priority = false, tripSuffix = '' }) {
           )}
         </button>
         <button onClick={handleSave} data-testid={`feed-save-${item.id}`} className="ml-auto btn-hover" aria-label={t('common.save')} aria-pressed={saved}>
-          <Bookmark size={22} className={saved ? 'fill-pine text-pine' : 'text-ink'} />
+          <Bookmark size={22} weight={saved ? 'fill' : 'regular'} className={saved ? 'text-pine' : 'text-ink'} />
         </button>
       </div>
       {shareState !== 'idle' && (

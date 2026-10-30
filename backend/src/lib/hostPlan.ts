@@ -5,7 +5,7 @@ import { db, schema } from '../db';
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
- * A host's yearly plan: ₹1 for the first year (`provider_registration`), ₹499 for each year after
+ * A host's yearly plan: ₹499 for the first year (`provider_registration`), ₹999 for each year after
  * (`provider_renewal`). `providers.plan_expires_at` is when the current year ends; once it has
  * passed, the host's listings leave the public feed and stop taking bookings until they renew.
  *

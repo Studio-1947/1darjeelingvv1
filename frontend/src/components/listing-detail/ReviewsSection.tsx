@@ -8,6 +8,7 @@ import { fetchReviews, postReview, deleteReview, Review, ReviewSummary } from '@
 import { uploadImages } from '@/lib/uploadImage';
 import { ReviewSkeleton, LoadingStatus, repeat } from '@/components/skeletons';
 import { ALIGN_TEXT, ALIGN_ROW, ALIGN_BLOCK, SCREEN_COL } from './primitives';
+import ReportDialog, { ReportTarget } from './ReportDialog';
 
 // Matches MAX_REVIEW_PHOTOS in backend/src/routes/reviews.ts.
 const MAX_REVIEW_PHOTOS = 6;
@@ -18,7 +19,7 @@ function Stars({ value, size = 16 }: { value: number; size?: number }) {
   return (
     <span className="inline-flex items-center gap-0.5" aria-label={t('reviews.out_of_5', { value })}>
       {[1, 2, 3, 4, 5].map((s) => (
-        <Star key={s} size={size} className={s <= Math.round(value) ? 'fill-gold text-gold' : 'text-ink-soft/40'} />
+        <Star key={s} size={size} weight={s <= Math.round(value) ? 'fill' : 'regular'} className={s <= Math.round(value) ? 'text-gold' : 'text-ink-soft/40'} />
       ))}
     </span>
   );
@@ -42,7 +43,7 @@ function StarPicker({ value, onChange }: { value: number; onChange: (v: number) 
           onClick={() => onChange(s)}
           className="btn-hover"
         >
-          <Star size={26} className={s <= (hover || value) ? 'fill-gold text-gold' : 'text-ink-soft/40'} />
+          <Star size={26} weight={s <= (hover || value) ? 'fill' : 'regular'} className={s <= (hover || value) ? 'text-gold' : 'text-ink-soft/40'} />
         </button>
       ))}
     </div>
@@ -64,6 +65,7 @@ export default function ReviewsSection({ item }: { item: any }) {
   const [uploadingPhotos, setUploadingPhotos] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null);
 
   const myReview = user ? reviews.find((r) => r.user_id === user.id) : undefined;
 
@@ -290,7 +292,19 @@ export default function ReviewsSection({ item }: { item: any }) {
                       <div className="text-[11px] text-ink-soft">{new Date(r.created_at).toLocaleDateString()}</div>
                     </div>
                   </div>
-                  <Stars value={r.rating} />
+                  <div className="flex items-center gap-3 flex-shrink-0">
+                    <Stars value={r.rating} />
+                    {user && r.user_id !== user.id && (
+                      <button
+                        type="button"
+                        onClick={() => setReportTarget({ type: 'review', id: r.id, authorId: r.user_id, authorName: r.author_name || '?' })}
+                        data-testid={`review-report-${r.id}`}
+                        className="text-xs font-semibold text-ink-soft hover:text-flag"
+                      >
+                        {t('report.review_link')}
+                      </button>
+                    )}
+                  </div>
                 </div>
                 {r.comment && <p className="mt-3 text-ink leading-relaxed text-sm">{r.comment}</p>}
                 {r.photos && r.photos.length > 0 && (
@@ -306,7 +320,27 @@ export default function ReviewsSection({ item }: { item: any }) {
             ))
           )}
         </div>
+
+        {/* Signed-out readers are sent to sign in first: a report needs an account, so the team can
+            tell one person's repeated reports from many people's. */}
+        <div className={`mt-6 ${ALIGN_TEXT}`}>
+          {user ? (
+            <button
+              type="button"
+              onClick={() => setReportTarget({ type: 'listing', id: item.id })}
+              data-testid="listing-report"
+              className="text-xs font-semibold text-ink-soft underline hover:text-flag"
+            >
+              {t('report.listing_link')}
+            </button>
+          ) : (
+            <Link to={`/login?next=${encodeURIComponent(loc.pathname + '#reviews')}`} className="text-xs font-semibold text-ink-soft underline hover:text-flag">
+              {t('report.listing_link')}
+            </Link>
+          )}
+        </div>
       </div>
+      <ReportDialog target={reportTarget} onClose={() => setReportTarget(null)} onBlocked={load} />
     </section>
   );
 }

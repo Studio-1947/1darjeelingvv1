@@ -7,6 +7,7 @@ import { swaggerSpec } from './swagger';
 // Import router modules
 import authRouter from './routes/auth';
 import googleAuthRouter from './routes/googleAuth';
+import appleAuthRouter from './routes/appleAuth';
 import usersRouter from './routes/users';
 import providersRouter from './routes/providers';
 import listingsRouter from './routes/listings';
@@ -15,13 +16,17 @@ import paymentsRouter from './routes/payments';
 import adminRouter from './routes/admin';
 import adminSpotsRouter from './routes/adminSpots';
 import geocodeRouter from './routes/geocode';
+import mapTilesRouter from './routes/mapTiles';
 import kycRouter from './routes/kyc';
 import favoritesRouter from './routes/favorites';
 import reviewsRouter from './routes/reviews';
+import postsRouter from './routes/posts';
 import routeEstimatorRouter from './routes/routeEstimator';
 import weatherRouter from './routes/weather';
 import notificationsRouter from './routes/notifications';
 import promotionsRouter from './routes/promotions';
+import appVersionRouter from './routes/appVersion';
+import reportsRouter from './routes/reports';
 import interaktWebhookRouter from './routes/interaktWebhook';
 import { rateLimiter } from './middleware/rateLimiter';
 import { reportError } from './observability';
@@ -214,6 +219,7 @@ app.get('/api/health', async (_req: Request, res: Response) => {
 // ============ MOUNT ROUTERS ============
 app.use('/api/auth', authRouter);
 app.use('/api/auth/google', googleAuthRouter);
+app.use('/api/auth/apple', appleAuthRouter);
 app.use('/api/users', usersRouter);
 app.use('/api/providers', kycRouter);
 app.use('/api/providers', providersRouter);
@@ -221,13 +227,17 @@ app.use('/api/listings', listingsRouter);
 app.use('/api/bookings', bookingsRouter);
 app.use('/api/favorites', favoritesRouter);
 app.use('/api/reviews', reviewsRouter);
+app.use('/api/posts', postsRouter);
 app.use('/api/payments', paymentsRouter);
 app.use('/api/webhooks/interakt', interaktWebhookRouter);
 app.use('/api/geocode', geocodeRouter);
+app.use('/api/maps/tiles', mapTilesRouter);
 app.use('/api/routes', routeEstimatorRouter);
 app.use('/api/weather', weatherRouter);
 app.use('/api/notifications', notificationsRouter);
 app.use('/api/promotions', promotionsRouter);
+app.use('/api/app', appVersionRouter);
+app.use('/api', reportsRouter); // /api/reports, /api/users/me/blocks, /api/admin/reports
 app.use('/api', adminRouter); // Mount admin routes directly under /api (e.g. /api/admin/seed, /api/admin/stats)
 app.use('/api', adminSpotsRouter); // Admin-only tourist-spot CRUD (e.g. /api/admin/spots)
 

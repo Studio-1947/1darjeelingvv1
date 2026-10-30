@@ -90,3 +90,80 @@ describe('provider location verification', () => {
     expect(row.latitude).toBe(27.1);
   });
 });
+
+describe('a listing added after the pin was verified', () => {
+  const create = (token: string, extra: Record<string, unknown> = {}) =>
+    request(app)
+      .post('/api/listings')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ title: 'Second Place', type: 'homestay', description: 'Another room to let', location: 'Darjeeling', price: 1200, ...extra });
+
+  it('inherits the provider verified pin', async () => {
+    const { token } = await onboardActiveProvider({ name: 'Loc Inherit', businessType: 'homestay' });
+    await verify(token, IN_DARJEELING);
+
+    const res = await create(token);
+    expect(res.status).toBe(200);
+    expect(res.body.item.latitude).toBe(27.036);
+    expect(res.body.item.longitude).toBe(88.2627);
+    expect(res.body.item.extras.location_verified.source).toBe('google_maps_link');
+  });
+
+  it('keeps coordinates it names itself, unverified', async () => {
+    const { token } = await onboardActiveProvider({ name: 'Loc Own Pin', businessType: 'homestay' });
+    await verify(token, IN_DARJEELING);
+
+    const res = await create(token, { latitude: 27.05, longitude: 88.3 });
+    expect(res.body.item.latitude).toBe(27.05);
+    expect(res.body.item.extras.location_verified).toBeUndefined();
+  });
+
+  it('has no pin when the provider never verified one', async () => {
+    const { token } = await onboardActiveProvider({ name: 'Loc Unverified', businessType: 'homestay' });
+    const res = await create(token);
+    expect(res.body.item.latitude).toBeNull();
+    expect(res.body.item.extras.location_verified).toBeUndefined();
+  });
+});
+
+describe('verifying one listing on its own', () => {
+  const verifyListing = (token: string, id: string, maps_url: unknown) =>
+    request(app).post(`/api/listings/${id}/location/verify`).set('Authorization', `Bearer ${token}`).send({ maps_url });
+
+  async function twoListings(token: string) {
+    const make = async (title: string) =>
+      (await request(app).post('/api/listings').set('Authorization', `Bearer ${token}`)
+        .send({ title, type: 'homestay', description: 'A room with a view', location: 'Darjeeling', price: 1000 })).body.item.id as string;
+    return [await make('Hilltop Stay'), await make('Town Stay')];
+  }
+
+  it('moves only that listing', async () => {
+    const { token } = await onboardActiveProvider({ name: 'Loc Split', businessType: 'homestay' });
+    const [hill, town] = await twoListings(token);
+
+    const res = await verifyListing(token, hill, 'https://www.google.com/maps/@27.0410,88.2650,17z');
+    expect(res.status).toBe(200);
+    expect(res.body.location.verified).toBe(true);
+
+    const [a] = await db.select().from(schema.listings).where(eq(schema.listings.id, hill));
+    const [b] = await db.select().from(schema.listings).where(eq(schema.listings.id, town));
+    expect(a.latitude).toBe(27.041);
+    expect((a.extras as any).location_verified.source).toBe('google_maps_link');
+    expect(b.latitude).toBeNull();
+  });
+
+  it('refuses a pin outside the service area, a bad link, and a listing that is not theirs', async () => {
+    const { token } = await onboardActiveProvider({ name: 'Loc Guard', businessType: 'homestay' });
+    const [id] = await twoListings(token);
+
+    expect((await verifyListing(token, id, 'https://www.google.com/maps/@28.6139,77.2090,15z')).status).toBe(400);
+    expect((await verifyListing(token, id, 'https://example.com/maps/@27.03,88.26,15z')).status).toBe(400);
+    expect((await verifyListing(token, id, undefined)).status).toBe(400);
+
+    const { token: stranger } = await registerUser({ name: 'Loc Stranger' });
+    expect((await verifyListing(stranger, id, IN_DARJEELING)).status).toBe(403);
+    const anon = await request(app).post(`/api/listings/${id}/location/verify`).send({ maps_url: IN_DARJEELING });
+    expect(anon.status).toBe(401);
+    expect((await verifyListing(token, 'no-such-listing', IN_DARJEELING)).status).toBe(404);
+  });
+});

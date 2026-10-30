@@ -13,6 +13,7 @@ import { routeParam } from '../lib/routeParam';
 import { isListingHostLapsed } from '../lib/hostPlan';
 import { settleBookingConfirmation } from '../lib/bookingConfirmation';
 import { addInAppNotification, resolveHostUserId } from '../lib/inApp';
+import { releaseVoucherForBooking } from '../lib/vouchers';
 
 /** Listing types guests contact directly rather than book. */
 const CONTACT_ONLY_TYPES = new Set(['cafe', 'shop']);
@@ -150,18 +151,31 @@ router.post('/', authenticateToken, requireActiveSupport, async (req: Request, r
   };
 
   // Run the booking insert and voucher burn in a transaction to prevent double spending
-  await db.transaction(async (tx) => {
-    await tx.insert(schema.bookings).values(booking);
-    if (validVoucher) {
-      await tx.update(schema.vouchers)
-        .set({
-          status: 'used',
-          usedAt: new Date().toISOString(),
-          usedOnBookingId: booking.id,
-        })
-        .where(eq(schema.vouchers.id, validVoucher.id));
+  // The check above and this claim are separate statements, so two requests can both see the
+  // voucher as available. The update therefore re-checks `available` itself and says whether it
+  // won; the loser rolls back its booking row too.
+  const VOUCHER_TAKEN = Symbol('voucher-taken');
+  try {
+    await db.transaction(async (tx) => {
+      await tx.insert(schema.bookings).values(booking);
+      if (validVoucher) {
+        const claimed = await tx.update(schema.vouchers)
+          .set({
+            status: 'used',
+            usedAt: new Date().toISOString(),
+            usedOnBookingId: booking.id,
+          })
+          .where(and(eq(schema.vouchers.id, validVoucher.id), eq(schema.vouchers.status, 'available')))
+          .returning({ id: schema.vouchers.id });
+        if (claimed.length === 0) throw VOUCHER_TAKEN;
+      }
+    });
+  } catch (err) {
+    if (err === VOUCHER_TAKEN) {
+      return res.status(400).json({ detail: 'Voucher is invalid, unavailable, or does not belong to you' });
     }
-  });
+    throw err;
+  }
 
   // The host's feed hears about the request straight away, even though it is unpaid, because the
   // provider inbox already lists it and they would otherwise see it there with no prompt.
@@ -602,6 +616,10 @@ router.patch('/:id/cancel', authenticateToken, async (req: Request, res: Respons
     .where(eq(schema.bookings.id, booking.id))
     .returning();
 
+  // A voucher is burned when the request is made. If the booking never reached `confirmed` the
+  // guest received nothing for it, so it goes back; a confirmed stay keeps its discount spent.
+  if (booking.status !== 'confirmed') await releaseVoucherForBooking(db, booking.id);
+
   // Give back whatever was paid for this booking. Before this, cancelling flipped the status and
   // kept the money with no record that anything was owed  refundPaymentsFor is idempotent and a
   // no-op for a booking that never got past pending_payment, so this is safe on every path.
@@ -636,7 +654,7 @@ router.patch('/:id/cancel', authenticateToken, async (req: Request, res: Respons
   // never reached confirmation was never announced in the first place.
   if (booking.status === 'confirmed') {
     const [guest] = await db.select().from(schema.users).where(eq(schema.users.id, booking.userId)).limit(1);
-    await notifyBookingCancelled(updated, guest?.phone || '', guest?.name || 'Guest', refunded);
+    await notifyBookingCancelled(updated, guest?.phone || '', guest?.name || 'Guest', refunded, guest?.email);
   }
 
   res.json({ booking: shape(updated), refunded });

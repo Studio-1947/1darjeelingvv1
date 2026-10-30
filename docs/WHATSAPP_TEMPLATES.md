@@ -1,6 +1,6 @@
 # WhatsApp message templates  ready to submit
 
-The four templates 1 Darjeeling needs, with their bodies written to match the code that fills
+The four templates aangan needs, with their bodies written to match the code that fills
 them. Create these in WhatsApp Manager or with the curl calls below, then put the approved names
 into the `WHATSAPP_*_TEMPLATE` environment variables.
 
@@ -13,6 +13,57 @@ the caller too.
 
 Second reason not to improvise: **an approved template that you edit goes back for review.** Get
 the copy right before you submit rather than after.
+
+
+## Using Interakt (what production uses)
+
+Production sends WhatsApp through **Interakt** (`MESSAGING_PROVIDER=interakt`); the login code
+already goes out this way with the template `aagan_otp`. The three booking templates below are
+created the same way. The curl calls further down are for the direct Meta Cloud API adapter and
+are not needed with Interakt.
+
+**1. Create each template in Interakt** (Templates → Create new template):
+
+| Interakt field | Value |
+|---|---|
+| Template name | `aangan_booking_confirmed_guest`, `aangan_booking_confirmed_host`, `aangan_booking_cancelled_guest` |
+| Category | **Utility** |
+| Language | English |
+| Header | none |
+| Body | copy the **Body** block of that template below *exactly*, including blank lines |
+| Variables | Interakt asks for a sample for each `{{n}}`: use the Example column |
+| Footer | `aangan` |
+| Buttons | none |
+
+Submit all three. Utility templates are usually approved within a few hours; Meta may ask for
+changes. **Do not reorder the `{{n}}` slots**: the server fills them strictly by position.
+
+**2. Put the approved names in the VPS `.env`** (`/var/www/1darjeeling-in/.env`):
+
+```
+INTERAKT_BOOKING_CONFIRMED_GUEST_TEMPLATE=aangan_booking_confirmed_guest
+INTERAKT_BOOKING_CONFIRMED_HOST_TEMPLATE=aangan_booking_confirmed_host
+INTERAKT_BOOKING_CANCELLED_GUEST_TEMPLATE=aangan_booking_cancelled_guest
+```
+
+Leave `NOTIFY_BOOKINGS=false` for now and recreate the backend
+(`docker compose -f docker-compose.in.yml up -d --force-recreate backend`).
+
+**3. Send yourself one of each, before turning anything on:**
+
+```
+docker compose -f docker-compose.in.yml exec backend npm run notify:test -- +91XXXXXXXXXX booking_confirmed_guest
+docker compose -f docker-compose.in.yml exec backend npm run notify:test -- +91XXXXXXXXXX booking_confirmed_host
+docker compose -f docker-compose.in.yml exec backend npm run notify:test -- +91XXXXXXXXXX booking_cancelled_guest
+```
+
+Each sends the template with the example values from this file to your own number. Check that
+every value lands in the right place. If Interakt rejects one, the command prints Interakt's
+reason (usually a template name typo or a template that is still in review).
+
+**4. Switch booking alerts on:** set `NOTIFY_BOOKINGS=true` and recreate the backend again. The
+server refuses to start if any of the three names is missing, so a half-done setup cannot go live
+silently. The boot log then says `whatsapp/sms: on`.
 
 ---
 
@@ -68,13 +119,13 @@ Hello {{1}}, your booking at {{2}} is confirmed for {{3}}.
 
 {{4}}
 
-Show this message on arrival. You pay the host directly  1 Darjeeling only collected the booking fee.
+Show this message on arrival. You pay the host directly for your stay.
 ```
 
 **Footer**
 
 ```
-1 Darjeeling
+aangan
 ```
 
 `{{4}}` is a whole sentence, not a name  it arrives as either `Host: <name>, <phone>.` or
@@ -91,9 +142,9 @@ curl -X POST "https://graph.facebook.com/v21.0/<WABA_ID>/message_templates" \
     "category": "UTILITY",
     "components": [
       { "type": "BODY",
-        "text": "Hello {{1}}, your booking at {{2}} is confirmed for {{3}}.\n\n{{4}}\n\nShow this message on arrival. You pay the host directly  1 Darjeeling only collected the booking fee.",
+        "text": "Hello {{1}}, your booking at {{2}} is confirmed for {{3}}.\n\n{{4}}\n\nShow this message on arrival. You pay the host directly for your stay.",
         "example": { "body_text": [["Asha Rai", "Peak View Homestay", "2026-09-01 to 2026-09-03", "Host: Tenzing Bhutia, +919876543210."]] } },
-      { "type": "FOOTER", "text": "1 Darjeeling" }
+      { "type": "FOOTER", "text": "aangan" }
     ]
   }'
 ```
@@ -131,7 +182,7 @@ Please contact your guest to confirm arrival details.
 **Footer**
 
 ```
-1 Darjeeling
+aangan
 ```
 
 ```bash
@@ -146,7 +197,7 @@ curl -X POST "https://graph.facebook.com/v21.0/<WABA_ID>/message_templates" \
       { "type": "BODY",
         "text": "New booking at {{1}}.\n\nGuest: {{2}}\nPhone: {{3}}\nDates: {{4}}\nPeople: {{5}}\n\nPlease contact your guest to confirm arrival details.",
         "example": { "body_text": [["Peak View Homestay", "Asha Rai", "+919876543210", "2026-09-01 to 2026-09-03", "3"]] } },
-      { "type": "FOOTER", "text": "1 Darjeeling" }
+      { "type": "FOOTER", "text": "aangan" }
     ]
   }'
 ```
@@ -175,13 +226,13 @@ Hello {{1}}, your booking at {{2}} for {{3}} has been cancelled.
 
 {{4}}
 
-We are sorry for the disruption. You can find another place to stay in the 1 Darjeeling app.
+We are sorry for the disruption. You can find another place to stay in the aangan app.
 ```
 
 **Footer**
 
 ```
-1 Darjeeling
+aangan
 ```
 
 `{{4}}` arrives as one of two full sentences depending on whether the refund actually went
@@ -198,9 +249,9 @@ curl -X POST "https://graph.facebook.com/v21.0/<WABA_ID>/message_templates" \
     "category": "UTILITY",
     "components": [
       { "type": "BODY",
-        "text": "Hello {{1}}, your booking at {{2}} for {{3}} has been cancelled.\n\n{{4}}\n\nWe are sorry for the disruption. You can find another place to stay in the 1 Darjeeling app.",
+        "text": "Hello {{1}}, your booking at {{2}} for {{3}} has been cancelled.\n\n{{4}}\n\nWe are sorry for the disruption. You can find another place to stay in the aangan app.",
         "example": { "body_text": [["Asha Rai", "Peak View Homestay", "2026-09-01 to 2026-09-03", "Your payment has been refunded and will reach your account in 5-7 working days."]] } },
-      { "type": "FOOTER", "text": "1 Darjeeling" }
+      { "type": "FOOTER", "text": "aangan" }
     ]
   }'
 ```

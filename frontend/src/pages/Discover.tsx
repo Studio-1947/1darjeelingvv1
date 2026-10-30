@@ -7,6 +7,7 @@ import FeedCard from '@/components/FeedCard';
 import SmartImg from '@/components/SmartImg';
 import Seo from '@/components/Seo';
 import BookingWidget from '@/components/BookingWidget';
+import HostFeedStrip from '@/components/feed/HostFeedStrip';
 import HeroMedia from '@/components/HeroMedia';
 import RouteEstimator from '@/components/RouteEstimator';
 import { CATEGORIES } from '@/constants/categories';
@@ -304,6 +305,8 @@ export default function Discover() {
           ))}
         </div>
       </section>
+
+      <HostFeedStrip />
 
       {/* Instagram-style feed */}
       {/* scroll-mt clears the sticky header when paging jumps back up here. */}

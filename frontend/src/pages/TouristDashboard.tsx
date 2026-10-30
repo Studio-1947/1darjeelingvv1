@@ -5,6 +5,7 @@ import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { SignOut as LogOut, Storefront as Store, Compass, Phone, ArrowRight, Ticket, Calendar, XCircle, CircleNotch as Loader2 } from '@phosphor-icons/react';
 import { useSeo } from '@/components/Seo';
+import BlockedPeople from '@/components/BlockedPeople';
 
 function StatusPill({ status }) {
   const { t } = useTranslation();
@@ -242,6 +243,8 @@ export default function TouristDashboard() {
           )}
         </div>
       </div>
+
+      <BlockedPeople />
     </div>
   );
 }
