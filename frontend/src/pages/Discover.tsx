@@ -10,9 +10,11 @@ import BookingWidget from '@/components/BookingWidget';
 import HostFeedStrip from '@/components/feed/HostFeedStrip';
 import HeroMedia from '@/components/HeroMedia';
 import RouteEstimator from '@/components/RouteEstimator';
+import { useFavorites } from '@/context/FavoritesContext';
+import { useLoginGate } from '@/components/LoginGate';
 import { CATEGORIES } from '@/constants/categories';
 import { FeedCardSkeleton, SpotTileSkeleton, StayTileSkeleton, LoadingStatus, repeat } from '@/components/skeletons';
-import { Mountains as Mountain, ArrowRight, Compass, TrendUp as TrendingUp, CaretLeft as ChevronLeft, CaretRight as ChevronRight } from '@phosphor-icons/react';
+import { Mountains as Mountain, ArrowRight, Compass, TrendUp as TrendingUp, CaretLeft as ChevronLeft, CaretRight as ChevronRight, Heart } from '@phosphor-icons/react';
 
 const RED_PANDA = 'https://images.unsplash.com/photo-1542880941-1abfea46bba6';
 const HERO_POSTER = 'https://images.unsplash.com/photo-1544735716-392fe2489ffa';
@@ -57,6 +59,8 @@ function pageWindow(current: number, count: number): (number | null)[] {
 
 export default function Discover() {
   const { t } = useTranslation();
+  const { isFavorite, toggle } = useFavorites();
+  const { requireAuth } = useLoginGate();
   const [feed, setFeed] = useState([]);
   const [spots, setSpots] = useState([]);
   const [homestays, setHomestays] = useState([]);
@@ -66,6 +70,11 @@ export default function Discover() {
   const spotsScrollRef = useRef<HTMLDivElement>(null);
   const feedTopRef = useRef<HTMLElement>(null);
   const pointerRestoreRef = useRef<number>(undefined);
+
+  const toggleStayFavorite = (id: string) => {
+    if (!requireAuth('save')) return;
+    toggle(id).catch(() => {});
+  };
 
   // Only offer a pill for a type the feed actually contains, in the canonical
   // category order - an "Events" tab that always lands on an empty grid is
@@ -284,7 +293,9 @@ export default function Discover() {
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
           {loading && repeat(4, (i) => <StayTileSkeleton key={i} />)}
-          {homestays.slice(0, 4).map((h) => (
+          {homestays.slice(0, 4).map((h) => {
+            const saved = isFavorite(h.id);
+            return (
             <div key={h.id} data-testid={`stay-tile-${h.id}`} className="flex flex-col rounded-2xl overflow-hidden bg-white border border-[var(--line)] btn-hover">
               <Link to={`/listing/${h.id}`} className="block aspect-square bg-mist overflow-hidden">
                 <SmartImg src={listingImage(h, 500, 500)} alt={h.title} className="w-full h-full object-cover" />
@@ -296,13 +307,26 @@ export default function Discover() {
                   <span className="font-extrabold text-pine text-sm md:text-base">₹{h.price}</span>
                   <span className="text-[10px] text-ink-soft">{t('common.per_head')}</span>
                 </div>
-                <Link to={`/listing/${h.id}`} data-testid={`stay-book-${h.id}`}
-                  className="mt-3 inline-flex items-center justify-center gap-1.5 py-2 rounded-full bg-pine text-white font-bold text-xs btn-hover">
-                  {t('cta.book_now')} <ArrowRight size={12} />
-                </Link>
+                <div className="mt-3 grid grid-cols-[minmax(0,1fr)_2.5rem] gap-2">
+                  <Link to={`/listing/${h.id}`} data-testid={`stay-book-${h.id}`}
+                    className="inline-flex min-w-0 items-center justify-center gap-1.5 rounded-full bg-pine px-3 py-2 text-xs font-bold text-white btn-hover">
+                    <span className="truncate">{t('cta.book_now')}</span> <ArrowRight size={12} />
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => toggleStayFavorite(h.id)}
+                    data-testid={`stay-save-${h.id}`}
+                    aria-label={t('common.save')}
+                    aria-pressed={saved}
+                    className={`inline-flex items-center justify-center rounded-full border btn-hover ${saved ? 'border-pine bg-pine/10 text-pine' : 'border-[var(--line)] text-ink hover:bg-mist'}`}
+                  >
+                    <Heart size={17} weight={saved ? 'fill' : 'regular'} />
+                  </button>
+                </div>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       </section>
 
