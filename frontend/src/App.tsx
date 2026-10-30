@@ -126,6 +126,7 @@ export default function App() {
                     <Route path="/refunds" element={<Refunds />} />
                     <Route path="/delete-account" element={<DeleteAccount />} />
                     <Route path="/contact" element={<Contact />} />
+                    <Route path="/policies" element={<Policies />} />
                     {/* Anything else. Without this the router matched nothing and
                         rendered an empty <main> between the header and footer. */}
                     <Route path="*" element={<NotFound />} />

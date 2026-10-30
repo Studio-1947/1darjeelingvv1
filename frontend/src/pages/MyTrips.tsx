@@ -148,7 +148,7 @@ export default function MyTrips() {
             My Trips & Bookings
           </h1>
           <p className="text-xs sm:text-sm text-ink-soft mt-1">
-            Your journey history, upcoming reservations, and completed stays through 1 Darjeeling.
+            Your journey history, upcoming reservations, and completed stays through aangan.
           </p>
         </div>
       </div>
