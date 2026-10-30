@@ -96,7 +96,7 @@ export default function TouristDashboard() {
           <div className="mist-panel p-8 md:p-10 text-center">
             <p className="text-ink-soft">{t('dashboard.no_bookings')}</p>
             <div className="mt-4 flex flex-wrap gap-2 justify-center">
-              <Link to="/homestays" data-testid="empty-book-stay" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-flag text-white font-bold text-sm btn-hover">
+              <Link to="/homestays" data-testid="empty-book-stay" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-pine text-white font-bold text-sm btn-hover">
                 {t('dashboard.book_homestay')} <ArrowRight size={14} />
               </Link>
               <Link to="/drivers" data-testid="empty-book-driver" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-pine text-white font-bold text-sm btn-hover">

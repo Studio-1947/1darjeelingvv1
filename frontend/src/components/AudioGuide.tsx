@@ -126,7 +126,7 @@ export default function AudioGuide({ title, aboutText }: AudioGuideProps) {
           onClick={togglePlay}
           data-testid="audio-play-toggle"
           aria-label={playing ? 'Pause Narration' : 'Play Narration'}
-          className="w-9 h-9 rounded-full bg-flag text-white flex items-center justify-center shadow-sm btn-hover flex-shrink-0"
+          className="w-9 h-9 rounded-full bg-pine text-white flex items-center justify-center shadow-sm btn-hover flex-shrink-0"
         >
           {playing ? <Pause size={16} /> : <Play size={16} className="ml-0.5" />}
         </button>

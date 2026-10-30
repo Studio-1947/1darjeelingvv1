@@ -12,8 +12,8 @@
   --ink-soft: #4B5C55;
   --muted: #6B7C74;
   --line: #E6E8E3;
-  --pine: #2C5E3B;
-  --pine-dark: #1F4429;
+  --pine: #007C85;
+  --pine-dark: #005F66;
   --flag: #C42E2E;
   --gold: #F0B90B;
   --mist: #EEF2ED;
@@ -48,7 +48,7 @@
     --card-foreground: 150 20% 10%;
     --popover: 0 0% 100%;
     --popover-foreground: 150 20% 10%;
-    --primary: 138 37% 27%;
+    --primary: 184 100% 26%;
     --primary-foreground: 0 0% 100%;
     --secondary: 0 62% 47%;
     --secondary-foreground: 0 0% 100%;
@@ -60,7 +60,7 @@
     --destructive-foreground: 0 0% 100%;
     --border: 90 12% 90%;
     --input: 90 12% 90%;
-    --ring: 138 37% 27%;
+    --ring: 184 100% 26%;
     --radius: 1rem;
   }
 }

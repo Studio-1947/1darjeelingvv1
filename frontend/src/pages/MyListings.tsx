@@ -116,7 +116,7 @@ export default function MyListings() {
         <div className="mt-6 flex flex-wrap gap-3 justify-center">
           <Link
             to="/provider/onboard"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-flag text-white font-bold text-sm btn-hover shadow-md"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-pine text-white font-bold text-sm btn-hover shadow-md"
           >
             {t('provider.onboard_title')} <ArrowRight size={16} />
           </Link>
@@ -163,7 +163,7 @@ export default function MyListings() {
           <button
             onClick={() => setListingModal({ open: true, editing: null })}
             data-testid="add-listing-cta"
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-flag text-white font-bold text-xs sm:text-sm btn-hover shadow-sm"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-pine text-white font-bold text-xs sm:text-sm btn-hover shadow-sm"
           >
             <Plus size={15} /> Add New Listing
           </button>
@@ -204,7 +204,7 @@ export default function MyListings() {
           </p>
           <button
             onClick={() => setListingModal({ open: true, editing: null })}
-            className="mt-6 inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full bg-flag text-white font-bold text-xs sm:text-sm btn-hover"
+            className="mt-6 inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full bg-pine text-white font-bold text-xs sm:text-sm btn-hover"
           >
             <Plus size={16} /> Add Your First Listing
           </button>

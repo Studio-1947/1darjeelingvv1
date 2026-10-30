@@ -297,7 +297,7 @@ export default function Discover() {
                   <span className="text-[10px] text-ink-soft">{t('common.per_head')}</span>
                 </div>
                 <Link to={`/listing/${h.id}`} data-testid={`stay-book-${h.id}`}
-                  className="mt-3 inline-flex items-center justify-center gap-1.5 py-2 rounded-full bg-flag text-white font-bold text-xs btn-hover">
+                  className="mt-3 inline-flex items-center justify-center gap-1.5 py-2 rounded-full bg-pine text-white font-bold text-xs btn-hover">
                   {t('cta.book_now')} <ArrowRight size={12} />
                 </Link>
               </div>

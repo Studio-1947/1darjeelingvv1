@@ -245,7 +245,7 @@ export default function About() {
           <p className="mt-3 text-sm md:text-base text-ink-soft max-w-2xl mx-auto leading-relaxed">{t('about.providers_body')}</p>
           <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
             <Link to="/provider/onboard" data-testid="about-provider-cta"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-flag text-white font-bold btn-hover">
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-pine text-white font-bold btn-hover">
               {t('nav.provider')} <ArrowRight size={16} />
             </Link>
             <a href="mailto:1darjeelingapp@gmail.com"

@@ -94,7 +94,7 @@ export function LoginGateProvider({ children }: { children: React.ReactNode }) {
               type="button"
               onClick={goLogin}
               data-testid="login-gate-cta"
-              className="mt-5 w-full py-3 rounded-full bg-flag text-white font-bold btn-hover"
+              className="mt-5 w-full py-3 rounded-full bg-pine text-white font-bold btn-hover"
             >
               {t('auth_gate.cta')}
             </button>

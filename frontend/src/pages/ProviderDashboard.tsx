@@ -142,7 +142,7 @@ export default function ProviderDashboard() {
         <h1 className="font-display font-extrabold text-3xl text-ink">{t('pd.no_business_title')}</h1>
         <p className="text-ink-soft mt-2">{t('pd.no_business_note')}</p>
         <button onClick={() => nav('/provider/onboard')} data-testid="onboard-cta"
-          className="mt-6 inline-flex items-center gap-2 px-6 py-3 rounded-full bg-flag text-white font-bold btn-hover">
+          className="mt-6 inline-flex items-center gap-2 px-6 py-3 rounded-full bg-pine text-white font-bold btn-hover">
           {t('provider.onboard_title')} <ArrowRight size={16} />
         </button>
       </div>
@@ -233,7 +233,7 @@ export default function ProviderDashboard() {
               <button
                 onClick={() => setTab('profile')}
                 data-testid="kyc-complete-profile-cta"
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-flag text-white font-bold text-xs btn-hover whitespace-nowrap self-start md:self-auto"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-pine text-white font-bold text-xs btn-hover whitespace-nowrap self-start md:self-auto"
               >
                 {hasActionable ? t('kyc.completeProfileCta') : t('kyc.viewStatusCta')} <ArrowRight size={14} />
               </button>
@@ -285,7 +285,7 @@ export default function ProviderDashboard() {
             <button
               onClick={() => setListingModal({ open: true, editing: null })}
               data-testid="add-listing-cta"
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-flag text-white font-bold text-xs btn-hover"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-pine text-white font-bold text-xs btn-hover"
             >
               <Plus size={14} /> {t('pd.add_listing')}
             </button>

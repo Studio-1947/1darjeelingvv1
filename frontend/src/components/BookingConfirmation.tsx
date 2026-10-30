@@ -117,7 +117,7 @@ export default function BookingConfirmation({ open, onClose, mode = 'booking', d
           <div className="space-y-2 pt-1">
             {onView && (
               <button onClick={onView} data-testid="confirm-view"
-                className="w-full inline-flex items-center justify-center gap-2 py-3 rounded-full bg-flag text-white font-extrabold btn-hover">
+                className="w-full inline-flex items-center justify-center gap-2 py-3 rounded-full bg-pine text-white font-extrabold btn-hover">
                 {isBooking ? t('bc.view_bookings', 'View in My Trips') : t('bc.go_dashboard')} <ArrowRight size={16} />
               </button>
             )}

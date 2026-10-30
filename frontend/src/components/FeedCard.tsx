@@ -15,11 +15,11 @@ import { shareLink } from '@/lib/share';
 // already described a navigation keep their own wording (QA 4.7). The shared
 // label comes from cardCtaKey so the grid tiles and these cards can't drift.
 const CTA_MAP = {
-  homestay: { Icon: ArrowRight, color: 'bg-flag text-white' },
+  homestay: { Icon: ArrowRight, color: 'bg-pine text-white' },
   driver: { Icon: Phone, color: 'bg-pine text-white' },
   shop: { Icon: Store, color: 'bg-ink text-white' },
   cafe: { Icon: Coffee, color: 'bg-ink text-white' },
-  event: { Icon: Ticket, color: 'bg-flag text-white' },
+  event: { Icon: Ticket, color: 'bg-pine text-white' },
   biodiversity: { Icon: Leaf, color: 'bg-pine text-white' },
   spot: { Icon: Mountain, color: 'bg-pine text-white' },
 };

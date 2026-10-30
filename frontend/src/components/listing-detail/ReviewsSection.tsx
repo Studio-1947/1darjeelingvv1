@@ -263,7 +263,7 @@ export default function ReviewsSection({ item }: { item: any }) {
             <div className={`${ALIGN_TEXT}`}>
               <p className="text-ink-soft">{t('reviews.signed_out')}</p>
               <Link to={`/login?next=${encodeURIComponent(loc.pathname + '#reviews')}`}
-                className="mt-4 inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-flag text-white font-bold btn-hover">
+                className="mt-4 inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-pine text-white font-bold btn-hover">
                 {t('reviews.sign_in_cta')}
               </Link>
             </div>

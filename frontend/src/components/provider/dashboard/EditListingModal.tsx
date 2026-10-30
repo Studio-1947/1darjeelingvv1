@@ -352,7 +352,7 @@ export default function EditListingModal({ listing, onClose, onSave }: {
               type="submit"
               disabled={saving || uploading}
               data-testid="save-edit-listing"
-              className="px-6 py-2.5 rounded-full bg-flag text-white font-bold text-sm btn-hover disabled:opacity-60"
+              className="px-6 py-2.5 rounded-full bg-pine text-white font-bold text-sm btn-hover disabled:opacity-60"
             >
               {saving ? t('common.saving') : t('common.save_changes')}
             </button>
