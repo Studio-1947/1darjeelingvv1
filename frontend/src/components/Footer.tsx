@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Heart, EnvelopeSimple as Mail } from '@phosphor-icons/react';
+import { Heart, InstagramLogo, EnvelopeSimple as Mail } from '@phosphor-icons/react';
 import Wordmark from '@/components/Wordmark';
 
 export default function Footer() {
@@ -20,6 +20,16 @@ export default function Footer() {
           </div>
           <p className="text-sm text-ink-soft leading-relaxed">{t('brand_tagline')}</p>
           <p className="mt-4 text-xs text-ink-soft flex items-center gap-1"><Heart size={12} className="text-flag" /> {t('footer.made')}</p>
+          <a
+            href="https://www.instagram.com/aanganerp"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Aangan on Instagram (@aanganerp)"
+            className="mt-3 inline-flex items-center gap-2 rounded-full border border-[var(--line)] px-3.5 py-2 text-xs font-bold text-ink transition-colors hover:border-pine hover:text-pine"
+          >
+            <InstagramLogo size={16} weight="fill" className="text-pine flex-shrink-0" />
+            @aanganerp
+          </a>
         </div>
         <div>
           <h2 className="font-display font-bold text-sm mb-3 text-ink">{t('nav.discover')}</h2>
@@ -48,7 +58,11 @@ export default function Footer() {
             <li><Link to="/refunds" className="hover:text-pine transition-colors">{t('nav.refunds')}</Link></li>
             <li><Link to="/contact" className="hover:text-pine transition-colors">{t('nav.contact')}</Link></li>
             <li><Link to="/delete-account" className="hover:text-pine transition-colors">{t('nav.delete_account')}</Link></li>
-            <li className="flex items-center gap-1 mt-2 text-ink/80 font-medium"><Mail size={12} className="text-pine flex-shrink-0" /> 1darjeelingapp@gmail.com</li>
+            <li className="mt-2 min-w-0">
+              <a href="mailto:aanganerp@gmail.com" className="inline-flex items-start gap-1 text-ink/80 font-medium break-words transition-colors hover:text-pine">
+                <Mail size={12} className="text-pine flex-shrink-0 mt-1" /> aanganerp@gmail.com
+              </a>
+            </li>
           </ul>
         </div>
       </div>

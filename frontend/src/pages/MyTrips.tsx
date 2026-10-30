@@ -11,14 +11,14 @@ function StatusPill({ status, isPast }: { status: string; isPast: boolean }) {
   
   if (status === 'confirmed' && isPast) {
     return (
-      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-pine/10 text-pine">
+      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-pine/10 text-pine-dark">
         <CheckCircle2 size={10} /> Completed
       </span>
     );
   }
 
   const map: Record<string, string> = {
-    confirmed: 'bg-pine/10 text-pine',
+    confirmed: 'bg-pine/10 text-pine-dark',
     pending_payment: 'bg-gold/20 text-[#8a6b04]',
     cancelled: 'bg-flag/10 text-flag',
   };

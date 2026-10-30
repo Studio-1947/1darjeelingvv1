@@ -77,7 +77,7 @@ export default function PriceSubmitScreen({
                 {t('ob.hs.breakfast_question', { defaultValue: 'Is Breakfast Included in this price?' })}
               </span>
               <div className="flex flex-col sm:flex-row gap-3 pt-1">
-                <label className={`flex-1 flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl border transition-all cursor-pointer ${breakfastIncluded ? 'border-pine bg-pine/5 text-pine font-bold' : 'border-[var(--line)] bg-white text-ink font-semibold'}`}>
+                <label className={`flex-1 flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl border transition-all cursor-pointer ${breakfastIncluded ? 'border-pine bg-pine/5 text-pine-dark font-bold' : 'border-[var(--line)] bg-white text-ink font-semibold'}`}>
                   <input
                     type="radio"
                     name="breakfast_included_radio"
@@ -87,7 +87,7 @@ export default function PriceSubmitScreen({
                   />
                   <span className="text-sm">{t('ob.hs.breakfast_yes', { defaultValue: 'Yes, Breakfast Included' })}</span>
                 </label>
-                <label className={`flex-1 flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl border transition-all cursor-pointer ${!breakfastIncluded ? 'border-pine bg-pine/5 text-pine font-bold' : 'border-[var(--line)] bg-white text-ink font-semibold'}`}>
+                <label className={`flex-1 flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl border transition-all cursor-pointer ${!breakfastIncluded ? 'border-pine bg-pine/5 text-pine-dark font-bold' : 'border-[var(--line)] bg-white text-ink font-semibold'}`}>
                   <input
                     type="radio"
                     name="breakfast_included_radio"

@@ -12,8 +12,10 @@
   --ink-soft: #4B5C55;
   --muted: #6B7C74;
   --line: #E6E8E3;
-  --pine: #2C5E3B;
-  --pine-dark: #1F4429;
+  /* Brand primary: brighter teal. --pine is the button/accent fill (4.5:1 on
+     white text), --pine-dark is its hover/pressed shade. */
+  --pine: #0D8074;
+  --pine-dark: #0A6459;
   --flag: #C42E2E;
   --gold: #F0B90B;
   --mist: #EEF2ED;
@@ -48,7 +50,7 @@
     --card-foreground: 150 20% 10%;
     --popover: 0 0% 100%;
     --popover-foreground: 150 20% 10%;
-    --primary: 138 37% 27%;
+    --primary: 174 82% 27.6%;
     --primary-foreground: 0 0% 100%;
     --secondary: 0 62% 47%;
     --secondary-foreground: 0 0% 100%;
@@ -60,7 +62,7 @@
     --destructive-foreground: 0 0% 100%;
     --border: 90 12% 90%;
     --input: 90 12% 90%;
-    --ring: 138 37% 27%;
+    --ring: 174 82% 27.6%;
     --radius: 1rem;
   }
 }
@@ -198,7 +200,7 @@ html[lang="ne"] h1, html[lang="ne"] h2, html[lang="ne"] h3, html[lang="ne"] h4 {
 
 .chip {
   display: inline-flex; align-items: center; padding: 4px 10px;
-  border-radius: 999px; background: #EEF2ED; color: #2C5E3B; font-weight: 600;
+  border-radius: 999px; background: #EEF2ED; color: #0A6459; font-weight: 600;
   font-size: 12px; letter-spacing: 0.02em;
 }
 
