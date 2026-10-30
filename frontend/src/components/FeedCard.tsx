@@ -1,27 +1,23 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { MapPin, ShareNetwork as Share2, Bookmark, Star, ArrowRight, Phone, Storefront as Store, Coffee, Ticket, Leaf, Mountains as Mountain, Check, X } from '@phosphor-icons/react';
+import { MapPin, ShareNetwork as Share2, Heart, Star, ArrowRight, Phone, Storefront as Store, Coffee, Ticket, Leaf, Mountains as Mountain, Check, X } from '@phosphor-icons/react';
 import SmartImg from '@/components/SmartImg';
 import { listingImage } from '@/lib/listingContent';
-import { cardCtaKey } from '@/lib/cardCta';
 import { useFavorites } from '@/context/FavoritesContext';
 import { useLoginGate } from '@/components/LoginGate';
 import { shareLink } from '@/lib/share';
 
-// The icon and colour still say what kind of place this is; the words no longer
-// promise something the card can't do. Tapping any of these opens the listing -
-// it does not reserve a room or ring a driver - so only the two types whose CTA
-// already described a navigation keep their own wording (QA 4.7). The shared
-// label comes from cardCtaKey so the grid tiles and these cards can't drift.
+// The icon gives each listing type a distinct visual cue while every card keeps
+// the same clear destination label: View details.
 const CTA_MAP = {
-  homestay: { Icon: ArrowRight, color: 'bg-pine text-white' },
-  driver: { Icon: Phone, color: 'bg-pine text-white' },
-  shop: { Icon: Store, color: 'bg-ink text-white' },
-  cafe: { Icon: Coffee, color: 'bg-ink text-white' },
-  event: { Icon: Ticket, color: 'bg-pine text-white' },
-  biodiversity: { Icon: Leaf, color: 'bg-pine text-white' },
-  spot: { Icon: Mountain, color: 'bg-pine text-white' },
+  homestay: ArrowRight,
+  driver: Phone,
+  shop: Store,
+  cafe: Coffee,
+  event: Ticket,
+  biodiversity: Leaf,
+  spot: Mountain,
 };
 
 /**
@@ -32,7 +28,6 @@ const CTA_MAP = {
  */
 export default function FeedCard({ item, priority = false, tripSuffix = '' }) {
   const { t } = useTranslation();
-  const nav = useNavigate();
   const { isFavorite, toggle } = useFavorites();
   const { requireAuth } = useLoginGate();
   const saved = isFavorite(item.id);
@@ -61,17 +56,11 @@ export default function FeedCard({ item, priority = false, tripSuffix = '' }) {
     }
   };
 
-  // Rating lives on the detail page, so this is a navigation rather than an action - but it still
-  // gates, since an anonymous visitor landing on the review form can't do anything with it.
-  const handleRate = () => {
-    if (!requireAuth('review')) return;
-    nav(`/listing/${item.id}#reviews`);
-  };
   // A homestay is priced per person, not per night - see the note on common.per_head.
   const unit = item.type === 'homestay' ? t('common.per_head') : item.type === 'driver' ? t('common.per_day') : '';
   const cat = t(`categories.${item.type}`);
   const cta = CTA_MAP[item.type] || CTA_MAP.spot;
-  const CtaIcon = cta.Icon;
+  const CtaIcon = cta;
   const img = listingImage(item, 900, 900);
   const href = `/listing/${item.id}${tripSuffix}`;
 
@@ -104,21 +93,11 @@ export default function FeedCard({ item, priority = false, tripSuffix = '' }) {
         )}
       </Link>
 
-      {/* Actions */}
+      {/* Review summary */}
       <div className="flex items-center gap-4 px-3.5 pt-3 flex-shrink-0">
-        <button onClick={handleShare} data-testid={`feed-share-${item.id}`} className="btn-hover" aria-label={t('feed.share')}>
-          {shareState === 'copied'
-            ? <Check size={20} className="text-pine" />
-            : shareState === 'failed'
-              ? <X size={20} className="text-flag" />
-              : <Share2 size={20} className="text-ink" />}
-        </button>
-        {/* Read-only average rating from real reviews; tapping jumps to the reviews on the detail page. */}
-        <button
-          type="button"
-          onClick={handleRate}
+        <div
           data-testid={`feed-rating-${item.id}`}
-          className="flex items-center gap-1 text-sm btn-hover"
+          className="flex items-center gap-1 text-sm"
           aria-label={item.review_count > 0
             ? t('feed.rated_aria', { rating: item.rating, count: item.review_count })
             : t('feed.no_reviews_aria')}
@@ -131,10 +110,7 @@ export default function FeedCard({ item, priority = false, tripSuffix = '' }) {
           ) : (
             <span className="text-ink-soft text-xs font-semibold">{t('feed.no_reviews')}</span>
           )}
-        </button>
-        <button onClick={handleSave} data-testid={`feed-save-${item.id}`} className="ml-auto btn-hover" aria-label={t('common.save')} aria-pressed={saved}>
-          <Bookmark size={22} weight={saved ? 'fill' : 'regular'} className={saved ? 'text-pine' : 'text-ink'} />
-        </button>
+        </div>
       </div>
       {shareState !== 'idle' && (
         <p role="status" data-testid={`feed-share-msg-${item.id}`}
@@ -154,15 +130,41 @@ export default function FeedCard({ item, priority = false, tripSuffix = '' }) {
           {item.tags?.slice(0, 3).map((tg) => `#${tg.replace(/-/g, '')}`).join('  ')}
         </div>
 
-        {/* CTA */}
+        {/* Card actions */}
         <div className="mt-auto pt-3.5">
-          <Link
-            to={href}
-            data-testid={`feed-cta-${item.id}`}
-            className={`w-full inline-flex items-center justify-center gap-2 py-2.5 rounded-full font-bold text-sm btn-hover ${cta.color}`}
-          >
-            <CtaIcon size={16} /> {t(cardCtaKey(item.type))}
-          </Link>
+          <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] gap-2">
+            <Link
+              to={href}
+              data-testid={`feed-cta-${item.id}`}
+              className="inline-flex min-w-0 items-center justify-center gap-1.5 rounded-full bg-pine px-3 py-2.5 text-sm font-bold text-white btn-hover"
+            >
+              <CtaIcon size={16} /> <span className="truncate">{t('common.view_details')}</span>
+            </Link>
+            <button
+              type="button"
+              onClick={handleSave}
+              data-testid={`feed-save-${item.id}`}
+              aria-label={t('common.like')}
+              aria-pressed={saved}
+              className={`inline-flex items-center justify-center gap-1.5 rounded-full border px-3 py-2.5 text-sm font-bold btn-hover ${saved ? 'border-pine bg-pine/10 text-pine' : 'border-[var(--line)] text-ink hover:bg-mist'}`}
+            >
+              <Heart size={17} weight={saved ? 'fill' : 'regular'} /> <span>{t('common.like')}</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleShare}
+              data-testid={`feed-share-${item.id}`}
+              aria-label={t('common.share')}
+              className="inline-flex items-center justify-center gap-1.5 rounded-full border border-[var(--line)] px-3 py-2.5 text-sm font-bold text-ink btn-hover hover:bg-mist"
+            >
+              {shareState === 'copied'
+                ? <Check size={17} className="text-pine" />
+                : shareState === 'failed'
+                  ? <X size={17} className="text-flag" />
+                  : <Share2 size={17} />}
+              <span>{t('common.share')}</span>
+            </button>
+          </div>
         </div>
       </div>
     </article>
