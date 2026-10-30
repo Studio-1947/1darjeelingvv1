@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Heart, EnvelopeSimple as Mail } from '@phosphor-icons/react';
+import { FacebookLogo, Heart, EnvelopeSimple as Mail, InstagramLogo } from '@phosphor-icons/react';
 import Wordmark from '@/components/Wordmark';
 
 export default function Footer() {
@@ -20,6 +20,26 @@ export default function Footer() {
           </div>
           <p className="text-sm text-ink-soft leading-relaxed">{t('brand_tagline')}</p>
           <p className="mt-4 text-xs text-ink-soft flex items-center gap-1"><Heart size={12} className="text-flag" /> {t('footer.made')}</p>
+          <div className="mt-4 flex items-center gap-3">
+            <a
+              href="https://www.instagram.com/aanganerp?dlrf=MWRnZ2tneHBqM2JiaQ%3D%3D"
+              target="_blank"
+              rel="noreferrer"
+              aria-label="Follow Aangan on Instagram"
+              className="text-ink-soft transition-colors hover:text-pine focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine focus-visible:ring-offset-2"
+            >
+              <InstagramLogo size={20} aria-hidden="true" />
+            </a>
+            <a
+              href="https://www.facebook.com/profile.php?id=61594349938326"
+              target="_blank"
+              rel="noreferrer"
+              aria-label="Follow Aangan on Facebook"
+              className="text-ink-soft transition-colors hover:text-pine focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine focus-visible:ring-offset-2"
+            >
+              <FacebookLogo size={20} aria-hidden="true" />
+            </a>
+          </div>
         </div>
         <div>
           <h2 className="font-display font-bold text-sm mb-3 text-ink">{t('nav.discover')}</h2>
@@ -48,7 +68,7 @@ export default function Footer() {
             <li><Link to="/refunds" className="hover:text-pine transition-colors">{t('nav.refunds')}</Link></li>
             <li><Link to="/contact" className="hover:text-pine transition-colors">{t('nav.contact')}</Link></li>
             <li><Link to="/delete-account" className="hover:text-pine transition-colors">{t('nav.delete_account')}</Link></li>
-            <li className="flex items-center gap-1 mt-2 text-ink/80 font-medium"><Mail size={12} className="text-pine flex-shrink-0" /> 1darjeelingapp@gmail.com</li>
+            <li className="flex items-center gap-1 mt-2 text-ink/80 font-medium"><Mail size={12} className="text-pine flex-shrink-0" /> aanganerp@gmail.com</li>
           </ul>
         </div>
       </div>

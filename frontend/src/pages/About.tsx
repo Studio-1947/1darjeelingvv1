@@ -248,9 +248,9 @@ export default function About() {
               className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-pine text-white font-bold btn-hover">
               {t('nav.provider')} <ArrowRight size={16} />
             </Link>
-            <a href="mailto:1darjeelingapp@gmail.com"
+            <a href="mailto:aanganerp@gmail.com"
               className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-white border border-[var(--line)] text-ink font-bold btn-hover">
-              <Mail size={16} /> 1darjeelingapp@gmail.com
+              <Mail size={16} /> aanganerp@gmail.com
             </a>
           </div>
         </div>
