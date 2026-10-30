@@ -733,6 +733,13 @@
     "type_shop": "Shop"
   },
   "contact": {
+    "event_note": "Reach the organizer directly, add it to your calendar, or get directions.",
+    "place_note": "Drop by, or reach out directly before you go.",
+    "call_organizer": "Call organizer",
+    "whatsapp": "WhatsApp",
+    "no_contact": "No direct contact listed - use directions below to visit in person.",
+    "add_to_calendar": "Add to calendar",
+    "wa_message": "Hi! I found {{title}} on 1 Darjeeling and would like to know more.",
     "title": "Contact Us",
     "updated": "Last updated: August 2026",
     "intro": [
