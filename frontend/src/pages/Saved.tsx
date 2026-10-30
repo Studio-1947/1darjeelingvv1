@@ -168,7 +168,7 @@ export default function Saved() {
                     readOnly
                     type="text"
                     value={getShareableUrl()}
-                    className="flex-1 px-3.5 py-2.5 rounded-xl border border-[var(--line)] bg-mist text-xs text-ink font-mono outline-none truncate"
+                    className="flex-1 px-3.5 py-2.5 rounded-xl border border-[var(--line)] bg-mist text-xs text-ink tabular-nums outline-none truncate"
                   />
                   <button
                     onClick={handleCopyLink}

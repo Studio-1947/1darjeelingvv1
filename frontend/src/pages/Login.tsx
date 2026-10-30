@@ -264,7 +264,7 @@ export default function Login() {
                 <KeyRound size={16} className="text-ink-soft" />
                 <input value={otp} onChange={(e) => setOtp(e.target.value)} required maxLength={6}
                   data-testid="login-otp" placeholder="123456"
-                  className="flex-1 bg-transparent outline-none py-1 tracking-widest font-mono text-lg" />
+                  className="flex-1 bg-transparent outline-none py-1 tracking-widest tabular-nums text-lg" />
               </div>
             </label>
             {!userExists && (
