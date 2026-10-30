@@ -42,7 +42,8 @@
     "contact": "Contact",
     "all_listings": "All listings",
     "delete_account": "Delete Account",
-    "feed": "Host feed"
+    "feed": "Host feed",
+    "feed_tab": "Feed"
   },
   "support": {
     "eyebrow": "the invitation",
