@@ -138,7 +138,7 @@ export default function FeedCard({ item, priority = false, tripSuffix = '' }) {
               data-testid={`feed-cta-${item.id}`}
               className="inline-flex min-w-0 items-center justify-center gap-1.5 rounded-full bg-pine px-3 py-2.5 text-sm font-bold text-white btn-hover"
             >
-              <CtaIcon size={16} /> <span className="truncate">{t('common.view_details')}</span>
+              <span className="truncate">{t('common.view_details')}</span> <CtaIcon size={16} className="flex-shrink-0" />
             </Link>
             <button
               type="button"

@@ -179,7 +179,7 @@ export function ReserveSection({ item, unit, bookable, cta, booking, onOpenMaps 
           ) : (
             <button onClick={onOpenMaps} data-testid="info-cta"
               className={`w-full py-4 rounded-full font-bold btn-hover inline-flex items-center justify-center gap-2 ${cta.color}`}>
-              <CtaIcon size={18} /> {t(`cta.${cta.key}`)}
+              {t(`cta.${cta.key}`)} <CtaIcon size={18} />
             </button>
           )}
         </div>
@@ -216,7 +216,7 @@ export function MobileStickyBar({ item, unit, bookable, cta, busy, onBook, onOpe
           data-testid="mobile-sticky-cta"
           className="mx-auto max-w-md w-full inline-flex items-center justify-center gap-2 py-3.5 rounded-full font-extrabold bg-pine text-white shadow-[0_8px_24px_-8px_rgba(20,32,26,0.45)] btn-hover"
         >
-          <Navigation size={16} /> {t('cta.get_directions')}
+          {t('cta.get_directions')} <Navigation size={16} />
         </button>
       ) : (
         // gap-2 and min-w-0 on the price block: at 390px the rupee figure and the
@@ -240,7 +240,7 @@ export function MobileStickyBar({ item, unit, bookable, cta, busy, onBook, onOpe
           >
             {bookable
               ? <>{item.type === 'driver' ? t('cta.talk_to_driver') : t('cta.book_now')} <CtaIcon size={16} /></>
-              : <><Navigation size={16} /> {t('cta.get_directions')}</>}
+              : <>{t('cta.get_directions')} <Navigation size={16} /></>}
           </button>
         </div>
       )}
