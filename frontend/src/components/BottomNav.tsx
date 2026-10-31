@@ -60,9 +60,11 @@ export default function BottomNav() {
   // otherwise Home and Type both read as selected while the sheet covers Home.
   const activeFor = (routes: string[]) => !typeOpen && routes.includes(pathname);
 
+  // Each tab is its own rounded pill inside the bar; the active one is tinted with the button teal,
+  // as the app's bar (src/components/BottomNav.tsx) does.
   const tabCls = (isActive: boolean) =>
-    `flex flex-col items-center justify-center gap-0.5 py-2.5 min-w-0 text-[10px] font-bold transition-all duration-150 active:scale-95 ${
-      isActive ? 'text-flag font-extrabold' : 'text-ink-soft hover:text-ink'
+    `flex flex-col items-center justify-center gap-0.5 py-1.5 mx-px min-[380px]:mx-0.5 min-w-0 rounded-full text-[10px] font-bold transition-all duration-150 active:scale-95 ${
+      isActive ? 'bg-[rgba(31,102,86,0.12)] text-[#1F6656] font-extrabold' : 'text-ink-soft hover:text-ink'
     }`;
 
   const homeActive = activeFor(homeMatch);
@@ -74,12 +76,14 @@ export default function BottomNav() {
     <>
       <CategorySheet open={typeOpen} onClose={() => setTypeOpen(false)} />
 
+      {/* A floating frosted pill, as Instagram's iOS bar: it sits above the home indicator with
+          the page showing round it. --bottom-nav-h in index.css reserves its space. */}
       <nav
         data-testid="bottom-nav"
-        className="lg:hidden fixed bottom-0 inset-x-0 z-50 bg-white/95 backdrop-blur-xl border-t border-[var(--line)] shadow-[0_-4px_20px_rgba(0,0,0,0.06)]"
-        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+        className="lg:hidden fixed bottom-0 inset-x-0 z-50 px-2.5 min-[380px]:px-3.5 pointer-events-none"
+        style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 10px)' }}
       >
-        <div className="grid grid-cols-5">
+        <div className="pointer-events-auto grid grid-cols-5 items-stretch h-16 px-1 py-1.5 rounded-full bg-white/80 backdrop-blur-xl border border-white/70 shadow-[0_8px_24px_rgba(20,32,26,0.16)]">
           {/* Plain Link rather than NavLink throughout: the active state is
               computed above, so NavLink's own pathname matching would only
               fight it. aria-current carries the state to assistive tech. */}
@@ -91,7 +95,7 @@ export default function BottomNav() {
             className={tabCls(homeActive)}
           >
             <Home size={20} weight={homeActive ? 'bold' : 'regular'} className="flex-shrink-0" />
-            <span className="truncate max-w-full px-0.5">{t('nav.home')}</span>
+            <span className="truncate max-w-full">{t('nav.home')}</span>
           </Link>
 
           <Link
@@ -106,7 +110,7 @@ export default function BottomNav() {
             ) : (
               <Ticket size={20} weight={tripsActive ? 'bold' : 'regular'} className="flex-shrink-0" />
             )}
-            <span className="truncate max-w-full px-0.5">
+            <span className="truncate max-w-full">
               {isProvider ? (t('nav.my_listings') || 'My Listings') : (t('nav.trips') || 'My Trips')}
             </span>
           </Link>
@@ -119,7 +123,7 @@ export default function BottomNav() {
             className={tabCls(feedActive)}
           >
             <ImagesSquare size={20} weight={feedActive ? 'bold' : 'regular'} className="flex-shrink-0" />
-            <span className="truncate max-w-full px-0.5">{t('nav.feed_tab')}</span>
+            <span className="truncate max-w-full">{t('nav.feed_tab')}</span>
           </Link>
 
           {/* A toggle, not a route - it opens the category sheet. Labelled
@@ -144,7 +148,7 @@ export default function BottomNav() {
                 }`}
               />
             </span>
-            <span className="truncate max-w-full px-0.5">{t('nav.categories')}</span>
+            <span className="truncate max-w-full">{t('nav.categories')}</span>
           </button>
 
           <Link
@@ -155,7 +159,7 @@ export default function BottomNav() {
             className={tabCls(accountActive)}
           >
             <User size={20} weight={accountActive ? 'bold' : 'regular'} className="flex-shrink-0" />
-            <span className="truncate max-w-full px-0.5">{t('nav.account')}</span>
+            <span className="truncate max-w-full">{t('nav.account')}</span>
           </Link>
         </div>
       </nav>
