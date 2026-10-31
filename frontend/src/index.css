@@ -248,3 +248,22 @@ button.from-pine:hover:not(:disabled), a.from-pine:hover {
 /* Outline buttons: the same green for their label and border. */
 button.text-pine, a.rounded-full.text-pine { color: var(--button); }
 button.border-pine, a.rounded-full.border-pine { border-color: var(--button); }
+
+/* Button sizes, the same as the app (theme `button` sizes in src/theme/index.ts):
+   main  - 50px tall, 15px text: page actions such as Reserve, Send OTP, Pay, Post.
+   small - 40px tall, 13px text: buttons inside cards and lists (marked with text-xs / text-sm).
+   Round icon buttons with a fixed height (h-9, h-11), filter chips (border-pine) and the header
+   are left alone. */
+main :is(button, a).bg-pine.rounded-full:not([class*="h-"]):not(.border-pine),
+main :is(button, a).rounded-full.btn-main {
+  min-height: 50px;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  align-items: center;
+  font-size: 15px !important;
+  line-height: 1.25;
+}
+main :is(button, a).bg-pine.rounded-full:is(.text-xs, .text-sm):not([class*="h-"]):not(.border-pine):not(.btn-main) {
+  min-height: 40px;
+  font-size: 13px !important;
+}
