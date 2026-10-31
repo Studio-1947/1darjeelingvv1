@@ -33,7 +33,10 @@ export default function HostPlanCard({ provider, user, onRenewed }: {
 
   if (!provider) return null;
 
-  const registrationPending = !provider.plan_expires_at && !user?.providerPaid;
+  // Paying the first year is what gives a business its plan expiry, and the server allows the
+  // registration payment per business (never activated), not per account. So a host whose earlier
+  // business is paid still sees Activate on a new one, rather than "Live until Invalid Date".
+  const registrationPending = !provider.plan_expires_at;
   const expiry = registrationPending ? Number.NaN : Date.parse(provider.plan_expires_at);
   const lapsed = !registrationPending && !provider.plan_active;
   const daysLeft = Math.ceil((expiry - Date.now()) / DAY_MS);
