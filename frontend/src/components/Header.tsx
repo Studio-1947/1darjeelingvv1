@@ -7,7 +7,7 @@ import Wordmark from '@/components/Wordmark';
 import useGoBack from '@/hooks/useGoBack';
 import useHeroOverlay from '@/hooks/useHeroOverlay';
 import { CATEGORIES } from '@/constants/categories';
-import { User, Heart, ArrowLeft, Newspaper } from '@phosphor-icons/react';
+import { User, Heart, ArrowLeft, ImagesSquare } from '@phosphor-icons/react';
 
 export default function Header() {
   const { t } = useTranslation();
@@ -148,7 +148,7 @@ export default function Header() {
             aria-label={t('nav.feed')}
             className="inline-flex h-9 items-center justify-center gap-1.5 rounded-full bg-pine px-2.5 text-white shadow-sm btn-hover sm:px-3"
           >
-            <Newspaper size={18} />
+            <ImagesSquare size={18} />
             <span className="hidden xl:inline whitespace-nowrap">{t('nav.feed')}</span>
           </Link>
           {/* Saved has its own route from the profile menu and the tab bar, so

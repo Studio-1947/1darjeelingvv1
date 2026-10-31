@@ -124,7 +124,7 @@ export async function payWithRazorpay({ order, key_id, flow, reference_id, name,
       description: description || 'Payment',
       order_id: order.id,
       prefill,
-      theme: { color: '#007C85' },
+      theme: { color: '#1F6656' },
       modal: { ondismiss: () => reject(new Error('Payment cancelled')) },
       handler: async (resp: any) => {
         try {

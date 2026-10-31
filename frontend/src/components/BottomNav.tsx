@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { House as Home, Ticket, Storefront as Store, SquaresFour as LayoutGrid, User, CaretUp as ChevronUp } from '@phosphor-icons/react';
+import { House as Home, Ticket, Storefront as Store, SquaresFour as LayoutGrid, User, CaretUp as ChevronUp, ImagesSquare } from '@phosphor-icons/react';
 import { useAuth } from '@/context/AuthContext';
 import CategorySheet from '@/components/CategorySheet';
 
 /**
  * Mobile bottom tab bar - the app's primary navigation below `lg`.
  *
- * Destinations: Home, My Trips / My Listings, Type, Account.
+ * Destinations: Home, My Trips / My Listings, Feed, Categories, Account. Feed is the host feed,
+ * a tab of its own like an Instagram feed, open to everyone signed in or not.
  * Hosts on the business side get "My Listings" (/my-listings) while tourists get "My Trips" (/my-trips).
  * Account routes to the user dashboard (/dashboard or /provider/dashboard).
  */
@@ -53,6 +54,7 @@ export default function BottomNav() {
   const homeMatch = ['/'];
   const tripsMatch = isProvider ? ['/my-listings'] : ['/my-trips'];
   const accountMatch = ['/dashboard', '/provider/dashboard'];
+  const feedMatch = ['/feed'];
 
   // An open sheet is the current context, so it owns the highlight outright -
   // otherwise Home and Type both read as selected while the sheet covers Home.
@@ -66,6 +68,7 @@ export default function BottomNav() {
   const homeActive = activeFor(homeMatch);
   const tripsActive = activeFor(tripsMatch);
   const accountActive = activeFor(accountMatch);
+  const feedActive = activeFor(feedMatch);
 
   return (
     <>
@@ -76,7 +79,7 @@ export default function BottomNav() {
         className="lg:hidden fixed bottom-0 inset-x-0 z-50 bg-white/95 backdrop-blur-xl border-t border-[var(--line)] shadow-[0_-4px_20px_rgba(0,0,0,0.06)]"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
-        <div className="grid grid-cols-4">
+        <div className="grid grid-cols-5">
           {/* Plain Link rather than NavLink throughout: the active state is
               computed above, so NavLink's own pathname matching would only
               fight it. aria-current carries the state to assistive tech. */}
@@ -106,6 +109,17 @@ export default function BottomNav() {
             <span className="truncate max-w-full px-0.5">
               {isProvider ? (t('nav.my_listings') || 'My Listings') : (t('nav.trips') || 'My Trips')}
             </span>
+          </Link>
+
+          <Link
+            to="/feed"
+            data-testid="bottom-nav-feed"
+            onClick={handleNavClick}
+            aria-current={feedActive ? 'page' : undefined}
+            className={tabCls(feedActive)}
+          >
+            <ImagesSquare size={20} weight={feedActive ? 'bold' : 'regular'} className="flex-shrink-0" />
+            <span className="truncate max-w-full px-0.5">{t('nav.feed_tab')}</span>
           </Link>
 
           {/* A toggle, not a route - it opens the category sheet. Labelled

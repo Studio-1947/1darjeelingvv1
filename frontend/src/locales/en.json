@@ -42,7 +42,8 @@
     "contact": "Contact",
     "all_listings": "All listings",
     "delete_account": "Delete Account",
-    "feed": "Host feed"
+    "feed": "Host feed",
+    "feed_tab": "Feed"
   },
   "support": {
     "eyebrow": "the invitation",
@@ -94,7 +95,7 @@
     "title": "Darjeeling Route & Driver Fare Guide"
   },
   "common": {
-    "book_now": "Reserve now",
+    "book_now": "Reserve",
     "view_details": "View details",
     "explore": "Explore",
     "starting_from": "From",
@@ -126,7 +127,7 @@
     "entry_varies": "Entry varies"
   },
   "cta": {
-    "book_now": "Reserve Now",
+    "book_now": "Reserve",
     "explore": "Explore",
     "view": "View",
     "talk_to_driver": "Talk to Driver",
