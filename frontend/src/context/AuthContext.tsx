@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
-import api from '@/lib/api';
+import api, { setRequestSide } from '@/lib/api';
+import { asHostType, type Audience, type HostType } from '@/lib/audience';
 
 const AuthCtx = createContext(null);
 
@@ -34,6 +35,8 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [mode, setModeState] = useState<Mode>(readMode);
+  // The host's business (GET /providers/me), so the site knows what kind of host this is.
+  const [provider, setProvider] = useState<any>(null);
 
   const setMode = useCallback((next: Mode) => {
     saveMode(next);
@@ -54,6 +57,21 @@ export function AuthProvider({ children }) {
 
   useEffect(() => { refresh(); }, [refresh]);
 
+  const refreshProvider = useCallback(async () => {
+    try {
+      const { data } = await api.get('/providers/me');
+      setProvider(data.provider ?? null);
+    } catch {
+      setProvider(null);
+    }
+  }, []);
+
+  // Only hosts have a business to load.
+  useEffect(() => {
+    if (user?.role === 'provider') refreshProvider();
+    else setProvider(null);
+  }, [user?.id, user?.role, refreshProvider]);
+
   // `nextMode` is the side picked on the login screen. Without one, sign-in starts on the
   // traveller side, as the app does.
   const login = useCallback((token, u, nextMode: Mode = 'tourist') => {
@@ -71,10 +89,18 @@ export function AuthProvider({ children }) {
   // Only a host can be on the business side. Everyone else always sees the traveller side,
   // whatever an old stored mode says.
   const isHostMode = user?.role === 'provider' && mode === 'provider';
+  const hostType: HostType | null = asHostType(provider?.business_type);
+  const audience: Audience = useMemo(
+    () => ({ side: isHostMode ? 'business' : 'traveller', hostType }),
+    [isHostMode, hostType]
+  );
+
+  // Every request carries the side, so the server can hold the same line the screens do.
+  setRequestSide(audience.side);
 
   const value = useMemo(
-    () => ({ user, loading, login, logout, refresh, setUser, mode, setMode, isHostMode }),
-    [user, loading, login, logout, refresh, mode, setMode, isHostMode]
+    () => ({ user, loading, login, logout, refresh, setUser, mode, setMode, isHostMode, provider, refreshProvider, hostType, audience }),
+    [user, loading, login, logout, refresh, mode, setMode, isHostMode, provider, refreshProvider, hostType, audience]
   );
 
   return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;

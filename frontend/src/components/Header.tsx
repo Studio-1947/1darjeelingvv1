@@ -23,7 +23,8 @@ export default function Header() {
   const showBack = pathname !== '/';
   // Sign-in and the onboarding form are single-task pages; a browse rail there
   // only invites the visitor to abandon what they came to do.
-  const showCategories = !['/login', '/provider/onboard'].includes(pathname);
+  // The category rail is for browsing; the business side does not browse.
+  const showCategories = !['/login', '/provider/onboard'].includes(pathname) && !isHostMode;
   // The landing hero plays a full-bleed video; the bar rides on top of it and
   // stays out of the flow so the footage runs right up to the top of the page.
   const isLanding = pathname === '/';
@@ -90,7 +91,7 @@ export default function Header() {
             (QA 4.6) - a clipped brand name is worse than a smaller one, so below
             sm it drops a size and holds its whole width instead. */}
         <Link
-          to="/"
+          to={isHostMode ? '/provider/dashboard' : '/'}
           className="flex items-center min-w-0"
           data-testid="brand-link"
           aria-label={t('brand')}

@@ -22,6 +22,8 @@ import ReviewsSection from '@/components/listing-detail/ReviewsSection';
 import AudioGuide from '@/components/AudioGuide';
 import { ctaFor } from '@/components/listing-detail/cta';
 import { useBookingFlow } from '@/components/listing-detail/useBookingFlow';
+import { useAuth } from '@/context/AuthContext';
+import { BusinessModeNotice } from '@/components/TravellerOnly';
 
 /**
  * Public listing detail page: a stack of full-screen sections chosen by the
@@ -36,6 +38,7 @@ export default function ListingDetail() {
   const [item, setItem] = useState(null);
   const [loading, setLoading] = useState(true);
   const booking = useBookingFlow(item, id);
+  const { isHostMode, provider } = useAuth();
 
   useEffect(() => {
     // `cancelled` guards against the responses arriving out of order: navigating from one
@@ -93,10 +96,14 @@ export default function ListingDetail() {
   }
   if (!item) return <div className="mx-auto max-w-5xl p-10">{t('common.not_found')}</div>;
 
-  const bookable = item.type === 'homestay' || item.type === 'driver';
+  // On the business side a host sees only their own listing, as a preview with booking off.
+  const ownPreview = isHostMode && !!provider && item.provider_id === provider.id;
+  if (isHostMode && !ownPreview) return <BusinessModeNotice />;
+
+  const bookable = !ownPreview && (item.type === 'homestay' || item.type === 'driver' || item.type === 'guide');
   // Booked online (homestay/driver) get the reserve form; shops, cafes and events instead get a
   // direct-contact/action screen. Spots and biodiversity stay purely informational.
-  const contactable = ['shop', 'cafe', 'event'].includes(item.type);
+  const contactable = !ownPreview && ['shop', 'cafe', 'event'].includes(item.type);
 
   // A homestay's price is per person, not per night - the provider onboarding asks
   // for "Starting Price (₹/Head)". The `common.per_night` key said "/ head" in
@@ -139,6 +146,11 @@ export default function ListingDetail() {
         ogType={bookable ? 'product' : 'place'}
       />
 
+      {ownPreview && (
+        <div className="bg-pine text-white text-sm font-semibold text-center px-4 py-2.5" data-testid="own-listing-preview">
+          {t('business_gate.preview')}
+        </div>
+      )}
       <DetailHero item={item} unit={unit} onShare={shareIt} />
 
       <AboutSection
@@ -207,8 +219,10 @@ export default function ListingDetail() {
 
       <ReviewsSection item={item} />
 
-      <MobileStickyBar item={item} unit={unit} bookable={bookable} cta={cta} busy={booking.busy}
-        onBook={booking.doBook} onOpenMaps={openMaps} />
+      {!ownPreview && (
+        <MobileStickyBar item={item} unit={unit} bookable={bookable} cta={cta} busy={booking.busy}
+          onBook={booking.doBook} onOpenMaps={openMaps} />
+      )}
 
       <BookingConfirmation
         open={!!booking.confirm?.open}

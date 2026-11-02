@@ -14,11 +14,27 @@ export const API_BASE = `${BACKEND_URL}/api`;
 
 const api = axios.create({ baseURL: API_BASE });
 
+/**
+ * The side the person is on, sent with every request so the server can keep Business and
+ * Traveller apart (it refuses bookings and saves from the business side). AuthContext keeps it
+ * current; it starts on the traveller side.
+ */
+let requestSide: 'traveller' | 'business' = 'traveller';
+export function setRequestSide(side: 'traveller' | 'business') {
+  requestSide = side;
+}
+
 api.interceptors.request.use((cfg) => {
   const t = localStorage.getItem('token');
   if (t) cfg.headers.Authorization = `Bearer ${t}`;
+  cfg.headers['X-Aangan-Mode'] = requestSide;
   return cfg;
 });
+
+/** The server's answer to a booking or save sent from the business side. */
+export function isBusinessModeError(error: any): boolean {
+  return error?.response?.status === 403 && error?.response?.data?.code === 'business_mode';
+}
 
 /**
  * True when the server is telling us the caller's support fee is not active. The status alone is

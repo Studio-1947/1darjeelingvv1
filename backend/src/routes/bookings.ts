@@ -14,6 +14,7 @@ import { isListingHostLapsed } from '../lib/hostPlan';
 import { settleBookingConfirmation } from '../lib/bookingConfirmation';
 import { addInAppNotification, resolveHostUserId } from '../lib/inApp';
 import { releaseVoucherForBooking } from '../lib/vouchers';
+import { requireTravellerMode } from '../middleware/mode';
 
 /** Listing types guests contact directly rather than book. */
 const CONTACT_ONLY_TYPES = new Set(['cafe', 'shop']);
@@ -77,7 +78,7 @@ const router = Router();
  *             schema: { $ref: '#/components/schemas/Error' }
  */
 // Create a booking
-router.post('/', authenticateToken, requireActiveSupport, async (req: Request, res: Response) => {
+router.post('/', authenticateToken, requireTravellerMode, requireActiveSupport, async (req: Request, res: Response) => {
   const { listing_id, listing_type, check_in, check_out, guests = 1, notes, voucher_id } = req.body;
 
   if (!listing_id || !listing_type) {

@@ -32,8 +32,10 @@ export default function BottomNav() {
     ? '/my-listings'
     : (user ? '/my-trips' : '/login?next=/my-trips');
 
+  // On the business side Home is the host's dashboard and Account is their business profile.
+  const homeTarget = isProvider ? '/provider/dashboard' : '/';
   const accountTarget = user
-    ? (isProvider ? '/provider/dashboard' : '/dashboard')
+    ? (isProvider ? '/provider/profile' : '/dashboard')
     : '/login?next=/dashboard';
 
   const handleNavClick = () => {
@@ -51,9 +53,9 @@ export default function BottomNav() {
    * no tab, so none highlight - which is honest, since sign-in isn't one of the
    * four places this bar navigates to.
    */
-  const homeMatch = ['/'];
+  const homeMatch = isProvider ? ['/provider/dashboard'] : ['/'];
   const tripsMatch = isProvider ? ['/my-listings'] : ['/my-trips'];
-  const accountMatch = ['/dashboard', '/provider/dashboard'];
+  const accountMatch = isProvider ? ['/provider/profile'] : ['/dashboard'];
   const feedMatch = ['/feed'];
 
   // An open sheet is the current context, so it owns the highlight outright -
@@ -83,19 +85,19 @@ export default function BottomNav() {
         className="lg:hidden fixed bottom-0 inset-x-0 z-50 px-2.5 min-[380px]:px-3.5 pointer-events-none"
         style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 10px)' }}
       >
-        <div className="pointer-events-auto grid grid-cols-5 items-stretch h-16 px-1 py-1.5 rounded-full bg-white/80 backdrop-blur-xl border border-white/70 shadow-[0_8px_24px_rgba(20,32,26,0.16)]">
+        <div className={`pointer-events-auto grid ${isProvider ? 'grid-cols-4' : 'grid-cols-5'} items-stretch h-16 px-1 py-1.5 rounded-full bg-white/80 backdrop-blur-xl border border-white/70 shadow-[0_8px_24px_rgba(20,32,26,0.16)]`}>
           {/* Plain Link rather than NavLink throughout: the active state is
               computed above, so NavLink's own pathname matching would only
               fight it. aria-current carries the state to assistive tech. */}
           <Link
-            to="/"
+            to={homeTarget}
             data-testid="bottom-nav-home"
             onClick={handleNavClick}
             aria-current={homeActive ? 'page' : undefined}
             className={tabCls(homeActive)}
           >
             <Home size={20} weight={homeActive ? 'bold' : 'regular'} className="flex-shrink-0" />
-            <span className="truncate max-w-full">{t('nav.home')}</span>
+            <span className="truncate max-w-full">{isProvider ? t('nav.dashboard') : t('nav.home')}</span>
           </Link>
 
           <Link
@@ -130,6 +132,8 @@ export default function BottomNav() {
               "Categories" to match the sheet it opens, which is headed
               "DISCOVER / Categories"; the tab used to say "Type" and nothing on
               the other side of the tap repeated the word (QA 4.1). */}
+          {/* Categories is for browsing, so the business side has no such tab. */}
+          {!isProvider && (
           <button
             type="button"
             onClick={() => setTypeOpen((v) => !v)}
@@ -150,6 +154,7 @@ export default function BottomNav() {
             </span>
             <span className="truncate max-w-full">{t('nav.categories')}</span>
           </button>
+          )}
 
           <Link
             to={accountTarget}
@@ -159,7 +164,7 @@ export default function BottomNav() {
             className={tabCls(accountActive)}
           >
             <User size={20} weight={accountActive ? 'bold' : 'regular'} className="flex-shrink-0" />
-            <span className="truncate max-w-full">{t('nav.account')}</span>
+            <span className="truncate max-w-full">{isProvider ? t('nav.profile') : t('nav.account')}</span>
           </Link>
         </div>
       </nav>
