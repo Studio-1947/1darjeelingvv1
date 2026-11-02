@@ -44,7 +44,8 @@
     "delete_account": "Delete Account",
     "feed": "Host feed",
     "feed_tab": "Feed",
-    "profile": "Profile"
+    "profile": "Profile",
+    "explore": "Explore"
   },
   "support": {
     "eyebrow": "the invitation",

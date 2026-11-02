@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { House as Home, Ticket, Storefront as Store, SquaresFour as LayoutGrid, User, CaretUp as ChevronUp, ImagesSquare } from '@phosphor-icons/react';
+import { House as Home, Ticket, Storefront as Store, Compass, User, CaretUp as ChevronUp, ImagesSquare } from '@phosphor-icons/react';
 import { useAuth } from '@/context/AuthContext';
 import CategorySheet from '@/components/CategorySheet';
 
@@ -143,7 +143,7 @@ export default function BottomNav() {
             className={tabCls(typeOpen)}
           >
             <span className="relative flex-shrink-0">
-              <LayoutGrid size={20} weight={typeOpen ? 'bold' : 'regular'} />
+              <Compass size={20} weight={typeOpen ? 'bold' : 'regular'} />
               <ChevronUp
                 size={11}
                 weight="bold"
@@ -152,7 +152,7 @@ export default function BottomNav() {
                 }`}
               />
             </span>
-            <span className="truncate max-w-full">{t('nav.categories')}</span>
+            <span className="truncate max-w-full">{t('nav.explore')}</span>
           </button>
           )}
 
