@@ -46,19 +46,11 @@ describe('provider phone on a listing', () => {
     expect((await detail(id, await loginAdmin())).provider_phone).toBe(phone);
   });
 
-  it('stays hidden from a signed-in guest until a booking is confirmed', async () => {
+  it('is released to a signed-in guest with an active aangan pass', async () => {
     const { token: host, phone } = await onboardActiveProvider({ name: 'Phone Release' });
     const id = await listingFor(host, { title: 'Phone Release Stay', type: 'homestay', description: 'A room with a view', location: 'Darjeeling', price: 1500 });
     const { token: guest } = await registerUser({ name: 'Phone Guest' });
 
-    expect((await detail(id, guest)).provider_phone).toBeNull();
-
-    const pending = await request(app).post('/api/bookings').set('Authorization', `Bearer ${guest}`)
-      .send({ listing_id: id, listing_type: 'homestay', check_in: nights(30).checkIn, check_out: nights(30).checkOut });
-    expect(pending.status).toBe(200);
-    expect((await detail(id, guest)).provider_phone).toBeNull();
-
-    await createConfirmedBooking({ token: guest, listingId: id, listingType: 'homestay', ...nights(40) });
     expect((await detail(id, guest)).provider_phone).toBe(phone);
   });
 
@@ -66,7 +58,7 @@ describe('provider phone on a listing', () => {
     const { token: host } = await onboardActiveProvider({ name: 'Phone Isolation' });
     const id = await listingFor(host, { title: 'Phone Isolation Stay', type: 'homestay', description: 'A room with a view', location: 'Darjeeling', price: 1500 });
     const { token: booker } = await registerUser({ name: 'Phone Booker' });
-    const { token: other } = await registerUser({ name: 'Phone Other' });
+    const { token: other } = await registerUser({ name: 'Phone Other', paySupport: false });
     await createConfirmedBooking({ token: booker, listingId: id, listingType: 'homestay', ...nights(50) });
     expect((await detail(id, other)).provider_phone).toBeNull();
   });
