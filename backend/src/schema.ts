@@ -325,6 +325,18 @@ export const reports = pgTable('reports', {
   statusIdx: index('reports_status_idx').on(t.status),
 }));
 
+/** Private product feedback from a host to the aangan team. */
+export const hostFeedback = pgTable('host_feedback', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  providerId: text('provider_id').references(() => providers.id, { onDelete: 'cascade' }).notNull(),
+  message: text('message').notNull(),
+  status: text('status').default('open').notNull(),
+  createdAt: text('created_at').notNull(),
+}, (t) => ({
+  providerCreatedIdx: index('host_feedback_provider_created_at_idx').on(t.providerId, t.createdAt),
+}));
+
 /**
  * A person this user no longer wants to see. Their reviews are left out of every review list the
  * blocker reads. Required alongside reporting for apps with user-generated content.
