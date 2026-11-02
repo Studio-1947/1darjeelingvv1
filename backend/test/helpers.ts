@@ -170,12 +170,28 @@ const TINY_PNG_DATA_URL =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
 const TINY_MP4 = Buffer.concat([Buffer.from([0, 0, 0, 0x18]), Buffer.from('ftypmp42'), Buffer.alloc(32)]);
 
+/** A new host's mandatory profile items (lib/hostProfile.ts), so their documents can go for approval. */
+export async function completeMandatoryProfile(token: string): Promise<void> {
+  const me = await request(app).get('/api/providers/me').set('Authorization', `Bearer ${token}`);
+  const type = me.body.provider?.business_type;
+  const photos = (n: number) => Array.from({ length: n }, (_, i) => `https://example.com/photo-${i + 1}.jpg`);
+  const profile =
+    type === 'driver' ? { images: photos(6) }
+    : type === 'homestay' ? { host_name: 'Test Host', images: photos(8) }
+    : type === 'guide' ? { services: [{ name: 'Day hike', price: 1500, unit: 'day' }] }
+    : null;
+  if (!profile) return;
+  const res = await request(app).patch('/api/providers/me').set('Authorization', `Bearer ${token}`).send({ profile });
+  if (res.status !== 200) throw new Error(`completeMandatoryProfile failed: ${res.status} ${JSON.stringify(res.body)}`);
+}
+
 /**
  * Uploads every document this provider's business type currently requires, reading the list from
- * the profile checklist so a change to the matrix does not mean editing every test. Returns the
- * document types it uploaded.
+ * the profile checklist so a change to the matrix does not mean editing every test. Fills in the
+ * mandatory profile first, as a new host has to. Returns the document types it uploaded.
  */
 export async function uploadRequiredDocs(token: string): Promise<string[]> {
+  await completeMandatoryProfile(token);
   const profile = await request(app).get('/api/providers/me/profile').set('Authorization', `Bearer ${token}`);
   const required = profile.body.checklist.filter((c: any) => c.kind === 'kyc' && c.required);
   for (const item of required) {

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { MapPin, ShareNetwork as Share2, Heart, Star, ArrowRight, Phone, Storefront as Store, Coffee, Ticket, Leaf, Mountains as Mountain, Check, X } from '@phosphor-icons/react';
+import { MapPin, ShareNetwork as Share2, Heart, Star, ArrowRight, Phone, Storefront as Store, Coffee, Ticket, Leaf, Mountains as Mountain, Check, X, PersonSimpleHike } from '@phosphor-icons/react';
 import SmartImg from '@/components/SmartImg';
 import { listingImage } from '@/lib/listingContent';
 import { useFavorites } from '@/context/FavoritesContext';
@@ -13,6 +13,7 @@ import { shareLink } from '@/lib/share';
 const CTA_MAP = {
   homestay: ArrowRight,
   driver: Phone,
+  guide: PersonSimpleHike,
   shop: Store,
   cafe: Coffee,
   event: Ticket,
@@ -138,7 +139,7 @@ export default function FeedCard({ item, priority = false, tripSuffix = '' }) {
               data-testid={`feed-cta-${item.id}`}
               className="inline-flex min-w-0 items-center justify-center gap-1.5 rounded-full bg-pine px-3 py-2.5 text-sm font-bold text-white btn-hover"
             >
-              <CtaIcon size={16} /> <span className="truncate">{t('common.view_details')}</span>
+              <span className="truncate">{t('common.view_details')}</span> <CtaIcon size={16} className="flex-shrink-0" />
             </Link>
             <button
               type="button"

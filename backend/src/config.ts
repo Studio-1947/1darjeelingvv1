@@ -375,6 +375,11 @@ export const DONATION_MAX_PAISE = 10_000_000;  // ₹1,00,000
 // How long one tourist-pass payment keeps traveller actions unlocked, in days.
 export const SUPPORT_PASS_DAYS = 365;
 
+// People who bought the pass while it was "₹1 once, for life" were stored with this date and keep
+// it. Nothing extends past it: adding days would cross year 9999, which toISOString() writes as
+// "+010000-…", a form not every client parses (an app reading it as invalid would lock them out).
+export const LIFETIME_SUPPORT_EXPIRY = '9999-12-31T23:59:59.999Z';
+
 // What each side of a referral gets when a code is redeemed, in days. The app has always
 // advertised "+3 months", so that is the default; it is a knob because the number is a
 // marketing decision and changing it must not need a deploy of new code.

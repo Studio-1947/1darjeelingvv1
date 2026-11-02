@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { isAvailable } from '../lib/hostProfile';
 import { v4 as uuidv4 } from 'uuid';
 import { db, schema } from '../db';
 // lt/gt/and moved out with the inline overlap query  the date comparison now lives in
@@ -14,6 +15,8 @@ import { isListingHostLapsed } from '../lib/hostPlan';
 import { settleBookingConfirmation } from '../lib/bookingConfirmation';
 import { addInAppNotification, resolveHostUserId } from '../lib/inApp';
 import { releaseVoucherForBooking } from '../lib/vouchers';
+import { requireTravellerMode } from '../middleware/mode';
+import { bookingGrossAmount } from '../lib/bookingAmount';
 
 /** Listing types guests contact directly rather than book. */
 const CONTACT_ONLY_TYPES = new Set(['cafe', 'shop']);
@@ -77,7 +80,7 @@ const router = Router();
  *             schema: { $ref: '#/components/schemas/Error' }
  */
 // Create a booking
-router.post('/', authenticateToken, requireActiveSupport, async (req: Request, res: Response) => {
+router.post('/', authenticateToken, requireTravellerMode, requireActiveSupport, async (req: Request, res: Response) => {
   const { listing_id, listing_type, check_in, check_out, guests = 1, notes, voucher_id } = req.body;
 
   if (!listing_id || !listing_type) {
@@ -113,6 +116,11 @@ router.post('/', authenticateToken, requireActiveSupport, async (req: Request, r
   }
   // Cafés and shops are contact-only: a guest rings them, nothing is reserved. Judged on the
   // listing's own type, since the client-supplied one is just a claim.
+  // A host who switched availability off takes no bookings until they switch it back on.
+  if (!isAvailable(listing.extras as Record<string, any>)) {
+    return res.status(409).json({ detail: 'This host is not taking bookings right now.', code: 'unavailable' });
+  }
+
   if (CONTACT_ONLY_TYPES.has(listing.type) || CONTACT_ONLY_TYPES.has(listing_type)) {
     return res.status(400).json({ detail: 'This kind of listing is contact-only and cannot be booked' });
   }
@@ -390,7 +398,13 @@ router.get('/provider', authenticateToken, async (req: Request, res: Response) =
   for (const b of confirmedBookings) {
     const listing = listingsMap.find(l => l.id === b.listingId);
     if (listing) {
-      revenue += listing.price;
+      revenue += bookingGrossAmount({
+        listingType: b.listingType,
+        price: listing.price,
+        guests: b.guests,
+        checkIn: b.checkIn,
+        checkOut: b.checkOut,
+      });
     }
   }
 

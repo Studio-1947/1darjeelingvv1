@@ -18,7 +18,8 @@
   --mist: #EEF2ED;
   /* Height of the mobile BottomNav, including the home-indicator inset.
      Anything fixed above the nav must offset by this, not a hardcoded 4rem. */
-  --bottom-nav-h: calc(3.25rem + env(safe-area-inset-bottom, 0px));
+  /* The floating pill bar: 64px tall, 8px of air above it, and the safe area (at least 10px) below. */
+  --bottom-nav-h: calc(4.5rem + max(env(safe-area-inset-bottom, 0px), 10px));
   /* Height of the site header. It carries the circular category rail, so it
      tracks the rail's size at each breakpoint - full-screen sections and the
      landing hero offset by this rather than a hardcoded height.
@@ -225,4 +226,45 @@ input[type="submit"] {
   font-family: inherit;
   font-weight: 700 !important;
   letter-spacing: normal;
+}
+
+/* Button colour: #1F6656 on every filled button, on the site and in the app (colors.button).
+   Buttons are styled with bg-pine / from-pine utilities all over; this recolours exactly those
+   on buttons and pill links, without touching pine text, icons and badges elsewhere.
+   `!important` beats the hover:bg-pine-dark and gradient utilities they also carry.
+   Red (decline/delete), WhatsApp green and white or see-through buttons keep their colours. */
+:root {
+  --button: #1F6656;
+  --button-hover: #184F43;
+}
+button.bg-pine, a.bg-pine, [role="button"].bg-pine,
+button.from-pine, a.from-pine, [role="button"].from-pine {
+  background: var(--button) !important;
+  border-color: var(--button);
+}
+button.bg-pine:hover:not(:disabled), a.bg-pine:hover, [role="button"].bg-pine:hover,
+button.from-pine:hover:not(:disabled), a.from-pine:hover {
+  background: var(--button-hover) !important;
+}
+/* Outline buttons: the same green for their label and border. */
+button.text-pine, a.rounded-full.text-pine { color: var(--button); }
+button.border-pine, a.rounded-full.border-pine { border-color: var(--button); }
+
+/* Button sizes, the same as the app (theme `button` sizes in src/theme/index.ts):
+   main  - 50px tall, 15px text: page actions such as Reserve, Send OTP, Pay, Post.
+   small - 40px tall, 13px text: buttons inside cards and lists (marked with text-xs / text-sm).
+   Round icon buttons with a fixed height (h-9, h-11), filter chips (border-pine) and the header
+   are left alone. */
+main :is(button, a).bg-pine.rounded-full:not([class*="h-"]):not(.border-pine),
+main :is(button, a).rounded-full.btn-main {
+  min-height: 50px;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  align-items: center;
+  font-size: 15px !important;
+  line-height: 1.25;
+}
+main :is(button, a).bg-pine.rounded-full:is(.text-xs, .text-sm):not([class*="h-"]):not(.border-pine):not(.btn-main) {
+  min-height: 40px;
+  font-size: 13px !important;
 }

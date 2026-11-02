@@ -33,7 +33,10 @@ export default function HostPlanCard({ provider, user, onRenewed }: {
 
   if (!provider) return null;
 
-  const registrationPending = !provider.plan_expires_at && !user?.providerPaid;
+  // Paying the first year is what gives a business its plan expiry, and the server allows the
+  // registration payment per business (never activated), not per account. So a host whose earlier
+  // business is paid still sees Activate on a new one, rather than "Live until Invalid Date".
+  const registrationPending = !provider.plan_expires_at;
   const expiry = registrationPending ? Number.NaN : Date.parse(provider.plan_expires_at);
   const lapsed = !registrationPending && !provider.plan_active;
   const daysLeft = Math.ceil((expiry - Date.now()) / DAY_MS);
@@ -120,7 +123,7 @@ export default function HostPlanCard({ provider, user, onRenewed }: {
           onClick={renew}
           disabled={busy}
           data-testid="host-plan-renew"
-          className="inline-flex items-center justify-center rounded-full bg-ink text-white font-bold text-sm px-5 py-2.5 disabled:opacity-60 hover:opacity-90 transition-opacity"
+          className="inline-flex items-center justify-center rounded-full bg-pine text-white font-bold text-sm px-5 py-2.5 disabled:opacity-60 hover:opacity-90 transition-opacity"
         >
           {busy ? t('pd.plan_renewing') : registrationPending ? t('pd.plan_activate_cta') : t('pd.plan_renew_cta')}
         </button>

@@ -81,3 +81,8 @@ input[type="submit"] {
   font-weight: 700 !important;
   letter-spacing: normal;
 }
+
+/* Same button colour as the public site and the app. */
+button.bg-pine, a.bg-pine, [role="button"].bg-pine { background: #1F6656 !important; border-color: #1F6656; }
+button.bg-pine:hover:not(:disabled), a.bg-pine:hover { background: #184F43 !important; }
+button.text-pine { color: #1F6656; }

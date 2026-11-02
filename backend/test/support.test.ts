@@ -4,7 +4,7 @@ import {
   isSupportActive,
   computeSupportPassExpiry,
 } from '../src/lib/support';
-import { SUPPORT_PASS_DAYS } from '../src/config';
+import { LIFETIME_SUPPORT_EXPIRY, SUPPORT_PASS_DAYS } from '../src/config';
 import { requireActiveSupport } from '../src/middleware/support';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -64,6 +64,10 @@ describe('computeSupportPassExpiry', () => {
     const existing = new Date(now.getTime() + 30 * DAY_MS).toISOString();
     const expiry = computeSupportPassExpiry(existing, now);
     expect(Date.parse(expiry) - Date.parse(existing)).toBe(SUPPORT_PASS_DAYS * DAY_MS);
+  });
+
+  it('leaves an old lifetime pass as it is', () => {
+    expect(computeSupportPassExpiry(LIFETIME_SUPPORT_EXPIRY, now)).toBe(LIFETIME_SUPPORT_EXPIRY);
   });
 
   it('restarts from settlement once the pass has lapsed', () => {

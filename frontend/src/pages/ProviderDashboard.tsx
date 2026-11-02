@@ -186,6 +186,31 @@ export default function ProviderDashboard() {
 
       <HostPlanCard provider={provider} user={user} onRenewed={async () => { await refresh(); await loadDashboard(); }} />
 
+      {/* The business profile (pages/ProviderProfile.tsx), with what is still needed for approval. */}
+      <Link
+        to="/provider/profile"
+        data-testid="dashboard-profile-card"
+        className={`block rounded-2xl border p-5 btn-hover ${provider?.profile_missing?.length ? 'border-[#F0B90B] bg-[#FFF8E1]' : 'border-[var(--line)] bg-white'}`}
+      >
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <p className="font-display font-extrabold text-lg text-ink">
+              {provider?.profile_missing?.length ? t('hostProfile.complete_title') : t('hostProfile.title')}
+            </p>
+            {provider?.profile_missing?.length ? (
+              <ul className="mt-1 text-sm text-ink space-y-0.5">
+                {provider.profile_missing.map((m: { key: string; label: string }) => <li key={m.key}>• {m.label}</li>)}
+              </ul>
+            ) : (
+              <p className="mt-1 text-sm text-ink-soft">{t('hostProfile.subtitle')}</p>
+            )}
+          </div>
+          <span className="inline-flex items-center gap-1.5 text-sm font-bold text-pine whitespace-nowrap">
+            {t('hostProfile.complete_cta')} <ArrowRight size={16} />
+          </span>
+        </div>
+      </Link>
+
       {/* Stats grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
         <StatCard label={t('pd.total_bookings')} value={stats.total} icon={LayoutList} tone="pine" />

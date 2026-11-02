@@ -6,6 +6,7 @@ import { authenticateToken } from '../middleware/auth';
 import { requireActiveSupport } from '../middleware/support';
 import { SPOT_TYPE, isSpotPublished } from '../lib/spots';
 import { routeParam } from '../lib/routeParam';
+import { requireTravellerMode } from '../middleware/mode';
 
 const router = Router();
 
@@ -120,7 +121,7 @@ router.get('/ids', authenticateToken, async (req: Request, res: Response) => {
 
 // Save a listing. Idempotent: onConflictDoNothing means re-saving an already-saved listing is a
 // no-op success rather than a unique-violation error.
-router.post('/', authenticateToken, requireActiveSupport, async (req: Request, res: Response) => {
+router.post('/', authenticateToken, requireTravellerMode, requireActiveSupport, async (req: Request, res: Response) => {
   const { listing_id } = req.body || {};
   if (!listing_id) return res.status(400).json({ detail: 'listing_id is required' });
 

@@ -15,6 +15,13 @@ const IDENTITY: DocRequirement[] = [
 ];
 
 export const KYC_REQUIREMENTS: Record<string, DocRequirement[]> = {
+  // Guides: who they are and a face to match it. A government / tourism-department guide licence
+  // is welcome but many local guides work without one, so it must not block a listing.
+  guide: [
+    { docType: 'aadhaar', label: 'Aadhaar card', required: true },
+    { docType: 'owner_photo', label: 'Your photo / selfie', required: true },
+    { docType: 'guide_licence', label: 'Guide licence or certificate (if you have one)', required: false },
+  ],
   // Drivers: no PAN and no selfie. The plate photo is the driver check, a shot of the driver
   // beside the vehicle with the front number plate legible, so the person and the car are tied
   // together. Pollution (PUC) and insurance are welcome but must not block a listing.

@@ -70,7 +70,7 @@ export default function ContactSection({ item, onOpenMaps }: { item: any; onOpen
 
           <button onClick={onOpenMaps} data-testid="contact-directions"
             className="w-full py-4 rounded-full font-bold btn-hover inline-flex items-center justify-center gap-2 bg-white border border-[var(--line)] text-ink">
-            <Navigation size={18} /> {t('cta.get_directions')}
+            {t('cta.get_directions')} <Navigation size={18} />
           </button>
         </div>
       </div>
