@@ -177,7 +177,13 @@ export default function ProviderProfile() {
 
   const type: string = p?.business_type || '';
   const missing: { key: string; label: string }[] = p?.profile_missing || [];
-  const set = (patch: any) => setForm((f: any) => ({ ...f, ...patch }));
+  const updateForm = (updater: (current: any) => any) => {
+    // Once a host makes another edit, the previous success state is no longer current.
+    // Restore the save action immediately, including on the mobile layout.
+    setMsg((current) => current?.ok ? null : current);
+    setForm(updater);
+  };
+  const set = (patch: any) => updateForm((f: any) => ({ ...f, ...patch }));
 
   const upload = (field: 'cover' | 'host_avatar') => async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -191,7 +197,7 @@ export default function ProviderProfile() {
     const files = e.target.files;
     if (!files?.length) return;
     setUploading('images');
-    try { const urls = await uploadImages(files); setForm((f: any) => ({ ...f, images: [...f.images, ...urls] })); }
+    try { const urls = await uploadImages(files); updateForm((f: any) => ({ ...f, images: [...f.images, ...urls] })); }
     catch (err) { setMsg({ ok: false, text: typeof err === 'string' ? err : 'Upload failed' }); }
     finally { setUploading(null); }
   };
@@ -431,7 +437,7 @@ export default function ProviderProfile() {
           <span className={labelCls}>{t('hostProfile.gallery')}{photoGoal ? ` (${form.images.length}/${photoGoal})` : ''}</span>
           <div className="mt-2">
             <GalleryUploader images={form.images} uploading={uploading === 'images'} onFilesSelected={uploadGallery}
-              onRemove={(i) => setForm((f: any) => ({ ...f, images: f.images.filter((_: string, j: number) => j !== i) }))} compact />
+              onRemove={(i) => updateForm((f: any) => ({ ...f, images: f.images.filter((_: string, j: number) => j !== i) }))} compact />
           </div>
         </div>
       </Section>
@@ -449,10 +455,6 @@ export default function ProviderProfile() {
           <button type="button" onClick={save} disabled={busy} data-testid="profile-save" className="inline-flex items-center gap-2 px-6 rounded-full bg-pine text-white font-bold btn-hover disabled:opacity-60">{busy ? t('common.loading') : t('hostProfile.save')} <ArrowRight size={16} /></button>
         </div>}
       </div>
-
-      <p className="text-center text-sm text-ink-soft">
-        <Link to="/provider/dashboard" className="font-bold text-pine underline">{t('hostProfile.back_dashboard')}</Link>
-      </p>
     </div>
   );
 }
