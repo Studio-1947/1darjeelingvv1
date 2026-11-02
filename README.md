@@ -525,14 +525,4 @@ deployment. The two open items as of 2026-08-04 are both operational rather than
 The long-standing §6.A (booking confirmations notified nobody) is **closed** — see the section
 above.
 
-cd /var/www/1darjeeling-in
-git fetch origin && git reset --hard origin/prod
-docker compose -f docker-compose.in.yml build
-docker compose -f docker-compose.in.yml up -d --wait
-
-docker compose -f docker-compose.in.yml up -d --force-recreate backend
-sleep 10
-docker compose -f docker-compose.in.yml ps
-docker compose -f docker-compose.in.yml logs --tail 80 backend
-curl -i http://127.0.0.1:8092/api/health
-curl -i https://aanganerp.in/api/health
+![![alt text](image-1.png)](image.png)
