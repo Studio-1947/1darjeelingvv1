@@ -4,7 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { db, schema } from '../db';
 import { eq, or, and, ilike, inArray } from 'drizzle-orm';
 import { authenticateToken, optionalUser } from '../middleware/auth';
-import { canSeeProviderPhone } from '../lib/listingContact';
+import { canSeeProviderPhone, listExtras, publicExtras } from '../lib/listingContact';
 import { rateLimiter } from '../middleware/rateLimiter';
 import { recomputeKycStatus } from './kyc';
 import { googleMapsUrl, inServiceRegion, MapsLinkError, resolveMapsLink } from '../lib/mapsLink';
@@ -270,7 +270,8 @@ router.get('/', async (req: Request, res: Response) => {
       image: item.image,
       tags: item.tags,
       provider_id: item.providerId,
-      extras: item.extras,
+      // Contact numbers in extras stay behind the same gate as provider_phone (lib/listingContact.ts).
+      extras: listExtras(item.type, item.extras),
       created_at: item.createdAt,
       rating: rating?.average ?? 0,
       review_count: rating?.count ?? 0,
@@ -355,7 +356,8 @@ router.get('/:id', async (req: Request, res: Response) => {
     image: item.image,
     tags: item.tags,
     provider_id: item.providerId,
-    extras: item.extras,
+    // Contact numbers in extras stay behind the same gate as provider_phone (lib/listingContact.ts).
+    extras: publicExtras(item.extras, phoneVisible),
     created_at: item.createdAt,
     rating: rating?.average ?? 0,
     review_count: rating?.count ?? 0,
