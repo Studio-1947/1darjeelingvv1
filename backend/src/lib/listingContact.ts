@@ -1,5 +1,6 @@
 import { and, eq } from 'drizzle-orm';
 import { db, schema } from '../db';
+import { isSupportActive } from './support';
 
 /**
  * Listing types whose provider number is released by a booking rather than published.
@@ -26,6 +27,12 @@ export async function canSeeProviderPhone(
   if (!PHONE_GATED_TYPES.has(listing.type)) return true;
   if (!viewer) return false;
   if (viewer.role === 'admin') return true;
+
+  // An active aangan pass is the public-contact entitlement. This check belongs here, at the
+  // server boundary, so a copied public URL or altered frontend can never reveal a host number.
+  const [account] = await db.select({ role: schema.users.role, supportExpiresAt: schema.users.supportExpiresAt })
+    .from(schema.users).where(eq(schema.users.id, viewer.id)).limit(1);
+  if (account && (account.role === 'provider' || isSupportActive(account))) return true;
 
   // Listings an admin created on someone's behalf carry a bare user id instead of a provider id,
   // so ownership is checked against both, the same way bookings do it.
