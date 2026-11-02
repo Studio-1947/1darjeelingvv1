@@ -1,5 +1,14 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import request from 'supertest';
+
+// KYC storage is integration-tested separately. Keep this suite independent of a
+// locally running MinIO instance, just like the other KYC route test suites.
+vi.mock('../src/lib/s3', () => ({
+  uploadPrivate: vi.fn(async (_buffer: Buffer, key: string) => key),
+  getPrivateObject: vi.fn(),
+  deletePrivate: vi.fn(async () => {}),
+}));
+
 import { app } from '../src/app';
 import { missingMandatory, profilePatchFrom, startingPriceFor } from '../src/lib/hostProfile';
 import { onboardActiveProvider, registerUser } from './helpers';
