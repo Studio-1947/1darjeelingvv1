@@ -33,6 +33,7 @@ const Refunds = lazy(() => import('@/pages/Refunds'));
 const DeleteAccount = lazy(() => import('@/pages/DeleteAccount'));
 const Contact = lazy(() => import('@/pages/Contact'));
 const NotFound = lazy(() => import('@/pages/NotFound'));
+const PublicBusiness = lazy(() => import('@/pages/PublicBusiness'));
 
 // How long the splash in index.html stays up once the app has mounted - long enough for its
 // wordmark reveal (1.8s, kept in sync with that markup) to actually finish playing rather
@@ -79,6 +80,7 @@ export default function App() {
                     <Route path="/biodiversity" element={<TravellerOnly><Category typeOverride="biodiversity" /></TravellerOnly>} />
                     <Route path="/search" element={<TravellerOnly><Category typeOverride={undefined} /></TravellerOnly>} />
                     <Route path="/listing/:id" element={<ListingDetail />} />
+                    <Route path="/business/:id" element={<PublicBusiness />} />
                     <Route path="/login" element={<Login />} />
                     <Route path="/support" element={<TravellerOnly><Support /></TravellerOnly>} />
                     <Route path="/donate" element={<Donate />} />

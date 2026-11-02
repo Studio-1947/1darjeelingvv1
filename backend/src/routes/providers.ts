@@ -3,7 +3,7 @@ import { missingMandatory, profileKeysFor, profilePatchFrom, startingPriceFor } 
 import { isHostApprovalPending, isHostPlanLive } from '../lib/hostPlan';
 import { v4 as uuidv4 } from 'uuid';
 import { db, schema } from '../db';
-import { eq, inArray } from 'drizzle-orm';
+import { eq, inArray, or } from 'drizzle-orm';
 import { authenticateToken } from '../middleware/auth';
 import { KYC_REQUIREMENTS } from '../lib/kycRequirements';
 
@@ -294,6 +294,15 @@ router.get('/me', authenticateToken, async (req: Request, res: Response) => {
   };
 
   res.json({ provider: providerReturn });
+});
+
+// Public mini-site payload. The provider id is a stable, unguessable share identifier; the
+// frontend renders every listing under this host as one shareable business page.
+router.get('/public/:id', async (req: Request, res: Response) => {
+  const [provider] = await db.select().from(schema.providers).where(eq(schema.providers.id, String(req.params.id))).limit(1);
+  if (!provider || provider.status !== 'active') return res.status(404).json({ detail: 'Business not found' });
+  const listings = await db.select().from(schema.listings).where(or(eq(schema.listings.providerId, provider.id), eq(schema.listings.providerId, provider.userId)));
+  res.json({ business: { id: provider.id, name: provider.businessName, type: provider.businessType, description: provider.description, location: provider.location, images: provider.images, created_at: provider.createdAt }, listings: listings.map((l) => ({ id: l.id, title: l.title, type: l.type, description: l.description, location: l.location, price: l.price, image: l.image, extras: l.extras })) });
 });
 
 /**
