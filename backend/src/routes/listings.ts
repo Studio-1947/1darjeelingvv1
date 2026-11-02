@@ -17,7 +17,7 @@ import {
 } from '../lib/spots';
 
 /** The listing types the app knows how to render. Mirrors the enum in the OpenAPI blocks below. */
-const LISTING_TYPES = ['spot', 'homestay', 'driver', 'shop', 'cafe', 'event', 'biodiversity'];
+const LISTING_TYPES = ['spot', 'homestay', 'driver', 'guide', 'shop', 'cafe', 'event', 'biodiversity'];
 
 const MAX_TITLE_LEN = 160;
 const MAX_LOCATION_LEN = 160;

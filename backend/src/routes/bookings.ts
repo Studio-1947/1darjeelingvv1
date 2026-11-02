@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { isAvailable } from '../lib/hostProfile';
 import { v4 as uuidv4 } from 'uuid';
 import { db, schema } from '../db';
 // lt/gt/and moved out with the inline overlap query  the date comparison now lives in
@@ -114,6 +115,11 @@ router.post('/', authenticateToken, requireTravellerMode, requireActiveSupport, 
   }
   // Cafés and shops are contact-only: a guest rings them, nothing is reserved. Judged on the
   // listing's own type, since the client-supplied one is just a claim.
+  // A host who switched availability off takes no bookings until they switch it back on.
+  if (!isAvailable(listing.extras as Record<string, any>)) {
+    return res.status(409).json({ detail: 'This host is not taking bookings right now.', code: 'unavailable' });
+  }
+
   if (CONTACT_ONLY_TYPES.has(listing.type) || CONTACT_ONLY_TYPES.has(listing_type)) {
     return res.status(400).json({ detail: 'This kind of listing is contact-only and cannot be booked' });
   }

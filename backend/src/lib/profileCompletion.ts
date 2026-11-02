@@ -87,7 +87,8 @@ function profileChecks(p: ProfileInput): { key: string; label: string; done: boo
       done: locationVerified(p),
       action: 'live_capture',
     });
-  } else if (p.businessType !== 'driver') {
+  } else if (p.businessType !== 'driver' && p.businessType !== 'guide') {
+    // Drivers and guides go to the traveller; neither has premises to pin.
     checks.push({
       key: 'location',
       label: 'Pin your location on the map',

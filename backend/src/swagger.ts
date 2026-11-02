@@ -62,7 +62,7 @@ const options: swaggerJsdoc.Options = {
           properties: {
             id: { type: 'string' },
             title: { type: 'string' },
-            type: { type: 'string', enum: ['spot', 'homestay', 'driver', 'shop', 'cafe', 'event', 'biodiversity'] },
+            type: { type: 'string', enum: ['spot', 'homestay', 'driver', 'guide', 'shop', 'cafe', 'event', 'biodiversity'] },
             description: { type: 'string' },
             location: { type: 'string' },
             price: { type: 'integer' },

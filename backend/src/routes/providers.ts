@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { missingMandatory, profileKeysFor, profilePatchFrom, startingPriceFor } from '../lib/hostProfile';
 import { isHostApprovalPending, isHostPlanLive } from '../lib/hostPlan';
 import { v4 as uuidv4 } from 'uuid';
 import { db, schema } from '../db';
@@ -35,7 +36,7 @@ const router = Router();
  *             required: [business_name, business_type, description, location, contact_phone]
  *             properties:
  *               business_name: { type: string }
- *               business_type: { type: string, enum: [homestay, driver, shop, cafe], description: "Self-onboardable types only  admin-seeded types (spot, event, biodiversity) are rejected here." }
+ *               business_type: { type: string, enum: [homestay, driver, guide, shop, cafe], description: "Self-onboardable types only  admin-seeded types (spot, event, biodiversity) are rejected here." }
  *               description: { type: string }
  *               location: { type: string }
  *               contact_phone: { type: string }
@@ -71,6 +72,17 @@ router.post('/onboard', authenticateToken, async (req: Request, res: Response) =
   const { business_name, business_type, description, location, latitude = null, longitude = null, contact_phone, price_from = 0, images = [], extras = {} } = req.body;
   // Location verification is granted only by POST /me/location/verify, never claimed by the caller.
   if (extras && typeof extras === 'object') delete extras.location_verification;
+
+  // Profile fields sent at sign-up are checked the same way as later edits (lib/hostProfile.ts).
+  // Other keys an older client sends (tags, address, upi...) pass through as before.
+  if (extras && typeof extras === 'object' && typeof business_type === 'string') {
+    const known = profileKeysFor(business_type).filter((k) => k !== 'vehicle_number' && extras[k] !== undefined);
+    if (known.length) {
+      const checked = profilePatchFrom(business_type, Object.fromEntries(known.map((k) => [k, extras[k]])));
+      if ('error' in checked) return res.status(400).json({ detail: checked.error });
+      Object.assign(extras, checked);
+    }
+  }
 
   // A driver can say what they drive and its number. Both are optional here (older apps never sent
   // them) but checked when present, so a mistyped plate is refused instead of shown to travellers.
@@ -277,6 +289,8 @@ router.get('/me', authenticateToken, async (req: Request, res: Response) => {
     plan_active: isHostPlanLive(provider),
     kyc_status: provider.kycStatus,
     approval_pending: isHostApprovalPending(provider),
+    // What a new host still has to fill in before their documents can go for approval.
+    profile_missing: missingMandatory(provider.businessType, provider.extras),
   };
 
   res.json({ provider: providerReturn });
@@ -555,9 +569,42 @@ router.patch('/me', authenticateToken, async (req: Request, res: Response) => {
     set.extras = extras;
   }
 
+  // The host profile (lib/hostProfile.ts): photos, WhatsApp, availability, languages, rooms and
+  // food, services, routes and the rest, checked per type and merged into extras.
+  let profilePatch: Record<string, unknown> | null = null;
+  if (body.profile !== undefined) {
+    const checked = profilePatchFrom(provider.businessType, body.profile);
+    if ('error' in checked) return res.status(400).json({ detail: checked.error });
+    profilePatch = checked;
+    const extras = { ...(set.extras ?? provider.extras ?? {}), ...checked };
+    set.extras = extras;
+    const derived = startingPriceFor(provider.businessType, extras);
+    if (derived !== null && body.price_from === undefined) set.priceFrom = derived;
+  }
+  if (body.cover_image !== undefined) {
+    const cover = typeof body.cover_image === 'string' ? body.cover_image.trim() : '';
+    if (!/^(https?:\/\/|\/)\S+$/.test(cover)) {
+      return res.status(400).json({ detail: 'Cover photo must be an uploaded image' });
+    }
+    set.images = [cover, ...(provider.images || []).filter((u) => u !== cover)];
+  }
+
   if (Object.keys(set).length === 0) return res.status(400).json({ detail: 'Nothing to update' });
 
   const [updated] = await db.update(schema.providers).set(set).where(eq(schema.providers.id, provider.id)).returning();
+  // Travellers read the listing, not the provider row, so the profile is copied onto every listing
+  // this host runs: the profile fields, the cover photo, the derived price and the name.
+  if (profilePatch || set.images || set.businessName) {
+    const own = await db.select().from(schema.listings).where(eq(schema.listings.providerId, provider.id));
+    for (const l of own) {
+      const next: Partial<typeof schema.listings.$inferInsert> = {};
+      if (profilePatch) next.extras = { ...(l.extras || {}), ...profilePatch };
+      if (set.images) next.image = set.images[0];
+      if (set.businessName && l.title === provider.businessName) next.title = set.businessName;
+      if (profilePatch && set.priceFrom !== undefined) next.price = set.priceFrom;
+      if (Object.keys(next).length) await db.update(schema.listings).set(next).where(eq(schema.listings.id, l.id));
+    }
+  }
   // Moving the pin voided its verification, which a homestay's "verified" status depends on.
   if (body.latitude !== undefined || body.longitude !== undefined) {
     updated.kycStatus = await recomputeKycStatus(provider.id);
@@ -583,6 +630,7 @@ router.patch('/me', authenticateToken, async (req: Request, res: Response) => {
       plan_active: updated.status === 'active' && (!updated.planExpiresAt || Date.parse(updated.planExpiresAt) > Date.now()),
       kyc_status: updated.kycStatus,
       approval_pending: isHostApprovalPending(updated),
+      profile_missing: missingMandatory(updated.businessType, updated.extras),
     },
   });
 });

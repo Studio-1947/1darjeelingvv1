@@ -14,7 +14,7 @@ vi.mock('../src/lib/s3', () => ({
 import { app } from '../src/app';
 import { db, schema } from '../src/db';
 import { isHostApprovalPending } from '../src/lib/hostPlan';
-import { loginAdmin, onboardActiveProvider, registerUser } from './helpers';
+import { completeMandatoryProfile, loginAdmin, onboardActiveProvider, registerUser } from './helpers';
 
 const PNG_DATA_URL =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
@@ -38,6 +38,8 @@ const IN_DARJEELING = 'https://www.google.com/maps/place/Stay/@27.036,88.2627,17
  * homestay is only verified once its pin is confirmed too, so that is done as well.
  */
 async function verify(token: string, providerId: string, admin: string): Promise<string[]> {
+  // A new host fills in the mandatory profile before their documents can go for approval.
+  await completeMandatoryProfile(token);
   const profile = await request(app).get('/api/providers/me/profile').set('Authorization', `Bearer ${token}`);
   const required = profile.body.checklist.filter((c: any) => c.kind === 'kyc' && c.required);
   for (const item of required) {

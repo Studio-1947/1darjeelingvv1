@@ -11,7 +11,7 @@ vi.mock('../src/lib/s3', () => ({
 }));
 
 import { app } from '../src/app';
-import { loginAdmin, onboardActiveProvider } from './helpers';
+import { completeMandatoryProfile, loginAdmin, onboardActiveProvider } from './helpers';
 
 const PNG_DATA_URL =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
@@ -22,6 +22,8 @@ const profile = (token: string) =>
   request(app).get('/api/providers/me/profile').set('Authorization', `Bearer ${token}`).then((r) => r.body);
 
 async function uploadAll(token: string) {
+  // A new host fills in the mandatory profile before their documents can go for approval.
+  await completeMandatoryProfile(token);
   const p = await profile(token);
   for (const item of p.checklist.filter((c: any) => c.kind === 'kyc' && c.required)) {
     if (item.media === 'video') {

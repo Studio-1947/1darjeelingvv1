@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { missingMandatory } from '../lib/hostProfile';
 import { v4 as uuidv4 } from 'uuid';
 import path from 'path';
 import { db, schema } from '../db';
@@ -299,6 +300,19 @@ router.post('/me/kyc', authenticateToken, async (req: Request, res: Response) =>
   const provider = await ownActiveProvider(req.user.id);
   if (!provider) return res.status(403).json({ detail: 'Only active providers can upload KYC documents' });
 
+  // A new host sends documents for approval only once the mandatory parts of their profile are in
+  // (lib/hostProfile.ts). Hosts who were live before approval existed are not held back.
+  if (provider.approvalRequired) {
+    const missing = missingMandatory(provider.businessType, provider.extras);
+    if (missing.length) {
+      return res.status(409).json({
+        detail: `Finish your profile before sending documents for approval: ${missing.map((m) => m.label).join('; ')}`,
+        code: 'profile_incomplete',
+        missing,
+      });
+    }
+  }
+
   const { doc_type, file, filename } = req.body || {};
   if (!doc_type || !file || !filename) {
     return res.status(400).json({ detail: 'doc_type, file, and filename are required' });
@@ -333,6 +347,19 @@ router.post('/me/kyc', authenticateToken, async (req: Request, res: Response) =>
 router.post('/me/kyc/video', authenticateToken, async (req: Request, res: Response) => {
   const provider = await ownActiveProvider(req.user.id);
   if (!provider) return res.status(403).json({ detail: 'Only active providers can upload KYC documents' });
+
+  // A new host sends documents for approval only once the mandatory parts of their profile are in
+  // (lib/hostProfile.ts). Hosts who were live before approval existed are not held back.
+  if (provider.approvalRequired) {
+    const missing = missingMandatory(provider.businessType, provider.extras);
+    if (missing.length) {
+      return res.status(409).json({
+        detail: `Finish your profile before sending documents for approval: ${missing.map((m) => m.label).join('; ')}`,
+        code: 'profile_incomplete',
+        missing,
+      });
+    }
+  }
 
   const doc_type = String(req.query.doc_type || '');
   if (!doc_type || !isAllowedDocType(provider.businessType, doc_type)) {
