@@ -142,12 +142,13 @@ export default function Header() {
             reach, so the control a visitor actually looks for up here -
             sign-in - now sits in the bar itself. */}
         <div className="flex items-center gap-1.5 sm:gap-2.5 flex-shrink-0 ml-auto">
-          {/* The host feed is public, so it remains visible whether or not someone is signed in. */}
+          {/* The host feed is public, so it stays visible signed in or not. Below lg it is a tab in the
+              bottom bar, so the header only carries it on desktop, where there is no bottom bar. */}
           <Link
             to="/feed"
             data-testid="header-feed"
             aria-label={t('nav.feed')}
-            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-full bg-pine px-2.5 text-white shadow-sm btn-hover sm:px-3"
+            className="hidden lg:inline-flex h-9 items-center justify-center gap-1.5 rounded-full bg-pine px-2.5 text-white shadow-sm btn-hover sm:px-3"
           >
             <ImagesSquare size={18} />
             <span className="hidden xl:inline whitespace-nowrap">{t('nav.feed')}</span>
