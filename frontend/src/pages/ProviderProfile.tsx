@@ -177,7 +177,13 @@ export default function ProviderProfile() {
 
   const type: string = p?.business_type || '';
   const missing: { key: string; label: string }[] = p?.profile_missing || [];
-  const set = (patch: any) => setForm((f: any) => ({ ...f, ...patch }));
+  const updateForm = (updater: (current: any) => any) => {
+    // Once a host makes another edit, the previous success state is no longer current.
+    // Restore the save action immediately, including on the mobile layout.
+    setMsg((current) => current?.ok ? null : current);
+    setForm(updater);
+  };
+  const set = (patch: any) => updateForm((f: any) => ({ ...f, ...patch }));
 
   const upload = (field: 'cover' | 'host_avatar') => async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -191,7 +197,7 @@ export default function ProviderProfile() {
     const files = e.target.files;
     if (!files?.length) return;
     setUploading('images');
-    try { const urls = await uploadImages(files); setForm((f: any) => ({ ...f, images: [...f.images, ...urls] })); }
+    try { const urls = await uploadImages(files); updateForm((f: any) => ({ ...f, images: [...f.images, ...urls] })); }
     catch (err) { setMsg({ ok: false, text: typeof err === 'string' ? err : 'Upload failed' }); }
     finally { setUploading(null); }
   };
@@ -431,26 +437,24 @@ export default function ProviderProfile() {
           <span className={labelCls}>{t('hostProfile.gallery')}{photoGoal ? ` (${form.images.length}/${photoGoal})` : ''}</span>
           <div className="mt-2">
             <GalleryUploader images={form.images} uploading={uploading === 'images'} onFilesSelected={uploadGallery}
-              onRemove={(i) => setForm((f: any) => ({ ...f, images: f.images.filter((_: string, j: number) => j !== i) }))} compact />
+              onRemove={(i) => updateForm((f: any) => ({ ...f, images: f.images.filter((_: string, j: number) => j !== i) }))} compact />
           </div>
         </div>
       </Section>
 
       <div className="sticky bottom-[calc(var(--bottom-nav-h)+0.5rem)] lg:bottom-4 z-20">
-        <div className="mist-panel p-3 flex items-center gap-3 shadow-lg">
-          <p className={`flex-1 text-sm font-semibold ${msg ? (msg.ok ? 'text-pine' : 'text-flag') : 'text-ink-soft'}`} data-testid="profile-msg">
-            {msg ? msg.text : t('hostProfile.save_hint')}
-          </p>
-          <button type="button" onClick={save} disabled={busy} data-testid="profile-save"
-            className="inline-flex items-center gap-2 px-6 rounded-full bg-pine text-white font-bold btn-hover disabled:opacity-60">
-            {busy ? t('common.loading') : t('hostProfile.save')} <ArrowRight size={16} />
-          </button>
-        </div>
+        {msg?.ok ? (
+          <div className="rounded-2xl border border-pine/20 bg-white p-3 shadow-lg flex items-center gap-3" data-testid="profile-saved-actions">
+            <CheckCircle size={22} weight="fill" className="text-pine shrink-0" />
+            <p className="flex-1 text-sm font-bold text-pine">{msg.text}</p>
+            <Link to="/provider/dashboard" className="inline-flex items-center gap-1.5 rounded-full bg-pine px-4 py-2.5 text-xs font-bold text-white btn-hover whitespace-nowrap">{t('hostProfile.back_dashboard')} <ArrowRight size={14} /></Link>
+            <button type="button" onClick={() => setMsg(null)} className="hidden sm:inline text-xs font-bold text-ink-soft hover:text-ink">Keep editing</button>
+          </div>
+        ) : <div className="mist-panel p-3 flex items-center gap-3 shadow-lg">
+          <p className={`flex-1 text-sm font-semibold ${msg ? 'text-flag' : 'text-ink-soft'}`} data-testid="profile-msg">{msg ? msg.text : t('hostProfile.save_hint')}</p>
+          <button type="button" onClick={save} disabled={busy} data-testid="profile-save" className="inline-flex items-center gap-2 px-6 rounded-full bg-pine text-white font-bold btn-hover disabled:opacity-60">{busy ? t('common.loading') : t('hostProfile.save')} <ArrowRight size={16} /></button>
+        </div>}
       </div>
-
-      <p className="text-center text-sm text-ink-soft">
-        <Link to="/provider/dashboard" className="font-bold text-pine underline">{t('hostProfile.back_dashboard')}</Link>
-      </p>
     </div>
   );
 }
