@@ -45,6 +45,12 @@ const TYPE_AMENITIES: Record<string, Amenity[]> = {
     { Icon: Fuel, label: 'Fuel & tolls included' },
     { Icon: Luggage, label: 'Luggage space' },
   ],
+  guide: [
+    { Icon: ShieldCheck, label: 'Local guide' },
+    { Icon: Route, label: 'Routes planned for you' },
+    { Icon: Languages, label: 'Speaks the local languages' },
+    { Icon: Camera, label: 'Knows the photo spots' },
+  ],
   shop: [
     { Icon: Store, label: 'Locally owned' },
     { Icon: Package, label: 'Made in Darjeeling' },
@@ -96,6 +102,7 @@ export function amenitiesFor(item: any, max = 8): Amenity[] {
     push(rule ? { Icon: rule.Icon, label: rule.label } : { Icon: Tag, label: prettify(tag) });
   });
 
+  if (item?.extras?.home_delivery === true) push({ Icon: Package, label: 'Home delivery' });
   (TYPE_AMENITIES[item?.type] || []).forEach(push);
 
   return out.slice(0, max);

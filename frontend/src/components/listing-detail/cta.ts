@@ -4,6 +4,7 @@ import { ArrowRight, Phone, Storefront as Store, Coffee, Ticket, Leaf, Mountains
 export const CTA_CONFIG = {
   homestay: { key: 'book_now', Icon: ArrowRight, color: 'bg-pine text-white' },
   driver: { key: 'talk_to_driver', Icon: Phone, color: 'bg-pine text-white' },
+  guide: { key: 'request_guide', Icon: ArrowRight, color: 'bg-pine text-white' },
   shop: { key: 'contact_shop', Icon: Store, color: 'bg-ink text-white' },
   cafe: { key: 'visit_cafe', Icon: Coffee, color: 'bg-ink text-white' },
   event: { key: 'join_event', Icon: Ticket, color: 'bg-pine text-white' },

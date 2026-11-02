@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { MapPin, ShareNetwork as Share2, Heart, Star, ArrowRight, Phone, Storefront as Store, Coffee, Ticket, Leaf, Mountains as Mountain, Check, X } from '@phosphor-icons/react';
+import { MapPin, ShareNetwork as Share2, Heart, Star, ArrowRight, Phone, Storefront as Store, Coffee, Ticket, Leaf, Mountains as Mountain, Check, X, PersonSimpleHike } from '@phosphor-icons/react';
 import SmartImg from '@/components/SmartImg';
 import { listingImage } from '@/lib/listingContent';
 import { useFavorites } from '@/context/FavoritesContext';
@@ -13,6 +13,7 @@ import { shareLink } from '@/lib/share';
 const CTA_MAP = {
   homestay: ArrowRight,
   driver: Phone,
+  guide: PersonSimpleHike,
   shop: Store,
   cafe: Coffee,
   event: Ticket,

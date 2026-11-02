@@ -19,6 +19,7 @@ const ListingDetail = lazy(() => import('@/pages/ListingDetail'));
 const Login = lazy(() => import('@/pages/Login'));
 const ProviderOnboard = lazy(() => import('@/pages/ProviderOnboard'));
 const ProviderDashboard = lazy(() => import('@/pages/ProviderDashboard'));
+const ProviderProfile = lazy(() => import('@/pages/ProviderProfile'));
 const TouristDashboard = lazy(() => import('@/pages/TouristDashboard'));
 const MyTrips = lazy(() => import('@/pages/MyTrips'));
 const MyListings = lazy(() => import('@/pages/MyListings'));
@@ -71,6 +72,7 @@ export default function App() {
                     <Route path="/spots" element={<TravellerOnly><Category typeOverride="spot" /></TravellerOnly>} />
                     <Route path="/homestays" element={<TravellerOnly><Category typeOverride="homestay" /></TravellerOnly>} />
                     <Route path="/drivers" element={<TravellerOnly><Category typeOverride="driver" /></TravellerOnly>} />
+                    <Route path="/guides" element={<TravellerOnly><Category typeOverride="guide" /></TravellerOnly>} />
                     <Route path="/shops" element={<TravellerOnly><Category typeOverride="shop" /></TravellerOnly>} />
                     <Route path="/cafes" element={<TravellerOnly><Category typeOverride="cafe" /></TravellerOnly>} />
                     <Route path="/events" element={<TravellerOnly><Category typeOverride="event" /></TravellerOnly>} />
@@ -82,6 +84,7 @@ export default function App() {
                     <Route path="/donate" element={<Donate />} />
                     <Route path="/provider/onboard" element={<ProviderOnboard />} />
                     <Route path="/provider/dashboard" element={<ProviderDashboard />} />
+                    <Route path="/provider/profile" element={<ProviderProfile />} />
                     <Route path="/dashboard" element={<TravellerOnly><TouristDashboard /></TravellerOnly>} />
                     <Route path="/my-trips" element={<TravellerOnly><MyTrips /></TravellerOnly>} />
                     <Route path="/my-listings" element={<MyListings />} />

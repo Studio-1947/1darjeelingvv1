@@ -4,6 +4,7 @@ import api, { createPaymentOrder, completeMockPayment, payWithRazorpay } from '@
 import { useAuth } from '@/context/AuthContext';
 import { uploadImage, uploadImages } from '@/lib/uploadImage';
 import { RouteFare, startingPriceFrom } from '@/lib/routeFares';
+import type { Priced } from '@/components/provider/PricedEditor';
 
 /**
  * All state and side effects for provider onboarding: the multi-step form,
@@ -47,6 +48,9 @@ export function useProviderOnboard() {
   // sightseeing circuit a day rate), so there is no single rate field for them -
   // `price_from` is derived as the cheapest quoted route.
   const [routes, setRoutes] = useState<RouteFare[]>([]);
+  // A guide's services, each with its charge, and the kinds of guiding they do.
+  const [services, setServices] = useState<Priced[]>([{ name: '', price: '', unit: 'day' }]);
+  const [guideTypes, setGuideTypes] = useState<string[]>([]);
 
   // Extra photos - only one gallery exists per business type
   // (driver trips, or cafe/shop interiors; homestays add theirs post-launch).
@@ -120,9 +124,17 @@ export function useProviderOnboard() {
     setBusy(true);
     setMsg('');
     const isDriver = form.business_type === 'driver';
+    const isGuide = form.business_type === 'guide';
+    const guideServices = services
+      .filter((s) => s.name.trim())
+      .map((s) => ({ name: s.name.trim(), price: Number(s.price) || 0, unit: s.unit }));
+    const guidePrices = guideServices.map((s) => s.price).filter((p) => p > 0);
     // A driver's headline price is whatever their cheapest route costs, so the
-    // public "₹X onwards" can never drift from the per-route fares they set.
-    const priceFrom = isDriver ? startingPriceFrom(routes) : Number(form.price_from) || 0;
+    // public "₹X onwards" can never drift from the per-route fares they set. A guide's is
+    // their cheapest service, for the same reason.
+    const priceFrom = isDriver ? startingPriceFrom(routes)
+      : isGuide ? (guidePrices.length ? Math.min(...guidePrices) : 0)
+      : Number(form.price_from) || 0;
     try {
       const { data } = await api.post('/providers/onboard', {
         business_name: form.business_name,
@@ -134,7 +146,17 @@ export function useProviderOnboard() {
         contact_phone: form.contact_phone || user.phone,
         price_from: priceFrom,
         images: form.image_url ? [form.image_url] : [],
-        extras: isDriver
+        extras: isGuide
+          ? {
+              host_name: form.host_name || form.business_name.split(' ')[0] || 'Guide',
+              host_bio: form.description || '',
+              host_avatar: form.host_avatar || '',
+              languages: form.languages.split(',').map((s) => s.trim()).filter(Boolean),
+              guide_types: guideTypes,
+              services: guideServices,
+              contact_phone: form.contact_phone || user.phone,
+            }
+          : isDriver
           ? {
               host_avatar: form.host_avatar || '',
               vehicle_type: vehicleType,
@@ -219,6 +241,8 @@ export function useProviderOnboard() {
     gender, setGender,
     vehicleType, setVehicleType,
     routes, setRoutes,
+    services, setServices,
+    guideTypes, setGuideTypes,
     routeStartingPrice: startingPriceFrom(routes),
     gallery, setGallery,
     uploading, uploadingHostPic, uploadingGallery,

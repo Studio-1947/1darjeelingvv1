@@ -7,6 +7,7 @@ import BasicInfoStep from '@/components/provider/onboard/BasicInfoStep';
 import DriverForm from '@/components/provider/onboard/DriverForm';
 import HomestayForm from '@/components/provider/onboard/HomestayForm';
 import CafeShopForm from '@/components/provider/onboard/CafeShopForm';
+import GuideForm from '@/components/provider/onboard/GuideForm';
 import { useSeo } from '@/components/Seo';
 
 /**
@@ -23,6 +24,7 @@ export default function ProviderOnboard() {
     o.step === 1 ? <BasicInfoStep o={o} />
     : o.form.business_type === 'driver' ? <DriverForm o={o} />
     : o.form.business_type === 'homestay' ? <HomestayForm o={o} />
+    : o.form.business_type === 'guide' ? <GuideForm o={o} />
     : (o.form.business_type === 'cafe' || o.form.business_type === 'shop') ? <CafeShopForm o={o} />
     : null;
 

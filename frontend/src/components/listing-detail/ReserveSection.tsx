@@ -1,4 +1,5 @@
 import React from 'react';
+import { UnavailableNotice } from './profileSections';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { NavigationArrow as Navigation, Receipt } from '@phosphor-icons/react';
@@ -77,10 +78,12 @@ function PriceBreakdown({ item, unit, nights, guests }: {
 }
 
 /** Reserve screen: the booking form (bookable types) or a walk-in CTA. */
-export function ReserveSection({ item, unit, bookable, cta, booking, onOpenMaps }: {
+export function ReserveSection({ item, unit, bookable, available = true, cta, booking, onOpenMaps }: {
   item: any;
   unit: string;
   bookable: boolean;
+  /** False when the host has switched availability off: the form gives way to a notice. */
+  available?: boolean;
   cta: any;
   booking: BookingFlow;
   onOpenMaps: () => void;
@@ -108,7 +111,9 @@ export function ReserveSection({ item, unit, bookable, cta, booking, onOpenMaps 
 
       <div className={`mt-10 max-w-xl ${ALIGN_BLOCK}`}>
         <div className="mist-panel p-6 md:p-8">
-          {bookable ? (
+          {!available ? (
+            <UnavailableNotice />
+          ) : bookable ? (
             <div className="space-y-4">
               {item.type === 'homestay' && (
                 <div className="grid grid-cols-2 gap-4">
@@ -141,7 +146,7 @@ export function ReserveSection({ item, unit, bookable, cta, booking, onOpenMaps 
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-semibold text-ink-soft">{t('booking.guests')}</span>
                       <span className="text-[11px] text-ink-soft font-medium">
-                        Max {maxGuests} {item.type === 'driver' ? 'passengers' : 'guests'}
+                        Max {maxGuests} {item.type === 'driver' ? 'passengers' : item.type === 'guide' ? 'people' : 'guests'}
                       </span>
                     </div>
                     <input
@@ -172,7 +177,7 @@ export function ReserveSection({ item, unit, bookable, cta, booking, onOpenMaps 
 
               <button onClick={doBook} disabled={busy} data-testid="booking-submit"
                 className={`w-full py-4 rounded-full font-bold btn-hover disabled:opacity-60 inline-flex items-center justify-center gap-2 ${cta.color}`}>
-                {busy ? t('common.loading') : (item.type === 'driver' ? t('cta.talk_to_driver') : t('cta.book_now'))} <CtaIcon size={18} />
+                {busy ? t('common.loading') : t(`cta.${cta.key}`)} <CtaIcon size={18} />
               </button>
               {msg && <p data-testid="booking-msg" className={`text-sm ${ALIGN_TEXT} text-pine font-semibold`}>{msg}</p>}
             </div>
@@ -239,7 +244,7 @@ export function MobileStickyBar({ item, unit, bookable, cta, busy, onBook, onOpe
             className={`btn-main ml-auto flex-shrink-0 inline-flex items-center gap-1.5 px-4 sm:px-5 py-3 rounded-full font-extrabold text-sm whitespace-nowrap btn-hover ${bookable ? cta.color : 'bg-pine text-white'}`}
           >
             {bookable
-              ? <>{item.type === 'driver' ? t('cta.talk_to_driver') : t('cta.book_now')} <CtaIcon size={16} /></>
+              ? <>{t(`cta.${cta.key}`)} <CtaIcon size={16} /></>
               : <>{t('cta.get_directions')} <Navigation size={16} /></>}
           </button>
         </div>
