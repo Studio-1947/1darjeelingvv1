@@ -28,6 +28,7 @@ import promotionsRouter from './routes/promotions';
 import appVersionRouter from './routes/appVersion';
 import reportsRouter from './routes/reports';
 import interaktWebhookRouter from './routes/interaktWebhook';
+import feedbackRouter from './routes/feedback';
 import { rateLimiter } from './middleware/rateLimiter';
 import { reportError } from './observability';
 import { checkStorage } from './lib/s3';
@@ -236,6 +237,7 @@ app.use('/api/routes', routeEstimatorRouter);
 app.use('/api/weather', weatherRouter);
 app.use('/api/notifications', notificationsRouter);
 app.use('/api/promotions', promotionsRouter);
+app.use('/api', feedbackRouter);
 app.use('/api/app', appVersionRouter);
 app.use('/api', reportsRouter); // /api/reports, /api/users/me/blocks, /api/admin/reports
 app.use('/api', adminRouter); // Mount admin routes directly under /api (e.g. /api/admin/seed, /api/admin/stats)
