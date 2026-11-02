@@ -6,7 +6,7 @@ import { db, schema } from '../src/db';
 import { eq } from 'drizzle-orm';
 import { registerUser, nextPhone } from './helpers';
 import { normaliseCode } from '../src/lib/referrals';
-import { REFERRAL_REWARD_DAYS } from '../src/config';
+import { LIFETIME_SUPPORT_EXPIRY, REFERRAL_REWARD_DAYS } from '../src/config';
 
 /**
  * Referrals: the reward the app has advertised since before anything could pay it out.
@@ -97,6 +97,16 @@ describe('redeeming a code', () => {
 
     expect(Date.parse((await expiryOf(referrer.user.id))!) - Date.parse(before!))
       .toBeCloseTo(REFERRAL_REWARD_DAYS * DAY_MS, -4);
+  });
+
+  it('leaves an old lifetime pass unchanged, in the usual date format', async () => {
+    const referrer = await registerUser({ name: 'Lifetime Referrer' });
+    await db.update(schema.users).set({ supportExpiresAt: LIFETIME_SUPPORT_EXPIRY }).where(eq(schema.users.id, referrer.user.id));
+    const code = await codeFor(referrer.token);
+
+    await signUpWith(code, 'Friend Of Lifetime');
+
+    expect(await expiryOf(referrer.user.id)).toBe(LIFETIME_SUPPORT_EXPIRY);
   });
 
   it('extends both sides and records the referral', async () => {

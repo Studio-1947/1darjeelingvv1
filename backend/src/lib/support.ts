@@ -1,4 +1,4 @@
-import { SUPPORT_PASS_DAYS } from '../config';
+import { LIFETIME_SUPPORT_EXPIRY, SUPPORT_PASS_DAYS } from '../config';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -36,6 +36,8 @@ export function isSupportActive(user: SupportUser, now: Date = new Date()): bool
 export function computeSupportPassExpiry(existing: string | null | undefined, now: Date = new Date()): string {
   const nowMs = now.getTime();
   const existingMs = existing ? Date.parse(existing) : NaN;
+  // An old lifetime pass stays lifetime.
+  if (!Number.isNaN(existingMs) && existingMs >= Date.parse(LIFETIME_SUPPORT_EXPIRY)) return existing!;
   const baseMs = Number.isNaN(existingMs) || existingMs < nowMs ? nowMs : existingMs;
   return new Date(baseMs + SUPPORT_PASS_DAYS * DAY_MS).toISOString();
 }

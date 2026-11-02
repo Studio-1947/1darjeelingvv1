@@ -97,8 +97,8 @@ client:
 | Flow | Amount | Who pays |
 | --- | --- | --- |
 | `platform_support` | ₹1, valid for one year | Tourist (the "pass") |
-| `provider_registration` | ₹1 | Host, for their first year |
-| `provider_renewal` | ₹499 / year | Host, every year after |
+| `provider_registration` | ₹499 (launch price, usually ₹999) | Host, for their first year |
+| `provider_renewal` | ₹999 / year | Host, every year after |
 | Bookings | Free | No fee |
 | Donation | ₹10 to ₹1,00,000 | Anyone, optional |
 

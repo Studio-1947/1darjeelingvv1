@@ -16,6 +16,7 @@ import { settleBookingConfirmation } from '../lib/bookingConfirmation';
 import { addInAppNotification, resolveHostUserId } from '../lib/inApp';
 import { releaseVoucherForBooking } from '../lib/vouchers';
 import { requireTravellerMode } from '../middleware/mode';
+import { bookingGrossAmount } from '../lib/bookingAmount';
 
 /** Listing types guests contact directly rather than book. */
 const CONTACT_ONLY_TYPES = new Set(['cafe', 'shop']);
@@ -397,7 +398,13 @@ router.get('/provider', authenticateToken, async (req: Request, res: Response) =
   for (const b of confirmedBookings) {
     const listing = listingsMap.find(l => l.id === b.listingId);
     if (listing) {
-      revenue += listing.price;
+      revenue += bookingGrossAmount({
+        listingType: b.listingType,
+        price: listing.price,
+        guests: b.guests,
+        checkIn: b.checkIn,
+        checkOut: b.checkOut,
+      });
     }
   }
 
