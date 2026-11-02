@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { listExtras } from '../lib/listingContact';
 import { missingMandatory, profileKeysFor, profilePatchFrom, startingPriceFor } from '../lib/hostProfile';
 import { isHostApprovalPending, isHostPlanLive } from '../lib/hostPlan';
 import { v4 as uuidv4 } from 'uuid';
@@ -300,9 +301,13 @@ router.get('/me', authenticateToken, async (req: Request, res: Response) => {
 // frontend renders every listing under this host as one shareable business page.
 router.get('/public/:id', async (req: Request, res: Response) => {
   const [provider] = await db.select().from(schema.providers).where(eq(schema.providers.id, String(req.params.id))).limit(1);
-  if (!provider || provider.status !== 'active') return res.status(404).json({ detail: 'Business not found' });
+  // The same rule as the public feed: a host awaiting approval, or whose plan has lapsed, is not
+  // shown to travellers, so their business page is not either.
+  if (!provider || provider.status !== 'active' || isHostApprovalPending(provider) || !isHostPlanLive(provider)) {
+    return res.status(404).json({ detail: 'Business not found' });
+  }
   const listings = await db.select().from(schema.listings).where(or(eq(schema.listings.providerId, provider.id), eq(schema.listings.providerId, provider.userId)));
-  res.json({ business: { id: provider.id, name: provider.businessName, type: provider.businessType, description: provider.description, location: provider.location, images: provider.images, created_at: provider.createdAt }, listings: listings.map((l) => ({ id: l.id, title: l.title, type: l.type, description: l.description, location: l.location, price: l.price, image: l.image, extras: l.extras })) });
+  res.json({ business: { id: provider.id, name: provider.businessName, type: provider.businessType, description: provider.description, location: provider.location, images: provider.images, created_at: provider.createdAt }, listings: listings.map((l) => ({ id: l.id, title: l.title, type: l.type, description: l.description, location: l.location, price: l.price, image: l.image, extras: listExtras(l.type, l.extras) })) });
 });
 
 /**

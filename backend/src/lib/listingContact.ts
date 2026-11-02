@@ -14,6 +14,28 @@ export const PHONE_GATED_TYPES = new Set(['homestay', 'driver', 'guide']);
 type Viewer = { id: string; role: string } | null;
 
 /**
+ * Contact numbers a host's listing can carry in `extras`: onboarding has always copied the contact
+ * phone there, and the profile adds a WhatsApp number. They are the same number `provider_phone`
+ * gates, so they must never travel past that gate in the free-form extras.
+ */
+const CONTACT_EXTRAS = ['contact_phone', 'host_phone', 'whatsapp', 'phone', 'mobile'];
+
+/**
+ * A listing's extras as a caller may see them: the contact numbers are dropped unless the caller
+ * may see the provider's phone. For a list (no per-viewer check) pass whether the type is gated.
+ */
+export function publicExtras(extras: unknown, phoneVisible: boolean): Record<string, unknown> {
+  const e = extras && typeof extras === 'object' && !Array.isArray(extras) ? { ...(extras as Record<string, unknown>) } : {};
+  if (!phoneVisible) for (const key of CONTACT_EXTRAS) delete e[key];
+  return e;
+}
+
+/** For lists, which carry no phone at all: numbers stay only on types whose phone is public anyway. */
+export function listExtras(type: string, extras: unknown): Record<string, unknown> {
+  return publicExtras(extras, !PHONE_GATED_TYPES.has(type));
+}
+
+/**
  * Whether this caller may be shown the provider's number for a listing.
  *
  * Everyone, for a type that is not gated. For a gated type: the provider who owns the listing, an

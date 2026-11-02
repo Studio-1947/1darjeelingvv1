@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { listExtras } from '../lib/listingContact';
 import { v4 as uuidv4 } from 'uuid';
 import { db, schema } from '../db';
 import { eq, and, desc, inArray } from 'drizzle-orm';
@@ -91,7 +92,7 @@ router.get('/', authenticateToken, async (req: Request, res: Response) => {
         image: l.image,
         tags: l.tags,
         provider_id: l.providerId,
-        extras: l.extras,
+        extras: listExtras(l.type, l.extras),
         created_at: l.createdAt,
         provider_verified: provider?.kycStatus === 'verified' && provider?.status === 'active',
       };

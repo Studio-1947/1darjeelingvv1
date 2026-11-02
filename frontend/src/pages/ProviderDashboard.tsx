@@ -251,7 +251,7 @@ export default function ProviderDashboard() {
         <form onSubmit={sendFeedback} className="rounded-2xl border border-[var(--line)] bg-white p-5">
           <div className="flex items-center gap-2"><MessageCircle size={20} className="text-flag" /><h2 className="font-display text-lg font-extrabold text-ink">Feedback for the aangan team</h2></div>
           <textarea value={feedbackMessage} onChange={(event) => setFeedbackMessage(event.target.value)} minLength={10} maxLength={2000} required placeholder="Tell us what would make your dashboard better…" className="mt-3 min-h-20 w-full rounded-xl border border-[var(--line)] p-3 text-sm outline-none focus:border-pine" />
-          <button disabled={sendingFeedback} className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-ink px-4 py-2 text-xs font-bold text-white disabled:opacity-60"><PaperPlaneTilt size={14} /> {sendingFeedback ? 'Sending…' : 'Send feedback'}</button>
+          <button disabled={sendingFeedback} className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-pine px-4 py-2 text-xs font-bold text-white btn-hover disabled:opacity-60">{sendingFeedback ? 'Sending…' : 'Send feedback'} <PaperPlaneTilt size={14} /></button>
           {feedback[0] && <p className="mt-3 text-xs text-ink-soft">Latest feedback: {feedback[0].status}</p>}
         </form>
       </section>
