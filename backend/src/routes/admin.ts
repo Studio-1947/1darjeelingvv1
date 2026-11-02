@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { missingMandatory } from '../lib/hostProfile';
 import { v4 as uuidv4 } from 'uuid';
 import { db } from '../db';
 import * as schema from '../schema';
@@ -491,6 +492,8 @@ router.get('/admin/kyc', authenticateToken, requireAdmin, async (req: Request, r
       reviewed_at: d.reviewedAt,
       business_name: p?.businessName || null,
       business_type: p?.businessType || null,
+      // Mandatory profile items this host has not filled in yet (lib/hostProfile.ts).
+      profile_missing: p ? missingMandatory(p.businessType, p.extras) : [],
       owner_name: u?.name || null,
       file_url: `/api/providers/kyc/${d.id}/file`,
     };

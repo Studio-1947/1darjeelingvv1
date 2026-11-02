@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { House as Home, Ticket, Storefront as Store, SquaresFour as LayoutGrid, User, CaretUp as ChevronUp, ImagesSquare } from '@phosphor-icons/react';
+import { House as Home, Ticket, Storefront as Store, Compass, User, CaretUp as ChevronUp, ImagesSquare } from '@phosphor-icons/react';
 import { useAuth } from '@/context/AuthContext';
 import CategorySheet from '@/components/CategorySheet';
 
@@ -32,8 +32,10 @@ export default function BottomNav() {
     ? '/my-listings'
     : (user ? '/my-trips' : '/login?next=/my-trips');
 
+  // On the business side Home is the host's dashboard and Account is their business profile.
+  const homeTarget = isProvider ? '/provider/dashboard' : '/';
   const accountTarget = user
-    ? (isProvider ? '/provider/dashboard' : '/dashboard')
+    ? (isProvider ? '/provider/profile' : '/dashboard')
     : '/login?next=/dashboard';
 
   const handleNavClick = () => {
@@ -51,18 +53,20 @@ export default function BottomNav() {
    * no tab, so none highlight - which is honest, since sign-in isn't one of the
    * four places this bar navigates to.
    */
-  const homeMatch = ['/'];
+  const homeMatch = isProvider ? ['/provider/dashboard'] : ['/'];
   const tripsMatch = isProvider ? ['/my-listings'] : ['/my-trips'];
-  const accountMatch = ['/dashboard', '/provider/dashboard'];
+  const accountMatch = isProvider ? ['/provider/profile'] : ['/dashboard'];
   const feedMatch = ['/feed'];
 
   // An open sheet is the current context, so it owns the highlight outright -
   // otherwise Home and Type both read as selected while the sheet covers Home.
   const activeFor = (routes: string[]) => !typeOpen && routes.includes(pathname);
 
+  // Each tab is its own rounded pill inside the bar; the active one is tinted with the button teal,
+  // as the app's bar (src/components/BottomNav.tsx) does.
   const tabCls = (isActive: boolean) =>
-    `flex flex-col items-center justify-center gap-0.5 py-2.5 min-w-0 text-[10px] font-bold transition-all duration-150 active:scale-95 ${
-      isActive ? 'text-flag font-extrabold' : 'text-ink-soft hover:text-ink'
+    `flex flex-col items-center justify-center gap-0.5 py-1.5 mx-px min-[380px]:mx-0.5 min-w-0 rounded-full text-[10px] font-bold transition-all duration-150 active:scale-95 ${
+      isActive ? 'bg-[rgba(31,102,86,0.12)] text-[#1F6656] font-extrabold' : 'text-ink-soft hover:text-ink'
     }`;
 
   const homeActive = activeFor(homeMatch);
@@ -74,24 +78,26 @@ export default function BottomNav() {
     <>
       <CategorySheet open={typeOpen} onClose={() => setTypeOpen(false)} />
 
+      {/* A floating frosted pill, as Instagram's iOS bar: it sits above the home indicator with
+          the page showing round it. --bottom-nav-h in index.css reserves its space. */}
       <nav
         data-testid="bottom-nav"
-        className="lg:hidden fixed bottom-0 inset-x-0 z-50 bg-white/95 backdrop-blur-xl border-t border-[var(--line)] shadow-[0_-4px_20px_rgba(0,0,0,0.06)]"
-        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+        className="lg:hidden fixed bottom-0 inset-x-0 z-50 px-2.5 min-[380px]:px-3.5 pointer-events-none"
+        style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 10px)' }}
       >
-        <div className="grid grid-cols-5">
+        <div className={`pointer-events-auto grid ${isProvider ? 'grid-cols-4' : 'grid-cols-5'} items-stretch h-16 px-1 py-1.5 rounded-full bg-white/80 backdrop-blur-xl border border-white/70 shadow-[0_8px_24px_rgba(20,32,26,0.16)]`}>
           {/* Plain Link rather than NavLink throughout: the active state is
               computed above, so NavLink's own pathname matching would only
               fight it. aria-current carries the state to assistive tech. */}
           <Link
-            to="/"
+            to={homeTarget}
             data-testid="bottom-nav-home"
             onClick={handleNavClick}
             aria-current={homeActive ? 'page' : undefined}
             className={tabCls(homeActive)}
           >
             <Home size={20} weight={homeActive ? 'bold' : 'regular'} className="flex-shrink-0" />
-            <span className="truncate max-w-full px-0.5">{t('nav.home')}</span>
+            <span className="truncate max-w-full">{isProvider ? t('nav.dashboard') : t('nav.home')}</span>
           </Link>
 
           <Link
@@ -106,7 +112,7 @@ export default function BottomNav() {
             ) : (
               <Ticket size={20} weight={tripsActive ? 'bold' : 'regular'} className="flex-shrink-0" />
             )}
-            <span className="truncate max-w-full px-0.5">
+            <span className="truncate max-w-full">
               {isProvider ? (t('nav.my_listings') || 'My Listings') : (t('nav.trips') || 'My Trips')}
             </span>
           </Link>
@@ -119,13 +125,15 @@ export default function BottomNav() {
             className={tabCls(feedActive)}
           >
             <ImagesSquare size={20} weight={feedActive ? 'bold' : 'regular'} className="flex-shrink-0" />
-            <span className="truncate max-w-full px-0.5">{t('nav.feed_tab')}</span>
+            <span className="truncate max-w-full">{t('nav.feed_tab')}</span>
           </Link>
 
           {/* A toggle, not a route - it opens the category sheet. Labelled
               "Categories" to match the sheet it opens, which is headed
               "DISCOVER / Categories"; the tab used to say "Type" and nothing on
               the other side of the tap repeated the word (QA 4.1). */}
+          {/* Categories is for browsing, so the business side has no such tab. */}
+          {!isProvider && (
           <button
             type="button"
             onClick={() => setTypeOpen((v) => !v)}
@@ -135,7 +143,7 @@ export default function BottomNav() {
             className={tabCls(typeOpen)}
           >
             <span className="relative flex-shrink-0">
-              <LayoutGrid size={20} weight={typeOpen ? 'bold' : 'regular'} />
+              <Compass size={20} weight={typeOpen ? 'bold' : 'regular'} />
               <ChevronUp
                 size={11}
                 weight="bold"
@@ -144,8 +152,9 @@ export default function BottomNav() {
                 }`}
               />
             </span>
-            <span className="truncate max-w-full px-0.5">{t('nav.categories')}</span>
+            <span className="truncate max-w-full">{t('nav.explore')}</span>
           </button>
+          )}
 
           <Link
             to={accountTarget}
@@ -155,7 +164,7 @@ export default function BottomNav() {
             className={tabCls(accountActive)}
           >
             <User size={20} weight={accountActive ? 'bold' : 'regular'} className="flex-shrink-0" />
-            <span className="truncate max-w-full px-0.5">{t('nav.account')}</span>
+            <span className="truncate max-w-full">{isProvider ? t('nav.profile') : t('nav.account')}</span>
           </Link>
         </div>
       </nav>

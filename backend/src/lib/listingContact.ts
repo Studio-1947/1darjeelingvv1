@@ -8,7 +8,7 @@ import { db, schema } from '../db';
  * confirmed booking is what the product sells. Cafés, shops and events are never booked, only
  * contacted, so their number is public by design and is not listed here.
  */
-export const PHONE_GATED_TYPES = new Set(['homestay', 'driver']);
+export const PHONE_GATED_TYPES = new Set(['homestay', 'driver', 'guide']);
 
 type Viewer = { id: string; role: string } | null;
 

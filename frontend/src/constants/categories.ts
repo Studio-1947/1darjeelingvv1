@@ -1,4 +1,4 @@
-import { Mountains as Mountain, House as HomeIcon, Car, Storefront as Store, Coffee, Confetti as PartyPopper, Leaf } from '@phosphor-icons/react';
+import { Mountains as Mountain, House as HomeIcon, Car, PersonSimpleHike, Storefront as Store, Coffee, Confetti as PartyPopper, Leaf } from '@phosphor-icons/react';
 
 /**
  * The seven top-level categories. They live in the header nav (and are the
@@ -9,6 +9,7 @@ export const CATEGORIES = [
   { key: 'spot', to: '/spots', Icon: Mountain },
   { key: 'homestay', to: '/homestays', Icon: HomeIcon },
   { key: 'driver', to: '/drivers', Icon: Car },
+  { key: 'guide', to: '/guides', Icon: PersonSimpleHike },
   { key: 'shop', to: '/shops', Icon: Store },
   { key: 'cafe', to: '/cafes', Icon: Coffee },
   { key: 'event', to: '/events', Icon: PartyPopper },

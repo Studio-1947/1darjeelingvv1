@@ -27,7 +27,8 @@ export default function TouristDashboard() {
 
   // This is the traveller side's home, so being here means travelling. A host who books a stay
   // or opens this page sees the traveller header and tabs with it.
-  useEffect(() => { setMode('tourist'); }, [setMode]);
+  // Opening this page no longer flips a host to the traveller side: Business and Traveller are
+  // kept apart, and the explicit switches (header menu, dashboard button) do the switching.
   const [bookings, setBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [confirmingId, setConfirmingId] = useState<string | null>(null); // booking awaiting cancel confirmation

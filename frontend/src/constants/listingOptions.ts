@@ -1,6 +1,6 @@
 // Option presets shared by provider onboarding and the dashboard edit modal.
 
-export const BUSINESS_TYPES = ['homestay', 'driver', 'shop', 'cafe'];
+export const BUSINESS_TYPES = ['homestay', 'driver', 'guide', 'shop', 'cafe'];
 
 export const VEHICLE_TYPES = ['Sedan', 'SUV / Sumo', 'Jeep', 'Tempo Traveller', 'Bike'];
 

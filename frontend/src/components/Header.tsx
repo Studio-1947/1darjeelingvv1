@@ -23,7 +23,8 @@ export default function Header() {
   const showBack = pathname !== '/';
   // Sign-in and the onboarding form are single-task pages; a browse rail there
   // only invites the visitor to abandon what they came to do.
-  const showCategories = !['/login', '/provider/onboard'].includes(pathname);
+  // The category rail is for browsing; the business side does not browse.
+  const showCategories = !['/login', '/provider/onboard'].includes(pathname) && !isHostMode;
   // The landing hero plays a full-bleed video; the bar rides on top of it and
   // stays out of the flow so the footage runs right up to the top of the page.
   const isLanding = pathname === '/';
@@ -90,7 +91,7 @@ export default function Header() {
             (QA 4.6) - a clipped brand name is worse than a smaller one, so below
             sm it drops a size and holds its whole width instead. */}
         <Link
-          to="/"
+          to={isHostMode ? '/provider/dashboard' : '/'}
           className="flex items-center min-w-0"
           data-testid="brand-link"
           aria-label={t('brand')}
@@ -141,12 +142,13 @@ export default function Header() {
             reach, so the control a visitor actually looks for up here -
             sign-in - now sits in the bar itself. */}
         <div className="flex items-center gap-1.5 sm:gap-2.5 flex-shrink-0 ml-auto">
-          {/* The host feed is public, so it remains visible whether or not someone is signed in. */}
+          {/* The host feed is public, so it stays visible signed in or not. Below lg it is a tab in the
+              bottom bar, so the header only carries it on desktop, where there is no bottom bar. */}
           <Link
             to="/feed"
             data-testid="header-feed"
             aria-label={t('nav.feed')}
-            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-full bg-pine px-2.5 text-white shadow-sm btn-hover sm:px-3"
+            className="hidden lg:inline-flex h-9 items-center justify-center gap-1.5 rounded-full bg-pine px-2.5 text-white shadow-sm btn-hover sm:px-3"
           >
             <ImagesSquare size={18} />
             <span className="hidden xl:inline whitespace-nowrap">{t('nav.feed')}</span>

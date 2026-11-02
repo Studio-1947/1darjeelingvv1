@@ -1,8 +1,9 @@
 import React, { Suspense, lazy } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import './App.css';
 import '@/i18n';
-import { AuthProvider } from '@/context/AuthContext';
+import { AuthProvider, useAuth } from '@/context/AuthContext';
+import TravellerOnly from '@/components/TravellerOnly';
 import { FavoritesProvider } from '@/context/FavoritesContext';
 import Layout from '@/components/Layout';
 import ScrollToTop from '@/components/ScrollToTop';
@@ -18,6 +19,7 @@ const ListingDetail = lazy(() => import('@/pages/ListingDetail'));
 const Login = lazy(() => import('@/pages/Login'));
 const ProviderOnboard = lazy(() => import('@/pages/ProviderOnboard'));
 const ProviderDashboard = lazy(() => import('@/pages/ProviderDashboard'));
+const ProviderProfile = lazy(() => import('@/pages/ProviderProfile'));
 const TouristDashboard = lazy(() => import('@/pages/TouristDashboard'));
 const MyTrips = lazy(() => import('@/pages/MyTrips'));
 const MyListings = lazy(() => import('@/pages/MyListings'));
@@ -36,6 +38,12 @@ const NotFound = lazy(() => import('@/pages/NotFound'));
 // wordmark reveal (1.8s, kept in sync with that markup) to actually finish playing rather
 // than being cut off on a fast load.
 const SPLASH_MIN_VISIBLE_MS = 1800;
+
+/** Home is Discover for a traveller; on the business side it is the host's own dashboard. */
+function HomeForSide() {
+  const { isHostMode } = useAuth();
+  return isHostMode ? <Navigate to="/provider/dashboard" replace /> : <Discover />;
+}
 
 export default function App() {
   React.useEffect(() => {
@@ -60,25 +68,27 @@ export default function App() {
               <SupportGate>
                 <Suspense fallback={<div className="page-loading" role="status">Loading…</div>}>
                   <Routes>
-                    <Route path="/" element={<Discover />} />
-                    <Route path="/spots" element={<Category typeOverride="spot" />} />
-                    <Route path="/homestays" element={<Category typeOverride="homestay" />} />
-                    <Route path="/drivers" element={<Category typeOverride="driver" />} />
-                    <Route path="/shops" element={<Category typeOverride="shop" />} />
-                    <Route path="/cafes" element={<Category typeOverride="cafe" />} />
-                    <Route path="/events" element={<Category typeOverride="event" />} />
-                    <Route path="/biodiversity" element={<Category typeOverride="biodiversity" />} />
-                    <Route path="/search" element={<Category typeOverride={undefined} />} />
+                    <Route path="/" element={<HomeForSide />} />
+                    <Route path="/spots" element={<TravellerOnly><Category typeOverride="spot" /></TravellerOnly>} />
+                    <Route path="/homestays" element={<TravellerOnly><Category typeOverride="homestay" /></TravellerOnly>} />
+                    <Route path="/drivers" element={<TravellerOnly><Category typeOverride="driver" /></TravellerOnly>} />
+                    <Route path="/guides" element={<TravellerOnly><Category typeOverride="guide" /></TravellerOnly>} />
+                    <Route path="/shops" element={<TravellerOnly><Category typeOverride="shop" /></TravellerOnly>} />
+                    <Route path="/cafes" element={<TravellerOnly><Category typeOverride="cafe" /></TravellerOnly>} />
+                    <Route path="/events" element={<TravellerOnly><Category typeOverride="event" /></TravellerOnly>} />
+                    <Route path="/biodiversity" element={<TravellerOnly><Category typeOverride="biodiversity" /></TravellerOnly>} />
+                    <Route path="/search" element={<TravellerOnly><Category typeOverride={undefined} /></TravellerOnly>} />
                     <Route path="/listing/:id" element={<ListingDetail />} />
                     <Route path="/login" element={<Login />} />
-                    <Route path="/support" element={<Support />} />
+                    <Route path="/support" element={<TravellerOnly><Support /></TravellerOnly>} />
                     <Route path="/donate" element={<Donate />} />
                     <Route path="/provider/onboard" element={<ProviderOnboard />} />
                     <Route path="/provider/dashboard" element={<ProviderDashboard />} />
-                    <Route path="/dashboard" element={<TouristDashboard />} />
-                    <Route path="/my-trips" element={<MyTrips />} />
+                    <Route path="/provider/profile" element={<ProviderProfile />} />
+                    <Route path="/dashboard" element={<TravellerOnly><TouristDashboard /></TravellerOnly>} />
+                    <Route path="/my-trips" element={<TravellerOnly><MyTrips /></TravellerOnly>} />
                     <Route path="/my-listings" element={<MyListings />} />
-                    <Route path="/saved" element={<Saved />} />
+                    <Route path="/saved" element={<TravellerOnly><Saved /></TravellerOnly>} />
                   <Route path="/feed" element={<Feed />} />
                     <Route path="/responsible" element={<Responsible />} />
                     <Route path="/about" element={<About />} />

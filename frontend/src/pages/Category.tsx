@@ -18,6 +18,7 @@ const TYPE_MAP = {
   spots: 'spot',
   homestays: 'homestay',
   drivers: 'driver',
+  guides: 'guide',
   shops: 'shop',
   cafes: 'cafe',
   events: 'event',

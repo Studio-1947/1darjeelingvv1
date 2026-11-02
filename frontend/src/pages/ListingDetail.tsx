@@ -20,8 +20,11 @@ import { ReserveSection, MobileStickyBar } from '@/components/listing-detail/Res
 import ContactSection from '@/components/listing-detail/ContactSection';
 import ReviewsSection from '@/components/listing-detail/ReviewsSection';
 import AudioGuide from '@/components/AudioGuide';
+import { GuideSection, ServicesSection, RoomsFoodSection, RecommendedDriversSection } from '@/components/listing-detail/profileSections';
 import { ctaFor } from '@/components/listing-detail/cta';
 import { useBookingFlow } from '@/components/listing-detail/useBookingFlow';
+import { useAuth } from '@/context/AuthContext';
+import { BusinessModeNotice } from '@/components/TravellerOnly';
 
 /**
  * Public listing detail page: a stack of full-screen sections chosen by the
@@ -36,6 +39,7 @@ export default function ListingDetail() {
   const [item, setItem] = useState(null);
   const [loading, setLoading] = useState(true);
   const booking = useBookingFlow(item, id);
+  const { isHostMode, provider } = useAuth();
 
   useEffect(() => {
     // `cancelled` guards against the responses arriving out of order: navigating from one
@@ -93,10 +97,17 @@ export default function ListingDetail() {
   }
   if (!item) return <div className="mx-auto max-w-5xl p-10">{t('common.not_found')}</div>;
 
-  const bookable = item.type === 'homestay' || item.type === 'driver';
+  // On the business side a host sees only their own listing, as a preview with booking off.
+  const ownPreview = isHostMode && !!provider && item.provider_id === provider.id;
+  if (isHostMode && !ownPreview) return <BusinessModeNotice />;
+
+  // A host who switched availability off takes no bookings (the server refuses them too).
+  const available = item.extras?.available !== false;
+  const bookable = !ownPreview && available && (item.type === 'homestay' || item.type === 'driver' || item.type === 'guide');
+  const reservable = item.type === 'homestay' || item.type === 'driver' || item.type === 'guide';
   // Booked online (homestay/driver) get the reserve form; shops, cafes and events instead get a
   // direct-contact/action screen. Spots and biodiversity stay purely informational.
-  const contactable = ['shop', 'cafe', 'event'].includes(item.type);
+  const contactable = !ownPreview && ['shop', 'cafe', 'event'].includes(item.type);
 
   // A homestay's price is per person, not per night - the provider onboarding asks
   // for "Starting Price (₹/Head)". The `common.per_night` key said "/ head" in
@@ -120,7 +131,7 @@ export default function ListingDetail() {
   // Driver titles read "Tenzing - Local Taxi Driver"; the heading wants the
   // person, not the role, so keep only what precedes the dash.
   const driverName = (item.title || '').split(/\s+[-–-]\s+/)[0].trim();
-  const offersTitle = item.type === 'driver' && driverName
+  const offersTitle = (item.type === 'driver' || item.type === 'guide') && driverName
     ? t('detail.offers_by', { name: driverName })
     : t('detail.offers');
 
@@ -139,12 +150,17 @@ export default function ListingDetail() {
         ogType={bookable ? 'product' : 'place'}
       />
 
+      {ownPreview && (
+        <div className="bg-pine text-white text-sm font-semibold text-center px-4 py-2.5" data-testid="own-listing-preview">
+          {t('business_gate.preview')}
+        </div>
+      )}
       <DetailHero item={item} unit={unit} onShare={shareIt} />
 
       <AboutSection
         item={item}
         about={c.about}
-        label={item.type === 'driver' ? t('detail.about_driver') : t('detail.about')}
+        label={item.type === 'driver' ? t('detail.about_driver') : item.type === 'guide' ? t('detail.about_guide') : t('detail.about')}
         audioComponent={
           <AudioGuide
             title={item.title}
@@ -187,7 +203,18 @@ export default function ListingDetail() {
         <StayGallerySection images={item.extras.images} />
       )}
 
+      {item.type === 'homestay' && (
+        <RoomsFoodSection
+          rooms={Array.isArray(item.extras?.rooms) ? item.extras.rooms : []}
+          meals={Array.isArray(item.extras?.meals) ? item.extras.meals : []}
+          homeDelivery={item.extras?.home_delivery === true}
+        />
+      )}
+
       {item.type === 'homestay' && <HostSection item={item} host={host} personSrc={personSrc} />}
+
+      {item.type === 'guide' && <GuideSection item={item} photo={host.avatar || listingImage(item, 600, 600)} />}
+      {item.type === 'guide' && <ServicesSection services={Array.isArray(item.extras?.services) ? item.extras.services : []} />}
 
       {item.type === 'driver' && <DriverSection item={item} about={c.about} personSrc={driverSrc} initial={initial} />}
 
@@ -195,20 +222,26 @@ export default function ListingDetail() {
 
       {item.type === 'driver' && c.routes && c.routes.length > 0 && <RoutesSection routes={c.routes} />}
 
-      {item.type !== 'driver' && (
+      {item.type === 'homestay' && Array.isArray(item.extras?.recommended_drivers) && item.extras.recommended_drivers.length > 0 && (
+        <RecommendedDriversSection ids={item.extras.recommended_drivers} />
+      )}
+
+      {item.type !== 'driver' && item.type !== 'guide' && (
         <LocationSection item={item} coords={c.coords} spotted={c.spotted} onOpenMaps={openMaps} />
       )}
 
-      {bookable && (
-        <ReserveSection item={item} unit={unit} bookable={bookable} cta={cta} booking={booking} onOpenMaps={openMaps} />
+      {!ownPreview && reservable && (
+        <ReserveSection item={item} unit={unit} bookable={bookable} available={available} cta={cta} booking={booking} onOpenMaps={openMaps} />
       )}
 
       {contactable && <ContactSection item={item} onOpenMaps={openMaps} />}
 
       <ReviewsSection item={item} />
 
-      <MobileStickyBar item={item} unit={unit} bookable={bookable} cta={cta} busy={booking.busy}
-        onBook={booking.doBook} onOpenMaps={openMaps} />
+      {!ownPreview && available && (
+        <MobileStickyBar item={item} unit={unit} bookable={bookable} cta={cta} busy={booking.busy}
+          onBook={booking.doBook} onOpenMaps={openMaps} />
+      )}
 
       <BookingConfirmation
         open={!!booking.confirm?.open}

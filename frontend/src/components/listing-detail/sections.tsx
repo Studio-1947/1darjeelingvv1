@@ -7,6 +7,7 @@ import { RouteFare } from '@/lib/routeFares';
 import { MapPin, Tag, NavigationArrow as Navigation, ArrowRight, Translate as Languages, CalendarStar as CalendarClock, Path as Route, Crosshair, Clock, Ticket, Mountains as Mountain, Sparkle as Sparkles, Compass } from '@phosphor-icons/react';
 import { Screen, SectionHead, Avatar, ALIGN_TEXT, ALIGN_ROW, ALIGN_BLOCK } from './primitives';
 import VerifiedBadge from '@/components/provider/VerifiedBadge';
+import { HostFacts } from './profileSections';
 
 // One component per full-screen section of the listing detail page. The page
 // decides which sections a listing type gets; each section only renders it.
@@ -188,9 +189,16 @@ export function HostSection({ item, host, personSrc }: { item: any; host: any; p
         </div>
         <p className={`mt-2 text-sm text-ink-soft flex items-center ${ALIGN_ROW} gap-1.5`}><MapPin size={13} /> {item.location}</p>
         <p className="mt-6 text-lg text-ink leading-relaxed whitespace-pre-line">{host.bio}</p>
-        <p className={`mt-5 text-ink-soft flex items-center ${ALIGN_ROW} gap-2`}>
-          <Languages size={18} className="text-pine flex-shrink-0" /> {t('detail.speaks')}: {host.languages.join(', ')}
-        </p>
+        {Array.isArray(item.extras?.languages) && item.extras.languages.length > 0 ? (
+          <HostFacts extras={item.extras} />
+        ) : (
+          <>
+            <p className={`mt-5 text-ink-soft flex items-center ${ALIGN_ROW} gap-2`}>
+              <Languages size={18} className="text-pine flex-shrink-0" /> {t('detail.speaks')}: {host.languages.join(', ')}
+            </p>
+            <HostFacts extras={{ ...item.extras, languages: [] }} />
+          </>
+        )}
       </div>
     </Screen>
   );
@@ -227,8 +235,14 @@ export function DriverSection({ item, about, personSrc, initial }: { item: any; 
               {gender}
             </span>
           )}
+          {Number(item.extras?.seats) > 0 && (
+            <span className="chip bg-white border border-[var(--line)] text-ink font-bold text-xs">
+              {t('profile.seats_count', { count: Number(item.extras.seats) })}
+            </span>
+          )}
         </div>
         <p className="mt-6 text-lg text-ink leading-relaxed whitespace-pre-line">{about}</p>
+        <HostFacts extras={item.extras} />
       </div>
     </Screen>
   );
