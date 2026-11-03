@@ -75,6 +75,12 @@ app.use('/api/providers/me/kyc', express.json({ limit: '8mb' }));
 // enforces. Only video types are consumed here; anything else falls through to a 400 in the route.
 app.use('/api/providers/me/kyc/video', express.raw({ type: ['video/mp4', 'video/quicktime', 'video/webm'], limit: '26mb' }));
 
+// A host's intro video (the board: "Short Bio / Video") is an uploaded file, not a link. Same raw
+// body and 25 MB cap as verification videos, but stored in the public bucket so travellers can
+// play it on the host's page.
+app.use('/api/providers/me/intro-video', rateLimiter(10, 60 * 1000, 'intro_video_upload'));
+app.use('/api/providers/me/intro-video', express.raw({ type: ['video/mp4', 'video/quicktime', 'video/webm'], limit: '26mb' }));
+
 // Listing image uploads (POST /api/listings/upload) also carry a base64 data URL, but were never
 // given a raised limit  so they fell through to the global express.json() default of 100kb and
 // answered any real photo with a bare 413 `request entity too large`. Mirror the KYC path: rate

@@ -1701,8 +1701,8 @@
     "age": "Age",
     "gender": "Gender",
     "bio": "Short bio",
-    "video": "Intro video link",
-    "video_hint": "A YouTube or Instagram link travellers can watch.",
+    "video": "Intro video",
+    "video_hint": "A short video of you and your place, up to 25 MB (MP4, MOV or WebM). Travellers play it on your page.",
     "vehicle": "Your vehicle",
     "vehicle_number": "Vehicle number",
     "license_number": "Driving licence number",
@@ -1759,7 +1759,14 @@
     "capacity_cafe": "Seating (guests at a time)",
     "capacity_shop": "Customers at a time",
     "photos_note_cafe": "At least {{count}} photos: the inside and outside, a front selfie outside, and the front with the name board visible.",
-    "photos_note_shop": "At least {{count}} photos: the inside and outside, a front selfie outside, and the front with the name board visible."
+    "photos_note_shop": "At least {{count}} photos: the inside and outside, a front selfie outside, and the front with the name board visible.",
+    "video_upload": "Upload video",
+    "video_replace": "Replace video",
+    "video_remove": "Remove",
+    "video_uploading": "Uploading…",
+    "video_too_big": "That video is over 25 MB. Try a shorter clip.",
+    "video_failed": "Could not upload the video",
+    "video_old_link": "Your current video link"
   },
   "owners": {
     "title": "Owners",
@@ -1808,5 +1815,29 @@
     "cta_changes": "Fix the document",
     "cta_view": "View verification",
     "call_support": "Call verification support"
+  },
+  "miniSite": {
+    "preview_title": "Live preview",
+    "preview_open": "Preview",
+    "preview_note": "This is how travellers will see your page. It updates as you type; save to publish.",
+    "your_business": "Your business",
+    "not_taking": "Not taking bookings",
+    "joined": "Joined aangan {{date}}",
+    "rating": "{{count}} reviews",
+    "reviews": "{{count}} reviews",
+    "new": "New on aangan",
+    "call": "Call",
+    "whatsapp": "WhatsApp",
+    "direction": "Direction",
+    "about": "About",
+    "video": "Intro video",
+    "photos": "Photos",
+    "home_delivery": "Home delivery available",
+    "items": "What we offer",
+    "items_driver": "Routes and fares",
+    "items_homestay": "Rooms and food",
+    "items_guide": "Services and charges",
+    "items_cafe": "Menu",
+    "items_shop": "Goods and rates"
   }
 }

@@ -17,6 +17,8 @@ import {
   MAX_CO_OWNERS, claimCoOwnerInvites, dropHostRoleIfUnused, hostAccessFor, myProvider, newMemberId, ownListingIds, ownersOf,
 } from '../lib/hostAccess';
 import { phoneKey } from '../lib/phone';
+import { MAX_VIDEO_BYTES, VIDEO_MIME, matchesDeclaredType } from './kyc';
+import { uploadToMinIO } from '../lib/s3';
 
 const SELF_ONBOARDABLE_BUSINESS_TYPES = Object.keys(KYC_REQUIREMENTS);
 
@@ -731,6 +733,33 @@ router.delete('/me/owners/:id', authenticateToken, async (req: Request, res: Res
   await db.delete(schema.providerMembers).where(eq(schema.providerMembers.id, member.id));
   if (member.userId) await dropHostRoleIfUnused(member.userId);
   res.json({ owners: leavingSelf ? [] : await ownersOf(host.provider, req.user.id) });
+});
+
+/**
+ * POST /providers/me/intro-video  (raw MP4, MOV or WebM body, at most 25 MB)
+ *
+ * Stores the host's intro video in the public bucket and returns its URL. The client then saves
+ * it as the profile's `intro_video` (PATCH /providers/me), which copies it onto the listings.
+ * Owners and co-owners alike may upload.
+ */
+router.post('/me/intro-video', authenticateToken, async (req: Request, res: Response) => {
+  const provider = await myProvider(req.user.id);
+  if (!provider) return res.status(404).json({ detail: 'No business to add a video to' });
+  const contentType = String(req.headers['content-type'] || '').split(';')[0].trim().toLowerCase();
+  if (!VIDEO_MIME.has(contentType)) return res.status(400).json({ detail: 'Video must be MP4, MOV or WebM' });
+  const buffer = Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0);
+  if (buffer.length === 0) return res.status(400).json({ detail: 'Empty file' });
+  if (buffer.length > MAX_VIDEO_BYTES) return res.status(400).json({ detail: 'Video must be 25 MB or smaller. Try a shorter clip.' });
+  if (!matchesDeclaredType(buffer, contentType)) {
+    return res.status(400).json({ detail: 'That file is not a video' });
+  }
+  const ext = contentType === 'video/quicktime' ? '.mov' : contentType === 'video/webm' ? '.webm' : '.mp4';
+  try {
+    const url = await uploadToMinIO(buffer, `videos/${uuidv4()}${ext}`, contentType);
+    res.json({ url });
+  } catch (err: any) {
+    res.status(503).json({ detail: 'Could not store the video right now. Please try again.' });
+  }
 });
 
 export default router;

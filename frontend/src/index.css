@@ -69,8 +69,12 @@ html, body, #root {
   min-height: 100%;
 }
 
+/* `clip`, not `hidden`: hidden turns html/body into scroll containers, which silently breaks
+   every `position: sticky` on the site (the profile preview, the save bar). Old browsers that
+   do not know `clip` keep `hidden`. */
 html, body {
   overflow-x: hidden;
+  overflow-x: clip;
 }
 
 body {

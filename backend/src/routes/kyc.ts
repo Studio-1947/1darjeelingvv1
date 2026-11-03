@@ -20,8 +20,8 @@ const MAX_BYTES = 5 * 1024 * 1024;
 // Verification videos are sent as the raw request body, not base64 in JSON: a phone clip would
 // be a third bigger encoded and have to be held in memory twice. 25 MB sits under the 30 MB
 // client_max_body_size on the production nginx, which would otherwise answer with a bare 413.
-const VIDEO_MIME = new Set(['video/mp4', 'video/quicktime', 'video/webm']);
-const MAX_VIDEO_BYTES = 25 * 1024 * 1024;
+export const VIDEO_MIME = new Set(['video/mp4', 'video/quicktime', 'video/webm']);
+export const MAX_VIDEO_BYTES = 25 * 1024 * 1024;
 // The 8mb JSON body limit for this path is applied in app.ts (mounted before the global
 // express.json(), which would otherwise consume the stream at its 100kb default).
 
@@ -43,7 +43,7 @@ const MAGIC_BYTES: Record<string, number[]> = {
 const PDF_SIGNATURE_SEARCH_WINDOW = 1024;
 
 /** Whether `buffer`'s leading bytes match the standard signature for `mime`. */
-function matchesDeclaredType(buffer: Buffer, mime: string): boolean {
+export function matchesDeclaredType(buffer: Buffer, mime: string): boolean {
   // MP4 and QuickTime files open with a box whose type, at offset 4, is "ftyp". WebM is EBML.
   if (mime === 'video/mp4' || mime === 'video/quicktime') {
     return buffer.length >= 12 && buffer.subarray(4, 8).toString('latin1') === 'ftyp';

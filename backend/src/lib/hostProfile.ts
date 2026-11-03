@@ -90,7 +90,10 @@ function priced(unitList: readonly string[], label: string, defaultUnit: string)
     if (typeof price !== 'number') return price;
     const unit = e.unit === undefined ? defaultUnit : oneOf(e.unit, unitList, `${label} unit`);
     if (typeof unit !== 'string') return unit;
-    return { name, price, unit };
+    // Optional photo of the room, dish, service or item: the board's "photos + rates" grid.
+    if (e.photo === undefined || e.photo === '' || e.photo === null) return { name, price, unit };
+    if (!isUrl(e.photo)) return { error: `The ${label} photo must be an uploaded image` };
+    return { name, price, unit, photo: (e.photo as string).trim() };
   };
 }
 
@@ -146,7 +149,7 @@ const BY_TYPE: Record<string, Record<string, (v: unknown) => unknown | ProfileEr
     routes: (v) => list(v, 30, 'Routes', (x) => {
       if (typeof x === 'string') return x.trim() ? { route: x.trim(), price: 0, unit: 'trip' } : { error: 'A route cannot be empty' };
       const r = priced(['trip', 'day'], 'route', 'trip')(x);
-      return 'error' in r ? r : { route: r.name, price: r.price, unit: r.unit };
+      return 'error' in r ? r : { route: r.name, price: r.price, unit: r.unit, ...('photo' in r && r.photo ? { photo: r.photo } : {}) };
     }),
   },
   homestay: {

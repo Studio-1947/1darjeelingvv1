@@ -61,6 +61,9 @@ describe('host profile fields', () => {
     expect(profilePatchFrom('cafe', { goods: [] })).toHaveProperty('error');
     expect(profilePatchFrom('cafe', { capacity: 40, recommended_drivers: ['lst_1'] })).toEqual({ capacity: 40, recommended_drivers: ['lst_1'] });
     expect(profilePatchFrom('shop', { capacity: 6 })).toEqual({ capacity: 6 });
+    expect(profilePatchFrom('cafe', { menu: [{ name: 'Momo', price: 80, photo: 'https://example.com/momo.jpg' }] }))
+      .toEqual({ menu: [{ name: 'Momo', price: 80, unit: 'plate', photo: 'https://example.com/momo.jpg' }] });
+    expect(profilePatchFrom('cafe', { menu: [{ name: 'Momo', price: 80, photo: 'javascript:alert(1)' }] })).toHaveProperty('error');
   });
 });
 

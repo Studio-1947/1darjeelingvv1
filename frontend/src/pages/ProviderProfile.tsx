@@ -12,6 +12,8 @@ import { RouteFareTable } from '@/components/provider/RouteEditor';
 import { HOMESTAY_AMENITIES, CAFE_AMENITIES } from '@/constants/listingOptions';
 import PricedEditor, { type Priced } from '@/components/provider/PricedEditor';
 import OwnersSection from '@/components/provider/OwnersSection';
+import HostMiniSite, { type MiniSiteData } from '@/components/provider/HostMiniSite';
+import { Eye, X, VideoCamera } from '@phosphor-icons/react';
 import { useSeo } from '@/components/Seo';
 
 /**
@@ -131,6 +133,9 @@ export default function ProviderProfile() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [uploading, setUploading] = useState<string | null>(null);
+  const [stats, setStats] = useState<{ review_count?: number; average_rating?: number } | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
+  useEffect(() => { api.get('/providers/me/stats').then((r) => setStats(r.data)).catch(() => setStats(null)); }, []);
 
   useEffect(() => {
     if (authLoading) return;
@@ -142,7 +147,7 @@ export default function ProviderProfile() {
     if (!provider) return;
     const e = provider.extras || {};
     const priced = (rows: any[] | undefined, nameKey = 'name', unit = 'day'): Priced[] =>
-      (Array.isArray(rows) ? rows : []).map((r) => ({ name: String(r?.[nameKey] ?? r?.name ?? ''), price: Number(r?.price) || '', unit: r?.unit || unit }));
+      (Array.isArray(rows) ? rows : []).map((r) => ({ name: String(r?.[nameKey] ?? r?.name ?? ''), price: Number(r?.price) || '', unit: r?.unit || unit, ...(r?.photo ? { photo: String(r.photo) } : {}) }));
     setP(provider);
     setForm({
       business_name: provider.business_name || '',
@@ -201,6 +206,23 @@ export default function ProviderProfile() {
     catch (err) { setMsg({ ok: false, text: typeof err === 'string' ? err : 'Upload failed' }); }
     finally { setUploading(null); }
   };
+  // The intro video is an uploaded file travellers play on the page, not a link.
+  const uploadVideo = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (file.size > 25 * 1024 * 1024) { setMsg({ ok: false, text: t('hostProfile.video_too_big') }); return; }
+    setUploading('video');
+    try {
+      const { data } = await api.post('/providers/me/intro-video', file, { headers: { 'Content-Type': file.type || 'video/mp4' } });
+      set({ intro_video: data.url });
+    } catch (err: any) {
+      setMsg({ ok: false, text: err?.response?.data?.detail || t('hostProfile.video_failed') });
+    } finally {
+      setUploading(null);
+    }
+  };
+
   const uploadGallery = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files?.length) return;
@@ -215,7 +237,7 @@ export default function ProviderProfile() {
     setBusy(true);
     setMsg(null);
     const num = (v: any) => (v === '' || v === null || v === undefined ? undefined : Number(v));
-    const priced = (rows: Priced[]) => rows.filter((r) => r.name.trim()).map((r) => ({ name: r.name.trim(), price: Number(r.price) || 0, unit: r.unit }));
+    const priced = (rows: Priced[]) => rows.filter((r) => r.name.trim()).map((r) => ({ name: r.name.trim(), price: Number(r.price) || 0, unit: r.unit, ...(r.photo ? { photo: r.photo } : {}) }));
     const profile: Record<string, unknown> = {
       host_avatar: form.host_avatar,
       whatsapp: form.whatsapp.trim(),
@@ -279,8 +301,39 @@ export default function ProviderProfile() {
     return <div className="mx-auto max-w-3xl px-4 py-16 text-ink-soft">{t('common.loading')}</div>;
   }
 
+  const previewItems = (): MiniSiteData['items'] => {
+    const rows = (list: Priced[]) => list.filter((r) => r.name.trim()).map((r) => ({ name: r.name, price: Number(r.price) || 0, unit: r.unit, photo: r.photo }));
+    if (type === 'driver') return (form.routes || []).map((r: any) => ({ name: r.route || r.name || '', price: Number(r.price) || 0, unit: r.unit || 'trip', photo: r.photo })).filter((r: any) => r.name);
+    if (type === 'homestay') return [...rows(form.rooms), ...rows(form.meals)];
+    if (type === 'guide') return rows(form.services);
+    if (type === 'cafe') return rows(form.menu);
+    if (type === 'shop') return rows(form.goods);
+    return [];
+  };
+  const preview: MiniSiteData = {
+    type,
+    name: form.business_name,
+    hostName: form.host_name,
+    avatar: form.host_avatar,
+    cover: form.cover,
+    verified: p?.kyc_status === 'verified',
+    experienceYears: Number(form.experience_years) || 0,
+    joinedAt: p?.created_at,
+    rating: stats?.average_rating ?? null,
+    reviewCount: stats?.review_count ?? 0,
+    location: p?.location,
+    about: form.host_bio,
+    video: form.intro_video,
+    languages: String(form.languages || '').split(',').map((x: string) => x.trim()).filter(Boolean),
+    items: previewItems(),
+    gallery: form.images,
+    available: form.available,
+    homeDelivery: form.home_delivery && (type === 'homestay' || type === 'cafe' || type === 'shop'),
+  };
+
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8 md:py-12 space-y-5" data-testid="provider-profile">
+    <div className="mx-auto max-w-6xl px-4 py-8 md:py-12 lg:grid lg:grid-cols-[minmax(0,1fr)_400px] lg:gap-8 lg:items-start">
+    <div className="space-y-5 min-w-0" data-testid="provider-profile">
       <div>
         <span className="chip capitalize">{t(`categories.${type}`, { defaultValue: type })}</span>
         <h1 className="mt-3 font-display font-extrabold text-3xl text-ink">{t('hostProfile.title')}</h1>
@@ -363,9 +416,24 @@ export default function ProviderProfile() {
         <Field label={t('hostProfile.bio')}>
           <textarea rows={4} value={form.host_bio} onChange={(e) => set({ host_bio: e.target.value })} className={input} />
         </Field>
-        <Field label={t('hostProfile.video')} hint={t('hostProfile.video_hint')}>
-          <input value={form.intro_video} onChange={(e) => set({ intro_video: e.target.value })} placeholder="https://" className={input} />
-        </Field>
+        <div data-testid="profile-video">
+          <span className={labelCls}>{t('hostProfile.video')}</span>
+          <div className="mt-2 flex flex-wrap items-center gap-3">
+            {form.intro_video && /\.(mp4|mov|webm)(\?|$)|\/videos\//i.test(form.intro_video) ? (
+              <video src={form.intro_video} controls playsInline preload="metadata" className="w-56 rounded-xl bg-ink aspect-video" />
+            ) : form.intro_video ? (
+              <a href={form.intro_video} target="_blank" rel="noreferrer" className="text-sm font-bold text-pine underline">{t('hostProfile.video_old_link')}</a>
+            ) : null}
+            <label className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-[var(--line)] bg-white text-sm font-bold text-ink cursor-pointer btn-hover">
+              <VideoCamera size={16} /> {uploading === 'video' ? t('hostProfile.video_uploading') : form.intro_video ? t('hostProfile.video_replace') : t('hostProfile.video_upload')}
+              <input type="file" accept="video/mp4,video/quicktime,video/webm" className="hidden" onChange={uploadVideo} data-testid="profile-video-input" />
+            </label>
+            {form.intro_video && (
+              <button type="button" onClick={() => set({ intro_video: '' })} className="text-xs font-bold text-ink-soft hover:text-flag">{t('hostProfile.video_remove')}</button>
+            )}
+          </div>
+          <span className="mt-1 block text-xs text-ink-soft">{t('hostProfile.video_hint')}</span>
+        </div>
         <div className="grid sm:grid-cols-2 gap-4">
           {SOCIAL.map((k) => (
             <Field key={k} label={t(`profile.social_${k}`)}>
@@ -520,6 +588,31 @@ export default function ProviderProfile() {
           <button type="button" onClick={save} disabled={busy} data-testid="profile-save" className="inline-flex items-center gap-2 px-6 rounded-full bg-pine text-white font-bold btn-hover disabled:opacity-60">{busy ? t('common.loading') : t('hostProfile.save')} <ArrowRight size={16} /></button>
         </div>}
       </div>
+    </div>
+
+    {/* Live preview of the host's mini website (the board's "profiles look like websites"). */}
+    <aside className="hidden lg:block sticky top-24" data-testid="profile-preview">
+      <p className="mb-2 text-[11px] font-bold uppercase tracking-widest text-ink-soft flex items-center gap-1.5"><Eye size={14} /> {t('miniSite.preview_title')}</p>
+      <div className="rounded-3xl border border-[var(--line)] shadow-xl overflow-hidden max-h-[calc(100vh-8rem)] overflow-y-auto">
+        <HostMiniSite data={preview} compact />
+      </div>
+      <p className="mt-2 text-xs text-ink-soft">{t('miniSite.preview_note')}</p>
+    </aside>
+
+    {/* Phones and tablets: the same preview behind a button. */}
+    <button type="button" onClick={() => setShowPreview(true)} data-testid="profile-preview-open"
+      className="lg:hidden fixed right-4 bottom-[calc(var(--bottom-nav-h)+5.5rem)] z-30 inline-flex items-center gap-1.5 rounded-full bg-white border border-[var(--line)] shadow-lg px-4 py-2.5 text-sm font-bold text-ink">
+      <Eye size={16} /> {t('miniSite.preview_open')}
+    </button>
+    {showPreview && (
+      <div className="lg:hidden fixed inset-0 z-50 bg-black/50 flex flex-col" role="dialog" aria-modal="true">
+        <div className="flex items-center justify-between bg-white px-4 py-3 border-b border-[var(--line)]">
+          <span className="font-bold text-ink">{t('miniSite.preview_title')}</span>
+          <button type="button" onClick={() => setShowPreview(false)} aria-label={t('common.close', { defaultValue: 'Close' })} className="w-9 h-9 grid place-items-center rounded-full hover:bg-mist"><X size={18} /></button>
+        </div>
+        <div className="flex-1 overflow-y-auto bg-white"><HostMiniSite data={preview} /></div>
+      </div>
+    )}
     </div>
   );
 }

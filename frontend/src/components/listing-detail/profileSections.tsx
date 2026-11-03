@@ -23,6 +23,9 @@ const SOCIAL = [
   { key: 'website', Icon: Globe, href: (v: string) => (/^https?:/i.test(v) ? v : `https://${v}`) },
 ] as const;
 
+/** An uploaded intro video (played here) rather than an older YouTube or Instagram link. */
+const isVideoFile = (url: string) => /\.(mp4|mov|webm)(\?|$)/i.test(url) || /\/videos\//.test(url);
+
 /** Languages, years of experience, an intro video and social links, as one block of facts. */
 export function HostFacts({ extras }: { extras: any }) {
   const { t } = useTranslation();
@@ -44,9 +47,12 @@ export function HostFacts({ extras }: { extras: any }) {
           <Medal size={18} className="text-pine flex-shrink-0" /> {t('profile.experience_years', { count: years })}
         </p>
       )}
-      {(video || links.length > 0) && (
+      {video && isVideoFile(video) && (
+        <video src={video} controls playsInline preload="metadata" className="w-full max-w-xl rounded-2xl bg-ink aspect-video" data-testid="host-intro-video" />
+      )}
+      {((video && !isVideoFile(video)) || links.length > 0) && (
         <div className={`flex flex-wrap items-center ${ALIGN_ROW} gap-2 pt-1`}>
-          {video && (
+          {video && !isVideoFile(video) && (
             <a href={video} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[var(--line)] bg-white text-sm font-bold text-ink btn-hover">
               {t('profile.watch_intro')} <PlayCircle size={16} className="text-pine" />
             </a>
