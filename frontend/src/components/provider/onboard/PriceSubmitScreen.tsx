@@ -25,6 +25,8 @@ export default function PriceSubmitScreen({
   busy,
   disabled,
   msg,
+  priceError,
+  missing = [],
 }: {
   tone?: 'bg' | 'white' | 'mist';
   n: string;
@@ -47,6 +49,10 @@ export default function PriceSubmitScreen({
   busy: boolean;
   disabled: boolean;
   msg: string;
+  /** Shown under the price box. */
+  priceError?: string;
+  /** What is still empty or wrong; listed above the button, which stays off until it is empty. */
+  missing?: string[];
 }) {
   const { t } = useTranslation();
   const plan = usePrice('provider_registration');
@@ -63,16 +69,19 @@ export default function PriceSubmitScreen({
               <span className="text-3xl text-ink font-display font-extrabold">₹</span>
               <input
                 required
-                type="number"
-                min="0"
+                type="text"
+                inputMode="numeric"
                 value={price}
-                onChange={(e) => onPrice?.(e.target.value)}
+                onChange={(e) => onPrice?.(e.target.value.replace(/[^\d]/g, '').slice(0, 6))}
                 placeholder={pricePlaceholder}
-                className="px-3 py-2 rounded-xl border border-[var(--line)] bg-white outline-none font-display font-extrabold text-4xl text-ink w-36"
+                aria-invalid={!!priceError}
+                data-testid="onboard-price"
+                className={`px-3 py-2 rounded-xl border bg-white outline-none font-display font-extrabold text-4xl text-ink w-40 ${priceError ? 'border-flag' : 'border-[var(--line)]'}`}
               />
               <span className="text-sm font-semibold text-ink-soft">{priceSuffix}</span>
             </div>
           )}
+          {priceError && <p className="mt-1.5 text-xs font-semibold text-flag" data-testid="onboard-price-error">{priceError}</p>}
 
           {showBreakfastOption && (
             <div className="mt-5 p-4 rounded-2xl border border-[var(--line)] bg-mist/60 space-y-2">
@@ -109,10 +118,19 @@ export default function PriceSubmitScreen({
 
         <div className={wide ? 'lg:col-span-1' : 'lg:col-span-3'}>
           <div className="mist-panel p-6 space-y-4">
-            <PriceBreakup breakup={plan} label={t('price.host_first_year')} />
+            <PriceBreakup breakup={plan} label={t('price.host_first_year')} wasBase={99900} />
+            {missing.length > 0 && (
+              <div className="rounded-xl border border-flag/30 bg-flag/5 p-3" data-testid="onboard-missing">
+                <p className="text-xs font-bold text-flag">{t('ob.check.still_to_fill')}</p>
+                <ul className="mt-1 list-disc pl-5 text-xs text-ink space-y-0.5">
+                  {missing.map((m) => <li key={m}>{m}</li>)}
+                </ul>
+              </div>
+            )}
             <button
               onClick={onSubmit}
-              disabled={disabled}
+              disabled={disabled || missing.length > 0}
+              data-testid="onboard-submit"
               className="w-full py-4 rounded-full bg-pine text-white font-extrabold text-base btn-hover disabled:opacity-60"
             >
               {busy ? t('common.processing') : t('ob.submit_pay', { total: rupees(plan.total) })}

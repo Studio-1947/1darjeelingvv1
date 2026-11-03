@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import api from '@/lib/api';
@@ -6,7 +6,7 @@ import FeedCard from '@/components/FeedCard';
 import SmartImg from '@/components/SmartImg';
 import Seo from '@/components/Seo';
 import { FeedCardSkeleton, GridTileSkeleton, LoadingStatus, repeat } from '@/components/skeletons';
-import { SquaresFour as LayoutGrid, Rows as Rows3, MapPin, ArrowRight, CalendarDots as CalendarRange, Users, MagnifyingGlass as SearchIcon, Mountains as Mountain } from '@phosphor-icons/react';
+import { SquaresFour as LayoutGrid, Rows as Rows3, MapPin, ArrowRight, CalendarDots as CalendarRange, Users, MagnifyingGlass as SearchIcon, Mountains as Mountain, CaretLeft, CaretRight } from '@phosphor-icons/react';
 import CategoryFilterBar from '@/components/CategoryFilterBar';
 import { contentFor, listingImage } from '@/lib/listingContent';
 import { routesCoverTrip } from '@/lib/routeFares';
@@ -88,6 +88,12 @@ export default function Category({ typeOverride }) {
   // scoped search comes back empty - see the effect below.
   const [elsewhere, setElsewhere] = useState([]);
   const [view, setView] = useState('grid'); // 'grid' or 'feed'
+  // The offbeat rail scrolls sideways; a mouse has no swipe, so it gets arrow buttons.
+  const railRef = useRef<HTMLDivElement>(null);
+  const scrollRail = (dir: 1 | -1) => {
+    const el = railRef.current;
+    if (el) el.scrollBy({ left: dir * el.clientWidth * 0.8, behavior: 'smooth' });
+  };
 
   // Interactive Filter & Search states
   const [searchQuery, setSearchQuery] = useState(q);
@@ -308,13 +314,20 @@ export default function Category({ typeOverride }) {
               <h2 className="font-display font-extrabold text-xl md:text-2xl text-ink mt-0.5">{t('home.offbeat', 'Offbeat & Quiet Villages')}</h2>
               <p className="text-xs text-ink-soft mt-0.5">{t('home.offbeat_sub', 'Quieter villages a day trip or a night away from town')}</p>
             </div>
+            <div className="hidden sm:flex items-center gap-2">
+              <button type="button" onClick={() => scrollRail(-1)} aria-label={t('common.previous', 'Previous')} data-testid="offbeat-prev"
+                className="w-9 h-9 rounded-full bg-white border border-[var(--line)] grid place-items-center text-ink btn-hover"><CaretLeft size={16} weight="bold" /></button>
+              <button type="button" onClick={() => scrollRail(1)} aria-label={t('common.next', 'Next')} data-testid="offbeat-next"
+                className="w-9 h-9 rounded-full bg-white border border-[var(--line)] grid place-items-center text-ink btn-hover"><CaretRight size={16} weight="bold" /></button>
+            </div>
           </div>
-          <div className="flex gap-3 md:gap-4 overflow-x-auto no-scrollbar -mx-4 px-4 md:mx-0 md:px-0 pb-2">
+          <div ref={railRef} data-testid="offbeat-rail"
+            className="flex gap-3 md:gap-4 overflow-x-auto no-scrollbar snap-x snap-mandatory scroll-smooth overscroll-x-contain -mx-4 px-4 md:mx-0 md:px-0 pb-2">
             {OFFBEAT_PLACES.map((place) => (
               <Link
                 key={place.name}
-                to={`/discover?q=${encodeURIComponent(place.name)}`}
-                className="flex-shrink-0 w-[70%] sm:w-[45%] md:w-[28%] rounded-2xl overflow-hidden bg-white border border-[var(--line)] btn-hover"
+                to={`/search?q=${encodeURIComponent(place.name)}`}
+                className="snap-start flex-shrink-0 w-[70%] sm:w-[45%] md:w-[28%] rounded-2xl overflow-hidden bg-white border border-[var(--line)] btn-hover"
               >
                 <div className="aspect-[4/5] relative bg-mist overflow-hidden">
                   <SmartImg src={place.image} alt={place.name} className="w-full h-full object-cover" />

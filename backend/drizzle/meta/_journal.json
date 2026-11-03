@@ -190,6 +190,13 @@
       "when": 1793692131893,
       "tag": "0026_payment_breakup",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1793700229011,
+      "tag": "0027_post_reactions_comments",
+      "breakpoints": true
     }
   ]
 }

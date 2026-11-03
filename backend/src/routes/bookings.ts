@@ -7,8 +7,7 @@ import { db, schema } from '../db';
 import { eq, desc, inArray, and } from 'drizzle-orm';
 import { authenticateToken } from '../middleware/auth';
 import { isExemptFromSupport, isSupportActive } from '../lib/support';
-import { AMOUNTS } from '../config';
-import { priceBreakup } from '../lib/pricing';
+import { flowBreakup, passBreakupFor } from '../lib/pricing';
 import { findBlockingBooking, isDateExclusive, lockListingForBooking } from '../lib/bookingAvailability';
 import { refundPaymentsFor } from '../lib/refunds';
 import { notifyBookingCancelled } from '../lib/notifications';
@@ -601,12 +600,12 @@ router.post('/:id/checkout', authenticateToken, async (req: Request, res: Respon
     // Board: with the pass every booking is free; without it, ₹1 per booking.
     if (!isExemptFromSupport(req.user) && !isSupportActive(req.user)) {
       return res.status(402).json({
-        detail: 'Pay the ₹1 convenience fee, or take the ₹12 aangan pass and book free all year.',
+        detail: 'Pay the ₹1 convenience fee, or take the aangan pass and book free all year.',
         code: 'fee_required',
-        // What the fee costs with GST and the platform fee, so the choice shows the real total.
-        amount: priceBreakup(AMOUNTS.booking_commission).total,
-        breakup: priceBreakup(AMOUNTS.booking_commission),
-        pass_breakup: priceBreakup(AMOUNTS.platform_support),
+        // What the fee and the pass cost with GST, so the choice shows the real totals.
+        amount: flowBreakup('booking_commission').total,
+        breakup: flowBreakup('booking_commission'),
+        pass_breakup: passBreakupFor(req.user),
       });
     }
   }

@@ -344,15 +344,17 @@ export const rzpClient = RAZORPAY_KEY_SECRET ? new Razorpay({
   key_secret: RAZORPAY_KEY_SECRET
 }) : null;
 
-// Every fixed price below is the BASE. On top of it the payer is charged 18% GST and a 2% platform
-// fee, both worked out on the base (lib/pricing.ts), e.g. ₹499 + ₹89.82 + ₹9.98 = ₹598.80.
+// Every fixed price below is the BASE. On top of it the payer is charged 18% GST, and host payments
+// also a 2% payment gateway fee, both worked out on the base (lib/pricing.ts), e.g.
+// ₹499 + ₹89.82 + ₹9.98 = ₹598.80. Traveller payments (pass, booking fee) carry GST only.
 export const GST_RATE_PERCENT = 18;
 export const PLATFORM_FEE_PERCENT = 2;
 
 // Fixed base prices, in paise. `donation` is deliberately absent: its presence here would imply a
 // fixed price, and the whole point of a donation is that the giver chooses. See lib/payments.ts.
 //
-//   platform_support       ₹12   one year — the aangan pass: every booking confirms free
+//   platform_support       ₹12   the first year of the aangan pass: every booking confirms free
+//                          (₹99 for every year after: PASS_RENEWAL_BASE)
 //   booking_commission     ₹1    the convenience fee on one booking, for a traveller without a pass
 //   provider_registration  ₹499  a host's first year (launch price; usually ₹999)
 //   provider_renewal       ₹999  every year after that
@@ -365,6 +367,10 @@ export const AMOUNTS: Record<string, number> = {
   provider_registration: 49900,
   provider_renewal: 99900,
 };
+
+// The aangan pass after its first year. Same flow (platform_support); the server picks this
+// price for anyone who has held a pass before (lib/pricing.ts passBreakupFor).
+export const PASS_RENEWAL_BASE = 9900;
 
 // How long one host payment (registration or renewal) keeps a host's listings live, in days.
 export const HOST_PLAN_DAYS = 365;

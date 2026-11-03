@@ -4,35 +4,9 @@ import { useTranslation } from 'react-i18next';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { useSeo } from '@/components/Seo';
+import TripStats, { tripBuckets } from '@/components/TripStats';
+import TripCard from '@/components/TripCard';
 import { Ticket, Calendar, ArrowRight, XCircle, CircleNotch as Loader2, Compass, Phone, CheckCircle as CheckCircle2, Clock, MapPin, Storefront as Store, SignIn as LogIn } from '@phosphor-icons/react';
-
-function StatusPill({ status, isPast }: { status: string; isPast: boolean }) {
-  const { t } = useTranslation();
-  
-  if (status === 'confirmed' && isPast) {
-    return (
-      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-pine/10 text-pine">
-        <CheckCircle2 size={10} /> Completed
-      </span>
-    );
-  }
-
-  const map: Record<string, string> = {
-    confirmed: 'bg-pine/10 text-pine',
-    pending_payment: 'bg-gold/20 text-[#8a6b04]',
-    cancelled: 'bg-flag/10 text-flag',
-  };
-
-  const label = t(`booking.status.${status}`, { defaultValue: status?.replace('_', ' ') });
-  return (
-    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${map[status] || 'bg-mist text-ink-soft'}`}>
-      {status === 'pending_payment' && <Clock size={10} />}
-      {status === 'cancelled' && <XCircle size={10} />}
-      {status === 'confirmed' && <CheckCircle2 size={10} />}
-      {label}
-    </span>
-  );
-}
 
 export default function MyTrips() {
   const { t, i18n } = useTranslation();
@@ -101,22 +75,8 @@ export default function MyTrips() {
     );
   }
 
-  const now = new Date(new Date().setHours(0, 0, 0, 0));
-  
-  const upcomingList = bookings.filter(
-    (b) => b.status !== 'cancelled' && (b.check_in ? new Date(b.check_in) >= now : true)
-  );
-
-  const completedList = bookings.filter(
-    (b) => b.status === 'confirmed' && b.check_in && new Date(b.check_in) < now
-  );
-
-  const cancelledList = bookings.filter((b) => b.status === 'cancelled');
-
-  let filteredBookings = bookings;
-  if (tabFilter === 'upcoming') filteredBookings = upcomingList;
-  else if (tabFilter === 'completed') filteredBookings = completedList;
-  else if (tabFilter === 'cancelled') filteredBookings = cancelledList;
+  const { upcoming: upcomingList, completed: completedList, cancelled: cancelledList } = tripBuckets(bookings);
+  const filteredBookings = tripBuckets(bookings)[tabFilter];
 
   return (
     <div className="mx-auto max-w-6xl px-4 md:px-6 py-6 md:py-10 pb-24 lg:pb-12">
@@ -153,26 +113,9 @@ export default function MyTrips() {
         </div>
       </div>
 
-      {/* Stats summary */}
-      <div className="grid grid-cols-3 gap-3 md:gap-4 mb-8">
-        <div className="rounded-2xl p-4 bg-gradient-to-br from-flag to-[#8a1e1e] text-white shadow-sm">
-          <div className="text-[11px] uppercase tracking-widest font-bold opacity-90">Total Bookings</div>
-          <div className="mt-1 font-display font-extrabold text-2xl sm:text-3xl leading-none">
-            {bookings.length}
-          </div>
-        </div>
-        <div className="rounded-2xl p-4 bg-gradient-to-br from-pine to-pine-dark text-white shadow-sm">
-          <div className="text-[11px] uppercase tracking-widest font-bold opacity-90">Upcoming</div>
-          <div className="mt-1 font-display font-extrabold text-2xl sm:text-3xl leading-none">
-            {upcomingList.length}
-          </div>
-        </div>
-        <div className="rounded-2xl p-4 bg-gradient-to-br from-gold to-[#c69108] text-white shadow-sm">
-          <div className="text-[11px] uppercase tracking-widest font-bold opacity-90">Completed</div>
-          <div className="mt-1 font-display font-extrabold text-2xl sm:text-3xl leading-none">
-            {completedList.length}
-          </div>
-        </div>
+      {/* Stats summary: tap a card to filter the list */}
+      <div className="mb-8">
+        <TripStats bookings={bookings} filter={tabFilter} onFilter={setTabFilter} />
       </div>
 
       {/* Filter Tabs */}
@@ -188,7 +131,7 @@ export default function MyTrips() {
             onClick={() => setTabFilter(key as any)}
             className={`px-4 py-2.5 font-bold text-xs sm:text-sm whitespace-nowrap transition-colors ${
               tabFilter === key
-                ? 'text-flag border-b-2 border-flag -mb-px'
+                ? 'text-[#1F6656] border-b-2 border-[#1F6656] -mb-px'
                 : 'text-ink-soft hover:text-ink'
             }`}
           >
@@ -226,95 +169,11 @@ export default function MyTrips() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {filteredBookings.map((b) => {
-            const isPast = Boolean(b.check_in && new Date(b.check_in) < now);
-
-            return (
-              <article
-                key={b.id}
-                data-testid={`my-trip-card-${b.id}`}
-                className="bg-white rounded-2xl border border-[var(--line)] p-4 md:p-5 flex flex-col sm:flex-row gap-4 hover:shadow-sm transition-shadow"
-              >
-                <div className="w-full sm:w-24 h-32 sm:h-24 rounded-xl overflow-hidden bg-mist flex-shrink-0 relative">
-                  {b.listing?.image ? (
-                    <img src={b.listing.image} alt="" className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full grid place-items-center text-ink-soft">
-                      <Compass size={24} />
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex-1 min-w-0 flex flex-col justify-between">
-                  <div>
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <h3 className="font-display font-bold text-ink text-base line-clamp-1">
-                          {b.listing?.title || b.listing_title}
-                        </h3>
-                        <div className="text-xs text-ink-soft capitalize flex items-center gap-1 mt-0.5">
-                          <MapPin size={11} className="text-pine flex-shrink-0" />
-                          <span>{b.listing_type}</span>
-                          {b.listing?.location && <span>· {b.listing.location}</span>}
-                        </div>
-                      </div>
-                      <StatusPill status={b.status} isPast={isPast} />
-                    </div>
-
-                    <div className="mt-3 text-xs text-ink-soft space-y-1 bg-mist/60 p-2.5 rounded-xl border border-[var(--line)]/50">
-                      {b.check_in && (
-                        <div>
-                          {t('booking.checkin')}: <b className="text-ink">{b.check_in}</b>
-                          {b.check_out && <> → <b className="text-ink">{b.check_out}</b></>}
-                        </div>
-                      )}
-                      <div>
-                        {t('booking.guests')}: <b className="text-ink">{b.guests}</b> · Booked:{' '}
-                        {new Date(b.created_at).toLocaleDateString(i18n.language)}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 flex items-center justify-between gap-2 border-t border-[var(--line)] pt-3">
-                    <Link
-                      to={`/listing/${b.listing_id}`}
-                      className="inline-flex items-center gap-1.5 text-xs font-bold text-pine hover:underline"
-                    >
-                      {t('dashboard.view_listing')} <ArrowRight size={12} />
-                    </Link>
-
-                    {b.status !== 'cancelled' && !isPast && (
-                      confirmingId === b.id ? (
-                        <span className="inline-flex items-center gap-2 text-xs">
-                          <span className="text-ink-soft">Cancel?</span>
-                          <button
-                            onClick={() => cancelBooking(b.id)}
-                            disabled={busyId === b.id}
-                            className="inline-flex items-center gap-1 font-bold text-flag disabled:opacity-50 hover:underline"
-                          >
-                            {busyId === b.id ? <Loader2 size={12} className="animate-spin" /> : null} Yes
-                          </button>
-                          <button
-                            onClick={() => setConfirmingId(null)}
-                            className="font-bold text-ink-soft hover:underline"
-                          >
-                            No
-                          </button>
-                        </span>
-                      ) : (
-                        <button
-                          onClick={() => setConfirmingId(b.id)}
-                          className="inline-flex items-center gap-1 text-xs font-bold text-flag hover:text-[#8a1e1e]"
-                        >
-                          <XCircle size={12} /> Cancel
-                        </button>
-                      )
-                    )}
-                  </div>
-                </div>
-              </article>
-            );
-          })}
+          {filteredBookings.map((b) => (
+            <TripCard key={b.id} booking={b} testId={`my-trip-card-${b.id}`}
+              confirming={confirmingId === b.id} busy={busyId === b.id}
+              onAskCancel={() => setConfirmingId(b.id)} onCancel={() => cancelBooking(b.id)} onKeep={() => setConfirmingId(null)} />
+          ))}
         </div>
       )}
 

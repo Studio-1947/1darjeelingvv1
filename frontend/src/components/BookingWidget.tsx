@@ -8,6 +8,28 @@ import { todayStr, addDays, isBadRange, formatDay, formatRange } from '@/lib/dat
 import { writeTrip } from '@/lib/tripParams';
 import WeatherForecast from '@/components/WeatherForecast';
 
+/**
+ * "Search homestays", then cafes, drivers, viewpoints: the last word rolls up every two seconds.
+ * Held still for people who ask for reduced motion.
+ */
+function RotatingSearchHint() {
+  const { t } = useTranslation();
+  const words = t('widget.search_words', { returnObjects: true }) as unknown;
+  const list = Array.isArray(words) && words.length ? (words as string[]) : ['homestays', 'cafes'];
+  const [i, setI] = useState(0);
+  useEffect(() => {
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+    const id = setInterval(() => setI((n) => (n + 1) % list.length), 2000);
+    return () => clearInterval(id);
+  }, [list.length]);
+  return (
+    <span className="inline-flex items-baseline gap-1 min-w-0" data-testid="search-hint">
+      <span>{t('widget.search_prefix')}</span>
+      <span key={i} className="inline-block animate-in fade-in slide-in-from-bottom-2 duration-300 truncate">{list[i]}</span>
+    </span>
+  );
+}
+
 const PLACES: { name: string; alt?: string[] }[] = [
   // Darjeeling and around
   { name: 'Darjeeling' },
@@ -510,7 +532,7 @@ export default function BookingWidget() {
                   {t('widget.search')}
                 </span>
                 <span className="truncate text-sm font-bold text-white">
-                  {summary || t('widget.search_short')}
+                  {summary || <RotatingSearchHint />}
                 </span>
               </div>
             </button>
@@ -541,7 +563,7 @@ export default function BookingWidget() {
                   id="booking-widget-panel-mobile"
                   data-testid="booking-widget-pill-panel"
                   aria-hidden={!panelOpen}
-                  className="relative z-10 w-full bg-[#14201A] border-t border-white/20 rounded-t-[28px] max-h-[85vh] flex flex-col shadow-2xl animate-in slide-in-from-bottom duration-300 overflow-hidden"
+                  className="relative z-10 w-full bg-[#14201A] border-t border-white/20 rounded-t-[28px] h-[min(85dvh,600px)] flex flex-col shadow-2xl animate-in slide-in-from-bottom duration-300 overflow-hidden"
                 >
                   {/* Header with drag indicator & close */}
                   <div className="flex items-center justify-between px-5 pt-4 pb-2 border-b border-white/10 flex-shrink-0">
@@ -577,8 +599,9 @@ export default function BookingWidget() {
                     </button>
                   </div>
 
-                  {/* Scrollable Form Body */}
-                  <div className="flex-1 overflow-y-auto p-5 space-y-4">
+                  {/* Scrollable Form Body. The sheet has a fixed height, so switching Stays and
+                      Drivers (different fields) no longer makes it jump. */}
+                  <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-5 space-y-4 [scrollbar-gutter:stable]">
                     {/* Destination / Route */}
                     {tab === 'driver' ? (
                       <div className="space-y-3">

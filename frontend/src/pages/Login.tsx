@@ -222,10 +222,11 @@ export default function Login() {
               <span className="text-xs font-semibold text-ink-soft">{t('auth.phone_label')}</span>
               <div className="mt-1 flex items-center gap-2 px-3 py-2 rounded-xl border border-[var(--line)] bg-white">
                 <Phone size={16} className="text-ink-soft" />
+                {/* Only "IN +91" shows in the box; the open list names each country. */}
                 <select value={countryCode} onChange={(e) => { setCountryCode(e.target.value); setPhone(''); }}
-                  aria-label="Country calling code" className="shrink-0 max-w-[6.5rem] sm:max-w-40 bg-transparent text-sm font-semibold outline-none">
-                  {/* Code first, so a narrow phone still shows "+91" when the country name is cut. */}
-                  {OTP_COUNTRIES.map((item) => <option key={item.code} value={item.code}>{item.flag} {item.code} {item.country}</option>)}
+                  aria-label="Country calling code" data-testid="login-country"
+                  className="shrink-0 w-auto bg-transparent text-sm font-semibold outline-none pr-0.5 border-r border-[var(--line)] mr-1">
+                  {OTP_COUNTRIES.map((item) => <option key={item.code} value={item.code} label={`${item.iso} ${item.code}`}>{item.iso} {item.code}</option>)}
                 </select>
                 <input value={phone} onChange={(e) => setPhone(nationalPhone(e.target.value, country))} required
                   type="tel" inputMode="tel" autoComplete="tel"

@@ -13,6 +13,7 @@ import Policies from '@/pages/Policies';
 const Support = lazy(() => import('@/pages/Support'));
 const Donate = lazy(() => import('@/pages/Donate'));
 const Discover = lazy(() => import('@/pages/Discover'));
+const Explore = lazy(() => import('@/pages/Explore'));
 const Category = lazy(() => import('@/pages/Category'));
 const ListingDetail = lazy(() => import('@/pages/ListingDetail'));
 const Login = lazy(() => import('@/pages/Login'));
@@ -76,6 +77,7 @@ export default function App() {
                     <Route path="/cafes" element={<TravellerOnly><Category typeOverride="cafe" /></TravellerOnly>} />
                     <Route path="/events" element={<TravellerOnly><Category typeOverride="event" /></TravellerOnly>} />
                     <Route path="/biodiversity" element={<TravellerOnly><Category typeOverride="biodiversity" /></TravellerOnly>} />
+                    <Route path="/explore" element={<TravellerOnly><Explore /></TravellerOnly>} />
                     <Route path="/search" element={<TravellerOnly><Category typeOverride={undefined} /></TravellerOnly>} />
                     <Route path="/listing/:id" element={<ListingDetail />} />
                     <Route path="/business/:id" element={<PublicBusiness />} />

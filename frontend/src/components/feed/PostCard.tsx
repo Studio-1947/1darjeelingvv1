@@ -2,20 +2,12 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { MapPin, PencilSimple, SealCheck, Trash, EyeSlash } from '@phosphor-icons/react';
-import type { HostPost } from '@/lib/posts';
+import type { Engagement, HostPost } from '@/lib/posts';
+import { PostActionBar, PostViewer } from '@/components/feed/PostActions';
 
-/** "3 h ago", "2 d ago", then a date: a feed reads by recency, not by timestamp. */
-export function timeAgo(iso: string, lang: string, t: (k: string, o?: any) => string): string {
-  const diff = Date.now() - Date.parse(iso);
-  const mins = Math.round(diff / 60000);
-  if (mins < 1) return t('feed.just_now');
-  if (mins < 60) return t('feed.minutes_ago', { count: mins });
-  const hours = Math.round(mins / 60);
-  if (hours < 24) return t('feed.hours_ago', { count: hours });
-  const days = Math.round(hours / 24);
-  if (days < 7) return t('feed.days_ago', { count: days });
-  return new Date(iso).toLocaleDateString(lang, { day: 'numeric', month: 'short', year: 'numeric' });
-}
+import { timeAgo } from '@/lib/timeAgo';
+
+export { timeAgo };
 
 /**
  * One post: who wrote it (the host's business, with a verified badge), when, the words, up to four
@@ -28,6 +20,7 @@ export default function PostCard({
   onReport,
   onEdit,
   onDelete,
+  autoOpen = false,
 }: {
   post: HostPost;
   isMine?: boolean;
@@ -35,15 +28,29 @@ export default function PostCard({
   onReport?: (post: HostPost) => void;
   onEdit?: (post: HostPost) => void;
   onDelete?: (post: HostPost) => void;
+  /** Open the full post straight away (a shared /feed?post= link). */
+  autoOpen?: boolean;
 }) {
   const { t, i18n } = useTranslation();
-  const [expanded, setExpanded] = useState(false);
-  const long = post.body.length > 320;
-  const text = long && !expanded ? `${post.body.slice(0, 300).trimEnd()}…` : post.body;
+    const long = post.body.length > 320;
+  const text = long ? `${post.body.slice(0, 300).trimEnd()}…` : post.body;
   const photos = post.photos || [];
+  const [engagement, setEngagement] = useState<Engagement>({
+    like_count: post.like_count ?? 0,
+    comment_count: post.comment_count ?? 0,
+    liked_by_me: !!post.liked_by_me,
+  });
+  const [open, setOpen] = useState<false | 'post' | 'comment'>(autoOpen ? 'post' : false);
+  // Tapping the post (not a button or link inside it) opens the whole post.
+  const openFromCard = (e: React.MouseEvent) => {
+    // Clicks inside the open post (a portal) still bubble here through React; ignore them.
+    if (!e.currentTarget.contains(e.target as Node)) return;
+    if ((e.target as HTMLElement).closest('a,button')) return;
+    setOpen('post');
+  };
 
   return (
-    <article data-testid={`post-${post.id}`} className="rounded-3xl border border-[var(--line)] bg-white p-4 md:p-5">
+    <article data-testid={`post-${post.id}`} onClick={openFromCard} className="rounded-3xl border border-[var(--line)] bg-white p-4 md:p-5 cursor-pointer">
       {post.hidden && (
         <div className="mb-3 flex items-center gap-2 rounded-xl bg-flag/10 text-flag text-xs font-semibold px-3 py-2">
           <EyeSlash size={14} /> {t('feed.hidden_notice')}
@@ -91,18 +98,18 @@ export default function PostCard({
 
       <p className="mt-3 text-ink text-[15px] leading-relaxed whitespace-pre-line break-words">{text}</p>
       {long && (
-        <button type="button" onClick={() => setExpanded((v) => !v)} className="mt-1 text-sm font-semibold text-pine">
-          {expanded ? t('feed.show_less') : t('feed.read_more')}
+        <button type="button" onClick={() => setOpen('post')} className="mt-1 text-sm font-semibold text-pine">
+          {t('feed.read_more')}
         </button>
       )}
 
       {photos.length > 0 && (
         <div className={`mt-3 grid gap-1.5 rounded-2xl overflow-hidden ${photos.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
           {photos.map((src, i) => (
-            <a key={src + i} href={src} target="_blank" rel="noopener noreferrer" className="block bg-mist">
+            <div key={src + i} className="block bg-mist">
               <img src={src} alt={t('feed.photo_alt', { name: post.host.name })} loading="lazy"
                 className={`w-full object-cover ${photos.length === 1 ? 'max-h-[420px]' : 'aspect-square h-full'}`} />
-            </a>
+            </div>
           ))}
         </div>
       )}
@@ -120,6 +127,13 @@ export default function PostCard({
             <div className="font-bold text-ink text-sm truncate">{post.listing.title}</div>
           </div>
         </Link>
+      )}
+      {!post.hidden && (
+        <PostActionBar post={post} engagement={engagement} onEngagement={setEngagement} onComment={() => setOpen('comment')} />
+      )}
+      {open && (
+        <PostViewer post={post} engagement={engagement} onEngagement={setEngagement}
+          focusComment={open === 'comment'} onClose={() => setOpen(false)} />
       )}
     </article>
   );

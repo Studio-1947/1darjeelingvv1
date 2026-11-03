@@ -159,12 +159,12 @@ export default function CategoryFilterBar({
         )}
       </div>
 
-      {/* Category Specific Sub-filter Quick Chips (Homestays / Drivers / Spots) */}
-      <div className="flex flex-wrap items-center gap-2 text-xs">
+      {/* Category Specific Sub-filter Quick Chips (Homestays / Drivers / Spots): one row that scrolls */}
+      <div className="flex items-center gap-2 text-xs">
         {/* Homestays Tariff Quick Filters */}
         {categoryType === 'homestay' && onMaxPriceChange && (
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
-            <span className="text-[11px] font-extrabold uppercase tracking-wider text-ink-soft mr-1 flex items-center gap-1">
+          <div className="flex w-full items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 -mx-1 px-1">
+            <span className="hidden sm:flex flex-shrink-0 whitespace-nowrap text-[11px] font-extrabold uppercase tracking-wider text-ink-soft mr-1 items-center gap-1">
               <HomeIcon size={12} /> Max Rate:
             </span>
             {[
@@ -180,7 +180,7 @@ export default function CategoryFilterBar({
                   type="button"
                   onClick={() => onMaxPriceChange(p.val)}
                   data-testid={`filter-price-${p.val || 'any'}`}
-                  className={`px-3 py-1.5 rounded-full border transition-all cursor-pointer font-semibold ${
+                  className={`flex-shrink-0 whitespace-nowrap px-3.5 py-2 rounded-full border transition-colors cursor-pointer font-semibold ${
                     active
                       ? 'bg-pine text-white border-pine shadow-sm'
                       : 'bg-white text-ink border-[var(--line)] hover:border-pine/40'
@@ -195,8 +195,8 @@ export default function CategoryFilterBar({
 
         {/* Drivers Vehicle Type Quick Filters */}
         {categoryType === 'driver' && onCabChange && (
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
-            <span className="text-[11px] font-extrabold uppercase tracking-wider text-ink-soft mr-1 flex items-center gap-1">
+          <div className="flex w-full items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 -mx-1 px-1">
+            <span className="hidden sm:flex flex-shrink-0 whitespace-nowrap text-[11px] font-extrabold uppercase tracking-wider text-ink-soft mr-1 items-center gap-1">
               <Car size={12} /> Cab Type:
             </span>
             {[
@@ -211,7 +211,7 @@ export default function CategoryFilterBar({
                   type="button"
                   onClick={() => onCabChange(c.val)}
                   data-testid={`filter-cab-${c.val}`}
-                  className={`px-3 py-1.5 rounded-full border transition-all cursor-pointer font-semibold ${
+                  className={`flex-shrink-0 whitespace-nowrap px-3.5 py-2 rounded-full border transition-colors cursor-pointer font-semibold ${
                     active
                       ? 'bg-pine text-white border-pine shadow-sm'
                       : 'bg-white text-ink border-[var(--line)] hover:border-pine/40'
@@ -226,8 +226,8 @@ export default function CategoryFilterBar({
 
         {/* Spots Entry Fee Quick Filters */}
         {categoryType === 'spot' && onEntryFilterChange && (
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
-            <span className="text-[11px] font-extrabold uppercase tracking-wider text-ink-soft mr-1 flex items-center gap-1">
+          <div className="flex w-full items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 -mx-1 px-1">
+            <span className="hidden sm:flex flex-shrink-0 whitespace-nowrap text-[11px] font-extrabold uppercase tracking-wider text-ink-soft mr-1 items-center gap-1">
               <Ticket size={12} /> Entry:
             </span>
             {[
@@ -242,7 +242,7 @@ export default function CategoryFilterBar({
                   type="button"
                   onClick={() => onEntryFilterChange(e.val)}
                   data-testid={`filter-entry-${e.val}`}
-                  className={`px-3 py-1.5 rounded-full border transition-all cursor-pointer font-semibold ${
+                  className={`flex-shrink-0 whitespace-nowrap px-3.5 py-2 rounded-full border transition-colors cursor-pointer font-semibold ${
                     active
                       ? 'bg-pine text-white border-pine shadow-sm'
                       : 'bg-white text-ink border-[var(--line)] hover:border-pine/40'

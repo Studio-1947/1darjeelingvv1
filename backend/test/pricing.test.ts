@@ -1,18 +1,24 @@
 import { describe, it, expect } from 'vitest';
 import request from 'supertest';
 import { app } from '../src/app';
-import { priceBreakup } from '../src/lib/pricing';
+import { priceBreakup, flowBreakup, passBreakupFor } from '../src/lib/pricing';
 
-/** Every fixed payment is base + 18% GST + 2% platform fee, both on the base. */
+/** Every fixed payment is base + 18% GST; host payments also carry the 2% gateway fee. */
 describe('price breakup', () => {
   it('adds GST and the platform fee to the host plan', () => {
     expect(priceBreakup(49900)).toEqual({ base: 49900, gst: 8982, platform_fee: 998, total: 59880, gst_rate: 18, platform_fee_rate: 2 });
     expect(priceBreakup(99900).total).toBe(119880);
   });
 
-  it('adds them to the traveller pass and the ₹1 booking fee', () => {
-    expect(priceBreakup(1200)).toMatchObject({ gst: 216, platform_fee: 24, total: 1440 });
-    expect(priceBreakup(100)).toMatchObject({ gst: 18, platform_fee: 2, total: 120 });
+  it('adds GST only to the traveller pass and the ₹1 booking fee', () => {
+    expect(flowBreakup('platform_support')).toMatchObject({ base: 1200, gst: 216, platform_fee: 0, total: 1416 });
+    expect(flowBreakup('booking_commission')).toMatchObject({ gst: 18, platform_fee: 0, total: 118 });
+    expect(flowBreakup('provider_registration').total).toBe(59880);
+  });
+
+  it('charges ₹12 for a first pass and ₹99 after that', () => {
+    expect(passBreakupFor({ supportExpiresAt: null }).total).toBe(1416);
+    expect(passBreakupFor({ supportExpiresAt: '2020-01-01T00:00:00.000Z' })).toMatchObject({ base: 9900, total: 11682 });
   });
 
   it('adds up exactly, in whole paise', () => {
@@ -29,7 +35,8 @@ describe('price breakup', () => {
     expect(res.body.gst_rate).toBe(18);
     expect(res.body.platform_fee_rate).toBe(2);
     expect(res.body.prices.provider_registration.total).toBe(59880);
-    expect(res.body.prices.platform_support.total).toBe(1440);
-    expect(res.body.prices.booking_commission.total).toBe(120);
+    expect(res.body.prices.platform_support.total).toBe(1416);
+    expect(res.body.prices.platform_support_renewal.total).toBe(11682);
+    expect(res.body.prices.booking_commission.total).toBe(118);
   });
 });
