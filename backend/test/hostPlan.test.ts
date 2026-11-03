@@ -108,7 +108,8 @@ describe('host plan: ₹499 first year, ₹999 after', () => {
 
     const [payment] = await db.select().from(schema.payments)
       .where(eq(schema.payments.referenceId, provider.id)).limit(1);
-    expect(payment.amount).toBe(49900);
+    expect(payment.amount).toBe(59880); // ₹499 + 18% GST + 2% platform fee
+    expect(payment.breakup).toMatchObject({ base: 49900, gst: 8982, platform_fee: 998, total: 59880 });
   });
 
   it('refuses a second ₹1 registration once registered, so a year cannot be bought for ₹1', async () => {
@@ -145,7 +146,7 @@ describe('host plan: ₹499 first year, ₹999 after', () => {
 
     const { order, complete } = await pay(token, 'provider_renewal', providerId);
     expect(order.status).toBe(200);
-    expect(order.body.amount).toBe(99900);
+    expect(order.body.amount).toBe(119880);
     expect(complete!.status).toBe(200);
 
     const after = Date.parse((await providerMe(token)).plan_expires_at);
@@ -159,7 +160,7 @@ describe('host plan: ₹499 first year, ₹999 after', () => {
 
     const { order, complete } = await pay(token, 'provider_renewal', providerId);
     expect(order.status).toBe(200);
-    expect(order.body.amount).toBe(99900);
+    expect(order.body.amount).toBe(119880);
     expect(complete!.status).toBe(200);
 
     const after = Date.parse((await providerMe(token)).plan_expires_at);

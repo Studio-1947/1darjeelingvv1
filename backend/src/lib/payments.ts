@@ -1,7 +1,8 @@
 import { AMOUNTS, DONATION_MIN_PAISE, DONATION_MAX_PAISE } from '../config';
+import { priceBreakup, type PriceBreakup } from './pricing';
 
 export type AmountResolution =
-  | { amount: number }
+  | { amount: number; breakup?: PriceBreakup }
   | { error: { status: number; detail: string } };
 
 const rupees = (paise: number) => (paise / 100).toLocaleString('en-IN');
@@ -23,13 +24,15 @@ export function resolveAmount(flow: string, body: any): AmountResolution {
   }
 
   if (flow !== 'donation') {
-    const amount = AMOUNTS[flow];
-    if (!amount) {
+    const base = AMOUNTS[flow];
+    if (!base) {
       return { error: { status: 400, detail: 'Invalid payment flow' } };
     }
     // The body is not consulted. A fixed-price flow carrying an `amount` is either a confused
-    // client or a hostile one; either way the map wins.
-    return { amount };
+    // client or a hostile one; either way the map wins. The charge is the base plus GST and the
+    // platform fee; a donation (below) is a gift and carries neither.
+    const breakup = priceBreakup(base);
+    return { amount: breakup.total, breakup };
   }
 
   const raw = body?.amount;

@@ -5,12 +5,13 @@ import { db, schema } from '../db';
 import { eq, and, ne } from 'drizzle-orm';
 import { authenticateToken } from '../middleware/auth';
 import { rateLimiter } from '../middleware/rateLimiter';
-import { AMOUNTS, HOST_RENEWAL_WINDOW_DAYS, MOCK_PAYMENTS, rzpClient, RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, RAZORPAY_WEBHOOK_SECRET, IS_PROD, log } from '../config';
+import { AMOUNTS, GST_RATE_PERCENT, PLATFORM_FEE_PERCENT, HOST_RENEWAL_WINDOW_DAYS, MOCK_PAYMENTS, rzpClient, RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, RAZORPAY_WEBHOOK_SECRET, IS_PROD, log } from '../config';
 import { computeSupportPassExpiry, isExemptFromSupport, isSupportActive } from '../lib/support';
 import { computeHostPlanExpiry, isHostPlanLive, isListingHostLapsed } from '../lib/hostPlan';
 import { serializeProvider } from '../lib/providerShape';
 import { settleBookingConfirmation } from '../lib/bookingConfirmation';
 import { resolveAmount } from '../lib/payments';
+import { priceList } from '../lib/pricing';
 
 const router = Router();
 
@@ -304,6 +305,23 @@ async function settlePaymentOnce(payment: PaymentRow, gatewayPaymentId: string) 
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
  */
+/**
+ * @openapi
+ * /payments/prices:
+ *   get:
+ *     summary: What each fixed payment costs, with its breakup
+ *     description: >
+ *       Base price, 18% GST and the 2% platform fee (both on the base) and the total, in paise,
+ *       for the aangan pass, the ₹1 booking fee and the host plan. Public, so both apps can show
+ *       the breakup before anyone signs in or pays.
+ *     tags: [Payments]
+ *     responses:
+ *       200: { description: "`{ gst_rate, platform_fee_rate, prices: { <flow>: { base, gst, platform_fee, total } } }`" }
+ */
+router.get('/prices', (_req: Request, res: Response) => {
+  res.json({ gst_rate: GST_RATE_PERCENT, platform_fee_rate: PLATFORM_FEE_PERCENT, prices: priceList() });
+});
+
 // Create order
 router.post('/order', authenticateToken, async (req: Request, res: Response) => {
   const { flow, reference_id } = req.body;
@@ -320,6 +338,7 @@ router.post('/order', authenticateToken, async (req: Request, res: Response) => 
     return res.status(resolved.error.status).json({ detail: resolved.error.detail });
   }
   const { amount } = resolved;
+  const breakup = resolved.breakup ?? null;
 
   // Bind the reference to the caller at the point it enters the system. §1.5 stopped an order
   // being *redeemed* against someone else's reference, but without this an attacker could simply
@@ -338,6 +357,7 @@ router.post('/order', authenticateToken, async (req: Request, res: Response) => 
       flow,
       referenceId: reference_id,
       amount,
+      breakup,
       orderId: mockOrderId,
       status: 'created',
       mock: true,
@@ -348,7 +368,8 @@ router.post('/order', authenticateToken, async (req: Request, res: Response) => 
       mock: true,
       key_id: 'mock_gateway',
       order: { id: mockOrderId, amount, currency: 'INR' },
-      amount
+      amount,
+      breakup
     });
   }
 
@@ -371,6 +392,7 @@ router.post('/order', authenticateToken, async (req: Request, res: Response) => 
       flow,
       referenceId: reference_id,
       amount,
+      breakup,
       orderId: order.id,
       status: 'created',
       mock: false,
@@ -381,7 +403,8 @@ router.post('/order', authenticateToken, async (req: Request, res: Response) => 
       mock: false,
       key_id: RAZORPAY_KEY_ID,
       order,
-      amount
+      amount,
+      breakup
     });
   } catch (err: any) {
     log.error(`Razorpay order failed: ${err}`);

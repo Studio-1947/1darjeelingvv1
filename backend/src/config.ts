@@ -344,7 +344,12 @@ export const rzpClient = RAZORPAY_KEY_SECRET ? new Razorpay({
   key_secret: RAZORPAY_KEY_SECRET
 }) : null;
 
-// Fixed prices, in paise. `donation` is deliberately absent: its presence here would imply a
+// Every fixed price below is the BASE. On top of it the payer is charged 18% GST and a 2% platform
+// fee, both worked out on the base (lib/pricing.ts), e.g. ₹499 + ₹89.82 + ₹9.98 = ₹598.80.
+export const GST_RATE_PERCENT = 18;
+export const PLATFORM_FEE_PERCENT = 2;
+
+// Fixed base prices, in paise. `donation` is deliberately absent: its presence here would imply a
 // fixed price, and the whole point of a donation is that the giver chooses. See lib/payments.ts.
 //
 //   platform_support       ₹12   one year — the aangan pass: every booking confirms free

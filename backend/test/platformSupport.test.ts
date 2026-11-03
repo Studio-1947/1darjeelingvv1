@@ -53,8 +53,8 @@ describe('platform_support payment flow', () => {
       .send({ flow: 'platform_support', reference_id: user.id, amount: 1 });
 
     expect(res.status).toBe(200);
-    expect(res.body.amount).toBe(1200);
-    expect(res.body.order.amount).toBe(1200);
+    expect(res.body.amount).toBe(1440);
+    expect(res.body.order.amount).toBe(1440);
   });
 
   it('refuses an order that references another user', async () => {

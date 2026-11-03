@@ -24,12 +24,14 @@ describe('booking without the aangan pass', () => {
     const checkout = await request(app).post(`/api/bookings/${id}/checkout`).set('Authorization', `Bearer ${token}`);
     expect(checkout.status).toBe(402);
     expect(checkout.body.code).toBe('fee_required');
-    expect(checkout.body.amount).toBe(100);
+    expect(checkout.body.amount).toBe(120);
+    expect(checkout.body.breakup).toMatchObject({ base: 100, gst: 18, platform_fee: 2, total: 120 });
+    expect(checkout.body.pass_breakup.total).toBe(1440);
 
     const order = await request(app).post('/api/payments/order').set('Authorization', `Bearer ${token}`)
       .send({ flow: 'booking_commission', reference_id: id, amount: 1 });
     expect(order.status).toBe(200);
-    expect(order.body.amount).toBe(100);
+    expect(order.body.amount).toBe(120);
 
     const paid = await request(app).post('/api/payments/mock/complete').set('Authorization', `Bearer ${token}`)
       .send({ order_id: order.body.order.id, flow: 'booking_commission', reference_id: id });
