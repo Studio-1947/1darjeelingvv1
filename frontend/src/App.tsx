@@ -14,6 +14,7 @@ const Support = lazy(() => import('@/pages/Support'));
 const Donate = lazy(() => import('@/pages/Donate'));
 const Discover = lazy(() => import('@/pages/Discover'));
 const Explore = lazy(() => import('@/pages/Explore'));
+const EditProfile = lazy(() => import('@/pages/EditProfile'));
 const Category = lazy(() => import('@/pages/Category'));
 const ListingDetail = lazy(() => import('@/pages/ListingDetail'));
 const Login = lazy(() => import('@/pages/Login'));
@@ -87,6 +88,7 @@ export default function App() {
                     <Route path="/provider/onboard" element={<ProviderOnboard />} />
                     <Route path="/provider/dashboard" element={<ProviderDashboard />} />
                     <Route path="/provider/profile" element={<ProviderProfile />} />
+                    <Route path="/profile/edit" element={<EditProfile />} />
                     <Route path="/dashboard" element={<TravellerOnly><TouristDashboard /></TravellerOnly>} />
                     <Route path="/my-trips" element={<TravellerOnly><MyTrips /></TravellerOnly>} />
                     <Route path="/my-listings" element={<MyListings />} />

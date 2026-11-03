@@ -47,7 +47,8 @@
     "profile": "Profile",
     "explore": "Explore",
     "guides": "Guides",
-    "download_app": "Get the app"
+    "download_app": "Get the app",
+    "edit_profile": "Edit profile"
   },
   "trips": {
     "total_bookings": "Total bookings",

@@ -3,11 +3,12 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
-import { SignOut as LogOut, Storefront as Store, Compass, Phone, ArrowRight, Ticket, Calendar, XCircle, CircleNotch as Loader2 } from '@phosphor-icons/react';
+import { PencilSimple, SignOut as LogOut, Storefront as Store, Compass, Phone, ArrowRight, Ticket, Calendar, XCircle, CircleNotch as Loader2 } from '@phosphor-icons/react';
 import { useSeo } from '@/components/Seo';
 import BlockedPeople from '@/components/BlockedPeople';
 import TripStats, { tripBuckets, type TripFilter } from '@/components/TripStats';
 import TripCard from '@/components/TripCard';
+import TravellerPanels from '@/components/TravellerPanels';
 
 
 export default function TouristDashboard() {
@@ -60,7 +61,13 @@ export default function TouristDashboard() {
           ) : (user.name?.trim().charAt(0).toUpperCase() || 'T')}
         </div>
         <div className="flex-1 min-w-0">
-          <h1 className="font-display font-extrabold text-2xl sm:text-3xl md:text-4xl text-ink leading-tight">{user.name || t('dashboard.traveller')}</h1>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h1 className="font-display font-extrabold text-2xl sm:text-3xl md:text-4xl text-ink leading-tight">{user.name || t('dashboard.traveller')}</h1>
+            <Link to="/profile/edit" data-testid="account-edit-profile"
+              className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-mist text-ink text-xs font-bold btn-hover">
+              <PencilSimple size={12} /> {t('nav.edit_profile')}
+            </Link>
+          </div>
           <p className="text-sm text-ink-soft mt-0.5 flex items-center gap-1 whitespace-nowrap"><Phone size={12} /> {user.phone}</p>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <span data-testid="account-mode" className="inline-flex items-center px-2.5 py-1 rounded-full bg-[#DDF0F1] text-[#0E4A4F] text-[11px] font-bold uppercase tracking-wider">
@@ -85,6 +92,9 @@ export default function TouristDashboard() {
           <LogOut size={14} /> {t('nav.logout')}
         </button>
       </div>
+
+      {/* Board: aangan pass, Aangan Points, Aangan Awards, total travel, feedback, referrals. */}
+      <TravellerPanels />
 
       <div className="mb-8">
         <TripStats bookings={bookings} filter={filter} onFilter={setFilter} />

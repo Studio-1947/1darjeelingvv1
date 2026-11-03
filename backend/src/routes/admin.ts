@@ -1,9 +1,10 @@
 import { Router, Request, Response } from 'express';
+import { travellerDashboard } from '../lib/travellerDashboard';
 import { missingMandatory } from '../lib/hostProfile';
 import { v4 as uuidv4 } from 'uuid';
 import { db } from '../db';
 import * as schema from '../schema';
-import { eq, and, count, inArray, desc, isNull, or, ne } from 'drizzle-orm';
+import { eq, and, count, inArray, desc, isNull, isNotNull, gt, or, ne } from 'drizzle-orm';
 import { SEED_LISTINGS } from '../seed_data';
 import { authenticateToken, requireAdmin, hashPassword } from '../middleware/auth';
 import { rateLimiter } from '../middleware/rateLimiter';
@@ -118,13 +119,23 @@ router.get('/admin/stats', authenticateToken, requireAdmin, async (req: Request,
   const listingsCount = await db.select({ value: count() }).from(schema.listings);
   const bookingsCount = await db.select({ value: count() }).from(schema.bookings);
   const paymentsCount = await db.select({ value: count() }).from(schema.payments).where(eq(schema.payments.status, 'paid'));
+  const nowIso = new Date().toISOString();
+  const passCount = await db.select({ value: count() }).from(schema.users).where(gt(schema.users.supportExpiresAt, nowIso));
+  const appFeedbackOpen = await db.select({ value: count() }).from(schema.appFeedback).where(eq(schema.appFeedback.status, 'open'));
+  const hostFeedbackOpen = await db.select({ value: count() }).from(schema.hostFeedback).where(eq(schema.hostFeedback.status, 'open'));
+  const commentsCount = await db.select({ value: count() }).from(schema.postComments);
+  const profilesStarted = await db.select({ value: count() }).from(schema.users).where(isNotNull(schema.users.travellerType));
 
   res.json({
     users: usersCount[0]?.value || 0,
     providers: providersCount[0]?.value || 0,
     listings: listingsCount[0]?.value || 0,
     bookings: bookingsCount[0]?.value || 0,
-    payments: paymentsCount[0]?.value || 0
+    payments: paymentsCount[0]?.value || 0,
+    active_passes: passCount[0]?.value || 0,
+    open_feedback: (appFeedbackOpen[0]?.value || 0) + (hostFeedbackOpen[0]?.value || 0),
+    post_comments: commentsCount[0]?.value || 0,
+    traveller_profiles: profilesStarted[0]?.value || 0,
   });
 });
 
@@ -272,6 +283,18 @@ router.get('/admin/users', authenticateToken, requireAdmin, async (req: Request,
     role: schema.users.role,
     email: schema.users.email,
     createdAt: schema.users.createdAt,
+    avatar: schema.users.avatar,
+    // The aangan pass and the traveller profile (board: Profile Setup), for the user drawer.
+    supportExpiresAt: schema.users.supportExpiresAt,
+    whatsapp: schema.users.whatsapp,
+    gender: schema.users.gender,
+    birthYear: schema.users.birthYear,
+    address: schema.users.address,
+    pincode: schema.users.pincode,
+    interests: schema.users.interests,
+    likedFoods: schema.users.likedFoods,
+    travellerType: schema.users.travellerType,
+    diet: schema.users.diet,
     providerId: schema.providers.id,
     providerStatus: schema.providers.status,
     businessName: schema.providers.businessName,
@@ -308,6 +331,13 @@ router.get('/admin/users', authenticateToken, requireAdmin, async (req: Request,
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
  */
+/** One traveller's dashboard (pass, points, awards, totals), as they see it. */
+router.get('/admin/users/:id/dashboard', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
+  const [user] = await db.select().from(schema.users).where(eq(schema.users.id, routeParam(req, 'id'))).limit(1);
+  if (!user) return res.status(404).json({ detail: 'User not found' });
+  res.json(await travellerDashboard(user));
+});
+
 // Admin Users Delete
 router.delete('/admin/users/:id', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
   const id = routeParam(req, 'id');

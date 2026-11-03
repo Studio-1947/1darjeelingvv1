@@ -263,7 +263,36 @@ router.get('/admin/list', authenticateToken, requireAdmin, async (req: Request, 
     .where(onlyHidden ? sql`${schema.hostPosts.hiddenAt} IS NOT NULL` : undefined)
     .orderBy(desc(schema.hostPosts.createdAt))
     .limit(200)) as Row[];
-  res.json({ posts: rows.map((r) => postOut(r, { includeModeration: true })) });
+  res.json({ posts: await postsOut(rows, null, { includeModeration: true }) });
+});
+
+/**
+ * @openapi
+ * /posts/admin/comments:
+ *   get:
+ *     summary: The newest comments on host posts, with the post they are on (admin)
+ *     tags: [Feed]
+ *     security: [{ bearerAuth: [] }]
+ */
+router.get('/admin/comments', authenticateToken, requireAdmin, async (_req: Request, res: Response) => {
+  const rows = await db
+    .select({ c: schema.postComments, name: schema.users.name, phone: schema.users.phone, postBody: schema.hostPosts.body, business: schema.providers.businessName })
+    .from(schema.postComments)
+    .innerJoin(schema.users, eq(schema.users.id, schema.postComments.userId))
+    .innerJoin(schema.hostPosts, eq(schema.hostPosts.id, schema.postComments.postId))
+    .innerJoin(schema.providers, eq(schema.providers.id, schema.hostPosts.providerId))
+    .orderBy(desc(schema.postComments.createdAt))
+    .limit(200);
+  res.json({
+    comments: rows.map(({ c, name, phone, postBody, business }) => ({
+      id: c.id,
+      post_id: c.postId,
+      body: c.body,
+      created_at: c.createdAt,
+      user: { id: c.userId, name, phone },
+      post: { business, excerpt: postBody.slice(0, 120) },
+    })),
+  });
 });
 
 router.post('/', authenticateToken, rateLimiter(20, 60 * 60 * 1000, 'post_create'), async (req: Request, res: Response) => {

@@ -7,6 +7,8 @@ import { authenticateToken } from '../middleware/auth';
 import { deleteListingsOwnedBy, deleteKycFilesOwnedBy } from '../lib/accountCleanup';
 import { toPublicUser } from '../lib/publicUser';
 import { assignReferralCode, countReferrals } from '../lib/referrals';
+import { readProfilePatch } from '../lib/travellerProfile';
+import { travellerDashboard } from '../lib/travellerDashboard';
 
 const router = Router();
 
@@ -30,6 +32,14 @@ const router = Router();
  *               language: { type: string }
  *               avatar: { type: string }
  *               interests: { type: array, items: { type: string } }
+ *               whatsapp: { type: string }
+ *               gender: { type: string, enum: [female, male, other, prefer_not] }
+ *               age: { type: integer, description: "Years; stored as a birth year" }
+ *               address: { type: string }
+ *               pincode: { type: string, description: "6 digits" }
+ *               liked_foods: { type: array, items: { type: string } }
+ *               traveller_type: { type: string, enum: [solo, couple, family, friends, business, backpacker] }
+ *               diet: { type: string, enum: [veg, non_veg, vegan] }
  *     responses:
  *       200:
  *         description: Updated user
@@ -77,12 +87,32 @@ router.patch('/me', authenticateToken, async (req: Request, res: Response) => {
     }
   }
 
+  // The traveller profile (board: Profile Setup). Checked field by field; a bad value is refused.
+  const profile = readProfilePatch(patch);
+  if ('error' in profile) return res.status(400).json({ detail: profile.error });
+  Object.assign(updateFields, profile.patch);
+
   if (Object.keys(updateFields).length > 0) {
     await db.update(schema.users).set(updateFields).where(eq(schema.users.id, req.user.id));
   }
 
   const [updatedUser] = await db.select().from(schema.users).where(eq(schema.users.id, req.user.id)).limit(1);
   res.json({ user: toPublicUser(updatedUser) });
+});
+
+/**
+ * @openapi
+ * /users/me/dashboard:
+ *   get:
+ *     summary: The traveller dashboard - pass, Aangan Points, Aangan Awards, travel totals, referrals
+ *     description: Worked out from bookings, reviews, referrals and the profile; nothing is stored.
+ *     tags: [Users]
+ *     security: [{ bearerAuth: [] }]
+ */
+router.get('/me/dashboard', authenticateToken, async (req: Request, res: Response) => {
+  const [user] = await db.select().from(schema.users).where(eq(schema.users.id, req.user.id)).limit(1);
+  if (!user) return res.status(404).json({ detail: 'User not found' });
+  res.json(await travellerDashboard(user));
 });
 
 /**

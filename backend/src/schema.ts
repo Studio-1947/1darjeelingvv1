@@ -22,6 +22,16 @@ export const users = pgTable('users', {
   // What the traveller picked on the "pick your vibe" screen (ids like 'nature', 'food'). Kept on
   // the account so it survives a reinstall or a second phone; the client owns the vocabulary.
   interests: jsonb('interests').$type<string[]>().default([]).notNull(),
+  // The traveller profile from the board ("Profile Setup"). All optional; checked in
+  // lib/travellerProfile.ts. Age is kept as a birth year so it stays right as years pass.
+  whatsapp: text('whatsapp'),
+  gender: text('gender'),
+  birthYear: integer('birth_year'),
+  address: text('address'),
+  pincode: text('pincode'),
+  likedFoods: jsonb('liked_foods').$type<string[]>().default([]).notNull(),
+  travellerType: text('traveller_type'),
+  diet: text('diet'),
 });
 
 /**
@@ -338,6 +348,18 @@ export const hostFeedback = pgTable('host_feedback', {
   createdAt: text('created_at').notNull(),
 }, (t) => ({
   providerCreatedIdx: index('host_feedback_provider_created_at_idx').on(t.providerId, t.createdAt),
+}));
+
+/** Feedback for aangan itself, from anyone signed in (the board's traveller dashboard). */
+export const appFeedback = pgTable('app_feedback', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  rating: integer('rating'),
+  message: text('message').notNull(),
+  status: text('status').default('open').notNull(),
+  createdAt: text('created_at').notNull(),
+}, (t) => ({
+  userCreatedIdx: index('app_feedback_user_created_at_idx').on(t.userId, t.createdAt),
 }));
 
 /**
