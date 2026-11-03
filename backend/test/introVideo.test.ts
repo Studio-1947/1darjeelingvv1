@@ -1,5 +1,16 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import request from 'supertest';
+
+// The video goes to the public bucket; stub storage so CI (which has no MinIO) can run this.
+vi.mock('../src/lib/s3', () => ({
+  uploadToMinIO: vi.fn(async (_buffer: Buffer, key: string) => `https://cdn.test/1darjeeling/${key}`),
+  uploadPrivate: vi.fn(async (_buffer: Buffer, key: string) => key),
+  getPrivateObject: vi.fn(),
+  deletePrivate: vi.fn(async () => {}),
+  checkStorage: vi.fn(async () => {}),
+  ensureBucketsExist: vi.fn(async () => {}),
+}));
+
 import { app } from '../src/app';
 import { onboardActiveProvider, registerUser } from './helpers';
 
