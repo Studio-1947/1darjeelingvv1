@@ -9,6 +9,8 @@ import { authenticateToken, requireAdmin, hashPassword } from '../middleware/aut
 import { rateLimiter } from '../middleware/rateLimiter';
 import { ADMIN_BOOTSTRAP_SECRET, log } from '../config';
 import { recomputeKycStatus } from './kyc';
+import { requirementsFor } from '../lib/kycRequirements';
+import { notifyHostVerification } from '../lib/notifications';
 import { deleteListingsOwnedBy, deleteKycFilesOwnedBy } from '../lib/accountCleanup';
 import { listUnreturnedPayments, refundPayment } from '../lib/refunds';
 import { routeParam } from '../lib/routeParam';
@@ -520,6 +522,8 @@ router.post('/admin/kyc/:id/review', authenticateToken, requireAdmin, async (req
 
   const status = decision === 'approve' ? 'approved' : 'rejected';
   const reviewedAt = new Date().toISOString();
+  const [before] = await db.select({ businessType: schema.providers.businessType })
+    .from(schema.providers).where(eq(schema.providers.id, doc.providerId)).limit(1);
   await db.update(schema.kycDocuments).set({
     status,
     rejectionReason: decision === 'reject' ? (reason || null) : null,
@@ -532,6 +536,14 @@ router.post('/admin/kyc/:id/review', authenticateToken, requireAdmin, async (req
     .where(and(eq(schema.providers.id, doc.providerId), isNull(schema.providers.kycReviewStartedAt)));
 
   const kycStatus = await recomputeKycStatus(doc.providerId);
+
+  // Tell the host (and any co-owners) straight away: what to fix, or that they are live.
+  if (decision === 'reject') {
+    const label = requirementsFor(before?.businessType ?? '').find((r) => r.docType === doc.docType)?.label ?? doc.docType.replace(/_/g, ' ');
+    await notifyHostVerification(doc.providerId, { kind: 'changes_requested', document: label, reason: reason || null });
+  }
+  // Becoming verified is announced by recomputeKycStatus, whatever step completed it.
+
   res.json({
     document: { id: doc.id, doc_type: doc.docType, status, rejection_reason: decision === 'reject' ? (reason || null) : null },
     provider_kyc_status: kycStatus,

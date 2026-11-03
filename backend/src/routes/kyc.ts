@@ -5,12 +5,13 @@ import path from 'path';
 import { db, schema } from '../db';
 import { eq, and } from 'drizzle-orm';
 import { authenticateToken } from '../middleware/auth';
-import { isAllowedDocType, isVideoDocType } from '../lib/kycRequirements';
+import { isAllowedDocType, isVideoDocType, requirementsFor } from '../lib/kycRequirements';
 import { computeCompletion } from '../lib/profileCompletion';
 import { uploadPrivate, getPrivateObject, deletePrivate } from '../lib/s3';
 import { log, VERIFICATION_SUPPORT_PHONE } from '../config';
 import { routeParam } from '../lib/routeParam';
 import { hostUserIds, myActiveProvider } from '../lib/hostAccess';
+import { notifyHostVerification } from '../lib/notifications';
 
 const router = Router();
 
@@ -102,6 +103,10 @@ function verificationOut(
     review_started_at: provider.kycReviewStartedAt,
     action_required: !!rejected,
     action_message: rejected?.rejectionReason ?? null,
+    // Which document to upload again, in the host's words (the checklist label).
+    action_document: rejected
+      ? requirementsFor(provider.businessType).find((r) => r.docType === rejected.docType)?.label ?? rejected.docType
+      : null,
     support_phone: VERIFICATION_SUPPORT_PHONE,
   };
 }
@@ -134,6 +139,11 @@ export async function recomputeKycStatus(providerId: string): Promise<string> {
     docs.map(d => ({ docType: d.docType, status: d.status as any }))
   );
   await db.update(schema.providers).set({ kycStatus }).where(eq(schema.providers.id, providerId));
+  // The moment a host becomes verified, whichever step got them there (an admin approving the
+  // last document, or the host's own live location capture), they and any co-owners hear it.
+  if (kycStatus === 'verified' && provider.kycStatus !== 'verified') {
+    await notifyHostVerification(providerId, { kind: 'approved' });
+  }
   return kycStatus;
 }
 

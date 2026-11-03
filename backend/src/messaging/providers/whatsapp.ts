@@ -41,6 +41,8 @@ const TEMPLATE_ENV_VARS: Record<NotificationTemplate, string> = {
   booking_confirmed_guest: 'WHATSAPP_BOOKING_CONFIRMED_GUEST_TEMPLATE',
   booking_confirmed_host: 'WHATSAPP_BOOKING_CONFIRMED_HOST_TEMPLATE',
   booking_cancelled_guest: 'WHATSAPP_BOOKING_CANCELLED_GUEST_TEMPLATE',
+  host_changes_requested: 'WHATSAPP_HOST_CHANGES_REQUESTED_TEMPLATE',
+  host_approved: 'WHATSAPP_HOST_APPROVED_TEMPLATE',
 };
 
 // A hung provider must not hold an Express handler open indefinitely.

@@ -217,3 +217,60 @@ export async function notifyBookingCancelled(
       .where(eq(schema.bookings.id, booking.id));
   }
 }
+
+export type HostVerificationNews =
+  | { kind: 'changes_requested'; document: string; reason: string | null }
+  | { kind: 'approved' };
+
+/**
+ * Tells everyone who runs a business (the main owner and co-owners) how their verification moved:
+ * a document needs changing (with the team's reason), or they are approved and live.
+ *
+ * Three channels, each independent: in-app (which also sends a phone push), WhatsApp when
+ * NOTIFY_BOOKINGS is on and the template is configured, and email when SMTP is set and the person
+ * has an address. Never throws: the admin's decision is already saved, and a message that did not
+ * go out must not undo it. Failures are logged.
+ */
+export async function notifyHostVerification(providerId: string, news: HostVerificationNews): Promise<void> {
+  try {
+    const { hostUserIds } = await import('./hostAccess');
+    const { addInAppNotification } = await import('./inApp');
+    const [provider] = await db.select().from(schema.providers).where(eq(schema.providers.id, providerId)).limit(1);
+    if (!provider) return;
+    const business = provider.businessName;
+    const ids = await hostUserIds(providerId);
+
+    const title = news.kind === 'approved' ? 'You are verified and live' : 'A document needs changing';
+    const body = news.kind === 'approved'
+      ? `${business} is approved. Travellers can now find and book you on aangan.`
+      : `Please upload "${news.document}" again.${news.reason ? ` Reason: ${news.reason}` : ''}`;
+
+    for (const userId of ids) {
+      await addInAppNotification(userId, { kind: news.kind === 'approved' ? 'kyc_approved' : 'kyc_changes', title, body, refId: providerId });
+      const [u] = await db.select({ name: schema.users.name, phone: schema.users.phone, email: schema.users.email })
+        .from(schema.users).where(eq(schema.users.id, userId)).limit(1);
+      if (!u) continue;
+
+      if (NOTIFY_BOOKINGS && u.phone) {
+        const template: NotificationTemplate = news.kind === 'approved' ? 'host_approved' : 'host_changes_requested';
+        // Positional, in the order docs/WHATSAPP_TEMPLATES.md declares them.
+        const vars: Record<string, string> = news.kind === 'approved'
+          ? { name: u.name, business }
+          : { name: u.name, business, document: news.document, reason: news.reason || 'see the app for details' };
+        const r = await deliver(u.phone, template, vars, `Hi ${u.name}. ${body}${SIGNATURE}`);
+        if (!r.ok) log.warn(`[notify] host verification ${template} to ****${u.phone.slice(-4)} failed: ${r.error}`);
+      }
+      if (emailEnabled() && u.email) {
+        const r = await sendEmail({
+          to: u.email,
+          subject: `${title}: ${business}`,
+          text: `Hi ${u.name}, ${body}`,
+          html: renderEmail(title, [`Hi ${u.name},`, body], 'You are receiving this because you host on aangan.'),
+        });
+        if (!r.ok) log.warn(`[notify] host verification email failed: ${r.error}`);
+      }
+    }
+  } catch (err) {
+    log.warn(`[notify] host verification for ${providerId} failed: ${(err as Error).message}`);
+  }
+}

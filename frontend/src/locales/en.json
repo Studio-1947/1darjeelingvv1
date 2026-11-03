@@ -1781,5 +1781,32 @@
     "full": "This business has the {{count}} co-owners allowed.",
     "how_it_works": "They sign in to aangan with that number and get the business side straight away. Only you can pay for the plan or change the owners.",
     "plan_main_owner": "The main owner renews the plan."
+  },
+  "verify": {
+    "progress": "Review progress",
+    "step_paid": "Plan paid",
+    "step_sent": "Documents sent",
+    "step_review": "Team reviewing",
+    "step_live": "Live on aangan",
+    "title_pay": "Pay for your plan to continue",
+    "body_pay": "Once your plan is paid you can send your documents for approval.",
+    "title_send": "Send your documents for approval",
+    "body_send": "Your plan is paid. Upload your documents so our team can check them. Your listing stays private until then.",
+    "title_waiting": "Documents sent",
+    "body_waiting": "Our team will start checking them soon. Your listing stays private until the review is complete.",
+    "title_reviewing": "Our team is checking your documents",
+    "body_reviewing": "We will notify you as soon as it is done. Your listing stays private until then.",
+    "title_changes": "A document needs changing",
+    "body_changes": "Upload it again and we will check it straight away. Your other documents are kept.",
+    "title_live": "You are live",
+    "body_live": "Travellers can now find and book you.",
+    "action_needed": "Action needed",
+    "keep_phone_title": "Keep your phone available",
+    "keep_phone_body": "If we need any clarification, our verification team will call you on {{phone}}.",
+    "phone_missing": "your registered number",
+    "cta_send": "Upload documents",
+    "cta_changes": "Fix the document",
+    "cta_view": "View verification",
+    "call_support": "Call verification support"
   }
 }

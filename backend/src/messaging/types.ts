@@ -15,7 +15,11 @@ export interface OtpMessage {
 export type NotificationTemplate =
   | 'booking_confirmed_guest'
   | 'booking_confirmed_host'
-  | 'booking_cancelled_guest';
+  | 'booking_cancelled_guest'
+  // Host verification: a document needs changing, and the host is approved and live. Optional:
+  // see OPTIONAL_TEMPLATES in providerConfig.ts.
+  | 'host_changes_requested'
+  | 'host_approved';
 
 export interface NotificationMessage {
   phone: string;

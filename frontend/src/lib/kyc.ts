@@ -26,6 +26,16 @@ export interface KycProfile {
   kyc_status: 'none' | 'partial' | 'submitted' | 'verified';
   checklist: ChecklistItem[];
   documents: KycDoc[];
+  /** Where the review is (server: routes/kyc.ts verificationOut); drives VerificationTracker. */
+  verification?: {
+    status: 'not_ready' | 'submitted' | 'in_review' | 'changes_requested' | 'approved';
+    submitted_at: string | null;
+    review_started_at: string | null;
+    action_required: boolean;
+    action_message: string | null;
+    action_document?: string | null;
+    support_phone: string | null;
+  };
 }
 
 /**

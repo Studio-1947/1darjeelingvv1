@@ -63,6 +63,8 @@ export function createSmtpProvider(env: NodeJS.ProcessEnv): MessagingProvider {
         booking_confirmed_guest: 'Booking Confirmed  aangan',
         booking_confirmed_host: 'New Booking  aangan',
         booking_cancelled_guest: 'Booking Cancelled  aangan',
+        host_changes_requested: 'A document needs changing  aangan',
+        host_approved: 'You are verified and live  aangan',
       };
 
       const subject = subjectMap[template] || `aangan  ${template.replace(/_/g, ' ')}`;
