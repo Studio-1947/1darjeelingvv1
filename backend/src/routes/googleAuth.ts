@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { EMPTY_TRAVELLER_PROFILE } from '../lib/travellerProfile';
 import { v4 as uuidv4 } from 'uuid';
 import { OAuth2Client } from 'google-auth-library';
 import { db, schema } from '../db';
@@ -134,6 +135,7 @@ router.post(
         password: null,
         phoneVerifiedAt: null,
         interests: [],
+        ...EMPTY_TRAVELLER_PROFILE,
         referralCode: null,
       };
 

@@ -244,6 +244,11 @@ export default function Header() {
                     </>
                   )}
                   
+                  <button onClick={() => { setDropdownOpen(false); nav('/profile/edit'); }}
+                    data-testid="header-dropdown-edit-profile"
+                    className="w-full text-left px-4 py-2.5 text-sm text-ink hover:bg-mist font-semibold transition-colors">
+                    {t('nav.edit_profile')}
+                  </button>
                   <button onClick={() => { setDropdownOpen(false); nav('/saved'); }}
                     data-testid="header-dropdown-saved"
                     className="w-full text-left px-4 py-2.5 text-sm text-ink hover:bg-mist font-semibold transition-colors flex items-center gap-2">

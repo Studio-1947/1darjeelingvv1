@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Check, X, Trash2, Users as UsersIcon, Store } from 'lucide-react';
 
 import CleanupPanel from './CleanupPanel';
+import TravellerDrawer from './TravellerDrawer';
 
 interface UsersTabProps {
   users: any[];
@@ -16,6 +17,8 @@ interface UsersTabProps {
  */
 export default function UsersTab({ users, onDeleteUser, onToggleProviderStatus, onCleaned }: UsersTabProps) {
   const [subTab, setSubTab] = useState<'individuals' | 'businesses'>('individuals');
+  // The traveller whose full profile and dashboard is open in the side drawer.
+  const [open, setOpen] = useState<any | null>(null);
 
   // Filter users based on role
   const individuals = users.filter((u) => u.role !== 'provider');
@@ -23,6 +26,7 @@ export default function UsersTab({ users, onDeleteUser, onToggleProviderStatus, 
 
   return (
     <div className="space-y-6">
+      {open && <TravellerDrawer user={open} onClose={() => setOpen(null)} />}
       <CleanupPanel onDone={() => onCleaned?.()} />
 
       {/* Segmented Control / Sub-tabs Switcher */}
@@ -59,18 +63,35 @@ export default function UsersTab({ users, onDeleteUser, onToggleProviderStatus, 
               <thead>
                 <tr className="bg-mist text-ink-soft text-xs uppercase font-bold tracking-wider border-b border-[var(--line)]">
                   <th className="p-4">User Details</th>
+                  <th className="p-4">Traveller profile</th>
+                  <th className="p-4">Pass</th>
                   <th className="p-4">Role</th>
                   <th className="p-4">Created At</th>
                   <th className="p-4 text-center">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--line)] text-sm text-ink">
-                {individuals.map((usr) => (
-                  <tr key={usr.id} className="hover:bg-mist/40 transition-colors">
+                {individuals.map((usr) => {
+                  const passActive = !!usr.supportExpiresAt && Date.parse(usr.supportExpiresAt) > Date.now();
+                  const age = usr.birthYear ? new Date().getFullYear() - usr.birthYear : null;
+                  const bits = [usr.gender && usr.gender.replace('_', ' '), age && `${age} yrs`, usr.travellerType, usr.diet && usr.diet.replace('_', '-'), usr.pincode].filter(Boolean);
+                  return (
+                  <tr key={usr.id} className="hover:bg-mist/40 transition-colors cursor-pointer" onClick={() => setOpen(usr)} data-testid={`admin-user-${usr.id}`}>
                     {/* User Details */}
                     <td className="p-4">
                       <div className="font-bold">{usr.name}</div>
                       <div className="text-xs text-ink-soft mt-0.5">{usr.phone}</div>
+                    </td>
+
+                    {/* Board: Profile Setup - a one-line summary; the drawer has everything. */}
+                    <td className="p-4 text-xs text-ink-soft capitalize">
+                      {bits.length ? bits.join(' · ') : <span className="italic">Not filled in</span>}
+                    </td>
+
+                    <td className="p-4">
+                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${passActive ? 'bg-pine/10 text-pine' : 'bg-mist text-ink-soft'}`}>
+                        {passActive ? 'Active' : usr.supportExpiresAt ? 'Lapsed' : 'None'}
+                      </span>
                     </td>
 
                     {/* Role tags */}
@@ -93,7 +114,7 @@ export default function UsersTab({ users, onDeleteUser, onToggleProviderStatus, 
                         {/* Admins cannot delete other admin accounts */}
                         {usr.role !== 'admin' && (
                           <button
-                            onClick={() => onDeleteUser(usr.id, usr.name)}
+                            onClick={(e) => { e.stopPropagation(); onDeleteUser(usr.id, usr.name); }}
                             className="p-1.5 rounded-lg border border-flag/30 text-flag hover:bg-flag/5 transition-all cursor-pointer"
                             title="Delete User"
                           >
@@ -103,7 +124,8 @@ export default function UsersTab({ users, onDeleteUser, onToggleProviderStatus, 
                       </div>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
             {individuals.length === 0 && (

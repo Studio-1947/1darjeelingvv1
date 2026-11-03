@@ -21,6 +21,14 @@ export interface UserRowLike {
   createdAt: string;
   supportExpiresAt?: string | null;
   interests?: string[] | null;
+  whatsapp?: string | null;
+  gender?: string | null;
+  birthYear?: number | null;
+  address?: string | null;
+  pincode?: string | null;
+  likedFoods?: string[] | null;
+  travellerType?: string | null;
+  diet?: string | null;
   [key: string]: unknown;
 }
 
@@ -36,6 +44,14 @@ export interface PublicUser {
   createdAt: string;
   supportExpiresAt: string | null;
   interests: string[];
+  whatsapp: string | null;
+  gender: string | null;
+  birthYear: number | null;
+  address: string | null;
+  pincode: string | null;
+  likedFoods: string[];
+  travellerType: string | null;
+  diet: string | null;
 }
 
 export function toPublicUser(user: UserRowLike): PublicUser {
@@ -51,5 +67,13 @@ export function toPublicUser(user: UserRowLike): PublicUser {
     createdAt: user.createdAt,
     supportExpiresAt: user.supportExpiresAt ?? null,
     interests: Array.isArray(user.interests) ? user.interests : [],
+    whatsapp: user.whatsapp ?? null,
+    gender: user.gender ?? null,
+    birthYear: user.birthYear ?? null,
+    address: user.address ?? null,
+    pincode: user.pincode ?? null,
+    likedFoods: Array.isArray(user.likedFoods) ? user.likedFoods : [],
+    travellerType: user.travellerType ?? null,
+    diet: user.diet ?? null,
   };
 }
