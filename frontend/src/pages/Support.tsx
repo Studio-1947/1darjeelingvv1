@@ -11,7 +11,7 @@ import { useSeo } from '@/components/Seo';
 export default function Support() {
   const { t } = useTranslation();
   useSeo({ title: t('support.title'), noindex: true });
-  const { user, refresh, logout } = useAuth();
+  const { user, refresh } = useAuth();
   const nav = useNavigate();
   const location = useLocation();
 
@@ -121,10 +121,10 @@ export default function Support() {
 
   // The escape hatch. A hard gate on a logged-in user with no way out is a trap: they cannot
   // pay, cannot browse, cannot leave. Public browsing was always free  this makes it reachable.
+  // Not now: the pass is optional (board: "Don't take pass", ₹1 per booking instead).
   const browseAnonymously = () => {
     setLeaving(true);
-    logout();
-    nav('/', { replace: true });
+    nav(destination, { replace: true });
   };
 
   return (

@@ -8,7 +8,6 @@ import { FavoritesProvider } from '@/context/FavoritesContext';
 import Layout from '@/components/Layout';
 import ScrollToTop from '@/components/ScrollToTop';
 import { LoginGateProvider } from '@/components/LoginGate';
-import SupportGate from '@/components/SupportGate';
 import Policies from '@/pages/Policies';
 
 const Support = lazy(() => import('@/pages/Support'));
@@ -66,7 +65,6 @@ export default function App() {
           <ScrollToTop />
           <LoginGateProvider>
             <Layout>
-              <SupportGate>
                 <Suspense fallback={<div className="page-loading" role="status">Loading…</div>}>
                   <Routes>
                     <Route path="/" element={<HomeForSide />} />
@@ -108,7 +106,6 @@ export default function App() {
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </Suspense>
-              </SupportGate>
             </Layout>
           </LoginGateProvider>
         </BrowserRouter>

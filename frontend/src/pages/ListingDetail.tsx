@@ -9,6 +9,7 @@ import { amenitiesFor, hostFor } from '@/lib/listingMeta';
 import { contentFor, listingImage, galleryImagesFor, personImageFor, spotInfoFor } from '@/lib/listingContent';
 import Seo from '@/components/Seo';
 import BookingConfirmation from '@/components/BookingConfirmation';
+import BookingFeeModal from '@/components/listing-detail/BookingFeeModal';
 import DetailHero from '@/components/listing-detail/DetailHero';
 import type { ShareOutcome } from '@/lib/share';
 import {
@@ -253,6 +254,12 @@ export default function ListingDetail() {
         <MobileStickyBar item={item} unit={unit} bookable={bookable} cta={cta} busy={booking.busy}
           onBook={booking.doBook} onOpenMaps={openMaps} />
       )}
+
+      <BookingFeeModal
+        bookingId={booking.feeFor}
+        onClose={() => { booking.setFeeFor(null); nav('/dashboard'); }}
+        onConfirmed={(b) => { booking.setFeeFor(null); booking.setConfirm({ open: true, data: b }); }}
+      />
 
       <BookingConfirmation
         open={!!booking.confirm?.open}

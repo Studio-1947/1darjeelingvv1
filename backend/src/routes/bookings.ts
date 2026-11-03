@@ -6,7 +6,8 @@ import { db, schema } from '../db';
 // lib/bookingAvailability.ts, shared with the settlement path so the two cannot drift.
 import { eq, desc, inArray, and } from 'drizzle-orm';
 import { authenticateToken } from '../middleware/auth';
-import { requireActiveSupport } from '../middleware/support';
+import { isExemptFromSupport, isSupportActive } from '../lib/support';
+import { AMOUNTS } from '../config';
 import { findBlockingBooking, isDateExclusive, lockListingForBooking } from '../lib/bookingAvailability';
 import { refundPaymentsFor } from '../lib/refunds';
 import { notifyBookingCancelled } from '../lib/notifications';
@@ -81,7 +82,8 @@ const router = Router();
  *             schema: { $ref: '#/components/schemas/Error' }
  */
 // Create a booking
-router.post('/', authenticateToken, requireTravellerMode, requireActiveSupport, async (req: Request, res: Response) => {
+// No pass needed to ask: without one, the ₹1 fee is paid when the booking is confirmed.
+router.post('/', authenticateToken, requireTravellerMode, async (req: Request, res: Response) => {
   const { listing_id, listing_type, check_in, check_out, guests = 1, notes, voucher_id } = req.body;
 
   if (!listing_id || !listing_type) {
@@ -547,7 +549,7 @@ router.patch('/:id/confirm', authenticateToken, async (req: Request, res: Respon
   await addInAppNotification(booking.userId, {
     kind: 'booking_accepted',
     title: 'Your request was accepted',
-    body: `The host accepted your request for ${booking.listingTitle}. Pay the ₹1 to confirm it.`,
+    body: `The host accepted your request for ${booking.listingTitle}. Confirm it to lock it in.`,
     refId: booking.id,
   });
 
@@ -558,13 +560,14 @@ router.patch('/:id/confirm', authenticateToken, async (req: Request, res: Respon
  * @openapi
  * /bookings/{id}/checkout:
  *   post:
- *     summary: Confirm a booking (free)
+ *     summary: Confirm a booking (free with the aangan pass)
  *     description: >
- *       Bookings carry no fee. This is the step the ₹1 commission payment used to be: it confirms
- *       the booking under the listing lock (so two guests cannot both take the same nights) and
- *       sends both parties their confirmation. Only the guest who made the booking can call it,
- *       and it needs the ₹1 aangan pass like creating the booking does. Idempotent: an
- *       already-confirmed booking is returned as it is.
+ *       Confirms the booking under the listing lock (so two guests cannot both take the same
+ *       nights) and sends both parties their confirmation. Free for a traveller with the ₹12
+ *       aangan pass. Without one this answers 402 `fee_required`: the traveller pays the ₹1
+ *       convenience fee (payment flow `booking_commission`, reference = this booking), and that
+ *       payment confirms the booking. Only the guest who made the booking can call it.
+ *       Idempotent: an already-confirmed booking is returned as it is.
  *     tags: [Bookings]
  *     security: [{ bearerAuth: [] }]
  *     parameters:
@@ -574,12 +577,12 @@ router.patch('/:id/confirm', authenticateToken, async (req: Request, res: Respon
  *         schema: { type: string }
  *     responses:
  *       200: { description: "The confirmed booking, as `{ booking }`" }
- *       402: { description: The aangan pass has not been paid }
+ *       402: { description: "No aangan pass: pay the ₹1 fee (`code: fee_required`, `amount` in paise)" }
  *       403: { description: Not the guest who made this booking }
  *       404: { description: Booking not found }
  *       409: { description: "The booking is cancelled, the host is not taking bookings, or the dates went to another guest (the booking is then cancelled)" }
  */
-router.post('/:id/checkout', authenticateToken, requireActiveSupport, async (req: Request, res: Response) => {
+router.post('/:id/checkout', authenticateToken, async (req: Request, res: Response) => {
   const [booking] = await db.select().from(schema.bookings).where(eq(schema.bookings.id, routeParam(req, 'id'))).limit(1);
   if (!booking) return res.status(404).json({ detail: 'Booking not found' });
   if (booking.userId !== req.user.id) {
@@ -593,6 +596,14 @@ router.post('/:id/checkout', authenticateToken, requireActiveSupport, async (req
       .from(schema.listings).where(eq(schema.listings.id, booking.listingId)).limit(1);
     if (listing && (await isListingHostLapsed(listing.providerId))) {
       return res.status(409).json({ detail: 'This listing is not taking bookings right now' });
+    }
+    // Board: with the pass every booking is free; without it, ₹1 per booking.
+    if (!isExemptFromSupport(req.user) && !isSupportActive(req.user)) {
+      return res.status(402).json({
+        detail: 'Pay the ₹1 convenience fee, or take the ₹12 aangan pass and book free all year.',
+        code: 'fee_required',
+        amount: AMOUNTS.booking_commission,
+      });
     }
   }
 

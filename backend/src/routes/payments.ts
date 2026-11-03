@@ -6,8 +6,8 @@ import { eq, and, ne } from 'drizzle-orm';
 import { authenticateToken } from '../middleware/auth';
 import { rateLimiter } from '../middleware/rateLimiter';
 import { AMOUNTS, HOST_RENEWAL_WINDOW_DAYS, MOCK_PAYMENTS, rzpClient, RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, RAZORPAY_WEBHOOK_SECRET, IS_PROD, log } from '../config';
-import { computeSupportPassExpiry } from '../lib/support';
-import { computeHostPlanExpiry, isHostPlanLive } from '../lib/hostPlan';
+import { computeSupportPassExpiry, isExemptFromSupport, isSupportActive } from '../lib/support';
+import { computeHostPlanExpiry, isHostPlanLive, isListingHostLapsed } from '../lib/hostPlan';
 import { serializeProvider } from '../lib/providerShape';
 import { settleBookingConfirmation } from '../lib/bookingConfirmation';
 import { resolveAmount } from '../lib/payments';
@@ -73,12 +73,11 @@ async function handlePaymentSuccess(
       .returning();
     return serializeProvider(renewed);
   } else if (flow === 'booking_commission') {
-    // Legacy: bookings are free now and confirm through POST /bookings/:id/checkout. This branch
-    // stays only so an order created before that change still confirms its booking when it
-    // settles, and refunds it if the dates went to someone else first.
+    // The ₹1 convenience fee of a traveller without the pass: paying it confirms the booking,
+    // and refunds it if the dates went to someone else first.
     return settleBookingConfirmation(referenceId, userId, { paid: true });
   } else if (flow === 'platform_support') {
-    // The ₹1 annual tourist pass. A duplicate settlement never reaches this point because the
+    // The ₹12 yearly aangan pass. A duplicate settlement never reaches this point because the
     // payment record is settled idempotently before entitlements are granted.
     const [u] = await tx.select().from(schema.users).where(eq(schema.users.id, userId)).limit(1);
     if (!u) return null;
@@ -153,6 +152,18 @@ async function assertOwnsReference(
     if (booking.userId !== userId) {
       return { status: 403, detail: 'You can only pay for your own booking' };
     }
+    if (booking.status === 'confirmed') return { status: 409, detail: 'This booking is already confirmed' };
+    if (booking.status === 'cancelled') return { status: 409, detail: 'This booking was cancelled' };
+    // A pass holder confirms free; charging them ₹1 as well would be taking money twice.
+    const [payer] = await db.select().from(schema.users).where(eq(schema.users.id, userId)).limit(1);
+    if (payer && (isExemptFromSupport(payer) || isSupportActive(payer))) {
+      return { status: 409, detail: 'Your aangan pass covers this booking. Confirm it for free.' };
+    }
+    const [listing] = await db.select({ providerId: schema.listings.providerId })
+      .from(schema.listings).where(eq(schema.listings.id, booking.listingId)).limit(1);
+    if (listing && (await isListingHostLapsed(listing.providerId))) {
+      return { status: 409, detail: 'This listing is not taking bookings right now' };
+    }
     return null;
   }
 
@@ -209,7 +220,7 @@ async function settlePaymentOnce(payment: PaymentRow, gatewayPaymentId: string) 
   );
 
   // Booking settlement runs its own transaction and refund logic on the shared pool, so it cannot
-  // join this one. Legacy only: no new booking orders can be created any more. If the settlement
+  // join this one. If the settlement
   // throws, the paid flag is rolled back so the webhook's retry can run it again, rather than
   // being skipped as "already settled" for a payment whose booking was never confirmed.
   if (payment.flow === 'booking_commission') {
