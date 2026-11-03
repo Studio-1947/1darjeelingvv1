@@ -104,7 +104,7 @@ export default function HostPlanCard({ provider, user, onRenewed }: {
         <div className="min-w-0">
           <div className="text-[11px] font-bold uppercase tracking-widest text-ink-soft">{registrationPending ? t('pd.plan_activation_label') : t('pd.plan_label')}</div>
           <div className="mt-0.5 font-display font-extrabold text-lg text-ink">
-            {registrationPending ? t('pd.plan_activate_title') : lapsed ? t('pd.plan_lapsed_title') : t('pd.plan_valid_until', { date: until })}
+            {registrationPending ? t('pd.plan_activate_title') : lapsed ? t('pd.plan_lapsed_title') : (provider.approval_pending ? t('pd.plan_paid_until', { date: until }) : t('pd.plan_valid_until', { date: until }))}
           </div>
           <p className="text-sm text-ink-soft">
             {registrationPending

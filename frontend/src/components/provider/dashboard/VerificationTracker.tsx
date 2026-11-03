@@ -17,7 +17,8 @@ export type Verification = {
 };
 
 /** "+919800022233" → "+91 98000 22233". */
-const prettyPhone = (p: string) => (/^\+91\d{10}$/.test(p) ? `+91 ${p.slice(3, 8)} ${p.slice(8)}` : p);
+const NBSP = '\u00a0'; // keeps the number on one line
+const prettyPhone = (p: string) => (/^\+91\d{10}$/.test(p) ? `+91${NBSP}${p.slice(3, 8)}${NBSP}${p.slice(8)}` : p);
 
 const HEADLINES: Record<Headline, [string, string]> = {
   pay: ['verify.title_pay', 'verify.body_pay'],
@@ -88,7 +89,7 @@ export default function VerificationTracker({ verification, paid, phone, onOpen 
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <button type="button" onClick={onOpen} data-testid="verification-cta"
-          className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full bg-[#1F6656] text-white font-bold text-sm btn-hover">
+          className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full bg-pine text-white font-bold text-sm btn-hover">
           {cta} <ArrowRight size={14} />
         </button>
         {verification?.support_phone && (

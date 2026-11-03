@@ -246,7 +246,8 @@
     "active": "Active",
     "pending": "Payment pending",
     "dashboard_title": "Provider dashboard",
-    "pin_location": "Pin your exact location"
+    "pin_location": "Pin your exact location",
+    "pending_review": "Pending review"
   },
   "kyc": {
     "profileCompletion": "Profile completion",
@@ -959,7 +960,8 @@
     "configure_profile": "Configure Profile",
     "configure_cafe": "Configure Cafe",
     "configure_shop": "Configure Shop",
-    "post_update": "Post an update"
+    "post_update": "Post an update",
+    "plan_paid_until": "Plan paid until {{date}}"
   },
   "lf": {
     "edit_title": "Edit listing",

@@ -213,13 +213,24 @@ export default function ProviderDashboard() {
           >
             {t('pd.switch_traveller')}
           </button>
-          <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full font-bold text-xs ${active ? 'bg-pine/10 text-pine' : 'bg-gold/20 text-[#8a6b04]'}`}
+          {/* Paid but not yet approved reads "Pending review", as in the app; listings are still private. */}
+          <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full font-bold text-xs ${active && !provider.approval_pending ? 'bg-pine/10 text-pine' : 'bg-gold/20 text-[#8a6b04]'}`}
             data-testid="provider-status">
-            {active ? <CheckCircle2 size={14} /> : <Clock size={14} />} {active ? t('provider.active') : t('provider.pending')}
+            {active && !provider.approval_pending ? <CheckCircle2 size={14} /> : <Clock size={14} />}{' '}
+            {!active ? t('provider.pending') : provider.approval_pending ? t('provider.pending_review') : t('provider.active')}
           </span>
           {kycProfile?.kyc_status === 'verified' && <VerifiedBadge size="md" />}
         </div>
       </div>
+
+      {/* Verification tracker first: for a host waiting on approval it is the one thing to act on.
+          Plan paid, documents sent, team reviewing, live. Same as the app. */}
+      {provider.approval_pending && kycProfile && (
+        <div className="mb-6 [&>div]:mt-0">
+          <VerificationTracker verification={kycProfile.verification} paid={active} phone={user?.phone}
+            onOpen={() => setTab('profile')} />
+        </div>
+      )}
 
       <HostPlanCard provider={provider} user={user} onRenewed={async () => { await refresh(); await loadDashboard(); }} />
 
@@ -308,11 +319,6 @@ export default function ProviderDashboard() {
         )}
       </div>
 
-      {/* Verification tracker: plan paid, documents sent, team reviewing, live. Same as the app. */}
-      {provider.approval_pending && kycProfile && (
-        <VerificationTracker verification={kycProfile.verification} paid={active} phone={user?.phone}
-          onOpen={() => setTab('profile')} />
-      )}
 
       {/* Complete your profile (hosts who were live before approval was required) */}
       {!provider.approval_pending && kycProfile && kycProfile.completion_percent < 100 && (() => {
