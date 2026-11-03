@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
-import { PencilSimple, SignOut as LogOut, Storefront as Store, Compass, Phone, ArrowRight, Ticket, Calendar, XCircle, CircleNotch as Loader2 } from '@phosphor-icons/react';
+import { Heart, PencilSimple, SignOut as LogOut, Storefront as Store, Compass, Phone, ArrowRight, Ticket, Calendar, XCircle, CircleNotch as Loader2 } from '@phosphor-icons/react';
 import { useSeo } from '@/components/Seo';
 import BlockedPeople from '@/components/BlockedPeople';
 import SignOutButton from '@/components/SignOutButton';
@@ -194,7 +194,12 @@ export default function TouristDashboard() {
         <h2 className="font-display font-extrabold text-xl md:text-2xl text-ink mb-4 flex items-center gap-2">
           <Compass size={20} className="text-pine" /> {t('dashboard.quick_actions')}
         </h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          {/* Saved places: on phones the top bar's heart and menu are hidden, so this is the way in. */}
+          <Link to="/saved" data-testid="dashboard-saved" className="rounded-2xl p-4 bg-white border border-[var(--line)] btn-hover">
+            <div className="w-10 h-10 rounded-full bg-mist text-flag grid place-items-center mb-2"><Heart size={18} /></div>
+            <div className="font-display font-bold text-ink">{t('nav.saved')}</div>
+          </Link>
           <Link to="/homestays" className="rounded-2xl p-4 bg-white border border-[var(--line)] btn-hover">
             <div className="w-10 h-10 rounded-full bg-mist text-pine grid place-items-center mb-2"><Compass size={18} /></div>
             <div className="font-display font-bold text-ink">{t('dashboard.browse_stays')}</div>

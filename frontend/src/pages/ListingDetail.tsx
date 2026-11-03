@@ -156,6 +156,11 @@ export default function ListingDetail() {
           {t('business_gate.preview')}
         </div>
       )}
+      {item.not_live && (
+        <div className="bg-gold/20 text-ink text-sm font-semibold text-center px-4 py-2.5" data-testid="listing-not-live">
+          {t('business_gate.not_live')}
+        </div>
+      )}
       <DetailHero item={item} unit={unit} onShare={shareIt} />
 
       <AboutSection
