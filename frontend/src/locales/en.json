@@ -915,7 +915,7 @@
     "remove_route": "Remove {{route}}"
   },
   "pd": {
-    "plan_label": "Host plan",
+    "plan_label": "Membership card",
     "plan_activation_label": "Payment pending",
     "plan_activate_title": "Activate your host plan",
     "plan_activate_body": "Pay ₹499 for your first year to publish listings and start receiving booking requests.",
@@ -943,7 +943,7 @@
     "listings_live": "Listings live",
     "tab_bookings": "Bookings",
     "tab_listings": "Listings",
-    "tab_profile": "Business profile",
+    "tab_profile": "Documents",
     "no_bookings": "No bookings yet. Share your listing links to get your first booking.",
     "add_listing": "Add listing",
     "no_listings": "You have no active listings.",
@@ -961,7 +961,15 @@
     "configure_cafe": "Configure Cafe",
     "configure_shop": "Configure Shop",
     "post_update": "Post an update",
-    "plan_paid_until": "Plan paid until {{date}}"
+    "plan_paid_until": "Plan paid until {{date}}",
+    "plan_reviews": "{{count}} reviews · {{average}} average",
+    "plan_no_reviews": "No reviews yet",
+    "feedback_open": "Send feedback to the aangan team",
+    "feedback_title": "Feedback for the aangan team",
+    "feedback_ph": "Tell us what would make your dashboard better…",
+    "feedback_send": "Send feedback",
+    "feedback_sending": "Sending…",
+    "feedback_latest": "Latest feedback: {{status}}"
   },
   "lf": {
     "edit_title": "Edit listing",

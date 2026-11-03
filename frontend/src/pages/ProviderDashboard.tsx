@@ -3,9 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
-import { CheckCircle as CheckCircle2, Clock, Wallet, CalendarCheck, Users, ListBullets as LayoutList, Phone, ChatCircle as MessageCircle, ArrowRight, ArrowSquareOut as ExternalLink, X, Upload, Plus, Trash as Trash2, PencilSimple as Edit, Pencil, Star, MapPin, Car, PaperPlaneTilt, Crown, TrendUp } from '@phosphor-icons/react';
+import { CheckCircle as CheckCircle2, Clock, Wallet, CalendarCheck, Users, Phone, ArrowRight, ArrowSquareOut as ExternalLink, X, Upload, Plus, Trash as Trash2, Pencil, Star, Car, PaperPlaneTilt } from '@phosphor-icons/react';
 import ListingFormModal from '@/components/ListingFormModal';
-import { StatCard } from '@/components/provider/dashboard/widgets';
 import { Insight } from '@/components/provider/dashboard/Insight';
 import BookingCard from '@/components/provider/dashboard/BookingCard';
 import EditListingModal from '@/components/provider/dashboard/EditListingModal';
@@ -152,6 +151,7 @@ export default function ProviderDashboard() {
     await loadDashboard();
   };
 
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   const sendFeedback = async (event: React.FormEvent) => {
     event.preventDefault();
     if (feedbackMessage.trim().length < 10) return;
@@ -232,8 +232,6 @@ export default function ProviderDashboard() {
         </div>
       )}
 
-      <HostPlanCard provider={provider} user={user} onRenewed={async () => { await refresh(); await loadDashboard(); }} />
-
       <section className={`mb-6 rounded-3xl border p-5 md:p-7 ${accentClasses.split(' ').slice(3).join(' ')}`} data-testid={`dashboard-${accent}`}>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -252,22 +250,11 @@ export default function ProviderDashboard() {
           <Insight icon={Wallet} label={isGuide ? 'Amount earned' : 'Booking value'} value={`₹${(activeListing ? scopedRevenue : stats.revenue || 0).toLocaleString('en-IN')}`} accent={accent} />
         </div>
         {listings.length > 1 && <div className="mt-5 flex gap-2 overflow-x-auto pb-1" aria-label="Choose a listing to manage"><button onClick={() => setActiveListingId(null)} className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-bold ${!activeListingId ? 'bg-ink text-white' : 'bg-white text-ink border border-[var(--line)]'}`}>All listings</button>{listings.map((listing: any) => <button key={listing.id} onClick={() => setActiveListingId(listing.id)} className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-bold ${activeListingId === listing.id ? 'bg-ink text-white' : 'bg-white text-ink border border-[var(--line)]'}`}>{listing.title} · {listing.type}</button>)}</div>}
-        {isDriver && <p className="mt-4 flex items-center gap-2 text-sm text-ink-soft"><MapPin size={16} /> Distance tracking will be recorded when ride completion is added to the driver booking flow.</p>}
       </section>
 
-      <section className="mb-6 grid gap-4 lg:grid-cols-[1.1fr_.9fr]">
-        <div className="rounded-2xl border border-[var(--line)] bg-white p-5">
-          <div className="flex items-center gap-2"><Crown size={20} className={isGuide ? 'text-blue-700' : isDriver ? 'text-rose-700' : 'text-emerald-700'} /><h2 className="font-display text-lg font-extrabold text-ink">Membership card</h2></div>
-          <p className="mt-2 text-sm text-ink-soft">{provider.plan_active ? `Active until ${new Date(provider.plan_expires_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}.` : 'Activate your yearly host membership to publish and receive bookings.'}</p>
-          <div className="mt-4 flex items-center gap-2 text-sm font-bold text-ink"><TrendUp size={16} /> {hostStats?.review_count || 0} reviews · {hostStats?.average_rating || 'New'} average rating</div>
-        </div>
-        <form onSubmit={sendFeedback} className="rounded-2xl border border-[var(--line)] bg-white p-5">
-          <div className="flex items-center gap-2"><MessageCircle size={20} className="text-flag" /><h2 className="font-display text-lg font-extrabold text-ink">Feedback for the aangan team</h2></div>
-          <textarea value={feedbackMessage} onChange={(event) => setFeedbackMessage(event.target.value)} minLength={10} maxLength={2000} required placeholder="Tell us what would make your dashboard better…" className="mt-3 min-h-20 w-full rounded-xl border border-[var(--line)] p-3 text-sm outline-none focus:border-pine" />
-          <button disabled={sendingFeedback} className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-pine px-4 py-2 text-xs font-bold text-white btn-hover disabled:opacity-60">{sendingFeedback ? 'Sending…' : 'Send feedback'} <PaperPlaneTilt size={14} /></button>
-          {feedback[0] && <p className="mt-3 text-xs text-ink-soft">Latest feedback: {feedback[0].status}</p>}
-        </form>
-      </section>
+      {/* The membership card: the yearly host plan, with reviews. One card, not two. */}
+      <HostPlanCard provider={provider} user={user} reviews={{ count: hostStats?.review_count || 0, average: hostStats?.average_rating || null }}
+        onRenewed={async () => { await refresh(); await loadDashboard(); }} />
 
       {/* The business profile (pages/ProviderProfile.tsx), with what is still needed for approval. */}
       <Link
@@ -275,8 +262,8 @@ export default function ProviderDashboard() {
         data-testid="dashboard-profile-card"
         className={`block rounded-2xl border p-5 btn-hover ${provider?.profile_missing?.length ? 'border-[#F0B90B] bg-[#FFF8E1]' : 'border-[var(--line)] bg-white'}`}
       >
-        <div className="flex items-center justify-between gap-4">
-          <div>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+          <div className="min-w-0">
             <p className="font-display font-extrabold text-lg text-ink">
               {provider?.profile_missing?.length ? t('hostProfile.complete_title') : t('hostProfile.title')}
             </p>
@@ -293,32 +280,6 @@ export default function ProviderDashboard() {
           </span>
         </div>
       </Link>
-
-      {/* Stats grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-        <StatCard label={t('pd.total_bookings')} value={stats.total} icon={LayoutList} tone="pine" />
-        <StatCard label={t('pd.confirmed')} value={stats.confirmed} sub={t('pd.pending_sub', { count: stats.pending })} icon={CalendarCheck} tone="flag" />
-        <StatCard label={t('pd.revenue')} value={`₹${stats.revenue.toLocaleString('en-IN')}`} sub={t('pd.revenue_sub')} icon={Wallet} tone="gold" />
-        {listings.length > 0 ? (
-          <button
-            onClick={() => setSelectedListing(listings[0])}
-            className="text-left w-full rounded-2xl p-4 md:p-5 text-white bg-gradient-to-br from-ink to-[#374a41] hover:shadow-lg transition-all duration-200 flex flex-col justify-between"
-            data-testid="edit-listing-stat-card"
-          >
-            <div className="flex items-center gap-2 opacity-90">
-              <Edit size={16} />
-              <span className="text-[11px] uppercase tracking-widest font-bold">{t('pd.edit_your_listing')}</span>
-            </div>
-            <div className="mt-3 font-display font-extrabold text-lg md:text-xl leading-tight flex items-center justify-between w-full">
-              <span>{t(CONFIGURE_LABEL_KEY[provider.business_type] || 'pd.configure_stay')}</span>
-              <ArrowRight size={18} className="opacity-90" />
-            </div>
-          </button>
-        ) : (
-          <StatCard label={t('pd.listings_live')} value={0} icon={Users} tone="ink" />
-        )}
-      </div>
-
 
       {/* Complete your profile (hosts who were live before approval was required) */}
       {!provider.approval_pending && kycProfile && kycProfile.completion_percent < 100 && (() => {
@@ -358,14 +319,14 @@ export default function ProviderDashboard() {
       })()}
 
       {/* Tabs */}
-      <div className="mt-8 flex items-center gap-2 border-b border-[var(--line)]">
+      <div className="mt-8 flex items-center gap-1 sm:gap-2 border-b border-[var(--line)] overflow-x-auto no-scrollbar">
         {[
           { k: 'bookings', label: t('pd.tab_bookings') },
           { k: 'listings', label: t('pd.tab_listings') },
           { k: 'profile', label: t('pd.tab_profile') },
         ].map(({ k, label }) => (
           <button key={k} onClick={() => setTab(k)} data-testid={`tab-${k}`}
-            className={`px-4 py-2.5 font-bold text-sm ${tab === k ? 'text-flag border-b-2 border-flag -mb-px' : 'text-ink-soft hover:text-ink'}`}>
+            className={`shrink-0 whitespace-nowrap px-3 sm:px-4 py-2.5 font-bold text-sm ${tab === k ? 'text-flag border-b-2 border-flag -mb-px' : 'text-ink-soft hover:text-ink'}`}>
             {label}
           </button>
         ))}
@@ -465,6 +426,29 @@ export default function ProviderDashboard() {
           </div>
         </div>
       )}
+
+      {/* Feedback for the aangan team (board: host dashboard "Feedback"), closed until asked for. */}
+      <div className="mt-10 border-t border-[var(--line)] pt-6" data-testid="host-feedback">
+        {!feedbackOpen ? (
+          <button type="button" onClick={() => setFeedbackOpen(true)} data-testid="host-feedback-open"
+            className="inline-flex items-center gap-1.5 text-sm font-bold text-pine">
+            {t('pd.feedback_open')} <ArrowRight size={14} />
+          </button>
+        ) : (
+          <form onSubmit={sendFeedback} className="max-w-xl">
+            <h2 className="font-display text-lg font-extrabold text-ink">{t('pd.feedback_title')}</h2>
+            <textarea value={feedbackMessage} onChange={(event) => setFeedbackMessage(event.target.value)} minLength={10} maxLength={2000} required
+              placeholder={t('pd.feedback_ph')} className="mt-3 min-h-24 w-full rounded-xl border border-[var(--line)] bg-white p-3 text-sm outline-none focus:border-pine" />
+            <div className="mt-2 flex items-center gap-3">
+              <button disabled={sendingFeedback} className="inline-flex items-center gap-1.5 rounded-full bg-pine px-5 text-sm font-bold text-white btn-hover disabled:opacity-60">
+                {sendingFeedback ? t('pd.feedback_sending') : t('pd.feedback_send')} <PaperPlaneTilt size={14} />
+              </button>
+              <button type="button" onClick={() => setFeedbackOpen(false)} className="text-sm font-bold text-ink-soft">{t('owners.cancel')}</button>
+            </div>
+            {feedback[0] && <p className="mt-3 text-xs text-ink-soft">{t('pd.feedback_latest', { status: feedback[0].status })}</p>}
+          </form>
+        )}
+      </div>
 
       {selectedListing && (
         <EditListingModal

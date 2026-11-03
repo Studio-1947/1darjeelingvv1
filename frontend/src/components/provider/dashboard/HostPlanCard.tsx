@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { CalendarCheck, WarningCircle } from '@phosphor-icons/react';
+import { CalendarCheck, Star, WarningCircle } from '@phosphor-icons/react';
 import { createPaymentOrder, completeMockPayment, payWithRazorpay } from '@/lib/api';
 import MockPaymentModal from '@/components/MockPaymentModal';
 
@@ -21,9 +21,11 @@ const DAY_MS = 24 * 60 * 60 * 1000;
  * are hidden from travellers and stop taking bookings (the server enforces that, see
  * backend/src/lib/hostPlan.ts), and this card says so plainly.
  */
-export default function HostPlanCard({ provider, user, onRenewed }: {
+export default function HostPlanCard({ provider, user, reviews, onRenewed }: {
   provider: any;
   user: any;
+  /** Shown on the card, which is the board's "Membership card" on the host dashboard. */
+  reviews?: { count: number; average: number | string | null };
   onRenewed: () => Promise<void> | void;
 }) {
   const { t } = useTranslation();
@@ -115,6 +117,12 @@ export default function HostPlanCard({ provider, user, onRenewed }: {
                 ? t('pd.plan_ends_soon', { count: Math.max(daysLeft, 0) })
                 : t('pd.plan_renew_body')}
           </p>
+          {reviews && !registrationPending && (
+            <p className="mt-2 inline-flex items-center gap-1.5 text-sm font-bold text-ink" data-testid="host-plan-reviews">
+              <Star size={15} weight="fill" className="text-gold" />
+              {reviews.count ? t('pd.plan_reviews', { count: reviews.count, average: reviews.average }) : t('pd.plan_no_reviews')}
+            </p>
+          )}
           {err && <p className="mt-1 text-sm font-semibold text-flag">{err}</p>}
         </div>
       </div>
@@ -126,7 +134,7 @@ export default function HostPlanCard({ provider, user, onRenewed }: {
           onClick={renew}
           disabled={busy}
           data-testid="host-plan-renew"
-          className="inline-flex items-center justify-center rounded-full bg-pine text-white font-bold text-sm px-5 py-2.5 disabled:opacity-60 hover:opacity-90 transition-opacity"
+          className="inline-flex items-center justify-center rounded-full bg-pine text-white font-bold text-sm px-5 disabled:opacity-60 btn-hover"
         >
           {busy ? t('pd.plan_renewing') : registrationPending ? t('pd.plan_activate_cta') : t('pd.plan_renew_cta')}
         </button>
