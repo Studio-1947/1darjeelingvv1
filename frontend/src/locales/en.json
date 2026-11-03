@@ -297,7 +297,7 @@
     "checkout": "Check-out",
     "guests": "Guests",
     "notes": "Notes (optional)",
-    "fee_note": "Booking on aangan is free.",
+    "fee_note": "Free with the aangan pass (₹12 a year), or ₹1 for this booking.",
     "pay_confirm": "Confirm booking",
     "success": "Booking confirmed!",
     "status": {
