@@ -6,6 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import { PencilSimple, SignOut as LogOut, Storefront as Store, Compass, Phone, ArrowRight, Ticket, Calendar, XCircle, CircleNotch as Loader2 } from '@phosphor-icons/react';
 import { useSeo } from '@/components/Seo';
 import BlockedPeople from '@/components/BlockedPeople';
+import SignOutButton from '@/components/SignOutButton';
 import TripStats, { tripBuckets, type TripFilter } from '@/components/TripStats';
 import TripCard from '@/components/TripCard';
 import TravellerPanels from '@/components/TravellerPanels';
@@ -88,7 +89,7 @@ export default function TouristDashboard() {
           </div>
         </div>
         <button onClick={() => { logout(); nav('/'); }} data-testid="tourist-logout"
-          className="hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[var(--line)] text-ink font-semibold text-sm btn-hover">
+          className="hidden lg:inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[var(--line)] text-ink font-semibold text-sm btn-hover">
           <LogOut size={14} /> {t('nav.logout')}
         </button>
       </div>
@@ -225,6 +226,8 @@ export default function TouristDashboard() {
       </div>
 
       <BlockedPeople />
+
+      <SignOutButton />
     </div>
   );
 }

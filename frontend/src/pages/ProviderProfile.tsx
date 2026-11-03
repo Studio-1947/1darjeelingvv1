@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { CheckCircle, WarningCircle, ArrowRight, MagnifyingGlass } from '@phosphor-icons/react';
+import SignOutButton from '@/components/SignOutButton';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { uploadImage, uploadImages } from '@/lib/uploadImage';
@@ -593,6 +594,8 @@ export default function ProviderProfile() {
           <button type="button" onClick={save} disabled={busy} data-testid="profile-save" className="inline-flex items-center gap-2 px-6 rounded-full whitespace-nowrap bg-pine text-white font-bold btn-hover disabled:opacity-60">{busy ? t('common.loading') : t('hostProfile.save')} <ArrowRight size={16} /></button>
         </div>}
       </div>
+
+      <SignOutButton />
     </div>
 
     {/* Live preview of the host's mini website (the board's "profiles look like websites"). */}
