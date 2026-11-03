@@ -183,6 +183,13 @@
       "when": 1793681497469,
       "tag": "0025_provider_members",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1793692131893,
+      "tag": "0026_payment_breakup",
+      "breakpoints": true
     }
   ]
 }

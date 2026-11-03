@@ -236,6 +236,9 @@ export const payments = pgTable('payments', {
   flow: text('flow').notNull(),
   referenceId: text('reference_id').notNull(),
   amount: integer('amount').notNull(),
+  // Base, GST, platform fee and total in paise at the time of the order (lib/pricing.ts). Null on
+  // donations and on orders made before the breakup existed.
+  breakup: jsonb('breakup').$type<{ base: number; gst: number; platform_fee: number; total: number; gst_rate: number; platform_fee_rate: number }>(),
   orderId: text('order_id').unique().notNull(),
   status: text('status').notNull(),
   paymentId: text('payment_id'),

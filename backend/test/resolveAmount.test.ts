@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { resolveAmount } from '../src/lib/payments';
 import { AMOUNTS, DONATION_MIN_PAISE, DONATION_MAX_PAISE } from '../src/config';
+import { priceBreakup } from '../src/lib/pricing';
 
 function ok(result: ReturnType<typeof resolveAmount>): number {
   if ('error' in result) {
@@ -18,29 +19,28 @@ function err(result: ReturnType<typeof resolveAmount>) {
 
 describe('resolveAmount  fixed-price flows', () => {
   it('takes the amount from the server-side map', () => {
-    expect(ok(resolveAmount('provider_registration', {}))).toBe(AMOUNTS.provider_registration);
-    expect(ok(resolveAmount('provider_renewal', {}))).toBe(AMOUNTS.provider_renewal);
-    expect(ok(resolveAmount('platform_support', {}))).toBe(AMOUNTS.platform_support);
+    expect(ok(resolveAmount('provider_registration', {}))).toBe(priceBreakup(AMOUNTS.provider_registration).total);
+    expect(ok(resolveAmount('provider_renewal', {}))).toBe(priceBreakup(AMOUNTS.provider_renewal).total);
+    expect(ok(resolveAmount('platform_support', {}))).toBe(priceBreakup(AMOUNTS.platform_support).total);
   });
 
-  it('charges the current prices: ₹1 pass, ₹499 first host year, ₹999 renewal', () => {
-    expect(ok(resolveAmount('platform_support', {}))).toBe(100);
-    expect(ok(resolveAmount('provider_registration', {}))).toBe(49900);
-    expect(ok(resolveAmount('provider_renewal', {}))).toBe(99900);
+  it('charges base + 18% GST + 2% platform fee: ₹14.40 pass, ₹598.80 first host year, ₹1,198.80 renewal', () => {
+    expect(ok(resolveAmount('platform_support', {}))).toBe(1440);
+    expect(ok(resolveAmount('provider_registration', {}))).toBe(59880);
+    expect(ok(resolveAmount('provider_renewal', {}))).toBe(119880);
   });
 
   it('ignores an amount supplied by the client', () => {
     // The whole point of the map. A client that names its own price for a fixed flow is
     // either confused or hostile; either way the body is not consulted.
-    expect(ok(resolveAmount('platform_support', { amount: 1 }))).toBe(100);
-    expect(ok(resolveAmount('provider_registration', { amount: 1 }))).toBe(49900);
-    expect(ok(resolveAmount('provider_renewal', { amount: 1 }))).toBe(99900);
+    expect(ok(resolveAmount('platform_support', { amount: 1 }))).toBe(1440);
+    expect(ok(resolveAmount('provider_registration', { amount: 1 }))).toBe(59880);
+    expect(ok(resolveAmount('provider_renewal', { amount: 1 }))).toBe(119880);
   });
 
-  it('refuses the retired booking commission with 410, not a generic 400', () => {
-    const e = err(resolveAmount('booking_commission', {}));
-    expect(e.status).toBe(410);
-    expect(e.detail).toMatch(/checkout/);
+  it('prices the ₹1 booking fee (₹1.20 with GST and fee) from the server, not the body', () => {
+    expect(ok(resolveAmount('booking_commission', {}))).toBe(120);
+    expect(ok(resolveAmount('booking_commission', { amount: 1 }))).toBe(120);
   });
 
   it('rejects an unknown flow', () => {

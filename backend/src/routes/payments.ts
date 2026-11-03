@@ -5,12 +5,13 @@ import { db, schema } from '../db';
 import { eq, and, ne } from 'drizzle-orm';
 import { authenticateToken } from '../middleware/auth';
 import { rateLimiter } from '../middleware/rateLimiter';
-import { AMOUNTS, HOST_RENEWAL_WINDOW_DAYS, MOCK_PAYMENTS, rzpClient, RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, RAZORPAY_WEBHOOK_SECRET, IS_PROD, log } from '../config';
-import { computeSupportPassExpiry } from '../lib/support';
-import { computeHostPlanExpiry, isHostPlanLive } from '../lib/hostPlan';
+import { AMOUNTS, GST_RATE_PERCENT, PLATFORM_FEE_PERCENT, HOST_RENEWAL_WINDOW_DAYS, MOCK_PAYMENTS, rzpClient, RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, RAZORPAY_WEBHOOK_SECRET, IS_PROD, log } from '../config';
+import { computeSupportPassExpiry, isExemptFromSupport, isSupportActive } from '../lib/support';
+import { computeHostPlanExpiry, isHostPlanLive, isListingHostLapsed } from '../lib/hostPlan';
 import { serializeProvider } from '../lib/providerShape';
 import { settleBookingConfirmation } from '../lib/bookingConfirmation';
 import { resolveAmount } from '../lib/payments';
+import { priceList } from '../lib/pricing';
 
 const router = Router();
 
@@ -73,12 +74,11 @@ async function handlePaymentSuccess(
       .returning();
     return serializeProvider(renewed);
   } else if (flow === 'booking_commission') {
-    // Legacy: bookings are free now and confirm through POST /bookings/:id/checkout. This branch
-    // stays only so an order created before that change still confirms its booking when it
-    // settles, and refunds it if the dates went to someone else first.
+    // The ₹1 convenience fee of a traveller without the pass: paying it confirms the booking,
+    // and refunds it if the dates went to someone else first.
     return settleBookingConfirmation(referenceId, userId, { paid: true });
   } else if (flow === 'platform_support') {
-    // The ₹1 annual tourist pass. A duplicate settlement never reaches this point because the
+    // The ₹12 yearly aangan pass. A duplicate settlement never reaches this point because the
     // payment record is settled idempotently before entitlements are granted.
     const [u] = await tx.select().from(schema.users).where(eq(schema.users.id, userId)).limit(1);
     if (!u) return null;
@@ -153,6 +153,18 @@ async function assertOwnsReference(
     if (booking.userId !== userId) {
       return { status: 403, detail: 'You can only pay for your own booking' };
     }
+    if (booking.status === 'confirmed') return { status: 409, detail: 'This booking is already confirmed' };
+    if (booking.status === 'cancelled') return { status: 409, detail: 'This booking was cancelled' };
+    // A pass holder confirms free; charging them ₹1 as well would be taking money twice.
+    const [payer] = await db.select().from(schema.users).where(eq(schema.users.id, userId)).limit(1);
+    if (payer && (isExemptFromSupport(payer) || isSupportActive(payer))) {
+      return { status: 409, detail: 'Your aangan pass covers this booking. Confirm it for free.' };
+    }
+    const [listing] = await db.select({ providerId: schema.listings.providerId })
+      .from(schema.listings).where(eq(schema.listings.id, booking.listingId)).limit(1);
+    if (listing && (await isListingHostLapsed(listing.providerId))) {
+      return { status: 409, detail: 'This listing is not taking bookings right now' };
+    }
     return null;
   }
 
@@ -209,7 +221,7 @@ async function settlePaymentOnce(payment: PaymentRow, gatewayPaymentId: string) 
   );
 
   // Booking settlement runs its own transaction and refund logic on the shared pool, so it cannot
-  // join this one. Legacy only: no new booking orders can be created any more. If the settlement
+  // join this one. If the settlement
   // throws, the paid flag is rolled back so the webhook's retry can run it again, rather than
   // being skipped as "already settled" for a payment whose booking was never confirmed.
   if (payment.flow === 'booking_commission') {
@@ -293,6 +305,23 @@ async function settlePaymentOnce(payment: PaymentRow, gatewayPaymentId: string) 
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
  */
+/**
+ * @openapi
+ * /payments/prices:
+ *   get:
+ *     summary: What each fixed payment costs, with its breakup
+ *     description: >
+ *       Base price, 18% GST and the 2% platform fee (both on the base) and the total, in paise,
+ *       for the aangan pass, the ₹1 booking fee and the host plan. Public, so both apps can show
+ *       the breakup before anyone signs in or pays.
+ *     tags: [Payments]
+ *     responses:
+ *       200: { description: "`{ gst_rate, platform_fee_rate, prices: { <flow>: { base, gst, platform_fee, total } } }`" }
+ */
+router.get('/prices', (_req: Request, res: Response) => {
+  res.json({ gst_rate: GST_RATE_PERCENT, platform_fee_rate: PLATFORM_FEE_PERCENT, prices: priceList() });
+});
+
 // Create order
 router.post('/order', authenticateToken, async (req: Request, res: Response) => {
   const { flow, reference_id } = req.body;
@@ -309,6 +338,7 @@ router.post('/order', authenticateToken, async (req: Request, res: Response) => 
     return res.status(resolved.error.status).json({ detail: resolved.error.detail });
   }
   const { amount } = resolved;
+  const breakup = resolved.breakup ?? null;
 
   // Bind the reference to the caller at the point it enters the system. §1.5 stopped an order
   // being *redeemed* against someone else's reference, but without this an attacker could simply
@@ -327,6 +357,7 @@ router.post('/order', authenticateToken, async (req: Request, res: Response) => 
       flow,
       referenceId: reference_id,
       amount,
+      breakup,
       orderId: mockOrderId,
       status: 'created',
       mock: true,
@@ -337,7 +368,8 @@ router.post('/order', authenticateToken, async (req: Request, res: Response) => 
       mock: true,
       key_id: 'mock_gateway',
       order: { id: mockOrderId, amount, currency: 'INR' },
-      amount
+      amount,
+      breakup
     });
   }
 
@@ -360,6 +392,7 @@ router.post('/order', authenticateToken, async (req: Request, res: Response) => 
       flow,
       referenceId: reference_id,
       amount,
+      breakup,
       orderId: order.id,
       status: 'created',
       mock: false,
@@ -370,7 +403,8 @@ router.post('/order', authenticateToken, async (req: Request, res: Response) => 
       mock: false,
       key_id: RAZORPAY_KEY_ID,
       order,
-      amount
+      amount,
+      breakup
     });
   } catch (err: any) {
     log.error(`Razorpay order failed: ${err}`);

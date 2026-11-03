@@ -5,7 +5,7 @@ import { Storefront, ArrowRight } from '@phosphor-icons/react';
 import { useAuth } from '@/context/AuthContext';
 
 /**
- * Pages for travelling — browsing, booking, saved places, trips, the ₹1 pass. A host on the
+ * Pages for travelling — browsing, booking, saved places, trips, the ₹12 pass. A host on the
  * business side sees only their own business, so here they get a clear way across instead of the
  * page: switch to Traveller (and stay on this page), or go back to their dashboard.
  */

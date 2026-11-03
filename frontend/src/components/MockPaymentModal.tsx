@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { X, Shield, Lock, CheckCircle as CheckCircle2, CurrencyInr as IndianRupee, CircleNotch as Loader2 } from '@phosphor-icons/react';
 import Logo from '@/components/Logo';
+import { rupees } from '@/lib/prices';
 
 /**
  * Dummy payment gateway modal - mimics a real Razorpay-style checkout
@@ -18,7 +19,8 @@ export default function MockPaymentModal({ open, onClose, amount, title, descrip
 
   if (!open) return null;
 
-  const rupees = (amount || 0) / 100;
+  // ₹598.80, not ₹599: totals carry GST and the platform fee, so paise matter.
+  const shown = rupees(amount || 0).replace(/^₹/, '');
 
   const handlePay = async () => {
     setBusy(true);
@@ -55,7 +57,7 @@ export default function MockPaymentModal({ open, onClose, amount, title, descrip
           <div className="text-xs uppercase tracking-widest text-ink-soft font-bold">{title ?? t('pay.title')}</div>
           <div className="mt-1 flex items-baseline gap-1">
             <IndianRupee size={22} className="text-ink" />
-            <span className="font-display font-extrabold text-4xl text-ink leading-none">{rupees.toFixed(rupees < 10 ? 0 : 0)}</span>
+            <span className="font-display font-extrabold text-4xl text-ink leading-none">{shown}</span>
             <span className="text-sm text-ink-soft ml-2">{description}</span>
           </div>
 
@@ -108,7 +110,7 @@ export default function MockPaymentModal({ open, onClose, amount, title, descrip
             className="mt-6 w-full py-3 rounded-full bg-pine text-white font-extrabold btn-hover disabled:opacity-70 flex items-center justify-center gap-2">
             {done ? (<><CheckCircle2 size={18} /> {t('pay.success')}</>) :
              busy ? (<><Loader2 size={18} className="animate-spin" /> {t('common.processing')}</>) :
-             (<>{t('pay.pay_amount', { amount: rupees.toFixed(0) })}</>)}
+             (<>{t('pay.pay_amount', { amount: shown })}</>)}
           </button>
 
           <p className="mt-3 text-[10px] text-center text-ink-soft flex items-center justify-center gap-1"><Lock size={10} /> {t('pay.footer')}</p>

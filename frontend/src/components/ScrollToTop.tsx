@@ -36,7 +36,7 @@ export default function ScrollToTop() {
 
   // Listing pages and the business profile keep their own bar at the bottom of a phone screen
   // (price + directions, save + preview); the round button would sit on top of it there.
-  const ownBottomBar = /^\/(listing|stay|business)\/|^\/provider\/profile/.test(pathname);
+  const ownBottomBar = /^\/(listing|stay|business)\/|^\/provider\//.test(pathname);
 
   return (
     <button

@@ -344,17 +344,24 @@ export const rzpClient = RAZORPAY_KEY_SECRET ? new Razorpay({
   key_secret: RAZORPAY_KEY_SECRET
 }) : null;
 
-// Fixed prices, in paise. `donation` is deliberately absent: its presence here would imply a
+// Every fixed price below is the BASE. On top of it the payer is charged 18% GST and a 2% platform
+// fee, both worked out on the base (lib/pricing.ts), e.g. ₹499 + ₹89.82 + ₹9.98 = ₹598.80.
+export const GST_RATE_PERCENT = 18;
+export const PLATFORM_FEE_PERCENT = 2;
+
+// Fixed base prices, in paise. `donation` is deliberately absent: its presence here would imply a
 // fixed price, and the whole point of a donation is that the giver chooses. See lib/payments.ts.
 //
-//   platform_support       ₹1    one year — the tourist pass
+//   platform_support       ₹12   one year — the aangan pass: every booking confirms free
+//   booking_commission     ₹1    the convenience fee on one booking, for a traveller without a pass
 //   provider_registration  ₹499  a host's first year (launch price; usually ₹999)
 //   provider_renewal       ₹999  every year after that
 //
-// `booking_commission` is gone: bookings are free and confirm through POST /bookings/:id/checkout.
-// Its settlement branch in payments.ts stays so an order created before the change still settles.
+// The board ("Booking Flow"): with the pass you can book everything; without it, take the pass or
+// pay ₹1 per service. The flow keeps its old name so refunds of earlier orders still match.
 export const AMOUNTS: Record<string, number> = {
-  platform_support: 100,
+  platform_support: 1200,
+  booking_commission: 100,
   provider_registration: 49900,
   provider_renewal: 99900,
 };

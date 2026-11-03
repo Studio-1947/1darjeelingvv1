@@ -77,6 +77,8 @@ export function useBookingFlow(item: any, id: string) {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
   const [confirm, setConfirm] = useState(null); // { open, data }
+  // The booking waiting on the ₹1 fee or the pass, for a traveller without the pass.
+  const [feeFor, setFeeFor] = useState<string | null>(null);
 
   // Moving between listings has to start a fresh form; the hook is not remounted
   // by the router, so without this the second listing would inherit the first
@@ -156,11 +158,21 @@ export function useBookingFlow(item: any, id: string) {
         guests: Number(form.guests) || 1,
         notes: form.notes,
       });
-      // Bookings are free: checkout confirms under the server's listing lock (so two guests
-      // cannot both take the same nights) and notifies both sides. No payment step.
-      const { data: checkout } = await api.post(`/bookings/${data.booking.id}/checkout`);
-      clearDraft(id);
-      setConfirm({ open: true, data: checkout.booking });
+      // Checkout confirms under the server's listing lock (so two guests cannot both take the
+      // same nights). Free with the aangan pass; without it the server answers 402 fee_required
+      // and the traveller picks ₹1 for this booking or the ₹12 pass (BookingFeeModal).
+      try {
+        const { data: checkout } = await api.post(`/bookings/${data.booking.id}/checkout`);
+        clearDraft(id);
+        setConfirm({ open: true, data: checkout.booking });
+      } catch (e) {
+        if (e?.response?.status === 402 && e?.response?.data?.code === 'fee_required') {
+          clearDraft(id);
+          setFeeFor(data.booking.id);
+          return;
+        }
+        throw e;
+      }
     } catch (e) {
       setMsg(e?.response?.data?.detail || e.message || t('booking.failed'));
     } finally {
@@ -186,6 +198,7 @@ export function useBookingFlow(item: any, id: string) {
     busy,
     msg, setMsg,
     confirm, setConfirm,
+    feeFor, setFeeFor,
     doBook,
   };
 }

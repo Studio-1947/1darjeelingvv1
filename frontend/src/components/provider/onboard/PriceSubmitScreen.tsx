@@ -1,8 +1,10 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Screen, Eyebrow } from './layout';
+import PriceBreakup from '@/components/PriceBreakup';
+import { rupees, usePrice } from '@/lib/prices';
 
-/** Final onboarding screen: starting price, the ₹499 first-year fee note, submit + back. */
+/** Final onboarding screen: starting price, the first-year plan with its GST and fee breakup, submit + back. */
 export default function PriceSubmitScreen({
   tone = 'white',
   n,
@@ -47,6 +49,7 @@ export default function PriceSubmitScreen({
   msg: string;
 }) {
   const { t } = useTranslation();
+  const plan = usePrice('provider_registration');
   return (
     <Screen tone={tone}>
       <Eyebrow n={n}>{heading}</Eyebrow>
@@ -106,12 +109,13 @@ export default function PriceSubmitScreen({
 
         <div className={wide ? 'lg:col-span-1' : 'lg:col-span-3'}>
           <div className="mist-panel p-6 space-y-4">
+            <PriceBreakup breakup={plan} label={t('price.host_first_year')} />
             <button
               onClick={onSubmit}
               disabled={disabled}
               className="w-full py-4 rounded-full bg-pine text-white font-extrabold text-base btn-hover disabled:opacity-60"
             >
-              {busy ? t('common.processing') : t('ob.submit_pay')}
+              {busy ? t('common.processing') : t('ob.submit_pay', { total: rupees(plan.total) })}
             </button>
             <button
               type="button"

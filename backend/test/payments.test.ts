@@ -57,8 +57,8 @@ describe('payments ownership', () => {
     expect(res.status).toBe(400);
   });
 
-  it('refuses new booking-commission orders now that bookings are free', async () => {
-    const { token } = await registerUser({ name: 'Old Client' });
+  it('turns the ₹1 booking fee away from a pass holder, whose bookings confirm free', async () => {
+    const { token } = await registerUser({ name: 'Pass Holder' });
     const listing = await createListing();
     const bookingId = await createBooking(token, listing.id);
 
@@ -67,8 +67,8 @@ describe('payments ownership', () => {
       .set('Authorization', `Bearer ${token}`)
       .send({ flow: 'booking_commission', reference_id: bookingId });
 
-    expect(res.status).toBe(410);
-    expect(res.body.detail).toMatch(/checkout/);
+    expect(res.status).toBe(409);
+    expect(res.body.detail).toMatch(/pass covers/);
   });
 
   it('blocks a different user from completing someone else\'s mock payment', async () => {
