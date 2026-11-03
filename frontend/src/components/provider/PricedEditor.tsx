@@ -6,10 +6,13 @@ export type Priced = { name: string; price: number | ''; unit: string };
 const input = 'w-full px-3.5 py-2.5 rounded-xl border border-[var(--line)] bg-white outline-none text-sm text-ink';
 
 /** Rows of a name, a price and a unit: rooms, food, a guide's services. */
-export default function PricedEditor({ rows, onChange, units, unitLabel, namePlaceholder, addLabel, testid }: {
+export default function PricedEditor({ rows, onChange, units, unitLabel, namePlaceholder, addLabel, testid, max, fullNote }: {
   rows: Priced[]; onChange: (r: Priced[]) => void; units: string[]; unitLabel: (u: string) => string;
   namePlaceholder: string; addLabel: string; testid: string;
+  /** Most rows allowed (a shop's goods stop at ten); the add button gives way to `fullNote`. */
+  max?: number; fullNote?: string;
 }) {
+  const full = max !== undefined && rows.length >= max;
   const set = (i: number, patch: Partial<Priced>) => onChange(rows.map((r, j) => (j === i ? { ...r, ...patch } : r)));
   return (
     <div className="space-y-2" data-testid={testid}>
@@ -28,10 +31,14 @@ export default function PricedEditor({ rows, onChange, units, unitLabel, namePla
           </button>
         </div>
       ))}
-      <button type="button" onClick={() => onChange([...rows, { name: '', price: '', unit: units[0] }])}
-        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-[var(--line)] bg-white text-sm font-bold text-ink btn-hover">
-        <Plus size={16} /> {addLabel}
-      </button>
+      {full ? (
+        <p className="text-xs text-ink-soft">{fullNote}</p>
+      ) : (
+        <button type="button" onClick={() => onChange([...rows, { name: '', price: '', unit: units[0] }])}
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-[var(--line)] bg-white text-sm font-bold text-ink btn-hover">
+          <Plus size={16} /> {addLabel}
+        </button>
+      )}
     </div>
   );
 }

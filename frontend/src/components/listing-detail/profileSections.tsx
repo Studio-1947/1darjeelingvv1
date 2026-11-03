@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   Translate as Languages, Medal, InstagramLogo, FacebookLogo, YoutubeLogo, Globe, PlayCircle,
-  Compass, Bed, ForkKnife, Car, ArrowRight, CalendarBlank, MoonStars,
+  Compass, Bed, ForkKnife, Car, ArrowRight, CalendarBlank, MoonStars, Storefront, Moped,
 } from '@phosphor-icons/react';
 import api from '@/lib/api';
 import { listingImage } from '@/lib/listingContent';
@@ -162,6 +162,28 @@ export function RoomsFoodSection({ rooms, meals, homeDelivery }: { rooms: Priced
         {homeDelivery && (
           <p className={`text-ink-soft flex items-center ${ALIGN_ROW} gap-2`}>
             <MoonStars size={18} className="text-pine" /> {t('profile.home_delivery_on')}
+          </p>
+        )}
+      </div>
+    </Screen>
+  );
+}
+
+/** A cafe's menu or a shop's goods, each with its price, and whether they deliver. */
+export function PriceListSection({ kind, rows, homeDelivery }: { kind: 'menu' | 'goods'; rows: Priced[]; homeDelivery?: boolean }) {
+  const { t } = useTranslation();
+  if (!rows.length && !homeDelivery) return null;
+  return (
+    <Screen tone="mist" testid={`detail-${kind}`}>
+      <SectionHead label={t(`detail.${kind}_label`)} title={t(`detail.${kind}_title`)} note={t(`detail.${kind}_note`)} />
+      <div className={`mt-10 max-w-2xl ${ALIGN_BLOCK} space-y-6`}>
+        {rows.length > 0 && (
+          <PriceRows rows={rows} Icon={kind === 'menu' ? ForkKnife : Storefront}
+            unitLabel={(u) => t(`profile.unit_${u || (kind === 'menu' ? 'plate' : 'item')}`)} />
+        )}
+        {homeDelivery && (
+          <p className={`text-ink-soft flex items-center ${ALIGN_ROW} gap-2`} data-testid="detail-home-delivery">
+            <Moped size={18} className="text-pine" /> {kind === 'menu' ? t('profile.home_delivery_on') : t('profile.home_delivery_shop')}
           </p>
         )}
       </div>

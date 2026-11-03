@@ -44,6 +44,19 @@ describe('host profile fields', () => {
     expect(startingPriceFor('homestay', { rooms: [{ price: 2200 }, { price: 1800 }] })).toBe(1800);
     expect(startingPriceFor('guide', { services: [{ price: 0 }, { price: 900 }] })).toBe(900);
     expect(startingPriceFor('cafe', {})).toBeNull();
+    expect(startingPriceFor('cafe', { menu: [{ price: 120 }, { price: 60 }] })).toBe(60);
+    expect(startingPriceFor('shop', { goods: [{ price: 350 }] })).toBe(350);
+  });
+
+  it('takes a cafe menu and a shop goods list, capped at ten goods', () => {
+    expect(profilePatchFrom('cafe', { menu: [{ name: 'Momo', price: 80 }], home_delivery: true }))
+      .toEqual({ menu: [{ name: 'Momo', price: 80, unit: 'plate' }], home_delivery: true });
+    expect(profilePatchFrom('shop', { shop_kind: 'Tea shop', goods: [{ name: 'First flush', price: 450, unit: 'pack' }] }))
+      .toEqual({ shop_kind: 'Tea shop', goods: [{ name: 'First flush', price: 450, unit: 'pack' }] });
+    const eleven = Array.from({ length: 11 }, (_, i) => ({ name: `Item ${i}`, price: 10 }));
+    expect(profilePatchFrom('shop', { goods: eleven })).toHaveProperty('error');
+    expect(profilePatchFrom('shop', { goods: [{ name: 'Tea', price: 10, unit: 'night' }] })).toHaveProperty('error');
+    expect(profilePatchFrom('cafe', { goods: [] })).toHaveProperty('error');
   });
 });
 

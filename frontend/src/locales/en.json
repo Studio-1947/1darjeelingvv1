@@ -190,7 +190,13 @@
     "recommended_title": "Drivers this host recommends",
     "recommended_note": "Local drivers the host knows and trusts",
     "unavailable_title": "Not taking bookings right now",
-    "unavailable_body": "This host has paused bookings for now. Save it and check back later."
+    "unavailable_body": "This host has paused bookings for now. Save it and check back later.",
+    "menu_label": "Menu",
+    "menu_title": "Menu and prices",
+    "menu_note": "What this place serves, and what each item costs",
+    "goods_label": "Goods",
+    "goods_title": "Goods and rates",
+    "goods_note": "What this shop sells, and the rate for each"
   },
   "auth": {
     "welcome": "Welcome",
@@ -1653,7 +1659,17 @@
     "meals": "Food",
     "home_delivery_on": "Home delivery of food available",
     "seats_count_one": "{{count}} seat",
-    "seats_count_other": "{{count}} seats"
+    "seats_count_other": "{{count}} seats",
+    "unit_plate": "per plate",
+    "unit_item": "per item",
+    "unit_cup": "per cup",
+    "unit_piece": "per piece",
+    "unit_kg": "per kg",
+    "unit_gram": "per 100 g",
+    "unit_litre": "per litre",
+    "unit_pack": "per pack",
+    "unit_dozen": "per dozen",
+    "home_delivery_shop": "Home delivery available"
   },
   "hostProfile": {
     "title": "Business profile",
@@ -1722,6 +1738,21 @@
     "saved": "Saved. Your listing is updated.",
     "back_dashboard": "Back to your dashboard",
     "complete_title": "Complete your business profile",
-    "complete_cta": "Open business profile"
+    "complete_cta": "Open business profile",
+    "menu": "Menu and prices",
+    "menu_note": "Each dish or drink with its price. Travellers see this on your page.",
+    "menu_ph": "e.g. Veg momo",
+    "add_menu": "Add item",
+    "goods": "Goods and rates",
+    "goods_note": "Up to 10 items you sell, each with its rate.",
+    "goods_ph": "e.g. Darjeeling first flush tea",
+    "add_goods": "Add item",
+    "goods_full": "You have added the 10 items allowed.",
+    "shop_kind": "Type of business",
+    "shop_kind_ph": "e.g. Tea shop, handicrafts, grocery",
+    "owner_name": "Owner name",
+    "home_delivery_cafe_note": "Turn on if you deliver food to guests nearby.",
+    "home_delivery_shop": "Home delivery",
+    "home_delivery_shop_note": "Turn on if you deliver goods to guests nearby."
   }
 }

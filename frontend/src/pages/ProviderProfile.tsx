@@ -9,13 +9,13 @@ import AvatarUploader from '@/components/provider/AvatarUploader';
 import GalleryUploader from '@/components/provider/GalleryUploader';
 import AmenityPicker from '@/components/provider/AmenityPicker';
 import { RouteFareTable } from '@/components/provider/RouteEditor';
-import { HOMESTAY_AMENITIES } from '@/constants/listingOptions';
+import { HOMESTAY_AMENITIES, CAFE_AMENITIES } from '@/constants/listingOptions';
 import PricedEditor, { type Priced } from '@/components/provider/PricedEditor';
 import { useSeo } from '@/components/Seo';
 
 /**
- * The host's business profile: everything Studio1947's lists ask of a driver, a homestay and a
- * guide, on one page, saved through PATCH /providers/me (`profile`), which checks each field and
+ * The host's business profile: everything Studio1947's lists ask of a driver, a homestay, a
+ * guide, a cafe and a local shop, on one page, saved through PATCH /providers/me (`profile`), which checks each field and
  * copies it onto the listing travellers see (backend lib/hostProfile.ts). The app has the same
  * screen (app/provider/profile.tsx).
  *
@@ -26,6 +26,9 @@ import { useSeo } from '@/components/Seo';
 const GUIDE_TYPES = ['trekking', 'heritage', 'nature', 'birding', 'tea', 'cultural', 'city', 'photography'];
 const SEASONS = ['spring', 'summer', 'monsoon', 'autumn', 'winter'];
 const SOCIAL = ['instagram', 'facebook', 'youtube', 'website'] as const;
+const MENU_UNITS = ['plate', 'item', 'cup', 'head'];
+const GOODS_UNITS = ['item', 'piece', 'kg', 'gram', 'litre', 'pack', 'dozen'];
+const MAX_GOODS = 10;
 
 
 const input = 'mt-1 w-full px-3.5 py-2.5 rounded-xl border border-[var(--line)] bg-white outline-none text-sm text-ink';
@@ -172,6 +175,10 @@ export default function ProviderProfile() {
       guide_types: Array.isArray(e.guide_types) ? e.guide_types : [],
       services: priced(e.services, 'name', 'day'),
       seasons: Array.isArray(e.seasons) ? e.seasons : [],
+      // cafe and shop
+      menu: priced(e.menu, 'name', 'plate'),
+      goods: priced(e.goods, 'name', 'item'),
+      shop_kind: e.shop_kind || '',
     });
   }, [provider]);
 
@@ -232,6 +239,10 @@ export default function ProviderProfile() {
       Object.assign(profile, { host_name: form.host_name.trim(), guide_types: form.guide_types, services: priced(form.services), seasons: form.seasons });
       if (form.gender) profile.gender = form.gender;
       if (num(form.age) !== undefined) profile.age = num(form.age);
+    } else if (type === 'cafe') {
+      Object.assign(profile, { host_name: form.host_name.trim(), menu: priced(form.menu), amenities: form.amenities, home_delivery: form.home_delivery });
+    } else if (type === 'shop') {
+      Object.assign(profile, { host_name: form.host_name.trim(), shop_kind: form.shop_kind.trim(), goods: priced(form.goods).slice(0, MAX_GOODS), home_delivery: form.home_delivery });
     }
     const body: Record<string, unknown> = { profile };
     if (form.business_name.trim() && form.business_name.trim() !== p.business_name) body.business_name = form.business_name.trim();
@@ -283,10 +294,11 @@ export default function ProviderProfile() {
         <Toggle on={form.available} onChange={(v) => set({ available: v })} testid="profile-available"
           label={form.available ? t('hostProfile.available_on') : t('hostProfile.available_off')}
           note={t('hostProfile.available_note')} />
-        {type === 'homestay' && (
+        {(type === 'homestay' || type === 'cafe' || type === 'shop') && (
           <div className="mt-5 pt-5 border-t border-[var(--line)]">
             <Toggle on={form.home_delivery} onChange={(v) => set({ home_delivery: v })} testid="profile-home-delivery"
-              label={t('hostProfile.home_delivery')} note={t('hostProfile.home_delivery_note')} />
+              label={type === 'shop' ? t('hostProfile.home_delivery_shop') : t('hostProfile.home_delivery')}
+              note={type === 'shop' ? t('hostProfile.home_delivery_shop_note') : type === 'cafe' ? t('hostProfile.home_delivery_cafe_note') : t('hostProfile.home_delivery_note')} />
           </div>
         )}
       </section>
@@ -298,8 +310,13 @@ export default function ProviderProfile() {
         <Field label={nameLabel}>
           <input value={form.business_name} onChange={(e) => set({ business_name: e.target.value })} className={input} />
         </Field>
-        {(type === 'homestay' || type === 'guide') && (
-          <Field label={type === 'homestay' ? `${t('hostProfile.host_name')} *` : t('hostProfile.your_name')}>
+        {type === 'shop' && (
+          <Field label={t('hostProfile.shop_kind')}>
+            <input value={form.shop_kind} onChange={(e) => set({ shop_kind: e.target.value })} placeholder={t('hostProfile.shop_kind_ph')} className={input} data-testid="profile-shop-kind" />
+          </Field>
+        )}
+        {(type === 'homestay' || type === 'guide' || type === 'cafe' || type === 'shop') && (
+          <Field label={type === 'homestay' ? `${t('hostProfile.host_name')} *` : type === 'guide' ? t('hostProfile.your_name') : t('hostProfile.owner_name')}>
             <input value={form.host_name} onChange={(e) => set({ host_name: e.target.value })} className={input} data-testid="profile-host-name" />
           </Field>
         )}
@@ -418,6 +435,27 @@ export default function ProviderProfile() {
             <span className={labelCls}>{t('hostProfile.seasons')}</span>
             <div className="mt-2"><Chips options={SEASONS} selected={form.seasons} onChange={(seasons) => set({ seasons })} label={(o) => t(`profile.season_${o}`)} /></div>
           </div>
+        </Section>
+      )}
+
+      {type === 'cafe' && (
+        <Section title={t('hostProfile.menu')} note={t('hostProfile.menu_note')} testid="profile-cafe">
+          <PricedEditor rows={form.menu} onChange={(menu) => set({ menu })} units={MENU_UNITS} unitLabel={unitLabel}
+            namePlaceholder={t('hostProfile.menu_ph')} addLabel={t('hostProfile.add_menu')} testid="profile-menu" />
+          <div>
+            <span className={labelCls}>{t('hostProfile.amenities')}</span>
+            <div className="mt-2">
+              <AmenityPicker presets={CAFE_AMENITIES} selected={form.amenities} onChange={(amenities: string[]) => set({ amenities })} compact />
+            </div>
+          </div>
+        </Section>
+      )}
+
+      {type === 'shop' && (
+        <Section title={t('hostProfile.goods')} note={t('hostProfile.goods_note')} testid="profile-shop">
+          <PricedEditor rows={form.goods} onChange={(goods) => set({ goods })} units={GOODS_UNITS} unitLabel={unitLabel}
+            namePlaceholder={t('hostProfile.goods_ph')} addLabel={t('hostProfile.add_goods')} testid="profile-goods"
+            max={MAX_GOODS} fullNote={t('hostProfile.goods_full')} />
         </Section>
       )}
 

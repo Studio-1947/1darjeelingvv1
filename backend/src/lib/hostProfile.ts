@@ -12,7 +12,9 @@ import { isPlausiblePhone } from './phone';
  * - homestay: property and host name, rooms and food with charges, recommended drivers,
  *   property photos, guest occupancy, amenities, home delivery (trade licence and homestay
  *   paper are KYC documents);
- * - guide: name, age, gender, type of guide, services and charges, seasons.
+ * - guide: name, age, gender, type of guide, services and charges, seasons;
+ * - cafe / restaurant: owner name, menu with prices, amenities, home delivery;
+ * - local business (shop): type of business, goods and rates (at most 10 items), home delivery.
  *
  * Everything lives in the provider's `extras` (and is copied onto the host's listings, which is
  * what travellers read). Each field is checked here, so a client can send any subset of them.
@@ -26,6 +28,10 @@ export const SEASONS = ['spring', 'summer', 'monsoon', 'autumn', 'winter'] as co
 export const SERVICE_UNITS = ['day', 'trip', 'hour', 'person'] as const;
 export const ROOM_UNITS = ['night', 'head'] as const;
 export const GENDERS = ['male', 'female', 'other'] as const;
+export const MENU_UNITS = ['plate', 'item', 'cup', 'head'] as const;
+export const GOODS_UNITS = ['item', 'piece', 'kg', 'gram', 'litre', 'pack', 'dozen'] as const;
+/** The board caps a shop's goods list at ten items. */
+export const MAX_GOODS = 10;
 export const SOCIAL_KEYS = ['instagram', 'facebook', 'youtube', 'website'] as const;
 
 /** Photos a host must have before approval, by type. */
@@ -149,6 +155,18 @@ const BY_TYPE: Record<string, Record<string, (v: unknown) => unknown | ProfileEr
     services: (v) => list(v, 20, 'Services', priced(SERVICE_UNITS, 'service', 'day')),
     seasons: (v) => list(v, SEASONS.length, 'Seasons', (x) => oneOf(x, SEASONS, 'Season')),
   },
+  cafe: {
+    host_name: (v) => text(v, 80, 'Owner name'),
+    menu: (v) => list(v, 40, 'Menu', priced(MENU_UNITS, 'menu item', 'plate')),
+    amenities: (v) => list(v, 30, 'Amenities', (x) => text(x, 60, 'Amenity')),
+    home_delivery: (v) => (typeof v === 'boolean' ? v : { error: 'Home delivery must be on or off' }),
+  },
+  shop: {
+    host_name: (v) => text(v, 80, 'Owner name'),
+    shop_kind: (v) => text(v, 60, 'Type of business'),
+    goods: (v) => list(v, MAX_GOODS, 'Goods', priced(GOODS_UNITS, 'item', 'item')),
+    home_delivery: (v) => (typeof v === 'boolean' ? v : { error: 'Home delivery must be on or off' }),
+  },
 };
 
 /** The profile keys a host of this type may set. */
@@ -207,7 +225,7 @@ export function isAvailable(extras: Record<string, any> | null | undefined): boo
  * Null when the profile has none, so the host's own starting price stands.
  */
 export function startingPriceFor(businessType: string, extras: Record<string, any>): number | null {
-  const field = businessType === 'homestay' ? 'rooms' : businessType === 'guide' ? 'services' : businessType === 'driver' ? 'routes' : null;
+  const field = ({ homestay: 'rooms', guide: 'services', driver: 'routes', cafe: 'menu', shop: 'goods' } as Record<string, string>)[businessType] ?? null;
   if (!field || !Array.isArray(extras[field])) return null;
   const prices = extras[field].map((x: any) => Number(x?.price)).filter((p: number) => Number.isFinite(p) && p > 0);
   return prices.length ? Math.min(...prices) : null;

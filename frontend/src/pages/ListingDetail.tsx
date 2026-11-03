@@ -20,7 +20,7 @@ import { ReserveSection, MobileStickyBar } from '@/components/listing-detail/Res
 import ContactSection from '@/components/listing-detail/ContactSection';
 import ReviewsSection from '@/components/listing-detail/ReviewsSection';
 import AudioGuide from '@/components/AudioGuide';
-import { GuideSection, ServicesSection, RoomsFoodSection, RecommendedDriversSection } from '@/components/listing-detail/profileSections';
+import { GuideSection, ServicesSection, RoomsFoodSection, RecommendedDriversSection, PriceListSection } from '@/components/listing-detail/profileSections';
 import { ctaFor } from '@/components/listing-detail/cta';
 import { useBookingFlow } from '@/components/listing-detail/useBookingFlow';
 import { useAuth } from '@/context/AuthContext';
@@ -207,6 +207,14 @@ export default function ListingDetail() {
         <RoomsFoodSection
           rooms={Array.isArray(item.extras?.rooms) ? item.extras.rooms : []}
           meals={Array.isArray(item.extras?.meals) ? item.extras.meals : []}
+          homeDelivery={item.extras?.home_delivery === true}
+        />
+      )}
+
+      {(item.type === 'cafe' || item.type === 'shop') && (
+        <PriceListSection
+          kind={item.type === 'cafe' ? 'menu' : 'goods'}
+          rows={Array.isArray(item.extras?.[item.type === 'cafe' ? 'menu' : 'goods']) ? item.extras[item.type === 'cafe' ? 'menu' : 'goods'] : []}
           homeDelivery={item.extras?.home_delivery === true}
         />
       )}
