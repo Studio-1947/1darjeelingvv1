@@ -20,7 +20,7 @@ import { ReserveSection, MobileStickyBar } from '@/components/listing-detail/Res
 import ContactSection from '@/components/listing-detail/ContactSection';
 import ReviewsSection from '@/components/listing-detail/ReviewsSection';
 import AudioGuide from '@/components/AudioGuide';
-import { GuideSection, ServicesSection, RoomsFoodSection, RecommendedDriversSection } from '@/components/listing-detail/profileSections';
+import { GuideSection, ServicesSection, RoomsFoodSection, RecommendedDriversSection, PriceListSection, OwnerSection } from '@/components/listing-detail/profileSections';
 import { ctaFor } from '@/components/listing-detail/cta';
 import { useBookingFlow } from '@/components/listing-detail/useBookingFlow';
 import { useAuth } from '@/context/AuthContext';
@@ -211,6 +211,17 @@ export default function ListingDetail() {
         />
       )}
 
+      {(item.type === 'cafe' || item.type === 'shop') && (
+        <PriceListSection
+          kind={item.type === 'cafe' ? 'menu' : 'goods'}
+          rows={Array.isArray(item.extras?.[item.type === 'cafe' ? 'menu' : 'goods']) ? item.extras[item.type === 'cafe' ? 'menu' : 'goods'] : []}
+          homeDelivery={item.extras?.home_delivery === true}
+          capacity={Number(item.extras?.capacity) || 0}
+          shopKind={item.type === 'shop' ? item.extras?.shop_kind : undefined}
+        />
+      )}
+      {(item.type === 'cafe' || item.type === 'shop') && <OwnerSection item={item} verified={!!item.provider_verified} />}
+
       {item.type === 'homestay' && <HostSection item={item} host={host} personSrc={personSrc} />}
 
       {item.type === 'guide' && <GuideSection item={item} photo={host.avatar || listingImage(item, 600, 600)} />}
@@ -222,7 +233,7 @@ export default function ListingDetail() {
 
       {item.type === 'driver' && c.routes && c.routes.length > 0 && <RoutesSection routes={c.routes} />}
 
-      {item.type === 'homestay' && Array.isArray(item.extras?.recommended_drivers) && item.extras.recommended_drivers.length > 0 && (
+      {(item.type === 'homestay' || item.type === 'cafe' || item.type === 'shop') && Array.isArray(item.extras?.recommended_drivers) && item.extras.recommended_drivers.length > 0 && (
         <RecommendedDriversSection ids={item.extras.recommended_drivers} />
       )}
 

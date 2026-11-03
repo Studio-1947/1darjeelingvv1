@@ -260,6 +260,59 @@ Sets `WHATSAPP_BOOKING_CANCELLED_GUEST_TEMPLATE`.
 
 ---
 
+## 5. A document needs changing, to the host  `host_changes_requested`
+
+Category **UTILITY**. Optional: the server starts without it (see `OPTIONAL_TEMPLATES` in
+`backend/src/messaging/providerConfig.ts`); until it is set, hosts get this news in the app, on
+the website and by push only. Filled from `notifyHostVerification()` when an admin rejects a
+document. Sent to the main owner and every co-owner who has signed in.
+
+| Slot | Variable | Example |
+|---|---|---|
+| `{{1}}` | `name` | `Pema Sherpa` |
+| `{{2}}` | `business` | `Peak View Homestay` |
+| `{{3}}` | `document` | `Trade licence` |
+| `{{4}}` | `reason` | `The photo is blurred, please upload a clearer one` |
+
+**Body**
+
+```
+Hello {{1}}, the aangan team checked the documents for {{2}}. One needs to be uploaded again: {{3}}
+
+Reason: {{4}}
+
+Open the aangan app or website, go to Verification and upload it again. Your other documents are kept.
+```
+
+**Footer** `aangan`. Interakt env var: `INTERAKT_HOST_CHANGES_REQUESTED_TEMPLATE` (WhatsApp Cloud API:
+`WHATSAPP_HOST_CHANGES_REQUESTED_TEMPLATE`, MSG91: `MSG91_HOST_CHANGES_REQUESTED_TEMPLATE_ID`).
+
+---
+
+## 6. Approved and live, to the host  `host_approved`
+
+Category **UTILITY**. Optional, like #5. Sent once, the moment a host becomes verified
+(`recomputeKycStatus()`), whether an admin approving the last document or the host's own live
+location capture completed it.
+
+| Slot | Variable | Example |
+|---|---|---|
+| `{{1}}` | `name` | `Pema Sherpa` |
+| `{{2}}` | `business` | `Peak View Homestay` |
+
+**Body**
+
+```
+Hello {{1}}, {{2}} is verified on aangan. Your listings are now live and travellers can find and book you.
+
+You will now see the aangan verified badge on your page.
+```
+
+**Footer** `aangan`. Interakt env var: `INTERAKT_HOST_APPROVED_TEMPLATE` (WhatsApp Cloud API:
+`WHATSAPP_HOST_APPROVED_TEMPLATE`, MSG91: `MSG91_HOST_APPROVED_TEMPLATE_ID`).
+
+---
+
 ## Notes
 
 **Categorise honestly.** These three are UTILITY: each follows a transaction the recipient

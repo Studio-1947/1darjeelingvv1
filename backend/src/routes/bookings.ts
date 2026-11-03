@@ -13,10 +13,11 @@ import { notifyBookingCancelled } from '../lib/notifications';
 import { routeParam } from '../lib/routeParam';
 import { isListingHostLapsed } from '../lib/hostPlan';
 import { settleBookingConfirmation } from '../lib/bookingConfirmation';
-import { addInAppNotification, resolveHostUserId } from '../lib/inApp';
+import { addHostNotification, addInAppNotification } from '../lib/inApp';
 import { releaseVoucherForBooking } from '../lib/vouchers';
 import { requireTravellerMode } from '../middleware/mode';
 import { bookingGrossAmount } from '../lib/bookingAmount';
+import { ownListingIds } from '../lib/hostAccess';
 
 /** Listing types guests contact directly rather than book. */
 const CONTACT_ONLY_TYPES = new Set(['cafe', 'shop']);
@@ -187,7 +188,7 @@ router.post('/', authenticateToken, requireTravellerMode, requireActiveSupport, 
 
   // The host's feed hears about the request straight away, even though it is unpaid, because the
   // provider inbox already lists it and they would otherwise see it there with no prompt.
-  await addInAppNotification(await resolveHostUserId(listing.providerId), {
+  await addHostNotification(listing.providerId, {
     kind: 'booking_request',
     title: 'New booking request',
     body: `${req.user.name || 'A guest'} asked about ${listing.title}.`,
@@ -323,12 +324,7 @@ router.get('/me', authenticateToken, async (req: Request, res: Response) => {
  */
 // Get provider's bookings
 router.get('/provider', authenticateToken, async (req: Request, res: Response) => {
-  const providersList = await db.select().from(schema.providers).where(eq(schema.providers.userId, req.user.id));
-  const provider = providersList.find(p => p.status === 'active') || providersList[0];
-  const possibleProviderIds = [req.user.id];
-  if (provider) {
-    possibleProviderIds.push(provider.id);
-  }
+  const possibleProviderIds = await ownListingIds(req.user.id);
 
   const myListings = await db.select()
     .from(schema.listings)
@@ -461,9 +457,7 @@ async function ownsListingFor(
   const [listing] = await db.select({ providerId: schema.listings.providerId })
     .from(schema.listings).where(eq(schema.listings.id, booking.listingId)).limit(1);
   if (!listing) return false;
-  const providersList = await db.select({ id: schema.providers.id })
-    .from(schema.providers).where(eq(schema.providers.userId, user.id));
-  const ownIds = new Set<string>([user.id, ...providersList.map(p => p.id)]);
+  const ownIds = new Set<string>(await ownListingIds(user.id));
   return ownIds.has(listing.providerId);
 }
 
@@ -656,7 +650,7 @@ router.patch('/:id/cancel', authenticateToken, async (req: Request, res: Respons
   } else if (booking.status === 'confirmed' || booking.status === 'accepted') {
     const [listing] = await db.select({ providerId: schema.listings.providerId })
       .from(schema.listings).where(eq(schema.listings.id, booking.listingId)).limit(1);
-    await addInAppNotification(await resolveHostUserId(listing?.providerId), {
+    await addHostNotification(listing?.providerId, {
       kind: 'booking_cancelled',
       title: 'Booking cancelled',
       body: `A guest cancelled their booking for ${booking.listingTitle}.`,

@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   Translate as Languages, Medal, InstagramLogo, FacebookLogo, YoutubeLogo, Globe, PlayCircle,
-  Compass, Bed, ForkKnife, Car, ArrowRight, CalendarBlank, MoonStars,
+  Compass, Bed, ForkKnife, Car, ArrowRight, CalendarBlank, MoonStars, Storefront, Moped, UsersThree,
 } from '@phosphor-icons/react';
 import api from '@/lib/api';
 import { listingImage } from '@/lib/listingContent';
@@ -22,6 +22,9 @@ const SOCIAL = [
   { key: 'youtube', Icon: YoutubeLogo, href: (v: string) => (/^https?:/i.test(v) ? v : `https://youtube.com/${v}`) },
   { key: 'website', Icon: Globe, href: (v: string) => (/^https?:/i.test(v) ? v : `https://${v}`) },
 ] as const;
+
+/** An uploaded intro video (played here) rather than an older YouTube or Instagram link. */
+const isVideoFile = (url: string) => /\.(mp4|mov|webm)(\?|$)/i.test(url) || /\/videos\//.test(url);
 
 /** Languages, years of experience, an intro video and social links, as one block of facts. */
 export function HostFacts({ extras }: { extras: any }) {
@@ -44,9 +47,12 @@ export function HostFacts({ extras }: { extras: any }) {
           <Medal size={18} className="text-pine flex-shrink-0" /> {t('profile.experience_years', { count: years })}
         </p>
       )}
-      {(video || links.length > 0) && (
+      {video && isVideoFile(video) && (
+        <video src={video} controls playsInline preload="metadata" className="w-full max-w-xl rounded-2xl bg-ink aspect-video" data-testid="host-intro-video" />
+      )}
+      {((video && !isVideoFile(video)) || links.length > 0) && (
         <div className={`flex flex-wrap items-center ${ALIGN_ROW} gap-2 pt-1`}>
-          {video && (
+          {video && !isVideoFile(video) && (
             <a href={video} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[var(--line)] bg-white text-sm font-bold text-ink btn-hover">
               {t('profile.watch_intro')} <PlayCircle size={16} className="text-pine" />
             </a>
@@ -104,14 +110,16 @@ export function GuideSection({ item, photo }: { item: any; photo?: string }) {
   );
 }
 
-type Priced = { name: string; price: number; unit?: string };
+type Priced = { name: string; price: number; unit?: string; photo?: string };
 
 function PriceRows({ rows, Icon, unitLabel }: { rows: Priced[]; Icon: any; unitLabel: (u?: string) => string }) {
   return (
     <div className="space-y-3">
       {rows.map((r, i) => (
         <div key={i} className="flex items-center gap-4 p-5 rounded-2xl border border-[var(--line)] bg-white text-left">
-          <Icon size={22} className="text-pine flex-shrink-0" />
+          {r.photo
+            ? <img src={r.photo} alt="" className="w-16 h-16 rounded-xl object-cover flex-shrink-0 bg-mist" loading="lazy" />
+            : <Icon size={22} className="text-pine flex-shrink-0" />}
           <span className="flex-1 text-ink font-semibold">{r.name}</span>
           {r.price > 0 && (
             <span className="flex-shrink-0 text-right">
@@ -164,6 +172,62 @@ export function RoomsFoodSection({ rooms, meals, homeDelivery }: { rooms: Priced
             <MoonStars size={18} className="text-pine" /> {t('profile.home_delivery_on')}
           </p>
         )}
+      </div>
+    </Screen>
+  );
+}
+
+/** A cafe's menu or a shop's goods, each with its price, and whether they deliver. */
+export function PriceListSection({ kind, rows, homeDelivery, capacity = 0, shopKind }: { kind: 'menu' | 'goods'; rows: Priced[]; homeDelivery?: boolean; capacity?: number; shopKind?: string }) {
+  const { t } = useTranslation();
+  if (!rows.length && !homeDelivery && !(capacity > 0)) return null;
+  return (
+    <Screen tone="mist" testid={`detail-${kind}`}>
+      <SectionHead label={t(`detail.${kind}_label`)} title={t(`detail.${kind}_title`)} note={t(`detail.${kind}_note`)} />
+      <div className={`mt-10 max-w-2xl ${ALIGN_BLOCK} space-y-6`}>
+        {shopKind && <span className="chip bg-white border border-[var(--line)] text-ink font-bold text-xs" data-testid="detail-shop-kind">{shopKind}</span>}
+        {rows.length > 0 && (
+          <PriceRows rows={rows} Icon={kind === 'menu' ? ForkKnife : Storefront}
+            unitLabel={(u) => t(`profile.unit_${u || (kind === 'menu' ? 'plate' : 'item')}`)} />
+        )}
+        {homeDelivery && (
+          <p className={`text-ink-soft flex items-center ${ALIGN_ROW} gap-2`} data-testid="detail-home-delivery">
+            <Moped size={18} className="text-pine" /> {kind === 'menu' ? t('profile.home_delivery_on') : t('profile.home_delivery_shop')}
+          </p>
+        )}
+        {capacity > 0 && (
+          <p className={`text-ink-soft flex items-center ${ALIGN_ROW} gap-2`} data-testid="detail-capacity">
+            <UsersThree size={18} className="text-pine" /> {t(kind === 'menu' ? 'profile.capacity_cafe' : 'profile.capacity_shop', { count: capacity })}
+          </p>
+        )}
+      </div>
+    </Screen>
+  );
+}
+
+/**
+ * "Meet the owner" for a cafe or a shop: only what the owner filled in on their business profile
+ * (no stand-in story), with their languages, experience, intro video and social links.
+ */
+export function OwnerSection({ item, verified }: { item: any; verified: boolean }) {
+  const { t } = useTranslation();
+  const e = item.extras || {};
+  const name: string = e.host_name || '';
+  const hasAnything = name || e.host_bio || e.host_avatar || e.intro_video || (Array.isArray(e.languages) && e.languages.length) || Number(e.experience_years) > 0;
+  if (!hasAnything) return null;
+  return (
+    <Screen tone="bg" testid="detail-owner">
+      <SectionHead label={t('detail.owner_label')} title={t('detail.owner_title')} />
+      <div className={`mt-10 ${ALIGN_TEXT} max-w-2xl ${ALIGN_BLOCK}`}>
+        <Avatar photo={e.host_avatar || undefined} initial={(name || item.title || '?').trim().charAt(0).toUpperCase()} />
+        {name && (
+          <div className={`mt-6 flex items-center ${ALIGN_ROW} gap-2 flex-wrap`}>
+            <span className="font-display font-extrabold text-2xl md:text-3xl text-ink">{name}</span>
+            {verified && <VerifiedBadge size="sm" />}
+          </div>
+        )}
+        {e.host_bio && <p className="mt-6 text-lg text-ink leading-relaxed whitespace-pre-line">{e.host_bio}</p>}
+        <HostFacts extras={e} />
       </div>
     </Screen>
   );

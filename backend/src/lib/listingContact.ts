@@ -1,6 +1,7 @@
 import { and, eq } from 'drizzle-orm';
 import { db, schema } from '../db';
 import { isSupportActive } from './support';
+import { ownListingIds } from './hostAccess';
 
 /**
  * Listing types whose provider number is released by a booking rather than published.
@@ -59,11 +60,7 @@ export async function canSeeProviderPhone(
   // Listings an admin created on someone's behalf carry a bare user id instead of a provider id,
   // so ownership is checked against both, the same way bookings do it.
   if (viewer.id === listing.providerId) return true;
-  const owned = await db
-    .select({ id: schema.providers.id })
-    .from(schema.providers)
-    .where(eq(schema.providers.userId, viewer.id));
-  if (owned.some((p) => p.id === listing.providerId)) return true;
+  if ((await ownListingIds(viewer.id)).includes(listing.providerId)) return true;
 
   const [confirmed] = await db
     .select({ id: schema.bookings.id })

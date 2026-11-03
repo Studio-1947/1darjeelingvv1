@@ -11,6 +11,7 @@ import { googleMapsUrl, inServiceRegion, MapsLinkError, resolveMapsLink } from '
 import { storeBase64Image, ImageUploadError } from '../lib/imageUpload';
 import { routeParam } from '../lib/routeParam';
 import { blockedRanges, isDateExclusive } from '../lib/bookingAvailability';
+import { myActiveProvider } from '../lib/hostAccess';
 import {
   SPOT_TYPE, SPOT_FORBIDDEN_MESSAGE, canWriteSpots, parseSpotExtras,
   isSpotPublished, publicSpotVisibility, spotOrdering, SpotValidationError,
@@ -107,9 +108,8 @@ function coord(value: unknown): number | null {
 }
 
 async function resolveOwnProviderId(userId: string): Promise<string | null> {
-  const providersList = await db.select().from(schema.providers).where(eq(schema.providers.userId, userId));
-  const active = providersList.find(p => p.status === 'active');
-  return active ? active.id : null;
+  // Owner or co-owner: both run the same business's listings.
+  return (await myActiveProvider(userId))?.id ?? null;
 }
 
 const router = Router();

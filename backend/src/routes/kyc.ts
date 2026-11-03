@@ -5,11 +5,13 @@ import path from 'path';
 import { db, schema } from '../db';
 import { eq, and } from 'drizzle-orm';
 import { authenticateToken } from '../middleware/auth';
-import { isAllowedDocType, isVideoDocType } from '../lib/kycRequirements';
+import { isAllowedDocType, isVideoDocType, requirementsFor } from '../lib/kycRequirements';
 import { computeCompletion } from '../lib/profileCompletion';
 import { uploadPrivate, getPrivateObject, deletePrivate } from '../lib/s3';
 import { log, VERIFICATION_SUPPORT_PHONE } from '../config';
 import { routeParam } from '../lib/routeParam';
+import { hostUserIds, myActiveProvider } from '../lib/hostAccess';
+import { notifyHostVerification } from '../lib/notifications';
 
 const router = Router();
 
@@ -18,8 +20,8 @@ const MAX_BYTES = 5 * 1024 * 1024;
 // Verification videos are sent as the raw request body, not base64 in JSON: a phone clip would
 // be a third bigger encoded and have to be held in memory twice. 25 MB sits under the 30 MB
 // client_max_body_size on the production nginx, which would otherwise answer with a bare 413.
-const VIDEO_MIME = new Set(['video/mp4', 'video/quicktime', 'video/webm']);
-const MAX_VIDEO_BYTES = 25 * 1024 * 1024;
+export const VIDEO_MIME = new Set(['video/mp4', 'video/quicktime', 'video/webm']);
+export const MAX_VIDEO_BYTES = 25 * 1024 * 1024;
 // The 8mb JSON body limit for this path is applied in app.ts (mounted before the global
 // express.json(), which would otherwise consume the stream at its 100kb default).
 
@@ -41,7 +43,7 @@ const MAGIC_BYTES: Record<string, number[]> = {
 const PDF_SIGNATURE_SEARCH_WINDOW = 1024;
 
 /** Whether `buffer`'s leading bytes match the standard signature for `mime`. */
-function matchesDeclaredType(buffer: Buffer, mime: string): boolean {
+export function matchesDeclaredType(buffer: Buffer, mime: string): boolean {
   // MP4 and QuickTime files open with a box whose type, at offset 4, is "ftyp". WebM is EBML.
   if (mime === 'video/mp4' || mime === 'video/quicktime') {
     return buffer.length >= 12 && buffer.subarray(4, 8).toString('latin1') === 'ftyp';
@@ -59,10 +61,8 @@ function matchesDeclaredType(buffer: Buffer, mime: string): boolean {
   return signature.every((byte, i) => buffer[i] === byte);
 }
 
-async function ownActiveProvider(userId: string) {
-  const rows = await db.select().from(schema.providers).where(eq(schema.providers.userId, userId));
-  return rows.find(p => p.status === 'active') || null;
-}
+// The business this person runs (as owner or co-owner), while it is active.
+const ownActiveProvider = myActiveProvider;
 
 function docOut(d: typeof schema.kycDocuments.$inferSelect) {
   return {
@@ -103,6 +103,10 @@ function verificationOut(
     review_started_at: provider.kycReviewStartedAt,
     action_required: !!rejected,
     action_message: rejected?.rejectionReason ?? null,
+    // Which document to upload again, in the host's words (the checklist label).
+    action_document: rejected
+      ? requirementsFor(provider.businessType).find((r) => r.docType === rejected.docType)?.label ?? rejected.docType
+      : null,
     support_phone: VERIFICATION_SUPPORT_PHONE,
   };
 }
@@ -135,6 +139,11 @@ export async function recomputeKycStatus(providerId: string): Promise<string> {
     docs.map(d => ({ docType: d.docType, status: d.status as any }))
   );
   await db.update(schema.providers).set({ kycStatus }).where(eq(schema.providers.id, providerId));
+  // The moment a host becomes verified, whichever step got them there (an admin approving the
+  // last document, or the host's own live location capture), they and any co-owners hear it.
+  if (kycStatus === 'verified' && provider.kycStatus !== 'verified') {
+    await notifyHostVerification(providerId, { kind: 'approved' });
+  }
   return kycStatus;
 }
 
@@ -412,7 +421,7 @@ router.get('/kyc/:id/file', authenticateToken, async (req: Request, res: Respons
   let allowed = req.user.role === 'admin';
   if (!allowed) {
     const [provider] = await db.select().from(schema.providers).where(eq(schema.providers.id, doc.providerId)).limit(1);
-    allowed = !!provider && provider.userId === req.user.id;
+    allowed = !!provider && (await hostUserIds(provider.id)).includes(req.user.id);
   }
   if (!allowed) return res.status(403).json({ detail: 'Forbidden' });
 

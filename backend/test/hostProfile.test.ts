@@ -37,13 +37,33 @@ describe('host profile fields', () => {
     expect(missingMandatory('homestay', { host_name: 'Pema', images: photos(8) })).toEqual([]);
     expect(missingMandatory('guide', { services: [{ name: 'Walk', price: 0 }] }).map((m) => m.key)).toEqual(['services']);
     expect(missingMandatory('guide', { services: [{ name: 'Walk', price: 800 }] })).toEqual([]);
-    expect(missingMandatory('cafe', {})).toEqual([]);
+    expect(missingMandatory('cafe', {}).map((m) => m.key)).toEqual(['host_name', 'images']);
+    expect(missingMandatory('shop', { host_name: 'Dawa', images: photos(7) }).map((m) => m.key)).toEqual(['images']);
+    expect(missingMandatory('shop', { host_name: 'Dawa', images: photos(8) })).toEqual([]);
   });
 
   it('derives the public price from the cheapest room, service or route', () => {
     expect(startingPriceFor('homestay', { rooms: [{ price: 2200 }, { price: 1800 }] })).toBe(1800);
     expect(startingPriceFor('guide', { services: [{ price: 0 }, { price: 900 }] })).toBe(900);
     expect(startingPriceFor('cafe', {})).toBeNull();
+    expect(startingPriceFor('cafe', { menu: [{ price: 120 }, { price: 60 }] })).toBe(60);
+    expect(startingPriceFor('shop', { goods: [{ price: 350 }] })).toBe(350);
+  });
+
+  it('takes a cafe menu and a shop goods list, capped at ten goods', () => {
+    expect(profilePatchFrom('cafe', { menu: [{ name: 'Momo', price: 80 }], home_delivery: true }))
+      .toEqual({ menu: [{ name: 'Momo', price: 80, unit: 'plate' }], home_delivery: true });
+    expect(profilePatchFrom('shop', { shop_kind: 'Tea shop', goods: [{ name: 'First flush', price: 450, unit: 'pack' }] }))
+      .toEqual({ shop_kind: 'Tea shop', goods: [{ name: 'First flush', price: 450, unit: 'pack' }] });
+    const eleven = Array.from({ length: 11 }, (_, i) => ({ name: `Item ${i}`, price: 10 }));
+    expect(profilePatchFrom('shop', { goods: eleven })).toHaveProperty('error');
+    expect(profilePatchFrom('shop', { goods: [{ name: 'Tea', price: 10, unit: 'night' }] })).toHaveProperty('error');
+    expect(profilePatchFrom('cafe', { goods: [] })).toHaveProperty('error');
+    expect(profilePatchFrom('cafe', { capacity: 40, recommended_drivers: ['lst_1'] })).toEqual({ capacity: 40, recommended_drivers: ['lst_1'] });
+    expect(profilePatchFrom('shop', { capacity: 6 })).toEqual({ capacity: 6 });
+    expect(profilePatchFrom('cafe', { menu: [{ name: 'Momo', price: 80, photo: 'https://example.com/momo.jpg' }] }))
+      .toEqual({ menu: [{ name: 'Momo', price: 80, unit: 'plate', photo: 'https://example.com/momo.jpg' }] });
+    expect(profilePatchFrom('cafe', { menu: [{ name: 'Momo', price: 80, photo: 'javascript:alert(1)' }] })).toHaveProperty('error');
   });
 });
 

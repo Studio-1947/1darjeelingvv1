@@ -12,6 +12,7 @@ import { reserveOtpSend } from '../lib/otpSendBudget';
 import { isPlausiblePhone, phoneKey } from '../lib/phone';
 import { generateReferralCode, redeemReferralCode } from '../lib/referrals';
 import { hashOtp, verifyOtpHash } from '../lib/otpHash';
+import { claimCoOwnerInvites } from '../lib/hostAccess';
 
 const router = Router();
 
@@ -370,6 +371,9 @@ router.post('/otp/verify', rateLimiter(10, 60 * 1000, 'otp_verify'), async (req:
       .where(eq(schema.users.id, user.id));
     user.phoneVerifiedAt = new Date().toISOString();
   }
+
+  // Someone the owner added as a co-owner gets the business side the moment they sign in.
+  if (await claimCoOwnerInvites(user)) user = { ...user, role: 'provider' };
 
   const token = makeToken(user.id, user.phone, user.role);
   return res.json({ token, user: toPublicUser(user) });

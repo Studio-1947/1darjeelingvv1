@@ -27,6 +27,14 @@ export function requireCredentials(provider: string, env: NodeJS.ProcessEnv, key
  *
  * `where` names the place to go and create them, which differs per vendor.
  */
+/**
+ * Templates that may be left unconfigured. Booking messages are required once NOTIFY_BOOKINGS is
+ * on; the host verification messages arrived later and need their own Meta approval, so until
+ * their template is set a send fails (and is logged) instead of the server refusing to start.
+ * The host still sees the same news in the app and on the website.
+ */
+export const OPTIONAL_TEMPLATES: NotificationTemplate[] = ['host_changes_requested', 'host_approved'];
+
 export function requireNotificationTemplates(
   provider: string,
   env: NodeJS.ProcessEnv,
@@ -35,7 +43,10 @@ export function requireNotificationTemplates(
 ): void {
   if (env.NOTIFY_BOOKINGS?.trim().toLowerCase() !== 'true') return;
 
-  const missing = Object.values(templateEnvVars).filter((k) => !env[k]?.trim());
+  const missing = Object.entries(templateEnvVars)
+    .filter(([template]) => !OPTIONAL_TEMPLATES.includes(template as NotificationTemplate))
+    .map(([, k]) => k)
+    .filter((k) => !env[k]?.trim());
   if (missing.length > 0) {
     throw new Error(
       `[messaging] NOTIFY_BOOKINGS=true with MESSAGING_PROVIDER=${provider} requires a template ` +

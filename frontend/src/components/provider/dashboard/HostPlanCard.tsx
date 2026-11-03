@@ -118,7 +118,10 @@ export default function HostPlanCard({ provider, user, onRenewed }: {
           {err && <p className="mt-1 text-sm font-semibold text-flag">{err}</p>}
         </div>
       </div>
-      {canRenew && (
+      {canRenew && provider.access === 'co_owner' && (
+        <p className="text-sm text-ink-soft" data-testid="host-plan-owner-pays">{t('owners.plan_main_owner')}</p>
+      )}
+      {canRenew && provider.access !== 'co_owner' && (
         <button
           onClick={renew}
           disabled={busy}

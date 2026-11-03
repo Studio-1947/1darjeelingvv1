@@ -27,6 +27,8 @@ const TEMPLATE_ENV_VARS: Record<NotificationTemplate, string> = {
   booking_confirmed_guest: 'INTERAKT_BOOKING_CONFIRMED_GUEST_TEMPLATE',
   booking_confirmed_host: 'INTERAKT_BOOKING_CONFIRMED_HOST_TEMPLATE',
   booking_cancelled_guest: 'INTERAKT_BOOKING_CANCELLED_GUEST_TEMPLATE',
+  host_changes_requested: 'INTERAKT_HOST_CHANGES_REQUESTED_TEMPLATE',
+  host_approved: 'INTERAKT_HOST_APPROVED_TEMPLATE',
 };
 
 const REQUEST_TIMEOUT_MS = 10_000;

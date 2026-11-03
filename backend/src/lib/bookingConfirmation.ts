@@ -3,7 +3,7 @@ import { db, schema } from '../db';
 import { log } from '../config';
 import { findBlockingBooking, isDateExclusive, lockListingForBooking } from './bookingAvailability';
 import { notifyBookingCancelled, notifyBookingConfirmed } from './notifications';
-import { addInAppNotification, resolveHostUserId } from './inApp';
+import { addHostNotification, addInAppNotification, resolveHostUserId } from './inApp';
 import { refundPaymentsFor } from './refunds';
 import { releaseVoucherForBooking } from './vouchers';
 import { serializeProvider } from './providerShape';
@@ -125,7 +125,7 @@ export async function settleBookingConfirmation(
     const [hostUser] = hostUserId
       ? await db.select({ email: schema.users.email }).from(schema.users).where(eq(schema.users.id, hostUserId)).limit(1)
       : [];
-    await addInAppNotification(hostUserId, {
+    await addHostNotification(listing?.providerId, {
       kind: 'booking_confirmed',
       title: 'Booking confirmed',
       body: `${bookingUser?.name || 'A guest'} confirmed a booking for ${booking.listingTitle}.`,

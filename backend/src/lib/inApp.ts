@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { db, schema } from '../db';
 import { log } from '../config';
 import { sendPushToUser } from './push';
+import { hostUserIds } from './hostAccess';
 
 /**
  * Writes one row to a user's in-app activity feed.
@@ -50,4 +51,26 @@ export async function resolveHostUserId(listingProviderId: string | null | undef
   } catch {
     return null;
   }
+}
+
+/**
+ * Tells everyone who runs the business behind a listing: the main owner and any co-owners who
+ * have signed in. Older listings that carry a bare user id reach just that user.
+ */
+export async function addHostNotification(
+  listingProviderId: string | null | undefined,
+  n: { kind: string; title: string; body: string; refId?: string | null }
+): Promise<void> {
+  if (!listingProviderId) return;
+  let ids: string[] = [];
+  try {
+    ids = await hostUserIds(listingProviderId);
+  } catch {
+    ids = [];
+  }
+  if (!ids.length) {
+    const single = await resolveHostUserId(listingProviderId);
+    ids = single ? [single] : [];
+  }
+  for (const id of ids) await addInAppNotification(id, n);
 }

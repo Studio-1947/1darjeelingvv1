@@ -9,13 +9,16 @@ import AvatarUploader from '@/components/provider/AvatarUploader';
 import GalleryUploader from '@/components/provider/GalleryUploader';
 import AmenityPicker from '@/components/provider/AmenityPicker';
 import { RouteFareTable } from '@/components/provider/RouteEditor';
-import { HOMESTAY_AMENITIES } from '@/constants/listingOptions';
+import { HOMESTAY_AMENITIES, CAFE_AMENITIES } from '@/constants/listingOptions';
 import PricedEditor, { type Priced } from '@/components/provider/PricedEditor';
+import OwnersSection from '@/components/provider/OwnersSection';
+import HostMiniSite, { type MiniSiteData } from '@/components/provider/HostMiniSite';
+import { Eye, X, VideoCamera } from '@phosphor-icons/react';
 import { useSeo } from '@/components/Seo';
 
 /**
- * The host's business profile: everything Studio1947's lists ask of a driver, a homestay and a
- * guide, on one page, saved through PATCH /providers/me (`profile`), which checks each field and
+ * The host's business profile: everything Studio1947's lists ask of a driver, a homestay, a
+ * guide, a cafe and a local shop, on one page, saved through PATCH /providers/me (`profile`), which checks each field and
  * copies it onto the listing travellers see (backend lib/hostProfile.ts). The app has the same
  * screen (app/provider/profile.tsx).
  *
@@ -26,6 +29,9 @@ import { useSeo } from '@/components/Seo';
 const GUIDE_TYPES = ['trekking', 'heritage', 'nature', 'birding', 'tea', 'cultural', 'city', 'photography'];
 const SEASONS = ['spring', 'summer', 'monsoon', 'autumn', 'winter'];
 const SOCIAL = ['instagram', 'facebook', 'youtube', 'website'] as const;
+const MENU_UNITS = ['plate', 'item', 'cup', 'head'];
+const GOODS_UNITS = ['item', 'piece', 'kg', 'gram', 'litre', 'pack', 'dozen'];
+const MAX_GOODS = 10;
 
 
 const input = 'mt-1 w-full px-3.5 py-2.5 rounded-xl border border-[var(--line)] bg-white outline-none text-sm text-ink';
@@ -127,6 +133,9 @@ export default function ProviderProfile() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [uploading, setUploading] = useState<string | null>(null);
+  const [stats, setStats] = useState<{ review_count?: number; average_rating?: number } | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
+  useEffect(() => { api.get('/providers/me/stats').then((r) => setStats(r.data)).catch(() => setStats(null)); }, []);
 
   useEffect(() => {
     if (authLoading) return;
@@ -138,7 +147,7 @@ export default function ProviderProfile() {
     if (!provider) return;
     const e = provider.extras || {};
     const priced = (rows: any[] | undefined, nameKey = 'name', unit = 'day'): Priced[] =>
-      (Array.isArray(rows) ? rows : []).map((r) => ({ name: String(r?.[nameKey] ?? r?.name ?? ''), price: Number(r?.price) || '', unit: r?.unit || unit }));
+      (Array.isArray(rows) ? rows : []).map((r) => ({ name: String(r?.[nameKey] ?? r?.name ?? ''), price: Number(r?.price) || '', unit: r?.unit || unit, ...(r?.photo ? { photo: String(r.photo) } : {}) }));
     setP(provider);
     setForm({
       business_name: provider.business_name || '',
@@ -172,6 +181,10 @@ export default function ProviderProfile() {
       guide_types: Array.isArray(e.guide_types) ? e.guide_types : [],
       services: priced(e.services, 'name', 'day'),
       seasons: Array.isArray(e.seasons) ? e.seasons : [],
+      // cafe and shop
+      menu: priced(e.menu, 'name', 'plate'),
+      goods: priced(e.goods, 'name', 'item'),
+      shop_kind: e.shop_kind || '',
     });
   }, [provider]);
 
@@ -193,6 +206,23 @@ export default function ProviderProfile() {
     catch (err) { setMsg({ ok: false, text: typeof err === 'string' ? err : 'Upload failed' }); }
     finally { setUploading(null); }
   };
+  // The intro video is an uploaded file travellers play on the page, not a link.
+  const uploadVideo = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (file.size > 25 * 1024 * 1024) { setMsg({ ok: false, text: t('hostProfile.video_too_big') }); return; }
+    setUploading('video');
+    try {
+      const { data } = await api.post('/providers/me/intro-video', file, { headers: { 'Content-Type': file.type || 'video/mp4' } });
+      set({ intro_video: data.url });
+    } catch (err: any) {
+      setMsg({ ok: false, text: err?.response?.data?.detail || t('hostProfile.video_failed') });
+    } finally {
+      setUploading(null);
+    }
+  };
+
   const uploadGallery = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files?.length) return;
@@ -207,7 +237,7 @@ export default function ProviderProfile() {
     setBusy(true);
     setMsg(null);
     const num = (v: any) => (v === '' || v === null || v === undefined ? undefined : Number(v));
-    const priced = (rows: Priced[]) => rows.filter((r) => r.name.trim()).map((r) => ({ name: r.name.trim(), price: Number(r.price) || 0, unit: r.unit }));
+    const priced = (rows: Priced[]) => rows.filter((r) => r.name.trim()).map((r) => ({ name: r.name.trim(), price: Number(r.price) || 0, unit: r.unit, ...(r.photo ? { photo: r.photo } : {}) }));
     const profile: Record<string, unknown> = {
       host_avatar: form.host_avatar,
       whatsapp: form.whatsapp.trim(),
@@ -232,7 +262,18 @@ export default function ProviderProfile() {
       Object.assign(profile, { host_name: form.host_name.trim(), guide_types: form.guide_types, services: priced(form.services), seasons: form.seasons });
       if (form.gender) profile.gender = form.gender;
       if (num(form.age) !== undefined) profile.age = num(form.age);
+    } else if (type === 'cafe') {
+      Object.assign(profile, {
+        host_name: form.host_name.trim(), menu: priced(form.menu), amenities: form.amenities,
+        recommended_drivers: form.recommended_drivers, home_delivery: form.home_delivery,
+      });
+    } else if (type === 'shop') {
+      Object.assign(profile, {
+        host_name: form.host_name.trim(), shop_kind: form.shop_kind.trim(), goods: priced(form.goods).slice(0, MAX_GOODS),
+        recommended_drivers: form.recommended_drivers, home_delivery: form.home_delivery,
+      });
     }
+    if ((type === 'cafe' || type === 'shop') && num(form.capacity) !== undefined) profile.capacity = num(form.capacity);
     const body: Record<string, unknown> = { profile };
     if (form.business_name.trim() && form.business_name.trim() !== p.business_name) body.business_name = form.business_name.trim();
     if (form.contact_phone.trim() && form.contact_phone.trim() !== p.contact_phone) body.contact_phone = form.contact_phone.trim();
@@ -249,7 +290,10 @@ export default function ProviderProfile() {
     }
   };
 
-  const photoGoal = type === 'driver' ? 6 : type === 'homestay' ? 8 : 0;
+  // Matches the server's missingMandatory: 6 car photos; 8 photos for a homestay, cafe or shop.
+  const photoGoal = type === 'driver' ? 6 : (type === 'homestay' || type === 'cafe' || type === 'shop') ? 8 : 0;
+  const photosNote = type === 'driver' ? 'hostProfile.photos_note_driver' : type === 'cafe' ? 'hostProfile.photos_note_cafe'
+    : type === 'shop' ? 'hostProfile.photos_note_shop' : 'hostProfile.photos_note_homestay';
   const nameLabel = type === 'homestay' ? t('hostProfile.property_name') : type === 'guide' ? t('hostProfile.business_name_guide') : t('hostProfile.business_name');
   const unitLabel = (u: string) => t(`profile.unit_${u}`);
 
@@ -257,8 +301,39 @@ export default function ProviderProfile() {
     return <div className="mx-auto max-w-3xl px-4 py-16 text-ink-soft">{t('common.loading')}</div>;
   }
 
+  const previewItems = (): MiniSiteData['items'] => {
+    const rows = (list: Priced[]) => list.filter((r) => r.name.trim()).map((r) => ({ name: r.name, price: Number(r.price) || 0, unit: r.unit, photo: r.photo }));
+    if (type === 'driver') return (form.routes || []).map((r: any) => ({ name: r.route || r.name || '', price: Number(r.price) || 0, unit: r.unit || 'trip', photo: r.photo })).filter((r: any) => r.name);
+    if (type === 'homestay') return [...rows(form.rooms), ...rows(form.meals)];
+    if (type === 'guide') return rows(form.services);
+    if (type === 'cafe') return rows(form.menu);
+    if (type === 'shop') return rows(form.goods);
+    return [];
+  };
+  const preview: MiniSiteData = {
+    type,
+    name: form.business_name,
+    hostName: form.host_name,
+    avatar: form.host_avatar,
+    cover: form.cover,
+    verified: p?.kyc_status === 'verified',
+    experienceYears: Number(form.experience_years) || 0,
+    joinedAt: p?.created_at,
+    rating: stats?.average_rating ?? null,
+    reviewCount: stats?.review_count ?? 0,
+    location: p?.location,
+    about: form.host_bio,
+    video: form.intro_video,
+    languages: String(form.languages || '').split(',').map((x: string) => x.trim()).filter(Boolean),
+    items: previewItems(),
+    gallery: form.images,
+    available: form.available,
+    homeDelivery: form.home_delivery && (type === 'homestay' || type === 'cafe' || type === 'shop'),
+  };
+
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8 md:py-12 space-y-5" data-testid="provider-profile">
+    <div className="mx-auto max-w-6xl px-4 py-8 md:py-12 lg:grid lg:grid-cols-[minmax(0,1fr)_400px] lg:gap-8 lg:items-start">
+    <div className="space-y-5 min-w-0" data-testid="provider-profile">
       <div>
         <span className="chip capitalize">{t(`categories.${type}`, { defaultValue: type })}</span>
         <h1 className="mt-3 font-display font-extrabold text-3xl text-ink">{t('hostProfile.title')}</h1>
@@ -283,10 +358,11 @@ export default function ProviderProfile() {
         <Toggle on={form.available} onChange={(v) => set({ available: v })} testid="profile-available"
           label={form.available ? t('hostProfile.available_on') : t('hostProfile.available_off')}
           note={t('hostProfile.available_note')} />
-        {type === 'homestay' && (
+        {(type === 'homestay' || type === 'cafe' || type === 'shop') && (
           <div className="mt-5 pt-5 border-t border-[var(--line)]">
             <Toggle on={form.home_delivery} onChange={(v) => set({ home_delivery: v })} testid="profile-home-delivery"
-              label={t('hostProfile.home_delivery')} note={t('hostProfile.home_delivery_note')} />
+              label={type === 'shop' ? t('hostProfile.home_delivery_shop') : t('hostProfile.home_delivery')}
+              note={type === 'shop' ? t('hostProfile.home_delivery_shop_note') : type === 'cafe' ? t('hostProfile.home_delivery_cafe_note') : t('hostProfile.home_delivery_note')} />
           </div>
         )}
       </section>
@@ -298,8 +374,13 @@ export default function ProviderProfile() {
         <Field label={nameLabel}>
           <input value={form.business_name} onChange={(e) => set({ business_name: e.target.value })} className={input} />
         </Field>
-        {(type === 'homestay' || type === 'guide') && (
-          <Field label={type === 'homestay' ? `${t('hostProfile.host_name')} *` : t('hostProfile.your_name')}>
+        {type === 'shop' && (
+          <Field label={t('hostProfile.shop_kind')}>
+            <input value={form.shop_kind} onChange={(e) => set({ shop_kind: e.target.value })} placeholder={t('hostProfile.shop_kind_ph')} className={input} data-testid="profile-shop-kind" />
+          </Field>
+        )}
+        {(type === 'homestay' || type === 'guide' || type === 'cafe' || type === 'shop') && (
+          <Field label={type === 'homestay' ? `${t('hostProfile.host_name')} *` : type === 'guide' ? t('hostProfile.your_name') : `${t('hostProfile.owner_name')} *`}>
             <input value={form.host_name} onChange={(e) => set({ host_name: e.target.value })} className={input} data-testid="profile-host-name" />
           </Field>
         )}
@@ -335,9 +416,24 @@ export default function ProviderProfile() {
         <Field label={t('hostProfile.bio')}>
           <textarea rows={4} value={form.host_bio} onChange={(e) => set({ host_bio: e.target.value })} className={input} />
         </Field>
-        <Field label={t('hostProfile.video')} hint={t('hostProfile.video_hint')}>
-          <input value={form.intro_video} onChange={(e) => set({ intro_video: e.target.value })} placeholder="https://" className={input} />
-        </Field>
+        <div data-testid="profile-video">
+          <span className={labelCls}>{t('hostProfile.video')}</span>
+          <div className="mt-2 flex flex-wrap items-center gap-3">
+            {form.intro_video && /\.(mp4|mov|webm)(\?|$)|\/videos\//i.test(form.intro_video) ? (
+              <video src={form.intro_video} controls playsInline preload="metadata" className="w-56 rounded-xl bg-ink aspect-video" />
+            ) : form.intro_video ? (
+              <a href={form.intro_video} target="_blank" rel="noreferrer" className="text-sm font-bold text-pine underline">{t('hostProfile.video_old_link')}</a>
+            ) : null}
+            <label className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-[var(--line)] bg-white text-sm font-bold text-ink cursor-pointer btn-hover">
+              <VideoCamera size={16} /> {uploading === 'video' ? t('hostProfile.video_uploading') : form.intro_video ? t('hostProfile.video_replace') : t('hostProfile.video_upload')}
+              <input type="file" accept="video/mp4,video/quicktime,video/webm" className="hidden" onChange={uploadVideo} data-testid="profile-video-input" />
+            </label>
+            {form.intro_video && (
+              <button type="button" onClick={() => set({ intro_video: '' })} className="text-xs font-bold text-ink-soft hover:text-flag">{t('hostProfile.video_remove')}</button>
+            )}
+          </div>
+          <span className="mt-1 block text-xs text-ink-soft">{t('hostProfile.video_hint')}</span>
+        </div>
         <div className="grid sm:grid-cols-2 gap-4">
           {SOCIAL.map((k) => (
             <Field key={k} label={t(`profile.social_${k}`)}>
@@ -421,8 +517,43 @@ export default function ProviderProfile() {
         </Section>
       )}
 
+      {type === 'cafe' && (
+        <Section title={t('hostProfile.menu')} note={t('hostProfile.menu_note')} testid="profile-cafe">
+          <PricedEditor rows={form.menu} onChange={(menu) => set({ menu })} units={MENU_UNITS} unitLabel={unitLabel}
+            namePlaceholder={t('hostProfile.menu_ph')} addLabel={t('hostProfile.add_menu')} testid="profile-menu" />
+          <div>
+            <span className={labelCls}>{t('hostProfile.amenities')}</span>
+            <div className="mt-2">
+              <AmenityPicker presets={CAFE_AMENITIES} selected={form.amenities} onChange={(amenities: string[]) => set({ amenities })} compact />
+            </div>
+          </div>
+          <Field label={t('hostProfile.capacity_cafe')}>
+            <input type="number" min={1} max={500} value={form.capacity} onChange={(e) => set({ capacity: e.target.value })} className={`${input} max-w-[10rem]`} data-testid="profile-capacity" />
+          </Field>
+          <div>
+            <span className={labelCls}>{t('hostProfile.recommended_drivers')}</span>
+            <div className="mt-2"><DriverPicker selected={form.recommended_drivers} onChange={(recommended_drivers) => set({ recommended_drivers })} /></div>
+          </div>
+        </Section>
+      )}
+
+      {type === 'shop' && (
+        <Section title={t('hostProfile.goods')} note={t('hostProfile.goods_note')} testid="profile-shop">
+          <PricedEditor rows={form.goods} onChange={(goods) => set({ goods })} units={GOODS_UNITS} unitLabel={unitLabel}
+            namePlaceholder={t('hostProfile.goods_ph')} addLabel={t('hostProfile.add_goods')} testid="profile-goods"
+            max={MAX_GOODS} fullNote={t('hostProfile.goods_full')} />
+          <Field label={t('hostProfile.capacity_shop')}>
+            <input type="number" min={1} max={500} value={form.capacity} onChange={(e) => set({ capacity: e.target.value })} className={`${input} max-w-[10rem]`} data-testid="profile-capacity" />
+          </Field>
+          <div>
+            <span className={labelCls}>{t('hostProfile.recommended_drivers')}</span>
+            <div className="mt-2"><DriverPicker selected={form.recommended_drivers} onChange={(recommended_drivers) => set({ recommended_drivers })} /></div>
+          </div>
+        </Section>
+      )}
+
       <Section title={t('hostProfile.photos')}
-        note={photoGoal ? t(type === 'driver' ? 'hostProfile.photos_note_driver' : 'hostProfile.photos_note_homestay', { count: photoGoal }) : t('hostProfile.photos_note')}>
+        note={photoGoal ? t(photosNote, { count: photoGoal }) : t('hostProfile.photos_note')}>
         <div>
           <span className={labelCls}>{t('hostProfile.cover')}</span>
           <div className="mt-2 flex items-center gap-4">
@@ -442,6 +573,8 @@ export default function ProviderProfile() {
         </div>
       </Section>
 
+      <OwnersSection onLeft={async () => { await refreshProvider(); nav('/'); }} />
+
       <div className="sticky bottom-[calc(var(--bottom-nav-h)+0.5rem)] lg:bottom-4 z-20">
         {msg?.ok ? (
           <div className="rounded-2xl border border-pine/20 bg-white p-3 shadow-lg flex items-center gap-3" data-testid="profile-saved-actions">
@@ -455,6 +588,31 @@ export default function ProviderProfile() {
           <button type="button" onClick={save} disabled={busy} data-testid="profile-save" className="inline-flex items-center gap-2 px-6 rounded-full bg-pine text-white font-bold btn-hover disabled:opacity-60">{busy ? t('common.loading') : t('hostProfile.save')} <ArrowRight size={16} /></button>
         </div>}
       </div>
+    </div>
+
+    {/* Live preview of the host's mini website (the board's "profiles look like websites"). */}
+    <aside className="hidden lg:block sticky top-24" data-testid="profile-preview">
+      <p className="mb-2 text-[11px] font-bold uppercase tracking-widest text-ink-soft flex items-center gap-1.5"><Eye size={14} /> {t('miniSite.preview_title')}</p>
+      <div className="rounded-3xl border border-[var(--line)] shadow-xl overflow-hidden max-h-[calc(100vh-8rem)] overflow-y-auto">
+        <HostMiniSite data={preview} compact />
+      </div>
+      <p className="mt-2 text-xs text-ink-soft">{t('miniSite.preview_note')}</p>
+    </aside>
+
+    {/* Phones and tablets: the same preview behind a button. */}
+    <button type="button" onClick={() => setShowPreview(true)} data-testid="profile-preview-open"
+      className="lg:hidden fixed right-4 bottom-[calc(var(--bottom-nav-h)+5.5rem)] z-30 inline-flex items-center gap-1.5 rounded-full bg-white border border-[var(--line)] shadow-lg px-4 py-2.5 text-sm font-bold text-ink">
+      <Eye size={16} /> {t('miniSite.preview_open')}
+    </button>
+    {showPreview && (
+      <div className="lg:hidden fixed inset-0 z-[60] bg-black/50 flex flex-col" role="dialog" aria-modal="true">
+        <div className="flex items-center justify-between bg-white px-4 py-3 border-b border-[var(--line)]">
+          <span className="font-bold text-ink">{t('miniSite.preview_title')}</span>
+          <button type="button" onClick={() => setShowPreview(false)} aria-label={t('common.close', { defaultValue: 'Close' })} className="w-9 h-9 grid place-items-center rounded-full hover:bg-mist"><X size={18} /></button>
+        </div>
+        <div className="flex-1 overflow-y-auto bg-white"><HostMiniSite data={preview} /></div>
+      </div>
+    )}
     </div>
   );
 }

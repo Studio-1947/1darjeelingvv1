@@ -10,6 +10,7 @@ import { Insight } from '@/components/provider/dashboard/Insight';
 import BookingCard from '@/components/provider/dashboard/BookingCard';
 import EditListingModal from '@/components/provider/dashboard/EditListingModal';
 import KycSection from '@/components/provider/dashboard/KycSection';
+import VerificationTracker from '@/components/provider/dashboard/VerificationTracker';
 import HostPlanCard from '@/components/provider/dashboard/HostPlanCard';
 import VerifiedBadge from '@/components/provider/VerifiedBadge';
 import ProfileCompletionBar from '@/components/provider/ProfileCompletionBar';
@@ -26,6 +27,7 @@ import { useSeo } from '@/components/Seo';
 // unlisted default, so an unknown type falls back to it.
 const CONFIGURE_LABEL_KEY: Record<string, string> = {
   driver: 'pd.configure_profile',
+  guide: 'pd.configure_profile',
   cafe: 'pd.configure_cafe',
   shop: 'pd.configure_shop',
 };
@@ -306,8 +308,14 @@ export default function ProviderDashboard() {
         )}
       </div>
 
-      {/* Complete your profile */}
-      {kycProfile && kycProfile.completion_percent < 100 && (() => {
+      {/* Verification tracker: plan paid, documents sent, team reviewing, live. Same as the app. */}
+      {provider.approval_pending && kycProfile && (
+        <VerificationTracker verification={kycProfile.verification} paid={active} phone={user?.phone}
+          onOpen={() => setTab('profile')} />
+      )}
+
+      {/* Complete your profile (hosts who were live before approval was required) */}
+      {!provider.approval_pending && kycProfile && kycProfile.completion_percent < 100 && (() => {
         // Items the provider can still act on (never uploaded, or bounced back). A document
         // sitting in `in_review` is neither of these - it contributes nothing to
         // completion_percent yet, but there's nothing left for the provider to do either, so
