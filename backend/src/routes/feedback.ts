@@ -47,6 +47,33 @@ router.post('/feedback/aangan', authenticateToken, rateLimiter(10, 60 * 60 * 100
   res.status(201).json({ feedback: { id: item.id, rating: item.rating, message: item.message, status: item.status, created_at: item.createdAt } });
 });
 
+/** Mark a piece of feedback for aangan open or resolved (admin). */
+router.patch('/feedback/aangan/:id', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
+  const status = req.body?.status;
+  if (status !== 'open' && status !== 'resolved') return res.status(400).json({ detail: 'status must be open or resolved' });
+  const [row] = await db.update(schema.appFeedback).set({ status }).where(eq(schema.appFeedback.id, String(req.params.id))).returning();
+  if (!row) return res.status(404).json({ detail: 'Feedback not found' });
+  res.json({ ok: true, status: row.status });
+});
+
+/** Every host's feedback, newest first, with the business it came from (admin). */
+router.get('/admin/host-feedback', authenticateToken, requireAdmin, async (_req: Request, res: Response) => {
+  const items = await db.select({ f: schema.hostFeedback, business: schema.providers.businessName, type: schema.providers.businessType, name: schema.users.name, phone: schema.users.phone })
+    .from(schema.hostFeedback)
+    .innerJoin(schema.providers, eq(schema.providers.id, schema.hostFeedback.providerId))
+    .innerJoin(schema.users, eq(schema.users.id, schema.hostFeedback.userId))
+    .orderBy(desc(schema.hostFeedback.createdAt)).limit(200);
+  res.json({ items: items.map(({ f, business, type, name, phone }) => ({ id: f.id, message: f.message, status: f.status, created_at: f.createdAt, business: { name: business, type }, user: { name, phone } })) });
+});
+
+router.patch('/admin/host-feedback/:id', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
+  const status = req.body?.status;
+  if (status !== 'open' && status !== 'resolved') return res.status(400).json({ detail: 'status must be open or resolved' });
+  const [row] = await db.update(schema.hostFeedback).set({ status }).where(eq(schema.hostFeedback.id, String(req.params.id))).returning();
+  if (!row) return res.status(404).json({ detail: 'Feedback not found' });
+  res.json({ ok: true, status: row.status });
+});
+
 /** Every piece of feedback for aangan, newest first (admin). */
 router.get('/feedback/aangan/all', authenticateToken, requireAdmin, async (_req: Request, res: Response) => {
   const items = await db.select({ f: schema.appFeedback, name: schema.users.name, phone: schema.users.phone })

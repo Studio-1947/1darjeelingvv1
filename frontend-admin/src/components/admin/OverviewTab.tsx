@@ -1,4 +1,5 @@
 import { Database } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 interface OverviewTabProps {
   stats: Record<string, any> | null;
@@ -35,10 +36,26 @@ export default function OverviewTab({ stats, onSeed }: OverviewTabProps) {
               <span className="text-sm text-ink-soft">Bookings per Active Service</span>
               <span className="text-sm font-bold text-ink">{bookingsPerService}</span>
             </div>
-            <div className="flex justify-between items-center py-2">
+            <div className="flex justify-between items-center py-2 border-b border-[var(--line)]">
               <span className="text-sm text-ink-soft">Paid Bookings Rate</span>
               <span className="text-sm font-bold text-ink">{paymentRate}%</span>
             </div>
+            <div className="flex justify-between items-center py-2 border-b border-[var(--line)]">
+              <span className="text-sm text-ink-soft">Active aangan passes</span>
+              <span className="text-sm font-bold text-ink" data-testid="stat-active-passes">{stats?.active_passes ?? 0}</span>
+            </div>
+            <div className="flex justify-between items-center py-2 border-b border-[var(--line)]">
+              <span className="text-sm text-ink-soft">Travellers who set up their profile</span>
+              <span className="text-sm font-bold text-ink">{stats?.traveller_profiles ?? 0}</span>
+            </div>
+            <div className="flex justify-between items-center py-2 border-b border-[var(--line)]">
+              <span className="text-sm text-ink-soft">Comments on host posts</span>
+              <span className="text-sm font-bold text-ink">{stats?.post_comments ?? 0}</span>
+            </div>
+            <Link to="/feedback" className="flex justify-between items-center py-2 hover:text-flag" data-testid="stat-open-feedback">
+              <span className="text-sm text-ink-soft">Open feedback (travellers + hosts)</span>
+              <span className="text-sm font-bold text-flag">{stats?.open_feedback ?? 0} →</span>
+            </Link>
           </div>
         </div>
 

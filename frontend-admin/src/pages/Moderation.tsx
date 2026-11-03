@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { CheckCircle2, ExternalLink, Eye, EyeOff, Flag, Loader2, Newspaper, RefreshCw, ShieldCheck, Trash2 } from 'lucide-react';
+import { CheckCircle2, ExternalLink, Eye, EyeOff, Flag, Loader2, MessageSquare, Newspaper, RefreshCw, ShieldCheck, Trash2 } from 'lucide-react';
 import api from '@/lib/api';
 
 /**
@@ -49,6 +49,8 @@ type Post = {
   listing: { id: string; title: string } | null;
   hidden?: boolean;
   hidden_reason?: string | null;
+  like_count?: number;
+  comment_count?: number;
 };
 
 const REASON_LABEL: Record<string, string> = {
@@ -70,7 +72,7 @@ const when = (iso: string) =>
 const errorText = (e: any) => e?.response?.data?.detail || e?.message || 'Something went wrong';
 
 export default function Moderation() {
-  const [tab, setTab] = useState<'reports' | 'posts'>('reports');
+  const [tab, setTab] = useState<'reports' | 'posts' | 'comments'>('reports');
 
   return (
     <div className="mx-auto max-w-7xl px-4 md:px-8 py-8" data-testid="moderation-page">
@@ -85,6 +87,7 @@ export default function Moderation() {
         {[
           { id: 'reports' as const, label: 'Reports', Icon: Flag },
           { id: 'posts' as const, label: 'Feed posts', Icon: Newspaper },
+          { id: 'comments' as const, label: 'Comments', Icon: MessageSquare },
         ].map(({ id, label, Icon }) => (
           <button
             key={id}
@@ -100,7 +103,7 @@ export default function Moderation() {
         ))}
       </div>
 
-      {tab === 'reports' ? <ReportsPanel /> : <PostsPanel />}
+      {tab === 'reports' ? <ReportsPanel /> : tab === 'posts' ? <PostsPanel /> : <CommentsPanel />}
     </div>
   );
 }
@@ -393,6 +396,9 @@ function PostsPanel() {
                 </div>
               )}
               {p.listing && <div className="mt-2 text-xs text-ink-soft">About: {p.listing.title}</div>}
+              <div className="mt-2 text-xs text-ink-soft" data-testid={`admin-post-engagement-${p.id}`}>
+                ♥ {p.like_count ?? 0} likes · {p.comment_count ?? 0} comments
+              </div>
               <div className="mt-3 flex gap-2">
                 {p.hidden ? (
                   <button onClick={() => unhide(p)} disabled={busy !== null} className={`${btn} border-[var(--line)] text-ink hover:border-ink`}>
@@ -411,6 +417,74 @@ function PostsPanel() {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+type AdminComment = {
+  id: string;
+  post_id: string;
+  body: string;
+  created_at: string;
+  user: { id: string; name: string; phone: string };
+  post: { business: string; excerpt: string };
+};
+
+/** Comments on host posts, newest first; an admin can delete any of them. */
+function CommentsPanel() {
+  const [comments, setComments] = useState<AdminComment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const { data } = await api.get('/posts/admin/comments');
+      setComments(data.comments || []);
+    } catch (e) {
+      setError(errorText(e));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const remove = async (c: AdminComment) => {
+    if (!window.confirm('Delete this comment?')) return;
+    setBusy(c.id);
+    try {
+      await api.delete(`/posts/${c.post_id}/comments/${c.id}`);
+      setComments((list) => list.filter((x) => x.id !== c.id));
+    } catch (e) {
+      window.alert(errorText(e));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  if (loading) return <div className="p-16 text-center text-ink-soft"><Loader2 className="inline animate-spin" size={20} /></div>;
+  if (error) return <div className="p-10 text-center text-flag font-semibold">{error}</div>;
+  if (comments.length === 0) return <div className="mist-panel p-10 text-center text-ink-soft">No comments yet.</div>;
+
+  return (
+    <div className="space-y-3" data-testid="admin-comments">
+      {comments.map((c) => (
+        <div key={c.id} data-testid={`admin-comment-${c.id}`} className="rounded-2xl border border-[var(--line)] bg-white p-4">
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <span className="font-bold text-ink text-sm">{c.user.name}</span>
+            <span className="text-ink-soft">{c.user.phone} · {when(c.created_at)}</span>
+          </div>
+          <p className="mt-1.5 text-sm text-ink whitespace-pre-line">{c.body}</p>
+          <div className="mt-1.5 text-xs text-ink-soft">On {c.post.business}: “{c.post.excerpt}”</div>
+          <button onClick={() => remove(c)} disabled={busy !== null}
+            className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border border-flag/40 text-flag hover:bg-flag/10 disabled:opacity-50">
+            {busy === c.id ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />} Delete
+          </button>
+        </div>
+      ))}
     </div>
   );
 }
