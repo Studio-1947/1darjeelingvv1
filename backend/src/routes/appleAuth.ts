@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { EMPTY_TRAVELLER_PROFILE } from '../lib/travellerProfile';
 import { createHash, createPublicKey, type JsonWebKeyInput } from 'node:crypto';
 import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
@@ -129,6 +130,7 @@ router.post('/', rateLimiter(10, 60 * 1000, 'apple_auth'), async (req: Request, 
       password: null,
       phoneVerifiedAt: null,
       interests: [],
+      ...EMPTY_TRAVELLER_PROFILE,
       referralCode: null,
     };
     await db.insert(schema.users).values(user);

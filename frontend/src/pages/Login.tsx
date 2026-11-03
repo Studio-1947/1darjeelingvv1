@@ -65,10 +65,13 @@ export default function Login() {
     login(data.token, data.user, role);
     if (role === 'provider') {
       nav('/provider/dashboard');
+    } else if (!userExists && !data.user?.gender && !data.user?.travellerType) {
+      // A new traveller: Profile Setup first (skippable), then where they were going.
+      nav(`/profile/edit?setup=1&next=${encodeURIComponent(next)}`);
     } else {
       nav(next);
     }
-  }, [login, nav, next, role]);
+  }, [login, nav, next, role, userExists]);
 
   // Initialize Google Identity Services once and prompt the One Tap UI.
   const handleGoogleSignIn = useCallback(async (idToken: string) => {

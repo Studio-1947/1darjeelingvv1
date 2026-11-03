@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { EMPTY_TRAVELLER_PROFILE } from '../lib/travellerProfile';
 import crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import { db, schema } from '../db';
@@ -338,6 +339,7 @@ router.post('/otp/verify', rateLimiter(10, 60 * 1000, 'otp_verify'), async (req:
       password: null,
       phoneVerifiedAt: new Date().toISOString(),
       interests: [],
+      ...EMPTY_TRAVELLER_PROFILE,
       // Minted at registration so the invite screen never has to wait on a write.
       referralCode: await generateReferralCode()
     };
