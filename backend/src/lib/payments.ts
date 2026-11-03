@@ -1,5 +1,5 @@
 import { AMOUNTS, DONATION_MIN_PAISE, DONATION_MAX_PAISE } from '../config';
-import { priceBreakup, type PriceBreakup } from './pricing';
+import { flowBreakup, type PriceBreakup } from './pricing';
 
 export type AmountResolution =
   | { amount: number; breakup?: PriceBreakup }
@@ -29,9 +29,10 @@ export function resolveAmount(flow: string, body: any): AmountResolution {
       return { error: { status: 400, detail: 'Invalid payment flow' } };
     }
     // The body is not consulted. A fixed-price flow carrying an `amount` is either a confused
-    // client or a hostile one; either way the map wins. The charge is the base plus GST and the
-    // platform fee; a donation (below) is a gift and carries neither.
-    const breakup = priceBreakup(base);
+    // client or a hostile one; either way the map wins. The charge is the base plus GST (and the
+    // gateway fee on host flows); a donation (below) is a gift and carries neither. The pass
+    // renewal price is applied by the order route, which knows the payer.
+    const breakup = flowBreakup(flow);
     return { amount: breakup.total, breakup };
   }
 

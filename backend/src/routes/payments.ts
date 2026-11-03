@@ -11,7 +11,7 @@ import { computeHostPlanExpiry, isHostPlanLive, isListingHostLapsed } from '../l
 import { serializeProvider } from '../lib/providerShape';
 import { settleBookingConfirmation } from '../lib/bookingConfirmation';
 import { resolveAmount } from '../lib/payments';
-import { priceList } from '../lib/pricing';
+import { passBreakupFor, priceList } from '../lib/pricing';
 
 const router = Router();
 
@@ -311,8 +311,8 @@ async function settlePaymentOnce(payment: PaymentRow, gatewayPaymentId: string) 
  *   get:
  *     summary: What each fixed payment costs, with its breakup
  *     description: >
- *       Base price, 18% GST and the 2% platform fee (both on the base) and the total, in paise,
- *       for the aangan pass, the ₹1 booking fee and the host plan. Public, so both apps can show
+ *       Base price, 18% GST, the 2% payment gateway fee (host plans only) and the total, in
+ *       paise, for the aangan pass (first year and renewal), the ₹1 booking fee and the host plan. Public, so both apps can show
  *       the breakup before anyone signs in or pays.
  *     tags: [Payments]
  *     responses:
@@ -337,8 +337,13 @@ router.post('/order', authenticateToken, async (req: Request, res: Response) => 
   if ('error' in resolved) {
     return res.status(resolved.error.status).json({ detail: resolved.error.detail });
   }
-  const { amount } = resolved;
-  const breakup = resolved.breakup ?? null;
+  let { amount } = resolved;
+  let breakup = resolved.breakup ?? null;
+  // The pass is ₹12 the first time and ₹99 after that; the payer decides which, not the client.
+  if (flow === 'platform_support') {
+    breakup = passBreakupFor(req.user);
+    amount = breakup.total;
+  }
 
   // Bind the reference to the caller at the point it enters the system. §1.5 stopped an order
   // being *redeemed* against someone else's reference, but without this an attacker could simply

@@ -20,6 +20,9 @@ export interface HostPost {
     verified: boolean;
   };
   listing: { id: string; title: string; type: string; image: string } | null;
+  like_count?: number;
+  comment_count?: number;
+  liked_by_me?: boolean;
   /** Only on the host's own posts. */
   hidden?: boolean;
   hidden_reason?: string | null;
@@ -56,3 +59,35 @@ export async function updatePost(id: string, input: { body?: string; photos?: st
 export async function deletePost(id: string): Promise<void> {
   await api.delete(`/posts/${id}`);
 }
+
+export interface PostComment {
+  id: string;
+  body: string;
+  created_at: string;
+  user: { id: string; name: string; avatar: string | null };
+  can_delete: boolean;
+}
+
+export type Engagement = { like_count: number; comment_count: number; liked_by_me: boolean };
+
+export async function setLiked(id: string, liked: boolean): Promise<Engagement> {
+  const { data } = liked ? await api.post(`/posts/${id}/like`) : await api.delete(`/posts/${id}/like`);
+  return data;
+}
+
+export async function fetchComments(id: string): Promise<PostComment[]> {
+  const { data } = await api.get(`/posts/${id}/comments`);
+  return data.comments || [];
+}
+
+export async function addComment(id: string, body: string): Promise<PostComment> {
+  const { data } = await api.post(`/posts/${id}/comments`, { body });
+  return data.comment;
+}
+
+export async function deleteComment(postId: string, commentId: string): Promise<void> {
+  await api.delete(`/posts/${postId}/comments/${commentId}`);
+}
+
+/** The link that opens one post in the feed. */
+export const postUrl = (id: string) => `${window.location.origin}/feed?post=${encodeURIComponent(id)}`;

@@ -1,78 +1,50 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { FacebookLogo, Heart, EnvelopeSimple as Mail, InstagramLogo } from '@phosphor-icons/react';
+import { FacebookLogo, InstagramLogo, EnvelopeSimple as Mail } from '@phosphor-icons/react';
 import Wordmark from '@/components/Wordmark';
+
+/**
+ * A minimal footer: the wordmark, one row of links, the social icons and the copyright line.
+ * Delete account now lives on the Privacy page.
+ */
+const LINKS: { to: string; key: string }[] = [
+  { to: '/about', key: 'footer.about_aangan' },
+  { to: '/explore', key: 'nav.explore' },
+  { to: '/provider/onboard', key: 'nav.provider' },
+  { to: '/responsible', key: 'nav.responsible' },
+  { to: '/privacy', key: 'nav.privacy' },
+  { to: '/terms', key: 'nav.terms' },
+  { to: '/refunds', key: 'nav.refunds' },
+  { to: '/contact', key: 'nav.contact' },
+];
 
 export default function Footer() {
   const { t } = useTranslation();
+  const icon = 'text-ink-soft transition-colors hover:text-pine focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine rounded';
   return (
-    <footer className="mt-16 md:mt-24 border-t border-[var(--line)] bg-white pb-20 lg:pb-0" data-testid="site-footer">
-      {/* Every column heading was an <h4> under a page <h1>, so the outline read
-          H1 → H4 → H4 → H4 with H2 and H3 skipped entirely (QA 5.2). They are the
-          top-level sections of the footer, so h2 is the honest level; the visual
-          size is set by the class and is unchanged. */}
-      <div className="mx-auto max-w-7xl px-4 md:px-8 py-10 md:py-14 grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-10">
-        <div className="col-span-2 md:col-span-1">
-          <div className="mb-3">
-            <Wordmark className="h-6 w-auto text-ink" />
-            <div className="mt-1 text-[10px] font-semibold tracking-wide text-ink-soft">By studio 1947</div>
-          </div>
-          <p className="text-sm text-ink-soft leading-relaxed">{t('brand_tagline')}</p>
-          <p className="mt-4 text-xs text-ink-soft flex items-center gap-1"><Heart size={12} className="text-flag" /> {t('footer.made')}</p>
-          <div className="mt-4 flex items-center gap-3">
-            <a
-              href="https://www.instagram.com/aanganerp?dlrf=MWRnZ2tneHBqM2JiaQ%3D%3D"
-              target="_blank"
-              rel="noreferrer"
-              aria-label="Follow Aangan on Instagram"
-              className="text-ink-soft transition-colors hover:text-pine focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine focus-visible:ring-offset-2"
-            >
-              <InstagramLogo size={20} aria-hidden="true" />
-            </a>
-            <a
-              href="https://www.facebook.com/profile.php?id=61594349938326"
-              target="_blank"
-              rel="noreferrer"
-              aria-label="Follow Aangan on Facebook"
-              className="text-ink-soft transition-colors hover:text-pine focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine focus-visible:ring-offset-2"
-            >
-              <FacebookLogo size={20} aria-hidden="true" />
-            </a>
-          </div>
+    <footer className="mt-16 md:mt-20 border-t border-[var(--line)] bg-white pb-24 lg:pb-0" data-testid="site-footer">
+      <div className="mx-auto max-w-6xl px-4 md:px-8 py-8 flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+        <div className="flex items-center gap-3">
+          <Wordmark className="h-6 w-auto text-ink" />
+          <span className="text-[11px] font-semibold text-ink-soft">By studio 1947</span>
         </div>
-        <div>
-          <h2 className="font-display font-bold text-sm mb-3 text-ink">{t('nav.discover')}</h2>
-          <ul className="space-y-2 text-sm text-ink-soft">
-            <li><Link to="/spots" className="hover:text-pine transition-colors">{t('nav.spots')}</Link></li>
-            <li><Link to="/homestays" className="hover:text-pine transition-colors">{t('nav.homestays')}</Link></li>
-            <li><Link to="/drivers" className="hover:text-pine transition-colors">{t('nav.drivers')}</Link></li>
-            <li><Link to="/cafes" className="hover:text-pine transition-colors">{t('nav.cafes')}</Link></li>
+        <nav aria-label={t('footer.links')}>
+          <ul className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-ink-soft">
+            {LINKS.map(({ to, key }) => (
+              <li key={to}><Link to={to} className="hover:text-pine transition-colors">{t(key)}</Link></li>
+            ))}
           </ul>
-        </div>
-        <div>
-          <h2 className="font-display font-bold text-sm mb-3 text-ink">{t('footer.darjeeling')}</h2>
-          <ul className="space-y-2 text-sm text-ink-soft">
-            <li><Link to="/events" className="hover:text-pine transition-colors">{t('nav.events')}</Link></li>
-            <li><Link to="/biodiversity" className="hover:text-pine transition-colors">{t('nav.biodiversity')}</Link></li>
-            <li><Link to="/responsible" className="hover:text-pine transition-colors">{t('nav.responsible')}</Link></li>
-            <li><Link to="/about" className="hover:text-pine transition-colors">{t('nav.about')}</Link></li>
-            <li><Link to="/provider/onboard" className="hover:text-pine transition-colors">{t('nav.provider')}</Link></li>
-          </ul>
-        </div>
-        <div>
-          <h2 className="font-display font-bold text-sm mb-3 text-ink">{t('footer.legal')}</h2>
-          <ul className="space-y-2 text-sm text-ink-soft">
-            <li><Link to="/privacy" className="hover:text-pine transition-colors">{t('nav.privacy')}</Link></li>
-            <li><Link to="/terms" className="hover:text-pine transition-colors">{t('nav.terms')}</Link></li>
-            <li><Link to="/refunds" className="hover:text-pine transition-colors">{t('nav.refunds')}</Link></li>
-            <li><Link to="/contact" className="hover:text-pine transition-colors">{t('nav.contact')}</Link></li>
-            <li><Link to="/delete-account" className="hover:text-pine transition-colors">{t('nav.delete_account')}</Link></li>
-            <li className="flex items-center gap-1 mt-2 text-ink/80 font-medium"><Mail size={12} className="text-pine flex-shrink-0" /> aanganerp@gmail.com</li>
-          </ul>
+        </nav>
+        <div className="flex items-center gap-4">
+          <a href="https://www.instagram.com/aanganerp?dlrf=MWRnZ2tneHBqM2JiaQ%3D%3D" target="_blank" rel="noreferrer"
+            aria-label="Follow Aangan on Instagram" className={icon}><InstagramLogo size={20} aria-hidden="true" /></a>
+          <a href="https://www.facebook.com/profile.php?id=61594349938326" target="_blank" rel="noreferrer"
+            aria-label="Follow Aangan on Facebook" className={icon}><FacebookLogo size={20} aria-hidden="true" /></a>
+          <a href="mailto:aanganerp@gmail.com" aria-label="Email aanganerp@gmail.com" className={icon}><Mail size={20} aria-hidden="true" /></a>
         </div>
       </div>
-      <div className="border-t border-[var(--line)] py-5 text-center text-xs text-ink-soft">© 2026 {t('brand')}. {t('footer.rights')}.</div>
+      <div className="border-t border-[var(--line)] py-4 text-center text-xs text-ink-soft">© 2026 {t('brand')}. {t('footer.rights')}.</div>
     </footer>
   );
 }

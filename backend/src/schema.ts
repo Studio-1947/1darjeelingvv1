@@ -375,6 +375,26 @@ export const hostPosts = pgTable('host_posts', {
   providerIdx: index('host_posts_provider_id_idx').on(t.providerId),
 }));
 
+/** A reader's like on a host post: one per person per post. */
+export const postReactions = pgTable('post_reactions', {
+  postId: text('post_id').references(() => hostPosts.id, { onDelete: 'cascade' }).notNull(),
+  userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  createdAt: text('created_at').notNull(),
+}, (t) => ({
+  pk: primaryKey({ columns: [t.postId, t.userId] }),
+}));
+
+/** A comment on a host post. The writer, the post's author or an admin can delete it. */
+export const postComments = pgTable('post_comments', {
+  id: text('id').primaryKey(),
+  postId: text('post_id').references(() => hostPosts.id, { onDelete: 'cascade' }).notNull(),
+  userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  body: text('body').notNull(),
+  createdAt: text('created_at').notNull(),
+}, (t) => ({
+  postIdx: index('post_comments_post_id_idx').on(t.postId, t.createdAt),
+}));
+
 /**
  * Co-owners of a business (the board's "Multiple Owners"). The main owner adds someone by phone;
  * when that number signs in with its WhatsApp OTP it can run the same business: listings,

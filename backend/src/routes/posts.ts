@@ -104,6 +104,47 @@ function postOut(r: Row, opts: { includeModeration?: boolean } = {}) {
   };
 }
 
+// ============ LIKES AND COMMENTS ============
+
+export const MAX_COMMENT_LEN = 500;
+const COMMENTS_PAGE = 100;
+
+type Engagement = { like_count: number; comment_count: number; liked_by_me: boolean };
+
+/** Like and comment counts for a page of posts, and which of them the viewer has liked. */
+async function engagementFor(postIds: string[], viewerId: string | null): Promise<Map<string, Engagement>> {
+  const out = new Map<string, Engagement>(postIds.map((id) => [id, { like_count: 0, comment_count: 0, liked_by_me: false }]));
+  if (!postIds.length) return out;
+  const [likes, comments, mine] = await Promise.all([
+    db.select({ postId: schema.postReactions.postId, n: sql<number>`count(*)::int` })
+      .from(schema.postReactions).where(inArray(schema.postReactions.postId, postIds)).groupBy(schema.postReactions.postId),
+    db.select({ postId: schema.postComments.postId, n: sql<number>`count(*)::int` })
+      .from(schema.postComments).where(inArray(schema.postComments.postId, postIds)).groupBy(schema.postComments.postId),
+    viewerId
+      ? db.select({ postId: schema.postReactions.postId }).from(schema.postReactions)
+        .where(and(inArray(schema.postReactions.postId, postIds), eq(schema.postReactions.userId, viewerId)))
+      : Promise.resolve([] as { postId: string }[]),
+  ]);
+  likes.forEach((l) => { out.get(l.postId)!.like_count = Number(l.n); });
+  comments.forEach((c) => { out.get(c.postId)!.comment_count = Number(c.n); });
+  mine.forEach((m) => { out.get(m.postId)!.liked_by_me = true; });
+  return out;
+}
+
+/** postOut for a list, with likes and comments filled in. */
+async function postsOut(rows: Row[], viewerId: string | null, opts: { includeModeration?: boolean } = {}) {
+  const eng = await engagementFor(rows.map((r) => r.post.id), viewerId);
+  return rows.map((r) => ({ ...postOut(r, opts), ...eng.get(r.post.id)! }));
+}
+
+/** A post anyone may see, or null. */
+async function publicPost(id: string): Promise<Row | null> {
+  const [row] = (await selectRows()
+    .where(and(eq(schema.hostPosts.id, id), publicPostCondition()))
+    .limit(1)) as Row[];
+  return row ?? null;
+}
+
 function selectRows() {
   return db
     .select({
@@ -182,7 +223,7 @@ router.get('/', async (req: Request, res: Response) => {
 
   const page = rows.slice(0, limit);
   res.json({
-    posts: page.map((r) => postOut(r)),
+    posts: await postsOut(page, viewer?.id ?? null),
     next_before: rows.length > limit ? page[page.length - 1].post.createdAt : null,
   });
 });
@@ -203,7 +244,7 @@ router.get('/me', authenticateToken, async (req: Request, res: Response) => {
     .orderBy(desc(schema.hostPosts.createdAt))
     .limit(100)) as Row[];
   const reason = hostCanPost(provider) ? null : isHostApprovalPending(provider) ? 'not_verified' : 'plan_not_live';
-  res.json({ can_post: reason === null, reason, posts: rows.map((r) => postOut(r, { includeModeration: true })) });
+  res.json({ can_post: reason === null, reason, posts: await postsOut(rows, req.user!.id, { includeModeration: true }) });
 });
 
 /**
@@ -283,11 +324,123 @@ router.post('/', authenticateToken, rateLimiter(20, 60 * 60 * 1000, 'post_create
  *     security: [{ bearerAuth: [] }]
  */
 router.get('/:id', async (req: Request, res: Response) => {
-  const [row] = (await selectRows()
-    .where(and(eq(schema.hostPosts.id, routeParam(req, 'id')), publicPostCondition()))
-    .limit(1)) as Row[];
+  const row = await publicPost(routeParam(req, 'id'));
   if (!row) return res.status(404).json({ detail: 'Post not found' });
-  res.json({ post: postOut(row) });
+  const viewer = await optionalUser(req);
+  const [post] = await postsOut([row], viewer?.id ?? null);
+  res.json({ post });
+});
+
+/**
+ * @openapi
+ * /posts/{id}/like:
+ *   post:
+ *     summary: Like a post (once per person; liking again is a no-op)
+ *     tags: [Feed]
+ *     security: [{ bearerAuth: [] }]
+ *   delete:
+ *     summary: Take your like back
+ *     tags: [Feed]
+ *     security: [{ bearerAuth: [] }]
+ */
+router.post('/:id/like', authenticateToken, rateLimiter(120, 60 * 60 * 1000, 'post_like'), async (req: Request, res: Response) => {
+  const row = await publicPost(routeParam(req, 'id'));
+  if (!row) return res.status(404).json({ detail: 'Post not found' });
+  await db.insert(schema.postReactions)
+    .values({ postId: row.post.id, userId: req.user!.id, createdAt: new Date().toISOString() })
+    .onConflictDoNothing();
+  res.json((await engagementFor([row.post.id], req.user!.id)).get(row.post.id));
+});
+
+router.delete('/:id/like', authenticateToken, async (req: Request, res: Response) => {
+  const id = routeParam(req, 'id');
+  await db.delete(schema.postReactions)
+    .where(and(eq(schema.postReactions.postId, id), eq(schema.postReactions.userId, req.user!.id)));
+  res.json((await engagementFor([id], req.user!.id)).get(id));
+});
+
+/**
+ * @openapi
+ * /posts/{id}/comments:
+ *   get:
+ *     summary: A post's comments, oldest first
+ *     description: Public. Signed-in readers do not see comments by people they blocked.
+ *     tags: [Feed]
+ *   post:
+ *     summary: Comment on a post
+ *     tags: [Feed]
+ *     security: [{ bearerAuth: [] }]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [body]
+ *             properties:
+ *               body: { type: string, maxLength: 500 }
+ */
+router.get('/:id/comments', async (req: Request, res: Response) => {
+  const row = await publicPost(routeParam(req, 'id'));
+  if (!row) return res.status(404).json({ detail: 'Post not found' });
+  const viewer = await optionalUser(req);
+  const conditions = [eq(schema.postComments.postId, row.post.id)];
+  if (viewer) {
+    const blocked = await db.select({ id: schema.userBlocks.blockedId }).from(schema.userBlocks)
+      .where(eq(schema.userBlocks.blockerId, viewer.id));
+    if (blocked.length) conditions.push(sql`${schema.postComments.userId} NOT IN (${sql.join(blocked.map((b) => sql`${b.id}`), sql`, `)})`);
+  }
+  const comments = await db
+    .select({ c: schema.postComments, name: schema.users.name, avatar: schema.users.avatar })
+    .from(schema.postComments)
+    .innerJoin(schema.users, eq(schema.users.id, schema.postComments.userId))
+    .where(and(...conditions))
+    .orderBy(schema.postComments.createdAt)
+    .limit(COMMENTS_PAGE);
+  res.json({
+    comments: comments.map(({ c, name, avatar }) => ({
+      id: c.id,
+      body: c.body,
+      created_at: c.createdAt,
+      user: { id: c.userId, name, avatar },
+      can_delete: !!viewer && (viewer.id === c.userId || viewer.id === row.post.userId || viewer.role === 'admin'),
+    })),
+  });
+});
+
+router.post('/:id/comments', authenticateToken, rateLimiter(30, 60 * 60 * 1000, 'post_comment'), async (req: Request, res: Response) => {
+  const row = await publicPost(routeParam(req, 'id'));
+  if (!row) return res.status(404).json({ detail: 'Post not found' });
+  const body = typeof req.body?.body === 'string' ? req.body.body.trim() : '';
+  if (!body) return res.status(400).json({ detail: 'Write a comment first' });
+  if (body.length > MAX_COMMENT_LEN) return res.status(400).json({ detail: `A comment can be at most ${MAX_COMMENT_LEN} characters` });
+  const [c] = await db.insert(schema.postComments)
+    .values({ id: uuidv4(), postId: row.post.id, userId: req.user!.id, body, createdAt: new Date().toISOString() })
+    .returning();
+  res.status(201).json({
+    comment: {
+      id: c.id,
+      body: c.body,
+      created_at: c.createdAt,
+      user: { id: req.user!.id, name: req.user!.name, avatar: req.user!.avatar ?? null },
+      can_delete: true,
+    },
+  });
+});
+
+/** The comment's writer, the post's author or an admin can delete it. */
+router.delete('/:id/comments/:commentId', authenticateToken, async (req: Request, res: Response) => {
+  const [c] = await db.select({ comment: schema.postComments, postAuthor: schema.hostPosts.userId })
+    .from(schema.postComments)
+    .innerJoin(schema.hostPosts, eq(schema.hostPosts.id, schema.postComments.postId))
+    .where(and(eq(schema.postComments.id, routeParam(req, 'commentId')), eq(schema.postComments.postId, routeParam(req, 'id'))))
+    .limit(1);
+  const me = req.user!;
+  if (!c || !(c.comment.userId === me.id || c.postAuthor === me.id || me.role === 'admin')) {
+    return res.status(404).json({ detail: 'Comment not found' });
+  }
+  await db.delete(schema.postComments).where(eq(schema.postComments.id, c.comment.id));
+  res.json({ ok: true });
 });
 
 router.patch('/:id', authenticateToken, async (req: Request, res: Response) => {

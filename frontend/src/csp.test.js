@@ -205,7 +205,11 @@ describe('search indexing', () => {
   it('does not pair noindex with a Disallow robots.txt', () => {
     // Disallow stops the crawler fetching the page, so it never sees the noindex header and an
     // already-indexed URL stays indexed. Crawling has to stay allowed for noindex to be obeyed.
+    // Only the general group (User-agent: *) matters here; named AI and bulk-copy crawlers are
+    // shut out on purpose and never honour noindex anyway.
     const robots = fs.readFileSync(path.join(__dirname, '..', 'public', 'robots.txt'), 'utf8');
-    expect(robots).not.toMatch(/^\s*Disallow:\s*\/\s*$/m);
+    const general = robots.split(/\r?\n(?=User-agent:\s*\*)/)[1] || '';
+    expect(general).toMatch(/^User-agent:\s*\*/);
+    expect(general).not.toMatch(/^\s*Disallow:\s*\/\s*$/m);
   });
 });

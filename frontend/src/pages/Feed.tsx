@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { CircleNotch as Loader2, Newspaper } from '@phosphor-icons/react';
 import { toast } from 'sonner';
@@ -9,6 +9,7 @@ import PostCard from '@/components/feed/PostCard';
 import PostComposer from '@/components/feed/PostComposer';
 import ReportDialog, { ReportTarget } from '@/components/listing-detail/ReportDialog';
 import { CanPostReason, deletePost, fetchFeed, fetchMyPosts, HostPost } from '@/lib/posts';
+import api from '@/lib/api';
 
 /**
  * The host feed: what hosts say about their own places, newest first, readable by anyone. A host
@@ -31,20 +32,31 @@ export default function Feed() {
   const [mine, setMine] = useState<HostPost[]>([]);
   const [editing, setEditing] = useState<HostPost | null>(null);
   const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null);
+  // A shared link (/feed?post=<id>) opens that post on arrival.
+  const [sp] = useSearchParams();
+  const sharedPostId = sp.get('post');
 
   const load = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
       const page = await fetchFeed({ limit: 20 });
-      setPosts(page.posts);
+      let list = page.posts;
+      // An older shared post is not on the first page: fetch it and put it on top.
+      if (sharedPostId && !list.some((p) => p.id === sharedPostId)) {
+        try {
+          const { data } = await api.get(`/posts/${encodeURIComponent(sharedPostId)}`);
+          if (data?.post) list = [data.post, ...list];
+        } catch { /* gone or hidden: show the feed as usual */ }
+      }
+      setPosts(list);
       setNextBefore(page.nextBefore);
     } catch {
       setError(t('feed.load_failed'));
     } finally {
       setLoading(false);
     }
-  }, [t]);
+  }, [t, sharedPostId]);
 
   const loadMine = useCallback(async () => {
     if (!user) return;
@@ -148,6 +160,7 @@ export default function Feed() {
               onEdit={(post) => { setEditing(post); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
               onDelete={remove}
               onReport={(post) => setReportTarget({ type: 'post', id: post.id, authorId: post.author_user_id, authorName: post.host.name })}
+              autoOpen={p.id === sharedPostId}
             />
           ))}
           {nextBefore && (

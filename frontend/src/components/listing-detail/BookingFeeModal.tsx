@@ -5,7 +5,7 @@ import api, { createPaymentOrder, completeMockPayment, payWithRazorpay } from '@
 import { useAuth } from '@/context/AuthContext';
 import MockPaymentModal from '@/components/MockPaymentModal';
 import PriceBreakup from '@/components/PriceBreakup';
-import { rupees, usePrice } from '@/lib/prices';
+import { rupees, usePrice, usePassPrice, PASS_USUAL_BASE } from '@/lib/prices';
 
 type Flow = 'booking_commission' | 'platform_support';
 
@@ -24,7 +24,7 @@ export default function BookingFeeModal({ bookingId, onConfirmed, onClose }: {
   const [busy, setBusy] = useState<Flow | null>(null);
   const [err, setErr] = useState('');
   const [mock, setMock] = useState<{ flow: Flow; amount: number; order: any } | null>(null);
-  const pass = usePrice('platform_support');
+  const pass = usePassPrice(user);
   const fee = usePrice('booking_commission');
 
   if (!bookingId) return null;
@@ -99,7 +99,8 @@ export default function BookingFeeModal({ bookingId, onConfirmed, onClose }: {
             <span className="font-display font-extrabold text-lg text-pine">{t('fee.pass_price', { total: rupees(pass.total) })}</span>
           </div>
           <p className="mt-1 text-sm text-ink-soft">{busy === 'platform_support' ? t('common.loading') : t('fee.pass_body')}</p>
-          <PriceBreakup breakup={pass} label={t('price.pass')} compact className="mt-3" />
+          <PriceBreakup breakup={pass} label={user?.supportExpiresAt ? t('price.pass') : t('price.pass_first_year')}
+            wasBase={user?.supportExpiresAt ? undefined : PASS_USUAL_BASE} compact className="mt-3" />
         </button>
 
         <button type="button" onClick={() => pay('booking_commission')} disabled={!!busy} data-testid="fee-pay-once"

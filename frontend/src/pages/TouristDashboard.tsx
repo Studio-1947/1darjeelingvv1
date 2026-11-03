@@ -6,18 +6,9 @@ import { useAuth } from '@/context/AuthContext';
 import { SignOut as LogOut, Storefront as Store, Compass, Phone, ArrowRight, Ticket, Calendar, XCircle, CircleNotch as Loader2 } from '@phosphor-icons/react';
 import { useSeo } from '@/components/Seo';
 import BlockedPeople from '@/components/BlockedPeople';
+import TripStats, { tripBuckets, type TripFilter } from '@/components/TripStats';
+import TripCard from '@/components/TripCard';
 
-function StatusPill({ status }) {
-  const { t } = useTranslation();
-  const map = {
-    confirmed: 'bg-pine/10 text-pine',
-    pending_payment: 'bg-gold/20 text-[#8a6b04]',
-    cancelled: 'bg-flag/10 text-flag',
-  };
-  // Unknown statuses fall back to the raw value rather than an empty pill.
-  const label = t(`booking.status.${status}`, { defaultValue: status?.replace('_', ' ') });
-  return <span className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${map[status] || 'bg-mist text-ink-soft'}`}>{label}</span>;
-}
 
 export default function TouristDashboard() {
   const { t, i18n } = useTranslation();
@@ -33,6 +24,8 @@ export default function TouristDashboard() {
   const [loading, setLoading] = useState(true);
   const [confirmingId, setConfirmingId] = useState<string | null>(null); // booking awaiting cancel confirmation
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [filter, setFilter] = useState<TripFilter>('all');
+  const [avatarError, setAvatarError] = useState(false);
 
   const loadBookings = useCallback(() => api.get('/bookings/me').then((r) => setBookings(r.data.items || [])), []);
 
@@ -55,20 +48,37 @@ export default function TouristDashboard() {
 
   if (authLoading || loading || !user) return <div className="p-10 text-center text-ink-soft">{t('common.loading')}</div>;
 
-  const upcoming = bookings.filter((b) => b.status !== 'cancelled' && (b.check_in ? new Date(b.check_in) >= new Date(new Date().setHours(0, 0, 0, 0)) : true));
-  const past = bookings.filter((b) => b.check_in && new Date(b.check_in) < new Date(new Date().setHours(0, 0, 0, 0)));
+  const shown = tripBuckets(bookings)[filter];
 
   return (
     <div className="mx-auto max-w-6xl px-4 md:px-6 py-6 md:py-10">
-      {/* Profile header */}
-      <div className="flex items-center gap-4 md:gap-5 mb-8">
-        <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-gradient-to-br from-pine to-pine-dark text-white grid place-items-center font-display font-extrabold text-3xl">
-          {user.name?.trim().charAt(0).toUpperCase() || 'T'}
+      {/* Profile header: photo, name, phone, then the Traveller tag and the switch to the business side. */}
+      <div className="flex items-center gap-4 md:gap-5 mb-6">
+        <div className="w-16 h-16 md:w-20 md:h-20 rounded-full overflow-hidden bg-gradient-to-br from-pine to-pine-dark text-white grid place-items-center font-display font-extrabold text-3xl flex-shrink-0">
+          {user.avatar && !avatarError ? (
+            <img src={user.avatar} alt={user.name || ''} onError={() => setAvatarError(true)} data-testid="account-avatar" className="w-full h-full object-cover" />
+          ) : (user.name?.trim().charAt(0).toUpperCase() || 'T')}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-[11px] font-bold uppercase tracking-widest text-flag">{t('dashboard.traveller')}</div>
           <h1 className="font-display font-extrabold text-2xl sm:text-3xl md:text-4xl text-ink leading-tight">{user.name || t('dashboard.traveller')}</h1>
-          <p className="text-sm text-ink-soft mt-0.5 flex items-center gap-1"><Phone size={12} /> {user.phone}</p>
+          <p className="text-sm text-ink-soft mt-0.5 flex items-center gap-1 whitespace-nowrap"><Phone size={12} /> {user.phone}</p>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <span data-testid="account-mode" className="inline-flex items-center px-2.5 py-1 rounded-full bg-[#DDF0F1] text-[#0E4A4F] text-[11px] font-bold uppercase tracking-wider">
+              {t('dashboard.traveller')}
+            </span>
+            {user.role === 'provider' ? (
+              <button type="button" onClick={() => { setMode('provider'); nav('/provider/dashboard'); }}
+                data-testid="account-switch-business"
+                className="inline-flex items-center gap-1 px-3 py-1 rounded-full border border-[#1F6656] text-[#1F6656] text-xs font-bold btn-hover">
+                <Store size={13} /> {t('nav.switch_business')} <ArrowRight size={12} />
+              </button>
+            ) : (
+              <Link to="/provider/onboard" data-testid="account-switch-business"
+                className="inline-flex items-center gap-1 px-3 py-1 rounded-full border border-[#1F6656] text-[#1F6656] text-xs font-bold btn-hover">
+                <Store size={13} /> {t('nav.switch_business')} <ArrowRight size={12} />
+              </Link>
+            )}
+          </div>
         </div>
         <button onClick={() => { logout(); nav('/'); }} data-testid="tourist-logout"
           className="hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[var(--line)] text-ink font-semibold text-sm btn-hover">
@@ -76,20 +86,8 @@ export default function TouristDashboard() {
         </button>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-3 md:gap-4 mb-8">
-        <div className="rounded-2xl p-4 bg-gradient-to-br from-flag to-[#8a1e1e] text-white">
-          <div className="text-[11px] uppercase tracking-widest font-bold opacity-90">{t('dashboard.bookings')}</div>
-          <div className="mt-1 font-display font-extrabold text-3xl leading-none">{bookings.length}</div>
-        </div>
-        <div className="rounded-2xl p-4 bg-gradient-to-br from-pine to-pine-dark text-white">
-          <div className="text-[11px] uppercase tracking-widest font-bold opacity-90">{t('dashboard.upcoming')}</div>
-          <div className="mt-1 font-display font-extrabold text-3xl leading-none">{upcoming.length}</div>
-        </div>
-        <div className="rounded-2xl p-4 bg-gradient-to-br from-gold to-[#c69108] text-white">
-          <div className="text-[11px] uppercase tracking-widest font-bold opacity-90">{t('dashboard.trips_taken')}</div>
-          <div className="mt-1 font-display font-extrabold text-3xl leading-none">{past.length}</div>
-        </div>
+      <div className="mb-8">
+        <TripStats bookings={bookings} filter={filter} onFilter={setFilter} />
       </div>
 
       {/* Bookings list */}
@@ -97,7 +95,9 @@ export default function TouristDashboard() {
         <h2 className="font-display font-extrabold text-xl md:text-2xl text-ink mb-4 flex items-center gap-2">
           <Calendar size={18} className="text-pine" /> {t('dashboard.my_bookings')}
         </h2>
-        {bookings.length === 0 ? (
+        {shown.length === 0 && bookings.length > 0 ? (
+          <div className="mist-panel p-6 text-center text-sm text-ink-soft" data-testid="trip-filter-empty">{t('trips.none_in_filter')}</div>
+        ) : bookings.length === 0 ? (
           <div className="mist-panel p-8 md:p-10 text-center">
             <p className="text-ink-soft">{t('dashboard.no_bookings')}</p>
             <div className="mt-4 flex flex-wrap gap-2 justify-center">
@@ -111,49 +111,10 @@ export default function TouristDashboard() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {bookings.map((b) => (
-              <article key={b.id} data-testid={`my-booking-${b.id}`}
-                className="bg-white rounded-2xl border border-[var(--line)] p-4 md:p-5 flex gap-4">
-                <div className="w-20 h-20 rounded-xl overflow-hidden bg-mist flex-shrink-0">
-                  {b.listing?.image && <img src={b.listing.image} alt="" className="w-full h-full object-cover" />}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <div className="font-display font-bold text-ink line-clamp-1">{b.listing?.title || b.listing_title}</div>
-                      <div className="text-xs text-ink-soft capitalize">{b.listing_type}{b.listing?.location ? ` · ${b.listing.location}` : ''}</div>
-                    </div>
-                    <StatusPill status={b.status} />
-                  </div>
-                  <div className="mt-2 text-xs text-ink-soft space-y-0.5">
-                    {b.check_in && <div>{t('booking.checkin')}: <b className="text-ink">{b.check_in}</b>{b.check_out && <> → <b className="text-ink">{b.check_out}</b></>}</div>}
-                    <div>{t('booking.guests')}: <b className="text-ink">{b.guests}</b> · {t('dashboard.booked_on')}: {new Date(b.created_at).toLocaleDateString(i18n.language)}</div>
-                  </div>
-                  <div className="mt-3 flex items-center justify-between gap-2">
-                    <Link to={`/listing/${b.listing_id}`} data-testid={`revisit-${b.id}`}
-                      className="inline-flex items-center gap-1.5 text-xs font-bold text-pine">
-                      {t('dashboard.view_listing')} <ArrowRight size={12} />
-                    </Link>
-                    {b.status !== 'cancelled' && (
-                      confirmingId === b.id ? (
-                        <span className="inline-flex items-center gap-2 text-xs">
-                          <span className="text-ink-soft">{t('dashboard.cancel_confirm')}</span>
-                          <button onClick={() => cancelBooking(b.id)} disabled={busyId === b.id}
-                            data-testid={`confirm-cancel-${b.id}`} className="inline-flex items-center gap-1 font-bold text-flag disabled:opacity-50">
-                            {busyId === b.id ? <Loader2 size={12} className="animate-spin" /> : null} {t('common.yes')}
-                          </button>
-                          <button onClick={() => setConfirmingId(null)} className="font-bold text-ink-soft">{t('common.no')}</button>
-                        </span>
-                      ) : (
-                        <button onClick={() => setConfirmingId(b.id)} data-testid={`cancel-booking-${b.id}`}
-                          className="inline-flex items-center gap-1 text-xs font-bold text-flag hover:text-[#8a1e1e]">
-                          <XCircle size={12} /> {t('common.cancel')}
-                        </button>
-                      )
-                    )}
-                  </div>
-                </div>
-              </article>
+            {shown.map((b) => (
+              <TripCard key={b.id} booking={b} testId={`my-booking-${b.id}`}
+                confirming={confirmingId === b.id} busy={busyId === b.id}
+                onAskCancel={() => setConfirmingId(b.id)} onCancel={() => cancelBooking(b.id)} onKeep={() => setConfirmingId(null)} />
             ))}
           </div>
         )}

@@ -11,11 +11,24 @@ import { Screen, Eyebrow } from './layout';
 import OnboardHero from './OnboardHero';
 import PriceSubmitScreen from './PriceSubmitScreen';
 import { OnboardState } from './useProviderOnboard';
+import { isValidPhone, priceProblem } from '@/lib/hostFormChecks';
 
 /** Step 2 for homestays - a live replica of the public listing page to fill in. */
 export default function HomestayForm({ o }: { o: OnboardState }) {
   const { t } = useTranslation();
   const { form, update } = o;
+  const phoneBad = !!form.contact_phone.trim() && !isValidPhone(form.contact_phone);
+  const priceIssue = priceProblem(form.price_from);
+  // Everything a guest needs before the listing can go live, in the order the page asks for it.
+  const missing = [
+    !form.business_name.trim() && t('ob.check.name'),
+    !form.description.trim() && t('ob.check.description'),
+    (form.latitude == null || !form.location) && t('ob.check.location'),
+    // Left empty, the sign-in number is used (useProviderOnboard), so only a wrong one blocks.
+    phoneBad && t('ob.check.phone'),
+    !form.host_name.trim() && t('ob.check.host_name'),
+    priceIssue && t(`ob.check.${priceIssue}`),
+  ].filter(Boolean) as string[];
   return (
     <div className="pb-10">
       <OnboardHero
@@ -92,12 +105,18 @@ export default function HomestayForm({ o }: { o: OnboardState }) {
               <span className="text-xs font-semibold text-ink-soft uppercase">{t('ob.contact_phone')}</span>
               <input
                 required
-                type="text"
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
+                maxLength={16}
                 value={form.contact_phone}
-                onChange={(e) => update({ contact_phone: e.target.value })}
+                onChange={(e) => update({ contact_phone: e.target.value.replace(/[^\d+\s-]/g, '') })}
                 placeholder={t('ob.hs.phone_ph')}
-                className="mt-1 w-full px-3.5 py-2.5 rounded-xl border border-[var(--line)] bg-white outline-none text-sm font-semibold text-ink"
+                aria-invalid={phoneBad}
+                data-testid="onboard-phone"
+                className={`mt-1 w-full px-3.5 py-2.5 rounded-xl border bg-white outline-none text-sm font-semibold text-ink ${phoneBad ? 'border-flag' : 'border-[var(--line)]'}`}
               />
+              {phoneBad && <p className="mt-1 text-xs font-semibold text-flag" data-testid="onboard-phone-error">{t('ob.check.phone')}</p>}
             </div>
             <div className="pt-2">
               <span className="text-xs font-semibold text-ink-soft uppercase block mb-2">{t('el.listing_tags')}</span>
@@ -203,8 +222,10 @@ export default function HomestayForm({ o }: { o: OnboardState }) {
         onSubmit={() => o.submit()}
         onBack={() => o.setStep(1)}
         busy={o.busy}
-        disabled={o.busy || o.uploading || !form.price_from || !form.description || !form.location}
+        disabled={o.busy || o.uploading}
         msg={o.msg}
+        priceError={form.price_from && priceIssue ? t(`ob.check.${priceIssue}`) : undefined}
+        missing={missing}
       />
     </div>
   );

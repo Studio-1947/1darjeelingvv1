@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { OTP_COUNTRIES, otpPhone } from './phoneRegions';
+import { OTP_COUNTRIES, nationalPhone, otpPhone } from './phoneRegions';
 
 describe('regional OTP numbers', () => {
   it.each([
@@ -14,5 +14,15 @@ describe('regional OTP numbers', () => {
 
   it('rejects an incomplete national number', () => {
     expect(otpPhone('1234', OTP_COUNTRIES[0])).toBeNull();
+  });
+
+  it.each([
+    ['+91 98765 43210', '9876543210'],
+    ['+919876543210', '9876543210'],
+    ['919876543210', '9876543210'],
+    ['098765 43210', '9876543210'],
+    ['9198765432', '9198765432'],
+  ])('drops an autofilled country code from %s', (input, expected) => {
+    expect(nationalPhone(input, OTP_COUNTRIES[0])).toBe(expected);
   });
 });

@@ -5,6 +5,7 @@ import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { CheckCircle as CheckCircle2, Clock, Wallet, CalendarCheck, Users, Phone, ArrowRight, ArrowSquareOut as ExternalLink, X, Upload, Plus, Trash as Trash2, Pencil, Star, Car, PaperPlaneTilt } from '@phosphor-icons/react';
 import ListingFormModal from '@/components/ListingFormModal';
+import ListingJourney from '@/components/provider/dashboard/ListingJourney';
 import { Insight } from '@/components/provider/dashboard/Insight';
 import BookingCard from '@/components/provider/dashboard/BookingCard';
 import EditListingModal from '@/components/provider/dashboard/EditListingModal';
@@ -366,9 +367,10 @@ export default function ProviderDashboard() {
               <Plus size={14} /> {t('pd.add_listing')}
             </button>
           </div>
-          {listings.length === 0 ? (
-            <div className="mist-panel p-8 text-center text-ink-soft">{t('pd.no_listings')}</div>
-          ) : (
+          {listings.length < 3 && (
+            <ListingJourney count={listings.length} onAdd={() => setListingModal({ open: true, editing: null })} />
+          )}
+          {listings.length === 0 ? null : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {listings.map((l) => (
                 <div key={l.id} className="bg-white rounded-2xl border border-[var(--line)] overflow-hidden">

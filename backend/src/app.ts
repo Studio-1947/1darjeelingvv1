@@ -30,6 +30,7 @@ import reportsRouter from './routes/reports';
 import interaktWebhookRouter from './routes/interaktWebhook';
 import feedbackRouter from './routes/feedback';
 import { rateLimiter } from './middleware/rateLimiter';
+import { antiScraper } from './middleware/antiScraper';
 import { reportError } from './observability';
 import { checkStorage } from './lib/s3';
 import { pool } from './db';
@@ -52,6 +53,12 @@ app.set('trust proxy', TRUST_PROXY_HOPS);
 // calls), so it never fights the tighter per-route limits below  those still bite first for the
 // paths that need it. It is a ceiling on automation, not a throttle on use.
 app.use('/api', rateLimiter(300, 60 * 1000, 'api_global'));
+
+// Scraping tools announcing themselves (python-requests, Scrapy, headless browsers...) are refused
+// on public reads in production; see middleware/antiScraper.ts. Listing reads, the data worth
+// copying, get a tighter ceiling than the global one.
+app.use('/api', antiScraper({ enabled: IS_PROD }));
+app.use('/api/listings', rateLimiter(120, 60 * 1000, 'listings_read'));
 
 // Razorpay signs the raw bytes of the webhook body, so this route must keep them verbatim.
 // It has to be mounted BEFORE express.json(), which would otherwise consume the stream and leave

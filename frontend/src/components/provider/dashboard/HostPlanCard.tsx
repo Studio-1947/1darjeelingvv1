@@ -136,6 +136,7 @@ export default function HostPlanCard({ provider, user, reviews, onRenewed }: {
       {canRenew && provider.access !== 'co_owner' && (
         <PriceBreakup breakup={registrationPending ? firstYear : renewal}
           label={registrationPending ? t('price.host_first_year') : t('price.host_renewal')}
+          wasBase={registrationPending ? renewal.base : undefined}
           className="w-full sm:max-w-xs" />
       )}
       {canRenew && provider.access !== 'co_owner' && (

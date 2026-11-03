@@ -7,7 +7,8 @@ import Wordmark from '@/components/Wordmark';
 import useGoBack from '@/hooks/useGoBack';
 import useHeroOverlay from '@/hooks/useHeroOverlay';
 import { CATEGORIES } from '@/constants/categories';
-import { User, Heart, ArrowLeft, ImagesSquare } from '@phosphor-icons/react';
+import { User, Heart, ArrowLeft, ImagesSquare, DownloadSimple } from '@phosphor-icons/react';
+import { APP_DOWNLOAD_URL } from '@/constants/app';
 
 export default function Header() {
   const { t } = useTranslation();
@@ -161,8 +162,25 @@ export default function Header() {
               <Heart size={18} />
             </Link>
           )}
+          {/* Get the app: beside Log in at every width. With no store link yet it is shown but
+              goes nowhere (an empty href would reload the page). */}
+          <a
+            href={APP_DOWNLOAD_URL || undefined}
+            target={APP_DOWNLOAD_URL ? '_blank' : undefined}
+            rel="noreferrer"
+            role={APP_DOWNLOAD_URL ? undefined : 'link'}
+            aria-disabled={APP_DOWNLOAD_URL ? undefined : true}
+            data-testid="header-download-app"
+            className={`inline-flex items-center gap-1.5 h-9 sm:h-10 px-3 sm:px-4 rounded-full border font-bold text-xs sm:text-sm btn-hover whitespace-nowrap ${
+              onVideo ? 'border-white/60 text-white bg-white/10 backdrop-blur' : 'border-[var(--line)] text-ink bg-white'
+            }`}
+          >
+            <DownloadSimple size={16} weight="bold" />
+            {t('nav.download_app')}
+          </a>
           {user ? (
-            <div className="relative" ref={dropdownRef}>
+            // On phones the profile photo lives in the bottom bar's Account tab instead.
+            <div className="relative hidden lg:block" ref={dropdownRef}>
               <button onClick={() => setDropdownOpen(!dropdownOpen)} data-testid="header-profile"
                 className="w-9 h-9 rounded-full bg-gradient-to-br from-pine to-pine-dark text-white grid place-items-center font-bold btn-hover focus:outline-none overflow-hidden">
                 {user.avatar && !avatarError ? (
@@ -241,7 +259,7 @@ export default function Header() {
             </div>
           ) : (
             <Link to="/login" data-testid="header-login"
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-pine text-white font-semibold text-xs md:text-sm btn-hover">
+              className="inline-flex items-center gap-1.5 h-9 sm:h-10 px-4 sm:px-6 rounded-full bg-pine text-white font-bold text-sm md:text-base btn-hover">
               {t('nav.login')}
             </Link>
           )}
