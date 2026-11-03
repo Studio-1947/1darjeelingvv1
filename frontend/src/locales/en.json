@@ -196,7 +196,9 @@
     "menu_note": "What this place serves, and what each item costs",
     "goods_label": "Goods",
     "goods_title": "Goods and rates",
-    "goods_note": "What this shop sells, and the rate for each"
+    "goods_note": "What this shop sells, and the rate for each",
+    "owner_label": "The owner",
+    "owner_title": "Meet the owner"
   },
   "auth": {
     "welcome": "Welcome",
@@ -250,7 +252,7 @@
     "profileCompletion": "Profile completion",
     "completeYourListing": "Complete your listing",
     "verification": "Verification (KYC)",
-    "verificationHelp": "Optional - upload these to earn a Verified badge. JPEG, PNG, or PDF, up to 5 MB.",
+    "verificationHelp": "Our team checks these before your listing goes live, and they earn you the Verified badge. JPEG, PNG or PDF, up to 5 MB.",
     "verified": "Verified",
     "inReview": "In review",
     "rejected": "Rejected",
@@ -1787,7 +1789,10 @@
     "leave_confirm": "Leave this business? You will no longer be able to manage it.",
     "full": "This business has the {{count}} co-owners allowed.",
     "how_it_works": "They sign in to aangan with that number and get the business side straight away. Only you can pay for the plan or change the owners.",
-    "plan_main_owner": "The main owner renews the plan."
+    "plan_main_owner": "The main owner renews the plan.",
+    "remove_q": "Remove?",
+    "remove_yes": "Remove",
+    "cancel": "Cancel"
   },
   "verify": {
     "progress": "Review progress",

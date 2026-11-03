@@ -27,6 +27,7 @@ import { useSeo } from '@/components/Seo';
 // unlisted default, so an unknown type falls back to it.
 const CONFIGURE_LABEL_KEY: Record<string, string> = {
   driver: 'pd.configure_profile',
+  guide: 'pd.configure_profile',
   cafe: 'pd.configure_cafe',
   shop: 'pd.configure_shop',
 };

@@ -12,6 +12,9 @@ import api from '@/lib/api';
 
 type Owner = { id: string; name: string | null; phone: string; joined: boolean; role: 'owner' | 'co_owner'; you?: boolean };
 
+/** "+919800033344" → "+91 98000 33344", the way people read Indian mobile numbers. */
+const prettyPhone = (p: string) => (/^\+91\d{10}$/.test(p) ? `+91 ${p.slice(3, 8)} ${p.slice(8)}` : p);
+
 const input = 'w-full px-3.5 py-2.5 rounded-xl border border-[var(--line)] bg-white outline-none text-sm text-ink';
 
 export default function OwnersSection({ onLeft }: { onLeft?: () => void }) {
@@ -23,6 +26,8 @@ export default function OwnersSection({ onLeft }: { onLeft?: () => void }) {
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Which row is asking "Remove?" (or 'leave'), confirmed inline rather than with a browser pop-up.
+  const [confirming, setConfirming] = useState<string | null>(null);
 
   useEffect(() => {
     api.get('/providers/me/owners')
@@ -52,7 +57,7 @@ export default function OwnersSection({ onLeft }: { onLeft?: () => void }) {
 
   const remove = async (o: Owner) => {
     const self = !isMain;
-    if (!window.confirm(self ? t('owners.leave_confirm') : t('owners.remove_confirm', { name: o.name || o.phone }))) return;
+    setConfirming(null);
     setBusy(true);
     setError(null);
     try {
@@ -81,15 +86,23 @@ export default function OwnersSection({ onLeft }: { onLeft?: () => void }) {
               <span className="block font-bold text-ink truncate">{o.name || o.phone}{o.you ? ` · ${t('owners.you')}` : ''}</span>
               <span className="flex items-center gap-1.5 text-xs text-ink-soft">
                 {o.role === 'owner' ? <><Crown size={13} className="text-pine" /> {t('owners.main_owner')}</>
-                  : o.joined ? t('owners.co_owner') : <><Clock size={13} /> {t('owners.invited', { phone: o.phone })}</>}
+                  : o.joined ? t('owners.co_owner') : <><Clock size={13} /> {t('owners.invited', { phone: prettyPhone(o.phone) })}</>}
               </span>
             </span>
-            {o.role === 'co_owner' && isMain && (
-              <button type="button" onClick={() => remove(o)} disabled={busy} aria-label={t('owners.remove')}
-                className="w-10 h-10 rounded-full grid place-items-center text-ink-soft hover:bg-mist">
+            {o.role === 'co_owner' && isMain && (confirming === o.id ? (
+              <span className="flex items-center gap-2" data-testid="owner-remove-confirm">
+                <span className="text-xs font-semibold text-ink-soft hidden sm:inline">{t('owners.remove_q')}</span>
+                <button type="button" onClick={() => remove(o)} disabled={busy}
+                  className="px-3 py-1.5 rounded-full bg-flag text-white text-xs font-bold">{t('owners.remove_yes')}</button>
+                <button type="button" onClick={() => setConfirming(null)}
+                  className="px-3 py-1.5 rounded-full border border-[var(--line)] bg-white text-xs font-bold text-ink">{t('owners.cancel')}</button>
+              </span>
+            ) : (
+              <button type="button" onClick={() => setConfirming(o.id)} disabled={busy} aria-label={t('owners.remove')}
+                className="w-10 h-10 rounded-full grid place-items-center text-ink-soft hover:bg-mist" data-testid="owner-remove">
                 <Trash size={18} />
               </button>
-            )}
+            ))}
           </li>
         ))}
       </ul>
@@ -108,11 +121,22 @@ export default function OwnersSection({ onLeft }: { onLeft?: () => void }) {
           <p className="mt-4 text-xs text-ink-soft">{t('owners.full', { count: max })}</p>
         )
       ) : (
-        <button type="button" disabled={busy} data-testid="owner-leave"
-          onClick={() => { const me = owners.find((o) => o.you); if (me) remove(me); }}
-          className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-[var(--line)] bg-white text-sm font-bold text-flag btn-hover">
-          {t('owners.leave')}
-        </button>
+        confirming === 'leave' ? (
+          <div className="mt-4 rounded-xl bg-[#FFF1EC] p-3" data-testid="owner-leave-confirm">
+            <p className="text-sm text-ink">{t('owners.leave_confirm')}</p>
+            <div className="mt-2 flex gap-2">
+              <button type="button" disabled={busy} onClick={() => { const me = owners.find((o) => o.you); if (me) remove(me); }}
+                className="px-4 py-2 rounded-full bg-flag text-white text-sm font-bold">{t('owners.leave')}</button>
+              <button type="button" onClick={() => setConfirming(null)}
+                className="px-4 py-2 rounded-full border border-[var(--line)] bg-white text-sm font-bold text-ink">{t('owners.cancel')}</button>
+            </div>
+          </div>
+        ) : (
+          <button type="button" disabled={busy} data-testid="owner-leave" onClick={() => setConfirming('leave')}
+            className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-[var(--line)] bg-white text-sm font-bold text-flag btn-hover">
+            {t('owners.leave')}
+          </button>
+        )
       )}
       {isMain && <p className="mt-2 text-xs text-ink-soft">{t('owners.how_it_works')}</p>}
       {error && <p className="mt-2 text-sm font-semibold text-flag" data-testid="owner-error">{error}</p>}

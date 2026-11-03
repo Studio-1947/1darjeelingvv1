@@ -605,7 +605,7 @@ export default function ProviderProfile() {
       <Eye size={16} /> {t('miniSite.preview_open')}
     </button>
     {showPreview && (
-      <div className="lg:hidden fixed inset-0 z-50 bg-black/50 flex flex-col" role="dialog" aria-modal="true">
+      <div className="lg:hidden fixed inset-0 z-[60] bg-black/50 flex flex-col" role="dialog" aria-modal="true">
         <div className="flex items-center justify-between bg-white px-4 py-3 border-b border-[var(--line)]">
           <span className="font-bold text-ink">{t('miniSite.preview_title')}</span>
           <button type="button" onClick={() => setShowPreview(false)} aria-label={t('common.close', { defaultValue: 'Close' })} className="w-9 h-9 grid place-items-center rounded-full hover:bg-mist"><X size={18} /></button>

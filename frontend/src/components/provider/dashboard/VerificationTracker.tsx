@@ -16,6 +16,9 @@ export type Verification = {
   support_phone?: string | null;
 };
 
+/** "+919800022233" → "+91 98000 22233". */
+const prettyPhone = (p: string) => (/^\+91\d{10}$/.test(p) ? `+91 ${p.slice(3, 8)} ${p.slice(8)}` : p);
+
 const HEADLINES: Record<Headline, [string, string]> = {
   pay: ['verify.title_pay', 'verify.body_pay'],
   send: ['verify.title_send', 'verify.body_send'],
@@ -79,7 +82,7 @@ export default function VerificationTracker({ verification, paid, phone, onOpen 
       {headline !== 'live' && headline !== 'pay' && (
         <div className="mt-4 rounded-xl bg-pine/5 px-4 py-3">
           <p className="text-[11px] font-bold uppercase tracking-widest text-pine">{t('verify.keep_phone_title')}</p>
-          <p className="mt-1 text-sm text-ink-soft">{t('verify.keep_phone_body', { phone: phone || t('verify.phone_missing') })}</p>
+          <p className="mt-1 text-sm text-ink-soft">{t('verify.keep_phone_body', { phone: phone ? prettyPhone(phone) : t('verify.phone_missing') })}</p>
         </div>
       )}
 
