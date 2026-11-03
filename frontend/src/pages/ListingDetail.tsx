@@ -216,6 +216,7 @@ export default function ListingDetail() {
           kind={item.type === 'cafe' ? 'menu' : 'goods'}
           rows={Array.isArray(item.extras?.[item.type === 'cafe' ? 'menu' : 'goods']) ? item.extras[item.type === 'cafe' ? 'menu' : 'goods'] : []}
           homeDelivery={item.extras?.home_delivery === true}
+          capacity={Number(item.extras?.capacity) || 0}
         />
       )}
 
@@ -230,7 +231,7 @@ export default function ListingDetail() {
 
       {item.type === 'driver' && c.routes && c.routes.length > 0 && <RoutesSection routes={c.routes} />}
 
-      {item.type === 'homestay' && Array.isArray(item.extras?.recommended_drivers) && item.extras.recommended_drivers.length > 0 && (
+      {(item.type === 'homestay' || item.type === 'cafe' || item.type === 'shop') && Array.isArray(item.extras?.recommended_drivers) && item.extras.recommended_drivers.length > 0 && (
         <RecommendedDriversSection ids={item.extras.recommended_drivers} />
       )}
 

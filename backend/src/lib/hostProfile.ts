@@ -14,7 +14,9 @@ import { isPlausiblePhone } from './phone';
  *   paper are KYC documents);
  * - guide: name, age, gender, type of guide, services and charges, seasons;
  * - cafe / restaurant: owner name, menu with prices, amenities, home delivery;
- * - local business (shop): type of business, goods and rates (at most 10 items), home delivery.
+ * - local business (shop): type of business, goods and rates (at most 10 items), home delivery;
+ * - the board's green list (host name, 8 property photos, recommended drivers, guest occupancy)
+ *   is linked to homestays, cafes and local businesses alike, so all three get those.
  *
  * Everything lives in the provider's `extras` (and is copied onto the host's listings, which is
  * what travellers read). Each field is checked here, so a client can send any subset of them.
@@ -118,6 +120,16 @@ const COMMON: Record<string, (v: unknown) => unknown | ProfileError> = {
   images: (v) => list(v, 30, 'Photos', (x) => (isUrl(x) ? (x as string).trim() : { error: 'Each photo must be an uploaded image' })),
 };
 
+/** The green-list fields a homestay, a cafe and a local business share. */
+const PREMISES: Record<string, (v: unknown) => unknown | ProfileError> = {
+  recommended_drivers: (v) => list(v, 10, 'Recommended drivers', (x) =>
+    typeof x === 'string' && x.trim() && x.length <= 64 ? x.trim() : { error: 'A recommended driver must be a driver listing' }),
+  capacity: (v) => int(v, 1, 500, 'Guest occupancy'),
+};
+
+/** Host types that are a place travellers come to, and share the green list's rules. */
+export const PREMISES_TYPES = ['homestay', 'cafe', 'shop'] as const;
+
 const BY_TYPE: Record<string, Record<string, (v: unknown) => unknown | ProfileError>> = {
   driver: {
     vehicle_number: (v) => {
@@ -141,8 +153,7 @@ const BY_TYPE: Record<string, Record<string, (v: unknown) => unknown | ProfileEr
     host_name: (v) => text(v, 80, 'Host name'),
     rooms: (v) => list(v, 20, 'Rooms', priced(ROOM_UNITS, 'room', 'night')),
     meals: (v) => list(v, 20, 'Food', priced(['meal', 'day', 'head'], 'meal', 'meal')),
-    recommended_drivers: (v) => list(v, 10, 'Recommended drivers', (x) =>
-      typeof x === 'string' && x.trim() && x.length <= 64 ? x.trim() : { error: 'A recommended driver must be a driver listing' }),
+    ...PREMISES,
     capacity: (v) => int(v, 1, 100, 'Guest occupancy'),
     amenities: (v) => list(v, 30, 'Amenities', (x) => text(x, 60, 'Amenity')),
     home_delivery: (v) => (typeof v === 'boolean' ? v : { error: 'Home delivery must be on or off' }),
@@ -158,6 +169,7 @@ const BY_TYPE: Record<string, Record<string, (v: unknown) => unknown | ProfileEr
   cafe: {
     host_name: (v) => text(v, 80, 'Owner name'),
     menu: (v) => list(v, 40, 'Menu', priced(MENU_UNITS, 'menu item', 'plate')),
+    ...PREMISES,
     amenities: (v) => list(v, 30, 'Amenities', (x) => text(x, 60, 'Amenity')),
     home_delivery: (v) => (typeof v === 'boolean' ? v : { error: 'Home delivery must be on or off' }),
   },
@@ -165,6 +177,7 @@ const BY_TYPE: Record<string, Record<string, (v: unknown) => unknown | ProfileEr
     host_name: (v) => text(v, 80, 'Owner name'),
     shop_kind: (v) => text(v, 60, 'Type of business'),
     goods: (v) => list(v, MAX_GOODS, 'Goods', priced(GOODS_UNITS, 'item', 'item')),
+    ...PREMISES,
     home_delivery: (v) => (typeof v === 'boolean' ? v : { error: 'Home delivery must be on or off' }),
   },
 };
@@ -203,10 +216,12 @@ export function missingMandatory(businessType: string, extras: Record<string, an
     if (photos < MIN_CAR_PHOTOS) {
       missing.push({ key: 'images', label: `Add at least ${MIN_CAR_PHOTOS} photos of your car (${photos} so far)` });
     }
-  } else if (businessType === 'homestay') {
-    if (!String(e.host_name ?? '').trim()) missing.push({ key: 'host_name', label: "Add the host's name" });
+  } else if ((PREMISES_TYPES as readonly string[]).includes(businessType)) {
+    const who = businessType === 'homestay' ? "the host's name" : "the owner's name";
+    const place = businessType === 'homestay' ? 'the property' : businessType === 'cafe' ? 'your cafe or restaurant' : 'your shop';
+    if (!String(e.host_name ?? '').trim()) missing.push({ key: 'host_name', label: `Add ${who}` });
     if (photos < MIN_PROPERTY_PHOTOS) {
-      missing.push({ key: 'images', label: `Add at least ${MIN_PROPERTY_PHOTOS} photos of the property (${photos} so far)` });
+      missing.push({ key: 'images', label: `Add at least ${MIN_PROPERTY_PHOTOS} photos of ${place} (${photos} so far)` });
     }
   } else if (businessType === 'guide') {
     const services = Array.isArray(e.services) ? e.services.filter((s: any) => s && s.name && Number(s.price) > 0) : [];

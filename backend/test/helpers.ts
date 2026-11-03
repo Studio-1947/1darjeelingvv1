@@ -177,7 +177,7 @@ export async function completeMandatoryProfile(token: string): Promise<void> {
   const photos = (n: number) => Array.from({ length: n }, (_, i) => `https://example.com/photo-${i + 1}.jpg`);
   const profile =
     type === 'driver' ? { images: photos(6) }
-    : type === 'homestay' ? { host_name: 'Test Host', images: photos(8) }
+    : type === 'homestay' || type === 'cafe' || type === 'shop' ? { host_name: 'Test Host', images: photos(8) }
     : type === 'guide' ? { services: [{ name: 'Day hike', price: 1500, unit: 'day' }] }
     : null;
   if (!profile) return;

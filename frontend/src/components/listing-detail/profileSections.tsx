@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   Translate as Languages, Medal, InstagramLogo, FacebookLogo, YoutubeLogo, Globe, PlayCircle,
-  Compass, Bed, ForkKnife, Car, ArrowRight, CalendarBlank, MoonStars, Storefront, Moped,
+  Compass, Bed, ForkKnife, Car, ArrowRight, CalendarBlank, MoonStars, Storefront, Moped, UsersThree,
 } from '@phosphor-icons/react';
 import api from '@/lib/api';
 import { listingImage } from '@/lib/listingContent';
@@ -170,9 +170,9 @@ export function RoomsFoodSection({ rooms, meals, homeDelivery }: { rooms: Priced
 }
 
 /** A cafe's menu or a shop's goods, each with its price, and whether they deliver. */
-export function PriceListSection({ kind, rows, homeDelivery }: { kind: 'menu' | 'goods'; rows: Priced[]; homeDelivery?: boolean }) {
+export function PriceListSection({ kind, rows, homeDelivery, capacity = 0 }: { kind: 'menu' | 'goods'; rows: Priced[]; homeDelivery?: boolean; capacity?: number }) {
   const { t } = useTranslation();
-  if (!rows.length && !homeDelivery) return null;
+  if (!rows.length && !homeDelivery && !(capacity > 0)) return null;
   return (
     <Screen tone="mist" testid={`detail-${kind}`}>
       <SectionHead label={t(`detail.${kind}_label`)} title={t(`detail.${kind}_title`)} note={t(`detail.${kind}_note`)} />
@@ -184,6 +184,11 @@ export function PriceListSection({ kind, rows, homeDelivery }: { kind: 'menu' | 
         {homeDelivery && (
           <p className={`text-ink-soft flex items-center ${ALIGN_ROW} gap-2`} data-testid="detail-home-delivery">
             <Moped size={18} className="text-pine" /> {kind === 'menu' ? t('profile.home_delivery_on') : t('profile.home_delivery_shop')}
+          </p>
+        )}
+        {capacity > 0 && (
+          <p className={`text-ink-soft flex items-center ${ALIGN_ROW} gap-2`} data-testid="detail-capacity">
+            <UsersThree size={18} className="text-pine" /> {t(kind === 'menu' ? 'profile.capacity_cafe' : 'profile.capacity_shop', { count: capacity })}
           </p>
         )}
       </div>

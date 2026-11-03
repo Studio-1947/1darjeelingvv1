@@ -1669,7 +1669,9 @@
     "unit_litre": "per litre",
     "unit_pack": "per pack",
     "unit_dozen": "per dozen",
-    "home_delivery_shop": "Home delivery available"
+    "home_delivery_shop": "Home delivery available",
+    "capacity_cafe": "Seats {{count}} guests",
+    "capacity_shop": "Room for {{count}} customers at a time"
   },
   "hostProfile": {
     "title": "Business profile",
@@ -1753,6 +1755,10 @@
     "owner_name": "Owner name",
     "home_delivery_cafe_note": "Turn on if you deliver food to guests nearby.",
     "home_delivery_shop": "Home delivery",
-    "home_delivery_shop_note": "Turn on if you deliver goods to guests nearby."
+    "home_delivery_shop_note": "Turn on if you deliver goods to guests nearby.",
+    "capacity_cafe": "Seating (guests at a time)",
+    "capacity_shop": "Customers at a time",
+    "photos_note_cafe": "At least {{count}} photos: the inside and outside, a front selfie outside, and the front with the name board visible.",
+    "photos_note_shop": "At least {{count}} photos: the inside and outside, a front selfie outside, and the front with the name board visible."
   }
 }

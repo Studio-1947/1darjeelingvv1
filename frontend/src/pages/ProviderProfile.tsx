@@ -240,10 +240,17 @@ export default function ProviderProfile() {
       if (form.gender) profile.gender = form.gender;
       if (num(form.age) !== undefined) profile.age = num(form.age);
     } else if (type === 'cafe') {
-      Object.assign(profile, { host_name: form.host_name.trim(), menu: priced(form.menu), amenities: form.amenities, home_delivery: form.home_delivery });
+      Object.assign(profile, {
+        host_name: form.host_name.trim(), menu: priced(form.menu), amenities: form.amenities,
+        recommended_drivers: form.recommended_drivers, home_delivery: form.home_delivery,
+      });
     } else if (type === 'shop') {
-      Object.assign(profile, { host_name: form.host_name.trim(), shop_kind: form.shop_kind.trim(), goods: priced(form.goods).slice(0, MAX_GOODS), home_delivery: form.home_delivery });
+      Object.assign(profile, {
+        host_name: form.host_name.trim(), shop_kind: form.shop_kind.trim(), goods: priced(form.goods).slice(0, MAX_GOODS),
+        recommended_drivers: form.recommended_drivers, home_delivery: form.home_delivery,
+      });
     }
+    if ((type === 'cafe' || type === 'shop') && num(form.capacity) !== undefined) profile.capacity = num(form.capacity);
     const body: Record<string, unknown> = { profile };
     if (form.business_name.trim() && form.business_name.trim() !== p.business_name) body.business_name = form.business_name.trim();
     if (form.contact_phone.trim() && form.contact_phone.trim() !== p.contact_phone) body.contact_phone = form.contact_phone.trim();
@@ -260,7 +267,10 @@ export default function ProviderProfile() {
     }
   };
 
-  const photoGoal = type === 'driver' ? 6 : type === 'homestay' ? 8 : 0;
+  // Matches the server's missingMandatory: 6 car photos; 8 photos for a homestay, cafe or shop.
+  const photoGoal = type === 'driver' ? 6 : (type === 'homestay' || type === 'cafe' || type === 'shop') ? 8 : 0;
+  const photosNote = type === 'driver' ? 'hostProfile.photos_note_driver' : type === 'cafe' ? 'hostProfile.photos_note_cafe'
+    : type === 'shop' ? 'hostProfile.photos_note_shop' : 'hostProfile.photos_note_homestay';
   const nameLabel = type === 'homestay' ? t('hostProfile.property_name') : type === 'guide' ? t('hostProfile.business_name_guide') : t('hostProfile.business_name');
   const unitLabel = (u: string) => t(`profile.unit_${u}`);
 
@@ -316,7 +326,7 @@ export default function ProviderProfile() {
           </Field>
         )}
         {(type === 'homestay' || type === 'guide' || type === 'cafe' || type === 'shop') && (
-          <Field label={type === 'homestay' ? `${t('hostProfile.host_name')} *` : type === 'guide' ? t('hostProfile.your_name') : t('hostProfile.owner_name')}>
+          <Field label={type === 'homestay' ? `${t('hostProfile.host_name')} *` : type === 'guide' ? t('hostProfile.your_name') : `${t('hostProfile.owner_name')} *`}>
             <input value={form.host_name} onChange={(e) => set({ host_name: e.target.value })} className={input} data-testid="profile-host-name" />
           </Field>
         )}
@@ -448,6 +458,13 @@ export default function ProviderProfile() {
               <AmenityPicker presets={CAFE_AMENITIES} selected={form.amenities} onChange={(amenities: string[]) => set({ amenities })} compact />
             </div>
           </div>
+          <Field label={t('hostProfile.capacity_cafe')}>
+            <input type="number" min={1} max={500} value={form.capacity} onChange={(e) => set({ capacity: e.target.value })} className={`${input} max-w-[10rem]`} data-testid="profile-capacity" />
+          </Field>
+          <div>
+            <span className={labelCls}>{t('hostProfile.recommended_drivers')}</span>
+            <div className="mt-2"><DriverPicker selected={form.recommended_drivers} onChange={(recommended_drivers) => set({ recommended_drivers })} /></div>
+          </div>
         </Section>
       )}
 
@@ -456,11 +473,18 @@ export default function ProviderProfile() {
           <PricedEditor rows={form.goods} onChange={(goods) => set({ goods })} units={GOODS_UNITS} unitLabel={unitLabel}
             namePlaceholder={t('hostProfile.goods_ph')} addLabel={t('hostProfile.add_goods')} testid="profile-goods"
             max={MAX_GOODS} fullNote={t('hostProfile.goods_full')} />
+          <Field label={t('hostProfile.capacity_shop')}>
+            <input type="number" min={1} max={500} value={form.capacity} onChange={(e) => set({ capacity: e.target.value })} className={`${input} max-w-[10rem]`} data-testid="profile-capacity" />
+          </Field>
+          <div>
+            <span className={labelCls}>{t('hostProfile.recommended_drivers')}</span>
+            <div className="mt-2"><DriverPicker selected={form.recommended_drivers} onChange={(recommended_drivers) => set({ recommended_drivers })} /></div>
+          </div>
         </Section>
       )}
 
       <Section title={t('hostProfile.photos')}
-        note={photoGoal ? t(type === 'driver' ? 'hostProfile.photos_note_driver' : 'hostProfile.photos_note_homestay', { count: photoGoal }) : t('hostProfile.photos_note')}>
+        note={photoGoal ? t(photosNote, { count: photoGoal }) : t('hostProfile.photos_note')}>
         <div>
           <span className={labelCls}>{t('hostProfile.cover')}</span>
           <div className="mt-2 flex items-center gap-4">

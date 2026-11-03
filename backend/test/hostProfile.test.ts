@@ -37,7 +37,9 @@ describe('host profile fields', () => {
     expect(missingMandatory('homestay', { host_name: 'Pema', images: photos(8) })).toEqual([]);
     expect(missingMandatory('guide', { services: [{ name: 'Walk', price: 0 }] }).map((m) => m.key)).toEqual(['services']);
     expect(missingMandatory('guide', { services: [{ name: 'Walk', price: 800 }] })).toEqual([]);
-    expect(missingMandatory('cafe', {})).toEqual([]);
+    expect(missingMandatory('cafe', {}).map((m) => m.key)).toEqual(['host_name', 'images']);
+    expect(missingMandatory('shop', { host_name: 'Dawa', images: photos(7) }).map((m) => m.key)).toEqual(['images']);
+    expect(missingMandatory('shop', { host_name: 'Dawa', images: photos(8) })).toEqual([]);
   });
 
   it('derives the public price from the cheapest room, service or route', () => {
@@ -57,6 +59,8 @@ describe('host profile fields', () => {
     expect(profilePatchFrom('shop', { goods: eleven })).toHaveProperty('error');
     expect(profilePatchFrom('shop', { goods: [{ name: 'Tea', price: 10, unit: 'night' }] })).toHaveProperty('error');
     expect(profilePatchFrom('cafe', { goods: [] })).toHaveProperty('error');
+    expect(profilePatchFrom('cafe', { capacity: 40, recommended_drivers: ['lst_1'] })).toEqual({ capacity: 40, recommended_drivers: ['lst_1'] });
+    expect(profilePatchFrom('shop', { capacity: 6 })).toEqual({ capacity: 6 });
   });
 });
 
