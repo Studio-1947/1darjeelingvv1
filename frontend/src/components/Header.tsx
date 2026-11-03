@@ -162,11 +162,14 @@ export default function Header() {
               <Heart size={18} />
             </Link>
           )}
-          {/* Get the app: beside Log in at every width. */}
+          {/* Get the app: beside Log in at every width. With no store link yet it is shown but
+              goes nowhere (an empty href would reload the page). */}
           <a
-            href={APP_DOWNLOAD_URL}
-            target="_blank"
+            href={APP_DOWNLOAD_URL || undefined}
+            target={APP_DOWNLOAD_URL ? '_blank' : undefined}
             rel="noreferrer"
+            role={APP_DOWNLOAD_URL ? undefined : 'link'}
+            aria-disabled={APP_DOWNLOAD_URL ? undefined : true}
             data-testid="header-download-app"
             className={`inline-flex items-center gap-1.5 h-9 sm:h-10 px-3 sm:px-4 rounded-full border font-bold text-xs sm:text-sm btn-hover whitespace-nowrap ${
               onVideo ? 'border-white/60 text-white bg-white/10 backdrop-blur' : 'border-[var(--line)] text-ink bg-white'

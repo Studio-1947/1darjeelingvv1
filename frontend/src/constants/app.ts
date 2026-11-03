@@ -1,2 +1,5 @@
-/** The Android app's store page (package io.aangan.app). */
-export const APP_DOWNLOAD_URL = 'https://play.google.com/store/apps/details?id=io.aangan.app';
+/**
+ * The app's store page. Empty until the store link is ready; the "Get the app" button stays in
+ * the header but goes nowhere while this is blank.
+ */
+export const APP_DOWNLOAD_URL = '';
