@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { CalendarCheck, Star, WarningCircle } from '@phosphor-icons/react';
 import { createPaymentOrder, completeMockPayment, payWithRazorpay } from '@/lib/api';
 import MockPaymentModal from '@/components/MockPaymentModal';
+import PriceBreakup from '@/components/PriceBreakup';
+import { rupees, usePrice } from '@/lib/prices';
 
 /**
  * Within this many days of the end, renewal opens and the card starts nudging the host to renew.
@@ -32,6 +34,8 @@ export default function HostPlanCard({ provider, user, reviews, onRenewed }: {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [payModal, setPayModal] = useState<any>(null);
+  const firstYear = usePrice('provider_registration');
+  const renewal = usePrice('provider_renewal');
 
   if (!provider) return null;
 
@@ -130,13 +134,18 @@ export default function HostPlanCard({ provider, user, reviews, onRenewed }: {
         <p className="text-sm text-ink-soft" data-testid="host-plan-owner-pays">{t('owners.plan_main_owner')}</p>
       )}
       {canRenew && provider.access !== 'co_owner' && (
+        <PriceBreakup breakup={registrationPending ? firstYear : renewal}
+          label={registrationPending ? t('price.host_first_year') : t('price.host_renewal')}
+          className="w-full sm:max-w-xs" />
+      )}
+      {canRenew && provider.access !== 'co_owner' && (
         <button
           onClick={renew}
           disabled={busy}
           data-testid="host-plan-renew"
           className="inline-flex items-center justify-center rounded-full bg-pine text-white font-bold text-sm px-5 disabled:opacity-60 btn-hover"
         >
-          {busy ? t('pd.plan_renewing') : registrationPending ? t('pd.plan_activate_cta') : t('pd.plan_renew_cta')}
+          {busy ? t('pd.plan_renewing') : registrationPending ? t('pd.plan_activate_cta', { total: rupees(firstYear.total) }) : t('pd.plan_renew_cta', { total: rupees(renewal.total) })}
         </button>
       )}
 

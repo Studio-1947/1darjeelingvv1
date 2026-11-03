@@ -6,6 +6,8 @@ import { useAuth } from '@/context/AuthContext';
 import { createPaymentOrder, completeMockPayment, payWithRazorpay } from '@/lib/api';
 import { needsSupport } from '@/lib/support';
 import MockPaymentModal from '@/components/MockPaymentModal';
+import PriceBreakup from '@/components/PriceBreakup';
+import { rupees, usePrice } from '@/lib/prices';
 import { useSeo } from '@/components/Seo';
 
 export default function Support() {
@@ -18,6 +20,7 @@ export default function Support() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [payModal, setPayModal] = useState<any>(null);
+  const pass = usePrice('platform_support');
   // Set the instant "not now" is clicked  see browseAnonymously below for why the
   // `!user` redirect needs this to stay off during that specific transition.
   const [leaving, setLeaving] = useState(false);
@@ -146,6 +149,7 @@ export default function Support() {
 
         <p className="mt-5 text-sm text-ink font-semibold">{t('support.amount_line')}</p>
         <p className="mt-3 text-sm text-ink-soft">{t('support.body')}</p>
+        <PriceBreakup breakup={pass} label={t('price.pass')} className="mt-5" />
 
         <button
           onClick={startPayment}
@@ -153,7 +157,7 @@ export default function Support() {
           data-testid="support-pay"
           className="mt-7 w-full py-3 rounded-full bg-pine text-white font-extrabold btn-hover disabled:opacity-60"
         >
-          {busy ? t('common.loading') : t('support.cta')}
+          {busy ? t('common.loading') : t('support.cta', { total: rupees(pass.total) })}
         </button>
 
         <p className="mt-3 text-[11px] text-center text-ink-soft flex items-center justify-center gap-1">
