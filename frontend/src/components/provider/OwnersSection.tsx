@@ -13,7 +13,8 @@ import api from '@/lib/api';
 type Owner = { id: string; name: string | null; phone: string; joined: boolean; role: 'owner' | 'co_owner'; you?: boolean };
 
 /** "+919800033344" → "+91 98000 33344", the way people read Indian mobile numbers. */
-const prettyPhone = (p: string) => (/^\+91\d{10}$/.test(p) ? `+91 ${p.slice(3, 8)} ${p.slice(8)}` : p);
+const NBSP = '\u00a0'; // keeps the number on one line
+const prettyPhone = (p: string) => (/^\+91\d{10}$/.test(p) ? `+91${NBSP}${p.slice(3, 8)}${NBSP}${p.slice(8)}` : p);
 
 const input = 'w-full px-3.5 py-2.5 rounded-xl border border-[var(--line)] bg-white outline-none text-sm text-ink';
 
@@ -113,7 +114,7 @@ export default function OwnersSection({ onLeft }: { onLeft?: () => void }) {
             <input value={name} onChange={(e) => setName(e.target.value)} placeholder={t('owners.name_ph')} className={input} />
             <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder={t('owners.phone_ph')} inputMode="tel" className={input} data-testid="owner-phone" />
             <button type="submit" disabled={busy || !phone.trim()} data-testid="owner-add-btn"
-              className="inline-flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-full bg-[#1F6656] text-white text-sm font-bold btn-hover disabled:opacity-60">
+              className="inline-flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-full bg-pine text-white text-sm font-bold btn-hover disabled:opacity-60">
               {t('owners.add')} <UserPlus size={16} />
             </button>
           </form>

@@ -584,8 +584,13 @@ export default function ProviderProfile() {
             <button type="button" onClick={() => setMsg(null)} className="hidden sm:inline text-xs font-bold text-ink-soft hover:text-ink">Keep editing</button>
           </div>
         ) : <div className="mist-panel p-3 flex items-center gap-3 shadow-lg">
-          <p className={`flex-1 text-sm font-semibold ${msg ? 'text-flag' : 'text-ink-soft'}`} data-testid="profile-msg">{msg ? msg.text : t('hostProfile.save_hint')}</p>
-          <button type="button" onClick={save} disabled={busy} data-testid="profile-save" className="inline-flex items-center gap-2 px-6 rounded-full bg-pine text-white font-bold btn-hover disabled:opacity-60">{busy ? t('common.loading') : t('hostProfile.save')} <ArrowRight size={16} /></button>
+          <p className={`flex-1 min-w-0 text-sm font-semibold ${msg ? 'text-flag' : 'text-ink-soft'}`} data-testid="profile-msg">{msg ? msg.text : <span className="max-sm:hidden">{t('hostProfile.save_hint')}</span>}</p>
+          {/* Phones and tablets: the same preview, opened from the save bar so it never covers a field. */}
+          <button type="button" onClick={() => setShowPreview(true)} data-testid="profile-preview-open"
+            className="lg:hidden inline-flex items-center gap-1.5 rounded-full bg-white border border-[var(--line)] px-4 py-2.5 text-sm font-bold text-ink whitespace-nowrap">
+            <Eye size={16} /> {t('miniSite.preview_open')}
+          </button>
+          <button type="button" onClick={save} disabled={busy} data-testid="profile-save" className="inline-flex items-center gap-2 px-6 rounded-full whitespace-nowrap bg-pine text-white font-bold btn-hover disabled:opacity-60">{busy ? t('common.loading') : t('hostProfile.save')} <ArrowRight size={16} /></button>
         </div>}
       </div>
     </div>
@@ -599,11 +604,6 @@ export default function ProviderProfile() {
       <p className="mt-2 text-xs text-ink-soft">{t('miniSite.preview_note')}</p>
     </aside>
 
-    {/* Phones and tablets: the same preview behind a button. */}
-    <button type="button" onClick={() => setShowPreview(true)} data-testid="profile-preview-open"
-      className="lg:hidden fixed right-4 bottom-[calc(var(--bottom-nav-h)+5.5rem)] z-30 inline-flex items-center gap-1.5 rounded-full bg-white border border-[var(--line)] shadow-lg px-4 py-2.5 text-sm font-bold text-ink">
-      <Eye size={16} /> {t('miniSite.preview_open')}
-    </button>
     {showPreview && (
       <div className="lg:hidden fixed inset-0 z-[60] bg-black/50 flex flex-col" role="dialog" aria-modal="true">
         <div className="flex items-center justify-between bg-white px-4 py-3 border-b border-[var(--line)]">

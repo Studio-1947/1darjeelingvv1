@@ -34,6 +34,10 @@ export default function ScrollToTop() {
     window.scrollTo(0, 0);
   }, [pathname, search, hash, navigationType]);
 
+  // Listing pages and the business profile keep their own bar at the bottom of a phone screen
+  // (price + directions, save + preview); the round button would sit on top of it there.
+  const ownBottomBar = /^\/(listing|stay|business)\/|^\/provider\/profile/.test(pathname);
+
   return (
     <button
       type="button"
@@ -41,7 +45,7 @@ export default function ScrollToTop() {
       aria-label="Back to top"
       title="Back to top"
       data-testid="back-to-top"
-      className={`fixed bottom-[calc(var(--bottom-nav-h)+1rem)] right-4 z-40 grid h-11 w-11 place-items-center rounded-full bg-ink text-white shadow-lg transition-all duration-200 hover:bg-pine focus:outline-none focus:ring-2 focus:ring-pine focus:ring-offset-2 lg:bottom-6 ${visible ? 'translate-y-0 opacity-100' : 'pointer-events-none translate-y-3 opacity-0'}`}
+      className={`fixed bottom-[calc(var(--bottom-nav-h)+1rem)] right-4 z-40 grid h-11 w-11 place-items-center rounded-full bg-ink text-white shadow-lg transition-all duration-200 hover:bg-pine focus:outline-none focus:ring-2 focus:ring-pine focus:ring-offset-2 lg:bottom-6 ${ownBottomBar ? 'max-lg:hidden ' : ''}${visible ? 'translate-y-0 opacity-100' : 'pointer-events-none translate-y-3 opacity-0'}`}
     >
       <ArrowUp size={20} weight="bold" aria-hidden="true" />
     </button>
