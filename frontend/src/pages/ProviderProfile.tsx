@@ -11,6 +11,7 @@ import AmenityPicker from '@/components/provider/AmenityPicker';
 import { RouteFareTable } from '@/components/provider/RouteEditor';
 import { HOMESTAY_AMENITIES, CAFE_AMENITIES } from '@/constants/listingOptions';
 import PricedEditor, { type Priced } from '@/components/provider/PricedEditor';
+import OwnersSection from '@/components/provider/OwnersSection';
 import { useSeo } from '@/components/Seo';
 
 /**
@@ -503,6 +504,8 @@ export default function ProviderProfile() {
           </div>
         </div>
       </Section>
+
+      <OwnersSection onLeft={async () => { await refreshProvider(); nav('/'); }} />
 
       <div className="sticky bottom-[calc(var(--bottom-nav-h)+0.5rem)] lg:bottom-4 z-20">
         {msg?.ok ? (

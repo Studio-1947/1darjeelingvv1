@@ -10,6 +10,7 @@ import { computeCompletion } from '../lib/profileCompletion';
 import { uploadPrivate, getPrivateObject, deletePrivate } from '../lib/s3';
 import { log, VERIFICATION_SUPPORT_PHONE } from '../config';
 import { routeParam } from '../lib/routeParam';
+import { hostUserIds, myActiveProvider } from '../lib/hostAccess';
 
 const router = Router();
 
@@ -59,10 +60,8 @@ function matchesDeclaredType(buffer: Buffer, mime: string): boolean {
   return signature.every((byte, i) => buffer[i] === byte);
 }
 
-async function ownActiveProvider(userId: string) {
-  const rows = await db.select().from(schema.providers).where(eq(schema.providers.userId, userId));
-  return rows.find(p => p.status === 'active') || null;
-}
+// The business this person runs (as owner or co-owner), while it is active.
+const ownActiveProvider = myActiveProvider;
 
 function docOut(d: typeof schema.kycDocuments.$inferSelect) {
   return {
@@ -412,7 +411,7 @@ router.get('/kyc/:id/file', authenticateToken, async (req: Request, res: Respons
   let allowed = req.user.role === 'admin';
   if (!allowed) {
     const [provider] = await db.select().from(schema.providers).where(eq(schema.providers.id, doc.providerId)).limit(1);
-    allowed = !!provider && provider.userId === req.user.id;
+    allowed = !!provider && (await hostUserIds(provider.id)).includes(req.user.id);
   }
   if (!allowed) return res.status(403).json({ detail: 'Forbidden' });
 

@@ -7,6 +7,7 @@ import { authenticateToken, optionalUser, requireAdmin } from '../middleware/aut
 import { rateLimiter } from '../middleware/rateLimiter';
 import { isHostApprovalPending, isHostPlanLive } from '../lib/hostPlan';
 import { routeParam } from '../lib/routeParam';
+import { myProvider as hostProvider } from '../lib/hostAccess';
 
 const router = Router();
 
@@ -61,10 +62,8 @@ function parseBody(value: unknown): { body: string } | { error: string } {
   return { body };
 }
 
-async function myProvider(userId: string): Promise<Provider | null> {
-  const [p] = await db.select().from(schema.providers).where(eq(schema.providers.userId, userId)).limit(1);
-  return p ?? null;
-}
+// Owner or co-owner: either can post for the business.
+const myProvider = (userId: string): Promise<Provider | null> => hostProvider(userId);
 
 /** A listing the post may point at: one of the host's own. */
 async function ownListing(listingId: unknown, provider: Provider): Promise<{ id: string | null } | { error: string }> {

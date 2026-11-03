@@ -371,3 +371,25 @@ export const hostPosts = pgTable('host_posts', {
   createdIdx: index('host_posts_created_at_idx').on(t.createdAt),
   providerIdx: index('host_posts_provider_id_idx').on(t.providerId),
 }));
+
+/**
+ * Co-owners of a business (the board's "Multiple Owners"). The main owner adds someone by phone;
+ * when that number signs in with its WhatsApp OTP it can run the same business: listings,
+ * bookings, profile, documents and posts. Paying for the plan and adding or removing owners stay
+ * with the main owner (`providers.user_id`). `phoneKey` is the canonical number (lib/phone.ts),
+ * so "+91 98765 43210" and "9876543210" are one person; `userId` is filled once they sign in.
+ */
+export const providerMembers = pgTable('provider_members', {
+  id: text('id').primaryKey(),
+  providerId: text('provider_id').references(() => providers.id, { onDelete: 'cascade' }).notNull(),
+  phoneKey: text('phone_key').notNull(),
+  userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }),
+  name: text('name'),
+  role: text('role').default('co_owner').notNull(),
+  addedBy: text('added_by').notNull(),
+  createdAt: text('created_at').notNull(),
+}, (t) => ({
+  providerPhoneUnique: uniqueIndex('provider_members_provider_phone_unique').on(t.providerId, t.phoneKey),
+  phoneIdx: index('provider_members_phone_key_idx').on(t.phoneKey),
+  userIdx: index('provider_members_user_id_idx').on(t.userId),
+}));

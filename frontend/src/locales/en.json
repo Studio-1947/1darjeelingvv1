@@ -1760,5 +1760,26 @@
     "capacity_shop": "Customers at a time",
     "photos_note_cafe": "At least {{count}} photos: the inside and outside, a front selfie outside, and the front with the name board visible.",
     "photos_note_shop": "At least {{count}} photos: the inside and outside, a front selfie outside, and the front with the name board visible."
+  },
+  "owners": {
+    "title": "Owners",
+    "note_owner": "Add the people who run this business with you. Each signs in with their own WhatsApp number and can manage listings, bookings and this profile.",
+    "note_co_owner": "You are a co-owner. You can manage listings, bookings and this profile; the main owner looks after the plan and who the owners are.",
+    "main_owner": "Main owner",
+    "co_owner": "Co-owner",
+    "you": "you",
+    "invited": "Invited · {{phone}} · joins when they sign in",
+    "name_ph": "Name (optional)",
+    "phone_ph": "WhatsApp number",
+    "add": "Add owner",
+    "add_failed": "Could not add that owner",
+    "remove": "Remove owner",
+    "remove_confirm": "Remove {{name}} as a co-owner? They will no longer be able to manage this business.",
+    "remove_failed": "Could not remove that owner",
+    "leave": "Leave this business",
+    "leave_confirm": "Leave this business? You will no longer be able to manage it.",
+    "full": "This business has the {{count}} co-owners allowed.",
+    "how_it_works": "They sign in to aangan with that number and get the business side straight away. Only you can pay for the plan or change the owners.",
+    "plan_main_owner": "The main owner renews the plan."
   }
 }

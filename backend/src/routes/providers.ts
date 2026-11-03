@@ -4,7 +4,7 @@ import { missingMandatory, profileKeysFor, profilePatchFrom, startingPriceFor } 
 import { isHostApprovalPending, isHostPlanLive } from '../lib/hostPlan';
 import { v4 as uuidv4 } from 'uuid';
 import { db, schema } from '../db';
-import { eq, inArray, or } from 'drizzle-orm';
+import { eq, inArray, like, or } from 'drizzle-orm';
 import { authenticateToken } from '../middleware/auth';
 import { KYC_REQUIREMENTS } from '../lib/kycRequirements';
 
@@ -13,6 +13,10 @@ import { rateLimiter } from '../middleware/rateLimiter';
 import { normaliseVehicleNumber, VEHICLE_TYPE_MAX_LENGTH } from '../lib/vehicleNumber';
 import { recomputeKycStatus } from './kyc';
 import { googleMapsUrl, inServiceRegion, MapsLinkError, resolveMapsLink } from '../lib/mapsLink';
+import {
+  MAX_CO_OWNERS, claimCoOwnerInvites, dropHostRoleIfUnused, hostAccessFor, myProvider, newMemberId, ownListingIds, ownersOf,
+} from '../lib/hostAccess';
+import { phoneKey } from '../lib/phone';
 
 const SELF_ONBOARDABLE_BUSINESS_TYPES = Object.keys(KYC_REQUIREMENTS);
 
@@ -150,6 +154,15 @@ router.post('/onboard', authenticateToken, async (req: Request, res: Response) =
   //     the unique index would then reject anyway).
   const [existing] = await db.select().from(schema.providers).where(eq(schema.providers.userId, req.user.id)).limit(1);
 
+  // A co-owner already runs a business here; a second one of their own would split every screen.
+  if (!existing) {
+    const [coOwned] = await db.select({ id: schema.providerMembers.id }).from(schema.providerMembers)
+      .where(eq(schema.providerMembers.userId, req.user.id)).limit(1);
+    if (coOwned) {
+      return res.status(409).json({ detail: 'You are a co-owner of a business on aangan. Leave it first to start your own.' });
+    }
+  }
+
   if (existing && existing.status === 'active') {
     return res.status(409).json({ detail: 'You already have a provider profile. Only one provider profile is allowed per user.' });
   }
@@ -262,8 +275,8 @@ router.post('/onboard', authenticateToken, async (req: Request, res: Response) =
  */
 // Retrieve current user's provider info
 router.get('/me', authenticateToken, async (req: Request, res: Response) => {
-  const providersList = await db.select().from(schema.providers).where(eq(schema.providers.userId, req.user.id));
-  const provider = providersList.find(p => p.status === 'active') || providersList[0];
+  const host = await hostAccessFor(req.user.id);
+  const provider = host?.provider;
   if (!provider) {
     return res.json({ provider: null });
   }
@@ -271,6 +284,7 @@ router.get('/me', authenticateToken, async (req: Request, res: Response) => {
   const providerReturn = {
     id: provider.id,
     user_id: provider.userId,
+    access: host?.access ?? 'owner',
     business_name: provider.businessName,
     business_type: provider.businessType,
     description: provider.description,
@@ -322,10 +336,8 @@ router.get('/public/:id', async (req: Request, res: Response) => {
  *       200: { description: The numbers; all zero for a business with no listings yet }
  */
 router.get('/me/stats', authenticateToken, async (req: Request, res: Response) => {
-  const providersList = await db.select({ id: schema.providers.id })
-    .from(schema.providers).where(eq(schema.providers.userId, req.user.id));
   // listings.provider_id holds either a provider row id or a user id, so match both.
-  const ownIds = [req.user.id, ...providersList.map(p => p.id)];
+  const ownIds = await ownListingIds(req.user.id);
   const listings = await db.select({ id: schema.listings.id })
     .from(schema.listings).where(inArray(schema.listings.providerId, ownIds));
   const listingIds = listings.map(l => l.id);
@@ -384,8 +396,7 @@ router.post(
   authenticateToken,
   rateLimiter(10, 60_000, 'maps_verify'),
   async (req: Request, res: Response) => {
-    const providersList = await db.select().from(schema.providers).where(eq(schema.providers.userId, req.user.id));
-    const provider = providersList.find(p => p.status === 'active') || providersList[0];
+    const provider = await myProvider(req.user.id);
     if (!provider) return res.status(404).json({ detail: 'No provider profile to verify' });
 
     let pin;
@@ -459,8 +470,7 @@ router.post(
   authenticateToken,
   rateLimiter(10, 60_000, 'live_location'),
   async (req: Request, res: Response) => {
-    const providersList = await db.select().from(schema.providers).where(eq(schema.providers.userId, req.user.id));
-    const provider = providersList.find(p => p.status === 'active') || providersList[0];
+    const provider = await myProvider(req.user.id);
     if (!provider) return res.status(404).json({ detail: 'No provider profile to verify' });
 
     const { latitude, longitude, accuracy, mocked } = req.body ?? {};
@@ -526,8 +536,8 @@ router.post(
 );
 
 router.patch('/me', authenticateToken, async (req: Request, res: Response) => {
-  const providersList = await db.select().from(schema.providers).where(eq(schema.providers.userId, req.user.id));
-  const provider = providersList.find(p => p.status === 'active') || providersList[0];
+  const host = await hostAccessFor(req.user.id);
+  const provider = host?.provider;
   if (!provider) return res.status(404).json({ detail: 'No provider profile to edit' });
 
   const body = req.body || {};
@@ -647,6 +657,80 @@ router.patch('/me', authenticateToken, async (req: Request, res: Response) => {
       profile_missing: missingMandatory(updated.businessType, updated.extras),
     },
   });
+});
+
+/**
+ * Co-owners (the board's "Multiple Owners").
+ *
+ * GET    /providers/me/owners          everyone who runs this business; any owner may look
+ * POST   /providers/me/owners {phone, name?}  main owner adds a co-owner by phone number
+ * DELETE /providers/me/owners/:id      main owner removes a co-owner, or a co-owner leaves
+ *
+ * A co-owner signs in with their own WhatsApp OTP and runs the same business. Paying for the plan
+ * and changing who the owners are stay with the main owner.
+ */
+router.get('/me/owners', authenticateToken, async (req: Request, res: Response) => {
+  const host = await hostAccessFor(req.user.id);
+  if (!host) return res.status(404).json({ detail: 'No business to show owners for' });
+  res.json({ access: host.access, max_co_owners: MAX_CO_OWNERS, owners: await ownersOf(host.provider, req.user.id) });
+});
+
+router.post('/me/owners', authenticateToken, rateLimiter(20, 60 * 60 * 1000, 'add_co_owner'), async (req: Request, res: Response) => {
+  const host = await hostAccessFor(req.user.id);
+  if (!host) return res.status(404).json({ detail: 'No business to add an owner to' });
+  if (host.access !== 'owner') return res.status(403).json({ detail: 'Only the main owner can add co-owners' });
+
+  const key = phoneKey(req.body?.phone);
+  if (!key) return res.status(400).json({ detail: 'Enter the co-owner\'s phone number, for example +91 98765 43210' });
+  const name = typeof req.body?.name === 'string' ? req.body.name.trim().slice(0, 80) : '';
+
+  const [me] = await db.select({ phone: schema.users.phone }).from(schema.users).where(eq(schema.users.id, req.user.id)).limit(1);
+  if (me && phoneKey(me.phone) === key) return res.status(400).json({ detail: 'That is your own number' });
+
+  const existing = await db.select().from(schema.providerMembers).where(eq(schema.providerMembers.providerId, host.provider.id));
+  if (existing.some((m) => m.phoneKey === key)) return res.status(409).json({ detail: 'That number is already a co-owner' });
+  if (existing.length >= MAX_CO_OWNERS) return res.status(409).json({ detail: `A business can have at most ${MAX_CO_OWNERS} co-owners` });
+
+  // Someone who already runs a business of their own cannot also co-own this one: every "my
+  // business" screen would have to pick between the two.
+  // users.phone holds the number as it was typed, so look up by its last ten digits and compare
+  // canonical forms, rather than trusting one spelling.
+  const candidates = await db.select().from(schema.users).where(like(schema.users.phone, `%${key.slice(-10)}`));
+  const invitee = candidates.find((u) => phoneKey(u.phone) === key) || null;
+  if (invitee) {
+    const [ownsOne] = await db.select({ id: schema.providers.id }).from(schema.providers).where(eq(schema.providers.userId, invitee.id)).limit(1);
+    if (ownsOne) return res.status(409).json({ detail: 'That number already runs its own business on aangan' });
+    const [elsewhere] = await db.select({ id: schema.providerMembers.id }).from(schema.providerMembers).where(eq(schema.providerMembers.userId, invitee.id)).limit(1);
+    if (elsewhere) return res.status(409).json({ detail: 'That number is already a co-owner of another business' });
+  }
+
+  await db.insert(schema.providerMembers).values({
+    id: newMemberId(),
+    providerId: host.provider.id,
+    phoneKey: key,
+    userId: null,
+    name: name || null,
+    role: 'co_owner',
+    addedBy: req.user.id,
+    createdAt: new Date().toISOString(),
+  });
+  if (invitee) await claimCoOwnerInvites(invitee);
+
+  res.status(201).json({ owners: await ownersOf(host.provider, req.user.id) });
+});
+
+router.delete('/me/owners/:id', authenticateToken, async (req: Request, res: Response) => {
+  const host = await hostAccessFor(req.user.id);
+  if (!host) return res.status(404).json({ detail: 'No business found' });
+  const [member] = await db.select().from(schema.providerMembers)
+    .where(eq(schema.providerMembers.id, String(req.params.id))).limit(1);
+  if (!member || member.providerId !== host.provider.id) return res.status(404).json({ detail: 'No such co-owner' });
+  const leavingSelf = member.userId === req.user.id;
+  if (host.access !== 'owner' && !leavingSelf) return res.status(403).json({ detail: 'Only the main owner can remove co-owners' });
+
+  await db.delete(schema.providerMembers).where(eq(schema.providerMembers.id, member.id));
+  if (member.userId) await dropHostRoleIfUnused(member.userId);
+  res.json({ owners: leavingSelf ? [] : await ownersOf(host.provider, req.user.id) });
 });
 
 export default router;
