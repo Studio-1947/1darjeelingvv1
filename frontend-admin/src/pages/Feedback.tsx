@@ -14,6 +14,7 @@ type Item = {
   rating?: number | null;
   user: { name: string; phone: string };
   business?: { name: string; type: string };
+  booking?: { id: string; place: string | null } | null;
 };
 
 const when = (iso: string) =>
@@ -118,6 +119,7 @@ export default function Feedback() {
                 ) : null}
                 <span className={`ml-auto px-2.5 py-0.5 rounded-full font-bold ${f.status === 'open' ? 'bg-gold/20 text-[#7a5d00]' : 'bg-pine/10 text-pine'}`}>{f.status}</span>
               </div>
+              {f.booking ? <p className="mt-1 text-xs font-semibold text-[#007C85]" data-testid={`feedback-trip-${f.id}`}>After a trip{f.booking.place ? ` to ${f.booking.place}` : ''}</p> : null}
               <p className="mt-2 text-sm text-ink whitespace-pre-line">{f.message}</p>
               <div className="mt-3">
                 {f.status === 'open' ? (

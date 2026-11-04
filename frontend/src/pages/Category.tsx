@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { distanceTo, kmLabel } from '@/lib/places';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import api from '@/lib/api';
@@ -69,16 +70,6 @@ const OFFBEAT_PLACES = [
     image: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=800&q=80',
   },
 ];
-
-/** Straight-line km between the traveller and a listing's pin, or null without a pin. */
-function kmBetween(a: { lat: number; lng: number }, it: any): number | null {
-  const lat = Number(it?.latitude), lng = Number(it?.longitude);
-  if (!Number.isFinite(lat) || !Number.isFinite(lng) || (!lat && !lng)) return null;
-  const rad = (x: number) => (x * Math.PI) / 180;
-  const dLat = rad(lat - a.lat), dLng = rad(lng - a.lng);
-  const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(lat)) * Math.sin(dLng / 2) ** 2;
-  return 6371 * 2 * Math.asin(Math.sqrt(h));
-}
 
 export default function Category({ typeOverride }) {
   const { t, i18n } = useTranslation();
@@ -192,9 +183,10 @@ export default function Category({ typeOverride }) {
 
     if (near) {
       list = list
-        .map((it) => ({ it, d: kmBetween(near, it) }))
-        .filter(({ d }) => radius === null || (d !== null && d <= radius))
-        .sort((a, b) => (a.d ?? 1e9) - (b.d ?? 1e9))
+        // A map pin when there is one, otherwise the place the listing names (drivers, guides).
+        .map((it) => ({ it, d: distanceTo(near, it) }))
+        .filter(({ d }) => radius === null || (d !== null && d.km <= radius))
+        .sort((a, b) => (a.d?.km ?? 1e9) - (b.d?.km ?? 1e9))
         .map(({ it, d }) => ({ ...it, _km: d }));
     }
 
@@ -269,7 +261,7 @@ export default function Category({ typeOverride }) {
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
               <div className="absolute bottom-0 inset-x-0 p-2 sm:p-3 text-white">
                 <div className="font-display font-extrabold text-xs sm:text-sm md:text-base leading-tight line-clamp-2 drop-shadow">{it.title}</div>
-                <div className="text-[10px] text-white/90 flex items-center gap-1 mt-0.5"><MapPin size={10} /> <span className="line-clamp-1">{typeof it._km === 'number' ? `${it._km < 10 ? it._km.toFixed(1) : Math.round(it._km)} km · ` : ''}{it.location}</span></div>
+                <div className="text-[10px] text-white/90 flex items-center gap-1 mt-0.5"><MapPin size={10} /> <span className="line-clamp-1">{it._km ? `${kmLabel(it._km)} · ` : ''}{it.location}</span></div>
               </div>
               {badge && (
                 <div className="absolute top-2 right-2 max-w-[75%] truncate px-2.5 py-0.5 rounded-full bg-black/70 backdrop-blur-md text-white border border-white/20 text-[11px] font-extrabold shadow-sm">

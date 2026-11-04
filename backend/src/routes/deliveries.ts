@@ -1,8 +1,8 @@
 import { Router, Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
-import { and, desc, eq, inArray } from 'drizzle-orm';
+import { and, desc, eq, inArray, or } from 'drizzle-orm';
 import { db, schema } from '../db';
-import { authenticateToken } from '../middleware/auth';
+import { authenticateToken, requireAdmin } from '../middleware/auth';
 import { rateLimiter } from '../middleware/rateLimiter';
 import { requireTravellerMode } from '../middleware/mode';
 import { addHostNotification, addInAppNotification } from '../lib/inApp';
@@ -89,6 +89,45 @@ router.get('/host', authenticateToken, async (req: Request, res: Response) => {
     .innerJoin(schema.users, eq(schema.users.id, schema.deliveryRequests.userId))
     .where(inArray(schema.deliveryRequests.providerId, ids)).orderBy(desc(schema.deliveryRequests.createdAt)).limit(100);
   res.json({ items: rows.map(({ d, title, name }) => out(d, { listing_title: title, customer: { name } })) });
+});
+
+/**
+ * Every home delivery request, newest first, for the aangan team (admin panel): who asked, which
+ * place, the host's business and phone, and where it stands. `?status=open` narrows it.
+ */
+router.get('/admin', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
+  const status = typeof req.query.status === 'string' ? req.query.status : '';
+  const rows = await db.select({
+    d: schema.deliveryRequests, title: schema.listings.title, type: schema.listings.type,
+    name: schema.users.name, userPhone: schema.users.phone,
+  })
+    .from(schema.deliveryRequests)
+    .innerJoin(schema.listings, eq(schema.listings.id, schema.deliveryRequests.listingId))
+    .innerJoin(schema.users, eq(schema.users.id, schema.deliveryRequests.userId))
+    .where(status ? eq(schema.deliveryRequests.status, status) : undefined)
+    .orderBy(desc(schema.deliveryRequests.createdAt)).limit(300);
+  // The host's business: listings carry the owner's user id or the provider id.
+  const owners = [...new Set(rows.map((r) => r.d.providerId))];
+  const businesses = owners.length
+    ? await db.select({ id: schema.providers.id, userId: schema.providers.userId, name: schema.providers.businessName, phone: schema.providers.contactPhone })
+      .from(schema.providers).where(or(inArray(schema.providers.id, owners), inArray(schema.providers.userId, owners)))
+    : [];
+  const businessFor = (ownerId: string) => businesses.find((b) => b.id === ownerId || b.userId === ownerId);
+  const counts: Record<string, number> = {};
+  for (const r of await db.select({ status: schema.deliveryRequests.status }).from(schema.deliveryRequests)) {
+    counts[r.status] = (counts[r.status] || 0) + 1;
+  }
+  res.json({
+    counts,
+    items: rows.map(({ d, title, type, name, userPhone }) => {
+      const b = businessFor(d.providerId);
+      return out(d, {
+        listing_title: title, listing_type: type,
+        customer: { name, phone: userPhone },
+        business: b ? { name: b.name, phone: b.phone } : null,
+      });
+    }),
+  });
 });
 
 /** The host answers: accepted, declined, then delivered. The traveller is told each time. */

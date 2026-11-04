@@ -10,6 +10,10 @@ export interface ChecklistItem {
   kind: 'profile' | 'kyc';
   required: boolean;
   state: DocState;
+  /** 'video' for the property / vehicle / premises clip; absent for photos and scans. */
+  media?: 'video';
+  /** The location check: a homestay pastes a Google Maps link, a café or shop captures it live. */
+  action?: 'maps_link' | 'live_capture';
 }
 export interface KycDoc {
   id: string;
@@ -90,6 +94,47 @@ export async function uploadKycDoc(docType: string, file: File): Promise<KycDoc>
     return data.document;
   } catch (err: any) {
     throw toKycApiError(err, i18n.t('kyc.uploadFailed'));
+  }
+}
+
+const MAX_VIDEO_BYTES = 25 * 1024 * 1024;
+
+/** A verification video (property, vehicle or premises clip): sent as the raw file. */
+export async function uploadKycVideo(docType: string, file: File): Promise<KycDoc> {
+  if (file.size > MAX_VIDEO_BYTES) throw new KycApiError(i18n.t('kyc.videoTooLarge'));
+  try {
+    const { data } = await api.post(`/providers/me/kyc/video?doc_type=${encodeURIComponent(docType)}`, file, {
+      headers: { 'Content-Type': file.type || 'video/mp4', 'X-Filename': file.name },
+    });
+    return data.document;
+  } catch (err: any) {
+    throw toKycApiError(err, i18n.t('kyc.uploadFailed'));
+  }
+}
+
+/** Homestay: the pin from the host's own Google Maps link. */
+export async function verifyMapsLink(mapsUrl: string): Promise<void> {
+  try {
+    await api.post('/providers/me/location/verify', { maps_url: mapsUrl });
+  } catch (err: any) {
+    throw toKycApiError(err, i18n.t('kyc.locationFailed'));
+  }
+}
+
+/** Café or shop: one fresh, precise reading from the device, taken at the premises. */
+export async function captureLiveLocation(): Promise<void> {
+  if (typeof navigator === 'undefined' || !navigator.geolocation) throw new KycApiError(i18n.t('kyc.locationNoGps'));
+  const pos = await new Promise<GeolocationPosition>((resolve, reject) =>
+    navigator.geolocation.getCurrentPosition(resolve, (e) => reject(new KycApiError(
+      e.code === e.PERMISSION_DENIED ? i18n.t('kyc.locationDenied') : i18n.t('kyc.locationSlow'),
+    )), { enableHighAccuracy: true, timeout: 25000, maximumAge: 0 }),
+  );
+  try {
+    await api.post('/providers/me/location/live', {
+      latitude: pos.coords.latitude, longitude: pos.coords.longitude, accuracy: pos.coords.accuracy,
+    });
+  } catch (err: any) {
+    throw toKycApiError(err, i18n.t('kyc.locationFailed'));
   }
 }
 

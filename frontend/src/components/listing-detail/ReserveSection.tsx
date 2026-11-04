@@ -167,6 +167,26 @@ export function ReserveSection({ item, unit, bookable, available = true, cta, bo
                   </label>
                 );
               })()}
+              {/* A guide booking asks for some of the guide's services (board: "Asking for given items"). */}
+              {item.type === 'guide' && Array.isArray(item.extras?.services) && item.extras.services.length > 0 && (
+                <div className="block text-left" data-testid="booking-services">
+                  <span className="text-xs font-semibold text-ink-soft">{t('booking.services')}</span>
+                  <div className="mt-1.5 flex flex-wrap gap-2">
+                    {item.extras.services.map((s: any, i: number) => {
+                      const name = String(s?.name || '').trim();
+                      if (!name) return null;
+                      const on = (form.services || []).includes(name);
+                      return (
+                        <button key={i} type="button" aria-pressed={on} data-testid={`booking-service-${i}`}
+                          onClick={() => updateForm({ services: on ? (form.services || []).filter((x) => x !== name) : [...(form.services || []), name] })}
+                          className={`px-3 py-2 rounded-full border text-xs font-bold ${on ? 'bg-pine text-white border-pine' : 'bg-white text-ink border-[var(--line)]'}`}>
+                          {name}{s.price ? ` · ₹${Number(s.price).toLocaleString('en-IN')}` : ''}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
               {/* A driver booking says which route: the trip, and the driver's km and places covered. */}
               {item.type === 'driver' && Array.isArray(item.extras?.routes) && item.extras.routes.length > 0 && (
                 <label className="block text-left">

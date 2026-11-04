@@ -85,7 +85,7 @@ const router = Router();
 // Create a booking
 // No pass needed to ask: without one, the ₹1 fee is paid when the booking is confirmed.
 router.post('/', authenticateToken, requireTravellerMode, async (req: Request, res: Response) => {
-  const { listing_id, listing_type, check_in, check_out, guests = 1, notes, voucher_id, route_name } = req.body;
+  const { listing_id, listing_type, check_in, check_out, guests = 1, notes, voucher_id, route_name, services } = req.body;
   // A driver booking says which of the driver's routes it is for (host dashboard: km and places).
   const routeName = typeof route_name === 'string' && route_name.trim() ? route_name.trim().slice(0, 160) : null;
 
@@ -135,6 +135,14 @@ router.post('/', authenticateToken, requireTravellerMode, async (req: Request, r
   if (await isListingHostLapsed(listing.providerId)) {
     return res.status(409).json({ detail: 'This listing is not taking bookings right now' });
   }
+  // A guide booking names the services asked for; only the guide's own services count.
+  const offered = new Set(
+    (Array.isArray((listing.extras as any)?.services) ? (listing.extras as any).services : [])
+      .map((s: any) => String(s?.name ?? '').trim()).filter(Boolean),
+  );
+  const chosenServices = listing.type === 'guide' && Array.isArray(services)
+    ? [...new Set(services.map((s: unknown) => String(s ?? '').trim()).filter((s: string) => offered.has(s)))].slice(0, 20) as string[]
+    : [];
 
   if (isDateExclusive(listing_type)) {
     // Blocks on confirmed bookings AND on checkouts still inside their hold window. Checking only
@@ -158,6 +166,7 @@ router.post('/', authenticateToken, requireTravellerMode, async (req: Request, r
     guests,
     notes,
     routeName,
+    services: chosenServices,
     status: 'pending_payment',
     createdAt: new Date().toISOString(),
     confirmedAt: null,
@@ -290,6 +299,7 @@ router.get('/me', authenticateToken, async (req: Request, res: Response) => {
       voucher_id: b.voucherId,
       applied_discount: b.appliedDiscount,
       route_name: b.routeName,
+      services: b.services ?? [],
       // Board: "After completion -> Reviews + Suggestion for aangan, share your trip story".
       completed: isCompleted(b),
       reviewed: reviewedListings.has(b.listingId),
@@ -398,6 +408,7 @@ router.get('/provider', authenticateToken, async (req: Request, res: Response) =
       voucher_id: b.voucherId,
       applied_discount: b.appliedDiscount,
       route_name: b.routeName,
+      services: b.services ?? [],
       completed: isCompleted(b),
       customer: customer ? { name: customer.name, phone: customer.phone } : null,
       listing: listingMatch

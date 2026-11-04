@@ -84,10 +84,15 @@ router.patch('/admin/host-feedback/:id', authenticateToken, requireAdmin, async 
 
 /** Every piece of feedback for aangan, newest first (admin). */
 router.get('/feedback/aangan/all', authenticateToken, requireAdmin, async (_req: Request, res: Response) => {
-  const items = await db.select({ f: schema.appFeedback, name: schema.users.name, phone: schema.users.phone })
+  const items = await db.select({ f: schema.appFeedback, name: schema.users.name, phone: schema.users.phone, place: schema.bookings.listingTitle })
     .from(schema.appFeedback).innerJoin(schema.users, eq(schema.users.id, schema.appFeedback.userId))
+    .leftJoin(schema.bookings, eq(schema.bookings.id, schema.appFeedback.bookingId))
     .orderBy(desc(schema.appFeedback.createdAt)).limit(200);
-  res.json({ items: items.map(({ f, name, phone }) => ({ id: f.id, rating: f.rating, message: f.message, status: f.status, created_at: f.createdAt, user: { name, phone } })) });
+  res.json({ items: items.map(({ f, name, phone, place }) => ({
+    id: f.id, rating: f.rating, message: f.message, status: f.status, created_at: f.createdAt, user: { name, phone },
+    // After a trip (board: "Reviews + Suggestion for aangan"), the trip it came from.
+    booking: f.bookingId ? { id: f.bookingId, place: place ?? null } : null,
+  })) });
 });
 
 export default router;

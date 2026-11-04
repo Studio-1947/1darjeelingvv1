@@ -151,7 +151,12 @@ export default function CafeShopForm({ o }: { o: OnboardState }) {
         onSubmit={() => o.submit()}
         onBack={() => o.setStep(1)}
         busy={o.busy}
-        disabled={o.busy || o.uploading || o.uploadingGallery || !form.price_from || !form.description || !form.location}
+        disabled={o.busy || o.uploading || o.uploadingGallery}
+        missing={[
+          !form.description.trim() && t('ob.check.about_place'),
+          !form.location.trim() && t('ob.check.based'),
+          !form.price_from && t('ob.check.price_start'),
+        ].filter(Boolean) as string[]}
         msg={o.msg}
       />
     </div>

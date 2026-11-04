@@ -6,6 +6,7 @@ import AdminLogin from '@/pages/AdminLogin';
 import KycReview from '@/pages/KycReview';
 import Moderation from '@/pages/Moderation';
 import Feedback from '@/pages/Feedback';
+import Deliveries from '@/pages/Deliveries';
 
 // Nav entries shown for any authenticated admin page. Add new protected
 // pages here to have them appear in the top nav automatically.
@@ -14,6 +15,7 @@ const NAV_LINKS = [
   { to: '/kyc', label: 'KYC Review' },
   { to: '/moderation', label: 'Moderation' },
   { to: '/feedback', label: 'Feedback' },
+  { to: '/deliveries', label: 'Deliveries' },
 ];
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -31,12 +33,12 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return (
     <>
       <nav className="border-b border-[var(--line)] bg-white">
-        <div className="mx-auto max-w-7xl px-4 md:px-8 py-3 flex items-center gap-6">
+        <div className="mx-auto max-w-7xl px-4 md:px-8 py-3 flex items-center gap-6 overflow-x-auto">
           {NAV_LINKS.map((link) => (
             <Link
               key={link.to}
               to={link.to}
-              className={`text-sm font-bold transition-all ${
+              className={`text-sm font-bold whitespace-nowrap transition-all ${
                 location.pathname === link.to ? 'text-flag' : 'text-ink-soft hover:text-ink'
               }`}
             >
@@ -85,6 +87,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <Feedback />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/deliveries"
+            element={
+              <ProtectedRoute>
+                <Deliveries />
               </ProtectedRoute>
             }
           />
