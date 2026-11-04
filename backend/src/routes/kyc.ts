@@ -87,13 +87,17 @@ function verificationOut(
   const requiredDocs = docs.filter(doc => requiredTypes.includes(doc.docType));
   const submittedAt = requiredDocs.length ? requiredDocs.map(doc => doc.uploadedAt).sort().at(-1) ?? null : null;
   const rejected = requiredDocs.find(doc => doc.status === 'rejected');
+  // "Documents sent" means every required document is in, not just the first one. A host who
+  // had sent four of five was told the team was reviewing while the fifth was still missing.
+  const uploaded = new Set(requiredDocs.map(doc => doc.docType));
+  const allSent = requiredTypes.every(type => uploaded.has(type));
   const status = kycStatus === 'verified'
     ? 'approved'
     : rejected
       ? 'changes_requested'
       : provider.kycReviewStartedAt
         ? 'in_review'
-        : submittedAt
+        : allSent && submittedAt
           ? 'submitted'
           : 'not_ready';
 
