@@ -135,6 +135,17 @@ export async function createConfirmedBooking(opts: {
   }
   const bookingId = bookingRes.body.booking.id as string;
 
+  // A request on a real host's driver/homestay/guide waits for the host (board); accept it the
+  // way the team can on a host's behalf, so tests about something else get a confirmed booking.
+  if (bookingRes.body.booking.awaiting_host) {
+    const accept = await request(app)
+      .patch(`/api/bookings/${bookingId}/confirm`)
+      .set('Authorization', `Bearer ${await loginAdmin()}`);
+    if (accept.status !== 200) {
+      throw new Error(`accept failed: ${accept.status} ${JSON.stringify(accept.body)}`);
+    }
+  }
+
   // Bookings are free: checkout is what the ₹1 commission payment used to be.
   const checkoutRes = await request(app)
     .post(`/api/bookings/${bookingId}/checkout`)

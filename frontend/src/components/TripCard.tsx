@@ -1,11 +1,21 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { RateTripButton, ShareStoryButton } from '@/components/AfterTrip';
+import api from '@/lib/api';
+import { formatTripDates } from '@/lib/dates';
+import BookingFeeModal from '@/components/listing-detail/BookingFeeModal';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowRight, XCircle, CircleNotch as Loader2, Compass, MapPin, CheckCircle, Clock, CalendarBlank, Users, Receipt } from '@phosphor-icons/react';
 
-function StatusPill({ status, isPast }: { status: string; isPast: boolean }) {
+function StatusPill({ status, isPast, awaitingHost }: { status: string; isPast: boolean; awaitingHost?: boolean }) {
   const { t } = useTranslation();
+  if (awaitingHost) {
+    return (
+      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-gold/20 text-[#7a5d00]" data-testid="trip-awaiting-host">
+        <Clock size={11} /> {t('booking.status.awaiting_host')}
+      </span>
+    );
+  }
   if (status === 'confirmed' && isPast) {
     return (
       <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-[#DDF3E1] text-[#1E5A2E]">
@@ -38,10 +48,27 @@ export default function TripCard({ booking: b, confirming, busy, onAskCancel, on
   onCancel: () => void;
   onKeep: () => void;
   testId?: string;
-  /** Reload after the guest rates a finished trip. */
+  /** Reload after the guest rates a finished trip or confirms an accepted one. */
   onReviewed?: () => void;
 }) {
   const { t, i18n } = useTranslation();
+  // Board: after the host accepts, the guest confirms (free with the pass, else ₹1).
+  const [confirmBusy, setConfirmBusy] = useState(false);
+  const [confirmErr, setConfirmErr] = useState('');
+  const [feeFor, setFeeFor] = useState<string | null>(null);
+  const confirmAccepted = async () => {
+    setConfirmBusy(true);
+    setConfirmErr('');
+    try {
+      await api.post(`/bookings/${b.id}/checkout`);
+      onReviewed?.();
+    } catch (e: any) {
+      if (e?.response?.status === 402 && e?.response?.data?.code === 'fee_required') setFeeFor(b.id);
+      else setConfirmErr(e?.response?.data?.detail || e?.message || '');
+    } finally {
+      setConfirmBusy(false);
+    }
+  };
   const now = new Date(new Date().setHours(0, 0, 0, 0));
   // The server says when a trip is finished (India dates); older answers fall back to the date.
   const isPast = b.completed ?? Boolean(b.check_in && new Date(b.check_in) < now);
@@ -59,7 +86,7 @@ export default function TripCard({ booking: b, confirming, busy, onAskCancel, on
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
             <h3 className="font-display font-bold text-ink text-base leading-snug line-clamp-2">{b.listing?.title || b.listing_title}</h3>
-            <StatusPill status={b.status} isPast={isPast} />
+            <StatusPill status={b.status} isPast={isPast} awaitingHost={!!b.awaiting_host} />
           </div>
           <div className="mt-1 text-xs text-ink-soft capitalize flex items-center gap-1">
             <MapPin size={12} className="text-pine flex-shrink-0" />
@@ -73,7 +100,7 @@ export default function TripCard({ booking: b, confirming, busy, onAskCancel, on
           <div className={row}>
             <CalendarBlank size={15} className="text-pine flex-shrink-0" />
             <dt className="text-ink-soft">{t('booking.checkin')}</dt>
-            <dd className="font-semibold ml-auto text-right">{b.check_in}{b.check_out ? ` → ${b.check_out}` : ''}</dd>
+            <dd className="font-semibold ml-auto text-right">{formatTripDates(b.check_in, b.check_out, i18n.language)}</dd>
           </div>
         )}
         <div className={row}>
@@ -87,6 +114,22 @@ export default function TripCard({ booking: b, confirming, busy, onAskCancel, on
           <dd className="font-semibold ml-auto">{new Date(b.created_at).toLocaleDateString(i18n.language)}</dd>
         </div>
       </dl>
+
+      {b.awaiting_host && (
+        <p className="text-[13px] text-[#7a5d00] bg-gold/10 rounded-xl px-3 py-2" data-testid={`trip-waiting-${b.id}`}>{t('approval.waiting_note')}</p>
+      )}
+      {b.status === 'accepted' && (
+        <div className="rounded-xl bg-[#E6F2EA] border border-[#1F6656]/20 px-3 py-2.5" data-testid={`trip-accepted-${b.id}`}>
+          <p className="text-[13px] font-semibold text-[#1F6656]">{t('approval.accepted_note')}</p>
+          <button type="button" onClick={confirmAccepted} disabled={confirmBusy} data-testid={`trip-confirm-${b.id}`}
+            className="mt-2 inline-flex items-center gap-1.5 h-10 px-4 rounded-full bg-[#1F6656] text-white font-bold text-[13px] btn-hover disabled:opacity-60">
+            {confirmBusy ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />} {t('approval.confirm_cta')}
+          </button>
+          {confirmErr && <p className="mt-2 text-xs font-semibold text-flag">{confirmErr}</p>}
+        </div>
+      )}
+      <BookingFeeModal bookingId={feeFor} onClose={() => setFeeFor(null)}
+        onConfirmed={() => { setFeeFor(null); onReviewed?.(); }} />
 
       {/* Board, after completion: review + suggestion for aangan, then share the trip story. */}
       {b.completed && (

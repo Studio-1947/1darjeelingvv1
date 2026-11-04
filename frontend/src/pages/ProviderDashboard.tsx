@@ -155,6 +155,12 @@ export default function ProviderDashboard() {
     await loadDashboard();
   };
 
+  // Board: the host accepts a request; the guest then confirms it from My Trips.
+  const handleAcceptBooking = async (bookingId: string) => {
+    await api.patch(`/bookings/${bookingId}/confirm`);
+    await loadDashboard();
+  };
+
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const sendFeedback = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -378,7 +384,7 @@ export default function ProviderDashboard() {
             </div>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {scopedBookings.map((b) => <BookingCard key={b.id} b={b} onCancel={handleCancelBooking} host={{ name: provider.extras?.host_name || user?.name || provider.business_name, business: provider.business_name, phone: provider.contact_phone, location: provider.location }} />)}
+              {scopedBookings.map((b) => <BookingCard key={b.id} b={b} onCancel={handleCancelBooking} onAccept={handleAcceptBooking} host={{ name: provider.extras?.host_name || user?.name || provider.business_name, business: provider.business_name, phone: provider.contact_phone, location: provider.location }} />)}
             </div>
           )}
         </div>

@@ -11,6 +11,7 @@ import { contentFor, listingImage, galleryImagesFor, personImageFor, spotInfoFor
 import Seo from '@/components/Seo';
 import BookingConfirmation from '@/components/BookingConfirmation';
 import BookingFeeModal from '@/components/listing-detail/BookingFeeModal';
+import RequestSent from '@/components/listing-detail/RequestSent';
 import DetailHero from '@/components/listing-detail/DetailHero';
 import type { ShareOutcome } from '@/lib/share';
 import {
@@ -276,6 +277,13 @@ export default function ListingDetail() {
         bookingId={booking.feeFor}
         onClose={() => { booking.setFeeFor(null); nav('/dashboard'); }}
         onConfirmed={(b) => { booking.setFeeFor(null); booking.setConfirm({ open: true, data: b }); }}
+      />
+
+      <RequestSent
+        booking={booking.requested}
+        title={item?.title || ''}
+        onClose={() => booking.setRequested(null)}
+        onTrips={() => { booking.setRequested(null); nav('/my-trips'); }}
       />
 
       <BookingConfirmation
