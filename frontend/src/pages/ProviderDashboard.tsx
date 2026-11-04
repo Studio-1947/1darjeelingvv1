@@ -22,6 +22,7 @@ import type { KycProfile } from '@/lib/kyc';
 import AvatarUploader from '@/components/provider/AvatarUploader';
 import { uploadImage } from '@/lib/uploadImage';
 import { useSeo } from '@/components/Seo';
+import PointsRules, { hostPointsRows } from '@/components/PointsRules';
 
 // The edit-listing tile names what the provider is actually configuring. Only
 // a homestay has a "stay"; a driver's listing is a profile of themselves, their
@@ -249,6 +250,7 @@ export default function ProviderDashboard() {
           <div className={`rounded-2xl bg-gradient-to-br ${accentClasses.split(' ').slice(0, 2).join(' ')} px-4 py-3 text-white shadow-sm`}>
             <div className="text-[10px] font-bold uppercase tracking-widest text-white/75">Aangan points</div>
             <div className="mt-1 flex items-center gap-1 text-2xl font-extrabold"><Star weight="fill" size={20} /> {points}</div>
+            <PointsRules tone="dark" rows={hostPointsRows(hostStats?.points_rules, hostStats?.points_breakdown)} testId="host-points-rules" />
           </div>
         </div>
         {/* The board's dashboard sticky for each host type. */}

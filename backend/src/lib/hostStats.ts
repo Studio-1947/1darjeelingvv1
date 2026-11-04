@@ -116,5 +116,7 @@ export async function hostStats(listingIds: string[], opts: { verified: boolean;
       .map((r) => ({ ...r, listing_title: titles.get(r.listing_id) ?? '' })),
     points: Object.values(breakdown).reduce((a, b) => a + b, 0),
     points_breakdown: breakdown,
+    // What each thing is worth, so the dashboards explain points without copying the numbers.
+    points_rules: HOST_POINTS,
   };
 }
