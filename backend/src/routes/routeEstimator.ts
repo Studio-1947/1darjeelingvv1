@@ -75,6 +75,11 @@ function normalizeHub(s: string): string {
   return lower;
 }
 
+/** Road distance between two places the route table knows (either way round), or null. */
+export function routeDistanceKm(from: string, to: string): number | null {
+  return findRoute(from, to)?.distanceKm ?? null;
+}
+
 function findRoute(f: string, t: string) {
   const directKey = `${f}->${t}`;
   const reverseKey = `${t}->${f}`;

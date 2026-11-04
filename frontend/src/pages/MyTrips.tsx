@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { MyDeliveries } from '@/components/AfterTrip';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import api from '@/lib/api';
@@ -172,10 +173,12 @@ export default function MyTrips() {
           {filteredBookings.map((b) => (
             <TripCard key={b.id} booking={b} testId={`my-trip-card-${b.id}`}
               confirming={confirmingId === b.id} busy={busyId === b.id}
-              onAskCancel={() => setConfirmingId(b.id)} onCancel={() => cancelBooking(b.id)} onKeep={() => setConfirmingId(null)} />
+              onReviewed={() => loadBookings()} onAskCancel={() => setConfirmingId(b.id)} onCancel={() => cancelBooking(b.id)} onKeep={() => setConfirmingId(null)} />
           ))}
         </div>
       )}
+
+      <MyDeliveries />
 
       {/* Quick suggestions */}
       <div className="mt-12">

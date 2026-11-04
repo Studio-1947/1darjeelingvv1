@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
+import { guideTripMessage, waLink } from '@/lib/tripMessages';
 import { useTranslation } from 'react-i18next';
 import { Phone, ChatCircle as MessageCircle, XCircle, CircleNotch as Loader2 } from '@phosphor-icons/react';
 import { StatusPill } from './widgets';
 
 /** One booking in the provider's list: guest, dates, and contact + cancel actions. */
-export default function BookingCard({ b, onCancel }: { b: any; onCancel?: (id: string) => Promise<void> | void }) {
+export default function BookingCard({ b, onCancel, host }: { b: any; onCancel?: (id: string) => Promise<void> | void; host?: { name: string; business: string; phone?: string; location?: string } }) {
   const { t, i18n } = useTranslation();
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -58,6 +59,23 @@ export default function BookingCard({ b, onCancel }: { b: any; onCancel?: (id: s
           >
             <MessageCircle size={12} /> {t('contact.whatsapp')}
           </a>
+          {/* Board, Guide: confirm, then one long WhatsApp message with all the details. */}
+          {b.listing_type === 'guide' && (b.status === 'accepted' || b.status === 'confirmed') && host && (
+            <a
+              href={waLink(b.customer?.phone, guideTripMessage({
+                guestName: b.customer?.name, hostName: host.name, businessName: host.business,
+                date: b.check_in, endDate: b.check_out, guests: b.guests,
+                services: (b.listing?.extras?.services || []).map((s: any) => ({ name: s.name, price: Number(s.price) || 0, unit: s.unit })),
+                meetingPoint: b.listing?.location || host.location, phone: host.phone, notes: b.notes,
+              }))}
+              target="_blank"
+              rel="noreferrer"
+              data-testid={`booking-guide-details-${b.id}`}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[#25D366] text-[#128C4A] font-bold text-xs btn-hover"
+            >
+              <MessageCircle size={12} /> Send trip details
+            </a>
+          )}
           {onCancel && b.status !== 'cancelled' && (
             confirming ? (
               <span className="inline-flex items-center gap-2 text-xs pl-1">

@@ -1,4 +1,5 @@
 import React from 'react';
+import { RateTripButton, ShareStoryButton } from '@/components/AfterTrip';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowRight, XCircle, CircleNotch as Loader2, Compass, MapPin, CheckCircle, Clock, CalendarBlank, Users, Receipt } from '@phosphor-icons/react';
@@ -28,7 +29,7 @@ function StatusPill({ status, isPast }: { status: string; isPast: boolean }) {
 }
 
 /** One booking in My Trips and on the account page: photo, name, status, then the details in clear rows. */
-export default function TripCard({ booking: b, confirming, busy, onAskCancel, onCancel, onKeep, testId }: {
+export default function TripCard({ booking: b, confirming, busy, onAskCancel, onCancel, onKeep, testId, onReviewed }: {
   booking: any;
   confirming: boolean;
   busy: boolean;
@@ -36,10 +37,13 @@ export default function TripCard({ booking: b, confirming, busy, onAskCancel, on
   onCancel: () => void;
   onKeep: () => void;
   testId?: string;
+  /** Reload after the guest rates a finished trip. */
+  onReviewed?: () => void;
 }) {
   const { t, i18n } = useTranslation();
   const now = new Date(new Date().setHours(0, 0, 0, 0));
-  const isPast = Boolean(b.check_in && new Date(b.check_in) < now);
+  // The server says when a trip is finished (India dates); older answers fall back to the date.
+  const isPast = b.completed ?? Boolean(b.check_in && new Date(b.check_in) < now);
   const row = 'flex items-center gap-2 text-[13px] text-ink';
   return (
     <article data-testid={testId} className="bg-white rounded-2xl border border-[var(--line)] p-4 flex flex-col gap-3 shadow-[0_1px_2px_rgba(20,32,26,0.04)]">
@@ -83,6 +87,13 @@ export default function TripCard({ booking: b, confirming, busy, onAskCancel, on
         </div>
       </dl>
 
+      {/* Board, after completion: review + suggestion for aangan, then share the trip story. */}
+      {b.completed && (
+        <div className="flex flex-wrap gap-2" data-testid={`after-trip-${b.id}`}>
+          {!b.reviewed && <RateTripButton booking={b} onDone={() => onReviewed?.()} />}
+          <ShareStoryButton place={b.listing?.title || b.listing_title} />
+        </div>
+      )}
       <div className="flex items-center justify-between gap-2">
         <Link to={`/listing/${b.listing_id}`} className="inline-flex items-center gap-1.5 text-sm font-bold text-pine hover:underline">
           {t('dashboard.view_listing')} <ArrowRight size={14} />

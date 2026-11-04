@@ -41,10 +41,14 @@ const MUST_REACH = {
     ['/provider/dashboard', 'text=Switch to Traveller', 'Switch to Traveller'],
     ['/provider/dashboard', '[data-testid=bottom-nav-trips]', 'My Listings tab'],
     ['/provider/dashboard', '[data-testid=bottom-nav-account]', 'Profile tab'],
+    ['/provider/dashboard', '[data-testid=host-figures]', 'Dashboard figures'],
+    ['/provider/dashboard', '[data-testid=host-page-card]', 'Link to my public page'],
+    ['/provider/dashboard', '[data-testid=host-reviews-card]', 'Ratings and reviews'],
   ],
   guest: [
     ['/', 'a[data-testid=header-login]', 'Log in'],
     ['/', '[data-testid=header-download-app]', 'Get the app'],
+    ['/homestays', '[data-testid=near-me-toggle]', 'Near me filter'],
   ],
 };
 
@@ -60,10 +64,13 @@ const IGNORE_CONSOLE = [/Download the React DevTools/, /\[vite\]/, /favicon/, /s
 
   const traveller = await signIn(`+9190000${String(Date.now()).slice(-5)}`, 'Audit Traveller', 'tourist');
   const host = HOST_PHONE ? await signIn(HOST_PHONE, 'Audit Host', 'provider') : null;
+  // The host's public page (aanganerp.in/<type>/<slug>) is walked as everyone.
+  const hostPage = host ? (await (await fetch(`${API}/providers/me`, { headers: { Authorization: `Bearer ${host.token}` } })).json()).provider?.page_path : null;
+  if (hostPage) { extraPublic.push(hostPage); MUST_REACH.guest.push([hostPage, '[data-testid=host-mini-site]', 'Host page']); }
   const roles = [
     { name: 'guest', token: null, mode: 'tourist', pages: [...PUBLIC, ...extraPublic] },
     { name: 'traveller', token: traveller.token, mode: 'tourist', pages: [...TRAVELLER, ...extraPublic] },
-    ...(host ? [{ name: 'host', token: host.token, mode: 'provider', pages: HOST }] : []),
+    ...(host ? [{ name: 'host', token: host.token, mode: 'provider', pages: [...HOST, ...(hostPage ? [hostPage] : [])] }] : []),
   ];
 
   for (const role of roles) {

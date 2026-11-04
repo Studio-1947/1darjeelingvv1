@@ -167,6 +167,20 @@ export function ReserveSection({ item, unit, bookable, available = true, cta, bo
                   </label>
                 );
               })()}
+              {/* A driver booking says which route: the trip, and the driver's km and places covered. */}
+              {item.type === 'driver' && Array.isArray(item.extras?.routes) && item.extras.routes.length > 0 && (
+                <label className="block text-left">
+                  <span className="text-xs font-semibold text-ink-soft">{t('booking.route')}</span>
+                  <select value={form.route || ''} onChange={(e) => updateForm({ route: e.target.value })} data-testid="booking-route"
+                    className="mt-1 w-full px-3 py-3 rounded-xl border border-[var(--line)] bg-white outline-none">
+                    <option value="">{t('booking.route_pick')}</option>
+                    {item.extras.routes.map((r: any, i: number) => {
+                      const name = typeof r === 'string' ? r : (r.route || r.name || '');
+                      return name ? <option key={i} value={name}>{name}{r.price ? ` · ₹${Number(r.price).toLocaleString('en-IN')}` : ''}</option> : null;
+                    })}
+                  </select>
+                </label>
+              )}
               <label className="block text-left">
                 <span className="text-xs font-semibold text-ink-soft">{t('booking.notes')}</span>
                 <textarea value={form.notes} onChange={(e) => updateForm({ notes: e.target.value })}

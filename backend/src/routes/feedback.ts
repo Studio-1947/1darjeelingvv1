@@ -41,8 +41,16 @@ router.post('/feedback/aangan', authenticateToken, rateLimiter(10, 60 * 60 * 100
   const raw = req.body?.rating;
   const rating = raw === undefined || raw === null || raw === '' ? null : Number(raw);
   if (rating !== null && (!Number.isInteger(rating) || rating < 1 || rating > 5)) return res.status(400).json({ detail: 'Rating must be 1 to 5.' });
+  // A suggestion sent with a review after a trip names that booking (only one of the sender's own).
+  let bookingId: string | null = null;
+  if (typeof req.body?.booking_id === 'string' && req.body.booking_id) {
+    const [b] = await db.select({ id: schema.bookings.id, userId: schema.bookings.userId }).from(schema.bookings)
+      .where(eq(schema.bookings.id, req.body.booking_id)).limit(1);
+    if (!b || b.userId !== req.user.id) return res.status(400).json({ detail: 'That booking is not yours' });
+    bookingId = b.id;
+  }
   const [item] = await db.insert(schema.appFeedback)
-    .values({ id: uuidv4(), userId: req.user.id, rating, message, status: 'open', createdAt: new Date().toISOString() })
+    .values({ id: uuidv4(), userId: req.user.id, rating, message, bookingId, status: 'open', createdAt: new Date().toISOString() })
     .returning();
   res.status(201).json({ feedback: { id: item.id, rating: item.rating, message: item.message, status: item.status, created_at: item.createdAt } });
 });

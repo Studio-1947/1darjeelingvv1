@@ -70,6 +70,16 @@ const OFFBEAT_PLACES = [
   },
 ];
 
+/** Straight-line km between the traveller and a listing's pin, or null without a pin. */
+function kmBetween(a: { lat: number; lng: number }, it: any): number | null {
+  const lat = Number(it?.latitude), lng = Number(it?.longitude);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || (!lat && !lng)) return null;
+  const rad = (x: number) => (x * Math.PI) / 180;
+  const dLat = rad(lat - a.lat), dLng = rad(lng - a.lng);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(lat)) * Math.sin(dLng / 2) ** 2;
+  return 6371 * 2 * Math.asin(Math.sqrt(h));
+}
+
 export default function Category({ typeOverride }) {
   const { t, i18n } = useTranslation();
   const { type: paramType } = useParams();
@@ -102,6 +112,19 @@ export default function Category({ typeOverride }) {
   const [maxPrice, setMaxPrice] = useState<number | undefined>(undefined);
   const [selectedCab, setSelectedCab] = useState<string>('all');
   const [entryFilter, setEntryFilter] = useState<string>('all');
+  // Board: "Filter > by proximity & by price". Where the traveller is, and how far they will go.
+  const [near, setNear] = useState<{ lat: number; lng: number } | null>(null);
+  const [radius, setRadius] = useState<number | null>(null);
+  const [locating, setLocating] = useState(false);
+  const locate = () => {
+    if (!navigator.geolocation) return;
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => { setNear({ lat: pos.coords.latitude, lng: pos.coords.longitude }); setLocating(false); },
+      () => { setLocating(false); },
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 },
+    );
+  };
 
   useEffect(() => {
     setSearchQuery(q);
@@ -167,6 +190,14 @@ export default function Category({ typeOverride }) {
       });
     }
 
+    if (near) {
+      list = list
+        .map((it) => ({ it, d: kmBetween(near, it) }))
+        .filter(({ d }) => radius === null || (d !== null && d <= radius))
+        .sort((a, b) => (a.d ?? 1e9) - (b.d ?? 1e9))
+        .map(({ it, d }) => ({ ...it, _km: d }));
+    }
+
     if (sortOrder === 'price_asc') {
       list.sort((a, b) => (Number(a.price) || 0) - (Number(b.price) || 0));
     } else if (sortOrder === 'price_desc') {
@@ -176,7 +207,7 @@ export default function Category({ typeOverride }) {
     }
 
     return list;
-  }, [baseResults, searchQuery, selectedLocation, maxPrice, selectedCab, entryFilter, sortOrder]);
+  }, [baseResults, searchQuery, selectedLocation, maxPrice, selectedCab, entryFilter, sortOrder, near, radius]);
 
   const resetFilters = () => {
     setSearchQuery('');
@@ -185,6 +216,8 @@ export default function Category({ typeOverride }) {
     setMaxPrice(undefined);
     setSelectedCab('all');
     setEntryFilter('all');
+    setNear(null);
+    setRadius(null);
   };
 
   const searching = !!(q || routeTrip || searchQuery);
@@ -236,7 +269,7 @@ export default function Category({ typeOverride }) {
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
               <div className="absolute bottom-0 inset-x-0 p-2 sm:p-3 text-white">
                 <div className="font-display font-extrabold text-xs sm:text-sm md:text-base leading-tight line-clamp-2 drop-shadow">{it.title}</div>
-                <div className="text-[10px] text-white/90 flex items-center gap-1 mt-0.5"><MapPin size={10} /> <span className="line-clamp-1">{it.location}</span></div>
+                <div className="text-[10px] text-white/90 flex items-center gap-1 mt-0.5"><MapPin size={10} /> <span className="line-clamp-1">{typeof it._km === 'number' ? `${it._km < 10 ? it._km.toFixed(1) : Math.round(it._km)} km · ` : ''}{it.location}</span></div>
               </div>
               {badge && (
                 <div className="absolute top-2 right-2 max-w-[75%] truncate px-2.5 py-0.5 rounded-full bg-black/70 backdrop-blur-md text-white border border-white/20 text-[11px] font-extrabold shadow-sm">
@@ -372,6 +405,20 @@ export default function Category({ typeOverride }) {
         onReset={resetFilters}
         totalCount={results.length}
       />
+
+      {/* Near me: nearest first, then within 5 / 10 / 25 km. */}
+      <div className="-mt-3 mb-5 flex items-center gap-2 overflow-x-auto no-scrollbar text-xs" data-testid="near-me">
+        <button type="button" onClick={near ? () => { setNear(null); setRadius(null); } : locate} disabled={locating} data-testid="near-me-toggle"
+          className={`flex-shrink-0 whitespace-nowrap inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full border font-semibold ${near ? 'bg-pine text-white border-pine' : 'bg-white text-ink border-[var(--line)]'}`}>
+          <MapPin size={13} /> {locating ? 'Finding you…' : near ? 'Near me · on' : 'Near me'}
+        </button>
+        {near && [null, 5, 10, 25].map((km) => (
+          <button key={String(km)} type="button" onClick={() => setRadius(km)} data-testid={`near-${km ?? 'any'}`}
+            className={`flex-shrink-0 whitespace-nowrap px-3.5 py-2 rounded-full border font-semibold ${radius === km ? 'bg-pine text-white border-pine' : 'bg-white text-ink border-[var(--line)]'}`}>
+            {km ? `Within ${km} km` : 'Any distance'}
+          </button>
+        ))}
+      </div>
 
       {loading ? (
         <>

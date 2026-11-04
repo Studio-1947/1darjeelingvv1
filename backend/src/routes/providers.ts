@@ -1,5 +1,9 @@
 import { Router, Request, Response } from 'express';
 import { listExtras } from '../lib/listingContact';
+import { assignSlug, pagePath, PAGE_TYPES } from '../lib/providerSlug';
+import { buildHostPage, hostBadges, hostIsPublic } from '../lib/hostPage';
+import { hostStats } from '../lib/hostStats';
+import { optionalUser } from '../middleware/auth';
 import { missingMandatory, profileKeysFor, profilePatchFrom, startingPriceFor } from '../lib/hostProfile';
 import { isHostApprovalPending, isHostPlanLive } from '../lib/hostPlan';
 import { v4 as uuidv4 } from 'uuid';
@@ -234,6 +238,7 @@ router.post('/onboard', authenticateToken, async (req: Request, res: Response) =
   }
 
   await db.update(schema.users).set({ role: 'provider' }).where(eq(schema.users.id, req.user.id));
+  provider.slug = await assignSlug(provider.id, provider.businessName);
 
   const providerReturn = {
     id: provider.id,
@@ -288,6 +293,9 @@ router.get('/me', authenticateToken, async (req: Request, res: Response) => {
     user_id: provider.userId,
     access: host?.access ?? 'owner',
     business_name: provider.businessName,
+    slug: provider.slug,
+    page_path: pagePath(provider.businessType, provider.slug),
+    badges: hostBadges(provider),
     business_type: provider.businessType,
     description: provider.description,
     location: provider.location,
@@ -323,7 +331,35 @@ router.get('/public/:id', async (req: Request, res: Response) => {
     return res.status(404).json({ detail: 'Business not found' });
   }
   const listings = await db.select().from(schema.listings).where(or(eq(schema.listings.providerId, provider.id), eq(schema.listings.providerId, provider.userId)));
-  res.json({ business: { id: provider.id, name: provider.businessName, type: provider.businessType, description: provider.description, location: provider.location, images: provider.images, created_at: provider.createdAt }, listings: listings.map((l) => ({ id: l.id, title: l.title, type: l.type, description: l.description, location: l.location, price: l.price, image: l.image, extras: listExtras(l.type, l.extras) })) });
+  res.json({ business: { id: provider.id, name: provider.businessName, type: provider.businessType, slug: provider.slug, page_path: pagePath(provider.businessType, provider.slug), description: provider.description, location: provider.location, images: provider.images, created_at: provider.createdAt }, listings: listings.map((l) => ({ id: l.id, title: l.title, type: l.type, description: l.description, location: l.location, price: l.price, image: l.image, extras: listExtras(l.type, l.extras) })) });
+});
+
+/**
+ * @openapi
+ * /providers/page/{type}/{slug}:
+ *   get:
+ *     summary: A host's public page (aanganerp.in/<type>/<slug>)
+ *     description: >
+ *       The mini-site data, the host's listings, the latest reviews and the contact line (phone
+ *       numbers follow the same rule as listings). Hidden like the feed while a host awaits
+ *       approval or their plan has lapsed, except to the host themselves (not_live: true). A wrong
+ *       type in the address answers 404 with the right path, so old links can be redirected.
+ *     tags: [Providers]
+ */
+router.get('/page/:type/:slug', async (req: Request, res: Response) => {
+  const type = String(req.params.type);
+  const slug = String(req.params.slug).toLowerCase();
+  if (!(PAGE_TYPES as readonly string[]).includes(type)) return res.status(404).json({ detail: 'Page not found' });
+  const [provider] = await db.select().from(schema.providers).where(eq(schema.providers.slug, slug)).limit(1);
+  if (!provider) return res.status(404).json({ detail: 'Page not found' });
+  const viewer = await optionalUser(req);
+  const own = viewer ? (await hostAccessFor(viewer.id))?.provider?.id === provider.id : false;
+  if (!hostIsPublic(provider) && !own && viewer?.role !== 'admin') return res.status(404).json({ detail: 'Page not found' });
+  if (provider.businessType !== type) {
+    return res.status(404).json({ detail: 'Page not found', path: pagePath(provider.businessType, provider.slug) });
+  }
+  const page = await buildHostPage(provider, viewer);
+  res.json({ ...page, not_live: !hostIsPublic(provider), own });
 });
 
 /**
@@ -356,7 +392,13 @@ router.get('/me/stats', authenticateToken, async (req: Request, res: Response) =
     .from(schema.bookings).where(inArray(schema.bookings.listingId, listingIds));
 
   const count = (s: string) => bookings.filter(b => b.status === s).length;
+  const me = (await hostAccessFor(req.user.id))?.provider;
+  const extra = await hostStats(listingIds, {
+    verified: me ? hostBadges(me).verified : false,
+    profileComplete: me ? missingMandatory(me.businessType, me.extras).length === 0 : false,
+  });
   res.json({
+    ...extra,
     listings: listingIds.length,
     review_count: reviews.length,
     average_rating: reviews.length
@@ -618,6 +660,7 @@ router.patch('/me', authenticateToken, async (req: Request, res: Response) => {
   if (Object.keys(set).length === 0) return res.status(400).json({ detail: 'Nothing to update' });
 
   const [updated] = await db.update(schema.providers).set(set).where(eq(schema.providers.id, provider.id)).returning();
+  if (set.businessName || !updated.slug) updated.slug = await assignSlug(updated.id, updated.businessName);
   // Travellers read the listing, not the provider row, so the profile is copied onto every listing
   // this host runs: the profile fields, the cover photo, the derived price and the name.
   if (profilePatch || set.images || set.businessName) {
@@ -641,6 +684,9 @@ router.patch('/me', authenticateToken, async (req: Request, res: Response) => {
       user_id: updated.userId,
       business_name: updated.businessName,
       business_type: updated.businessType,
+      slug: updated.slug,
+      page_path: pagePath(updated.businessType, updated.slug),
+      badges: hostBadges(updated),
       description: updated.description,
       location: updated.location,
       latitude: updated.latitude,

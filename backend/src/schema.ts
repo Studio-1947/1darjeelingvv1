@@ -150,7 +150,12 @@ export const providers = pgTable('providers', {
   // Written on the first administrator decision, so a submitted queue is not misrepresented as
   // an active human review.
   kycReviewStartedAt: text('kyc_review_started_at'),
+  // The host's public page address: aanganerp.in/<business_type>/<slug> (board: "all profiles
+  // should look like individual websites"). Made from the business name, unique, see
+  // lib/providerSlug.ts.
+  slug: text('slug'),
 }, (t) => ({
+  slugUnique: uniqueIndex('providers_slug_unique').on(t.slug),
   // At most one provider row per user, ever  enforced at the DB level so the onboard route's
   // read-then-write conflict check can't lose a race (two concurrent onboards both reading "no
   // existing row" and both inserting). Also closes the status hole where only 'active' and
@@ -186,6 +191,9 @@ export const bookings = pgTable('bookings', {
   checkOut: text('check_out'),
   guests: integer('guests').default(1).notNull(),
   notes: text('notes').default('').notNull(),
+  // A driver booking's route, picked from the driver's own routes ("NJP -> Darjeeling"). Feeds the
+  // host dashboard's km and locations covered. Null for other bookings.
+  routeName: text('route_name'),
   // 'pending_payment' | 'accepted' | 'confirmed' | 'cancelled'.
   //
   // `accepted` is the host's answer to a request: they have agreed to take the booking, but the
@@ -350,12 +358,37 @@ export const hostFeedback = pgTable('host_feedback', {
   providerCreatedIdx: index('host_feedback_provider_created_at_idx').on(t.providerId, t.createdAt),
 }));
 
+/**
+ * A traveller asking a cafe, restaurant or shop to deliver (board: "Asking for home delivery").
+ * The host answers accepted / declined, then marks it delivered; each side is told in-app.
+ */
+export const deliveryRequests = pgTable('delivery_requests', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  listingId: text('listing_id').references(() => listings.id, { onDelete: 'cascade' }).notNull(),
+  providerId: text('provider_id').notNull(),
+  items: jsonb('items').$type<{ name: string; qty: number; price?: number }[]>().default([]).notNull(),
+  address: text('address').notNull(),
+  phone: text('phone').notNull(),
+  note: text('note').default('').notNull(),
+  // 'open' | 'accepted' | 'declined' | 'delivered' | 'cancelled'
+  status: text('status').default('open').notNull(),
+  hostNote: text('host_note'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at'),
+}, (t) => ({
+  providerIdx: index('delivery_requests_provider_created_idx').on(t.providerId, t.createdAt),
+  userIdx: index('delivery_requests_user_created_idx').on(t.userId, t.createdAt),
+}));
+
 /** Feedback for aangan itself, from anyone signed in (the board's traveller dashboard). */
 export const appFeedback = pgTable('app_feedback', {
   id: text('id').primaryKey(),
   userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
   rating: integer('rating'),
   message: text('message').notNull(),
+  // Set when the suggestion came with a review after a finished trip.
+  bookingId: text('booking_id'),
   status: text('status').default('open').notNull(),
   createdAt: text('created_at').notNull(),
 }, (t) => ({
