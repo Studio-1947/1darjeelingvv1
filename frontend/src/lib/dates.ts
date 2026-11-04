@@ -66,3 +66,20 @@ export function formatRange(checkIn: string, checkOut: string, locale = 'en'): s
   }
   return `${formatDay(checkIn, locale)} - ${formatDay(checkOut, locale)}`;
 }
+
+/**
+ * A booking's dates for cards: `20 - 22 Aug 2026`, `28 Aug - 2 Sep 2026`, or one day `20 Aug 2026`.
+ * Accepts full ISO timestamps too (only the date part is used). Raw value if unparseable.
+ */
+export function formatTripDates(checkIn: string | null | undefined, checkOut?: string | null, locale = 'en'): string {
+  // Plain English reads US-style ("Aug 28"); travellers here expect day first ("28 Aug").
+  if (locale === 'en') locale = 'en-IN';
+  const a = (checkIn || '').slice(0, 10);
+  const b = (checkOut || '').slice(0, 10);
+  const start = parseDate(a);
+  if (!start) return checkIn || '';
+  const end = b ? parseDate(b) : null;
+  const year = (end || start).getFullYear();
+  const body = end && b !== a ? formatRange(a, b, locale) : formatDay(a, locale);
+  return `${body} ${year}`;
+}

@@ -48,7 +48,8 @@
     "explore": "Explore",
     "guides": "Guides",
     "download_app": "Get the app",
-    "edit_profile": "Edit profile"
+    "edit_profile": "Edit profile",
+    "app_coming_soon": "The aangan app is coming soon to Google Play and the App Store."
   },
   "trips": {
     "total_bookings": "Total bookings",
@@ -344,7 +345,8 @@
       "confirmed": "Confirmed",
       "pending_payment": "Payment pending",
       "accepted": "Accepted by host",
-      "cancelled": "Cancelled"
+      "cancelled": "Cancelled",
+      "awaiting_host": "Waiting for host"
     },
     "dates_required": "Check-in and check-out dates are required",
     "dates_order": "Check-out date must be after check-in date",
@@ -707,7 +709,13 @@
     "search": "Search",
     "search_short": "Search…",
     "search_prefix": "Search",
-    "search_words": ["homestays", "cafes", "drivers", "viewpoints", "local shops"],
+    "search_words": [
+      "homestays",
+      "cafes",
+      "drivers",
+      "viewpoints",
+      "local shops"
+    ],
     "change_category": "Change category",
     "popular": "Popular destinations",
     "matching": "Matching listings",
@@ -1099,7 +1107,10 @@
       "host_name": "Host name",
       "price_missing": "Starting price per head",
       "price_whole": "Price per head in whole rupees",
-      "price_range": "Price per head between ₹100 and ₹1,00,000"
+      "price_range": "Price per head between ₹100 and ₹1,00,000",
+      "business_name": "Your business name",
+      "your_name": "Your name",
+      "price_whole_any": "Price in whole rupees"
     },
     "fee_chip": "₹499 + GST · first year",
     "list_business": "List Your Business",
@@ -1970,5 +1981,23 @@
     "pass": "aangan pass · 1 year",
     "pass_first_year": "aangan pass · first year",
     "booking_fee": "Convenience fee · this booking"
+  },
+  "approval": {
+    "request_eyebrow": "Request sent",
+    "request_title": "Waiting for the host",
+    "request_body": "{{title}} will accept or decline your request. We will let you know, and you can confirm it from My Trips.",
+    "next_steps": "What happens next",
+    "step_host": "The host checks availability and accepts.",
+    "step_confirm": "You confirm it in My Trips (free with the aangan pass, or ₹1).",
+    "step_contact": "You get the host's number to call or WhatsApp.",
+    "go_trips": "Go to My Trips",
+    "accepted_note": "The host accepted. Confirm it to lock it in.",
+    "waiting_note": "Waiting for the host to accept your request.",
+    "confirm_cta": "Confirm booking",
+    "host_new_request": "New request",
+    "host_accept": "Accept",
+    "host_accepted_note": "Accepted. Waiting for the guest to confirm.",
+    "host_request_note": "Check you are free, then accept or decline.",
+    "accept_failed": "Could not accept this request. Please try again."
   }
 }

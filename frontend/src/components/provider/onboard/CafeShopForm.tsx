@@ -9,6 +9,7 @@ import LocationPicker from '@/components/LocationPicker';
 import { Screen, Eyebrow } from './layout';
 import OnboardHero from './OnboardHero';
 import PriceSubmitScreen from './PriceSubmitScreen';
+import { isValidPhone } from '@/lib/hostFormChecks';
 import { OnboardState } from './useProviderOnboard';
 
 /** Step 2 for cafés and shops - one flow, with type-specific copy and presets. */
@@ -153,9 +154,12 @@ export default function CafeShopForm({ o }: { o: OnboardState }) {
         busy={o.busy}
         disabled={o.busy || o.uploading || o.uploadingGallery}
         missing={[
+          !form.business_name.trim() && t('ob.check.business_name'),
           !form.description.trim() && t('ob.check.about_place'),
           !form.location.trim() && t('ob.check.based'),
-          !form.price_from && t('ob.check.price_start'),
+          // Left empty, the sign-in number is used (useProviderOnboard), so only a wrong one blocks.
+          !!form.contact_phone.trim() && !isValidPhone(form.contact_phone) && t('ob.check.phone'),
+          !form.price_from ? t('ob.check.price_start') : !/^\d+$/.test(String(form.price_from).trim()) && t('ob.check.price_whole_any'),
         ].filter(Boolean) as string[]}
         msg={o.msg}
       />

@@ -10,6 +10,7 @@ import { allRoutesPriced } from '@/lib/routeFares';
 import { Screen, Eyebrow } from './layout';
 import OnboardHero from './OnboardHero';
 import PriceSubmitScreen from './PriceSubmitScreen';
+import { isValidPhone } from '@/lib/hostFormChecks';
 import { OnboardState } from './useProviderOnboard';
 
 /** Step 2 for drivers - profile, vehicle, routes, trip gallery, and price. */
@@ -220,7 +221,11 @@ export default function DriverForm({ o }: { o: OnboardState }) {
         busy={o.busy}
         disabled={o.busy || o.uploading}
         missing={[
+          !form.business_name.trim() && t('ob.check.business_name'),
           !form.description.trim() && t('ob.check.about_you'),
+          // Left empty, the sign-in number is used (useProviderOnboard), so only a wrong one blocks.
+          !!form.contact_phone.trim() && !isValidPhone(form.contact_phone) && t('ob.check.phone'),
+          !form.host_name.trim() && t('ob.check.your_name'),
           !form.location.trim() && t('ob.check.based'),
           o.routes.length === 0 ? t('ob.check.routes_none') : !allRoutesPriced(o.routes) && t('ob.check.routes'),
         ].filter(Boolean) as string[]}

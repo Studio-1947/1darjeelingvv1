@@ -29,6 +29,9 @@ const BASES: Record<PricedFlow, number> = {
 /** The pass's usual yearly price, shown struck through next to the ₹12 first year. */
 export const PASS_USUAL_BASE = BASES.platform_support_renewal;
 
+/** The host plan's yearly renewal price, shown struck through next to the ₹499 first year. */
+export const HOST_USUAL_BASE = BASES.provider_renewal;
+
 const TRAVELLER_FLOWS: PricedFlow[] = ['platform_support', 'platform_support_renewal', 'booking_commission'];
 
 export function breakupOf(base: number, gstRate = 18, feeRate = 2): PriceBreakup {

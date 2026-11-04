@@ -1,5 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { rupees, HOST_USUAL_BASE } from '@/lib/prices';
 import { BUSINESS_TYPES } from '@/constants/listingOptions';
 import { OnboardState } from './useProviderOnboard';
 
@@ -12,7 +13,7 @@ export default function BasicInfoStep({ o }: { o: OnboardState }) {
   return (
     <div className="mx-auto max-w-md px-4 py-16 md:py-24">
       <div className="text-center mb-8">
-        <span className="chip"><s className="mr-1 opacity-60">₹999</s>{t('ob.fee_chip')}</span>
+        <span className="chip"><s className="mr-1 opacity-60">{rupees(HOST_USUAL_BASE)}</s>{t('ob.fee_chip')}</span>
         <h1 className="mt-3 font-display font-extrabold text-3xl text-ink">{t('ob.list_business')}</h1>
         <p className="mt-2 text-sm text-ink-soft">{t('ob.get_started')}</p>
       </div>
