@@ -1,14 +1,38 @@
 import React, { useState } from 'react';
 import { guideTripMessage, waLink } from '@/lib/tripMessages';
 import { useTranslation } from 'react-i18next';
-import { Phone, ChatCircle as MessageCircle, XCircle, CircleNotch as Loader2 } from '@phosphor-icons/react';
+import { Phone, ChatCircle as MessageCircle, XCircle, CheckCircle, CircleNotch as Loader2 } from '@phosphor-icons/react';
 import { StatusPill } from './widgets';
+import { formatTripDates } from '@/lib/dates';
 
-/** One booking in the provider's list: guest, dates, and contact + cancel actions. */
-export default function BookingCard({ b, onCancel, host }: { b: any; onCancel?: (id: string) => Promise<void> | void; host?: { name: string; business: string; phone?: string; location?: string } }) {
+/**
+ * One booking in the provider's list: guest, dates, and contact + accept / decline actions.
+ * Board: a driver, homestay or guide request waits for the host - "Accept" is that yes; the guest
+ * then confirms it (pass or ₹1) and it becomes a booking.
+ */
+export default function BookingCard({ b, onCancel, onAccept, host }: {
+  b: any;
+  onCancel?: (id: string) => Promise<void> | void;
+  onAccept?: (id: string) => Promise<void> | void;
+  host?: { name: string; business: string; phone?: string; location?: string };
+}) {
   const { t, i18n } = useTranslation();
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [accepting, setAccepting] = useState(false);
+  const [acceptErr, setAcceptErr] = useState('');
+
+  const doAccept = async () => {
+    setAccepting(true);
+    setAcceptErr('');
+    try {
+      await onAccept?.(b.id);
+    } catch (e: any) {
+      setAcceptErr(e?.response?.data?.detail || t('approval.accept_failed'));
+    } finally {
+      setAccepting(false);
+    }
+  };
 
   const doCancel = async () => {
     setBusy(true);
@@ -35,16 +59,25 @@ export default function BookingCard({ b, onCancel, host }: { b: any; onCancel?: 
             <div className="font-display font-bold text-ink text-base leading-tight line-clamp-1">{b.listing?.title || b.listing_title}</div>
             <div className="text-xs text-ink-soft mt-0.5">{b.customer?.name || t('pd.guest_fallback')} · {b.customer?.phone}</div>
           </div>
-          <StatusPill status={b.status} />
+          <StatusPill status={b.awaiting_host ? 'awaiting_host' : b.status} />
         </div>
         <div className="mt-2 text-xs text-ink-soft space-y-0.5">
-          {b.check_in && <div>{t('booking.checkin')}: <b className="text-ink">{b.check_in}</b>{b.check_out && <> → <b className="text-ink">{b.check_out}</b></>}</div>}
+          {b.check_in && <div>{t('booking.checkin')}: <b className="text-ink">{formatTripDates(b.check_in, b.check_out, i18n.language)}</b></div>}
           <div>{t('booking.guests')}: <b className="text-ink">{b.guests}</b> · {t('pd.placed')}: {new Date(b.created_at).toLocaleDateString(i18n.language)}</div>
           {b.notes && <div className="italic">“{b.notes}”</div>}
           {b.services?.length > 0 && <div data-testid={`booking-asked-${b.id}`}>Asked for: <b className="text-ink">{b.services.join(', ')}</b></div>}
           {b.route_name && <div>Route: <b className="text-ink">{b.route_name}</b></div>}
         </div>
+        {b.awaiting_host && <p className="mt-2 text-xs font-semibold text-[#7a5d00]" data-testid={`booking-request-note-${b.id}`}>{t('approval.host_request_note')}</p>}
+        {b.status === 'accepted' && <p className="mt-2 text-xs font-semibold text-pine">{t('approval.host_accepted_note')}</p>}
+        {acceptErr && <p className="mt-2 text-xs font-semibold text-flag">{acceptErr}</p>}
         <div className="mt-3 flex flex-wrap gap-2">
+          {b.awaiting_host && onAccept && (
+            <button onClick={doAccept} disabled={accepting} data-testid={`booking-accept-${b.id}`}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#1F6656] text-white font-bold text-xs btn-hover disabled:opacity-60">
+              {accepting ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle size={12} />} {t('approval.host_accept')}
+            </button>
+          )}
           <a
             href={`tel:${b.customer?.phone || ''}`}
             data-testid={`booking-call-${b.id}`}

@@ -41,6 +41,7 @@ const flowLabel = (pm: any) => {
 export default function PaymentsTab({ payments, onRefunded }: PaymentsTabProps) {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [msg, setMsg] = useState('');
+  const [owedOnly, setOwedOnly] = useState(false);
 
   /** A payment that was charged, is owed back, and whose refund has not gone through. */
   const isOwed = (pm: any) => pm.status === 'paid' && pm.refundReason && !pm.refundedAt;
@@ -74,6 +75,10 @@ export default function PaymentsTab({ payments, onRefunded }: PaymentsTabProps) 
           <span className="font-bold text-flag">{owedCount} payment{owedCount === 1 ? '' : 's'} owed a refund.</span>{' '}
           A refund was attempted and the gateway refused it, so this money is still with the platform.
           Retry each one below.
+          <button type="button" onClick={() => setOwedOnly((v) => !v)} data-testid="payments-owed-only"
+            className="ml-2 font-bold text-flag underline underline-offset-2">
+            {owedOnly ? 'Show all payments' : 'Show only these'}
+          </button>
         </div>
       )}
 
@@ -95,7 +100,7 @@ export default function PaymentsTab({ payments, onRefunded }: PaymentsTabProps) 
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--line)] text-sm text-ink">
-              {payments.map((pm) => (
+              {payments.filter((pm) => !owedOnly || isOwed(pm)).map((pm) => (
                 <tr key={pm.id} className={`transition-colors ${isOwed(pm) ? 'bg-flag/5' : 'hover:bg-mist/40'}`}>
                   {/* Flow type and Order Id */}
                   <td className="p-4">

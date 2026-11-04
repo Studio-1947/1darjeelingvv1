@@ -30,8 +30,17 @@ export function StatusPill({ status }) {
   const map = {
     confirmed: 'bg-pine/10 text-pine',
     pending_payment: 'bg-gold/20 text-[#8a6b04]',
+    awaiting_host: 'bg-gold/25 text-[#7a5d00]',
+    accepted: 'bg-[#E6F2EA] text-[#1F6656]',
     cancelled: 'bg-flag/10 text-flag',
   };
+  if (status === 'awaiting_host') {
+    return (
+      <span className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${map.awaiting_host}`}>
+        {t('approval.host_new_request')}
+      </span>
+    );
+  }
   return (
     <span className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${map[status] || 'bg-mist text-ink-soft'}`}>
       {t(`booking.status.${status}`, { defaultValue: status?.replace('_', ' ') })}

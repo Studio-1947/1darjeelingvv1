@@ -83,6 +83,8 @@ export function useBookingFlow(item: any, id: string) {
   const [confirm, setConfirm] = useState(null); // { open, data }
   // The booking waiting on the ₹1 fee or the pass, for a traveller without the pass.
   const [feeFor, setFeeFor] = useState<string | null>(null);
+  // A driver, homestay or guide request waiting for the host (board: "Waiting for approval").
+  const [requested, setRequested] = useState<any | null>(null);
 
   // Moving between listings has to start a fresh form; the hook is not remounted
   // by the router, so without this the second listing would inherit the first
@@ -164,6 +166,13 @@ export function useBookingFlow(item: any, id: string) {
         route_name: item.type === 'driver' && form.route ? form.route : undefined,
         services: item.type === 'guide' && form.services?.length ? form.services : undefined,
       });
+      // Board: drivers, homestays and guides wait for the host to accept. Nothing is confirmed or
+      // paid now; the traveller confirms from My Trips once the host says yes.
+      if (data.booking.awaiting_host) {
+        clearDraft(id);
+        setRequested(data.booking);
+        return;
+      }
       // Checkout confirms under the server's listing lock (so two guests cannot both take the
       // same nights). Free with the aangan pass; without it the server answers 402 fee_required
       // and the traveller picks ₹1 for this booking or the ₹12 pass (BookingFeeModal).
@@ -175,6 +184,11 @@ export function useBookingFlow(item: any, id: string) {
         if (e?.response?.status === 402 && e?.response?.data?.code === 'fee_required') {
           clearDraft(id);
           setFeeFor(data.booking.id);
+          return;
+        }
+        if (e?.response?.status === 409 && e?.response?.data?.code === 'awaiting_host') {
+          clearDraft(id);
+          setRequested(data.booking);
           return;
         }
         throw e;
@@ -205,6 +219,7 @@ export function useBookingFlow(item: any, id: string) {
     msg, setMsg,
     confirm, setConfirm,
     feeFor, setFeeFor,
+    requested, setRequested,
     doBook,
   };
 }

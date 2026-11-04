@@ -129,9 +129,12 @@ describe('host acceptance of a booking request', () => {
     const { token: guest } = await registerUser({ name: 'Guest Seven' });
     const bookingId = await requestBooking(guest, listing.id, '2030-07-10', '2030-07-12');
 
-    // The guest checks out before the host gets to the request  normal on an instant-confirm rate.
-    await request(app).post(`/api/bookings/${bookingId}/checkout`)
+    // A real host's request waits for them now (board), so the guest can only confirm after the
+    // accept. A second accept from the host afterwards (a double tap, two devices) must not fail.
+    await request(app).patch(`/api/bookings/${bookingId}/confirm`).set('Authorization', `Bearer ${hostToken}`).expect(200);
+    const confirmed = await request(app).post(`/api/bookings/${bookingId}/checkout`)
       .set('Authorization', `Bearer ${guest}`);
+    expect(confirmed.status).toBe(200);
 
     const res = await request(app).patch(`/api/bookings/${bookingId}/confirm`).set('Authorization', `Bearer ${hostToken}`);
     expect(res.status).toBe(200);

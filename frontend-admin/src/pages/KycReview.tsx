@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ShieldCheck, FileText, CheckCircle2, XCircle, RefreshCw, Loader2, Undo2, ChevronLeft, ChevronRight } from 'lucide-react';
 import api from '@/lib/api';
+import HostsWaiting from '@/components/admin/HostsWaiting';
 
 interface AdminKycDoc {
   id: string;
@@ -370,6 +371,9 @@ export default function KycReview() {
           <RefreshCw size={13} /> Refresh
         </button>
       </div>
+
+      {/* Per host: what is holding each one up (documents are only part of going live). */}
+      <HostsWaiting />
 
       {/* Status filter */}
       <div className="flex flex-wrap items-center gap-2 mb-6" role="tablist" aria-label="Filter by status">

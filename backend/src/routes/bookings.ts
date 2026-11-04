@@ -20,6 +20,7 @@ import { releaseVoucherForBooking } from '../lib/vouchers';
 import { requireTravellerMode } from '../middleware/mode';
 import { bookingGrossAmount } from '../lib/bookingAmount';
 import { ownListingIds } from '../lib/hostAccess';
+import { approvalRequired, AWAITING_HOST_DETAIL, isAwaitingHost, realHostIds } from '../lib/bookingApproval';
 
 /** Listing types guests contact directly rather than book. */
 const CONTACT_ONLY_TYPES = new Set(['cafe', 'shop']);
@@ -201,12 +202,16 @@ router.post('/', authenticateToken, requireTravellerMode, async (req: Request, r
     throw err;
   }
 
+  const awaitingHost = approvalRequired(listing.type, listing.providerId, await realHostIds([listing.providerId]));
+
   // The host's feed hears about the request straight away, even though it is unpaid, because the
   // provider inbox already lists it and they would otherwise see it there with no prompt.
   await addHostNotification(listing.providerId, {
     kind: 'booking_request',
     title: 'New booking request',
-    body: `${req.user.name || 'A guest'} asked about ${listing.title}.`,
+    body: awaitingHost
+      ? `${req.user.name || 'A guest'} asked to book ${listing.title}. Accept or decline it on your dashboard.`
+      : `${req.user.name || 'A guest'} asked about ${listing.title}.`,
     refId: booking.id,
   });
 
@@ -223,7 +228,9 @@ router.post('/', authenticateToken, requireTravellerMode, async (req: Request, r
     status: booking.status,
     created_at: booking.createdAt,
     voucher_id: booking.voucherId,
-    applied_discount: booking.appliedDiscount
+    applied_discount: booking.appliedDiscount,
+    // True when the host must accept before the guest can confirm (drivers, homestays, guides).
+    awaiting_host: awaitingHost,
   };
 
   res.json({ booking: bookingReturn });
@@ -266,9 +273,14 @@ router.get('/me', authenticateToken, async (req: Request, res: Response) => {
   const myReviews = await db.select({ listingId: schema.reviews.listingId }).from(schema.reviews)
     .where(eq(schema.reviews.userId, req.user.id));
   const reviewedListings = new Set(myReviews.map((r) => r.listingId));
+  const myListingRows = bookings.length
+    ? await db.select().from(schema.listings).where(inArray(schema.listings.id, [...new Set(bookings.map((b) => b.listingId))]))
+    : [];
+  const listingById = new Map(myListingRows.map((l) => [l.id, l]));
+  const hosts = await realHostIds(myListingRows.map((l) => l.providerId));
   const enrichedBookings = [];
   for (const b of bookings) {
-    const [listing] = await db.select().from(schema.listings).where(eq(schema.listings.id, b.listingId)).limit(1);
+    const listing = listingById.get(b.listingId);
 
     let listingReturn = null;
     if (listing) {
@@ -303,6 +315,8 @@ router.get('/me', authenticateToken, async (req: Request, res: Response) => {
       // Board: "After completion -> Reviews + Suggestion for aangan, share your trip story".
       completed: isCompleted(b),
       reviewed: reviewedListings.has(b.listingId),
+      // A request still waiting for the host's accept (drivers, homestays, guides).
+      awaiting_host: b.status === 'pending_payment' && !!listing && approvalRequired(listing.type, listing.providerId, hosts),
       listing: listingReturn
     });
   }
@@ -386,6 +400,7 @@ router.get('/provider', authenticateToken, async (req: Request, res: Response) =
     ? await db.select().from(schema.users).where(inArray(schema.users.id, guestIds))
     : [];
   const guestById = new Map(guests.map(g => [g.id, g]));
+  const hosts = await realHostIds(myListings.map((l) => l.providerId));
 
   const enrichedBookings = [];
   for (const b of bookings) {
@@ -410,6 +425,8 @@ router.get('/provider', authenticateToken, async (req: Request, res: Response) =
       route_name: b.routeName,
       services: b.services ?? [],
       completed: isCompleted(b),
+      // A request this host has to accept or decline.
+      awaiting_host: b.status === 'pending_payment' && !!listingMatch && approvalRequired(listingMatch.type, listingMatch.provider_id, hosts),
       customer: customer ? { name: customer.name, phone: customer.phone } : null,
       listing: listingMatch
     });
@@ -614,6 +631,10 @@ router.post('/:id/checkout', authenticateToken, async (req: Request, res: Respon
   }
   if (booking.status === 'cancelled') {
     return res.status(409).json({ detail: 'This booking was cancelled' });
+  }
+  // Board: a driver, homestay or guide request waits for the host to accept it first.
+  if (await isAwaitingHost(booking)) {
+    return res.status(409).json({ detail: AWAITING_HOST_DETAIL, code: 'awaiting_host', booking: bookingShape(booking) });
   }
   if (booking.status !== 'confirmed') {
     const [listing] = await db.select({ providerId: schema.listings.providerId })

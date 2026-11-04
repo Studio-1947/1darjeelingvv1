@@ -9,6 +9,7 @@ import useHeroOverlay from '@/hooks/useHeroOverlay';
 import { CATEGORIES } from '@/constants/categories';
 import { User, Heart, ArrowLeft, ImagesSquare, DownloadSimple } from '@phosphor-icons/react';
 import { APP_DOWNLOAD_URL } from '@/constants/app';
+import { toast } from 'sonner';
 
 export default function Header() {
   const { t } = useTranslation();
@@ -162,14 +163,13 @@ export default function Header() {
               <Heart size={18} />
             </Link>
           )}
-          {/* Get the app: beside Log in at every width. With no store link yet it is shown but
-              goes nowhere (an empty href would reload the page). */}
+          {/* Get the app: beside Log in at every width. Until the store link exists (the app is not
+              in Play or the App Store yet) a tap says it is coming soon instead of doing nothing. */}
           <a
-            href={APP_DOWNLOAD_URL || undefined}
+            href={APP_DOWNLOAD_URL || '#get-the-app'}
             target={APP_DOWNLOAD_URL ? '_blank' : undefined}
             rel="noreferrer"
-            role={APP_DOWNLOAD_URL ? undefined : 'link'}
-            aria-disabled={APP_DOWNLOAD_URL ? undefined : true}
+            onClick={APP_DOWNLOAD_URL ? undefined : (e) => { e.preventDefault(); toast(t('nav.app_coming_soon')); }}
             data-testid="header-download-app"
             className={`inline-flex items-center gap-1.5 h-9 sm:h-10 px-3 sm:px-4 rounded-full border font-bold text-xs sm:text-sm btn-hover whitespace-nowrap ${
               onVideo ? 'border-white/60 text-white bg-white/10 backdrop-blur' : 'border-[var(--line)] text-ink bg-white'

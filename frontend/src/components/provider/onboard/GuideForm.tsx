@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { MapPin } from '@phosphor-icons/react';
 import OnboardHero from './OnboardHero';
 import PriceSubmitScreen from './PriceSubmitScreen';
+import { isValidPhone } from '@/lib/hostFormChecks';
 import { Screen, Eyebrow } from './layout';
 import AvatarUploader from '../AvatarUploader';
 import PricedEditor from '../PricedEditor';
@@ -22,7 +23,11 @@ export default function GuideForm({ o }: { o: OnboardState }) {
   const priced = o.services.filter((s) => s.name.trim() && Number(s.price) > 0);
   // Said out loud, so a greyed-out "Pay & list" is never a mystery.
   const missing = [
+    !form.business_name.trim() && t('ob.check.business_name'),
     !form.description.trim() && t('ob.check.about_you'),
+    // Left empty, the sign-in number is used (useProviderOnboard), so only a wrong one blocks.
+    !!form.contact_phone.trim() && !isValidPhone(form.contact_phone) && t('ob.check.phone'),
+    !form.host_name.trim() && t('ob.check.your_name'),
     !form.location.trim() && t('ob.check.based'),
     priced.length === 0 && t('ob.check.services'),
   ].filter(Boolean) as string[];

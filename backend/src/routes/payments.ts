@@ -10,6 +10,7 @@ import { computeSupportPassExpiry, isExemptFromSupport, isSupportActive } from '
 import { computeHostPlanExpiry, isHostPlanLive, isListingHostLapsed } from '../lib/hostPlan';
 import { serializeProvider } from '../lib/providerShape';
 import { settleBookingConfirmation } from '../lib/bookingConfirmation';
+import { AWAITING_HOST_DETAIL, isAwaitingHost } from '../lib/bookingApproval';
 import { resolveAmount } from '../lib/payments';
 import { passBreakupFor, priceList } from '../lib/pricing';
 
@@ -109,7 +110,7 @@ async function assertOwnsReference(
   flow: string,
   referenceId: string,
   userId: string
-): Promise<{ status: number; detail: string } | null> {
+): Promise<{ status: number; detail: string; code?: string } | null> {
   if (flow === 'provider_registration' || flow === 'provider_renewal') {
     const [provider] = await db.select().from(schema.providers).where(eq(schema.providers.id, referenceId)).limit(1);
     if (!provider) {
@@ -155,6 +156,8 @@ async function assertOwnsReference(
     }
     if (booking.status === 'confirmed') return { status: 409, detail: 'This booking is already confirmed' };
     if (booking.status === 'cancelled') return { status: 409, detail: 'This booking was cancelled' };
+    // Paying the fee confirms the booking, so a request still waiting for its host cannot be paid.
+    if (await isAwaitingHost(booking)) return { status: 409, detail: AWAITING_HOST_DETAIL, code: 'awaiting_host' };
     // A pass holder confirms free; charging them ₹1 as well would be taking money twice.
     const [payer] = await db.select().from(schema.users).where(eq(schema.users.id, userId)).limit(1);
     if (payer && (isExemptFromSupport(payer) || isSupportActive(payer))) {
@@ -351,7 +354,7 @@ router.post('/order', authenticateToken, async (req: Request, res: Response) => 
   // someone else's plan. The order is the record of record, so it has to be right here.
   const ownershipError = await assertOwnsReference(flow, reference_id, req.user.id);
   if (ownershipError) {
-    return res.status(ownershipError.status).json({ detail: ownershipError.detail });
+    return res.status(ownershipError.status).json({ detail: ownershipError.detail, ...(ownershipError.code ? { code: ownershipError.code } : {}) });
   }
 
   if (MOCK_PAYMENTS) {
