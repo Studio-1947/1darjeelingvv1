@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Phone, WhatsappLogo, NavigationArrow, SealCheck, Diamond, PlayCircle, Globe } from '@phosphor-icons/react';
+import { Phone, WhatsappLogo, NavigationArrow, SealCheck, Star, PlayCircle, Globe } from '@phosphor-icons/react';
 
 /**
  * A host's mini website, laid out like the board's mock-up (Aangan Blue Print, "Profile: all
@@ -46,7 +46,7 @@ const isVideoFile = (url: string) => /\.(mp4|mov|webm)(\?|$)/i.test(url) || /\/v
 export default function HostMiniSite({ data, compact = false }: { data: MiniSiteData; compact?: boolean }) {
   const { t } = useTranslation();
   const initial = (data.hostName || data.name || '?').trim().charAt(0).toUpperCase();
-  const joined = data.joinedAt ? new Date(data.joinedAt).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }) : null;
+  const joined = data.joinedAt ? new Date(data.joinedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) : null;
   const stars = Math.round(data.rating || 0);
   const pad = compact ? 'px-4' : 'px-5 md:px-8';
 
@@ -87,7 +87,7 @@ export default function HostMiniSite({ data, compact = false }: { data: MiniSite
         {joined && <p className="text-xs text-ink-soft">{t('miniSite.joined', { date: joined })}</p>}
         <div className="mt-1.5 flex items-center gap-0.5" aria-label={t('miniSite.rating', { count: data.reviewCount || 0 })}>
           {[1, 2, 3, 4, 5].map((i) => (
-            <Diamond key={i} size={14} weight={i <= stars ? 'fill' : 'regular'} className={i <= stars ? 'text-gold' : 'text-ink-soft/40'} />
+            <Star key={i} size={15} weight={i <= stars ? 'fill' : 'regular'} className={i <= stars ? 'text-gold' : 'text-ink-soft/40'} />
           ))}
           <span className="ml-1.5 text-xs text-ink-soft">
             {data.reviewCount ? t('miniSite.reviews', { count: data.reviewCount }) : t('miniSite.new')}

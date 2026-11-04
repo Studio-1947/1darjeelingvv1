@@ -1904,7 +1904,7 @@
     "preview_note": "This is how travellers will see your page. It updates as you type; save to publish.",
     "your_business": "Your business",
     "not_taking": "Not taking bookings",
-    "joined": "Joined aangan {{date}}",
+    "joined": "Joined aangan on {{date}}",
     "rating": "{{count}} reviews",
     "reviews": "{{count}} reviews",
     "new": "New on aangan",
