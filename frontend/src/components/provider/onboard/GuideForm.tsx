@@ -20,6 +20,12 @@ export default function GuideForm({ o }: { o: OnboardState }) {
   const { t } = useTranslation();
   const { form, update } = o;
   const priced = o.services.filter((s) => s.name.trim() && Number(s.price) > 0);
+  // Said out loud, so a greyed-out "Pay & list" is never a mystery.
+  const missing = [
+    !form.description.trim() && t('ob.check.about_you'),
+    !form.location.trim() && t('ob.check.based'),
+    priced.length === 0 && t('ob.check.services'),
+  ].filter(Boolean) as string[];
   const from = priced.length ? Math.min(...priced.map((s) => Number(s.price))) : 0;
   const input = 'mt-1 w-full px-3.5 py-2.5 rounded-xl border border-[var(--line)] bg-white outline-none text-sm text-ink';
 
@@ -56,7 +62,9 @@ export default function GuideForm({ o }: { o: OnboardState }) {
             </label>
             <label className="block">
               <span className="text-xs font-semibold text-ink-soft uppercase">{t('ob.contact_phone')}</span>
-              <input value={form.contact_phone} onChange={(e) => update({ contact_phone: e.target.value })} inputMode="tel" className={input} />
+              <input value={form.contact_phone} onChange={(e) => update({ contact_phone: e.target.value })} type="tel" inputMode="tel" autoComplete="tel"
+                placeholder={t('ob.gd.phone_ph')} className={input} data-testid="onboard-phone" />
+              <span className="mt-1 block text-[11px] text-ink-soft">{t('ob.gd.phone_hint')}</span>
             </label>
           </div>
         </div>
@@ -101,7 +109,7 @@ export default function GuideForm({ o }: { o: OnboardState }) {
         wide
         heading={t('ob.gd.complete')}
         priceLabel={t('hostProfile.services')}
-        feeNote={t('ob.dr.fee_note')}
+        feeNote={t('ob.gd.fee_note')}
         priceEditor={
           <div className="space-y-3">
             <p className="text-sm text-ink-soft">{t('ob.gd.services_note')}</p>
@@ -113,7 +121,8 @@ export default function GuideForm({ o }: { o: OnboardState }) {
         onSubmit={() => o.submit()}
         onBack={() => o.setStep(1)}
         busy={o.busy}
-        disabled={o.busy || o.uploading || priced.length === 0 || !form.description || !form.location}
+        disabled={o.busy || o.uploading}
+        missing={missing}
         msg={o.msg}
       />
     </div>

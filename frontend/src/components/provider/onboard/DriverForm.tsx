@@ -218,7 +218,12 @@ export default function DriverForm({ o }: { o: OnboardState }) {
         onSubmit={() => o.submit()}
         onBack={() => o.setStep(1)}
         busy={o.busy}
-        disabled={o.busy || o.uploading || !allRoutesPriced(o.routes) || !form.description || !form.location}
+        disabled={o.busy || o.uploading}
+        missing={[
+          !form.description.trim() && t('ob.check.about_you'),
+          !form.location.trim() && t('ob.check.based'),
+          o.routes.length === 0 ? t('ob.check.routes_none') : !allRoutesPriced(o.routes) && t('ob.check.routes'),
+        ].filter(Boolean) as string[]}
         msg={o.msg}
       />
     </div>

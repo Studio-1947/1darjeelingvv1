@@ -1073,6 +1073,13 @@
   "ob": {
     "check": {
       "still_to_fill": "Fill these in to continue:",
+      "about_you": "A few lines about you",
+      "about_place": "A few lines about your place",
+      "based": "Where you are based",
+      "services": "At least one service with a price",
+      "routes": "A fare on every route",
+      "routes_none": "At least one route you drive (pick it under Routes covered)",
+      "price_start": "A starting price",
       "name": "Name of your stay",
       "description": "A few lines about your stay",
       "location": "Your location on the map",
@@ -1132,7 +1139,7 @@
       "breakfast_question": "Is Breakfast Included in this price?",
       "breakfast_yes": "Yes, Breakfast Included",
       "breakfast_no": "No, Breakfast Extra / Not Included",
-      "fee_note": "Listing your stay costs ₹499 for the first year (usually ₹999), then ₹999 a year, plus 18% GST and a 2% payment gateway fee, to keep it live on the homepage directory."
+      "fee_note": "Listing your stay costs ₹499 for the first year (usually ₹999), then ₹999 a year, plus 18% GST and a 2% payment gateway fee, to keep it live on the aangan directory."
     },
     "dr": {
       "type_label": "Driver",
@@ -1166,7 +1173,7 @@
       "complete": "Complete & go live",
       "price_label": "Starting Rate (₹/Day)",
       "price_suffix": "/ day onwards",
-      "fee_note": "Listing your driver profile costs ₹499 for the first year (usually ₹999), then ₹999 a year, plus 18% GST and a 2% payment gateway fee, to keep it live on the 1 Darjeeling directory.",
+      "fee_note": "Listing your driver profile costs ₹499 for the first year (usually ₹999), then ₹999 a year, plus 18% GST and a 2% payment gateway fee, to keep it live on the aangan directory.",
       "rates_label": "Your Route Rates",
       "rates_note": "Set a fare for each route you operate. Travellers see these on your profile, and the lowest becomes your public starting rate.",
       "rates_empty": "No routes yet  add the routes you operate in step 03 above, then price them here.",
@@ -1204,10 +1211,13 @@
       "price_shop": "Average Item Price (₹)",
       "suffix_cafe": "per person",
       "suffix_shop": "onwards",
-      "fee_note_cafe": "Listing your café costs ₹499 for the first year (usually ₹999), then ₹999 a year, plus 18% GST and a 2% payment gateway fee, to keep it live on the 1 Darjeeling directory.",
-      "fee_note_shop": "Listing your shop costs ₹499 for the first year (usually ₹999), then ₹999 a year, plus 18% GST and a 2% payment gateway fee, to keep it live on the 1 Darjeeling directory."
+      "fee_note_cafe": "Listing your café costs ₹499 for the first year (usually ₹999), then ₹999 a year, plus 18% GST and a 2% payment gateway fee, to keep it live on the aangan directory.",
+      "fee_note_shop": "Listing your shop costs ₹499 for the first year (usually ₹999), then ₹999 a year, plus 18% GST and a 2% payment gateway fee, to keep it live on the aangan directory."
     },
     "gd": {
+      "fee_note": "Listing your guide profile costs ₹499 for the first year (usually ₹999), then ₹999 a year, plus 18% GST and a 2% payment gateway fee, to keep it live on the aangan directory.",
+      "phone_ph": "e.g. 98765 43210",
+      "phone_hint": "Leave it empty to use the number you signed in with.",
       "type_label": "Guide",
       "name_ph": "e.g. Pemba Sherpa - Trekking Guide",
       "about": "About you",
