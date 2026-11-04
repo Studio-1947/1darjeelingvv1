@@ -41,6 +41,8 @@ export default function BookingCard({ b, onCancel, host }: { b: any; onCancel?: 
           {b.check_in && <div>{t('booking.checkin')}: <b className="text-ink">{b.check_in}</b>{b.check_out && <> → <b className="text-ink">{b.check_out}</b></>}</div>}
           <div>{t('booking.guests')}: <b className="text-ink">{b.guests}</b> · {t('pd.placed')}: {new Date(b.created_at).toLocaleDateString(i18n.language)}</div>
           {b.notes && <div className="italic">“{b.notes}”</div>}
+          {b.services?.length > 0 && <div data-testid={`booking-asked-${b.id}`}>Asked for: <b className="text-ink">{b.services.join(', ')}</b></div>}
+          {b.route_name && <div>Route: <b className="text-ink">{b.route_name}</b></div>}
         </div>
         <div className="mt-3 flex flex-wrap gap-2">
           <a
@@ -65,7 +67,10 @@ export default function BookingCard({ b, onCancel, host }: { b: any; onCancel?: 
               href={waLink(b.customer?.phone, guideTripMessage({
                 guestName: b.customer?.name, hostName: host.name, businessName: host.business,
                 date: b.check_in, endDate: b.check_out, guests: b.guests,
-                services: (b.listing?.extras?.services || []).map((s: any) => ({ name: s.name, price: Number(s.price) || 0, unit: s.unit })),
+                // The services the guest asked for; every service when they did not pick.
+                services: (b.listing?.extras?.services || [])
+                  .filter((s: any) => !b.services?.length || b.services.includes(s.name))
+                  .map((s: any) => ({ name: s.name, price: Number(s.price) || 0, unit: s.unit })),
                 meetingPoint: b.listing?.location || host.location, phone: host.phone, notes: b.notes,
               }))}
               target="_blank"

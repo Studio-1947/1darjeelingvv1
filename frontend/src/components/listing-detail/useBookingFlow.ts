@@ -12,6 +12,8 @@ export interface BookingForm {
   notes: string;
   /** A driver booking: which of the driver's routes (host dashboard km and places). */
   route?: string;
+  /** A guide booking: which of the guide's services (board: "Asking for given items"). */
+  services?: string[];
 }
 
 export interface BookingErrors {
@@ -160,6 +162,7 @@ export function useBookingFlow(item: any, id: string) {
         guests: Number(form.guests) || 1,
         notes: form.notes,
         route_name: item.type === 'driver' && form.route ? form.route : undefined,
+        services: item.type === 'guide' && form.services?.length ? form.services : undefined,
       });
       // Checkout confirms under the server's listing lock (so two guests cannot both take the
       // same nights). Free with the aangan pass; without it the server answers 402 fee_required

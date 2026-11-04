@@ -194,6 +194,8 @@ export const bookings = pgTable('bookings', {
   // A driver booking's route, picked from the driver's own routes ("NJP -> Darjeeling"). Feeds the
   // host dashboard's km and locations covered. Null for other bookings.
   routeName: text('route_name'),
+  /** A guide booking: which of the guide's services the traveller asked for (board: "Asking for given items"). */
+  services: jsonb('services').$type<string[]>().default([]).notNull(),
   // 'pending_payment' | 'accepted' | 'confirmed' | 'cancelled'.
   //
   // `accepted` is the host's answer to a request: they have agreed to take the booking, but the
