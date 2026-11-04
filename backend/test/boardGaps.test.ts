@@ -98,6 +98,7 @@ describe('host dashboard figures', () => {
     expect(stats.average_rating).toBe(5);
     expect(stats.recent_reviews[0]).toMatchObject({ rating: 5, comment: 'Great' });
     expect(stats.points).toBe(3 * 50 + 20);
+    expect(stats.points_rules).toEqual({ completedBooking: 50, review: 10, fiveStarReview: 20, verified: 100, profileComplete: 50 });
   });
 });
 

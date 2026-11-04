@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import api from '@/lib/api';
 import { rupees, usePassPrice } from '@/lib/prices';
 import { useAuth } from '@/context/AuthContext';
+import PointsRules, { travellerPointsRows } from '@/components/PointsRules';
 
 /**
  * The traveller dashboard from the board: aangan pass, Aangan Points, Aangan Awards, total travel
@@ -16,6 +17,8 @@ import { useAuth } from '@/context/AuthContext';
 type Dashboard = {
   pass: { active: boolean; expires_at: string | null };
   points: number;
+  points_breakdown?: Partial<Record<'trips' | 'reviews' | 'referrals' | 'profile' | 'pass', number>>;
+  points_rules?: Partial<Record<'completedTrip' | 'review' | 'referral' | 'profileComplete' | 'pass', number>>;
   awards: { id: string; earned: boolean; progress: number; goal: number }[];
   totals: { trips: number; homestays: number; cafes: number; shops: number };
   referrals: { joined: number };
@@ -119,7 +122,7 @@ export default function TravellerPanels() {
         <div className="rounded-3xl p-5 bg-[#DDF0F1] text-[#0E4A4F]" data-testid="panel-points">
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest"><Sparkle size={14} /> Aangan Points</div>
           <div className="mt-2 font-display font-extrabold text-4xl">{data.points.toLocaleString('en-IN')}</div>
-          <div className="text-sm mt-1">50 per trip · 20 per review · 100 per friend who joins</div>
+          <PointsRules rows={travellerPointsRows(data.points_rules, data.points_breakdown)} testId="panel-points-rules" />
         </div>
 
         {/* Referrals */}

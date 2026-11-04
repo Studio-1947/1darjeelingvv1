@@ -60,6 +60,7 @@ describe('traveller dashboard', () => {
     expect(res.status).toBe(200);
     expect(res.body.totals.trips).toBe(1);
     expect(res.body.points).toBe(POINTS.completedTrip);
+    expect(res.body.points_rules).toEqual({ completedTrip: 50, review: 20, referral: 100, profileComplete: 50, pass: 25 });
     expect(res.body.pass.active).toBe(false);
     const firstTrip = res.body.awards.find((a: any) => a.id === 'first_trip');
     expect(firstTrip).toMatchObject({ earned: true, progress: 1, goal: 1 });

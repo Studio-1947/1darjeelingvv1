@@ -26,6 +26,7 @@ export type Dashboard = {
   pass: { active: boolean; expires_at: string | null };
   points: number;
   points_breakdown: { trips: number; reviews: number; referrals: number; profile: number; pass: number };
+  points_rules: typeof POINTS;
   awards: Award[];
   totals: { trips: number; homestays: number; cafes: number; shops: number; rides: number; reviews: number };
   referrals: { joined: number };
@@ -103,6 +104,8 @@ export async function travellerDashboard(user: typeof schema.users.$inferSelect)
     pass: { active: passActive, expires_at: user.supportExpiresAt ?? null },
     points: Object.values(breakdown).reduce((a, b) => a + b, 0),
     points_breakdown: breakdown,
+    // What each thing is worth, so the dashboards explain points without copying the numbers.
+    points_rules: POINTS,
     awards: [
       award('first_trip', totals.trips, 1),
       award('homestay_explorer', totals.homestays, 3),
