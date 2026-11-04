@@ -261,7 +261,7 @@
   },
   "provider": {
     "onboard_title": "List your business",
-    "onboard_sub": "Reach thousands of travellers. ₹499 for your first year (usually ₹999), then ₹999 a year, plus 18% GST and a 2% payment gateway fee.",
+    "onboard_sub": "Reach thousands of travellers. ₹499 for your first year (usually ₹999), then ₹999 a year, plus 18% GST and a 2% platform fee.",
     "business_name": "Business name",
     "business_type": "Business type",
     "description": "Description",
@@ -996,14 +996,14 @@
     "plan_label": "Membership card",
     "plan_activation_label": "Payment pending",
     "plan_activate_title": "Activate your host plan",
-    "plan_activate_body": "₹499 for your first year, plus 18% GST and a 2% payment gateway fee, to publish listings and start receiving booking requests.",
+    "plan_activate_body": "₹499 for your first year, plus 18% GST and a 2% platform fee, to publish listings and start receiving booking requests.",
     "plan_activate_cta": "Pay {{total}} to activate",
     "plan_valid_until": "Live until {{date}}",
-    "plan_renew_body": "Renewal opens 30 days before your plan ends. It is ₹999 a year + 18% GST + 2% payment gateway fee, and the new year starts when this one ends.",
-    "plan_ends_soon_one": "Ends in {{count}} day. Renew for ₹999 + 18% GST + 2% payment gateway fee to keep your listings live.",
-    "plan_ends_soon_other": "Ends in {{count}} days. Renew for ₹999 + 18% GST + 2% payment gateway fee to keep your listings live.",
+    "plan_renew_body": "Renewal opens 30 days before your plan ends. It is ₹999 a year + 18% GST + 2% platform fee, and the new year starts when this one ends.",
+    "plan_ends_soon_one": "Ends in {{count}} day. Renew for ₹999 + 18% GST + 2% platform fee to keep your listings live.",
+    "plan_ends_soon_other": "Ends in {{count}} days. Renew for ₹999 + 18% GST + 2% platform fee to keep your listings live.",
     "plan_lapsed_title": "Your plan has ended",
-    "plan_lapsed_body": "Your listings are hidden from travellers and not taking bookings. Renew for ₹999 + 18% GST + 2% payment gateway fee to bring them back straight away.",
+    "plan_lapsed_body": "Your listings are hidden from travellers and not taking bookings. Renew for ₹999 + 18% GST + 2% platform fee to bring them back straight away.",
     "plan_renew_cta": "Renew · {{total}}",
     "plan_renew_title": "Renew your host plan",
     "plan_renewing": "Renewing…",
@@ -1162,7 +1162,7 @@
       "breakfast_question": "Is Breakfast Included in this price?",
       "breakfast_yes": "Yes, Breakfast Included",
       "breakfast_no": "No, Breakfast Extra / Not Included",
-      "fee_note": "Listing your stay costs ₹499 for the first year (usually ₹999), then ₹999 a year, plus 18% GST and a 2% payment gateway fee, to keep it live on the aangan directory."
+      "fee_note": "Listing your stay costs ₹499 for the first year (usually ₹999), then ₹999 a year, plus 18% GST and a 2% platform fee, to keep it live on the aangan directory."
     },
     "dr": {
       "type_label": "Driver",
@@ -1196,7 +1196,7 @@
       "complete": "Complete & go live",
       "price_label": "Starting Rate (₹/Day)",
       "price_suffix": "/ day onwards",
-      "fee_note": "Listing your driver profile costs ₹499 for the first year (usually ₹999), then ₹999 a year, plus 18% GST and a 2% payment gateway fee, to keep it live on the aangan directory.",
+      "fee_note": "Listing your driver profile costs ₹499 for the first year (usually ₹999), then ₹999 a year, plus 18% GST and a 2% platform fee, to keep it live on the aangan directory.",
       "rates_label": "Your Route Rates",
       "rates_note": "Set a fare for each route you operate. Travellers see these on your profile, and the lowest becomes your public starting rate.",
       "rates_empty": "No routes yet  add the routes you operate in step 03 above, then price them here.",
@@ -1234,11 +1234,11 @@
       "price_shop": "Average Item Price (₹)",
       "suffix_cafe": "per person",
       "suffix_shop": "onwards",
-      "fee_note_cafe": "Listing your café costs ₹499 for the first year (usually ₹999), then ₹999 a year, plus 18% GST and a 2% payment gateway fee, to keep it live on the aangan directory.",
-      "fee_note_shop": "Listing your shop costs ₹499 for the first year (usually ₹999), then ₹999 a year, plus 18% GST and a 2% payment gateway fee, to keep it live on the aangan directory."
+      "fee_note_cafe": "Listing your café costs ₹499 for the first year (usually ₹999), then ₹999 a year, plus 18% GST and a 2% platform fee, to keep it live on the aangan directory.",
+      "fee_note_shop": "Listing your shop costs ₹499 for the first year (usually ₹999), then ₹999 a year, plus 18% GST and a 2% platform fee, to keep it live on the aangan directory."
     },
     "gd": {
-      "fee_note": "Listing your guide profile costs ₹499 for the first year (usually ₹999), then ₹999 a year, plus 18% GST and a 2% payment gateway fee, to keep it live on the aangan directory.",
+      "fee_note": "Listing your guide profile costs ₹499 for the first year (usually ₹999), then ₹999 a year, plus 18% GST and a 2% platform fee, to keep it live on the aangan directory.",
       "phone_ph": "e.g. 98765 43210",
       "phone_hint": "Leave it empty to use the number you signed in with.",
       "type_label": "Guide",
@@ -1433,7 +1433,7 @@
             "p": "Making a booking request is free. Confirming it is free with the Traveller Pass; without the pass there is a ₹1 convenience fee per booking, refunded if the booking is cancelled. What you pay for the stay, ride or goods themselves is paid directly to the business."
           },
           {
-            "h": "3.3 Business Listing Plan  ₹499 for the first year, then ₹999 per year, each plus 18% GST and a 2% payment gateway fee",
+            "h": "3.3 Business Listing Plan  ₹499 for the first year, then ₹999 per year, each plus 18% GST and a 2% platform fee",
             "p": "A local business pays ₹499 to activate its listing for its first year, and ₹999 for each year after that. The plan does not renew automatically: if a year ends without renewal, the business's listings are hidden from travellers and stop taking bookings until it renews. It is not a commission on bookings."
           },
           {
@@ -1555,7 +1555,7 @@
             "p": "Refundable in full within 7 days of payment if you have not used it to confirm any booking. After 7 days, or once it has been used, it is not refundable  it has already delivered the access it pays for. It expires after one year and never renews automatically, so there is no recurring charge to cancel."
           },
           {
-            "h": "3.3 Business Listing Plan  ₹499 for the first year, ₹999 per year after, each plus 18% GST and a 2% payment gateway fee",
+            "h": "3.3 Business Listing Plan  ₹499 for the first year, ₹999 per year after, each plus 18% GST and a 2% platform fee",
             "p": "Each payment is refundable in full within 7 days if your listing has not yet gone live that year. Once the listing is published and visible to travellers, that year's payment is not refundable. If we reject or remove your listing for a reason that is not a breach of our Terms, we refund the current year in full regardless of when. The plan never renews automatically."
           },
           {
@@ -1974,7 +1974,7 @@
   },
   "price": {
     "gst": "GST ({{rate}}%)",
-    "platform_fee": "Payment gateway fee ({{rate}}%)",
+    "platform_fee": "Platform fee ({{rate}}%)",
     "total": "Total to pay",
     "host_first_year": "Host plan · first year",
     "host_renewal": "Host plan · one more year",

@@ -114,7 +114,7 @@ export default function PaymentsTab({ payments, onRefunded }: PaymentsTabProps) 
                   {/* Transaction Amount (converted from paisa) */}
                   <td className="p-4 text-ink">
                     <div className="font-bold">{inr(pm.amount)}</div>
-                    {/* Stored at order time: base, 18% GST and (host plans) the 2% gateway fee. */}
+                    {/* Stored at order time: base, 18% GST and the 2% platform fee. */}
                     {pm.breakup ? (
                       <div className="text-[11px] text-ink-soft leading-snug mt-0.5" data-testid={`payment-breakup-${pm.id}`}>
                         {inr(pm.breakup.base)} + GST {inr(pm.breakup.gst)}
