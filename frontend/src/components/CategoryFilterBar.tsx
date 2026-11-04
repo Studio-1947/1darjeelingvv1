@@ -160,19 +160,25 @@ export default function CategoryFilterBar({
       </div>
 
       {/* Category Specific Sub-filter Quick Chips (Homestays / Drivers / Spots): one row that scrolls */}
-      <div className="flex items-center gap-2 text-xs">
+      <div className="space-y-2 text-xs">
         {/* Homestays Tariff Quick Filters */}
-        {categoryType === 'homestay' && onMaxPriceChange && (
-          <div className="flex w-full items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 -mx-1 px-1">
+        {/* Board: stays and drivers filter by price. A driver's rate is per trip or day. */}
+        {(categoryType === 'homestay' || categoryType === 'driver') && onMaxPriceChange && (
+          <div className="flex w-full items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 -mx-1 px-1" data-testid="filter-price-row">
             <span className="hidden sm:flex flex-shrink-0 whitespace-nowrap text-[11px] font-extrabold uppercase tracking-wider text-ink-soft mr-1 items-center gap-1">
               <HomeIcon size={12} /> Max Rate:
             </span>
-            {[
+            {(categoryType === 'driver' ? [
+              { label: 'Any Rate', val: undefined },
+              { label: 'Under ₹1,000', val: 1000 },
+              { label: 'Under ₹2,500', val: 2500 },
+              { label: 'Under ₹5,000', val: 5000 },
+            ] : [
               { label: 'Any Rate', val: undefined },
               { label: 'Under ₹1,500', val: 1500 },
               { label: 'Under ₹3,000', val: 3000 },
               { label: 'Under ₹5,000', val: 5000 },
-            ].map((p) => {
+            ]).map((p) => {
               const active = maxPrice === p.val;
               return (
                 <button
