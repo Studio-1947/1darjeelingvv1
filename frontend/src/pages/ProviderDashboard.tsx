@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
-import { CheckCircle as CheckCircle2, Clock, Wallet, CalendarCheck, Users, Phone, ArrowRight, ArrowSquareOut as ExternalLink, X, Upload, Plus, Trash as Trash2, Pencil, Star, Car, PaperPlaneTilt } from '@phosphor-icons/react';
+import { MapPin, CheckCircle as CheckCircle2, Clock, Wallet, CalendarCheck, Users, Phone, ArrowRight, ArrowSquareOut as ExternalLink, X, Upload, Plus, Trash as Trash2, Pencil, Star, Car, PaperPlaneTilt } from '@phosphor-icons/react';
 import ListingFormModal from '@/components/ListingFormModal';
 import ListingJourney from '@/components/provider/dashboard/ListingJourney';
 import { Insight } from '@/components/provider/dashboard/Insight';
@@ -12,6 +12,8 @@ import EditListingModal from '@/components/provider/dashboard/EditListingModal';
 import KycSection from '@/components/provider/dashboard/KycSection';
 import VerificationTracker from '@/components/provider/dashboard/VerificationTracker';
 import HostPlanCard from '@/components/provider/dashboard/HostPlanCard';
+import { DeliveryRequestsPanel, HostPageCard, HostReviewsCard } from '@/components/provider/dashboard/HostExtras';
+import { isFinished, isOngoing, isUpcoming, sumGuests } from '@/lib/tripMessages';
 import VerifiedBadge from '@/components/provider/VerifiedBadge';
 import ProfileCompletionBar from '@/components/provider/ProfileCompletionBar';
 import { getMyProfile } from '@/lib/kyc';
@@ -192,8 +194,13 @@ export default function ProviderDashboard() {
   const scopedBookings = activeListing ? bookings.filter((booking: any) => booking.listing_id === activeListing.id) : bookings;
   const scopedConfirmed = scopedBookings.filter((booking: any) => booking.status === 'confirmed');
   const scopedRevenue = scopedConfirmed.reduce((sum: number, booking: any) => sum + (booking.listing?.price || activeListing?.price || 0) * (booking.guests || 1), 0);
-  const completed = scopedConfirmed.length;
-  const points = completed * 10;
+  // Board, per host type: finished, ongoing (happening today), upcoming, and the guests in each.
+  const finishedList = scopedBookings.filter((b: any) => isFinished(b));
+  const ongoingList = scopedBookings.filter((b: any) => isOngoing(b));
+  const upcomingList = scopedBookings.filter((b: any) => isUpcoming(b));
+  const completed = finishedList.length;
+  // Host Aangan Points come from the server (lib/hostStats.ts).
+  const points = hostStats?.points ?? 0;
 
   return (
     <div className="mx-auto max-w-6xl px-4 md:px-6 py-6 md:py-10">
@@ -244,18 +251,45 @@ export default function ProviderDashboard() {
             <div className="mt-1 flex items-center gap-1 text-2xl font-extrabold"><Star weight="fill" size={20} /> {points}</div>
           </div>
         </div>
-        <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {/* The board's dashboard sticky for each host type. */}
+        <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-3" data-testid="host-figures">
           <Insight icon={isDriver ? Car : CalendarCheck} label={isDriver ? 'Completed rides' : isGuide ? 'Covered trips' : 'Bookings'} value={completed} accent={accent} />
-          <Insight icon={Users} label={isGuide ? 'Covered guests' : isDriver ? 'Passengers covered' : 'Guests served'} value={scopedConfirmed.reduce((sum: number, b: any) => sum + (b.guests || 0), 0)} accent={accent} />
-          <Insight icon={Clock} label={isGuide ? 'Upcoming guests' : 'Ongoing'} value={scopedBookings.filter((b: any) => b.status === 'accepted' || b.status === 'pending_payment').length} accent={accent} />
+          {isGuide ? (
+            <>
+              <Insight icon={Users} label="Covered guests" value={sumGuests(finishedList)} accent={accent} />
+              <Insight icon={Clock} label="Upcoming guests" value={sumGuests(upcomingList)} accent={accent} />
+              <Insight icon={Clock} label="Ongoing guests" value={sumGuests(ongoingList)} accent={accent} />
+            </>
+          ) : (
+            <>
+              <Insight icon={Clock} label="Ongoing" value={ongoingList.length} accent={accent} />
+              <Insight icon={Users} label={isDriver ? 'Passengers covered' : 'Guests served'} value={sumGuests(finishedList)} accent={accent} />
+            </>
+          )}
+          {isDriver && (
+            <>
+              <Insight icon={MapPin} label="Km covered" value={activeListing ? '–' : (hostStats?.km_covered ?? 0).toLocaleString('en-IN')} accent={accent} />
+              <Insight icon={MapPin} label="Locations covered" value={activeListing ? '–' : (hostStats?.locations_covered?.length ?? 0)} accent={accent} />
+            </>
+          )}
           <Insight icon={Wallet} label={isGuide ? 'Amount earned' : 'Booking value'} value={`₹${(activeListing ? scopedRevenue : stats.revenue || 0).toLocaleString('en-IN')}`} accent={accent} />
         </div>
+        {isDriver && !activeListing && hostStats?.locations_covered?.length > 0 && (
+          <p className="mt-3 text-xs text-ink-soft" data-testid="host-locations">Places covered: {hostStats.locations_covered.join(', ')}</p>
+        )}
+        {isDriver && !activeListing && hostStats?.unknown_route_trips > 0 && (
+          <p className="mt-1 text-[11px] text-ink-soft">{hostStats.unknown_route_trips} finished {hostStats.unknown_route_trips === 1 ? 'trip did' : 'trips did'} not say the route, so {hostStats.unknown_route_trips === 1 ? 'it is' : 'they are'} not in the km.</p>
+        )}
         {listings.length > 1 && <div className="mt-5 flex gap-2 overflow-x-auto pb-1" aria-label="Choose a listing to manage"><button onClick={() => setActiveListingId(null)} className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-bold ${!activeListingId ? 'bg-ink text-white' : 'bg-white text-ink border border-[var(--line)]'}`}>All listings</button>{listings.map((listing: any) => <button key={listing.id} onClick={() => setActiveListingId(listing.id)} className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-bold ${activeListingId === listing.id ? 'bg-ink text-white' : 'bg-white text-ink border border-[var(--line)]'}`}>{listing.title} · {listing.type}</button>)}</div>}
       </section>
 
       {/* The membership card: the yearly host plan, with reviews. One card, not two. */}
       <HostPlanCard provider={provider} user={user} reviews={{ count: hostStats?.review_count || 0, average: hostStats?.average_rating || null }}
         onRenewed={async () => { await refresh(); await loadDashboard(); }} />
+
+      <HostPageCard provider={provider} />
+      <HostReviewsCard stats={hostStats} />
+      <DeliveryRequestsPanel visible={['cafe', 'shop', 'homestay'].includes(provider.business_type)} />
 
       {/* The business profile (pages/ProviderProfile.tsx), with what is still needed for approval. */}
       <Link
@@ -342,7 +376,7 @@ export default function ProviderDashboard() {
             </div>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {scopedBookings.map((b) => <BookingCard key={b.id} b={b} onCancel={handleCancelBooking} />)}
+              {scopedBookings.map((b) => <BookingCard key={b.id} b={b} onCancel={handleCancelBooking} host={{ name: provider.extras?.host_name || user?.name || provider.business_name, business: provider.business_name, phone: provider.contact_phone, location: provider.location }} />)}
             </div>
           )}
         </div>

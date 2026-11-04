@@ -319,6 +319,8 @@
     "results": "Search results"
   },
   "booking": {
+    "route": "Which route?",
+    "route_pick": "Pick a route (or write it in the note)",
     "checkin": "Check-in",
     "checkout": "Check-out",
     "guests": "Guests",
@@ -1905,6 +1907,8 @@
     "your_business": "Your business",
     "not_taking": "Not taking bookings",
     "joined": "Joined aangan on {{date}}",
+    "member": "Member",
+    "verified_title": "Documents checked by aangan",
     "rating": "{{count}} reviews",
     "reviews": "{{count}} reviews",
     "new": "New on aangan",

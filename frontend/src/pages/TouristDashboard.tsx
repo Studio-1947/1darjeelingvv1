@@ -125,7 +125,7 @@ export default function TouristDashboard() {
             {shown.map((b) => (
               <TripCard key={b.id} booking={b} testId={`my-booking-${b.id}`}
                 confirming={confirmingId === b.id} busy={busyId === b.id}
-                onAskCancel={() => setConfirmingId(b.id)} onCancel={() => cancelBooking(b.id)} onKeep={() => setConfirmingId(null)} />
+                onReviewed={() => loadBookings()} onAskCancel={() => setConfirmingId(b.id)} onCancel={() => cancelBooking(b.id)} onKeep={() => setConfirmingId(null)} />
             ))}
           </div>
         )}

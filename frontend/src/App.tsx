@@ -35,6 +35,7 @@ const DeleteAccount = lazy(() => import('@/pages/DeleteAccount'));
 const Contact = lazy(() => import('@/pages/Contact'));
 const NotFound = lazy(() => import('@/pages/NotFound'));
 const PublicBusiness = lazy(() => import('@/pages/PublicBusiness'));
+const HostPage = lazy(() => import('@/pages/HostPage'));
 
 // How long the splash in index.html stays up once the app has mounted - long enough for its
 // wordmark reveal (1.8s, kept in sync with that markup) to actually finish playing rather
@@ -82,6 +83,10 @@ export default function App() {
                     <Route path="/search" element={<TravellerOnly><Category typeOverride={undefined} /></TravellerOnly>} />
                     <Route path="/listing/:id" element={<ListingDetail />} />
                     <Route path="/business/:id" element={<PublicBusiness />} />
+                    {/* A host's own page: aanganerp.in/<type>/<business-name> (board). */}
+                    {['driver', 'homestay', 'cafe', 'shop', 'guide'].map((type) => (
+                      <Route key={type} path={`/${type}/:slug`} element={<HostPage />} />
+                    ))}
                     <Route path="/login" element={<Login />} />
                     <Route path="/support" element={<TravellerOnly><Support /></TravellerOnly>} />
                     <Route path="/donate" element={<Donate />} />

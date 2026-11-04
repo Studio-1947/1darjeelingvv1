@@ -335,6 +335,9 @@ router.get('/:id', async (req: Request, res: Response) => {
     kycStatus: schema.providers.kycStatus,
     status: schema.providers.status,
     contactPhone: schema.providers.contactPhone,
+    slug: schema.providers.slug,
+    businessType: schema.providers.businessType,
+    planExpiresAt: schema.providers.planExpiresAt,
   })
     .from(schema.providers)
     .where(eq(schema.providers.id, item.providerId))
@@ -377,6 +380,9 @@ router.get('/:id', async (req: Request, res: Response) => {
     provider_verified: provider?.kycStatus === 'verified' && provider?.status === 'active',
     // Only ever true for the host's own view of a listing travellers cannot see yet.
     not_live: notLive,
+    // The host's own page (aanganerp.in/<type>/<slug>) and their two marks.
+    host_page_path: provider?.slug ? `/${provider.businessType}/${provider.slug}` : null,
+    provider_member: provider ? provider.status === 'active' && !!provider.planExpiresAt && Date.parse(provider.planExpiresAt) > Date.now() : false,
   };
 
   res.json({ item: itemReturn });

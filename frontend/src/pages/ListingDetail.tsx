@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import DeliveryRequestButton from '@/components/DeliveryRequestButton';
+import { Link, useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import api from '@/lib/api';
 import { shareLink } from '@/lib/share';
@@ -154,6 +155,17 @@ export default function ListingDetail() {
       {ownPreview && (
         <div className="bg-pine text-white text-sm font-semibold text-center px-4 py-2.5" data-testid="own-listing-preview">
           {t('business_gate.preview')}
+        </div>
+      )}
+      {(item.host_page_path || item.extras?.home_delivery) && !ownPreview && (
+        <div className="mx-auto max-w-6xl px-4 md:px-8 pt-4 flex flex-wrap gap-2" data-testid="listing-host-links">
+          {item.host_page_path && (
+            <Link to={item.host_page_path} data-testid="listing-host-page"
+              className="inline-flex items-center gap-1.5 h-10 px-4 rounded-full border border-[var(--line)] bg-white text-ink font-bold text-[13px] btn-hover">
+              See the host's page
+            </Link>
+          )}
+          {['cafe', 'shop', 'homestay'].includes(item.type) && <DeliveryRequestButton listing={item} />}
         </div>
       )}
       {item.not_live && (

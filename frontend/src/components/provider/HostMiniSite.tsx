@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Phone, WhatsappLogo, NavigationArrow, SealCheck, Star, PlayCircle, Globe } from '@phosphor-icons/react';
+import { Phone, WhatsappLogo, NavigationArrow, SealCheck, Star, PlayCircle, Globe, CrownSimple } from '@phosphor-icons/react';
 
 /**
  * A host's mini website, laid out like the board's mock-up (Aangan Blue Print, "Profile: all
@@ -21,7 +21,12 @@ export type MiniSiteData = {
   hostName?: string;
   avatar?: string;
   cover?: string;
+  /** Documents checked by aangan: the blue tick. */
   verified: boolean;
+  /** Paid plan live: the Member badge. */
+  member?: boolean;
+  /** The saved page address; the preview falls back to one made from the name. */
+  slug?: string | null;
   experienceYears?: number;
   joinedAt?: string | null;
   rating?: number | null;
@@ -43,7 +48,16 @@ export function miniSiteSlug(name: string): string {
 
 const isVideoFile = (url: string) => /\.(mp4|mov|webm)(\?|$)/i.test(url) || /\/videos\//.test(url);
 
-export default function HostMiniSite({ data, compact = false }: { data: MiniSiteData; compact?: boolean }) {
+/** Real targets for the three buttons on the public page; the editor preview leaves them out. */
+export type MiniSiteActions = {
+  call?: string | null;
+  whatsapp?: string | null;
+  direction?: string | null;
+  /** Shown instead of Call / WhatsApp when the number is held back (book first, or take the pass). */
+  locked?: React.ReactNode;
+};
+
+export default function HostMiniSite({ data, compact = false, actions }: { data: MiniSiteData; compact?: boolean; actions?: MiniSiteActions }) {
   const { t } = useTranslation();
   const initial = (data.hostName || data.name || '?').trim().charAt(0).toUpperCase();
   const joined = data.joinedAt ? new Date(data.joinedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) : null;
@@ -55,7 +69,7 @@ export default function HostMiniSite({ data, compact = false }: { data: MiniSite
       {/* Address bar */}
       <div className={`flex items-center gap-2 ${pad} py-2 bg-mist text-[11px] text-ink-soft border-b border-[var(--line)]`}>
         <Globe size={13} />
-        <span className="truncate">aanganerp.in/{data.type}/{miniSiteSlug(data.name)}</span>
+        <span className="truncate" data-testid="mini-site-address">aanganerp.in/{data.type}/{data.slug || miniSiteSlug(data.name)}</span>
       </div>
 
       {/* Cover */}
@@ -73,9 +87,17 @@ export default function HostMiniSite({ data, compact = false }: { data: MiniSite
         </div>
         <div className="mt-3 flex items-center gap-2 flex-wrap">
           <h3 className={`font-display font-extrabold text-ink ${compact ? 'text-xl' : 'text-2xl md:text-3xl'}`}>{data.name || t('miniSite.your_business')}</h3>
+          {/* Two marks: a blue tick once aangan has checked the documents, and Member while the
+              paid plan is live. */}
           {data.verified && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-pine/10 text-pine font-bold px-2 py-0.5 text-[11px]">
-              <SealCheck size={13} /> {t('kyc.verified')}
+            <span title={t('miniSite.verified_title')} data-testid="badge-verified" className="inline-flex items-center text-[#1D9BF0]">
+              <SealCheck size={compact ? 20 : 24} weight="fill" />
+              <span className="sr-only">{t('kyc.verified')}</span>
+            </span>
+          )}
+          {data.member && (
+            <span data-testid="badge-member" className="inline-flex items-center gap-1 rounded-full bg-gold/20 text-[#7a5d00] font-bold px-2 py-0.5 text-[11px]">
+              <CrownSimple size={12} weight="fill" /> {t('miniSite.member')}
             </span>
           )}
         </div>
@@ -97,15 +119,20 @@ export default function HostMiniSite({ data, compact = false }: { data: MiniSite
         {/* Call / WhatsApp / Direction */}
         <div className="mt-4 grid grid-cols-3 gap-2">
           {[
-            { Icon: Phone, label: t('miniSite.call'), cls: 'bg-[#1F6656] text-white' },
-            { Icon: WhatsappLogo, label: t('miniSite.whatsapp'), cls: 'bg-[#25D366] text-white' },
-            { Icon: NavigationArrow, label: t('miniSite.direction'), cls: 'bg-white border border-[var(--line)] text-ink' },
-          ].map(({ Icon, label, cls }) => (
-            <span key={label} className={`inline-flex items-center justify-center gap-1.5 rounded-full py-2.5 text-xs font-bold ${cls}`}>
-              <Icon size={15} /> {label}
-            </span>
-          ))}
+            { key: 'call', Icon: Phone, label: t('miniSite.call'), cls: 'bg-[#1F6656] text-white', href: actions?.call },
+            { key: 'whatsapp', Icon: WhatsappLogo, label: t('miniSite.whatsapp'), cls: 'bg-[#25D366] text-white', href: actions?.whatsapp },
+            { key: 'direction', Icon: NavigationArrow, label: t('miniSite.direction'), cls: 'bg-white border border-[var(--line)] text-ink', href: actions?.direction },
+          ].map(({ key, Icon, label, cls, href }) => {
+            const inner = <><Icon size={15} /> {label}</>;
+            const base = `inline-flex items-center justify-center gap-1.5 rounded-full py-2.5 text-xs font-bold ${cls}`;
+            return href ? (
+              <a key={key} href={href} target={key === 'call' ? undefined : '_blank'} rel="noreferrer" data-testid={`mini-site-${key}`} className={`${base} btn-hover`}>{inner}</a>
+            ) : (
+              <span key={key} className={`${base} ${actions ? 'opacity-50' : ''}`}>{inner}</span>
+            );
+          })}
         </div>
+        {actions?.locked && <div className="mt-2 text-xs text-ink-soft" data-testid="mini-site-locked">{actions.locked}</div>}
       </div>
 
       {/* About */}
