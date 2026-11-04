@@ -125,6 +125,7 @@ router.get('/admin/stats', authenticateToken, requireAdmin, async (req: Request,
   const hostFeedbackOpen = await db.select({ value: count() }).from(schema.hostFeedback).where(eq(schema.hostFeedback.status, 'open'));
   const commentsCount = await db.select({ value: count() }).from(schema.postComments);
   const profilesStarted = await db.select({ value: count() }).from(schema.users).where(isNotNull(schema.users.travellerType));
+  const deliveriesOpen = await db.select({ value: count() }).from(schema.deliveryRequests).where(eq(schema.deliveryRequests.status, 'open'));
 
   res.json({
     users: usersCount[0]?.value || 0,
@@ -136,6 +137,7 @@ router.get('/admin/stats', authenticateToken, requireAdmin, async (req: Request,
     open_feedback: (appFeedbackOpen[0]?.value || 0) + (hostFeedbackOpen[0]?.value || 0),
     post_comments: commentsCount[0]?.value || 0,
     traveller_profiles: profilesStarted[0]?.value || 0,
+    open_deliveries: deliveriesOpen[0]?.value || 0,
   });
 });
 

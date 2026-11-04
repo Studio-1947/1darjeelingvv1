@@ -56,6 +56,10 @@ export default function OverviewTab({ stats, onSeed }: OverviewTabProps) {
               <span className="text-sm text-ink-soft">Open feedback (travellers + hosts)</span>
               <span className="text-sm font-bold text-flag">{stats?.open_feedback ?? 0} →</span>
             </Link>
+            <Link to="/deliveries" className="flex justify-between items-center py-2 border-t border-[var(--line)] hover:text-flag" data-testid="stat-open-deliveries">
+              <span className="text-sm text-ink-soft">Home delivery requests waiting for a place</span>
+              <span className="text-sm font-bold text-flag">{stats?.open_deliveries ?? 0} →</span>
+            </Link>
           </div>
         </div>
 
