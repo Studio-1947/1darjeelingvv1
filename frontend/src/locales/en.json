@@ -1693,6 +1693,7 @@
     "unblocked": "{{name}} is unblocked."
   },
   "business_gate": {
+    "not_live": "Only you can see this page. Travellers will see it once your plan is active and your documents are verified.",
     "title": "You're in Business mode",
     "body": "Business mode is for running your own listing. To explore and book places on aangan, switch to Traveller.",
     "switch": "Switch to Traveller",

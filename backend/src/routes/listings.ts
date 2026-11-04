@@ -11,7 +11,7 @@ import { googleMapsUrl, inServiceRegion, MapsLinkError, resolveMapsLink } from '
 import { storeBase64Image, ImageUploadError } from '../lib/imageUpload';
 import { routeParam } from '../lib/routeParam';
 import { blockedRanges, isDateExclusive } from '../lib/bookingAvailability';
-import { myActiveProvider } from '../lib/hostAccess';
+import { myActiveProvider, myProvider } from '../lib/hostAccess';
 import {
   SPOT_TYPE, SPOT_FORBIDDEN_MESSAGE, canWriteSpots, parseSpotExtras,
   isSpotPublished, publicSpotVisibility, spotOrdering, SpotValidationError,
@@ -321,9 +321,14 @@ router.get('/:id', async (req: Request, res: Response) => {
   if (item.type === SPOT_TYPE && !isSpotPublished(item.extras)) {
     return res.status(404).json({ detail: 'Not found' });
   }
-  // Hidden with the rest of the feed while its host's plan has lapsed.
-  if (await isListingHostLapsed(item.providerId)) {
-    return res.status(404).json({ detail: 'Not found' });
+  // Hidden with the rest of the feed while its host's plan has lapsed or approval is pending. The
+  // host (or a co-owner) can still open it, so "View" on their dashboard shows their own page
+  // with a "not live yet" note instead of an error.
+  const viewer = await optionalUser(req);
+  const notLive = await isListingHostLapsed(item.providerId);
+  if (notLive) {
+    const own = viewer ? (await myProvider(viewer.id))?.id === item.providerId : false;
+    if (!own) return res.status(404).json({ detail: 'Not found' });
   }
 
   const [provider] = await db.select({
@@ -341,7 +346,7 @@ router.get('/:id', async (req: Request, res: Response) => {
   // the people entitled to it (see lib/listingContact.ts). Everything else stays public.
   const phoneVisible = await canSeeProviderPhone(
     { id: item.id, type: item.type, providerId: item.providerId },
-    await optionalUser(req)
+    viewer
   );
 
   const itemReturn = {
@@ -369,7 +374,9 @@ router.get('/:id', async (req: Request, res: Response) => {
     provider_phone_locked: !phoneVisible && Boolean(provider?.contactPhone),
     // Verified badge must never show for a provider an admin has suspended (flipped off
     // "active"), even if their kycStatus was previously computed as "verified".
-    provider_verified: provider?.kycStatus === 'verified' && provider?.status === 'active'
+    provider_verified: provider?.kycStatus === 'verified' && provider?.status === 'active',
+    // Only ever true for the host's own view of a listing travellers cannot see yet.
+    not_live: notLive,
   };
 
   res.json({ item: itemReturn });
