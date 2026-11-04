@@ -78,7 +78,7 @@
     "eyebrow": "the invitation",
     "title": "Come into the aangan",
     "amount_line": "Homestays, rides, cafés and quiet corners, from people who actually live in the hills.",
-    "body": "₹12 + 18% GST for your first year (usually ₹99 a year): every booking confirms free. Without the pass, each booking has a ₹1 convenience fee + 18% GST.",
+    "body": "₹12 + 18% GST + 2% platform fee (₹14.40) for your first year (usually ₹99 a year): every booking confirms free. Without the pass, each booking has a ₹1 convenience fee + 18% GST + 2% platform fee (₹1.20).",
     "cta": "Take the pass · {{total}}",
     "reassurance": "Valid for one year. Nothing auto-charges.",
     "skip": "Not now, I will pay ₹1 per booking",
@@ -338,7 +338,7 @@
     "checkout": "Check-out",
     "guests": "Guests",
     "notes": "Notes (optional)",
-    "fee_note": "Free with the aangan pass (₹12 for the first year, then ₹99 a year), or a ₹1 fee for this booking. Plus 18% GST.",
+    "fee_note": "Free with the aangan pass (₹12 for the first year, then ₹99 a year), or a ₹1 fee for this booking. Plus 18% GST and the 2% platform fee.",
     "pay_confirm": "Confirm booking",
     "success": "Booking confirmed!",
     "status": {
@@ -1425,8 +1425,8 @@
         "p": "All amounts below are what you pay to the Platform. They are separate from, and additional to, whatever you pay the local business for the stay, ride or goods themselves.",
         "sub": [
           {
-            "h": "3.1 Traveller Pass  ₹12 + 18% GST for the first year, then ₹99 + 18% GST per year",
-            "p": "A payment gives a traveller account one year in which every booking confirms with no fee, and lets it save listings and leave reviews. Without the pass, booking requests are free to make and each booking is confirmed with a ₹1 convenience fee plus 18% GST, refunded if the booking is cancelled. It does not renew automatically; after it expires, you may buy another one-year pass."
+            "h": "3.1 Traveller Pass  ₹12 + 18% GST + 2% platform fee for the first year, then ₹99 + 18% GST + 2% platform fee per year",
+            "p": "A payment gives a traveller account one year in which every booking confirms with no fee, and lets it save listings and leave reviews. Without the pass, booking requests are free to make and each booking is confirmed with a ₹1 convenience fee plus 18% GST and a 2% platform fee (₹1.20 in all), refunded if the booking is cancelled. It does not renew automatically; after it expires, you may buy another one-year pass."
           },
           {
             "h": "3.2 Bookings  free with the pass, ₹1 without",
@@ -1551,7 +1551,7 @@
             "p": "Bookings carry no fee, so there is nothing to refund when one is cancelled. A booking fee paid before bookings became free is still refunded in full if that booking is cancelled, by any party, before the stay."
           },
           {
-            "h": "3.2 Traveller Pass  ₹12 + 18% GST for the first year, then ₹99 + 18% GST per year",
+            "h": "3.2 Traveller Pass  ₹12 + 18% GST + 2% platform fee for the first year, then ₹99 + 18% GST + 2% platform fee per year",
             "p": "Refundable in full within 7 days of payment if you have not used it to confirm any booking. After 7 days, or once it has been used, it is not refundable  it has already delivered the access it pays for. It expires after one year and never renews automatically, so there is no recurring charge to cancel."
           },
           {
