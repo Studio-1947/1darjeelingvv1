@@ -16,6 +16,7 @@ function StatusPill({ status, isPast }: { status: string; isPast: boolean }) {
   const map: Record<string, string> = {
     confirmed: 'bg-[#DDF0F1] text-[#0E4A4F]',
     pending_payment: 'bg-gold/20 text-[#7a5d00]',
+    accepted: 'bg-[#E6F2EA] text-[#1F6656]',
     cancelled: 'bg-flag/10 text-flag',
   };
   return (

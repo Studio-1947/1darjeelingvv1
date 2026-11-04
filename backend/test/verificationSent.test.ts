@@ -1,5 +1,16 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import request from 'supertest';
+
+// CI runs without MinIO; stub private storage like the other KYC tests so uploads don't 503.
+vi.mock('../src/lib/s3', () => ({
+  uploadPrivate: vi.fn(async (_buffer: Buffer, key: string) => key),
+  getPrivateObject: vi.fn(async () => {
+    const { Readable } = await import('stream');
+    return { stream: Readable.from([Buffer.from('test-file-bytes')]), contentType: 'image/png' };
+  }),
+  deletePrivate: vi.fn(async () => {}),
+}));
+
 import { app } from '../src/app';
 import { completeMandatoryProfile, onboardActiveProvider, uploadRequiredDocs } from './helpers';
 

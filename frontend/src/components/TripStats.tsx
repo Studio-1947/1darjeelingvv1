@@ -9,9 +9,17 @@ const startOfToday = () => new Date(new Date().setHours(0, 0, 0, 0));
 /** The same buckets on the account page and in My Trips. */
 export function tripBuckets(bookings: any[]) {
   const now = startOfToday();
-  const upcoming = bookings.filter((b) => b.status !== 'cancelled' && (b.check_in ? new Date(b.check_in) >= now : true));
-  const completed = bookings.filter((b) => b.status === 'confirmed' && b.check_in && new Date(b.check_in) < now);
+  // Same rule as the server (lib/travellerDashboard.ts isCompleted): a confirmed booking is
+  // completed once its last day (check-out, else check-in) has gone by, or when it has no date.
+  // Everything else that is not cancelled is still ahead, so the three cards add up to the total.
+  const isCompleted = (b: any) => {
+    if (b.status !== 'confirmed') return false;
+    const end = b.check_out || b.check_in;
+    return !end || new Date(end) < now;
+  };
+  const completed = bookings.filter(isCompleted);
   const cancelled = bookings.filter((b) => b.status === 'cancelled');
+  const upcoming = bookings.filter((b) => b.status !== 'cancelled' && !isCompleted(b));
   return { all: bookings, upcoming, completed, cancelled };
 }
 

@@ -343,6 +343,7 @@
     "status": {
       "confirmed": "Confirmed",
       "pending_payment": "Payment pending",
+      "accepted": "Accepted by host",
       "cancelled": "Cancelled"
     },
     "dates_required": "Check-in and check-out dates are required",

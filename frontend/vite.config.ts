@@ -33,6 +33,8 @@ export default defineConfig(({ mode }) => {
     test: {
       environment: 'node',
       globals: true,
+      // e2e/ holds Playwright browser tests (npm run test:e2e); vitest must not load them.
+      exclude: ['**/node_modules/**', '**/dist/**', 'e2e/**'],
     },
     build: {
       rollupOptions: {

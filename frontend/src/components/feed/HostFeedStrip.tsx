@@ -31,7 +31,7 @@ export default function HostFeedStrip() {
       </div>
       <div className="mt-4 grid gap-3 md:grid-cols-3">
         {posts.map((p) => (
-          <Link key={p.id} to="/feed" className="block rounded-3xl border border-[var(--line)] bg-white overflow-hidden btn-hover">
+          <Link key={p.id} to={`/feed?post=${encodeURIComponent(p.id)}`} className="block rounded-3xl border border-[var(--line)] bg-white overflow-hidden btn-hover">
             {p.photos[0] && <img src={p.photos[0]} alt="" loading="lazy" className="w-full aspect-[16/10] object-cover" />}
             <div className="p-4">
               <div className="flex items-center gap-1.5">

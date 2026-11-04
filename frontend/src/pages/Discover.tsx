@@ -39,6 +39,7 @@ const NAV_LABEL_KEY: Record<string, string> = {
   spot: 'spots',
   homestay: 'homestays',
   driver: 'drivers',
+  guide: 'guides',
   shop: 'shops',
   cafe: 'cafes',
   event: 'events',
