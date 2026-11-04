@@ -325,7 +325,7 @@ export default function Admin() {
           onToggleFeatured={handleToggleSpotFeatured}
         />
       )}
-      {activeTab === 'bookings' && <BookingsTab bookings={bookingsList} />}
+      {activeTab === 'bookings' && <BookingsTab bookings={bookingsList} onChanged={() => loadAdminData({ background: true })} />}
       {/* Background refetch after a refund: the blocking path would unmount the dashboard and
           lose the operator's place, same reasoning as the row actions above. */}
       {activeTab === 'payments' && (

@@ -9,7 +9,8 @@ import { SEED_LISTINGS } from '../seed_data';
 import { authenticateToken, requireAdmin, hashPassword } from '../middleware/auth';
 import { rateLimiter } from '../middleware/rateLimiter';
 import { ADMIN_BOOTSTRAP_SECRET, log } from '../config';
-import { recomputeKycStatus } from './kyc';
+import { hostReadiness, recomputeKycStatus } from './kyc';
+import { approvalRequired, realHostIds } from '../lib/bookingApproval';
 import { requirementsFor } from '../lib/kycRequirements';
 import { notifyHostVerification } from '../lib/notifications';
 import { deleteListingsOwnedBy, deleteKycFilesOwnedBy } from '../lib/accountCleanup';
@@ -435,8 +436,81 @@ router.put('/admin/providers/:id/status', authenticateToken, requireAdmin, async
  */
 // Admin Bookings List
 router.get('/admin/bookings', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
-  const items = await db.select().from(schema.bookings);
+  // Raw rows (camelCase, like the rest of this console), newest first, plus what the team needs
+  // to act on one: the guest's name and phone, and whether it is a request waiting for its host.
+  const rows = await db.select().from(schema.bookings).orderBy(desc(schema.bookings.createdAt));
+  const listings = rows.length
+    ? await db.select({ id: schema.listings.id, type: schema.listings.type, providerId: schema.listings.providerId })
+      .from(schema.listings).where(inArray(schema.listings.id, [...new Set(rows.map((b) => b.listingId))]))
+    : [];
+  const listingById = new Map(listings.map((l) => [l.id, l]));
+  const hosts = await realHostIds(listings.map((l) => l.providerId));
+  const guests = rows.length
+    ? await db.select({ id: schema.users.id, name: schema.users.name, phone: schema.users.phone })
+      .from(schema.users).where(inArray(schema.users.id, [...new Set(rows.map((b) => b.userId))]))
+    : [];
+  const guestById = new Map(guests.map((g) => [g.id, g]));
+  const items = rows.map((b) => {
+    const l = listingById.get(b.listingId);
+    const g = guestById.get(b.userId);
+    return {
+      ...b,
+      guestName: g?.name ?? null,
+      guestPhone: g?.phone ?? null,
+      awaitingHost: b.status === 'pending_payment' && !!l && approvalRequired(l.type, l.providerId, hosts),
+    };
+  });
   res.json({ items });
+});
+
+/**
+ * @openapi
+ * /admin/hosts/waiting:
+ *   get:
+ *     summary: Hosts who are not live yet, and the one step holding each of them up
+ *     description: >
+ *       For the team's verification round: every host whose KYC is not verified, with their phone,
+ *       plan, required documents and their state, the mandatory profile items still missing, and
+ *       next_step - pay_plan, finish_profile, upload_documents, fix_rejected, review_documents
+ *       (the team's turn) or verify_location.
+ *     tags: [Admin]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: "`{ hosts, counts }`" }
+ */
+router.get('/admin/hosts/waiting', authenticateToken, requireAdmin, async (_req: Request, res: Response) => {
+  const providers = await db.select().from(schema.providers)
+    .where(ne(schema.providers.kycStatus, 'verified'))
+    .orderBy(desc(schema.providers.createdAt));
+  const owners = providers.length
+    ? await db.select({ id: schema.users.id, name: schema.users.name, phone: schema.users.phone })
+      .from(schema.users).where(inArray(schema.users.id, [...new Set(providers.map((p) => p.userId))]))
+    : [];
+  const ownerById = new Map(owners.map((u) => [u.id, u]));
+  const hosts = [];
+  for (const p of providers) {
+    const r = await hostReadiness(p);
+    const owner = ownerById.get(p.userId);
+    hosts.push({
+      provider_id: p.id,
+      business_name: p.businessName,
+      business_type: p.businessType,
+      owner_name: owner?.name ?? null,
+      phone: p.contactPhone || owner?.phone || null,
+      plan_status: p.status,
+      plan_expires_at: p.planExpiresAt,
+      kyc_status: r.kycStatus,
+      created_at: p.createdAt,
+      next_step: r.nextStep,
+      profile_missing: r.profileMissing,
+      documents: r.checklist.filter((c) => c.kind === 'kyc')
+        .map((c) => ({ doc_type: c.key, label: c.label, required: c.required, state: c.state })),
+      profile_left: r.checklist.filter((c) => c.kind === 'profile' && c.state !== 'done').map((c) => ({ key: c.key, label: c.label })),
+    });
+  }
+  const counts: Record<string, number> = {};
+  for (const h of hosts) counts[h.next_step] = (counts[h.next_step] ?? 0) + 1;
+  res.json({ hosts, counts });
 });
 
 /**

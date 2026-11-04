@@ -151,10 +151,13 @@ export async function recomputeKycStatus(providerId: string): Promise<string> {
   return kycStatus;
 }
 
-// GET /providers/me/profile  profile + completion + checklist + kycStatus
-router.get('/me/profile', authenticateToken, async (req: Request, res: Response) => {
-  const provider = await ownActiveProvider(req.user.id);
-  if (!provider) return res.status(404).json({ detail: 'No active provider profile' });
+/**
+ * Where a host stands on the road to going live, worked out the same way their own dashboard
+ * does: the checklist (profile + documents), the rolled-up KYC status, the mandatory profile items
+ * still missing (which block document upload), and the single next step that is holding them up.
+ * Shared by the host's own GET /providers/me/profile and the admin "hosts waiting" list.
+ */
+export async function hostReadiness(provider: typeof schema.providers.$inferSelect) {
   const docs = await db.select().from(schema.kycDocuments).where(eq(schema.kycDocuments.providerId, provider.id));
   const providerListings = await db.select().from(schema.listings).where(eq(schema.listings.providerId, provider.id));
   const hasListingImage = providerListings.some(l => !!l.image || (Array.isArray(l.extras?.images) && l.extras.images.length > 0));
@@ -178,6 +181,27 @@ router.get('/me/profile', authenticateToken, async (req: Request, res: Response)
     },
     docs.map(d => ({ docType: d.docType, status: d.status as any }))
   );
+  const profileMissing = missingMandatory(provider.businessType, provider.extras);
+  const requiredDocs = checklist.filter(c => c.kind === 'kyc' && c.required);
+  const profileLeft = checklist.filter(c => c.kind === 'profile' && c.state !== 'done');
+  // The one thing holding this host up, in the order they have to be done.
+  const nextStep =
+    kycStatus === 'verified' ? 'live'
+      : provider.status !== 'active' ? 'pay_plan'
+        : profileMissing.length ? 'finish_profile'
+          : requiredDocs.some(c => c.state === 'rejected') ? 'fix_rejected'
+            : requiredDocs.some(c => c.state === 'missing') ? 'upload_documents'
+              : requiredDocs.some(c => c.state === 'in_review') ? 'review_documents'
+                : profileLeft.length ? (profileLeft.some(c => c.key === 'location') ? 'verify_location' : 'finish_profile')
+                  : 'review_documents';
+  return { docs, completionPercent, checklist, kycStatus, profileMissing, nextStep };
+}
+
+// GET /providers/me/profile  profile + completion + checklist + kycStatus
+router.get('/me/profile', authenticateToken, async (req: Request, res: Response) => {
+  const provider = await ownActiveProvider(req.user.id);
+  if (!provider) return res.status(404).json({ detail: 'No active provider profile' });
+  const { docs, completionPercent, checklist, kycStatus } = await hostReadiness(provider);
   res.json({
     provider_id: provider.id,
     business_type: provider.businessType,
