@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { isCompleted } from '../lib/travellerDashboard';
 import { isAvailable } from '../lib/hostProfile';
 import { v4 as uuidv4 } from 'uuid';
 import { db, schema } from '../db';
@@ -84,7 +85,9 @@ const router = Router();
 // Create a booking
 // No pass needed to ask: without one, the ₹1 fee is paid when the booking is confirmed.
 router.post('/', authenticateToken, requireTravellerMode, async (req: Request, res: Response) => {
-  const { listing_id, listing_type, check_in, check_out, guests = 1, notes, voucher_id } = req.body;
+  const { listing_id, listing_type, check_in, check_out, guests = 1, notes, voucher_id, route_name } = req.body;
+  // A driver booking says which of the driver's routes it is for (host dashboard: km and places).
+  const routeName = typeof route_name === 'string' && route_name.trim() ? route_name.trim().slice(0, 160) : null;
 
   if (!listing_id || !listing_type) {
     return res.status(400).json({ detail: 'Listing ID and type are required' });
@@ -154,6 +157,7 @@ router.post('/', authenticateToken, requireTravellerMode, async (req: Request, r
     checkOut: check_out || null,
     guests,
     notes,
+    routeName,
     status: 'pending_payment',
     createdAt: new Date().toISOString(),
     confirmedAt: null,
@@ -250,6 +254,9 @@ router.get('/me', authenticateToken, async (req: Request, res: Response) => {
     .where(eq(schema.bookings.userId, req.user.id))
     .orderBy(desc(schema.bookings.createdAt));
 
+  const myReviews = await db.select({ listingId: schema.reviews.listingId }).from(schema.reviews)
+    .where(eq(schema.reviews.userId, req.user.id));
+  const reviewedListings = new Set(myReviews.map((r) => r.listingId));
   const enrichedBookings = [];
   for (const b of bookings) {
     const [listing] = await db.select().from(schema.listings).where(eq(schema.listings.id, b.listingId)).limit(1);
@@ -282,6 +289,10 @@ router.get('/me', authenticateToken, async (req: Request, res: Response) => {
       accepted_at: b.acceptedAt,
       voucher_id: b.voucherId,
       applied_discount: b.appliedDiscount,
+      route_name: b.routeName,
+      // Board: "After completion -> Reviews + Suggestion for aangan, share your trip story".
+      completed: isCompleted(b),
+      reviewed: reviewedListings.has(b.listingId),
       listing: listingReturn
     });
   }
@@ -386,6 +397,8 @@ router.get('/provider', authenticateToken, async (req: Request, res: Response) =
       accepted_at: b.acceptedAt,
       voucher_id: b.voucherId,
       applied_discount: b.appliedDiscount,
+      route_name: b.routeName,
+      completed: isCompleted(b),
       customer: customer ? { name: customer.name, phone: customer.phone } : null,
       listing: listingMatch
     });

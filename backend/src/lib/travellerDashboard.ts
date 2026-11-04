@@ -32,19 +32,19 @@ export type Dashboard = {
   profile: { complete: boolean; missing: string[] };
 };
 
-const startOfToday = () => {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  return d.getTime();
-};
+/**
+ * Today's date in Darjeeling as YYYY-MM-DD. Booking dates are calendar days there, so they are
+ * compared as dates in India time, not as UTC instants (a trip "today" must be today at 1am IST too).
+ */
+export const todayInIndia = (now = new Date()) => now.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+const day = (v: string) => v.slice(0, 10);
 
-/** A confirmed booking whose date has gone by (or that never had a date, like a cafe visit). */
-export function isCompleted(b: { status: string; checkIn: string | null; checkOut: string | null }, today = startOfToday()): boolean {
+/** A confirmed booking whose last day has gone by (or that never had a date, like a cafe visit). */
+export function isCompleted(b: { status: string; checkIn: string | null; checkOut: string | null }, today = todayInIndia()): boolean {
   if (b.status !== 'confirmed') return false;
   const end = b.checkOut ?? b.checkIn;
   if (!end) return true;
-  const t = Date.parse(end);
-  return Number.isFinite(t) && t < today;
+  return day(end) < today;
 }
 
 const award = (id: string, progress: number, goal: number): Award => ({

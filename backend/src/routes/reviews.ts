@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { isCompleted } from '../lib/travellerDashboard';
 import { v4 as uuidv4 } from 'uuid';
 import { db, schema } from '../db';
 import { eq, and, desc } from 'drizzle-orm';
@@ -116,7 +117,19 @@ router.get('/listing/:listingId', async (req: Request, res: Response) => {
  *             schema: { $ref: '#/components/schemas/Error' }
  *       404: { description: Listing not found }
  */
-router.post('/', authenticateToken, requireActiveSupport, async (req: Request, res: Response) => {
+/** Pass holders can review anything; anyone can review a place they finished a trip with. */
+async function canReview(req: Request, res: Response, next: () => void) {
+  const listingId = req.body?.listing_id;
+  if (listingId && req.user) {
+    const mine = await db.select({ status: schema.bookings.status, checkIn: schema.bookings.checkIn, checkOut: schema.bookings.checkOut })
+      .from(schema.bookings)
+      .where(and(eq(schema.bookings.userId, req.user.id), eq(schema.bookings.listingId, String(listingId))));
+    if (mine.some((b) => isCompleted(b))) return next();
+  }
+  return requireActiveSupport(req, res, next);
+}
+
+router.post('/', authenticateToken, canReview, async (req: Request, res: Response) => {
   const { listing_id, rating, comment, photos } = req.body || {};
 
   if (!listing_id) return res.status(400).json({ detail: 'listing_id is required' });

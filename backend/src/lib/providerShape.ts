@@ -10,6 +10,10 @@ export function serializeProvider(p: typeof schema.providers.$inferSelect) {
     user_id: p.userId,
     business_name: p.businessName,
     business_type: p.businessType,
+    slug: p.slug,
+    page_path: p.slug ? `/${p.businessType}/${p.slug}` : null,
+    // Member: paid plan live. Verified: documents checked (blue tick). See lib/hostPage.ts.
+    badges: { member: p.status === 'active' && isHostPlanLive(p), verified: p.status === 'active' && p.kycStatus === 'verified' },
     description: p.description,
     location: p.location,
     latitude: p.latitude,
