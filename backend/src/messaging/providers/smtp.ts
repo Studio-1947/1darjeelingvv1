@@ -65,6 +65,8 @@ export function createSmtpProvider(env: NodeJS.ProcessEnv): MessagingProvider {
         booking_cancelled_guest: 'Booking Cancelled  aangan',
         host_changes_requested: 'A document needs changing  aangan',
         host_approved: 'You are verified and live  aangan',
+        booking_request_host: 'New booking request  aangan',
+        booking_accepted_guest: 'Your host said yes  aangan',
       };
 
       const subject = subjectMap[template] || `aangan  ${template.replace(/_/g, ' ')}`;

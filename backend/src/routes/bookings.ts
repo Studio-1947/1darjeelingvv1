@@ -11,7 +11,7 @@ import { isExemptFromSupport, isSupportActive } from '../lib/support';
 import { flowBreakup, passBreakupFor } from '../lib/pricing';
 import { findBlockingBooking, isDateExclusive, lockListingForBooking } from '../lib/bookingAvailability';
 import { refundPaymentsFor } from '../lib/refunds';
-import { notifyBookingCancelled } from '../lib/notifications';
+import { notifyBookingAccepted, notifyBookingCancelled, notifyBookingRequest } from '../lib/notifications';
 import { routeParam } from '../lib/routeParam';
 import { isListingHostLapsed } from '../lib/hostPlan';
 import { settleBookingConfirmation } from '../lib/bookingConfirmation';
@@ -214,6 +214,11 @@ router.post('/', authenticateToken, requireTravellerMode, async (req: Request, r
       : `${req.user.name || 'A guest'} asked about ${listing.title}.`,
     refId: booking.id,
   });
+  // A request needs the host to act, so it also goes out by WhatsApp/email (not awaited: the
+  // guest's answer must not wait on a gateway).
+  if (awaitingHost && listing.providerId) {
+    void notifyBookingRequest(booking, listing.providerId, req.user.name || 'A guest');
+  }
 
   const bookingReturn = {
     id: booking.id,
@@ -593,6 +598,7 @@ router.patch('/:id/confirm', authenticateToken, async (req: Request, res: Respon
     body: `The host accepted your request for ${booking.listingTitle}. Confirm it to lock it in.`,
     refId: booking.id,
   });
+  void notifyBookingAccepted(outcome.booking);
 
   res.json({ booking: bookingShape(outcome.booking) });
 });

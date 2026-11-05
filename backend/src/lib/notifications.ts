@@ -274,3 +274,86 @@ export async function notifyHostVerification(providerId: string, news: HostVerif
     log.warn(`[notify] host verification for ${providerId} failed: ${(err as Error).message}`);
   }
 }
+
+/**
+ * Tells the host (owner and co-owners) that a guest asked to book and is waiting for their Accept.
+ *
+ * Before this the request only reached the in-app feed, and the push copy only reaches the mobile
+ * app, so a host on the website heard nothing and the guest waited until the host happened to open
+ * the dashboard. WhatsApp when NOTIFY_BOOKINGS is on and the template is set up, email when SMTP is
+ * set and the host has an address. Never throws: the request is already saved.
+ */
+export async function notifyBookingRequest(
+  booking: Pick<BookingRow, 'id' | 'listingTitle' | 'checkIn' | 'checkOut'>,
+  providerId: string, guestName: string): Promise<void> {
+  try {
+    const { hostUserIds } = await import('./hostAccess');
+    const stay = formatStay(booking.checkIn, booking.checkOut);
+    const [provider] = await db.select({ contactPhone: schema.providers.contactPhone })
+      .from(schema.providers).where(eq(schema.providers.id, providerId)).limit(1);
+    const ids = await hostUserIds(providerId);
+    const people = ids.length
+      ? await Promise.all(ids.map(async (id) => (await db.select({ name: schema.users.name, phone: schema.users.phone, email: schema.users.email })
+        .from(schema.users).where(eq(schema.users.id, id)).limit(1))[0]))
+      : [];
+    const text = `${guestName} asked to book ${booking.listingTitle} for ${stay}. Open your aangan dashboard to accept or decline.`;
+
+    // One WhatsApp per phone number: the listing's contact line, plus each owner's own number.
+    const phones = new Set<string>();
+    if (provider?.contactPhone) phones.add(provider.contactPhone);
+    for (const u of people) if (u?.phone) phones.add(u.phone);
+    if (NOTIFY_BOOKINGS) {
+      for (const phone of phones) {
+        // Positional, in the order docs/WHATSAPP_TEMPLATES.md declares them.
+        const r = await deliver(phone, 'booking_request_host',
+          { listing: booking.listingTitle, guest: guestName, stay }, `${text}${SIGNATURE}`);
+        if (!r.ok) log.warn(`[notify] booking_request_host to ****${phone.slice(-4)} failed: ${r.error}`);
+      }
+    }
+    if (emailEnabled()) {
+      for (const u of people) {
+        if (!u?.email) continue;
+        const r = await sendEmail({
+          to: u.email,
+          subject: `New booking request: ${booking.listingTitle}`,
+          text: `Hi ${u.name}, ${text}`,
+          html: renderEmail('You have a new booking request', [`Hi ${u.name},`, text],
+            'You are receiving this because you host on aangan.'),
+        });
+        if (!r.ok) log.warn(`[notify] booking request email failed: ${r.error}`);
+      }
+    }
+  } catch (err) {
+    log.warn(`[notify] booking request ${booking.id} failed: ${(err as Error).message}`);
+  }
+}
+
+/**
+ * Tells the guest the host said yes, so they come back and confirm (free with the pass, or the
+ * small fee). Same channels and same never-throws rule as notifyBookingRequest.
+ */
+export async function notifyBookingAccepted(booking: BookingRow): Promise<void> {
+  try {
+    const [u] = await db.select({ name: schema.users.name, phone: schema.users.phone, email: schema.users.email })
+      .from(schema.users).where(eq(schema.users.id, booking.userId)).limit(1);
+    if (!u) return;
+    const stay = formatStay(booking.checkIn, booking.checkOut);
+    const text = `Your host accepted your request for ${booking.listingTitle} (${stay}). Open My Trips on aangan and confirm it to lock it in.`;
+    if (NOTIFY_BOOKINGS && u.phone) {
+      const r = await deliver(u.phone, 'booking_accepted_guest',
+        { name: u.name, listing: booking.listingTitle, stay }, `Hi ${u.name}. ${text}${SIGNATURE}`);
+      if (!r.ok) log.warn(`[notify] booking_accepted_guest to ****${u.phone.slice(-4)} failed: ${r.error}`);
+    }
+    if (emailEnabled() && u.email) {
+      const r = await sendEmail({
+        to: u.email,
+        subject: `Your host said yes: ${booking.listingTitle}`,
+        text: `Hi ${u.name}, ${text}`,
+        html: renderEmail('Your host said yes', [`Hi ${u.name},`, text], 'You are receiving this because you booked on aangan.'),
+      });
+      if (!r.ok) log.warn(`[notify] booking accepted email failed: ${r.error}`);
+    }
+  } catch (err) {
+    log.warn(`[notify] booking accepted ${booking.id} failed: ${(err as Error).message}`);
+  }
+}

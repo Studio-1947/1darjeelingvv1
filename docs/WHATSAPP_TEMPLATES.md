@@ -313,6 +313,56 @@ You will now see the aangan verified badge on your page.
 
 ---
 
+## 7. New booking request, to the host  `booking_request_host`
+
+Category **UTILITY**. Optional, like #5. Sent when a guest asks to book a homestay, driver or guide
+that has a real host, because nothing is confirmed until the host presses **Accept**. Goes to the
+listing's contact number and to each owner's own number. Until this template is approved the host
+only sees the request inside the app or on the dashboard.
+
+| Slot | Variable | Example |
+|---|---|---|
+| `{{1}}` | `listing` | `Peak View Homestay` |
+| `{{2}}` | `guest`  the guest's name | `Asha Rai` |
+| `{{3}}` | `stay` | `2026-09-01 to 2026-09-03` |
+
+**Body**
+
+```
+New booking request on aangan: {{2}} would like to book {{1}} for {{3}}.
+
+Open your aangan dashboard to accept or decline. The guest is waiting for your answer.
+```
+
+**Footer** `aangan`. Interakt env var: `INTERAKT_BOOKING_REQUEST_HOST_TEMPLATE` (WhatsApp Cloud API:
+`WHATSAPP_BOOKING_REQUEST_HOST_TEMPLATE`, MSG91: `MSG91_BOOKING_REQUEST_HOST_TEMPLATE_ID`).
+
+---
+
+## 8. Host said yes, to the guest  `booking_accepted_guest`
+
+Category **UTILITY**. Optional, like #5. Sent when the host accepts a request, so the guest comes
+back and confirms it (free with the aangan pass, or the small booking fee).
+
+| Slot | Variable | Example |
+|---|---|---|
+| `{{1}}` | `name` | `Asha Rai` |
+| `{{2}}` | `listing` | `Peak View Homestay` |
+| `{{3}}` | `stay` | `2026-09-01 to 2026-09-03` |
+
+**Body**
+
+```
+Hello {{1}}, your host accepted your request for {{2}} ({{3}}).
+
+Open My Trips on aangan and confirm it to lock it in.
+```
+
+**Footer** `aangan`. Interakt env var: `INTERAKT_BOOKING_ACCEPTED_GUEST_TEMPLATE` (WhatsApp Cloud API:
+`WHATSAPP_BOOKING_ACCEPTED_GUEST_TEMPLATE`, MSG91: `MSG91_BOOKING_ACCEPTED_GUEST_TEMPLATE_ID`).
+
+---
+
 ## Notes
 
 **Categorise honestly.** These three are UTILITY: each follows a transaction the recipient
