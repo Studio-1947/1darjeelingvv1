@@ -27,6 +27,8 @@ import { isPlausiblePhone } from './phone';
 
 export const GUIDE_TYPES = ['trekking', 'heritage', 'nature', 'birding', 'tea', 'cultural', 'city', 'photography'] as const;
 export const SEASONS = ['spring', 'summer', 'monsoon', 'autumn', 'winter'] as const;
+/** What a homestay photo shows (board: property photos of the rooms, the outside and the front). */
+export const PHOTO_KINDS = ['front', 'outside', 'room', 'other'] as const;
 export const SERVICE_UNITS = ['day', 'trip', 'hour', 'person'] as const;
 export const ROOM_UNITS = ['night', 'head'] as const;
 export const GENDERS = ['male', 'female', 'other'] as const;
@@ -160,6 +162,21 @@ const BY_TYPE: Record<string, Record<string, (v: unknown) => unknown | ProfileEr
     capacity: (v) => int(v, 1, 100, 'Guest occupancy'),
     amenities: (v) => list(v, 30, 'Amenities', (x) => text(x, 60, 'Amenity')),
     home_delivery: (v) => (typeof v === 'boolean' ? v : { error: 'Home delivery must be on or off' }),
+    // Which photo shows what, keyed by the photo's URL, so the listing page can group them.
+    // Optional: an untagged photo shows under "More photos".
+    photo_kinds: (v) => {
+      if (!v || typeof v !== 'object' || Array.isArray(v)) return { error: 'Photo kinds must be a set of photo labels' };
+      const entries = Object.entries(v as Record<string, unknown>);
+      if (entries.length > 30) return { error: 'Photo kinds accepts at most 30 photos' };
+      const out: Record<string, string> = {};
+      for (const [url, kind] of entries) {
+        if (!isUrl(url)) return { error: 'Each labelled photo must be an uploaded image' };
+        const k = oneOf(kind, PHOTO_KINDS, 'Photo kind');
+        if (typeof k !== 'string') return k;
+        out[url.trim()] = k;
+      }
+      return out;
+    },
   },
   guide: {
     host_name: (v) => text(v, 80, 'Name'),

@@ -219,7 +219,7 @@ export default function ListingDetail() {
       )}
 
       {item.type === 'homestay' && item.extras?.images && item.extras.images.length > 0 && (
-        <StayGallerySection images={item.extras.images} />
+        <StayGallerySection images={item.extras.images} kinds={item.extras.photo_kinds} />
       )}
 
       {item.type === 'homestay' && (

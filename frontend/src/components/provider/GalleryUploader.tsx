@@ -7,12 +7,15 @@ import { Upload, Plus, X } from '@phosphor-icons/react';
  * Presentational - the caller owns the upload (see lib/uploadImage).
  * `compact` uses the tighter sizing of the dashboard edit modal.
  */
-export default function GalleryUploader({ images, uploading, onFilesSelected, onRemove, compact = false }: {
+export default function GalleryUploader({ images, uploading, onFilesSelected, onRemove, compact = false, kinds, onKind }: {
   images: string[];
   uploading: boolean;
   onFilesSelected: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onRemove: (index: number) => void;
   compact?: boolean;
+  /** Homestays: what each photo shows (front, outside, room, other), keyed by URL. */
+  kinds?: Record<string, string>;
+  onKind?: (url: string, kind: string) => void;
 }) {
   const { t } = useTranslation();
   return (
@@ -26,6 +29,18 @@ export default function GalleryUploader({ images, uploading, onFilesSelected, on
             }`}
           >
             <img src={url} alt={t('widgets.photo_alt', { index: i + 1 })} className="w-full h-full object-cover" />
+            {onKind && (
+              <select
+                value={kinds?.[url] || ''}
+                onChange={(e) => onKind(url, e.target.value)}
+                aria-label={t('photoKind.label')}
+                data-testid={`photo-kind-${i}`}
+                className="absolute bottom-1.5 left-1.5 max-w-[calc(100%-0.75rem)] rounded-full bg-black/70 text-white text-[10px] font-bold px-2 py-0.5 outline-none"
+              >
+                <option value="">{t('photoKind.pick')}</option>
+                {['front', 'outside', 'room', 'other'].map((k) => <option key={k} value={k}>{t(`photoKind.${k}`)}</option>)}
+              </select>
+            )}
             <button
               type="button"
               onClick={() => onRemove(i)}

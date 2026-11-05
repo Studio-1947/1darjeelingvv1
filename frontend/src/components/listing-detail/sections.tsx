@@ -8,6 +8,7 @@ import { MapPin, Tag, NavigationArrow as Navigation, ArrowRight, Translate as La
 import { Screen, SectionHead, Avatar, ALIGN_TEXT, ALIGN_ROW, ALIGN_BLOCK } from './primitives';
 import VerifiedBadge from '@/components/provider/VerifiedBadge';
 import { HostFacts } from './profileSections';
+import { groupPhotos } from '@/lib/photoGroups';
 
 // One component per full-screen section of the listing detail page. The page
 // decides which sections a listing type gets; each section only renders it.
@@ -159,18 +160,30 @@ export function OffersSection({ amenities, title }: { amenities: { Icon: any; la
 }
 
 /** Provider-uploaded photo gallery (homestays). */
-export function StayGallerySection({ images }: { images: string[] }) {
+export function StayGallerySection({ images, kinds }: { images: string[]; kinds?: Record<string, string> }) {
   const { t } = useTranslation();
+  const groups = groupPhotos(images, kinds);
+  // One untitled group when the host labelled nothing, exactly as before.
+  const titled = groups.length > 1 || groups[0]?.kind !== 'other';
+  let n = 0;
   return (
     <Screen tone="white" testid="detail-gallery">
       <SectionHead label={t('detail.photos')} title={t('detail.stay_gallery_title')} />
-      <div className="mt-10 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {images.map((url, index) => (
-          <div key={index} className="aspect-[4/3] rounded-3xl overflow-hidden border border-[var(--line)] bg-mist shadow-md hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
-            <SmartImg src={url} alt={t('detail.gallery_alt', { index: index + 1 })} className="w-full h-full object-cover" />
+      {groups.map(({ kind, urls }) => (
+        <div key={kind} className="mt-10" data-testid={`gallery-group-${kind}`}>
+          {titled && <h3 className="mb-4 font-display font-bold text-lg text-ink">{t(`photoKind.group_${kind}`)}</h3>}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {urls.map((url) => {
+              n += 1;
+              return (
+                <div key={url} className="aspect-[4/3] rounded-3xl overflow-hidden border border-[var(--line)] bg-mist shadow-md hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
+                  <SmartImg src={url} alt={t('detail.gallery_alt', { index: n })} className="w-full h-full object-cover" />
+                </div>
+              );
+            })}
           </div>
-        ))}
-      </div>
+        </div>
+      ))}
     </Screen>
   );
 }

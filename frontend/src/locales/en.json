@@ -2000,5 +2000,18 @@
     "host_accepted_note": "Accepted. Waiting for the guest to confirm.",
     "host_request_note": "Check you are free, then accept or decline.",
     "accept_failed": "Could not accept this request. Please try again."
+  },
+  "photoKind": {
+    "label": "What this photo shows",
+    "pick": "Label",
+    "front": "Front",
+    "outside": "Outside",
+    "room": "Room",
+    "other": "Other",
+    "hint": "Label your photos so guests see the front, the outside and the rooms in their own groups.",
+    "group_front": "The front",
+    "group_outside": "Outside",
+    "group_room": "Rooms",
+    "group_other": "More photos"
   }
 }
