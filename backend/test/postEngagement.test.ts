@@ -62,3 +62,33 @@ describe('comments on host posts', () => {
     expect((await request(app).get(`/api/posts/${postId}/comments`)).body.comments).toHaveLength(0);
   });
 });
+
+describe('reactions on host posts', () => {
+  it('lets a reader pick a reaction, change it, and still counts one per person', async () => {
+    const { postId } = await hostPost();
+    const { token: a } = await registerUser({ name: 'Wow Wangmo' });
+    const { token: b } = await registerUser({ name: 'Heart Hari' });
+
+    const wow = await request(app).post(`/api/posts/${postId}/like`).set(auth(a)).send({ kind: 'wow' });
+    expect(wow.body).toMatchObject({ my_reaction: 'wow', like_count: 1, liked_by_me: true });
+    // No kind is a heart, as older apps send it.
+    await request(app).post(`/api/posts/${postId}/like`).set(auth(b));
+
+    const both = (await request(app).get('/api/posts').set(auth(b))).body.posts[0];
+    expect(both.reactions).toEqual({ heart: 1, wow: 1, clap: 0, yum: 0 });
+    expect(both.like_count).toBe(2);
+    expect(both.my_reaction).toBe('heart');
+
+    // Changing is not a second reaction.
+    const changed = await request(app).post(`/api/posts/${postId}/like`).set(auth(a)).send({ kind: 'yum' });
+    expect(changed.body.reactions).toEqual({ heart: 1, wow: 0, clap: 0, yum: 1 });
+    expect(changed.body.like_count).toBe(2);
+  });
+
+  it('refuses a reaction that is not on the list', async () => {
+    const { postId } = await hostPost();
+    const { token } = await registerUser({ name: 'Odd Ongmu' });
+    const res = await request(app).post(`/api/posts/${postId}/like`).set(auth(token)).send({ kind: 'angry' });
+    expect(res.status).toBe(400);
+  });
+});
