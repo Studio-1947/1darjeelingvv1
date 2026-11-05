@@ -44,6 +44,27 @@ export const EXAMPLES: Record<NotificationTemplate, { vars: Record<string, strin
     },
     text: 'Test: booking cancelled (guest)',
   },
+  host_changes_requested: {
+    vars: {
+      name: 'Pema Sherpa',
+      business: 'Peak View Homestay',
+      document: 'Trade licence',
+      reason: 'The photo is blurred, please upload a clearer one',
+    },
+    text: 'Test: a document needs changing (host)',
+  },
+  host_approved: {
+    vars: { name: 'Pema Sherpa', business: 'Peak View Homestay' },
+    text: 'Test: approved and live (host)',
+  },
+  booking_request_host: {
+    vars: { listing: 'Peak View Homestay', guest: 'Asha Rai', stay: '2026-09-01 to 2026-09-03' },
+    text: 'Test: new booking request (host)',
+  },
+  booking_accepted_guest: {
+    vars: { name: 'Asha Rai', listing: 'Peak View Homestay', stay: '2026-09-01 to 2026-09-03' },
+    text: 'Test: host said yes (guest)',
+  },
 };
 
 async function main() {

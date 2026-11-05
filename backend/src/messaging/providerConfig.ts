@@ -33,7 +33,9 @@ export function requireCredentials(provider: string, env: NodeJS.ProcessEnv, key
  * their template is set a send fails (and is logged) instead of the server refusing to start.
  * The host still sees the same news in the app and on the website.
  */
-export const OPTIONAL_TEMPLATES: NotificationTemplate[] = ['host_changes_requested', 'host_approved'];
+export const OPTIONAL_TEMPLATES: NotificationTemplate[] = [
+  'host_changes_requested', 'host_approved', 'booking_request_host', 'booking_accepted_guest',
+];
 
 export function requireNotificationTemplates(
   provider: string,

@@ -5,13 +5,13 @@ import { v4 as uuidv4 } from 'uuid';
 import { db, schema } from '../db';
 // lt/gt/and moved out with the inline overlap query  the date comparison now lives in
 // lib/bookingAvailability.ts, shared with the settlement path so the two cannot drift.
-import { eq, desc, inArray, and } from 'drizzle-orm';
+import { eq, desc, inArray, and, ne, lt, gt } from 'drizzle-orm';
 import { authenticateToken } from '../middleware/auth';
 import { isExemptFromSupport, isSupportActive } from '../lib/support';
 import { flowBreakup, passBreakupFor } from '../lib/pricing';
 import { findBlockingBooking, isDateExclusive, lockListingForBooking } from '../lib/bookingAvailability';
 import { refundPaymentsFor } from '../lib/refunds';
-import { notifyBookingCancelled } from '../lib/notifications';
+import { notifyBookingAccepted, notifyBookingCancelled, notifyBookingRequest } from '../lib/notifications';
 import { routeParam } from '../lib/routeParam';
 import { isListingHostLapsed } from '../lib/hostPlan';
 import { settleBookingConfirmation } from '../lib/bookingConfirmation';
@@ -214,6 +214,11 @@ router.post('/', authenticateToken, requireTravellerMode, async (req: Request, r
       : `${req.user.name || 'A guest'} asked about ${listing.title}.`,
     refId: booking.id,
   });
+  // A request needs the host to act, so it also goes out by WhatsApp/email (not awaited: the
+  // guest's answer must not wait on a gateway).
+  if (awaitingHost && listing.providerId) {
+    void notifyBookingRequest(booking, listing.providerId, req.user.name || 'A guest');
+  }
 
   const bookingReturn = {
     id: booking.id,
@@ -580,11 +585,38 @@ router.patch('/:id/confirm', authenticateToken, async (req: Request, res: Respon
       .set({ status: 'accepted', acceptedAt: new Date().toISOString() })
       .where(eq(schema.bookings.id, booking.id))
       .returning();
-    return { taken: false as const, booking: accepted };
+    // Other guests who asked for some of the same nights can no longer get them. Close their
+    // requests now, so they are told and can look elsewhere instead of waiting on a host who
+    // can no longer say yes.
+    let declined: typeof schema.bookings.$inferSelect[] = [];
+    if (isDateExclusive(booking.listingType) && booking.checkIn && booking.checkOut) {
+      declined = await tx.update(schema.bookings)
+        .set({ status: 'cancelled' })
+        .where(and(
+          eq(schema.bookings.listingId, booking.listingId),
+          eq(schema.bookings.status, 'pending_payment'),
+          ne(schema.bookings.id, booking.id),
+          lt(schema.bookings.checkIn, booking.checkOut),
+          gt(schema.bookings.checkOut, booking.checkIn),
+        ))
+        .returning();
+    }
+    return { taken: false as const, booking: accepted, declined };
   });
 
   if (outcome.taken) {
     return res.status(409).json({ detail: 'These dates have already gone to another guest' });
+  }
+
+  for (const other of outcome.declined) {
+    await releaseVoucherForBooking(db, other.id);
+    await refundPaymentsFor('booking_commission', other.id, 'dates went to another guest'); // no-op when unpaid
+    await addInAppNotification(other.userId, {
+      kind: 'booking_cancelled',
+      title: 'Those dates are no longer free',
+      body: `The host of ${other.listingTitle} accepted another guest for some of the same nights, so your request was closed. Nothing was charged.`,
+      refId: other.id,
+    });
   }
 
   await addInAppNotification(booking.userId, {
@@ -593,6 +625,7 @@ router.patch('/:id/confirm', authenticateToken, async (req: Request, res: Respon
     body: `The host accepted your request for ${booking.listingTitle}. Confirm it to lock it in.`,
     refId: booking.id,
   });
+  void notifyBookingAccepted(outcome.booking);
 
   res.json({ booking: bookingShape(outcome.booking) });
 });

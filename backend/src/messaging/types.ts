@@ -19,7 +19,11 @@ export type NotificationTemplate =
   // Host verification: a document needs changing, and the host is approved and live. Optional:
   // see OPTIONAL_TEMPLATES in providerConfig.ts.
   | 'host_changes_requested'
-  | 'host_approved';
+  | 'host_approved'
+  // Host approval of bookings: a new request for the host to accept, and the host's yes to the
+  // guest. Optional too, for the same reason.
+  | 'booking_request_host'
+  | 'booking_accepted_guest';
 
 export interface NotificationMessage {
   phone: string;

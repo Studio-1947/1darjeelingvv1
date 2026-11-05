@@ -24,6 +24,8 @@ const TEMPLATE_ENV_VARS: Record<NotificationTemplate, string> = {
   booking_cancelled_guest: 'MSG91_BOOKING_CANCELLED_GUEST_TEMPLATE_ID',
   host_changes_requested: 'MSG91_HOST_CHANGES_REQUESTED_TEMPLATE_ID',
   host_approved: 'MSG91_HOST_APPROVED_TEMPLATE_ID',
+  booking_request_host: 'MSG91_BOOKING_REQUEST_HOST_TEMPLATE_ID',
+  booking_accepted_guest: 'MSG91_BOOKING_ACCEPTED_GUEST_TEMPLATE_ID',
 };
 
 // A hung provider must not hold an Express handler open indefinitely.

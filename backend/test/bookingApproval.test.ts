@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import request from 'supertest';
 import { app } from '../src/app';
 import { registerUser, onboardActiveProvider, loginAdmin, createListing } from './helpers';
+import { eq } from 'drizzle-orm';
+import { db, schema } from '../src/db';
 
 /**
  * Board: "Book > Waiting for approval > Call/WhatsApp" (drivers, homestays) and "based on
@@ -141,5 +143,28 @@ describe('host approval before a booking can be confirmed', () => {
     expect(team.status).toBe(200);
     const teamView = await request(app).get(`/api/listings/${team.body.item.id}`);
     expect(teamView.body.item.request_to_book).toBe(false);
+  });
+
+  it('accepting one request closes the other requests for the same nights, and tells those guests', async () => {
+    const { hostToken, listing } = await hostListing('Busy Host', 'homestay');
+    const { token: first } = await registerUser({ name: 'First Asker' });
+    const { token: second } = await registerUser({ name: 'Second Asker' });
+    const { token: later } = await registerUser({ name: 'Other Week Asker' });
+    const a = await ask(first, listing, { check_in: '2031-07-01', check_out: '2031-07-04' });
+    // A request holds its nights only for the short checkout window; after that, others can ask.
+    await db.update(schema.bookings).set({ createdAt: new Date(Date.now() - 3600_000).toISOString() }).where(eq(schema.bookings.id, a.id));
+    const b = await ask(second, listing, { check_in: '2031-07-03', check_out: '2031-07-05' }); // overlaps a
+    const c = await ask(later, listing, { check_in: '2031-07-10', check_out: '2031-07-12' }); // does not
+
+    const ok = await request(app).patch(`/api/bookings/${a.id}/confirm`).set(auth(hostToken));
+    expect(ok.body.booking.status).toBe('accepted');
+
+    const mineB = (await request(app).get('/api/bookings/me').set(auth(second))).body.items.find((x: any) => x.id === b.id);
+    expect(mineB.status).toBe('cancelled');
+    const feedB = (await request(app).get('/api/notifications').set(auth(second))).body.items;
+    expect(feedB.some((n: any) => n.ref_id === b.id || n.refId === b.id)).toBe(true);
+
+    const mineC = (await request(app).get('/api/bookings/me').set(auth(later))).body.items.find((x: any) => x.id === c.id);
+    expect(mineC.status).toBe('pending_payment');
   });
 });
