@@ -289,6 +289,16 @@ jobs:
               fi
             fi
 
+            # Remember what is running. Compose reads IMAGE_TAG from .env, so a hand-run
+            # `docker compose up -d --force-recreate backend` (to pick up a .env change) gets this
+            # deploy's images. Without it IMAGE_TAG defaulted to :latest, which on this box was an
+            # old pull, and a restart on 2026-11-05 silently rolled production back.
+            if grep -q '^IMAGE_TAG=' .env; then
+              sed -i "s/^IMAGE_TAG=.*/IMAGE_TAG=${IMAGE_TAG}/" .env
+            else
+              printf '\nIMAGE_TAG=%s\n' "$IMAGE_TAG" >> .env
+            fi
+
             # Every deploy now pulls a SHA-TAGGED image, and a tagged image is never "dangling",
             # so `docker image prune -f` alone would let old revisions pile up until the disk
             # filled — this box already carries 13GB of build cache (see VPS-RUNBOOK §7).
