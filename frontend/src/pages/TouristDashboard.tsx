@@ -213,14 +213,13 @@ export default function TouristDashboard() {
             <div className="font-display font-bold text-ink">{t('dashboard.cultural_events')}</div>
           </Link>
           {user.role === 'provider' ? (
-            // The traveller side shows no business pages, as in the app. A host still gets
-            // one way across, the same switch the profile menu has.
-            <button type="button" onClick={() => { setMode('provider'); nav('/provider/dashboard'); }}
-              data-testid="dashboard-switch-business"
-              className="text-left rounded-2xl p-4 bg-white border border-[var(--line)] btn-hover">
-              <div className="w-10 h-10 rounded-full bg-mist text-pine grid place-items-center mb-2"><Store size={18} /></div>
-              <div className="font-display font-bold text-ink">{t('nav.switch_business')}</div>
-            </button>
+            // A host already has "Switch to Business" next to their name above, so this tile
+            // offers their trips instead of the same switch twice.
+            <Link to="/my-trips" data-testid="dashboard-my-trips"
+              className="rounded-2xl p-4 bg-white border border-[var(--line)] btn-hover">
+              <div className="w-10 h-10 rounded-full bg-mist text-pine grid place-items-center mb-2"><Calendar size={18} /></div>
+              <div className="font-display font-bold text-ink">{t('nav.my_trips')}</div>
+            </Link>
           ) : (
             <Link to="/provider/onboard" className="rounded-2xl p-4 bg-gradient-to-br from-pine to-pine-dark text-white btn-hover">
               <div className="w-10 h-10 rounded-full bg-white/15 text-white grid place-items-center mb-2"><Store size={18} /></div>
