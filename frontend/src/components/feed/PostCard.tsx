@@ -39,6 +39,8 @@ export default function PostCard({
     like_count: post.like_count ?? 0,
     comment_count: post.comment_count ?? 0,
     liked_by_me: !!post.liked_by_me,
+    reactions: post.reactions,
+    my_reaction: post.my_reaction ?? null,
   });
   const [open, setOpen] = useState<false | 'post' | 'comment'>(autoOpen ? 'post' : false);
   // Tapping the post (not a button or link inside it) opens the whole post.
