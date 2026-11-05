@@ -60,6 +60,9 @@ describe('smart search', () => {
     expect(r.results[0].item.title).toBe('Kanchenjunga View Retreat');
     expect(r.interpretation.corrected).toBe('kanchenjunga view retreat');
     expect(titles('monastry')).toContain('Ghum Monastery (Yiga Choeling)');
+    expect(rank(listings, 'kanchanjunga veiw retreet').interpretation.corrected).toBe('kanchenjunga view retreat');
+    // A local spelling is not a mistake, so no "Did you mean" for it.
+    expect(rank(listings, 'stay in ghoom').interpretation.corrected).toBeNull();
   });
 
   it('reads a budget and keeps only listings within it', () => {

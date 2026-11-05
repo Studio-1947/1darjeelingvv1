@@ -14,6 +14,7 @@ import { routesCoverTrip } from '@/lib/routeFares';
 import { readTrip, hasTrip, tripSuffix } from '@/lib/tripParams';
 import { cardCtaKey } from '@/lib/cardCta';
 import { formatDay, formatRange } from '@/lib/dates';
+import SearchUnderstood, { type SearchInterpretation } from '@/components/SearchUnderstood';
 
 const TYPE_MAP = {
   spots: 'spot',
@@ -74,7 +75,7 @@ const OFFBEAT_PLACES = [
 export default function Category({ typeOverride }) {
   const { t, i18n } = useTranslation();
   const { type: paramType } = useParams();
-  const [sp] = useSearchParams();
+  const [sp, setSp] = useSearchParams();
   const q = sp.get('q') || '';
   const urlType = sp.get('type') || '';
   // A driver search asks for a journey rather than a place, so the widget sends
@@ -121,6 +122,21 @@ export default function Category({ typeOverride }) {
     setSearchQuery(q);
   }, [q]);
 
+  // Smart search (server lib/search.ts): reads intent, budget, local spellings and typos and ranks
+  // the results. Asked a moment after typing stops; until it answers, the plain match below shows.
+  const [smart, setSmart] = useState<{ q: string; items: any[]; search: SearchInterpretation | null } | null>(null);
+  useEffect(() => {
+    const term = searchQuery.trim();
+    if (!term) { setSmart(null); return; }
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      api.get('/listings', { params: { q: term, type, limit: 60 } })
+        .then((r) => { if (!cancelled) setSmart({ q: term, items: r.data.items || [], search: r.data.search || null }); })
+        .catch(() => { if (!cancelled) setSmart(null); });
+    }, 250);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [searchQuery, type]);
+
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
@@ -143,8 +159,14 @@ export default function Category({ typeOverride }) {
   const results = useMemo(() => {
     let list = [...baseResults];
 
-    if (searchQuery.trim()) {
-      const s = searchQuery.trim().toLowerCase();
+    const term = searchQuery.trim();
+    if (term && smart?.q === term) {
+      // Server order is best match first; a driver trip still narrows it to the route.
+      list = (type === 'driver' && routeTrip)
+        ? smart.items.filter((it) => routesCoverTrip(contentFor(it).routes || [], from, to))
+        : [...smart.items];
+    } else if (term) {
+      const s = term.toLowerCase();
       list = list.filter(
         (it) =>
           it.title?.toLowerCase().includes(s) ||
@@ -199,7 +221,7 @@ export default function Category({ typeOverride }) {
     }
 
     return list;
-  }, [baseResults, searchQuery, selectedLocation, maxPrice, selectedCab, entryFilter, sortOrder, near, radius]);
+  }, [baseResults, searchQuery, smart, type, routeTrip, from, to, selectedLocation, maxPrice, selectedCab, entryFilter, sortOrder, near, radius]);
 
   const resetFilters = () => {
     setSearchQuery('');
@@ -300,6 +322,13 @@ export default function Category({ typeOverride }) {
           <p className="mt-1 text-sm text-ink-soft">
             {loading ? t('common.loading') : t('category.results', { count: results.length })}
           </p>
+          {smart?.search && smart.q === searchQuery.trim() && (
+            <SearchUnderstood search={smart.search} fixedType={type} onUse={(text) => {
+              // The corrected words become the search itself, heading and address included.
+              if (q) setSp((prev) => { const next = new URLSearchParams(prev); next.set('q', text); return next; });
+              setSearchQuery(text);
+            }} />
+          )}
         </div>
         <div className="hidden sm:flex items-center gap-1 p-1 rounded-full bg-white border border-[var(--line)]">
           <button onClick={() => setView('grid')} data-testid="view-grid" type="button"

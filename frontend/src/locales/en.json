@@ -119,6 +119,9 @@
     "guide": "Guides"
   },
   "search": {
+    "did_you_mean": "Did you mean",
+    "under": "under {{price}}",
+    "cheapest_first": "cheapest first",
     "placeholder": "Search  place, shop or event"
   },
   "estimator": {

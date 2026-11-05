@@ -78,6 +78,9 @@ const ALIASES: Record<string, string> = {
   batasia: 'batasia', tigerhill: 'tiger', sandakphu: 'sandakphu', tea: 'tea', momos: 'momo',
 };
 
+/** Aliases that are misspellings rather than local spellings: these are shown as "Did you mean". */
+const MISSPELLINGS = new Set(['darjiling', 'darjling', 'kanchanjunga', 'kanchenjanga', 'monastry', 'mirick']);
+
 /** Words that ask for the cheaper end. */
 const CHEAP = new Set(['cheap', 'budget', 'affordable', 'cheapest', 'low', 'lowcost', 'inexpensive']);
 
@@ -296,9 +299,11 @@ export function rank<T extends SearchableListing>(
       cheapest_first: base.cheapest_first,
       terms,
       // The guest's own words, with only the misspelled ones swapped.
-      corrected: fixes.size
-        ? normalize(query).split(' ').filter(Boolean).map((w) => fixes.get(fold(w)) ?? w).join(' ')
-        : null,
+      corrected: (() => {
+        const raw = normalize(query).split(' ').filter(Boolean);
+        if (!fixes.size && !raw.some((w) => MISSPELLINGS.has(w))) return null;
+        return raw.map((w) => fixes.get(fold(w)) ?? (MISSPELLINGS.has(w) ? fold(w) : w)).join(' ');
+      })(),
     },
   };
 }
