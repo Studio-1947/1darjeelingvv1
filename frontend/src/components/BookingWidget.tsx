@@ -149,11 +149,17 @@ export default function BookingWidget() {
 
     setMatching(true);
     const timer = setTimeout(() => {
+      // The tab's own kind first; when nothing of that kind matches (a monastery on the Stays tab),
+      // the closest matches of any kind, so the box never answers a real place with "nothing".
       api
-        .get('/listings', {
-          params: { q: searchNeedle, limit: 5, type: activeTab.type },
+        .get('/listings', { params: { q: searchNeedle, limit: 5, type: activeTab.type } })
+        .then(async (r) => {
+          const own = r.data.items || [];
+          if (own.length || !activeTab.type) return own;
+          const any = await api.get('/listings', { params: { q: searchNeedle, limit: 5 } });
+          return any.data.items || [];
         })
-        .then((r) => setMatches(r.data.items || []))
+        .then((items) => setMatches(items))
         .catch(() => setMatches([]))
         .finally(() => setMatching(false));
     }, 300);
