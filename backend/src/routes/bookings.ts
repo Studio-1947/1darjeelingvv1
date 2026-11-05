@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { isCompleted } from '../lib/travellerDashboard';
-import { isAvailable } from '../lib/hostProfile';
+import { guideWorksOn, isAvailable } from '../lib/hostProfile';
 import { v4 as uuidv4 } from 'uuid';
 import { db, schema } from '../db';
 // lt/gt/and moved out with the inline overlap query  the date comparison now lives in
@@ -126,6 +126,14 @@ router.post('/', authenticateToken, requireTravellerMode, async (req: Request, r
   // A host who switched availability off takes no bookings until they switch it back on.
   if (!isAvailable(listing.extras as Record<string, any>)) {
     return res.status(409).json({ detail: 'This host is not taking bookings right now.', code: 'unavailable' });
+  }
+  // A guide guides only in the seasons on their profile (board: "based on availability, confirm").
+  if (listing.type === 'guide' && !guideWorksOn(listing.extras as Record<string, any>, check_in)) {
+    const seasons = ((listing.extras as any)?.seasons as string[]).join(', ');
+    return res.status(409).json({
+      detail: `This guide only works in ${seasons}. Pick a date in one of those seasons.`,
+      code: 'out_of_season',
+    });
   }
 
   if (CONTACT_ONLY_TYPES.has(listing.type) || CONTACT_ONLY_TYPES.has(listing_type)) {

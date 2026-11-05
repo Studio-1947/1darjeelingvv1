@@ -248,3 +248,28 @@ export function startingPriceFor(businessType: string, extras: Record<string, an
   const prices = extras[field].map((x: any) => Number(x?.price)).filter((p: number) => Number.isFinite(p) && p > 0);
   return prices.length ? Math.min(...prices) : null;
 }
+
+/**
+ * Darjeeling's seasons by month (1-12), the meaning of the seasons a guide picks on their profile.
+ * Spring Mar-Apr, summer May-Jun, monsoon Jul-Sep, autumn Oct-Nov, winter Dec-Feb.
+ */
+const SEASON_BY_MONTH: Record<number, (typeof SEASONS)[number]> = {
+  1: 'winter', 2: 'winter', 3: 'spring', 4: 'spring', 5: 'summer', 6: 'summer',
+  7: 'monsoon', 8: 'monsoon', 9: 'monsoon', 10: 'autumn', 11: 'autumn', 12: 'winter',
+};
+
+/** The season a YYYY-MM-DD date falls in, or null for a date that is not one. */
+export function seasonOf(date: string | null | undefined): (typeof SEASONS)[number] | null {
+  const m = /^\d{4}-(\d{2})-\d{2}/.exec(String(date ?? ''));
+  return m ? SEASON_BY_MONTH[Number(m[1])] ?? null : null;
+}
+
+/**
+ * Whether a guide works on this date. A guide who picked no seasons works all year; one who did
+ * only guides in those (board: "based on availability, confirm"). Undated requests are allowed.
+ */
+export function guideWorksOn(extras: Record<string, any> | null | undefined, date: string | null | undefined): boolean {
+  const seasons: string[] = Array.isArray(extras?.seasons) ? extras!.seasons : [];
+  const season = seasonOf(date);
+  return seasons.length === 0 || !season || seasons.includes(season);
+}
