@@ -1988,7 +1988,7 @@
     "request_title": "Waiting for the host",
     "request_body": "{{title}} will accept or decline your request. We will let you know, and you can confirm it from My Trips.",
     "next_steps": "What happens next",
-    "step_host": "The host checks availability and accepts.",
+    "step_host": "The host checks availability and accepts. If they do not answer within 48 hours, the request closes and nothing is charged.",
     "step_confirm": "You confirm it in My Trips (free with the aangan pass, or ₹1.20).",
     "step_contact": "You get the host's number to call or WhatsApp.",
     "go_trips": "Go to My Trips",

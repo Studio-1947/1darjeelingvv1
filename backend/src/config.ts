@@ -218,6 +218,10 @@ export const OTP_MAX_SENDS_PER_DAY = requirePositiveInt(
 // having to intervene. See lib/bookingAvailability.ts.
 export const BOOKING_HOLD_MINUTES = requirePositiveInt('BOOKING_HOLD_MINUTES', process.env.BOOKING_HOLD_MINUTES, 15);
 
+// How long a booking request waits for its host to press Accept before it closes by itself, so a
+// guest is never left waiting on a host who will not answer. See lib/requestExpiry.ts.
+export const REQUEST_EXPIRY_HOURS = requirePositiveInt('REQUEST_EXPIRY_HOURS', process.env.REQUEST_EXPIRY_HOURS, 48);
+
 export const JWT_SECRET = requireRealValueInProd('JWT_SECRET', process.env.JWT_SECRET, 'dev_only_insecure_jwt_secret');
 // Defaulting to true is right in dev and wrong in production, for the same reason APP_ENV refuses
 // to default above: an absent variable is an operator mistake, not a request for simulated

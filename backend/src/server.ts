@@ -5,6 +5,7 @@ import { app } from './app';
 import { pool } from './db';
 import { ensureBucketsExist } from './lib/s3';
 import { PORT, log } from './config';
+import { startRequestExpiry } from './lib/requestExpiry';
 
 
 const server = app.listen(PORT, () => {
@@ -23,6 +24,9 @@ const server = app.listen(PORT, () => {
   // storage layer delays nothing  compose already gates this container on MinIO being healthy,
   // so in production this normally completes before the first request arrives.
   void ensureBucketsExist();
+
+  // Booking requests a host never answered close by themselves (lib/requestExpiry.ts).
+  startRequestExpiry();
 });
 
 process.on('SIGTERM', () => {
