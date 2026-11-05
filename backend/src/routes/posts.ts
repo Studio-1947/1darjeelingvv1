@@ -109,25 +109,53 @@ function postOut(r: Row, opts: { includeModeration?: boolean } = {}) {
 export const MAX_COMMENT_LEN = 500;
 const COMMENTS_PAGE = 100;
 
-type Engagement = { like_count: number; comment_count: number; liked_by_me: boolean };
+/** The reactions a reader can leave on a host post (board: feed reactions). One per person. */
+export const POST_REACTIONS = ['heart', 'wow', 'clap', 'yum'] as const;
+type ReactionKind = (typeof POST_REACTIONS)[number];
 
-/** Like and comment counts for a page of posts, and which of them the viewer has liked. */
+/**
+ * `like_count` and `liked_by_me` count every reaction, so an app that only knows the heart keeps
+ * showing the same totals. `reactions` and `my_reaction` are the breakdown newer clients show.
+ */
+type Engagement = {
+  like_count: number;
+  comment_count: number;
+  liked_by_me: boolean;
+  reactions: Record<ReactionKind, number>;
+  my_reaction: ReactionKind | null;
+};
+
+const noReactions = (): Record<ReactionKind, number> => ({ heart: 0, wow: 0, clap: 0, yum: 0 });
+
+/** Reaction and comment counts for a page of posts, and how the viewer reacted. */
 async function engagementFor(postIds: string[], viewerId: string | null): Promise<Map<string, Engagement>> {
-  const out = new Map<string, Engagement>(postIds.map((id) => [id, { like_count: 0, comment_count: 0, liked_by_me: false }]));
+  const out = new Map<string, Engagement>(postIds.map((id) => [id, {
+    like_count: 0, comment_count: 0, liked_by_me: false, reactions: noReactions(), my_reaction: null,
+  }]));
   if (!postIds.length) return out;
-  const [likes, comments, mine] = await Promise.all([
-    db.select({ postId: schema.postReactions.postId, n: sql<number>`count(*)::int` })
-      .from(schema.postReactions).where(inArray(schema.postReactions.postId, postIds)).groupBy(schema.postReactions.postId),
+  const [counts, comments, mine] = await Promise.all([
+    db.select({ postId: schema.postReactions.postId, kind: schema.postReactions.kind, n: sql<number>`count(*)::int` })
+      .from(schema.postReactions).where(inArray(schema.postReactions.postId, postIds))
+      .groupBy(schema.postReactions.postId, schema.postReactions.kind),
     db.select({ postId: schema.postComments.postId, n: sql<number>`count(*)::int` })
       .from(schema.postComments).where(inArray(schema.postComments.postId, postIds)).groupBy(schema.postComments.postId),
     viewerId
-      ? db.select({ postId: schema.postReactions.postId }).from(schema.postReactions)
+      ? db.select({ postId: schema.postReactions.postId, kind: schema.postReactions.kind }).from(schema.postReactions)
         .where(and(inArray(schema.postReactions.postId, postIds), eq(schema.postReactions.userId, viewerId)))
-      : Promise.resolve([] as { postId: string }[]),
+      : Promise.resolve([] as { postId: string; kind: string }[]),
   ]);
-  likes.forEach((l) => { out.get(l.postId)!.like_count = Number(l.n); });
+  counts.forEach((c) => {
+    const e = out.get(c.postId)!;
+    const kind = (POST_REACTIONS as readonly string[]).includes(c.kind) ? (c.kind as ReactionKind) : 'heart';
+    e.reactions[kind] += Number(c.n);
+    e.like_count += Number(c.n);
+  });
   comments.forEach((c) => { out.get(c.postId)!.comment_count = Number(c.n); });
-  mine.forEach((m) => { out.get(m.postId)!.liked_by_me = true; });
+  mine.forEach((m) => {
+    const e = out.get(m.postId)!;
+    e.liked_by_me = true;
+    e.my_reaction = (POST_REACTIONS as readonly string[]).includes(m.kind) ? (m.kind as ReactionKind) : 'heart';
+  });
   return out;
 }
 
@@ -364,7 +392,7 @@ router.get('/:id', async (req: Request, res: Response) => {
  * @openapi
  * /posts/{id}/like:
  *   post:
- *     summary: Like a post (once per person; liking again is a no-op)
+ *     summary: React to a post (one reaction per person; body { kind } is heart, wow, clap or yum, default heart; reacting again changes it)
  *     tags: [Feed]
  *     security: [{ bearerAuth: [] }]
  *   delete:
@@ -375,9 +403,13 @@ router.get('/:id', async (req: Request, res: Response) => {
 router.post('/:id/like', authenticateToken, rateLimiter(120, 60 * 60 * 1000, 'post_like'), async (req: Request, res: Response) => {
   const row = await publicPost(routeParam(req, 'id'));
   if (!row) return res.status(404).json({ detail: 'Post not found' });
+  const kind = req.body?.kind ?? 'heart';
+  if (!(POST_REACTIONS as readonly string[]).includes(kind)) {
+    return res.status(400).json({ detail: `Reaction must be one of: ${POST_REACTIONS.join(', ')}` });
+  }
   await db.insert(schema.postReactions)
-    .values({ postId: row.post.id, userId: req.user!.id, createdAt: new Date().toISOString() })
-    .onConflictDoNothing();
+    .values({ postId: row.post.id, userId: req.user!.id, kind, createdAt: new Date().toISOString() })
+    .onConflictDoUpdate({ target: [schema.postReactions.postId, schema.postReactions.userId], set: { kind } });
   res.json((await engagementFor([row.post.id], req.user!.id)).get(row.post.id));
 });
 

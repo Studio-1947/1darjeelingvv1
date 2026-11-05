@@ -164,6 +164,7 @@ export default function ProviderProfile() {
       intro_video: e.intro_video || '',
       social: { ...(e.social || {}) },
       images: Array.isArray(e.images) ? e.images : [],
+      photo_kinds: e.photo_kinds && typeof e.photo_kinds === 'object' ? e.photo_kinds : {},
       // driver
       vehicle_number: e.vehicle_number || '',
       license_number: e.license_number || '',
@@ -257,6 +258,8 @@ export default function ProviderProfile() {
       Object.assign(profile, {
         host_name: form.host_name.trim(), rooms: priced(form.rooms), meals: priced(form.meals),
         amenities: form.amenities, recommended_drivers: form.recommended_drivers, home_delivery: form.home_delivery,
+        // Only labels for photos still in the gallery.
+        photo_kinds: Object.fromEntries(Object.entries(form.photo_kinds || {}).filter(([url, k]) => k && form.images.includes(url))),
       });
       if (num(form.capacity) !== undefined) profile.capacity = num(form.capacity);
     } else if (type === 'guide') {
@@ -571,7 +574,12 @@ export default function ProviderProfile() {
           <span className={labelCls}>{t('hostProfile.gallery')}{photoGoal ? ` (${form.images.length}/${photoGoal})` : ''}</span>
           <div className="mt-2">
             <GalleryUploader images={form.images} uploading={uploading === 'images'} onFilesSelected={uploadGallery}
-              onRemove={(i) => updateForm((f: any) => ({ ...f, images: f.images.filter((_: string, j: number) => j !== i) }))} compact />
+              onRemove={(i) => updateForm((f: any) => ({ ...f, images: f.images.filter((_: string, j: number) => j !== i) }))} compact
+              {...(type === 'homestay' ? {
+                kinds: form.photo_kinds,
+                onKind: (url: string, kind: string) => updateForm((f: any) => ({ ...f, photo_kinds: { ...f.photo_kinds, [url]: kind } })),
+              } : {})} />
+            {type === 'homestay' && <p className="mt-1.5 text-xs text-ink-soft">{t('photoKind.hint')}</p>}
           </div>
         </div>
       </Section>

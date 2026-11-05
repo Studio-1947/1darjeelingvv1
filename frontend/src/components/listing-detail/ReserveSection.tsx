@@ -139,6 +139,21 @@ export function ReserveSection({ item, unit, bookable, available = true, cta, bo
                   </label>
                 </div>
               )}
+              {(item.type === 'driver' || item.type === 'guide') && (
+                <label className="block text-left">
+                  <span className="text-xs font-semibold text-ink-soft">{t('booking.trip_date')}</span>
+                  <input required type="date" value={form.check_in} min={today} onChange={(e) => updateForm({ check_in: e.target.value })}
+                    aria-invalid={!!errors.check_in} aria-describedby={errors.check_in ? 'booking-error-date' : undefined}
+                    data-testid="booking-date"
+                    className={`mt-1 w-full px-3 py-3 rounded-xl border bg-white outline-none text-sm ${errors.check_in ? 'border-flag' : 'border-[var(--line)]'}`} />
+                  <FieldError id="booking-error-date" message={errors.check_in} />
+                  {item.type === 'guide' && Array.isArray(item.extras?.seasons) && item.extras.seasons.length > 0 && (
+                    <span className="mt-1 block text-[11px] text-ink-soft" data-testid="booking-guide-seasons">
+                      {t('booking.guide_seasons', { seasons: item.extras.seasons.map((s: string) => t(`profile.season_${s}`, { defaultValue: s })).join(', ') })}
+                    </span>
+                  )}
+                </label>
+              )}
               {(() => {
                 const maxGuests = item.type === 'driver' ? (item.extras?.seats || 6) : (item.guests || item.extras?.capacity || 10);
                 return (

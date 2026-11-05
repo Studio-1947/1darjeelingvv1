@@ -1,0 +1,1 @@
+ALTER TABLE "post_reactions" ADD COLUMN "kind" text DEFAULT 'heart' NOT NULL;

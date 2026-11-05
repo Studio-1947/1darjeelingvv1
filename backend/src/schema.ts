@@ -432,10 +432,12 @@ export const hostPosts = pgTable('host_posts', {
   providerIdx: index('host_posts_provider_id_idx').on(t.providerId),
 }));
 
-/** A reader's like on a host post: one per person per post. */
+/** A reader's reaction on a host post: one per person per post (see POST_REACTIONS in routes/posts.ts). */
 export const postReactions = pgTable('post_reactions', {
   postId: text('post_id').references(() => hostPosts.id, { onDelete: 'cascade' }).notNull(),
   userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  // Which reaction. Every like from before reactions existed is a heart.
+  kind: text('kind').default('heart').notNull(),
   createdAt: text('created_at').notNull(),
 }, (t) => ({
   pk: primaryKey({ columns: [t.postId, t.userId] }),

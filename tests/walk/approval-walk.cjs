@@ -75,6 +75,9 @@ async function signedInPage(browser, token, mode, width) {
         await g.page.waitForTimeout(500);
         if (!(await cin.count()) || (await cin.first().inputValue())) break;
       }
+      // Drivers and guides take one date (a guide only in its seasons, so pick October).
+      const day = g.page.locator('[data-testid="booking-date"]');
+      if (await day.count()) await day.first().fill(`${new Date().getFullYear() + 1}-10-${String(10 + Math.floor(Math.random() * 18)).padStart(2, '0')}`);
       const route = g.page.locator('select[data-testid="booking-route"]');
       if (await route.count()) {
         const opts = await route.locator('option').evaluateAll((o) => o.map((x) => x.value).filter(Boolean));

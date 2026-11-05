@@ -23,6 +23,8 @@ export interface HostPost {
   like_count?: number;
   comment_count?: number;
   liked_by_me?: boolean;
+  reactions?: Partial<Record<ReactionKind, number>>;
+  my_reaction?: ReactionKind | null;
   /** Only on the host's own posts. */
   hidden?: boolean;
   hidden_reason?: string | null;
@@ -68,11 +70,51 @@ export interface PostComment {
   can_delete: boolean;
 }
 
-export type Engagement = { like_count: number; comment_count: number; liked_by_me: boolean };
+/** The reactions a reader can leave on a post, in the order the picker shows them. */
+export const REACTIONS = [
+  { kind: 'heart', emoji: '❤️' },
+  { kind: 'wow', emoji: '😮' },
+  { kind: 'clap', emoji: '👏' },
+  { kind: 'yum', emoji: '😋' },
+] as const;
+export type ReactionKind = (typeof REACTIONS)[number]['kind'];
 
-export async function setLiked(id: string, liked: boolean): Promise<Engagement> {
-  const { data } = liked ? await api.post(`/posts/${id}/like`) : await api.delete(`/posts/${id}/like`);
+export type Engagement = {
+  like_count: number;
+  comment_count: number;
+  liked_by_me: boolean;
+  reactions?: Partial<Record<ReactionKind, number>>;
+  my_reaction?: ReactionKind | null;
+};
+
+/** The engagement after the viewer picks a reaction (null takes theirs back), shown before the server answers. */
+export function applyReaction(e: Engagement, kind: ReactionKind | null): Engagement {
+  const reactions = { ...(e.reactions || {}) };
+  const prev = e.my_reaction ?? (e.liked_by_me ? 'heart' : null);
+  if (prev) reactions[prev] = Math.max(0, (reactions[prev] || 0) - 1);
+  if (kind) reactions[kind] = (reactions[kind] || 0) + 1;
+  const like_count = Math.max(0, e.like_count - (prev ? 1 : 0) + (kind ? 1 : 0));
+  return { ...e, reactions, my_reaction: kind, liked_by_me: !!kind, like_count };
+}
+
+/** The most used reactions on a post, most first, for the little summary next to the count. */
+export function topReactions(e: Engagement, max = 3): string[] {
+  return REACTIONS
+    .map((r) => ({ emoji: r.emoji as string, n: e.reactions?.[r.kind] || 0 }))
+    .filter((r) => r.n > 0)
+    .sort((a, b) => b.n - a.n)
+    .slice(0, max)
+    .map((r) => r.emoji);
+}
+
+export async function setReaction(id: string, kind: ReactionKind | null): Promise<Engagement> {
+  const { data } = kind ? await api.post(`/posts/${id}/like`, { kind }) : await api.delete(`/posts/${id}/like`);
   return data;
+}
+
+/** Older callers: a like is a heart. */
+export async function setLiked(id: string, liked: boolean): Promise<Engagement> {
+  return setReaction(id, liked ? 'heart' : null);
 }
 
 export async function fetchComments(id: string): Promise<PostComment[]> {

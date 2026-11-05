@@ -2,12 +2,12 @@ import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Heart, ChatCircle, ShareNetwork, X, PaperPlaneRight, Trash, SealCheck, MapPin, CircleNotch as Loader2 } from '@phosphor-icons/react';
+import { Heart, ChatCircle, ShareNetwork, X, PaperPlaneRight, Trash, SealCheck, MapPin, Smiley, CircleNotch as Loader2 } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
 import {
-  addComment, deleteComment, fetchComments, postUrl, setLiked,
-  type Engagement, type HostPost, type PostComment,
+  addComment, applyReaction, deleteComment, fetchComments, postUrl, REACTIONS, setReaction, topReactions,
+  type Engagement, type HostPost, type PostComment, type ReactionKind,
 } from '@/lib/posts';
 import { timeAgo } from '@/lib/timeAgo';
 
@@ -22,15 +22,18 @@ export function PostActionBar({ post, engagement, onEngagement, onComment }: {
   const { user } = useAuth();
   const nav = useNavigate();
   const [busy, setBusy] = useState(false);
+  const [picking, setPicking] = useState(false);
+  const mine = engagement.my_reaction ?? (engagement.liked_by_me ? 'heart' : null);
 
-  const toggleLike = async () => {
+  // Board: more than one reaction. Picking one replaces yours; picking yours again takes it back.
+  const react = async (kind: ReactionKind | null) => {
     if (!user) { nav(`/login?next=${encodeURIComponent(`/feed?post=${post.id}`)}`); return; }
-    const next = !engagement.liked_by_me;
+    setPicking(false);
     // Show it straight away; the server's count replaces it a moment later.
-    onEngagement({ ...engagement, liked_by_me: next, like_count: Math.max(0, engagement.like_count + (next ? 1 : -1)) });
+    onEngagement(applyReaction(engagement, kind));
     setBusy(true);
     try {
-      onEngagement(await setLiked(post.id, next));
+      onEngagement(await setReaction(post.id, kind));
     } catch {
       onEngagement(engagement);
       toast.error(t('feed.like_failed'));
@@ -38,6 +41,9 @@ export function PostActionBar({ post, engagement, onEngagement, onComment }: {
       setBusy(false);
     }
   };
+  const toggleLike = () => react(mine ? null : 'heart');
+  const mineEmoji = REACTIONS.find((r) => r.kind === mine)?.emoji;
+  const top = topReactions(engagement);
 
   const share = async () => {
     const url = postUrl(post.id);
@@ -57,12 +63,34 @@ export function PostActionBar({ post, engagement, onEngagement, onComment }: {
   const btn = 'inline-flex items-center gap-1.5 h-9 px-2.5 rounded-full text-sm font-semibold transition-colors hover:bg-mist';
   return (
     <div className="mt-3 flex items-center gap-1 border-t border-[var(--line)] pt-2" data-testid={`post-actions-${post.id}`}>
-      <button type="button" onClick={toggleLike} disabled={busy} aria-pressed={engagement.liked_by_me}
-        aria-label={t('feed.like')} data-testid={`post-like-${post.id}`}
-        className={`${btn} ${engagement.liked_by_me ? 'text-flag' : 'text-ink'}`}>
-        <Heart size={20} weight={engagement.liked_by_me ? 'fill' : 'regular'} />
-        <span className="tabular-nums">{engagement.like_count || ''}</span>
-      </button>
+      <div className="relative inline-flex items-center">
+        <button type="button" onClick={toggleLike} disabled={busy} aria-pressed={!!mine}
+          aria-label={t('feed.like')} data-testid={`post-like-${post.id}`}
+          className={`${btn} ${mine ? 'text-flag' : 'text-ink'}`}>
+          {mine && mine !== 'heart' ? <span className="text-lg leading-none">{mineEmoji}</span>
+            : <Heart size={20} weight={mine ? 'fill' : 'regular'} />}
+          {top.length > 1 && <span className="text-sm leading-none" aria-hidden="true">{top.join('')}</span>}
+          <span className="tabular-nums">{engagement.like_count || ''}</span>
+        </button>
+        <button type="button" onClick={() => (user ? setPicking((v) => !v) : react('heart'))} disabled={busy}
+          aria-label={t('feed.react')} aria-expanded={picking} data-testid={`post-react-${post.id}`}
+          className="w-8 h-8 rounded-full grid place-items-center text-ink-soft hover:bg-mist">
+          <Smiley size={18} />
+        </button>
+        {picking && (
+          <div role="menu" className="absolute bottom-full left-0 mb-1 z-10 flex gap-1 rounded-full bg-white border border-[var(--line)] shadow-lg px-2 py-1"
+            data-testid={`post-reactions-${post.id}`}>
+            {REACTIONS.map((r) => (
+              <button key={r.kind} type="button" role="menuitem" onClick={() => react(mine === r.kind ? null : r.kind)}
+                aria-label={t(`feed.reaction_${r.kind}`)} aria-pressed={mine === r.kind}
+                data-testid={`post-reaction-${r.kind}-${post.id}`}
+                className={`w-9 h-9 rounded-full grid place-items-center text-xl transition-transform hover:scale-125 ${mine === r.kind ? 'bg-mist' : ''}`}>
+                {r.emoji}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
       <button type="button" onClick={onComment} aria-label={t('feed.comment')} data-testid={`post-comment-${post.id}`}
         className={`${btn} text-ink`}>
         <ChatCircle size={20} />
