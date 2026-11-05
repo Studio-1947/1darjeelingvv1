@@ -81,7 +81,7 @@
     "body": "₹12 + 18% GST + 2% platform fee (₹14.40) for your first year (usually ₹99 a year): every booking confirms free. Without the pass, each booking has a ₹1 convenience fee + 18% GST + 2% platform fee (₹1.20).",
     "cta": "Take the pass · {{total}}",
     "reassurance": "Valid for one year. Nothing auto-charges.",
-    "skip": "Not now, I will pay ₹1 per booking",
+    "skip": "Not now, I will pay ₹1.20 per booking",
     "modal_title": "aangan pass",
     "modal_duration": "· valid for 1 year",
     "privacy_link": "privacy policy",
@@ -666,7 +666,7 @@
     "stay_local": "Stay local",
     "explore_darjeeling": "Explore Darjeeling",
     "see_all": "See all",
-    "one_time_fee": "₹499 + GST · first year",
+    "one_time_fee": "₹499 + GST & fee · first year",
     "deals": {
       "monsoon": {
         "title": "Monsoon escapes",
@@ -1113,7 +1113,7 @@
       "your_name": "Your name",
       "price_whole_any": "Price in whole rupees"
     },
-    "fee_chip": "₹499 + GST · first year",
+    "fee_chip": "₹499 + GST & fee · first year",
     "list_business": "List Your Business",
     "get_started": "Get started by entering your basic business details.",
     "business_name": "Business Name",
@@ -1430,8 +1430,8 @@
             "p": "A payment gives a traveller account one year in which every booking confirms with no fee, and lets it save listings and leave reviews. Without the pass, booking requests are free to make and each booking is confirmed with a ₹1 convenience fee plus 18% GST and a 2% platform fee (₹1.20 in all), refunded if the booking is cancelled. It does not renew automatically; after it expires, you may buy another one-year pass."
           },
           {
-            "h": "3.2 Bookings  free with the pass, ₹1 without",
-            "p": "Making a booking request is free. Confirming it is free with the Traveller Pass; without the pass there is a ₹1 convenience fee per booking, refunded if the booking is cancelled. What you pay for the stay, ride or goods themselves is paid directly to the business."
+            "h": "3.2 Bookings  free with the pass, ₹1.20 without",
+            "p": "Making a booking request is free. Confirming it is free with the Traveller Pass; without the pass there is a ₹1 convenience fee per booking plus 18% GST and a 2% platform fee (₹1.20 in all), refunded if the booking is cancelled. What you pay for the stay, ride or goods themselves is paid directly to the business."
           },
           {
             "h": "3.3 Business Listing Plan  ₹499 for the first year, then ₹999 per year, each plus 18% GST and a 2% platform fee",
@@ -1989,7 +1989,7 @@
     "request_body": "{{title}} will accept or decline your request. We will let you know, and you can confirm it from My Trips.",
     "next_steps": "What happens next",
     "step_host": "The host checks availability and accepts.",
-    "step_confirm": "You confirm it in My Trips (free with the aangan pass, or ₹1).",
+    "step_confirm": "You confirm it in My Trips (free with the aangan pass, or ₹1.20).",
     "step_contact": "You get the host's number to call or WhatsApp.",
     "go_trips": "Go to My Trips",
     "accepted_note": "The host accepted. Confirm it to lock it in.",
