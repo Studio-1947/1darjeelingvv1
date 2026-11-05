@@ -54,8 +54,7 @@ export const notifications = pgTable('notifications', {
 }));
 
 /**
- * Expo push tokens, one row per device. Registered so a delivery worker can be added later;
- * nothing sends to these yet.
+ * Expo push tokens, one row per device. lib/push.ts sends every in-app notification to them.
  */
 export const pushTokens = pgTable('push_tokens', {
   id: text('id').primaryKey(),
@@ -139,7 +138,8 @@ export const providers = pgTable('providers', {
   kycStatus: text('kyc_status').default('none').notNull(),
   createdAt: text('created_at').notNull(),
   activatedAt: text('activated_at'),
-  // End of the host's current paid year (₹1 the first year, ₹499 each year after). Null until
+  // End of the host's current paid year (₹499 the first year, ₹999 each year after, each plus GST
+  // and the platform fee; see lib/pricing.ts). Null until
   // the first payment settles. Once it passes, the host's listings leave the public feed until
   // they renew. See lib/hostPlan.ts.
   planExpiresAt: text('plan_expires_at'),
