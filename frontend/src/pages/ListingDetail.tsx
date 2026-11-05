@@ -117,7 +117,7 @@ export default function ListingDetail() {
   // English and "per night" in Hindi, Nepali and Bengali, so the same listing made
   // two different commercial claims depending on the language (QA 3.1).
   const unit = item.type === 'homestay' ? t('common.per_head') : item.type === 'driver' ? t('common.per_day') : '';
-  const cta = ctaFor(item.type);
+  const cta = ctaFor(item.type, item.request_to_book === true);
   const amenities = amenitiesFor(item);
   const host = hostFor(item);
   const c = contentFor(item);

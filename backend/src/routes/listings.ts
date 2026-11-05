@@ -12,6 +12,7 @@ import { storeBase64Image, ImageUploadError } from '../lib/imageUpload';
 import { routeParam } from '../lib/routeParam';
 import { blockedRanges, isDateExclusive } from '../lib/bookingAvailability';
 import { myActiveProvider, myProvider } from '../lib/hostAccess';
+import { HOST_APPROVAL_TYPES } from '../lib/bookingApproval';
 import {
   SPOT_TYPE, SPOT_FORBIDDEN_MESSAGE, canWriteSpots, parseSpotExtras,
   isSpotPublished, publicSpotVisibility, spotOrdering, SpotValidationError,
@@ -383,6 +384,9 @@ router.get('/:id', async (req: Request, res: Response) => {
     // The host's own page (aanganerp.in/<type>/<slug>) and their two marks.
     host_page_path: provider?.slug ? `/${provider.businessType}/${provider.slug}` : null,
     provider_member: provider ? provider.status === 'active' && !!provider.planExpiresAt && Date.parse(provider.planExpiresAt) > Date.now() : false,
+    // Booking it sends the host a request to accept first (lib/bookingApproval.ts), so the button
+    // says "Request to book". Team-run listings with no host account still confirm at once.
+    request_to_book: HOST_APPROVAL_TYPES.has(item.type) && !!provider,
   };
 
   res.json({ item: itemReturn });
