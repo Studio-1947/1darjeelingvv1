@@ -339,7 +339,7 @@
     "checkout": "Check-out",
     "guests": "Guests",
     "notes": "Notes (optional)",
-    "fee_note": "Free with the aangan pass (₹12 for the first year, then ₹99 a year), or a ₹1 fee for this booking. Plus 18% GST and the 2% platform fee.",
+    "fee_note": "Free with the aangan pass (₹14.40 for the first year, then ₹118.80 a year), or a ₹1.20 fee for this booking. Both include 18% GST and the 2% platform fee.",
     "pay_confirm": "Confirm booking",
     "success": "Booking confirmed!",
     "status": {
@@ -350,6 +350,9 @@
       "awaiting_host": "Waiting for host"
     },
     "dates_required": "Check-in and check-out dates are required",
+    "date_required": "Pick the date you need",
+    "trip_date": "Date",
+    "guide_seasons": "Guides in: {{seasons}}",
     "dates_order": "Check-out date must be after check-in date",
     "failed": "Booking failed",
     "price_details": "Price details",

@@ -120,6 +120,11 @@ export function useBookingFlow(item: any, id: string) {
         next.check_out = t('booking.dates_order');
       }
     }
+    // A driver or guide request needs the day, so the host knows what they are accepting and a
+    // guide's seasons can be checked.
+    if ((item?.type === 'driver' || item?.type === 'guide') && !form.check_in) {
+      next.check_in = t('booking.date_required');
+    }
     const maxGuests = item?.type === 'driver' ? (item?.extras?.seats || 6) : (item?.guests || item?.extras?.capacity || 10);
     if (!(Number(form.guests) >= 1)) {
       next.guests = t('booking.guests_required');

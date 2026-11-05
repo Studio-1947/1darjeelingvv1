@@ -129,7 +129,8 @@ router.post('/', authenticateToken, requireTravellerMode, async (req: Request, r
   }
   // A guide guides only in the seasons on their profile (board: "based on availability, confirm").
   if (listing.type === 'guide' && !guideWorksOn(listing.extras as Record<string, any>, check_in)) {
-    const seasons = ((listing.extras as any)?.seasons as string[]).join(', ');
+    const seasons = ((listing.extras as any)?.seasons as string[])
+      .map((s) => s.charAt(0).toUpperCase() + s.slice(1)).join(', ');
     return res.status(409).json({
       detail: `This guide only works in ${seasons}. Pick a date in one of those seasons.`,
       code: 'out_of_season',

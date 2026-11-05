@@ -37,7 +37,7 @@ describe('guide seasons', () => {
     const wet = await ask('2031-07-10');
     expect(wet.status).toBe(409);
     expect(wet.body.code).toBe('out_of_season');
-    expect(wet.body.detail).toContain('spring, autumn');
+    expect(wet.body.detail).toContain('Spring, Autumn');
 
     const ok = await ask('2031-10-10');
     expect(ok.status).toBe(200);
