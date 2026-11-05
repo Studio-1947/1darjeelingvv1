@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { hostPlanVisibility, isListingHostLapsed } from '../lib/hostPlan';
 import { v4 as uuidv4 } from 'uuid';
 import { db, schema } from '../db';
-import { eq, or, and, ilike, inArray } from 'drizzle-orm';
+import { eq, and, inArray } from 'drizzle-orm';
 import { authenticateToken, optionalUser } from '../middleware/auth';
 import { canSeeProviderPhone, listExtras, publicExtras } from '../lib/listingContact';
 import { rateLimiter } from '../middleware/rateLimiter';
@@ -13,6 +13,7 @@ import { routeParam } from '../lib/routeParam';
 import { blockedRanges, isDateExclusive } from '../lib/bookingAvailability';
 import { myActiveProvider, myProvider } from '../lib/hostAccess';
 import { HOST_APPROVAL_TYPES } from '../lib/bookingApproval';
+import { rank, type Interpretation } from '../lib/search';
 import {
   SPOT_TYPE, SPOT_FORBIDDEN_MESSAGE, canWriteSpots, parseSpotExtras,
   isSpotPublished, publicSpotVisibility, spotOrdering, SpotValidationError,
@@ -230,22 +231,29 @@ router.get('/', async (req: Request, res: Response) => {
   if (type) {
     conditions.push(eq(schema.listings.type, type));
   }
-  if (q) {
-    conditions.push(
-      or(
-        ilike(schema.listings.title, `%${q}%`),
-        ilike(schema.listings.description, `%${q}%`),
-        ilike(schema.listings.location, `%${q}%`)
-      )!
-    );
+  // A search reads the words (lib/search.ts): kind of place, budget, each word on its own, local
+  // spellings and typos, best match first. It ranks every visible listing of the type, then pages.
+  const term = typeof q === 'string' ? q.trim().slice(0, 120) : '';
+  let items: (typeof schema.listings.$inferSelect)[];
+  let search: Interpretation | null = null;
+  if (term) {
+    const all = await db.select().from(schema.listings).where(and(...conditions));
+    const visible = await providerFlags(all.map((i) => i.providerId));
+    const ranked = rank(all, term, {
+      type: type ?? null,
+      // A small lift for verified, active hosts; never enough to beat a better match.
+      boost: (l) => (visible.get(l.providerId) ? 0.5 : 0),
+    });
+    items = ranked.results.slice(0, limit).map((r) => r.item);
+    search = ranked.interpretation;
+  } else {
+    // The spots feed is curated, so it follows the admin's own order (featured first, then
+    // the manual sort order). Every other type keeps the table's natural order as before.
+    const query = db.select().from(schema.listings).where(and(...conditions));
+    items = type === SPOT_TYPE
+      ? await query.orderBy(...spotOrdering()).limit(limit)
+      : await query.limit(limit);
   }
-
-  // The spots feed is curated, so it follows the admin's own order (featured first, then
-  // the manual sort order). Every other type keeps the table's natural order as before.
-  const query = db.select().from(schema.listings).where(and(...conditions));
-  const items = type === SPOT_TYPE
-    ? await query.orderBy(...spotOrdering()).limit(limit)
-    : await query.limit(limit);
 
   const providerIds = [...new Set(items.map(item => item.providerId))];
   const providerRows = providerIds.length > 0
@@ -282,8 +290,17 @@ router.get('/', async (req: Request, res: Response) => {
     };
   });
 
-  res.json({ items: itemsReturn });
+  res.json(search ? { items: itemsReturn, search } : { items: itemsReturn });
 });
+
+/** Which of these providers are verified and active (for the search boost). */
+async function providerFlags(ids: string[]): Promise<Map<string, boolean>> {
+  const unique = [...new Set(ids.filter(Boolean))];
+  if (!unique.length) return new Map();
+  const rows = await db.select({ id: schema.providers.id, kycStatus: schema.providers.kycStatus, status: schema.providers.status })
+    .from(schema.providers).where(inArray(schema.providers.id, unique));
+  return new Map(rows.map((p) => [p.id, p.kycStatus === 'verified' && p.status === 'active']));
+}
 
 /**
  * @openapi
