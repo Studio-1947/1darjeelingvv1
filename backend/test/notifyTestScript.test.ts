@@ -9,5 +9,9 @@ describe('npm run notify:test examples', () => {
     expect(Object.keys(EXAMPLES.booking_confirmed_guest.vars)).toEqual(['name', 'listing', 'stay', 'host']);
     expect(Object.keys(EXAMPLES.booking_confirmed_host.vars)).toEqual(['listing', 'guest', 'guest_phone', 'stay', 'guests']);
     expect(Object.keys(EXAMPLES.booking_cancelled_guest.vars)).toEqual(['name', 'listing', 'stay', 'refund']);
+    expect(Object.keys(EXAMPLES.host_changes_requested.vars)).toEqual(['name', 'business', 'document', 'reason']);
+    expect(Object.keys(EXAMPLES.host_approved.vars)).toEqual(['name', 'business']);
+    expect(Object.keys(EXAMPLES.booking_request_host.vars)).toEqual(['listing', 'guest', 'stay']);
+    expect(Object.keys(EXAMPLES.booking_accepted_guest.vars)).toEqual(['name', 'listing', 'stay']);
   });
 });

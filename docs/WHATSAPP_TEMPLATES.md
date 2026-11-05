@@ -46,6 +46,17 @@ INTERAKT_BOOKING_CONFIRMED_HOST_TEMPLATE=aangan_booking_confirmed_host
 INTERAKT_BOOKING_CANCELLED_GUEST_TEMPLATE=aangan_booking_cancelled_guest
 ```
 
+The optional templates (#5 to #8) go in the same file, each under the exact name Interakt approved:
+
+```
+INTERAKT_HOST_CHANGES_REQUESTED_TEMPLATE=<approved name>
+INTERAKT_HOST_APPROVED_TEMPLATE=<approved name>
+INTERAKT_BOOKING_REQUEST_HOST_TEMPLATE=<approved name>
+INTERAKT_BOOKING_ACCEPTED_GUEST_TEMPLATE=<approved name>
+```
+
+`npm run notify:test` (step 3) accepts all seven template keys.
+
 Leave `NOTIFY_BOOKINGS=false` for now and recreate the backend
 (`docker compose -f docker-compose.in.yml up -d --force-recreate backend`).
 
