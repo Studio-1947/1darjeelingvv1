@@ -32,7 +32,8 @@ export const PASS_USUAL_BASE = BASES.platform_support_renewal;
 /** The host plan's yearly renewal price, shown struck through next to the ₹499 first year. */
 export const HOST_USUAL_BASE = BASES.provider_renewal;
 
-const TRAVELLER_FLOWS: PricedFlow[] = ['platform_support', 'platform_support_renewal', 'booking_commission'];
+// Every payment is base + 18% GST + 2% platform fee (the pass ₹14.40, the booking fee ₹1.20).
+const TRAVELLER_FLOWS: PricedFlow[] = [];
 
 export function breakupOf(base: number, gstRate = 18, feeRate = 2): PriceBreakup {
   const gst = Math.round((base * gstRate) / 100);

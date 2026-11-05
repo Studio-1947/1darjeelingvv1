@@ -2,12 +2,12 @@ import { AMOUNTS, GST_RATE_PERCENT, PLATFORM_FEE_PERCENT, PASS_RENEWAL_BASE } fr
 
 /**
  * What a fixed-price payment is made of, in paise. The base price is the plan, pass or fee itself;
- * 18% GST is worked out on the base. Host payments also carry the 2% payment gateway fee;
- * traveller payments (the pass and the ₹1 booking fee) carry GST only.
+ * 18% GST and the 2% platform fee are each worked out on the base, on every payment.
  *
  *   host first year      ₹499 + ₹89.82 GST + ₹9.98 fee  = ₹598.80
- *   aangan pass, year 1  ₹12  + ₹2.16 GST               = ₹14.16
- *   aangan pass, after   ₹99  + ₹17.82 GST              = ₹116.82
+ *   aangan pass, year 1  ₹12  + ₹2.16 GST  + ₹0.24 fee  = ₹14.40
+ *   aangan pass, after   ₹99  + ₹17.82 GST + ₹1.98 fee  = ₹118.80
+ *   booking fee          ₹1   + ₹0.18 GST  + ₹0.02 fee  = ₹1.20
  *
  * Both apps show these lines before the payment opens, and the payments row keeps a copy, so a
  * receipt still matches what was paid if the rates change later.
@@ -21,11 +21,9 @@ export type PriceBreakup = {
   platform_fee_rate: number;
 };
 
-/** Flows paid by travellers: GST only, no gateway fee. */
-const TRAVELLER_FLOWS = new Set(['platform_support', 'booking_commission']);
-
-export function feeRateFor(flow: string): number {
-  return TRAVELLER_FLOWS.has(flow) ? 0 : PLATFORM_FEE_PERCENT;
+/** Every fixed payment carries the 2% platform fee (host plans, the pass, the ₹1 booking fee). */
+export function feeRateFor(_flow: string): number {
+  return PLATFORM_FEE_PERCENT;
 }
 
 /** Paise, rounded half up. */

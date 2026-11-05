@@ -6,10 +6,13 @@ describe('price breakup (same rule as backend/src/lib/pricing.ts)', () => {
     expect(breakupOf(49900)).toMatchObject({ gst: 8982, platform_fee: 998, total: 59880 });
   });
 
-  it('adds GST only on traveller payments: ₹14.16 first pass, ₹116.82 after, ₹1.18 booking fee', () => {
-    expect(breakupOf(1200, 18, 0).total).toBe(1416);
-    expect(breakupOf(9900, 18, 0).total).toBe(11682);
-    expect(breakupOf(100, 18, 0).total).toBe(118);
+  it('adds GST and the 2% platform fee to the pass: ₹14.40 first year, ₹118.80 after', () => {
+    expect(breakupOf(1200).total).toBe(1440);
+    expect(breakupOf(9900).total).toBe(11880);
+  });
+
+  it('adds GST and the 2% platform fee to the ₹1 booking fee: ₹1.20', () => {
+    expect(breakupOf(100)).toMatchObject({ gst: 18, platform_fee: 2, total: 120 });
   });
 
   it('writes paise as rupees, with paise only when there are some', () => {

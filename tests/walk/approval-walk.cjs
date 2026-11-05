@@ -63,11 +63,18 @@ async function signedInPage(browser, token, mode, width) {
       const g = await signedInPage(browser, guestToken, 'tourist', 390);
       const snapG = (name) => g.page.screenshot({ path: path.join(OUT, `${type}-${String(++n).padStart(2, '0')}-guest-${name}.png`), fullPage: false });
       await g.page.goto(`${WEB}/listing/${listing.id}`, { waitUntil: 'networkidle' });
-      await g.page.waitForTimeout(800);
-      const cin = g.page.locator('[data-testid="booking-checkin"]');
-      if (await cin.count()) await cin.first().fill(iso(20));
-      const cout = g.page.locator('[data-testid="booking-checkout"]');
-      if (await cout.count()) await cout.first().fill(iso(22));
+      await g.page.locator('[data-testid="booking-submit"]').first().waitFor({ timeout: 15000 });
+      await g.page.waitForTimeout(1500);
+      // Fill the dates, and again if the page re-rendered and cleared them (it loads in stages).
+      const offset = 20 + Math.floor(Math.random() * 300);
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const cin = g.page.locator('[data-testid="booking-checkin"]');
+        if (await cin.count()) await cin.first().fill(iso(offset));
+        const cout = g.page.locator('[data-testid="booking-checkout"]');
+        if (await cout.count()) await cout.first().fill(iso(offset + 2));
+        await g.page.waitForTimeout(500);
+        if (!(await cin.count()) || (await cin.first().inputValue())) break;
+      }
       const route = g.page.locator('select[data-testid="booking-route"]');
       if (await route.count()) {
         const opts = await route.locator('option').evaluateAll((o) => o.map((x) => x.value).filter(Boolean));

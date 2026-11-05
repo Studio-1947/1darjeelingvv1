@@ -10,15 +10,15 @@ describe('price breakup', () => {
     expect(priceBreakup(99900).total).toBe(119880);
   });
 
-  it('adds GST only to the traveller pass and the ₹1 booking fee', () => {
-    expect(flowBreakup('platform_support')).toMatchObject({ base: 1200, gst: 216, platform_fee: 0, total: 1416 });
-    expect(flowBreakup('booking_commission')).toMatchObject({ gst: 18, platform_fee: 0, total: 118 });
+  it('adds GST and the 2% platform fee to every payment: pass, booking fee and host plan', () => {
+    expect(flowBreakup('platform_support')).toMatchObject({ base: 1200, gst: 216, platform_fee: 24, total: 1440 });
+    expect(flowBreakup('booking_commission')).toMatchObject({ gst: 18, platform_fee: 2, total: 120 });
     expect(flowBreakup('provider_registration').total).toBe(59880);
   });
 
   it('charges ₹12 for a first pass and ₹99 after that', () => {
-    expect(passBreakupFor({ supportExpiresAt: null }).total).toBe(1416);
-    expect(passBreakupFor({ supportExpiresAt: '2020-01-01T00:00:00.000Z' })).toMatchObject({ base: 9900, total: 11682 });
+    expect(passBreakupFor({ supportExpiresAt: null }).total).toBe(1440);
+    expect(passBreakupFor({ supportExpiresAt: '2020-01-01T00:00:00.000Z' })).toMatchObject({ base: 9900, total: 11880 });
   });
 
   it('adds up exactly, in whole paise', () => {
@@ -35,8 +35,8 @@ describe('price breakup', () => {
     expect(res.body.gst_rate).toBe(18);
     expect(res.body.platform_fee_rate).toBe(2);
     expect(res.body.prices.provider_registration.total).toBe(59880);
-    expect(res.body.prices.platform_support.total).toBe(1416);
-    expect(res.body.prices.platform_support_renewal.total).toBe(11682);
-    expect(res.body.prices.booking_commission.total).toBe(118);
+    expect(res.body.prices.platform_support.total).toBe(1440);
+    expect(res.body.prices.platform_support_renewal.total).toBe(11880);
+    expect(res.body.prices.booking_commission.total).toBe(120);
   });
 });

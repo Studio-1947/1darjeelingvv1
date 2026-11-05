@@ -45,7 +45,7 @@ async function me(token: string) {
 }
 
 describe('platform_support payment flow', () => {
-  it('charges ₹12 + GST (₹14.16) for a first pass, regardless of anything in the request body', async () => {
+  it('charges ₹12 + GST + 2% fee (₹14.40) for a first pass, regardless of anything in the request body', async () => {
     const { token, user } = await registerUser({ name: 'Support Payer', paySupport: false });
     const res = await request(app)
       .post('/api/payments/order')
@@ -53,11 +53,11 @@ describe('platform_support payment flow', () => {
       .send({ flow: 'platform_support', reference_id: user.id, amount: 1 });
 
     expect(res.status).toBe(200);
-    expect(res.body.amount).toBe(1416);
-    expect(res.body.order.amount).toBe(1416);
+    expect(res.body.amount).toBe(1440);
+    expect(res.body.order.amount).toBe(1440);
   });
 
-  it('charges ₹99 + GST (₹116.82) once a pass has been held before', async () => {
+  it('charges ₹99 + GST + 2% fee (₹118.80) once a pass has been held before', async () => {
     const { token, user } = await registerUser({ name: 'Returning Rinzing', paySupport: false });
     await paySupport(token, user.id);
     const res = await request(app)
@@ -65,7 +65,7 @@ describe('platform_support payment flow', () => {
       .set('Authorization', `Bearer ${token}`)
       .send({ flow: 'platform_support', reference_id: user.id });
     expect(res.status).toBe(200);
-    expect(res.body.amount).toBe(11682);
+    expect(res.body.amount).toBe(11880);
   });
 
   it('refuses an order that references another user', async () => {
