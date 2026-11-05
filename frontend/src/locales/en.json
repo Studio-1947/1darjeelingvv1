@@ -169,7 +169,8 @@
     "call_now": "Call Now",
     "contact_provider": "Contact Provider",
     "reserve": "Reserve",
-    "request_guide": "Request guide"
+    "request_guide": "Request guide",
+    "request_to_book": "Request to book"
   },
   "detail": {
     "about": "About this place",

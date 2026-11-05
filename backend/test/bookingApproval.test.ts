@@ -125,4 +125,21 @@ describe('host approval before a booking can be confirmed', () => {
     expect(res.status).toBe(200);
     expect(res.body.booking.status).toBe('accepted');
   });
+
+  it('tells the listing page when booking is a request, so the button says "Request to book"', async () => {
+    const { listing } = await hostListing('Label Host', 'homestay');
+    const hosted = await request(app).get(`/api/listings/${listing.id}`);
+    expect(hosted.status).toBe(200);
+    expect(hosted.body.item.request_to_book).toBe(true);
+
+    // A team-run homestay (no host account) still confirms at once, so it keeps "Reserve".
+    const admin = await loginAdmin();
+    const team = await request(app).post('/api/listings').set(auth(admin)).send({
+      title: 'Team Homestay', type: 'homestay', description: 'Run by the team', location: 'Darjeeling',
+      price: 1500, provider_id: 'admin-seed-provider',
+    });
+    expect(team.status).toBe(200);
+    const teamView = await request(app).get(`/api/listings/${team.body.item.id}`);
+    expect(teamView.body.item.request_to_book).toBe(false);
+  });
 });

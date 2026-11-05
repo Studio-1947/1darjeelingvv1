@@ -12,6 +12,11 @@ export const CTA_CONFIG = {
   spot: { key: 'explore', Icon: Mountain, color: 'bg-pine text-white' },
 };
 
-export function ctaFor(type: string) {
+/**
+ * A homestay with a real host takes requests (the host accepts first), so its button says
+ * "Request to book" instead of "Reserve". Drivers and guides already read as requests.
+ */
+export function ctaFor(type: string, requestToBook = false) {
+  if (type === 'homestay' && requestToBook) return { ...CTA_CONFIG.homestay, key: 'request_to_book' };
   return CTA_CONFIG[type] || CTA_CONFIG.spot;
 }

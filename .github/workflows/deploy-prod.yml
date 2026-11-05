@@ -12,6 +12,14 @@ on:
     branches: [prod]
   workflow_dispatch: {}
 
+# One release at a time. Two merges a few seconds apart used to deploy side by side and both
+# failed at the SSH step (PRs #226 and #227). Now the second run waits for the first; if a
+# third arrives meanwhile, only the newest waiting run is kept, since it contains everything.
+# PR checks get their own group per PR and replace each other.
+concurrency:
+  group: ${{ github.event_name == 'pull_request' && format('prod-pr-{0}', github.ref) || 'prod-release' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   # Identical gate to deploy.yml's `test` job: a red backend suite or schema/migration
   # drift must stop the release before anything touches the VPS.
