@@ -26,7 +26,7 @@ export default function Layout({ children }) {
       <Header />
       {/* tabIndex={-1} so the skip link can actually move focus here; browsers
           will not focus a plain <main> and the link would only scroll. */}
-      <main id="main" tabIndex={-1} className="flex-1 pb-[var(--bottom-nav-h)] lg:pb-0 focus:outline-none">{children}</main>
+      <main id="main" tabIndex={-1} className="flex-1 focus:outline-none">{children}</main>
       <Footer />
       <BottomNav />
       <Toaster position="top-center" richColors closeButton />

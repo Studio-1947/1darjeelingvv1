@@ -76,7 +76,7 @@ export default function BottomNav() {
         className="lg:hidden fixed bottom-0 inset-x-0 z-50 px-2.5 min-[380px]:px-3.5 pointer-events-none"
         style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 10px)' }}
       >
-        <div className={`pointer-events-auto grid ${isProvider ? 'grid-cols-4' : 'grid-cols-5'} items-stretch h-16 px-1 py-1.5 rounded-full bg-white/95 backdrop-blur-xl border border-[rgba(20,32,26,0.12)] shadow-[0_10px_30px_rgba(20,32,26,0.28)]`}>
+        <div className={`pointer-events-auto grid ${isProvider ? 'grid-cols-4' : 'grid-cols-5'} items-stretch h-16 px-1 py-1.5 rounded-full bg-white/95 backdrop-blur-xl border border-[rgba(20,32,26,0.3)] shadow-[0_10px_30px_rgba(20,32,26,0.28),0_2px_6px_rgba(20,32,26,0.12)]`}>
           {/* Plain Link rather than NavLink throughout: the active state is
               computed above, so NavLink's own pathname matching would only
               fight it. aria-current carries the state to assistive tech. */}

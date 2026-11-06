@@ -139,7 +139,7 @@ export default function ListingDetail() {
     : t('detail.offers');
 
   return (
-    <div className="pb-28 lg:pb-0">
+    <div>
       {/* Every listing used to inherit the site-wide title and description, so
           Ghum Monastery and a Lebong homestay were indistinguishable to Google
           and to a WhatsApp link preview - only the <h1> differed (QA 3.4). The

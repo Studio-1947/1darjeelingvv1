@@ -155,7 +155,8 @@ export function ReserveSection({ item, unit, bookable, available = true, cta, bo
                 </label>
               )}
               {(() => {
-                const maxGuests = item.type === 'driver' ? (item.extras?.seats || 6) : (item.guests || item.extras?.capacity || 10);
+                // The server sends the limit it enforces (lib/bookingRules.ts); the fallback is the same rule.
+                const maxGuests = item.max_guests || (item.type === 'driver' ? (item.extras?.seats || 6) : (item.extras?.capacity || 10));
                 return (
                   <label className="block text-left">
                     <div className="flex items-center justify-between">
@@ -228,7 +229,7 @@ export function ReserveSection({ item, unit, bookable, available = true, cta, bo
                 className={`w-full py-4 rounded-full font-bold btn-hover disabled:opacity-60 inline-flex items-center justify-center gap-2 ${cta.color}`}>
                 {busy ? t('common.loading') : t(`cta.${cta.key}`)} <CtaIcon size={18} />
               </button>
-              {msg && <p data-testid="booking-msg" className={`text-sm ${ALIGN_TEXT} text-pine font-semibold`}>{msg}</p>}
+              {msg && <p data-testid="booking-msg" role="alert" className={`text-sm ${ALIGN_TEXT} text-flag font-semibold`}>{msg}</p>}
             </div>
           ) : (
             <button onClick={onOpenMaps} data-testid="info-cta"
@@ -259,8 +260,23 @@ export function MobileStickyBar({ item, unit, bookable, cta, busy, onBook, onOpe
   // drop it and let the button stand on its own.
   const bare = !bookable && !(item.price > 0);
 
+  // The page ends with the footer, so the footer (not the content above it) leaves room for this
+  // bar: it reads --page-cta-h. Measured, because the bar is taller with a price than without.
+  const barRef = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => {
+    const el = barRef.current;
+    if (!el) return undefined;
+    const root = document.documentElement;
+    const set = () => root.style.setProperty('--page-cta-h', `${el.offsetHeight}px`);
+    set();
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(set) : null;
+    ro?.observe(el);
+    return () => { ro?.disconnect(); root.style.removeProperty('--page-cta-h'); };
+  }, []);
+
   return (
     <div
+      ref={barRef}
       className="lg:hidden fixed inset-x-0 z-30 px-4 pb-2"
       style={{ bottom: 'calc(var(--bottom-nav-h) + 0.5rem)' }}
     >
