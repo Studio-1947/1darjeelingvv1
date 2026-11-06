@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import request from 'supertest';
 import { app } from '../src/app';
-import { registerUser, createListing } from './helpers';
+import { registerUser, createListing, inDays } from './helpers';
 
 const auth = (token: string) => ({ Authorization: `Bearer ${token}` });
 
@@ -46,13 +46,13 @@ describe('notifications feed', () => {
   it('tells the guest when a host accepts, and marks read', async () => {
     const host = await registerUser({ name: 'Host H', role: 'provider' });
     const guest = await registerUser({ name: 'Guest G' });
-    const listing = await createListing({ title: 'Feed Homestay' });
+    const listing = await createListing({ title: 'Feed Homestay', type: 'homestay' });
 
     const booking = await request(app).post('/api/bookings').set(auth(guest.token)).send({
       listing_id: listing.id,
       listing_type: 'homestay',
-      check_in: '2031-03-10',
-      check_out: '2031-03-12',
+      check_in: inDays(10),
+      check_out: inDays(12),
     });
     expect(booking.status).toBe(200);
 
@@ -84,15 +84,15 @@ describe('notifications feed', () => {
 
   it('marks everything read in one call', async () => {
     const guest = await registerUser({ name: 'Many Alerts' });
-    const listing = await createListing({ title: 'Many Alerts Stay' });
+    const listing = await createListing({ title: 'Many Alerts Stay', type: 'homestay' });
     const { loginAdmin } = await import('./helpers');
     const admin = await loginAdmin();
     for (const day of ['10', '15']) {
       const b = await request(app).post('/api/bookings').set(auth(guest.token)).send({
         listing_id: listing.id,
         listing_type: 'homestay',
-        check_in: `2031-04-${day}`,
-        check_out: `2031-04-${Number(day) + 1}`,
+        check_in: inDays(Number(day)),
+        check_out: inDays(Number(day) + 1),
       });
       await request(app).patch(`/api/bookings/${b.body.booking.id}/confirm`).set(auth(admin));
     }
@@ -199,22 +199,22 @@ describe('GET /listings/:id/availability', () => {
     const book = (ci: string, co: string) => request(app).post('/api/bookings').set(auth(guest.token))
       .send({ listing_id: id, listing_type: 'homestay', check_in: ci, check_out: co });
 
-    const held = await book('2031-06-10', '2031-06-12');
+    const held = await book(inDays(32), inDays(34));
     expect(held.status).toBe(200);
-    const accepted = await book('2031-06-20', '2031-06-22');
+    const accepted = await book(inDays(42), inDays(44));
     await request(app).patch(`/api/bookings/${accepted.body.booking.id}/confirm`).set(auth(admin));
 
-    const res = await request(app).get(`/api/listings/${id}/availability?from=2031-06-01&to=2031-06-30`);
+    const res = await request(app).get(`/api/listings/${id}/availability?from=${inDays(20)}&to=${inDays(60)}`);
     expect(res.status).toBe(200);
     expect(res.body.ranges).toEqual([
-      { check_in: '2031-06-10', check_out: '2031-06-12', state: 'hold' },
-      { check_in: '2031-06-20', check_out: '2031-06-22', state: 'booked' },
+      { check_in: inDays(32), check_out: inDays(34), state: 'hold' },
+      { check_in: inDays(42), check_out: inDays(44), state: 'booked' },
     ]);
     // Dates and state only: nothing that identifies the guest or the booking.
     expect(JSON.stringify(res.body)).not.toContain(held.body.booking.id);
 
     // A window that does not touch them is empty, and back-to-back turnover is not a clash.
-    const clear = await request(app).get(`/api/listings/${id}/availability?from=2031-06-12&to=2031-06-20`);
+    const clear = await request(app).get(`/api/listings/${id}/availability?from=${inDays(34)}&to=${inDays(42)}`);
     expect(clear.body.ranges).toEqual([]);
   });
 
@@ -286,7 +286,7 @@ describe('GET /providers/me/stats', () => {
       title: 'My Stay', type: 'homestay', description: 'd', location: 'Darjeeling',
     });
     expect(mine.status).toBe(200);
-    const other = await createListing({ title: 'Someone Elses' });
+    const other = await createListing({ title: 'Someone Elses', type: 'homestay' });
 
     const guest = await registerUser({ name: 'Reviewer' });
     for (const [id, rating] of [[mine.body.item.id, 5], [mine.body.item.id, 4]] as const) {
@@ -296,7 +296,7 @@ describe('GET /providers/me/stats', () => {
     }
     await request(app).post('/api/reviews').set(auth(guest.token)).send({ listing_id: other.id, rating: 1 });
     await request(app).post('/api/bookings').set(auth(guest.token)).send({
-      listing_id: mine.body.item.id, listing_type: 'homestay', check_in: '2031-08-01', check_out: '2031-08-03',
+      listing_id: mine.body.item.id, listing_type: 'homestay', check_in: inDays(64), check_out: inDays(66),
     });
 
     const res = await request(app).get('/api/providers/me/stats').set(auth(host.token));

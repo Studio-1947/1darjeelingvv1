@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import request from 'supertest';
 import { app } from '../src/app';
-import { registerUser, onboardActiveProvider, loginAdmin, createListing } from './helpers';
+import { registerUser, onboardActiveProvider, loginAdmin, createListing, inDays } from './helpers';
 import { eq } from 'drizzle-orm';
 import { db, schema } from '../src/db';
 
@@ -34,7 +34,7 @@ async function ask(token: string, listing: any, body: Record<string, unknown> = 
   const res = await request(app).post('/api/bookings').set(auth(token)).send({
     listing_id: listing.id,
     listing_type: listing.type,
-    ...(listing.type === 'homestay' ? { check_in: '2031-03-01', check_out: '2031-03-03' } : { check_in: '2031-03-01' }),
+    ...(listing.type === 'homestay' ? { check_in: inDays(10), check_out: inDays(12) } : { check_in: inDays(10) }),
     ...body,
   });
   expect(res.status).toBe(200);
@@ -150,11 +150,11 @@ describe('host approval before a booking can be confirmed', () => {
     const { token: first } = await registerUser({ name: 'First Asker' });
     const { token: second } = await registerUser({ name: 'Second Asker' });
     const { token: later } = await registerUser({ name: 'Other Week Asker' });
-    const a = await ask(first, listing, { check_in: '2031-07-01', check_out: '2031-07-04' });
+    const a = await ask(first, listing, { check_in: inDays(32), check_out: inDays(35) });
     // A request holds its nights only for the short checkout window; after that, others can ask.
     await db.update(schema.bookings).set({ createdAt: new Date(Date.now() - 3600_000).toISOString() }).where(eq(schema.bookings.id, a.id));
-    const b = await ask(second, listing, { check_in: '2031-07-03', check_out: '2031-07-05' }); // overlaps a
-    const c = await ask(later, listing, { check_in: '2031-07-10', check_out: '2031-07-12' }); // does not
+    const b = await ask(second, listing, { check_in: inDays(34), check_out: inDays(36) }); // overlaps a
+    const c = await ask(later, listing, { check_in: inDays(41), check_out: inDays(43) }); // does not
 
     const ok = await request(app).patch(`/api/bookings/${a.id}/confirm`).set(auth(hostToken));
     expect(ok.body.booking.status).toBe('accepted');

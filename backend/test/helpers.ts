@@ -2,6 +2,7 @@ import request from 'supertest';
 import { eq } from 'drizzle-orm';
 import { app } from '../src/app';
 import { db, schema } from '../src/db';
+import { addDays, todayInIndia } from '../src/lib/bookingRules';
 
 let phoneCounter = 0;
 
@@ -157,14 +158,20 @@ export async function createConfirmedBooking(opts: {
   return bookingId;
 }
 
-export async function createListing(opts: { title?: string } = {}) {
+/** A date n days from today in India, as YYYY-MM-DD: booking dates must be today or later. */
+export function inDays(n: number): string {
+  return addDays(todayInIndia(), n);
+}
+
+export async function createListing(opts: { title?: string; type?: string; extras?: Record<string, unknown> } = {}) {
   const admin = await loginAdmin();
   const res = await request(app)
     .post('/api/listings')
     .set('Authorization', `Bearer ${admin}`)
     .send({
       title: opts.title || 'Test Spot',
-      type: 'spot',
+      type: opts.type || 'spot',
+      ...(opts.extras ? { extras: opts.extras } : {}),
       description: 'A test listing',
       location: 'Darjeeling',
       provider_id: 'admin-seed-provider',

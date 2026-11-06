@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { db, schema } from '../db';
 import { log } from '../config';
-import { findBlockingBooking, isDateExclusive, lockListingForBooking } from './bookingAvailability';
+import { findBlockingBooking, isDateExclusive, lockBookingForChange } from './bookingAvailability';
 import { notifyBookingCancelled, notifyBookingConfirmed } from './notifications';
 import { addHostNotification, addInAppNotification, resolveHostUserId } from './inApp';
 import { refundPaymentsFor } from './refunds';
@@ -21,15 +21,16 @@ type BookingRow = typeof schema.bookings.$inferSelect;
  */
 async function confirmUnderLock(bookingId: string) {
   return db.transaction(async (tx) => {
-    const [target] = await tx.select().from(schema.bookings)
-      .where(eq(schema.bookings.id, bookingId)).limit(1);
+    // Locked, so a cancel arriving at the same moment waits for this or is seen by it.
+    const target = await lockBookingForChange(tx, bookingId);
     if (!target) return { outcome: 'missing' as const };
 
     // Already confirmed by an earlier call  nothing to redo.
     if (target.status === 'confirmed') return { outcome: 'confirmed' as const, booking: target };
+    // Cancelled first (by the guest, the host or request expiry): it stays cancelled.
+    if (target.status === 'cancelled') return { outcome: 'cancelled' as const, booking: target };
 
     if (isDateExclusive(target.listingType) && target.checkIn && target.checkOut) {
-      await lockListingForBooking(tx, target.listingId);
 
       const clash = await findBlockingBooking(
         tx, target.listingId, target.checkIn, target.checkOut, target.id
@@ -76,6 +77,12 @@ export async function settleBookingConfirmation(
 
   const booking: BookingRow = settlement.booking;
   const conflicted = settlement.outcome === 'conflict';
+
+  // Cancelled before this confirm got its turn. Nothing to announce; a fee paid for it goes back.
+  if (settlement.outcome === 'cancelled') {
+    if (paid) await refundPaymentsFor('booking_commission', booking.id, 'booking was cancelled before the payment settled');
+    return { conflict: false, cancelled: true, id: booking.id, status: booking.status };
+  }
 
   const [listing] = await db.select().from(schema.listings).where(eq(schema.listings.id, booking.listingId)).limit(1);
   let providerInfo: any = null;

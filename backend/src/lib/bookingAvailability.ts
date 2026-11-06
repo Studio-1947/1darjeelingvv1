@@ -151,3 +151,24 @@ export async function lockListingForBooking(
 ): Promise<void> {
   await tx.execute(sql`SELECT id FROM listings WHERE id = ${listingId} FOR UPDATE`);
 }
+
+/**
+ * Locks a booking for a status change and returns it as it is now, or null if it does not exist.
+ *
+ * Every change of a booking's status (host accept, guest confirm, cancel) goes through this, so
+ * two of them on the same booking run one after the other and the second decides on what the
+ * first left behind. Without it, a guest could cancel while the host accepted (or while their own
+ * confirm went through) and the slower write silently undid the cancel.
+ *
+ * The listing is locked before the booking, in every caller, so two changes can never wait on
+ * each other in opposite orders.
+ */
+export async function lockBookingForChange(tx: any, bookingId: string): Promise<BookingRow | null> {
+  const [peek] = await tx.select({ listingId: schema.bookings.listingId })
+    .from(schema.bookings).where(eq(schema.bookings.id, bookingId)).limit(1);
+  if (!peek) return null;
+  await lockListingForBooking(tx, peek.listingId);
+  const [row] = await tx.select().from(schema.bookings)
+    .where(eq(schema.bookings.id, bookingId)).limit(1).for('update');
+  return row ?? null;
+}

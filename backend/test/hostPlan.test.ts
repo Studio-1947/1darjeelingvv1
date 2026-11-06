@@ -4,7 +4,7 @@ import { eq } from 'drizzle-orm';
 import { app } from '../src/app';
 import { db, schema } from '../src/db';
 import { computeHostPlanExpiry, isHostPlanLapsed, isHostPlanLive } from '../src/lib/hostPlan';
-import { onboardActiveProvider, registerUser } from './helpers';
+import { onboardActiveProvider, registerUser, inDays } from './helpers';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -219,7 +219,7 @@ describe('a lapsed host plan', () => {
     const res = await request(app)
       .post('/api/bookings')
       .set('Authorization', `Bearer ${token}`)
-      .send({ listing_id: listing.id, listing_type: 'homestay', check_in: '2030-01-01', check_out: '2030-01-03' });
+      .send({ listing_id: listing.id, listing_type: 'homestay', check_in: inDays(10), check_out: inDays(12) });
     expect(res.status).toBe(409);
   });
 
@@ -230,7 +230,7 @@ describe('a lapsed host plan', () => {
     const booking = await request(app)
       .post('/api/bookings')
       .set('Authorization', `Bearer ${token}`)
-      .send({ listing_id: listing.id, listing_type: 'homestay', check_in: '2030-02-01', check_out: '2030-02-03' });
+      .send({ listing_id: listing.id, listing_type: 'homestay', check_in: inDays(32), check_out: inDays(34) });
     expect(booking.status).toBe(200);
 
     await lapse(providerId);

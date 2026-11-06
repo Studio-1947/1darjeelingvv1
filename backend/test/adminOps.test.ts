@@ -11,7 +11,7 @@ vi.mock('../src/lib/s3', () => ({
 }));
 
 import { app } from '../src/app';
-import { completeMandatoryProfile, loginAdmin, onboardActiveProvider, registerUser, uploadRequiredDocs } from './helpers';
+import { completeMandatoryProfile, loginAdmin, onboardActiveProvider, registerUser, uploadRequiredDocs, inDays } from './helpers';
 
 /**
  * The admin console's two operating views added with host approval:
@@ -84,9 +84,9 @@ describe('admin: bookings list', () => {
     })).body.item;
     const { token: guest } = await registerUser({ name: 'Cab Guest' });
     const first = (await request(app).post('/api/bookings').set(auth(guest))
-      .send({ listing_id: listing.id, listing_type: 'driver', check_in: '2031-05-01' })).body.booking;
+      .send({ listing_id: listing.id, listing_type: 'driver', check_in: inDays(10) })).body.booking;
     const second = (await request(app).post('/api/bookings').set(auth(guest))
-      .send({ listing_id: listing.id, listing_type: 'driver', check_in: '2031-05-02' })).body.booking;
+      .send({ listing_id: listing.id, listing_type: 'driver', check_in: inDays(11) })).body.booking;
 
     const res = await request(app).get('/api/admin/bookings').set(auth(admin));
     expect(res.status).toBe(200);

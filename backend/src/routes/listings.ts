@@ -14,6 +14,7 @@ import { blockedRanges, isDateExclusive } from '../lib/bookingAvailability';
 import { myActiveProvider, myProvider } from '../lib/hostAccess';
 import { HOST_APPROVAL_TYPES } from '../lib/bookingApproval';
 import { rank, type Interpretation } from '../lib/search';
+import { maxGuestsFor } from '../lib/bookingRules';
 import {
   SPOT_TYPE, SPOT_FORBIDDEN_MESSAGE, canWriteSpots, parseSpotExtras,
   isSpotPublished, publicSpotVisibility, spotOrdering, SpotValidationError,
@@ -276,6 +277,7 @@ router.get('/', async (req: Request, res: Response) => {
       latitude: item.latitude,
       longitude: item.longitude,
       price: item.price,
+      max_guests: maxGuestsFor(item),
       image: item.image,
       tags: item.tags,
       provider_id: item.providerId,
@@ -379,6 +381,7 @@ router.get('/:id', async (req: Request, res: Response) => {
     latitude: item.latitude,
     longitude: item.longitude,
     price: item.price,
+    max_guests: maxGuestsFor(item),
     image: item.image,
     tags: item.tags,
     provider_id: item.providerId,
@@ -542,6 +545,7 @@ router.post('/', authenticateToken, async (req: Request, res: Response) => {
     latitude: listing.latitude,
     longitude: listing.longitude,
     price: listing.price,
+    max_guests: maxGuestsFor(listing),
     image: listing.image,
     tags: listing.tags,
     provider_id: listing.providerId,
@@ -722,6 +726,7 @@ const updateListingHandler = async (req: Request, res: Response) => {
     latitude: updated.latitude,
     longitude: updated.longitude,
     price: updated.price,
+    max_guests: maxGuestsFor(updated),
     image: updated.image,
     tags: updated.tags,
     provider_id: updated.providerId,

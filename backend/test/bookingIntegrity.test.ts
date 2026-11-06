@@ -4,7 +4,7 @@ import { eq } from 'drizzle-orm';
 import { app } from '../src/app';
 import { db, schema } from '../src/db';
 import { v4 as uuidv4 } from 'uuid';
-import { registerUser, createListing, loginAdmin } from './helpers';
+import { registerUser, createListing, loginAdmin, inDays } from './helpers';
 
 /**
  * The three defects that made taking real bookings unsafe, each pinned by a test:
@@ -70,16 +70,16 @@ async function expireHold(bookingId: string) {
 
 describe('double-booking', () => {
   it('refuses to confirm a second paid booking for dates already confirmed', async () => {
-    const listing = await createListing({ title: 'Contested Homestay' });
+    const listing = await createListing({ title: 'Contested Homestay', type: 'homestay' });
     const { token: guestA } = await registerUser({ name: 'Guest A' });
     const { token: guestB } = await registerUser({ name: 'Guest B' });
 
     // Both guests get a booking row for overlapping nights. The hold window would normally stop
     // the second one, so it is expired first  this reproduces the exact race the hold cannot
     // catch: two checkouts that were both legitimately open when they started.
-    const bookingA = await createBooking(guestA, listing.id, '2027-03-01', '2027-03-05');
+    const bookingA = await createBooking(guestA, listing.id, inDays(10), inDays(14));
     await expireHold(bookingA);
-    const bookingB = await createBooking(guestB, listing.id, '2027-03-02', '2027-03-04');
+    const bookingB = await createBooking(guestB, listing.id, inDays(11), inDays(13));
 
     const payA = await payForBooking(guestA, bookingA);
     expect(payA.completeRes.status).toBe(200);
@@ -97,13 +97,13 @@ describe('double-booking', () => {
   });
 
   it('refunds the guest whose paid booking lost the race', async () => {
-    const listing = await createListing({ title: 'Refund On Clash Homestay' });
+    const listing = await createListing({ title: 'Refund On Clash Homestay', type: 'homestay' });
     const { token: guestA } = await registerUser({ name: 'Winner' });
     const { token: guestB } = await registerUser({ name: 'Loser' });
 
-    const bookingA = await createBooking(guestA, listing.id, '2027-04-01', '2027-04-05');
+    const bookingA = await createBooking(guestA, listing.id, inDays(34), inDays(38));
     await expireHold(bookingA);
-    const bookingB = await createBooking(guestB, listing.id, '2027-04-02', '2027-04-04');
+    const bookingB = await createBooking(guestB, listing.id, inDays(35), inDays(37));
 
     await payForBooking(guestA, bookingA);
     const payB = await payForBooking(guestB, bookingB);
@@ -118,9 +118,9 @@ describe('double-booking', () => {
   });
 
   it('still confirms a booking whose dates are genuinely free', async () => {
-    const listing = await createListing({ title: 'Uncontested Homestay' });
+    const listing = await createListing({ title: 'Uncontested Homestay', type: 'homestay' });
     const { token } = await registerUser({ name: 'Only Guest' });
-    const bookingId = await createBooking(token, listing.id, '2027-05-01', '2027-05-04');
+    const bookingId = await createBooking(token, listing.id, inDays(58), inDays(61));
 
     const { completeRes } = await payForBooking(token, bookingId);
     expect(completeRes.status).toBe(200);
@@ -133,13 +133,13 @@ describe('double-booking', () => {
 
 describe('double-booking on the free checkout', () => {
   it('confirms exactly one of two overlapping checkouts and cancels the other', async () => {
-    const listing = await createListing({ title: 'Free Contested Homestay' });
+    const listing = await createListing({ title: 'Free Contested Homestay', type: 'homestay' });
     const { token: guestA } = await registerUser({ name: 'Free Guest A' });
     const { token: guestB } = await registerUser({ name: 'Free Guest B' });
 
-    const bookingA = await createBooking(guestA, listing.id, '2027-12-01', '2027-12-05');
+    const bookingA = await createBooking(guestA, listing.id, inDays(217), inDays(221));
     await expireHold(bookingA);
-    const bookingB = await createBooking(guestB, listing.id, '2027-12-02', '2027-12-04');
+    const bookingB = await createBooking(guestB, listing.id, inDays(218), inDays(220));
 
     const first = await checkout(guestA, bookingA);
     expect(first.status).toBe(200);
@@ -157,9 +157,9 @@ describe('double-booking on the free checkout', () => {
 
 describe('booking notifications', () => {
   it('records that the guest was told when a booking is confirmed', async () => {
-    const listing = await createListing({ title: 'Notified Homestay' });
+    const listing = await createListing({ title: 'Notified Homestay', type: 'homestay' });
     const { token } = await registerUser({ name: 'Told Guest' });
-    const bookingId = await createBooking(token, listing.id, '2027-06-01', '2027-06-03');
+    const bookingId = await createBooking(token, listing.id, inDays(81), inDays(83));
     await checkout(token, bookingId);
 
     const [row] = await db.select().from(schema.bookings).where(eq(schema.bookings.id, bookingId)).limit(1);
@@ -170,9 +170,9 @@ describe('booking notifications', () => {
   it('says why nobody could be told rather than leaving it blank', async () => {
     // This listing is admin-authored with a provider id that names no provider and no user, so
     // there is no host phone number to reach. The booking must still confirm  and must say so.
-    const listing = await createListing({ title: 'Hostless Homestay' });
+    const listing = await createListing({ title: 'Hostless Homestay', type: 'homestay' });
     const { token } = await registerUser({ name: 'Guest Without Host' });
-    const bookingId = await createBooking(token, listing.id, '2027-07-01', '2027-07-03');
+    const bookingId = await createBooking(token, listing.id, inDays(103), inDays(105));
     await checkout(token, bookingId);
 
     const [row] = await db.select().from(schema.bookings).where(eq(schema.bookings.id, bookingId)).limit(1);
@@ -183,9 +183,9 @@ describe('booking notifications', () => {
 
 describe('refunds (legacy paid bookings)', () => {
   it('returns the money when a confirmed booking is cancelled', async () => {
-    const listing = await createListing({ title: 'Cancellable Homestay' });
+    const listing = await createListing({ title: 'Cancellable Homestay', type: 'homestay' });
     const { token, user } = await registerUser({ name: 'Cancelling Guest' });
-    const bookingId = await createBooking(token, listing.id, '2027-08-01', '2027-08-04');
+    const bookingId = await createBooking(token, listing.id, inDays(125), inDays(128));
     const { orderId } = await payForBooking(token, bookingId);
 
     const res = await request(app)
@@ -201,9 +201,9 @@ describe('refunds (legacy paid bookings)', () => {
   });
 
   it('is idempotent  a second cancel does not refund twice', async () => {
-    const listing = await createListing({ title: 'Double Cancel Homestay' });
+    const listing = await createListing({ title: 'Double Cancel Homestay', type: 'homestay' });
     const { token } = await registerUser({ name: 'Twice Cancelling Guest' });
-    const bookingId = await createBooking(token, listing.id, '2027-09-01', '2027-09-04');
+    const bookingId = await createBooking(token, listing.id, inDays(148), inDays(151));
     const { orderId } = await payForBooking(token, bookingId);
 
     await request(app).patch(`/api/bookings/${bookingId}/cancel`).set('Authorization', `Bearer ${token}`);
@@ -217,9 +217,9 @@ describe('refunds (legacy paid bookings)', () => {
   });
 
   it('does not refund a booking that was never paid for', async () => {
-    const listing = await createListing({ title: 'Unpaid Cancel Homestay' });
+    const listing = await createListing({ title: 'Unpaid Cancel Homestay', type: 'homestay' });
     const { token } = await registerUser({ name: 'Unpaid Canceller' });
-    const bookingId = await createBooking(token, listing.id, '2027-10-01', '2027-10-04');
+    const bookingId = await createBooking(token, listing.id, inDays(171), inDays(174));
 
     const res = await request(app)
       .patch(`/api/bookings/${bookingId}/cancel`)
@@ -230,9 +230,9 @@ describe('refunds (legacy paid bookings)', () => {
   });
 
   it('lets an admin refund a settled payment, and refuses to do it twice', async () => {
-    const listing = await createListing({ title: 'Admin Refund Homestay' });
+    const listing = await createListing({ title: 'Admin Refund Homestay', type: 'homestay' });
     const { token } = await registerUser({ name: 'Admin Refunded Guest' });
-    const bookingId = await createBooking(token, listing.id, '2027-11-01', '2027-11-04');
+    const bookingId = await createBooking(token, listing.id, inDays(194), inDays(197));
     await payForBooking(token, bookingId);
     const [payment] = await db.select().from(schema.payments)
       .where(eq(schema.payments.referenceId, bookingId)).limit(1);

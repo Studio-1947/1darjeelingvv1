@@ -35,10 +35,11 @@ describe('request and acceptance reach people outside the app', () => {
       title: 'Notify Homestay', type: 'homestay', description: 'x', location: 'Darjeeling', price: 1500, provider_id: providerId,
     })).body.item;
     const { token: guest } = await helpers.registerUser({ name: 'Notify Guest' });
+    const [from, to] = [helpers.inDays(10), helpers.inDays(12)];
 
     sent.length = 0;
     const made = await request(app).post('/api/bookings').set(auth(guest)).send({
-      listing_id: listing.id, listing_type: 'homestay', check_in: '2032-05-01', check_out: '2032-05-03',
+      listing_id: listing.id, listing_type: 'homestay', check_in: from, check_out: to,
     });
     expect(made.body.booking.awaiting_host).toBe(true);
     await settle();
@@ -46,7 +47,7 @@ describe('request and acceptance reach people outside the app', () => {
     expect(toHost.length).toBeGreaterThan(0);
     // Positional contract with the approved template: listing, guest, stay.
     expect(Object.keys(toHost[0].vars)).toEqual(['listing', 'guest', 'stay']);
-    expect(toHost[0].vars).toMatchObject({ listing: 'Notify Homestay', guest: 'Notify Guest', stay: '2032-05-01 to 2032-05-03' });
+    expect(toHost[0].vars).toMatchObject({ listing: 'Notify Homestay', guest: 'Notify Guest', stay: `${from} to ${to}` });
 
     sent.length = 0;
     const ok = await request(app).patch(`/api/bookings/${made.body.booking.id}/confirm`).set(auth(hostToken));
@@ -62,7 +63,7 @@ describe('request and acceptance reach people outside the app', () => {
     const listing = await helpers.createListing({ title: 'Team Spot Notify' });
     const { token: guest } = await helpers.registerUser({ name: 'Spot Notify Guest' });
     sent.length = 0;
-    await request(app).post('/api/bookings').set(auth(guest)).send({ listing_id: listing.id, listing_type: listing.type, check_in: '2032-05-01' });
+    await request(app).post('/api/bookings').set(auth(guest)).send({ listing_id: listing.id, listing_type: listing.type, check_in: helpers.inDays(10) });
     await settle();
     expect(sent.filter((m) => m.template === 'booking_request_host')).toHaveLength(0);
   });

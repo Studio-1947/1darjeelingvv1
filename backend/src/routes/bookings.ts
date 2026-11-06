@@ -1,15 +1,17 @@
 import { Router, Request, Response } from 'express';
+import { REQUEST_EXPIRY_HOURS } from '../config';
 import { isCompleted } from '../lib/travellerDashboard';
 import { guideWorksOn, isAvailable } from '../lib/hostProfile';
 import { v4 as uuidv4 } from 'uuid';
 import { db, schema } from '../db';
 // lt/gt/and moved out with the inline overlap query  the date comparison now lives in
 // lib/bookingAvailability.ts, shared with the settlement path so the two cannot drift.
-import { eq, desc, inArray, and, ne, lt, gt } from 'drizzle-orm';
+import { eq, desc, inArray, and, ne, lt, gt, gte, isNull, sql } from 'drizzle-orm';
 import { authenticateToken } from '../middleware/auth';
 import { isExemptFromSupport, isSupportActive } from '../lib/support';
 import { flowBreakup, passBreakupFor } from '../lib/pricing';
-import { findBlockingBooking, isDateExclusive, lockListingForBooking } from '../lib/bookingAvailability';
+import { findBlockingBooking, holdCutoff, isDateExclusive, lockBookingForChange, lockListingForBooking } from '../lib/bookingAvailability';
+import { checkBookingRequest, hasStartDatePassed, MAX_OPEN_REQUESTS, PAST_DATE_DETAIL } from '../lib/bookingRules';
 import { refundPaymentsFor } from '../lib/refunds';
 import { notifyBookingAccepted, notifyBookingCancelled, notifyBookingRequest } from '../lib/notifications';
 import { routeParam } from '../lib/routeParam';
@@ -43,14 +45,14 @@ const router = Router();
  *         application/json:
  *           schema:
  *             type: object
- *             required: [listing_id, listing_type]
+ *             required: [listing_id]
  *             properties:
  *               listing_id: { type: string }
- *               listing_type: { type: string }
- *               check_in: { type: string, description: "Required (and must precede check_out) when listing_type is homestay" }
- *               check_out: { type: string }
- *               guests: { type: integer, default: 1 }
- *               notes: { type: string }
+ *               listing_type: { type: string, description: "Ignored. The listing's own stored type decides every rule." }
+ *               check_in: { type: string, description: "YYYY-MM-DD, today (India time) or later, up to 365 days ahead. Required for a homestay." }
+ *               check_out: { type: string, description: "YYYY-MM-DD. Homestay: required, 1 to 30 nights after check_in." }
+ *               guests: { type: integer, default: 1, description: "1 to the listing's max_guests" }
+ *               notes: { type: string, maxLength: 1000 }
  *     responses:
  *       200:
  *         description: Created booking
@@ -61,7 +63,9 @@ const router = Router();
  *               properties:
  *                 booking: { $ref: '#/components/schemas/Booking' }
  *       400:
- *         description: Missing/invalid fields (e.g. bad homestay date range)
+ *         description: >
+ *           Missing/invalid fields, with a `code`: dates_required, bad_date, date_in_past,
+ *           too_far_ahead, dates_order, stay_too_long, bad_guests, bad_notes.
  *         content:
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
@@ -86,21 +90,14 @@ const router = Router();
 // Create a booking
 // No pass needed to ask: without one, the ₹1 fee is paid when the booking is confirmed.
 router.post('/', authenticateToken, requireTravellerMode, async (req: Request, res: Response) => {
-  const { listing_id, listing_type, check_in, check_out, guests = 1, notes, voucher_id, route_name, services } = req.body;
+  // `listing_type` from the body is deliberately not read: the stored listing's type decides every
+  // rule below, so a request cannot pick a type with weaker checks.
+  const { listing_id, voucher_id, route_name, services } = req.body || {};
   // A driver booking says which of the driver's routes it is for (host dashboard: km and places).
   const routeName = typeof route_name === 'string' && route_name.trim() ? route_name.trim().slice(0, 160) : null;
 
-  if (!listing_id || !listing_type) {
-    return res.status(400).json({ detail: 'Listing ID and type are required' });
-  }
-
-  if (listing_type === 'homestay') {
-    if (!check_in || !check_out) {
-      return res.status(400).json({ detail: 'Check-in and check-out dates are required for homestays' });
-    }
-    if (new Date(check_out) <= new Date(check_in)) {
-      return res.status(400).json({ detail: 'Check-out date must be after check-in date' });
-    }
+  if (!listing_id || typeof listing_id !== 'string') {
+    return res.status(400).json({ detail: 'Listing ID is required' });
   }
 
   let validVoucher = null;
@@ -121,8 +118,11 @@ router.post('/', authenticateToken, requireTravellerMode, async (req: Request, r
   if (!listing) {
     return res.status(404).json({ detail: 'Listing not found' });
   }
-  // Cafés and shops are contact-only: a guest rings them, nothing is reserved. Judged on the
-  // listing's own type, since the client-supplied one is just a claim.
+  // Dates, guests and notes, judged against the stored listing (lib/bookingRules.ts).
+  const checked = checkBookingRequest(listing, req.body || {});
+  if (!checked.ok) return res.status(400).json({ detail: checked.detail, code: checked.code });
+  const { checkIn: check_in, checkOut: check_out, guests, notes } = checked.value;
+
   // A host who switched availability off takes no bookings until they switch it back on.
   if (!isAvailable(listing.extras as Record<string, any>)) {
     return res.status(409).json({ detail: 'This host is not taking bookings right now.', code: 'unavailable' });
@@ -137,7 +137,8 @@ router.post('/', authenticateToken, requireTravellerMode, async (req: Request, r
     });
   }
 
-  if (CONTACT_ONLY_TYPES.has(listing.type) || CONTACT_ONLY_TYPES.has(listing_type)) {
+  // Cafés and shops are contact-only: a guest rings them, nothing is reserved.
+  if (CONTACT_ONLY_TYPES.has(listing.type)) {
     return res.status(400).json({ detail: 'This kind of listing is contact-only and cannot be booked' });
   }
   // A host whose yearly plan has lapsed is not taking bookings until they renew. Their listing is
@@ -154,25 +155,15 @@ router.post('/', authenticateToken, requireTravellerMode, async (req: Request, r
     ? [...new Set(services.map((s: unknown) => String(s ?? '').trim()).filter((s: string) => offered.has(s)))].slice(0, 20) as string[]
     : [];
 
-  if (isDateExclusive(listing_type)) {
-    // Blocks on confirmed bookings AND on checkouts still inside their hold window. Checking only
-    // confirmed rows (as this did before) meant two guests could both open checkout for the same
-    // nights, both pay, and both be confirmed  the settlement path in payments.ts is the second
-    // half of that fix, for the case where both get past this point at once.
-    const blocking = await findBlockingBooking(db, listing_id, check_in, check_out);
-    if (blocking) {
-      return res.status(409).json({ detail: 'These dates are already booked for this homestay' });
-    }
-  }
-
   const booking = {
     id: uuidv4(),
     userId: req.user.id,
     listingId: listing_id,
-    listingType: listing_type,
+    // Always the listing's own type: later steps (accept, confirm, amounts) read it from here.
+    listingType: listing.type,
     listingTitle: listing.title,
-    checkIn: check_in || null,
-    checkOut: check_out || null,
+    checkIn: check_in,
+    checkOut: check_out,
     guests,
     notes,
     routeName,
@@ -184,13 +175,45 @@ router.post('/', authenticateToken, requireTravellerMode, async (req: Request, r
     appliedDiscount: validVoucher ? validVoucher.discountPercentage : null,
   };
 
-  // Run the booking insert and voucher burn in a transaction to prevent double spending
-  // The check above and this claim are separate statements, so two requests can both see the
-  // voucher as available. The update therefore re-checks `available` itself and says whether it
-  // won; the loser rolls back its booking row too.
+  // The clash check, the insert and the voucher burn happen in one transaction under the listing
+  // lock, so requests sent at the same instant (a double tap, or two guests) are judged one after
+  // the other: the second sees the first and is refused instead of both being saved.
+  // The voucher update also re-checks `available` itself and says whether it won; the loser rolls
+  // back its booking row too.
   const VOUCHER_TAKEN = Symbol('voucher-taken');
+  const CLASH = Symbol('clash');
+  let clash: typeof schema.bookings.$inferSelect | null = null;
+  const TOO_MANY = Symbol('too-many');
   try {
     await db.transaction(async (tx) => {
+      // A request costs nothing until it is confirmed, but each one messages a host. Cap how many
+      // one traveller can have waiting at once; the per-person lock makes requests sent at the same
+      // instant (to different listings) count one after the other. Always taken before the listing
+      // lock, and only here, so the two locks are never waited on in opposite orders.
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`booking-requests:${req.user.id}`}))`);
+      const waiting = await tx.select({ id: schema.bookings.id }).from(schema.bookings).where(and(
+        eq(schema.bookings.userId, req.user.id),
+        eq(schema.bookings.status, 'pending_payment'),
+        gte(schema.bookings.createdAt, new Date(Date.now() - REQUEST_EXPIRY_HOURS * 60 * 60 * 1000).toISOString()),
+      ));
+      if (waiting.length >= MAX_OPEN_REQUESTS) throw TOO_MANY;
+      await lockListingForBooking(tx, listing_id);
+      if (isDateExclusive(listing.type) && check_in && check_out) {
+        // Blocks on confirmed and accepted bookings AND on requests still inside their hold window.
+        clash = await findBlockingBooking(tx, listing_id, check_in, check_out);
+      } else {
+        // Nothing reserves a driver's or guide's day, but the same person asking twice for the
+        // same day within the hold window is a double tap, not a second trip.
+        const [same] = await tx.select().from(schema.bookings).where(and(
+          eq(schema.bookings.userId, req.user.id),
+          eq(schema.bookings.listingId, listing_id),
+          eq(schema.bookings.status, 'pending_payment'),
+          check_in ? eq(schema.bookings.checkIn, check_in) : isNull(schema.bookings.checkIn),
+          gte(schema.bookings.createdAt, holdCutoff()),
+        )).limit(1);
+        clash = same ?? null;
+      }
+      if (clash) throw CLASH;
       await tx.insert(schema.bookings).values(booking);
       if (validVoucher) {
         const claimed = await tx.update(schema.vouchers)
@@ -205,6 +228,23 @@ router.post('/', authenticateToken, requireTravellerMode, async (req: Request, r
       }
     });
   } catch (err) {
+    if (err === TOO_MANY) {
+      return res.status(409).json({
+        detail: `You have ${MAX_OPEN_REQUESTS} requests waiting for hosts. Wait for an answer, or cancel one in My Trips, then ask again.`,
+        code: 'too_many_requests',
+      });
+    }
+    if (err === CLASH && clash) {
+      const taken = clash as typeof schema.bookings.$inferSelect;
+      if (taken.userId === req.user.id) {
+        return res.status(409).json({
+          detail: 'You already asked for these dates. See it in My Trips.',
+          code: 'already_requested',
+          booking_id: taken.id,
+        });
+      }
+      return res.status(409).json({ detail: 'These dates are already booked for this homestay', code: 'dates_taken' });
+    }
     if (err === VOUCHER_TAKEN) {
       return res.status(400).json({ detail: 'Voucher is invalid, unavailable, or does not belong to you' });
     }
@@ -576,13 +616,21 @@ router.patch('/:id/confirm', authenticateToken, async (req: Request, res: Respon
   if (booking.status === 'cancelled') {
     return res.status(409).json({ detail: 'This booking was cancelled and cannot be accepted' });
   }
+  // A request whose date has passed (one saved before dates were checked) cannot be promised.
+  if (hasStartDatePassed(booking.checkIn)) {
+    return res.status(409).json({ detail: PAST_DATE_DETAIL, code: 'date_in_past' });
+  }
 
   // Accepting takes the dates off the market unconditionally, so it has to be serialised against
   // the settlement path the same way that path serialises against itself  otherwise a host could
   // accept one guest at the same instant another guest's payment confirms the same nights.
   const outcome = await db.transaction(async (tx) => {
+    // Re-read under lock: the guest may have cancelled, or request expiry closed it, since the
+    // checks above. Accepting must not undo either.
+    const now = await lockBookingForChange(tx, booking.id);
+    if (!now || now.status === 'cancelled') return { closed: true as const };
+    if (now.status === 'accepted' || now.status === 'confirmed') return { already: now };
     if (isDateExclusive(booking.listingType) && booking.checkIn && booking.checkOut) {
-      await lockListingForBooking(tx, booking.listingId);
       const clash = await findBlockingBooking(
         tx, booking.listingId, booking.checkIn, booking.checkOut, booking.id
       );
@@ -613,6 +661,10 @@ router.patch('/:id/confirm', authenticateToken, async (req: Request, res: Respon
     return { taken: false as const, booking: accepted, declined };
   });
 
+  if ('closed' in outcome) {
+    return res.status(409).json({ detail: 'This booking was cancelled and cannot be accepted', code: 'cancelled' });
+  }
+  if ('already' in outcome && outcome.already) return res.json({ booking: bookingShape(outcome.already) });
   if (outcome.taken) {
     return res.status(409).json({ detail: 'These dates have already gone to another guest' });
   }
@@ -679,6 +731,10 @@ router.post('/:id/checkout', authenticateToken, async (req: Request, res: Respon
     return res.status(409).json({ detail: AWAITING_HOST_DETAIL, code: 'awaiting_host', booking: bookingShape(booking) });
   }
   if (booking.status !== 'confirmed') {
+    // Checked before the fee, so nobody pays to confirm a date that has already gone.
+    if (hasStartDatePassed(booking.checkIn)) {
+      return res.status(409).json({ detail: PAST_DATE_DETAIL, code: 'date_in_past' });
+    }
     const [listing] = await db.select({ providerId: schema.listings.providerId })
       .from(schema.listings).where(eq(schema.listings.id, booking.listingId)).limit(1);
     if (listing && (await isListingHostLapsed(listing.providerId))) {
@@ -699,6 +755,9 @@ router.post('/:id/checkout', authenticateToken, async (req: Request, res: Respon
 
   const record = await settleBookingConfirmation(booking.id, req.user.id, { paid: false });
   if (!record) return res.status(404).json({ detail: 'Booking not found' });
+  if ('cancelled' in record && record.cancelled) {
+    return res.status(409).json({ detail: 'This booking was cancelled', code: 'cancelled' });
+  }
   if (record.conflict) {
     return res.status(409).json({ detail: 'These dates have already gone to another guest', booking: record });
   }
@@ -717,17 +776,27 @@ router.patch('/:id/cancel', authenticateToken, async (req: Request, res: Respons
 
   const shape = bookingShape;
 
-  // Idempotent: cancelling an already-cancelled booking just echoes it back.
-  if (booking.status === 'cancelled') return res.json({ booking: shape(booking) });
-
-  const [updated] = await db.update(schema.bookings)
-    .set({ status: 'cancelled' })
-    .where(eq(schema.bookings.id, booking.id))
-    .returning();
+  // Locked, so an accept or confirm landing at the same moment cannot overwrite the cancel, and
+  // `was` is the status this cancel actually replaced (the decisions below depend on it).
+  const change = await db.transaction(async (tx) => {
+    const now = await lockBookingForChange(tx, booking.id);
+    if (!now) return null;
+    // Idempotent: cancelling an already-cancelled booking just echoes it back.
+    if (now.status === 'cancelled') return { was: now.status, updated: now, unchanged: true };
+    const [updated] = await tx.update(schema.bookings)
+      .set({ status: 'cancelled' })
+      .where(eq(schema.bookings.id, booking.id))
+      .returning();
+    return { was: now.status, updated, unchanged: false };
+  });
+  if (!change) return res.status(404).json({ detail: 'Booking not found' });
+  if (change.unchanged) return res.json({ booking: shape(change.updated) });
+  const { updated } = change;
+  const wasStatus = change.was;
 
   // A voucher is burned when the request is made. If the booking never reached `confirmed` the
   // guest received nothing for it, so it goes back; a confirmed stay keeps its discount spent.
-  if (booking.status !== 'confirmed') await releaseVoucherForBooking(db, booking.id);
+  if (wasStatus !== 'confirmed') await releaseVoucherForBooking(db, booking.id);
 
   // Give back whatever was paid for this booking. Before this, cancelling flipped the status and
   // kept the money with no record that anything was owed  refundPaymentsFor is idempotent and a
@@ -748,7 +817,7 @@ router.patch('/:id/cancel', authenticateToken, async (req: Request, res: Respons
       body: `Your booking for ${booking.listingTitle} was cancelled by the host.`,
       refId: booking.id,
     });
-  } else if (booking.status === 'confirmed' || booking.status === 'accepted') {
+  } else if (wasStatus === 'confirmed' || wasStatus === 'accepted') {
     const [listing] = await db.select({ providerId: schema.listings.providerId })
       .from(schema.listings).where(eq(schema.listings.id, booking.listingId)).limit(1);
     await addHostNotification(listing?.providerId, {
@@ -761,7 +830,7 @@ router.patch('/:id/cancel', authenticateToken, async (req: Request, res: Respons
 
   // Only worth telling the guest when there was something to tell them about  a booking that
   // never reached confirmation was never announced in the first place.
-  if (booking.status === 'confirmed') {
+  if (wasStatus === 'confirmed') {
     const [guest] = await db.select().from(schema.users).where(eq(schema.users.id, booking.userId)).limit(1);
     await notifyBookingCancelled(updated, guest?.phone || '', guest?.name || 'Guest', refunded, guest?.email);
   }
