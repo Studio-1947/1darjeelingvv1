@@ -111,7 +111,7 @@ export default function TripCard({ booking: b, confirming, busy, onAskCancel, on
         <div className={row}>
           <Receipt size={15} className="text-pine flex-shrink-0" />
           <dt className="text-ink-soft">{t('dashboard.booked_on')}</dt>
-          <dd className="font-semibold ml-auto">{new Date(b.created_at).toLocaleDateString(i18n.language)}</dd>
+          <dd className="font-semibold ml-auto">{new Date(b.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</dd>
         </div>
       </dl>
 

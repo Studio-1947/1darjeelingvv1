@@ -63,7 +63,7 @@ export default function BookingCard({ b, onCancel, onAccept, host }: {
         </div>
         <div className="mt-2 text-xs text-ink-soft space-y-0.5">
           {b.check_in && <div>{t('booking.checkin')}: <b className="text-ink">{formatTripDates(b.check_in, b.check_out, i18n.language)}</b></div>}
-          <div>{t('booking.guests')}: <b className="text-ink">{b.guests}</b> · {t('pd.placed')}: {new Date(b.created_at).toLocaleDateString(i18n.language)}</div>
+          <div>{t('booking.guests')}: <b className="text-ink">{b.guests}</b> · {t('pd.placed')}: {new Date(b.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
           {b.notes && <div className="italic">“{b.notes}”</div>}
           {b.services?.length > 0 && <div data-testid={`booking-asked-${b.id}`}>Asked for: <b className="text-ink">{b.services.join(', ')}</b></div>}
           {b.route_name && <div>Route: <b className="text-ink">{b.route_name}</b></div>}

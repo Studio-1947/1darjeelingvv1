@@ -106,7 +106,7 @@ export default function TravellerPanels() {
           {data.pass.active ? (
             <>
               <div className="mt-2 font-display font-extrabold text-2xl">Active</div>
-              <div className="text-sm text-white/75">Every booking confirms free{data.pass.expires_at && !data.pass.expires_at.startsWith('9999') ? ` until ${new Date(data.pass.expires_at).toLocaleDateString()}` : ''}.</div>
+              <div className="text-sm text-white/75">Every booking confirms free{data.pass.expires_at && !data.pass.expires_at.startsWith('9999') ? ` until ${new Date(data.pass.expires_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}.</div>
             </>
           ) : (
             <>
