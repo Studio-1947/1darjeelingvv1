@@ -25,7 +25,7 @@ export default function HostFeedStrip() {
         <h2 className="flex items-center gap-2 font-display font-extrabold text-2xl md:text-3xl text-ink">
           <Newspaper size={20} className="text-pine" /> {t('feed.strip_title')}
         </h2>
-        <Link to="/feed" className="inline-flex items-center gap-1 text-sm font-bold text-pine">
+        <Link to="/feed" className="inline-flex items-center gap-1 min-h-11 text-sm font-bold text-pine">
           {t('feed.see_all')} <ArrowRight size={14} />
         </Link>
       </div>

@@ -299,7 +299,7 @@ export default function ReviewsSection({ item }: { item: any }) {
                         type="button"
                         onClick={() => setReportTarget({ type: 'review', id: r.id, authorId: r.user_id, authorName: r.author_name || '?' })}
                         data-testid={`review-report-${r.id}`}
-                        className="text-xs font-semibold text-ink-soft hover:text-flag"
+                        className="inline-flex items-center min-h-11 text-xs font-semibold text-ink-soft hover:text-flag"
                       >
                         {t('report.review_link')}
                       </button>
@@ -329,12 +329,12 @@ export default function ReviewsSection({ item }: { item: any }) {
               type="button"
               onClick={() => setReportTarget({ type: 'listing', id: item.id })}
               data-testid="listing-report"
-              className="text-xs font-semibold text-ink-soft underline hover:text-flag"
+              className="inline-flex items-center min-h-11 text-xs font-semibold text-ink-soft underline hover:text-flag"
             >
               {t('report.listing_link')}
             </button>
           ) : (
-            <Link to={`/login?next=${encodeURIComponent(loc.pathname + '#reviews')}`} className="text-xs font-semibold text-ink-soft underline hover:text-flag">
+            <Link to={`/login?next=${encodeURIComponent(loc.pathname + '#reviews')}`} className="inline-flex items-center min-h-11 text-xs font-semibold text-ink-soft underline hover:text-flag">
               {t('report.listing_link')}
             </Link>
           )}

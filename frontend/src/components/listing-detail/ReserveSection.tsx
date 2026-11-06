@@ -85,7 +85,7 @@ function PriceBreakdown({ item, unit, nights, guests, voucherPct = 0 }: {
         {t('booking.fee_note')}
       </p>
 
-      <Link to="/refunds" className="mt-3 inline-block text-xs font-semibold text-pine underline">
+      <Link to="/refunds" className="mt-1 inline-flex items-center min-h-11 text-xs font-semibold text-pine underline">
         {t('booking.fees_and_refunds')}
       </Link>
     </div>

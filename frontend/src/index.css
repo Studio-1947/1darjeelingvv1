@@ -259,9 +259,11 @@ button.border-pine, a.rounded-full.border-pine { border-color: var(--button); }
 
 /* Button sizes, the same as the app (theme `button` sizes in src/theme/index.ts):
    main  - 50px tall, 15px text: page actions such as Reserve, Send OTP, Pay, Post.
-   small - 40px tall, 13px text: buttons inside cards and lists (marked with text-xs / text-sm).
+   small - var(--btn-small) tall, 13px text: buttons inside cards and lists (marked with
+           text-xs / text-sm). 40px on desktop, 44px on phones and tablets (set below).
    Round icon buttons with a fixed height (h-9, h-11), filter chips (border-pine) and the header
    are left alone. */
+:root { --btn-small: 40px; }
 main :is(button, a).bg-pine.rounded-full:not([class*="h-"]):not(.border-pine),
 main :is(button, a).rounded-full.btn-main {
   min-height: 50px;
@@ -272,6 +274,46 @@ main :is(button, a).rounded-full.btn-main {
   line-height: 1.25;
 }
 main :is(button, a).bg-pine.rounded-full:is(.text-xs, .text-sm):not([class*="h-"]):not(.border-pine):not(.btn-main) {
-  min-height: 40px;
+  min-height: var(--btn-small);
   font-size: 13px !important;
+}
+
+/* Phones and tablets (below lg, where the bottom tab bar shows). People tap these with a thumb,
+   so every tappable control is at least the small button: 44px tall (Apple's minimum touch
+   target), 13px text, and round icon buttons 44 x 44. Chips, outline, white and icon buttons follow the same sizes as the green
+   ones, on every page, signed in or not, header included. These rules only ever make a control
+   bigger, never smaller. Desktop keeps its own sizes. */
+@media (max-width: 1023px) {
+  :root { --btn-small: 44px; }
+  /* Pills, chips and rounded buttons and links of every colour: 44px tall. */
+  :is(button, a, [role="button"]):is(.rounded-full, .rounded-xl, .rounded-lg):not(:empty):not([role="switch"], [role="radio"], [role="checkbox"]) {
+    min-height: var(--btn-small);
+  }
+  /* Icon-only pills (Like and Share on narrow phones) are at least as wide as they are tall. */
+  :is(button, a, [role="button"]).rounded-full:not(:empty) {
+    min-width: var(--btn-small);
+  }
+  /* A pill's small vertical padding gives way to that height, so pills all come out at 44px
+     instead of 34, 36, 38, 40 or 42. Pills with bigger padding (py-3 and up) keep it. */
+  :is(button, a, [role="button"]).rounded-full:is(.py-1, .py-1\.5, .py-2, .py-2\.5):not(:empty) {
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    align-items: center;
+  }
+  /* Their labels: 13px at the least (text-xs is 12px). */
+  :is(button, a, [role="button"]):is(.rounded-full, .rounded-xl, .rounded-lg):is(.text-xs, .text-\[11px\], .text-\[10px\]):not(:empty) {
+    font-size: 13px !important;
+  }
+  /* Round icon buttons with a fixed width (back, close, save, play, steppers, page numbers). */
+  :is(button, a, [role="button"]).rounded-full:is(.w-6, .w-7, .w-8, .w-9, .w-10) {
+    min-width: var(--btn-small);
+    min-height: var(--btn-small);
+    flex-shrink: 0;
+  }
+  /* Icon-only buttons sized by their padding (close ✕, mute). */
+  button:is(.p-1, .p-1\.5, .p-2):is(.rounded-full, .rounded-lg, .rounded-md) {
+    min-width: var(--btn-small);
+    min-height: var(--btn-small);
+    justify-content: center;
+  }
 }

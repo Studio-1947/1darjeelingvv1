@@ -136,7 +136,7 @@ export default function Header() {
             sm it drops a size and holds its whole width instead. */}
         <Link
           to={isHostMode ? '/provider/dashboard' : '/'}
-          className="flex items-center min-w-0"
+          className="flex items-center min-w-0 h-11"
           data-testid="brand-link"
           aria-label={t('brand')}
         >
@@ -241,7 +241,7 @@ export default function Header() {
             onClick={APP_DOWNLOAD_URL ? undefined : (e) => { e.preventDefault(); toast(t('nav.app_coming_soon')); }}
             data-testid="header-download-app"
             aria-label={t('nav.download_app')}
-            className={`inline-flex items-center gap-1.5 h-9 sm:h-10 px-2.5 min-[380px]:px-3 sm:px-4 rounded-full border font-bold text-xs sm:text-sm btn-hover whitespace-nowrap ${
+            className={`inline-flex items-center justify-center gap-1.5 min-w-11 lg:min-w-10 h-9 sm:h-10 px-2.5 min-[380px]:px-3 sm:px-4 rounded-full border font-bold text-xs sm:text-sm btn-hover whitespace-nowrap ${
               onVideo ? 'border-white/60 text-white bg-white/10 backdrop-blur' : 'border-[var(--line)] text-ink bg-white'
             }`}
           >
