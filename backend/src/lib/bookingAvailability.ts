@@ -114,13 +114,16 @@ export async function blockedRanges(
   runner: Queryable,
   listingId: string,
   from: string,
-  to: string
-): Promise<{ check_in: string; check_out: string; state: 'booked' | 'hold' }[]> {
+  to: string,
+  /** The signed-in viewer, if any: their own bookings come back marked `mine`, nobody else's do. */
+  viewerId?: string | null
+): Promise<{ check_in: string; check_out: string; state: 'booked' | 'hold'; mine?: true }[]> {
   const rows = await runner
     .select({
       checkIn: schema.bookings.checkIn,
       checkOut: schema.bookings.checkOut,
       status: schema.bookings.status,
+      userId: schema.bookings.userId,
     })
     .from(schema.bookings)
     .where(blockingPredicate(listingId, from, to))
@@ -131,6 +134,8 @@ export async function blockedRanges(
       check_in: r.checkIn as string,
       check_out: r.checkOut as string,
       state: r.status === 'pending_payment' ? ('hold' as const) : ('booked' as const),
+      // So a traveller who already asked for these nights is told that, not "someone else booked".
+      ...(viewerId && r.userId === viewerId ? { mine: true as const } : {}),
     }));
 }
 

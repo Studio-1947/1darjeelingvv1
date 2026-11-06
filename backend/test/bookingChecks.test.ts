@@ -112,3 +112,20 @@ describe('booking checks', () => {
     expect(res.body.code).toBe('bad_notes');
   });
 });
+
+describe('availability marks the viewer\'s own nights', () => {
+  it('says "mine" only to the person who asked for them', async () => {
+    const listing = await createListing({ title: 'Mine Homestay', type: 'homestay' });
+    const asker = await registerUser({ name: 'Asker' });
+    const other = await registerUser({ name: 'Other Person' });
+    const made = await book(asker.token, { listing_id: listing.id, check_in: inDays(80), check_out: inDays(81) });
+    expect(made.status).toBe(200);
+    const q = `/api/listings/${listing.id}/availability?from=${inDays(79)}&to=${inDays(82)}`;
+    const mine = await request(app).get(q).set('Authorization', `Bearer ${asker.token}`);
+    expect(mine.body.ranges).toEqual([expect.objectContaining({ check_in: inDays(80), mine: true })]);
+    const theirs = await request(app).get(q).set('Authorization', `Bearer ${other.token}`);
+    expect(theirs.body.ranges[0].mine).toBeUndefined();
+    const anon = await request(app).get(q);
+    expect(anon.body.ranges[0].mine).toBeUndefined();
+  });
+});

@@ -461,7 +461,8 @@ router.get('/:id/availability', async (req: Request, res: Response) => {
     return res.status(400).json({ detail: 'to must be after from, within 366 days' });
   }
 
-  const ranges = isDateExclusive(item.type) ? await blockedRanges(db, id, from, to) : [];
+  const viewer = isDateExclusive(item.type) ? await optionalUser(req) : null;
+  const ranges = isDateExclusive(item.type) ? await blockedRanges(db, id, from, to, viewer?.id) : [];
   res.json({ listing_id: id, from, to, ranges });
 });
 
