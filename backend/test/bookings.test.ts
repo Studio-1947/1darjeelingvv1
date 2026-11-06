@@ -201,14 +201,14 @@ describe('bookings', () => {
     const listingRes = await request(app)
       .post('/api/listings')
       .set('Authorization', `Bearer ${providerToken}`)
-      .send({ title: 'Provider Owned Spot', type: 'homestay', description: 'x', location: 'Darjeeling' });
+      .send({ title: 'Provider Owned Spot', type: 'homestay', description: 'x', location: 'Darjeeling', price: 1500 });
     const listing = listingRes.body.item;
 
     const { token: touristToken } = await registerUser({ name: 'Booking Tourist' });
     await request(app)
       .post('/api/bookings')
       .set('Authorization', `Bearer ${touristToken}`)
-      .send({ listing_id: listing.id, listing_type: 'homestay', check_in: inDays(31), check_out: inDays(32) });
+      .send({ listing_id: listing.id, listing_type: 'homestay', check_in: inDays(31), check_out: inDays(33), guests: 2 });
 
     const res = await request(app)
       .get('/api/bookings/provider')
@@ -217,5 +217,7 @@ describe('bookings', () => {
     expect(res.status).toBe(200);
     expect(res.body.stats.total).toBe(1);
     expect(res.body.items[0].listing.provider_id).toBe(providerId);
+    // Rate x guests x nights, for a dashboard scoped to one listing: 1500 x 2 x 2.
+    expect(res.body.items[0].amount).toBe(6000);
   });
 });

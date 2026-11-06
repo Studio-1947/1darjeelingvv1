@@ -479,6 +479,9 @@ router.get('/provider', authenticateToken, async (req: Request, res: Response) =
       route_name: b.routeName,
       services: b.services ?? [],
       completed: isCompleted(b),
+      // What this booking is worth to the host (rate x guests x nights for a homestay), the same
+      // rule as stats.revenue, so a dashboard scoped to one listing adds up the same way.
+      amount: listingMatch ? bookingGrossAmount({ listingType: b.listingType, price: listingMatch.price, guests: b.guests, checkIn: b.checkIn, checkOut: b.checkOut }) : 0,
       // A request this host has to accept or decline.
       awaiting_host: b.status === 'pending_payment' && !!listingMatch && approvalRequired(listingMatch.type, listingMatch.provider_id, hosts),
       customer: customer ? { name: customer.name, phone: customer.phone } : null,

@@ -200,7 +200,8 @@ export default function ProviderDashboard() {
   const activeListing = listings.find((listing: any) => listing.id === activeListingId) || null;
   const scopedBookings = activeListing ? bookings.filter((booking: any) => booking.listing_id === activeListing.id) : bookings;
   const scopedConfirmed = scopedBookings.filter((booking: any) => booking.status === 'confirmed');
-  const scopedRevenue = scopedConfirmed.reduce((sum: number, booking: any) => sum + (booking.listing?.price || activeListing?.price || 0) * (booking.guests || 1), 0);
+  // Per booking from the server (rate x guests x nights for a homestay), as stats.revenue counts it.
+  const scopedRevenue = scopedConfirmed.reduce((sum: number, booking: any) => sum + (Number(booking.amount) || 0), 0);
   // Board, per host type: finished, ongoing (happening today), upcoming, and the guests in each.
   const finishedList = scopedBookings.filter((b: any) => isFinished(b));
   const ongoingList = scopedBookings.filter((b: any) => isOngoing(b));
