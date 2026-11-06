@@ -40,6 +40,10 @@ export default function Login() {
   const [countryCode, setCountryCode] = useState('+91');
   const [otp, setOtp] = useState('');
   const [name, setName] = useState('');
+  // A friend's invite code, as the app asks for it. An invite link (/login?ref=CODE) fills it in.
+  const [referral, setReferral] = useState(() => {
+    try { return (new URLSearchParams(window.location.search).get('ref') || '').toUpperCase().slice(0, 12); } catch { return ''; }
+  });
   const [role, setRole] = useState(() => {
     const r = sp.get('role');
     if (r === 'provider' || r === 'tourist') return r;
@@ -140,7 +144,11 @@ export default function Login() {
     if (!canonicalPhone) return;
     setBusy(true); setErr('');
     try {
-      const { data } = await api.post('/auth/otp/verify', { phone: canonicalPhone, otp, name, role });
+      const { data } = await api.post('/auth/otp/verify', {
+        phone: canonicalPhone, otp, name, role,
+        // Only a new account can redeem a code; the server ignores it for an existing one.
+        ...(!userExists && referral.trim() ? { referral_code: referral.trim() } : {}),
+      });
       finishSignIn(data);
     } catch (e) { setErr(e?.response?.data?.detail || t('auth.invalid_otp')); }
     finally { setBusy(false); }
@@ -297,6 +305,14 @@ export default function Login() {
                 <input value={name} onChange={(e) => setName(e.target.value)} required={!userExists}
                   data-testid="login-name" placeholder={t('auth.name_placeholder')} autoComplete="name"
                   className="mt-1 w-full px-3 py-2.5 rounded-xl border border-[var(--line)] bg-white outline-none" />
+              </label>
+            )}
+            {!userExists && role !== 'provider' && (
+              <label className="block">
+                <span className="text-xs font-semibold text-ink-soft">{t('auth.referral_label')}</span>
+                <input value={referral} onChange={(e) => setReferral(e.target.value.toUpperCase().slice(0, 12))}
+                  data-testid="login-referral" placeholder="ANG26-XXXXXX" autoCapitalize="characters" autoComplete="off"
+                  className="mt-1 w-full px-3 py-2.5 rounded-xl border border-[var(--line)] bg-white outline-none tracking-wider" />
               </label>
             )}
 

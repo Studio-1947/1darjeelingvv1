@@ -52,7 +52,8 @@ export default function TravellerPanels() {
     return () => { live = false; };
   }, []);
 
-  const inviteLink = window.location.origin;
+  // Opens sign-in with the code already filled in (Login reads ?ref=).
+  const inviteLink = `${window.location.origin}/login?ref=${encodeURIComponent(code || '')}`;
   const share = async () => {
     if (!code) return;
     const text = `Plan your Darjeeling trip on aangan. Use my code ${code} when you sign up: ${inviteLink}`;

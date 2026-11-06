@@ -6,6 +6,8 @@ import { NavigationArrow as Navigation, Receipt } from '@phosphor-icons/react';
 import { Screen, SectionHead, ALIGN_TEXT, ALIGN_BLOCK } from './primitives';
 import { BookingFlow } from './useBookingFlow';
 import { todayStr, addDays, isBadRange } from '@/lib/dates';
+import api from '@/lib/api';
+import { useAuth } from '@/context/AuthContext';
 
 /** Inline validation message under a field. Nothing rendered when there's no error. */
 function FieldError({ id, message }: { id: string; message?: string }) {
@@ -27,8 +29,8 @@ function FieldError({ id, message }: { id: string; message?: string }) {
  * which is settled with the host. The note under it says so, so nobody expects
  * a charge at the end.
  */
-function PriceBreakdown({ item, unit, nights, guests }: {
-  item: any; unit: string; nights: number; guests: number;
+function PriceBreakdown({ item, unit, nights, guests, voucherPct = 0 }: {
+  item: any; unit: string; nights: number; guests: number; voucherPct?: number;
 }) {
   const { t } = useTranslation();
   const rate = Number(item.price) || 0;
@@ -62,6 +64,19 @@ function PriceBreakdown({ item, unit, nights, guests }: {
         <p className="mt-2 text-xs text-ink-soft">{t('booking.pick_dates_for_total')}</p>
       )}
 
+      {rate > 0 && !needsDates && voucherPct > 0 && (
+        <>
+          <div className="mt-2 flex justify-between gap-4 text-sm" data-testid="booking-voucher-line">
+            <span className="text-ink-soft">{t('booking.voucher_discount', { pct: voucherPct })}</span>
+            <span className="font-bold text-pine">−₹{Math.round((stayTotal * voucherPct) / 100).toLocaleString('en-IN')}</span>
+          </div>
+          <div className="mt-1 flex justify-between gap-4 text-sm">
+            <span className="font-semibold text-ink">{t('booking.voucher_final')}</span>
+            <span className="font-extrabold text-ink">₹{Math.round(stayTotal - (stayTotal * voucherPct) / 100).toLocaleString('en-IN')}</span>
+          </div>
+        </>
+      )}
+
       {rate > 0 && !needsDates && (
         <p className="mt-1 text-xs text-ink-soft">{t('booking.paid_to_host')}</p>
       )}
@@ -90,6 +105,13 @@ export function ReserveSection({ item, unit, bookable, available = true, cta, bo
 }) {
   const { t } = useTranslation();
   const { form, updateForm, errors, busy, msg, doBook } = booking;
+  // Referral vouchers the traveller can use on this booking (the app's "Apply voucher").
+  const { user } = useAuth();
+  const [vouchers, setVouchers] = React.useState<{ id: string; discountPercentage: number }[]>([]);
+  React.useEffect(() => {
+    if (!user || !bookable) { setVouchers([]); return; }
+    api.get('/users/me/vouchers').then(({ data }) => setVouchers(Array.isArray(data) ? data : [])).catch(() => setVouchers([]));
+  }, [user, bookable]);
   const CtaIcon = cta.Icon;
   const today = todayStr();
 
@@ -226,7 +248,25 @@ export function ReserveSection({ item, unit, bookable, available = true, cta, bo
                   data-testid="booking-notes" rows={3} className="mt-1 w-full px-3 py-2.5 rounded-xl border border-[var(--line)] bg-white outline-none" />
               </label>
 
-              <PriceBreakdown item={item} unit={unit} nights={nights} guests={Number(form.guests) || 1} />
+              {vouchers.length > 0 && (
+                <fieldset data-testid="booking-vouchers">
+                  <legend className="text-xs font-semibold text-ink-soft">{t('booking.voucher_apply')}</legend>
+                  <div className="mt-1 flex flex-wrap gap-2">
+                    {vouchers.map((v) => {
+                      const on = form.voucher_id === v.id;
+                      return (
+                        <button key={v.id} type="button" aria-pressed={on} data-testid={`booking-voucher-${v.id}`}
+                          onClick={() => updateForm({ voucher_id: on ? undefined : v.id, voucher_pct: on ? undefined : v.discountPercentage })}
+                          className={`px-3.5 h-10 rounded-full border text-sm font-bold ${on ? 'bg-pine text-white border-pine' : 'bg-white text-ink border-[var(--line)]'}`}>
+                          {t('booking.voucher_off', { pct: v.discountPercentage })} · {t('booking.voucher_reward')}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </fieldset>
+              )}
+
+              <PriceBreakdown item={item} unit={unit} nights={nights} guests={Number(form.guests) || 1} voucherPct={form.voucher_pct || 0} />
 
               <button onClick={doBook} disabled={busy} data-testid="booking-submit"
                 className={`w-full py-4 rounded-full font-bold btn-hover disabled:opacity-60 inline-flex items-center justify-center gap-2 ${cta.color}`}>

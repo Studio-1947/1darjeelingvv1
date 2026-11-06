@@ -14,6 +14,10 @@ export interface BookingForm {
   route?: string;
   /** A guide booking: which of the guide's services (board: "Asking for given items"). */
   services?: string[];
+  /** A referral voucher to take off the host's price (GET /users/me/vouchers), as in the app. */
+  voucher_id?: string;
+  /** Its discount, for the price breakdown. */
+  voucher_pct?: number;
 }
 
 export interface BookingErrors {
@@ -170,6 +174,7 @@ export function useBookingFlow(item: any, id: string) {
         notes: form.notes,
         route_name: item.type === 'driver' && form.route ? form.route : undefined,
         services: item.type === 'guide' && form.services?.length ? form.services : undefined,
+        voucher_id: form.voucher_id || undefined,
       });
       // Board: drivers, homestays and guides wait for the host to accept. Nothing is confirmed or
       // paid now; the traveller confirms from My Trips once the host says yes.
@@ -199,6 +204,8 @@ export function useBookingFlow(item: any, id: string) {
         throw e;
       }
     } catch (e) {
+      // A voucher the server no longer accepts would fail every retry: drop it, as the app does.
+      if (form.voucher_id && /voucher/i.test(e?.response?.data?.detail || '')) setForm((f) => ({ ...f, voucher_id: undefined, voucher_pct: undefined }));
       setMsg(e?.response?.data?.detail || e.message || t('booking.failed'));
     } finally {
       setBusy(false);
