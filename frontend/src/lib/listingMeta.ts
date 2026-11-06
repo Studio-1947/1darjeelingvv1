@@ -116,8 +116,11 @@ export function amenitiesFor(item: any, max = 8): Amenity[] {
 export function hostFor(item: any) {
   const e = item?.extras || {};
   const isRealProvider = !!item?.provider_id && item.provider_id !== 'admin-seed-provider';
-  const name: string = e.host_name || (isRealProvider ? item.title : 'Your local host');
+  const name: string = e.host_name || (isRealProvider ? item.title : '');
   return {
+    // False for a team-added listing with no host on record: the page then leaves "Meet your
+    // host" out rather than showing a made-up name, initial and bio.
+    known: !!name,
     name,
     initial: name.trim().charAt(0).toUpperCase(),
     // The "Verified" chip must reflect the real KYC signal, not merely "has a provider row" -

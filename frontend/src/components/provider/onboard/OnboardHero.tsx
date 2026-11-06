@@ -23,8 +23,9 @@ export default function OnboardHero({ typeLabel, name, onName, placeholder, imag
       {image ? (
         <img src={image} alt="" className="absolute inset-0 w-full h-full object-cover" />
       ) : (
-        <div className="absolute inset-0 bg-slate-200 grid place-items-center text-slate-400">
-          {t('ob.no_cover_photo')}
+        // Sits above the dark gradient (z-[1]) in white, so the hint is readable on a real phone.
+        <div className="absolute inset-0 z-[1] grid place-items-center px-6 text-center">
+          <span className="rounded-full bg-black/55 px-4 py-2 text-sm font-semibold text-white">{t('ob.no_cover_photo')}</span>
         </div>
       )}
       <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-black/45" />

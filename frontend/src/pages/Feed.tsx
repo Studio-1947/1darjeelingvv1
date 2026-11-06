@@ -18,7 +18,10 @@ import api from '@/lib/api';
  */
 export default function Feed() {
   const { t } = useTranslation();
-  const { user } = useAuth();
+  const { user, audience } = useAuth();
+  // Posting and editing are business-side actions. A host browsing as a traveller sees the feed as
+  // travellers do; their own posts are tagged so it is clear whose they are.
+  const business = audience.side === 'business';
   useSeo({ title: t('feed.title'), description: t('feed.subtitle') });
 
   const [posts, setPosts] = useState<HostPost[]>([]);
@@ -105,7 +108,7 @@ export default function Feed() {
   };
 
   // My own posts that the public feed does not show (hidden by an admin), so I can see why.
-  const myHidden = mine.filter((p) => p.hidden);
+  const myHidden = business ? mine.filter((p) => p.hidden) : [];
   const isMine = (p: HostPost) => !!user && p.author_user_id === user.id;
 
   return (
@@ -118,12 +121,12 @@ export default function Feed() {
         <p className="mt-2 text-ink-soft">{t('feed.subtitle')}</p>
       </div>
 
-      {user && canPost && (
+      {user && business && canPost && (
         <div className="mb-6">
           <PostComposer editing={editing} onSaved={onSaved} onCancelEdit={() => setEditing(null)} />
         </div>
       )}
-      {user && !canPost && (reason === 'not_verified' || reason === 'plan_not_live') && (
+      {user && business && !canPost && (reason === 'not_verified' || reason === 'plan_not_live') && (
         <div className="mb-6 rounded-2xl bg-mist p-4 text-sm text-ink">
           {reason === 'not_verified' ? t('feed.cannot_post_unverified') : t('feed.cannot_post_plan')}{' '}
           <Link to="/provider/dashboard" className="font-bold text-pine underline">{t('nav.business_dashboard')}</Link>
@@ -155,7 +158,8 @@ export default function Feed() {
             <PostCard
               key={p.id}
               post={p}
-              isMine={isMine(p)}
+              isMine={business && isMine(p)}
+              ownBusiness={!business && isMine(p)}
               canReport={!!user && !isMine(p)}
               onEdit={(post) => { setEditing(post); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
               onDelete={remove}

@@ -7,7 +7,7 @@ import Wordmark from '@/components/Wordmark';
 import useGoBack from '@/hooks/useGoBack';
 import useHeroOverlay from '@/hooks/useHeroOverlay';
 import { CATEGORIES } from '@/constants/categories';
-import { User, Heart, ArrowLeft, ImagesSquare, DownloadSimple } from '@phosphor-icons/react';
+import { User, Heart, ArrowLeft, ImagesSquare, DownloadSimple, CaretLeft, CaretRight } from '@phosphor-icons/react';
 import { APP_DOWNLOAD_URL } from '@/constants/app';
 import { toast } from 'sonner';
 
@@ -18,6 +18,26 @@ export default function Header() {
   const [dropdownOpen, setDropdownOpen] = React.useState(false);
   const [avatarError, setAvatarError] = React.useState(false);
   const dropdownRef = React.useRef(null);
+  // The category row can be wider than its space (8 tiles beside the logo and actions). It then
+  // scrolls, and arrows show which way there is more, so no category is out of reach.
+  const railRef = React.useRef<HTMLDivElement>(null);
+  const [railMore, setRailMore] = React.useState({ left: false, right: false });
+  const checkRail = React.useCallback(() => {
+    const el = railRef.current;
+    if (!el) return;
+    const max = el.scrollWidth - el.clientWidth;
+    setRailMore({ left: el.scrollLeft > 2, right: el.scrollLeft < max - 2 });
+  }, []);
+  React.useEffect(() => {
+    const el = railRef.current;
+    if (!el) return undefined;
+    checkRail();
+    el.addEventListener('scroll', checkRail, { passive: true });
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(checkRail) : null;
+    ro?.observe(el);
+    return () => { el.removeEventListener('scroll', checkRail); ro?.disconnect(); };
+  }, [checkRail]);
+  const nudgeRail = (dir: 1 | -1) => railRef.current?.scrollBy({ left: dir * 240, behavior: 'smooth' });
   const nav = useNavigate();
   const { pathname } = useLocation();
   const goBack = useGoBack();
@@ -115,10 +135,16 @@ export default function Header() {
                 pill stays pinned to the viewport while the icons slide inside
                 it. From sm up the tiles all fit, the pill dissolves and each
                 item carries its own plate. */}
+            <div className="relative">
+            {/* Centred only when the tiles fit: auto margins on the first and last tile centre the
+                row but collapse when it overflows, so the first tile is never pushed out of reach
+                (plain justify-center cut "Tourism spots" off on the left at every desktop width). */}
             <div
+              ref={railRef}
               className="flex items-center gap-1.5 overflow-x-auto no-scrollbar
                          rounded-full bg-white border border-[var(--line)] shadow-sm px-1.5 py-1
-                         sm:justify-center sm:gap-0.5 sm:rounded-none sm:bg-transparent sm:border-0 sm:shadow-none sm:px-0 sm:py-1
+                         sm:gap-0.5 sm:rounded-none sm:bg-transparent sm:border-0 sm:shadow-none sm:px-0 sm:py-1
+                         sm:[&>*:first-child]:ml-auto sm:[&>*:last-child]:mr-auto
                          lg:gap-2"
             >
               {CATEGORIES.map(({ key, to, Icon }) => (
@@ -132,6 +158,19 @@ export default function Header() {
                   onDark={onVideo}
                 />
               ))}
+            </div>
+            {railMore.left && (
+              <button type="button" onClick={() => nudgeRail(-1)} aria-label={t('nav.categories_prev')} data-testid="header-categories-prev"
+                className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full grid place-items-center bg-white/95 border border-[var(--line)] shadow text-ink">
+                <CaretLeft size={16} weight="bold" />
+              </button>
+            )}
+            {railMore.right && (
+              <button type="button" onClick={() => nudgeRail(1)} aria-label={t('nav.categories_next')} data-testid="header-categories-next"
+                className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full grid place-items-center bg-white/95 border border-[var(--line)] shadow text-ink">
+                <CaretRight size={16} weight="bold" />
+              </button>
+            )}
             </div>
           </nav>
         ) : (
@@ -171,12 +210,15 @@ export default function Header() {
             rel="noreferrer"
             onClick={APP_DOWNLOAD_URL ? undefined : (e) => { e.preventDefault(); toast(t('nav.app_coming_soon')); }}
             data-testid="header-download-app"
-            className={`inline-flex items-center gap-1.5 h-9 sm:h-10 px-3 sm:px-4 rounded-full border font-bold text-xs sm:text-sm btn-hover whitespace-nowrap ${
+            aria-label={t('nav.download_app')}
+            className={`inline-flex items-center gap-1.5 h-9 sm:h-10 px-2.5 min-[380px]:px-3 sm:px-4 rounded-full border font-bold text-xs sm:text-sm btn-hover whitespace-nowrap ${
               onVideo ? 'border-white/60 text-white bg-white/10 backdrop-blur' : 'border-[var(--line)] text-ink bg-white'
             }`}
           >
             <DownloadSimple size={16} weight="bold" />
-            {t('nav.download_app')}
+            {/* On the narrowest phones (or with large system text) the label would push the row past
+                the screen edge; the icon alone stays, and the label is still read out. */}
+            <span className="sr-only min-[380px]:not-sr-only">{t('nav.download_app')}</span>
           </a>
           {user ? (
             // On phones the profile photo lives in the bottom bar's Account tab instead.

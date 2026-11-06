@@ -241,7 +241,7 @@ export default function ListingDetail() {
       )}
       {(item.type === 'cafe' || item.type === 'shop') && <OwnerSection item={item} verified={!!item.provider_verified} />}
 
-      {item.type === 'homestay' && <HostSection item={item} host={host} personSrc={personSrc} />}
+      {item.type === 'homestay' && host.known && <HostSection item={item} host={host} personSrc={personSrc} />}
 
       {item.type === 'guide' && <GuideSection item={item} photo={host.avatar || listingImage(item, 600, 600)} />}
       {item.type === 'guide' && <ServicesSection services={Array.isArray(item.extras?.services) ? item.extras.services : []} />}

@@ -28,7 +28,7 @@ import { useTranslation } from 'react-i18next';
 const SITE_URL =
   import.meta.env.VITE_SITE_URL ||
   (typeof process !== 'undefined' && process.env ? process.env.REACT_APP_SITE_URL : undefined) ||
-  'https://aangan.in';
+  'https://aanganerp.in';
 
 /** Upserts <meta {attr}="{key}" content="…">, or removes it when content is empty. */
 function setMeta(attr: 'name' | 'property', key: string, content?: string) {

@@ -168,8 +168,12 @@ export default function TravellerPanels() {
                 <div className="mt-1 text-sm font-bold text-ink">{text.title}</div>
                 <div className="text-[11px] text-ink-soft leading-snug">{text.how}</div>
                 {!a.earned && a.goal > 1 && (
-                  <div className="mt-2 h-1.5 rounded-full bg-[var(--line)] overflow-hidden">
-                    <div className="h-full bg-[#1F6656]" style={{ width: `${(a.progress / a.goal) * 100}%` }} />
+                  <div className="mt-2 flex items-center gap-2" data-testid={`award-progress-${a.id}`}>
+                    <div className="flex-1 h-1.5 rounded-full bg-[var(--line)] overflow-hidden" role="progressbar"
+                      aria-valuemin={0} aria-valuemax={a.goal} aria-valuenow={a.progress}>
+                      <div className="h-full bg-[#1F6656]" style={{ width: `${(a.progress / a.goal) * 100}%` }} />
+                    </div>
+                    <span className="text-[11px] font-bold text-ink-soft tabular-nums">{a.progress}/{a.goal}</span>
                   </div>
                 )}
               </div>

@@ -16,6 +16,7 @@ export { timeAgo };
 export default function PostCard({
   post,
   isMine,
+  ownBusiness,
   canReport,
   onReport,
   onEdit,
@@ -24,6 +25,8 @@ export default function PostCard({
 }: {
   post: HostPost;
   isMine?: boolean;
+  /** The viewer's own business post, seen from the traveller side: tagged, not editable here. */
+  ownBusiness?: boolean;
   canReport?: boolean;
   onReport?: (post: HostPost) => void;
   onEdit?: (post: HostPost) => void;
@@ -90,6 +93,10 @@ export default function PostCard({
               <Trash size={16} />
             </button>
           </div>
+        ) : ownBusiness ? (
+          <span data-testid={`post-own-${post.id}`} className="flex-shrink-0 rounded-full bg-mist px-2.5 py-1 text-[11px] font-bold text-pine">
+            {t('feed.your_business')}
+          </span>
         ) : canReport ? (
           <button type="button" onClick={() => onReport?.(post)} data-testid={`post-report-${post.id}`}
             className="text-xs font-semibold text-ink-soft hover:text-flag flex-shrink-0">

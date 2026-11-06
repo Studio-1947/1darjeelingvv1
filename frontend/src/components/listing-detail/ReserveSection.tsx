@@ -109,7 +109,10 @@ export function ReserveSection({ item, unit, bookable, available = true, cta, bo
         title={item.price > 0 ? `₹${item.price}${unit}` : t('detail.reserve')}
         note={bookable ? undefined : t('detail.walk_in_note')} />
 
-      <div className={`mt-10 max-w-xl ${ALIGN_BLOCK}`}>
+      {/* Phones: the form alone. Desktop: the form and, beside it, how a request turns into a
+          booking, so the wide screen is not half empty next to a narrow form. */}
+      <div className="mt-10 lg:grid lg:grid-cols-[minmax(0,36rem)_minmax(0,1fr)] lg:gap-12 lg:items-start">
+      <div className={`max-w-xl ${ALIGN_BLOCK}`}>
         <div className="mist-panel p-6 md:p-8">
           {!available ? (
             <UnavailableNotice />
@@ -239,9 +242,27 @@ export function ReserveSection({ item, unit, bookable, available = true, cta, bo
           )}
         </div>
       </div>
+      {bookable && available && HOST_ASKED.has(item.type) && (
+        <aside className="hidden lg:block lg:sticky lg:top-[calc(var(--header-h)+1.5rem)] rounded-3xl border border-[var(--line)] p-8" data-testid="reserve-how-it-works">
+          <div className="text-xs font-bold uppercase tracking-widest text-ink-soft">{t('approval.next_steps')}</div>
+          <ol className="mt-5 space-y-5">
+            {[t('approval.step_ask'), t('approval.step_host'), t('approval.step_confirm'), t('approval.step_contact')].map((step, i) => (
+              <li key={i} className="flex gap-4">
+                <span className="flex-shrink-0 w-8 h-8 rounded-full bg-mist text-pine font-bold grid place-items-center">{i + 1}</span>
+                <span className="pt-1 text-[15px] leading-relaxed text-ink">{step}</span>
+              </li>
+            ))}
+          </ol>
+          <Link to="/refunds" className="mt-6 inline-block text-sm font-semibold text-pine underline">{t('approval.refund_link')}</Link>
+        </aside>
+      )}
+      </div>
     </Screen>
   );
 }
+
+/** Listing types whose bookings are requests the host accepts first (server: HOST_APPROVAL_TYPES). */
+const HOST_ASKED = new Set(['homestay', 'driver', 'guide']);
 
 /** Sticky bottom bar with price + CTA, mobile only. */
 export function MobileStickyBar({ item, unit, bookable, cta, busy, onBook, onOpenMaps }: {
