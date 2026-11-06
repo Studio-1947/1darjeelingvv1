@@ -72,6 +72,9 @@ const OFFBEAT_PLACES = [
   },
 ];
 
+/** Categories a business can list itself in (the rest are curated by our team). */
+const HOST_TYPES = new Set(['homestay', 'driver', 'guide', 'cafe', 'shop']);
+
 export default function Category({ typeOverride }) {
   const { t, i18n } = useTranslation();
   const { type: paramType } = useParams();
@@ -268,6 +271,8 @@ export default function Category({ typeOverride }) {
     if (it.price > 0) return `₹${it.price}`;
     if (it.extras?.entry_fee) return it.extras.entry_fee;
     if (it.type === 'spot' || it.type === 'biodiversity' || it.type === 'event') return t('common.entry_varies');
+    // A host who has not set a rate yet: say so, rather than a card with no price at all.
+    if (['homestay', 'driver', 'guide'].includes(it.type)) return t('common.price_on_request');
     return '';
   };
 
@@ -320,7 +325,10 @@ export default function Category({ typeOverride }) {
           )}
           <h1 className="font-display font-extrabold text-3xl sm:text-4xl md:text-5xl text-ink leading-tight">{title}</h1>
           <p className="mt-1 text-sm text-ink-soft">
-            {loading ? t('common.loading') : t('category.results', { count: results.length })}
+            {/* On Tourism spots the curated villages rail sits above the list, so say what the number counts. */}
+            {loading ? t('common.loading') : type === 'spot' && !searching
+              ? t('category.spots_listed', { count: results.length })
+              : t('category.results', { count: results.length })}
           </p>
           {smart?.search && smart.q === searchQuery.trim() && (
             <SearchUnderstood search={smart.search} fixedType={type} onUse={(text) => {
@@ -470,6 +478,19 @@ export default function Category({ typeOverride }) {
               >
                 <SearchIcon size={15} /> {t('category.search_all')}
               </Link>
+            )}
+            {/* An empty category (no guides live yet, say) is not a dead end: ask us, or list yours. */}
+            {!searching && (
+              <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3" data-testid="category-empty-actions">
+                <Link to="/contact" className="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-pine text-white font-bold btn-hover">
+                  {t('category.empty_ask')}
+                </Link>
+                {HOST_TYPES.has(type) && (
+                  <Link to="/provider/onboard" className="inline-flex items-center gap-2 px-5 py-3 rounded-full border border-[var(--line)] bg-white text-ink font-bold btn-hover">
+                    {t('category.empty_list')}
+                  </Link>
+                )}
+              </div>
             )}
           </div>
 

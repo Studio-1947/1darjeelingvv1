@@ -14,6 +14,8 @@ import { blockedRanges, isDateExclusive } from '../lib/bookingAvailability';
 import { myActiveProvider, myProvider } from '../lib/hostAccess';
 import { HOST_APPROVAL_TYPES } from '../lib/bookingApproval';
 import { rank, type Interpretation } from '../lib/search';
+import { maxGuestsFor } from '../lib/bookingRules';
+import { checkNameLike } from '../lib/contentRules';
 import {
   SPOT_TYPE, SPOT_FORBIDDEN_MESSAGE, canWriteSpots, parseSpotExtras,
   isSpotPublished, publicSpotVisibility, spotOrdering, SpotValidationError,
@@ -57,6 +59,13 @@ function validateListingPayload(body: any, { partial }: { partial: boolean }): s
     if (typeof body[field] === 'string' && body[field].trim().length > max) {
       return `${field} must be ${max} characters or fewer`;
     }
+  }
+  // The name and place travellers see: a real one, tidily spaced (lib/contentRules.ts).
+  for (const [field, label, max] of [['title', 'Name', MAX_TITLE_LEN], ['location', 'Location', MAX_LOCATION_LEN]] as const) {
+    if (body[field] === undefined) continue;
+    const checked = checkNameLike(body[field], label, max);
+    if ('error' in checked) return checked.error;
+    body[field] = checked.value;
   }
 
   if (body.type !== undefined && !LISTING_TYPES.includes(body.type)) {
@@ -276,6 +285,7 @@ router.get('/', async (req: Request, res: Response) => {
       latitude: item.latitude,
       longitude: item.longitude,
       price: item.price,
+      max_guests: maxGuestsFor(item),
       image: item.image,
       tags: item.tags,
       provider_id: item.providerId,
@@ -379,6 +389,7 @@ router.get('/:id', async (req: Request, res: Response) => {
     latitude: item.latitude,
     longitude: item.longitude,
     price: item.price,
+    max_guests: maxGuestsFor(item),
     image: item.image,
     tags: item.tags,
     provider_id: item.providerId,
@@ -450,20 +461,23 @@ router.get('/:id/availability', async (req: Request, res: Response) => {
     return res.status(400).json({ detail: 'to must be after from, within 366 days' });
   }
 
-  const ranges = isDateExclusive(item.type) ? await blockedRanges(db, id, from, to) : [];
+  const viewer = isDateExclusive(item.type) ? await optionalUser(req) : null;
+  const ranges = isDateExclusive(item.type) ? await blockedRanges(db, id, from, to, viewer?.id) : [];
   res.json({ listing_id: id, from, to, ranges });
 });
 
 // Create a new listing
 router.post('/', authenticateToken, async (req: Request, res: Response) => {
-  const { title, type, description, location, latitude = null, longitude = null, price = 0, image = '', tags = [], provider_id, extras = {} } = req.body;
+  const { type, description, latitude = null, longitude = null, price = 0, image = '', tags = [], provider_id, extras = {} } = req.body;
   // Only POST /providers/me/location/verify may mark a listing's pin as verified.
   if (extras && typeof extras === 'object') delete extras.location_verified;
-  if (!title || !type || !description || !location) {
+  if (!req.body?.title || !type || !description || !req.body?.location) {
     return res.status(400).json({ detail: 'Title, type, description and location are required' });
   }
   const payloadError = validateListingPayload(req.body, { partial: false });
   if (payloadError) return res.status(400).json({ detail: payloadError });
+  // Read after the check, which tidies the name and place (lib/contentRules.ts).
+  const { title, location } = req.body;
 
   // Tourist spots are curated editorial content, not a business someone lists. An active
   // provider may create every other type; only an admin may create a spot.
@@ -542,6 +556,7 @@ router.post('/', authenticateToken, async (req: Request, res: Response) => {
     latitude: listing.latitude,
     longitude: listing.longitude,
     price: listing.price,
+    max_guests: maxGuestsFor(listing),
     image: listing.image,
     tags: listing.tags,
     provider_id: listing.providerId,
@@ -722,6 +737,7 @@ const updateListingHandler = async (req: Request, res: Response) => {
     latitude: updated.latitude,
     longitude: updated.longitude,
     price: updated.price,
+    max_guests: maxGuestsFor(updated),
     image: updated.image,
     tags: updated.tags,
     provider_id: updated.providerId,

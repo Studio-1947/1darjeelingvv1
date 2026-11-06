@@ -11,6 +11,9 @@ import { nationalPhone, OTP_COUNTRIES, otpPhone } from '@/lib/phoneRegions';
 // Google Identity Services client ID from env
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
+/** Seconds before "Resend code" opens, as in the app. */
+const RESEND_SECONDS = 30;
+
 export default function Login() {
   const { t } = useTranslation();
   const { login, user, mode } = useAuth();
@@ -37,6 +40,10 @@ export default function Login() {
   const [countryCode, setCountryCode] = useState('+91');
   const [otp, setOtp] = useState('');
   const [name, setName] = useState('');
+  // A friend's invite code, as the app asks for it. An invite link (/login?ref=CODE) fills it in.
+  const [referral, setReferral] = useState(() => {
+    try { return (new URLSearchParams(window.location.search).get('ref') || '').toUpperCase().slice(0, 12); } catch { return ''; }
+  });
   const [role, setRole] = useState(() => {
     const r = sp.get('role');
     if (r === 'provider' || r === 'tourist') return r;
@@ -104,8 +111,15 @@ export default function Login() {
     loadGis();
   }, []);
 
-  const sendOtp = async (e) => {
-    e.preventDefault();
+  // "Resend code" opens after this many seconds, as in the app (LoginForm RESEND_SECONDS).
+  const [resendIn, setResendIn] = useState(0);
+  useEffect(() => {
+    if (resendIn <= 0) return undefined;
+    const timer = setTimeout(() => setResendIn((s) => s - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [resendIn]);
+
+  const requestCode = async () => {
     if (!canonicalPhone) return;
     setBusy(true); setErr('');
     try {
@@ -113,9 +127,16 @@ export default function Login() {
       setMockOtp(data.mock_otp);
       setSentChannel(data.channel || '');
       setUserExists(!!data.exists);
+      setOtp('');
       setStep(2);
+      setResendIn(RESEND_SECONDS);
     } catch (e) { setErr(e?.response?.data?.detail || t('auth.send_failed')); }
     finally { setBusy(false); }
+  };
+
+  const sendOtp = async (e) => {
+    e.preventDefault();
+    await requestCode();
   };
 
   const verify = async (e) => {
@@ -123,7 +144,11 @@ export default function Login() {
     if (!canonicalPhone) return;
     setBusy(true); setErr('');
     try {
-      const { data } = await api.post('/auth/otp/verify', { phone: canonicalPhone, otp, name, role });
+      const { data } = await api.post('/auth/otp/verify', {
+        phone: canonicalPhone, otp, name, role,
+        // Only a new account can redeem a code; the server ignores it for an existing one.
+        ...(!userExists && referral.trim() ? { referral_code: referral.trim() } : {}),
+      });
       finishSignIn(data);
     } catch (e) { setErr(e?.response?.data?.detail || t('auth.invalid_otp')); }
     finally { setBusy(false); }
@@ -268,7 +293,8 @@ export default function Login() {
               <span className="text-xs font-semibold text-ink-soft">{t('auth.otp_label')}</span>
               <div className="mt-1 flex items-center gap-2 px-3 py-2 rounded-xl border border-[var(--line)] bg-white">
                 <KeyRound size={16} className="text-ink-soft" />
-                <input value={otp} onChange={(e) => setOtp(e.target.value)} required maxLength={6}
+                <input value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))} required maxLength={6}
+                  inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" title={t('auth.otp_six_digits')}
                   data-testid="login-otp" placeholder="123456"
                   className="flex-1 bg-transparent outline-none py-1 tracking-widest tabular-nums text-lg" />
               </div>
@@ -277,8 +303,16 @@ export default function Login() {
               <label className="block">
                 <span className="text-xs font-semibold text-ink-soft">{t('auth.name')}</span>
                 <input value={name} onChange={(e) => setName(e.target.value)} required={!userExists}
-                  data-testid="login-name" placeholder={t('auth.name_placeholder')}
+                  data-testid="login-name" placeholder={t('auth.name_placeholder')} autoComplete="name"
                   className="mt-1 w-full px-3 py-2.5 rounded-xl border border-[var(--line)] bg-white outline-none" />
+              </label>
+            )}
+            {!userExists && role !== 'provider' && (
+              <label className="block">
+                <span className="text-xs font-semibold text-ink-soft">{t('auth.referral_label')}</span>
+                <input value={referral} onChange={(e) => setReferral(e.target.value.toUpperCase().slice(0, 12))}
+                  data-testid="login-referral" placeholder="ANG26-XXXXXX" autoCapitalize="characters" autoComplete="off"
+                  className="mt-1 w-full px-3 py-2.5 rounded-xl border border-[var(--line)] bg-white outline-none tracking-wider" />
               </label>
             )}
 
@@ -286,6 +320,16 @@ export default function Login() {
               className="w-full py-3 rounded-full bg-pine text-white font-bold btn-hover disabled:opacity-60">
               {busy ? t('common.loading') : t('auth.verify')}
             </button>
+            <p className="text-center text-xs text-ink-soft" data-testid="login-resend">
+              {t('auth.resend_prompt')}{' '}
+              {resendIn > 0 ? (
+                <span className="tabular-nums">{t('auth.resend_in', { seconds: resendIn })}</span>
+              ) : (
+                <button type="button" onClick={requestCode} disabled={busy} className="font-bold text-pine underline disabled:opacity-60">
+                  {t('auth.resend')}
+                </button>
+              )}
+            </p>
             <button type="button" onClick={() => setStep(1)} className="w-full text-xs text-ink-soft">← {t('auth.change_number')}</button>
           </form>
         )}
@@ -293,7 +337,7 @@ export default function Login() {
         {err && <p data-testid="login-error" className="mt-4 text-sm text-flag font-semibold text-center">{err}</p>}
 
         <p className="mt-6 text-xs text-center text-ink-soft">
-          {t('auth.terms_prefix')} <Link to="/privacy" className="underline">{t('auth.terms_link')}</Link>{t('auth.terms_suffix')}
+          {t('auth.terms_prefix')} <Link to="/terms" className="underline">{t('auth.terms_conditions_link')}</Link> {t('auth.terms_and')} <Link to="/privacy" className="underline">{t('auth.terms_link')}</Link>{t('auth.terms_suffix')}
         </p>
       </div>
     </div>

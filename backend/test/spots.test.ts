@@ -82,7 +82,7 @@ describe('tourist spots  only an admin can write them', () => {
     const created = await request(app)
       .post('/api/admin/spots')
       .set('Authorization', `Bearer ${provider}`)
-      .send({ title: uniqueTitle('Nope'), description: 'x', location: 'y' });
+      .send({ title: uniqueTitle('Nope'), description: 'x', location: 'Darjeeling' });
     expect(created.status).toBe(403);
 
     const patched = await request(app)
@@ -174,14 +174,14 @@ describe('tourist spots  admin CRUD', () => {
     const missing = await request(app)
       .post('/api/admin/spots')
       .set('Authorization', `Bearer ${admin}`)
-      .send({ description: 'x', location: 'y' });
+      .send({ description: 'x', location: 'Darjeeling' });
     expect(missing.status).toBe(400);
 
     const spot = await createSpot(admin);
     const duplicate = await request(app)
       .post('/api/admin/spots')
       .set('Authorization', `Bearer ${admin}`)
-      .send({ title: spot.title, description: 'x', location: 'y' });
+      .send({ title: spot.title, description: 'x', location: 'Darjeeling' });
     expect(duplicate.status).toBe(409);
   });
 
@@ -201,7 +201,7 @@ describe('tourist spots  admin CRUD', () => {
       const res = await request(app)
         .post('/api/admin/spots')
         .set('Authorization', `Bearer ${admin}`)
-        .send({ title: uniqueTitle('Invalid'), description: 'x', location: 'y', ...payload });
+        .send({ title: uniqueTitle('Invalid'), description: 'x', location: 'Darjeeling', ...payload });
       expect(res.status, `payload ${JSON.stringify(payload)} should be rejected`).toBe(400);
     }
   });
@@ -241,18 +241,18 @@ describe('tourist spots  admin CRUD', () => {
     const homestay = await request(app)
       .post('/api/listings')
       .set('Authorization', `Bearer ${token}`)
-      .send({ title: uniqueTitle('Not A Spot'), type: 'homestay', description: 'x', location: 'y' });
+      .send({ title: uniqueTitle('Not A Spot'), type: 'homestay', description: 'x', location: 'Darjeeling' });
 
     const unknown = await request(app)
       .patch('/api/admin/spots/does-not-exist')
       .set('Authorization', `Bearer ${admin}`)
-      .send({ title: 'x' });
+      .send({ title: 'Edited Title' });
     expect(unknown.status).toBe(404);
 
     const wrongType = await request(app)
       .patch(`/api/admin/spots/${homestay.body.item.id}`)
       .set('Authorization', `Bearer ${admin}`)
-      .send({ title: 'x' });
+      .send({ title: 'Edited Title' });
     expect(wrongType.status).toBe(404);
   });
 
@@ -328,7 +328,7 @@ describe('tourist spots  publishing controls public visibility', () => {
     await request(app)
       .post('/api/listings')
       .set('Authorization', `Bearer ${token}`)
-      .send({ title, type: 'homestay', description: 'x', location: 'y', extras: { published: false } });
+      .send({ title, type: 'homestay', description: 'x', location: 'Darjeeling', extras: { published: false } });
 
     const res = await request(app).get('/api/listings').query({ q: title });
     expect(res.body.items.some((i: any) => i.title === title)).toBe(true);

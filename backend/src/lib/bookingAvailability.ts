@@ -114,13 +114,16 @@ export async function blockedRanges(
   runner: Queryable,
   listingId: string,
   from: string,
-  to: string
-): Promise<{ check_in: string; check_out: string; state: 'booked' | 'hold' }[]> {
+  to: string,
+  /** The signed-in viewer, if any: their own bookings come back marked `mine`, nobody else's do. */
+  viewerId?: string | null
+): Promise<{ check_in: string; check_out: string; state: 'booked' | 'hold'; mine?: true }[]> {
   const rows = await runner
     .select({
       checkIn: schema.bookings.checkIn,
       checkOut: schema.bookings.checkOut,
       status: schema.bookings.status,
+      userId: schema.bookings.userId,
     })
     .from(schema.bookings)
     .where(blockingPredicate(listingId, from, to))
@@ -131,6 +134,8 @@ export async function blockedRanges(
       check_in: r.checkIn as string,
       check_out: r.checkOut as string,
       state: r.status === 'pending_payment' ? ('hold' as const) : ('booked' as const),
+      // So a traveller who already asked for these nights is told that, not "someone else booked".
+      ...(viewerId && r.userId === viewerId ? { mine: true as const } : {}),
     }));
 }
 
@@ -150,4 +155,25 @@ export async function lockListingForBooking(
   listingId: string
 ): Promise<void> {
   await tx.execute(sql`SELECT id FROM listings WHERE id = ${listingId} FOR UPDATE`);
+}
+
+/**
+ * Locks a booking for a status change and returns it as it is now, or null if it does not exist.
+ *
+ * Every change of a booking's status (host accept, guest confirm, cancel) goes through this, so
+ * two of them on the same booking run one after the other and the second decides on what the
+ * first left behind. Without it, a guest could cancel while the host accepted (or while their own
+ * confirm went through) and the slower write silently undid the cancel.
+ *
+ * The listing is locked before the booking, in every caller, so two changes can never wait on
+ * each other in opposite orders.
+ */
+export async function lockBookingForChange(tx: any, bookingId: string): Promise<BookingRow | null> {
+  const [peek] = await tx.select({ listingId: schema.bookings.listingId })
+    .from(schema.bookings).where(eq(schema.bookings.id, bookingId)).limit(1);
+  if (!peek) return null;
+  await lockListingForBooking(tx, peek.listingId);
+  const [row] = await tx.select().from(schema.bookings)
+    .where(eq(schema.bookings.id, bookingId)).limit(1).for('update');
+  return row ?? null;
 }

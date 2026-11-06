@@ -5,7 +5,7 @@ import { app } from '../src/app';
 import { db, schema } from '../src/db';
 import { expireStaleRequests } from '../src/lib/requestExpiry';
 import { REQUEST_EXPIRY_HOURS } from '../src/config';
-import { registerUser, onboardActiveProvider, loginAdmin, createListing } from './helpers';
+import { registerUser, onboardActiveProvider, loginAdmin, createListing, inDays } from './helpers';
 
 /**
  * A request waits for the host's Accept. A host who never answers used to leave the guest waiting
@@ -36,8 +36,8 @@ describe('unanswered requests close by themselves', () => {
   it(`closes a request older than ${REQUEST_EXPIRY_HOURS}h and tells the guest and the host`, async () => {
     const { hostToken, listing } = await hostHomestay('Silent Host');
     const { token: guest } = await registerUser({ name: 'Waiting Guest' });
-    const old = await ask(guest, listing, '2033-01-01', '2033-01-03');
-    const fresh = await ask(guest, listing, '2033-02-01', '2033-02-03');
+    const old = await ask(guest, listing, inDays(10), inDays(12));
+    const fresh = await ask(guest, listing, inDays(32), inDays(34));
     await age(old.id, REQUEST_EXPIRY_HOURS + 1);
 
     await expireStaleRequests();
@@ -53,8 +53,8 @@ describe('unanswered requests close by themselves', () => {
   it('leaves accepted requests alone, and the host cannot accept one that has closed', async () => {
     const { hostToken, listing } = await hostHomestay('Slow Host');
     const { token: guest } = await registerUser({ name: 'Patient Guest' });
-    const accepted = await ask(guest, listing, '2033-03-01', '2033-03-03');
-    const lapsed = await ask(guest, listing, '2033-04-01', '2033-04-03');
+    const accepted = await ask(guest, listing, inDays(54), inDays(56));
+    const lapsed = await ask(guest, listing, inDays(76), inDays(78));
     await request(app).patch(`/api/bookings/${accepted.id}/confirm`).set(auth(hostToken));
     await age(accepted.id, REQUEST_EXPIRY_HOURS + 5);
     await age(lapsed.id, REQUEST_EXPIRY_HOURS + 5);
@@ -69,7 +69,7 @@ describe('unanswered requests close by themselves', () => {
   it('does not touch old unpaid checkouts on team-run listings, which wait on nobody', async () => {
     const listing = await createListing({ title: 'Team Spot Expiry' });
     const { token: guest } = await registerUser({ name: 'Spot Guest Expiry' });
-    const b = await ask(guest, listing, '2033-05-01');
+    const b = await ask(guest, listing, inDays(98));
     await age(b.id, REQUEST_EXPIRY_HOURS + 1);
     await expireStaleRequests();
     expect(await status(b.id)).toBe('pending_payment');

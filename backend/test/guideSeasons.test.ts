@@ -2,7 +2,16 @@ import { describe, it, expect } from 'vitest';
 import request from 'supertest';
 import { app } from '../src/app';
 import { guideWorksOn, seasonOf } from '../src/lib/hostProfile';
-import { registerUser, onboardActiveProvider, loginAdmin } from './helpers';
+import { registerUser, onboardActiveProvider, loginAdmin, inDays } from './helpers';
+
+/** The next 10th of a month (1-12) that is still ahead, so a booking date is never in the past. */
+function nextTenth(month: number): string {
+  for (let d = 1; d <= 366; d++) {
+    const day = inDays(d);
+    if (Number(day.slice(5, 7)) === month && day.endsWith('-10')) return day;
+  }
+  throw new Error('no date found');
+}
 
 /** Board: guides confirm "based on availability". The seasons on a guide's profile now count. */
 describe('guide seasons', () => {
@@ -34,12 +43,12 @@ describe('guide seasons', () => {
     const ask = (check_in: string) => request(app).post('/api/bookings').set({ Authorization: `Bearer ${token}` })
       .send({ listing_id: listing.id, listing_type: 'guide', check_in });
 
-    const wet = await ask('2031-07-10');
+    const wet = await ask(nextTenth(7));
     expect(wet.status).toBe(409);
     expect(wet.body.code).toBe('out_of_season');
     expect(wet.body.detail).toContain('Spring, Autumn');
 
-    const ok = await ask('2031-10-10');
+    const ok = await ask(nextTenth(10));
     expect(ok.status).toBe(200);
   });
 });

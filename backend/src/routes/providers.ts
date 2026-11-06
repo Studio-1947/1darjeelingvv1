@@ -23,6 +23,7 @@ import {
 import { phoneKey } from '../lib/phone';
 import { MAX_VIDEO_BYTES, VIDEO_MIME, matchesDeclaredType } from './kyc';
 import { uploadToMinIO } from '../lib/s3';
+import { checkNameLike } from '../lib/contentRules';
 
 const SELF_ONBOARDABLE_BUSINESS_TYPES = Object.keys(KYC_REQUIREMENTS);
 
@@ -80,7 +81,7 @@ const router = Router();
  */
 // Register/Onboard a provider
 router.post('/onboard', authenticateToken, async (req: Request, res: Response) => {
-  const { business_name, business_type, description, location, latitude = null, longitude = null, contact_phone, price_from = 0, images = [], extras = {} } = req.body;
+  const { business_name: rawBusinessName, business_type, description, location: rawLocation, latitude = null, longitude = null, contact_phone, price_from = 0, images = [], extras = {} } = req.body;
   // Location verification is granted only by POST /me/location/verify, never claimed by the caller.
   if (extras && typeof extras === 'object') delete extras.location_verification;
 
@@ -124,9 +125,16 @@ router.post('/onboard', authenticateToken, async (req: Request, res: Response) =
     }
   }
 
-  if (!business_name || !business_name.trim() || !business_type || !description || !description.trim() || !location || !location.trim() || !contact_phone || !contact_phone.trim()) {
+  if (!rawBusinessName || !String(rawBusinessName).trim() || !business_type || !description || !description.trim() || !rawLocation || !String(rawLocation).trim() || !contact_phone || !contact_phone.trim()) {
     return res.status(400).json({ detail: 'Business name, type, description, location, and contact phone are required' });
   }
+  // The name and place travellers will see: real ones, tidily spaced (lib/contentRules.ts).
+  const nameChecked = checkNameLike(rawBusinessName, 'Business name', 120);
+  if ('error' in nameChecked) return res.status(400).json({ detail: nameChecked.error, code: 'bad_name' });
+  const placeChecked = checkNameLike(rawLocation, 'Location', 200);
+  if ('error' in placeChecked) return res.status(400).json({ detail: placeChecked.error, code: 'bad_location' });
+  const business_name = nameChecked.value;
+  const location = placeChecked.value;
 
   // This is the number that reaches a traveller as `provider_phone` on the listing detail, and
   // calling it is the entire transaction the platform charges for. A provider who fat-fingers
@@ -599,7 +607,12 @@ router.patch('/me', authenticateToken, async (req: Request, res: Response) => {
   ] as const) {
     const v = text(key, label);
     if (v === 'bad') return res.status(400).json({ detail: `${label} cannot be empty` });
-    if (v !== null) set[col] = v;
+    if (v !== null && key !== 'description') {
+      // Name and place: real ones, tidily spaced (lib/contentRules.ts), as at sign-up.
+      const checked = checkNameLike(v, label, key === 'business_name' ? 120 : 200);
+      if ('error' in checked) return res.status(400).json({ detail: checked.error });
+      set[col] = checked.value;
+    } else if (v !== null) set[col] = v;
   }
 
   if (body.contact_phone !== undefined) {

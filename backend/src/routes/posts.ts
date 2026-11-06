@@ -8,6 +8,7 @@ import { rateLimiter } from '../middleware/rateLimiter';
 import { isHostApprovalPending, isHostPlanLive } from '../lib/hostPlan';
 import { routeParam } from '../lib/routeParam';
 import { myProvider as hostProvider } from '../lib/hostAccess';
+import { checkPostText } from '../lib/contentRules';
 
 const router = Router();
 
@@ -59,6 +60,8 @@ function parseBody(value: unknown): { body: string } | { error: string } {
   if (typeof value !== 'string' || !value.trim()) return { error: 'Write something to post' };
   const body = value.trim();
   if (body.length > MAX_POST_LEN) return { error: `A post can be at most ${MAX_POST_LEN} characters` };
+  const problem = checkPostText(body);
+  if (problem) return { error: problem };
   return { body };
 }
 

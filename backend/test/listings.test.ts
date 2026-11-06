@@ -57,14 +57,14 @@ describe('listings authorization', () => {
     const res = await request(app)
       .post('/api/listings')
       .set('Authorization', `Bearer ${token}`)
-      .send({ title: 'Fake Listing', type: 'spot', description: 'x', location: 'y' });
+      .send({ title: 'Fake Listing', type: 'spot', description: 'x', location: 'Darjeeling' });
     expect(res.status).toBe(403);
   });
 
   it('rejects listing creation with no auth token at all', async () => {
     const res = await request(app)
       .post('/api/listings')
-      .send({ title: 'Fake Listing', type: 'spot', description: 'x', location: 'y' });
+      .send({ title: 'Fake Listing', type: 'spot', description: 'x', location: 'Darjeeling' });
     expect(res.status).toBe(401);
   });
 
@@ -87,7 +87,7 @@ describe('listings authorization', () => {
         title: 'Spoofed Listing',
         type: 'homestay',
         description: 'x',
-        location: 'y',
+        location: 'Darjeeling',
         provider_id: 'someone-elses-provider-id',
       });
     expect(res.status).toBe(200);
@@ -104,7 +104,7 @@ describe('listings authorization', () => {
         title: 'Admin Listing',
         type: 'spot',
         description: 'x',
-        location: 'y',
+        location: 'Darjeeling',
         provider_id: 'admin-seed-provider',
       });
     expect(res.status).toBe(200);
@@ -166,7 +166,7 @@ describe('listings read endpoints', () => {
     const createRes = await request(app)
       .post('/api/listings')
       .set('Authorization', `Bearer ${token}`)
-      .send({ title: 'Unverified Provider Listing', type: 'homestay', description: 'x', location: 'y' });
+      .send({ title: 'Unverified Provider Listing', type: 'homestay', description: 'x', location: 'Darjeeling' });
     expect(createRes.status).toBe(200);
     expect(createRes.body.item.provider_id).toBe(providerId);
     const listingId = createRes.body.item.id;
@@ -350,7 +350,7 @@ describe('provider can manage multiple listings', () => {
     const res = await request(app)
       .post('/api/listings')
       .set('Authorization', `Bearer ${token}`)
-      .send({ title: 'Second Listing', type: 'homestay', description: 'x', location: 'y' });
+      .send({ title: 'Second Listing', type: 'homestay', description: 'x', location: 'Darjeeling' });
     expect(res.status).toBe(200);
     expect(res.body.item.provider_id).toBe(providerId);
 
@@ -364,7 +364,7 @@ describe('provider can manage multiple listings', () => {
     const createRes = await request(app)
       .post('/api/listings')
       .set('Authorization', `Bearer ${token}`)
-      .send({ title: 'Original Title', type: 'homestay', description: 'x', location: 'y', price: 1000 });
+      .send({ title: 'Original Title', type: 'homestay', description: 'x', location: 'Darjeeling', price: 1000 });
     const listingId = createRes.body.item.id;
 
     const patchRes = await request(app)
@@ -383,7 +383,7 @@ describe('provider can manage multiple listings', () => {
     const createRes = await request(app)
       .post('/api/listings')
       .set('Authorization', `Bearer ${ownerToken}`)
-      .send({ title: 'Owner Listing', type: 'homestay', description: 'x', location: 'y' });
+      .send({ title: 'Owner Listing', type: 'homestay', description: 'x', location: 'Darjeeling' });
     const listingId = createRes.body.item.id;
 
     const patchRes = await request(app)
@@ -403,7 +403,7 @@ describe('provider can manage multiple listings', () => {
     const createRes = await request(app)
       .post('/api/listings')
       .set('Authorization', `Bearer ${token}`)
-      .send({ title: 'Doomed Listing', type: 'homestay', description: 'x', location: 'y' });
+      .send({ title: 'Doomed Listing', type: 'homestay', description: 'x', location: 'Darjeeling' });
     const listingId = createRes.body.item.id;
 
     const deleteRes = await request(app)
@@ -420,7 +420,7 @@ describe('provider can manage multiple listings', () => {
     const createRes = await request(app)
       .post('/api/listings')
       .set('Authorization', `Bearer ${token}`)
-      .send({ title: 'Provider Owned', type: 'homestay', description: 'x', location: 'y' });
+      .send({ title: 'Provider Owned', type: 'homestay', description: 'x', location: 'Darjeeling' });
     const listingId = createRes.body.item.id;
 
     const admin = await loginAdmin();
@@ -441,7 +441,7 @@ describe('provider can manage multiple listings', () => {
     const patchRes = await request(app)
       .patch('/api/listings/does-not-exist')
       .set('Authorization', `Bearer ${token}`)
-      .send({ title: 'x' });
+      .send({ title: 'Edited Title' });
     expect(patchRes.status).toBe(404);
 
     const deleteRes = await request(app)

@@ -530,17 +530,12 @@ export default function BookingWidget() {
               aria-expanded={panelOpen}
               aria-controls="booking-widget-panel-mobile"
               data-testid="booking-widget-pill-open"
-              className="flex items-center gap-3 min-w-0 flex-1 text-left focus-visible:outline-none"
+              className="flex items-center min-w-0 flex-1 pl-1 text-left focus-visible:outline-none"
             >
-              <MapPin size={18} className="flex-shrink-0 text-white/80" />
-              <div className="flex flex-col min-w-0">
-                <span className="text-xs font-semibold text-white/60 uppercase tracking-wider">
-                  {t('widget.search')}
-                </span>
-                <span className="truncate text-sm font-bold text-white">
-                  {summary || <RotatingSearchHint />}
-                </span>
-              </div>
+              {/* One line only: the rotating hint already says "Search …", so no label or pin above it. */}
+              <span className="truncate text-[15px] font-bold text-white">
+                {summary || <RotatingSearchHint />}
+              </span>
             </button>
 
             <button

@@ -23,7 +23,7 @@ export default function Footer() {
   const { t } = useTranslation();
   const icon = 'text-ink-soft transition-colors hover:text-pine focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine rounded';
   return (
-    <footer className="mt-16 md:mt-20 border-t border-[var(--line)] bg-white pb-24 lg:pb-0" data-testid="site-footer">
+    <footer className="mt-16 md:mt-20 border-t border-[var(--line)] bg-white pb-[calc(var(--bottom-nav-h)+var(--page-cta-h)+1rem)] lg:pb-0" data-testid="site-footer">
       <div className="mx-auto max-w-6xl px-4 md:px-8 py-8 flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
         <div className="flex items-center gap-3">
           <Wordmark className="h-6 w-auto text-ink" />

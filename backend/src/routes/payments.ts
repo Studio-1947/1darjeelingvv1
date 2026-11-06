@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import { db, schema } from '../db';
-import { eq, and, ne } from 'drizzle-orm';
+import { eq, and, ne, gte, desc, sql } from 'drizzle-orm';
 import { authenticateToken } from '../middleware/auth';
 import { rateLimiter } from '../middleware/rateLimiter';
 import { AMOUNTS, GST_RATE_PERCENT, PLATFORM_FEE_PERCENT, HOST_RENEWAL_WINDOW_DAYS, MOCK_PAYMENTS, rzpClient, RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, RAZORPAY_WEBHOOK_SECRET, IS_PROD, log } from '../config';
@@ -326,6 +326,9 @@ router.get('/prices', (_req: Request, res: Response) => {
 });
 
 // Create order
+/** How long an unpaid order is handed back again instead of making a new one. */
+const ORDER_REUSE_MINUTES = 30;
+
 router.post('/order', authenticateToken, async (req: Request, res: Response) => {
   const { flow, reference_id } = req.body;
   if (!flow || !reference_id) {
@@ -357,60 +360,63 @@ router.post('/order', authenticateToken, async (req: Request, res: Response) => 
     return res.status(ownershipError.status).json({ detail: ownershipError.detail, ...(ownershipError.code ? { code: ownershipError.code } : {}) });
   }
 
-  if (MOCK_PAYMENTS) {
-    const mockOrderId = `mock_order_${uuidv4().replace(/-/g, '').slice(0, 12)}`;
-    await db.insert(schema.payments).values({
-      id: uuidv4(),
-      userId: req.user.id,
-      flow,
-      referenceId: reference_id,
-      amount,
-      breakup,
-      orderId: mockOrderId,
-      status: 'created',
-      mock: true,
-      createdAt: new Date().toISOString()
-    });
-
-    return res.json({
-      mock: true,
-      key_id: 'mock_gateway',
-      order: { id: mockOrderId, amount, currency: 'INR' },
-      amount,
-      breakup
-    });
-  }
-
-  if (!rzpClient) {
+  if (!MOCK_PAYMENTS && !rzpClient) {
     return res.status(500).json({ detail: 'Razorpay not configured' });
   }
 
-  const receipt = `${flow.slice(0, 20)}_${reference_id.slice(0, 16)}_${uuidv4().slice(0, 6)}`.slice(0, 40);
+  // One open order per thing being paid for. Pressing Pay twice, or closing the sheet and opening
+  // it again, hands back the order already made for the same thing at the same price, instead of
+  // leaving a pile of unused orders. The advisory lock makes two presses at the same instant wait
+  // for each other, so the second one finds the first one's order. A donation names its own
+  // amount, so it always gets a fresh order.
+  const reusable = flow !== 'donation';
   try {
-    const order = await rzpClient.orders.create({
-      amount,
-      currency: 'INR',
-      receipt,
-      notes: { flow, reference_id, user_id: req.user.id }
-    });
+    const result = await db.transaction(async (tx) => {
+      if (reusable) {
+        await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`payment-order:${req.user.id}:${flow}:${reference_id}`}))`);
+        const [open] = await tx.select().from(schema.payments).where(and(
+          eq(schema.payments.userId, req.user.id),
+          eq(schema.payments.flow, flow),
+          eq(schema.payments.referenceId, reference_id),
+          eq(schema.payments.status, 'created'),
+          eq(schema.payments.amount, amount),
+          eq(schema.payments.mock, MOCK_PAYMENTS),
+          gte(schema.payments.createdAt, new Date(Date.now() - ORDER_REUSE_MINUTES * 60 * 1000).toISOString()),
+        )).orderBy(desc(schema.payments.createdAt)).limit(1);
+        if (open?.orderId) return { order: { id: open.orderId, amount, currency: 'INR' } as any, reused: true };
+      }
 
-    await db.insert(schema.payments).values({
-      id: uuidv4(),
-      userId: req.user.id,
-      flow,
-      referenceId: reference_id,
-      amount,
-      breakup,
-      orderId: order.id,
-      status: 'created',
-      mock: false,
-      createdAt: new Date().toISOString()
+      let order: any;
+      if (MOCK_PAYMENTS) {
+        order = { id: `mock_order_${uuidv4().replace(/-/g, '').slice(0, 12)}`, amount, currency: 'INR' };
+      } else {
+        const receipt = `${flow.slice(0, 20)}_${reference_id.slice(0, 16)}_${uuidv4().slice(0, 6)}`.slice(0, 40);
+        order = await rzpClient!.orders.create({
+          amount,
+          currency: 'INR',
+          receipt,
+          notes: { flow, reference_id, user_id: req.user.id }
+        });
+      }
+      await tx.insert(schema.payments).values({
+        id: uuidv4(),
+        userId: req.user.id,
+        flow,
+        referenceId: reference_id,
+        amount,
+        breakup,
+        orderId: order.id,
+        status: 'created',
+        mock: MOCK_PAYMENTS,
+        createdAt: new Date().toISOString()
+      });
+      return { order, reused: false };
     });
 
     return res.json({
-      mock: false,
-      key_id: RAZORPAY_KEY_ID,
-      order,
+      mock: MOCK_PAYMENTS,
+      key_id: MOCK_PAYMENTS ? 'mock_gateway' : RAZORPAY_KEY_ID,
+      order: result.order,
       amount,
       breakup
     });

@@ -6,6 +6,8 @@ import { NavigationArrow as Navigation, Receipt } from '@phosphor-icons/react';
 import { Screen, SectionHead, ALIGN_TEXT, ALIGN_BLOCK } from './primitives';
 import { BookingFlow } from './useBookingFlow';
 import { todayStr, addDays, isBadRange } from '@/lib/dates';
+import api from '@/lib/api';
+import { useAuth } from '@/context/AuthContext';
 
 /** Inline validation message under a field. Nothing rendered when there's no error. */
 function FieldError({ id, message }: { id: string; message?: string }) {
@@ -27,8 +29,8 @@ function FieldError({ id, message }: { id: string; message?: string }) {
  * which is settled with the host. The note under it says so, so nobody expects
  * a charge at the end.
  */
-function PriceBreakdown({ item, unit, nights, guests }: {
-  item: any; unit: string; nights: number; guests: number;
+function PriceBreakdown({ item, unit, nights, guests, voucherPct = 0 }: {
+  item: any; unit: string; nights: number; guests: number; voucherPct?: number;
 }) {
   const { t } = useTranslation();
   const rate = Number(item.price) || 0;
@@ -62,6 +64,19 @@ function PriceBreakdown({ item, unit, nights, guests }: {
         <p className="mt-2 text-xs text-ink-soft">{t('booking.pick_dates_for_total')}</p>
       )}
 
+      {rate > 0 && !needsDates && voucherPct > 0 && (
+        <>
+          <div className="mt-2 flex justify-between gap-4 text-sm" data-testid="booking-voucher-line">
+            <span className="text-ink-soft">{t('booking.voucher_discount', { pct: voucherPct })}</span>
+            <span className="font-bold text-pine">−₹{Math.round((stayTotal * voucherPct) / 100).toLocaleString('en-IN')}</span>
+          </div>
+          <div className="mt-1 flex justify-between gap-4 text-sm">
+            <span className="font-semibold text-ink">{t('booking.voucher_final')}</span>
+            <span className="font-extrabold text-ink">₹{Math.round(stayTotal - (stayTotal * voucherPct) / 100).toLocaleString('en-IN')}</span>
+          </div>
+        </>
+      )}
+
       {rate > 0 && !needsDates && (
         <p className="mt-1 text-xs text-ink-soft">{t('booking.paid_to_host')}</p>
       )}
@@ -90,6 +105,13 @@ export function ReserveSection({ item, unit, bookable, available = true, cta, bo
 }) {
   const { t } = useTranslation();
   const { form, updateForm, errors, busy, msg, doBook } = booking;
+  // Referral vouchers the traveller can use on this booking (the app's "Apply voucher").
+  const { user } = useAuth();
+  const [vouchers, setVouchers] = React.useState<{ id: string; discountPercentage: number }[]>([]);
+  React.useEffect(() => {
+    if (!user || !bookable) { setVouchers([]); return; }
+    api.get('/users/me/vouchers').then(({ data }) => setVouchers(Array.isArray(data) ? data : [])).catch(() => setVouchers([]));
+  }, [user, bookable]);
   const CtaIcon = cta.Icon;
   const today = todayStr();
 
@@ -109,7 +131,10 @@ export function ReserveSection({ item, unit, bookable, available = true, cta, bo
         title={item.price > 0 ? `₹${item.price}${unit}` : t('detail.reserve')}
         note={bookable ? undefined : t('detail.walk_in_note')} />
 
-      <div className={`mt-10 max-w-xl ${ALIGN_BLOCK}`}>
+      {/* Phones: the form alone. Desktop: the form and, beside it, how a request turns into a
+          booking, so the wide screen is not half empty next to a narrow form. */}
+      <div className="mt-10 lg:grid lg:grid-cols-[minmax(0,36rem)_minmax(0,1fr)] lg:gap-12 lg:items-start">
+      <div className={`max-w-xl ${ALIGN_BLOCK}`}>
         <div className="mist-panel p-6 md:p-8">
           {!available ? (
             <UnavailableNotice />
@@ -155,7 +180,8 @@ export function ReserveSection({ item, unit, bookable, available = true, cta, bo
                 </label>
               )}
               {(() => {
-                const maxGuests = item.type === 'driver' ? (item.extras?.seats || 6) : (item.guests || item.extras?.capacity || 10);
+                // The server sends the limit it enforces (lib/bookingRules.ts); the fallback is the same rule.
+                const maxGuests = item.max_guests || (item.type === 'driver' ? (item.extras?.seats || 6) : (item.extras?.capacity || 10));
                 return (
                   <label className="block text-left">
                     <div className="flex items-center justify-between">
@@ -222,13 +248,31 @@ export function ReserveSection({ item, unit, bookable, available = true, cta, bo
                   data-testid="booking-notes" rows={3} className="mt-1 w-full px-3 py-2.5 rounded-xl border border-[var(--line)] bg-white outline-none" />
               </label>
 
-              <PriceBreakdown item={item} unit={unit} nights={nights} guests={Number(form.guests) || 1} />
+              {vouchers.length > 0 && (
+                <fieldset data-testid="booking-vouchers">
+                  <legend className="text-xs font-semibold text-ink-soft">{t('booking.voucher_apply')}</legend>
+                  <div className="mt-1 flex flex-wrap gap-2">
+                    {vouchers.map((v) => {
+                      const on = form.voucher_id === v.id;
+                      return (
+                        <button key={v.id} type="button" aria-pressed={on} data-testid={`booking-voucher-${v.id}`}
+                          onClick={() => updateForm({ voucher_id: on ? undefined : v.id, voucher_pct: on ? undefined : v.discountPercentage })}
+                          className={`px-3.5 h-10 rounded-full border text-sm font-bold ${on ? 'bg-pine text-white border-pine' : 'bg-white text-ink border-[var(--line)]'}`}>
+                          {t('booking.voucher_off', { pct: v.discountPercentage })} · {t('booking.voucher_reward')}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </fieldset>
+              )}
+
+              <PriceBreakdown item={item} unit={unit} nights={nights} guests={Number(form.guests) || 1} voucherPct={form.voucher_pct || 0} />
 
               <button onClick={doBook} disabled={busy} data-testid="booking-submit"
                 className={`w-full py-4 rounded-full font-bold btn-hover disabled:opacity-60 inline-flex items-center justify-center gap-2 ${cta.color}`}>
                 {busy ? t('common.loading') : t(`cta.${cta.key}`)} <CtaIcon size={18} />
               </button>
-              {msg && <p data-testid="booking-msg" className={`text-sm ${ALIGN_TEXT} text-pine font-semibold`}>{msg}</p>}
+              {msg && <p data-testid="booking-msg" role="alert" className={`text-sm ${ALIGN_TEXT} text-flag font-semibold`}>{msg}</p>}
             </div>
           ) : (
             <button onClick={onOpenMaps} data-testid="info-cta"
@@ -238,9 +282,27 @@ export function ReserveSection({ item, unit, bookable, available = true, cta, bo
           )}
         </div>
       </div>
+      {bookable && available && HOST_ASKED.has(item.type) && (
+        <aside className="hidden lg:block lg:sticky lg:top-[calc(var(--header-h)+1.5rem)] rounded-3xl border border-[var(--line)] p-8" data-testid="reserve-how-it-works">
+          <div className="text-xs font-bold uppercase tracking-widest text-ink-soft">{t('approval.next_steps')}</div>
+          <ol className="mt-5 space-y-5">
+            {[t('approval.step_ask'), t('approval.step_host'), t('approval.step_confirm'), t('approval.step_contact')].map((step, i) => (
+              <li key={i} className="flex gap-4">
+                <span className="flex-shrink-0 w-8 h-8 rounded-full bg-mist text-pine font-bold grid place-items-center">{i + 1}</span>
+                <span className="pt-1 text-[15px] leading-relaxed text-ink">{step}</span>
+              </li>
+            ))}
+          </ol>
+          <Link to="/refunds" className="mt-6 inline-block text-sm font-semibold text-pine underline">{t('approval.refund_link')}</Link>
+        </aside>
+      )}
+      </div>
     </Screen>
   );
 }
+
+/** Listing types whose bookings are requests the host accepts first (server: HOST_APPROVAL_TYPES). */
+const HOST_ASKED = new Set(['homestay', 'driver', 'guide']);
 
 /** Sticky bottom bar with price + CTA, mobile only. */
 export function MobileStickyBar({ item, unit, bookable, cta, busy, onBook, onOpenMaps }: {
@@ -259,8 +321,23 @@ export function MobileStickyBar({ item, unit, bookable, cta, busy, onBook, onOpe
   // drop it and let the button stand on its own.
   const bare = !bookable && !(item.price > 0);
 
+  // The page ends with the footer, so the footer (not the content above it) leaves room for this
+  // bar: it reads --page-cta-h. Measured, because the bar is taller with a price than without.
+  const barRef = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => {
+    const el = barRef.current;
+    if (!el) return undefined;
+    const root = document.documentElement;
+    const set = () => root.style.setProperty('--page-cta-h', `${el.offsetHeight}px`);
+    set();
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(set) : null;
+    ro?.observe(el);
+    return () => { ro?.disconnect(); root.style.removeProperty('--page-cta-h'); };
+  }, []);
+
   return (
     <div
+      ref={barRef}
       className="lg:hidden fixed inset-x-0 z-30 px-4 pb-2"
       style={{ bottom: 'calc(var(--bottom-nav-h) + 0.5rem)' }}
     >

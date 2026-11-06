@@ -52,7 +52,8 @@ export default function TravellerPanels() {
     return () => { live = false; };
   }, []);
 
-  const inviteLink = window.location.origin;
+  // Opens sign-in with the code already filled in (Login reads ?ref=).
+  const inviteLink = `${window.location.origin}/login?ref=${encodeURIComponent(code || '')}`;
   const share = async () => {
     if (!code) return;
     const text = `Plan your Darjeeling trip on aangan. Use my code ${code} when you sign up: ${inviteLink}`;
@@ -105,7 +106,7 @@ export default function TravellerPanels() {
           {data.pass.active ? (
             <>
               <div className="mt-2 font-display font-extrabold text-2xl">Active</div>
-              <div className="text-sm text-white/75">Every booking confirms free{data.pass.expires_at && !data.pass.expires_at.startsWith('9999') ? ` until ${new Date(data.pass.expires_at).toLocaleDateString()}` : ''}.</div>
+              <div className="text-sm text-white/75">Every booking confirms free{data.pass.expires_at && !data.pass.expires_at.startsWith('9999') ? ` until ${new Date(data.pass.expires_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}.</div>
             </>
           ) : (
             <>
@@ -168,8 +169,12 @@ export default function TravellerPanels() {
                 <div className="mt-1 text-sm font-bold text-ink">{text.title}</div>
                 <div className="text-[11px] text-ink-soft leading-snug">{text.how}</div>
                 {!a.earned && a.goal > 1 && (
-                  <div className="mt-2 h-1.5 rounded-full bg-[var(--line)] overflow-hidden">
-                    <div className="h-full bg-[#1F6656]" style={{ width: `${(a.progress / a.goal) * 100}%` }} />
+                  <div className="mt-2 flex items-center gap-2" data-testid={`award-progress-${a.id}`}>
+                    <div className="flex-1 h-1.5 rounded-full bg-[var(--line)] overflow-hidden" role="progressbar"
+                      aria-valuemin={0} aria-valuemax={a.goal} aria-valuenow={a.progress}>
+                      <div className="h-full bg-[#1F6656]" style={{ width: `${(a.progress / a.goal) * 100}%` }} />
+                    </div>
+                    <span className="text-[11px] font-bold text-ink-soft tabular-nums">{a.progress}/{a.goal}</span>
                   </div>
                 )}
               </div>

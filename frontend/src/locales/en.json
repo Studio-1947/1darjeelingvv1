@@ -2,6 +2,8 @@
   "brand": "1 Darjeeling",
   "brand_tagline": "One Darjeeling. Every experience.",
   "nav": {
+    "categories_prev": "More categories to the left",
+    "categories_next": "More categories to the right",
     "discover": "Discover",
     "spots": "Spots",
     "homestays": "Homestays",
@@ -60,6 +62,7 @@
   "explore": {
     "region": "Darjeeling",
     "search_placeholder": "Search stays, cafes, viewpoints",
+    "search_go": "Search",
     "most_visited": "MOST VISITED",
     "spot_sub": "Sunrise points, monasteries and viewpoints",
     "homestay_sub": "Places to stay",
@@ -128,6 +131,7 @@
     "title": "Darjeeling Route & Driver Fare Guide"
   },
   "common": {
+    "price_on_request": "Ask for price",
     "book_now": "Reserve",
     "view_details": "View details",
     "explore": "Explore",
@@ -256,7 +260,14 @@
     "cancel_change_number": "Cancel and change number",
     "terms_prefix": "By continuing you agree to our",
     "terms_link": "privacy policy",
+    "terms_and": "and",
+    "terms_conditions_link": "Terms & Conditions",
     "terms_suffix": ".",
+    "referral_label": "Referral code (if you have one)",
+    "resend_prompt": "Didn't get the code?",
+    "resend_in": "Resend in {{seconds}}s",
+    "resend": "Resend code",
+    "otp_six_digits": "Enter the 6-digit code",
     "send_failed": "Failed to send OTP",
     "invalid_otp": "Invalid OTP",
     "phone_hint": "We send a one-time code on WhatsApp, or by SMS if WhatsApp is not available on this number.",
@@ -335,6 +346,11 @@
     "results": "Search results"
   },
   "booking": {
+    "voucher_apply": "Apply a voucher",
+    "voucher_off": "{{pct}}% off",
+    "voucher_reward": "Referral reward",
+    "voucher_discount": "Voucher discount ({{pct}}%)",
+    "voucher_final": "Final amount",
     "services": "Which services would you like?",
     "route": "Which route?",
     "route_pick": "Pick a route (or write it in the note)",
@@ -469,7 +485,7 @@
     "email_label": "Email:",
     "address_label": "Address:",
     "intro": [
-      "1Darjeeling (\"we,\" \"us,\" \"our,\" or \"the Platform\") operates www.1darjeeling.in (the \"Site\"), a local marketplace and travel guide connecting visitors with local businesses, guides, and services in Darjeeling. This Privacy Policy explains how we collect, use, disclose, and protect your information when you use our Site.",
+      "1Darjeeling (\"we,\" \"us,\" \"our,\" or \"the Platform\") operates www.aanganerp.in (the \"Site\"), a local marketplace and travel guide connecting visitors with local businesses, guides, and services in Darjeeling. This Privacy Policy explains how we collect, use, disclose, and protect your information when you use our Site.",
       "By using 1Darjeeling, you agree to the collection and use of information in accordance with this policy."
     ],
     "sections": [
@@ -765,7 +781,11 @@
     "search": "Search",
     "results_one": "{{count}} result",
     "results_other": "{{count}} results",
-    "empty": "No listings yet in this category.",
+    "spots_listed_one": "{{count}} spot listed below",
+    "spots_listed_other": "{{count}} spots listed below",
+    "empty": "No listings here yet. We are adding new places and people every week.",
+    "empty_ask": "Ask us to find one",
+    "empty_list": "List your business here",
     "view_grid": "Grid view",
     "view_list": "List view",
     "none_in_category": "No {{category}} match “{{query}}”.",
@@ -773,6 +793,13 @@
     "found_elsewhere_one": "{{count}} result for “{{query}}” in another category",
     "found_elsewhere_other": "{{count}} results for “{{query}}” in other categories",
     "found_elsewhere_note": "Not in this category, but it might be what you were looking for."
+  },
+  "notes": {
+    "title": "Notifications",
+    "title_unread": "Notifications, {{count}} unread",
+    "read_all": "Mark all read",
+    "empty": "Nothing yet. Booking requests, answers and updates show up here.",
+    "unread": "Unread"
   },
   "feed": {
     "no_reviews": "No reviews",
@@ -803,6 +830,7 @@
     "deleted": "Post deleted.",
     "hidden_notice": "Hidden from the feed by the aangan team",
     "cannot_post_unverified": "You can post to the feed once our team has verified your documents.",
+    "your_business": "Your business",
     "cannot_post_plan": "Your host plan is not active, so you cannot post right now. Renew it from",
     "empty": "No posts yet. Hosts will share what's new at their places here.",
     "load_failed": "Could not load the feed.",
@@ -1052,7 +1080,8 @@
     "configure_shop": "Configure Shop",
     "post_update": "Post an update",
     "plan_paid_until": "Plan paid until {{date}}",
-    "plan_reviews": "{{count}} reviews · {{average}} average",
+    "plan_reviews_one": "{{count}} review · {{average}} average",
+    "plan_reviews_other": "{{count}} reviews · {{average}} average",
     "plan_no_reviews": "No reviews yet",
     "feedback_open": "Send feedback to the aangan team",
     "feedback_title": "Feedback for the aangan team",
@@ -1139,7 +1168,7 @@
     "name_ph_shop": "e.g. Nathmull’s Tea House",
     "name_ph_cafe": "e.g. Glenary’s Bakery & Café",
     "next": "Next: Update Profile",
-    "no_cover_photo": "No Cover Photo Uploaded (Click Top Right)",
+    "no_cover_photo": "No cover photo yet. Add one with the button at the top right.",
     "upload_cover": "Upload Cover Photo",
     "submit_pay": "Pay {{total}} & list",
     "back_basic": "Back to Basic Info",
@@ -1409,7 +1438,7 @@
     "title": "Terms & Conditions",
     "updated": "Last updated: August 2026",
     "intro": [
-      "1Darjeeling (\"we,\" \"us,\" \"our,\" or \"the Platform\") operates www.1darjeeling.in (the \"Site\"), a local marketplace and travel guide connecting visitors with homestays, drivers, cafés, shops and guides in and around Darjeeling. These Terms & Conditions govern your use of the Site.",
+      "1Darjeeling (\"we,\" \"us,\" \"our,\" or \"the Platform\") operates www.aanganerp.in (the \"Site\"), a local marketplace and travel guide connecting visitors with homestays, drivers, cafés, shops and guides in and around Darjeeling. These Terms & Conditions govern your use of the Site.",
       "By creating an account, making a booking request, listing a business, or otherwise using the Site, you agree to these Terms. If you do not agree, please do not use the Site."
     ],
     "sections": [
@@ -1543,7 +1572,7 @@
         "p": "A booking can be cancelled at any time before it takes place, from your dashboard, by the business, or by our team.",
         "items": [
           "A booking still awaiting payment can simply be cancelled  nothing has been charged.",
-          "A confirmed booking can be cancelled by you, by the business, or by us. Bookings are free, so there is no booking fee to refund.",
+          "A confirmed booking can be cancelled by you, by the business, or by us. If you paid the ₹1.20 convenience fee to confirm it, that fee is refunded in full.",
           "If the business cancels on you, we will help you find an alternative wherever we can."
         ]
       },
@@ -1551,7 +1580,7 @@
         "h": "2. Automatic Refunds",
         "p": "Some refunds need no request at all  the Platform issues them itself:",
         "items": [
-          "A booking fee paid before bookings became free: if that booking is cancelled, or loses its dates to another traveller who confirmed first, the fee is refunded in full automatically.",
+          "The booking convenience fee (₹1 + 18% GST + 2% platform fee = ₹1.20): if the booking is cancelled, or loses its dates to another traveller who confirmed first, the fee is refunded in full automatically.",
           "Duplicate charges: if a technical fault charges you twice for one thing, the duplicate is refunded in full."
         ]
       },
@@ -1559,8 +1588,8 @@
         "h": "3. The Fees, One by One",
         "sub": [
           {
-            "h": "3.1 Bookings  free",
-            "p": "Bookings carry no fee, so there is nothing to refund when one is cancelled. A booking fee paid before bookings became free is still refunded in full if that booking is cancelled, by any party, before the stay."
+            "h": "3.1 Bookings  free with the Traveller Pass, otherwise ₹1 + 18% GST + 2% platform fee (₹1.20)",
+            "p": "Asking a host to book is free. A booking is confirmed free with an active Traveller Pass; without one, confirming it costs a ₹1 convenience fee plus 18% GST and a 2% platform fee (₹1.20 in all). That fee is refunded in full if the booking is cancelled, by any party, before the stay, or if its dates go to another traveller who confirmed first."
           },
           {
             "h": "3.2 Traveller Pass  ₹12 + 18% GST + 2% platform fee for the first year, then ₹99 + 18% GST + 2% platform fee per year",
@@ -1999,6 +2028,8 @@
     "request_title": "Waiting for the host",
     "request_body": "{{title}} will accept or decline your request. We will let you know, and you can confirm it from My Trips.",
     "next_steps": "What happens next",
+    "step_ask": "Ask the host. Sending a request is free.",
+    "refund_link": "Fees and refunds",
     "step_host": "The host checks availability and accepts. If they do not answer within 48 hours, the request closes and nothing is charged.",
     "step_confirm": "You confirm it in My Trips (free with the aangan pass, or ₹1.20).",
     "step_contact": "You get the host's number to call or WhatsApp.",

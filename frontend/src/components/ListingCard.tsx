@@ -15,11 +15,15 @@ export default function ListingCard({ item, badge = null }) {
       <div className="relative aspect-[4/3] overflow-hidden bg-mist">
         <SmartImg src={listingImage(item, 800, 600)} alt={item.title} className="w-full h-full object-cover" />
         {badge && <span className="absolute top-3 left-3 chip bg-white text-pine shadow-sm">{badge}</span>}
-        {item.price > 0 && (
+        {item.price > 0 ? (
           <span className="absolute bottom-3 right-3 px-3 py-1 rounded-full bg-white/95 text-ink text-sm font-bold shadow-sm">
             ₹{item.price}{unit}
           </span>
-        )}
+        ) : ['homestay', 'driver', 'guide'].includes(item.type) ? (
+          <span className="absolute bottom-3 right-3 px-3 py-1 rounded-full bg-white/95 text-ink text-sm font-bold shadow-sm">
+            {t('common.price_on_request')}
+          </span>
+        ) : null}
       </div>
       <div className="p-5">
         <div className="flex items-center gap-1.5">

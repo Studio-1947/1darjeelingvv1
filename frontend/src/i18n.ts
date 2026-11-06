@@ -8,7 +8,7 @@ const rebrand = (value: unknown) => typeof value === 'string'
     .replace(/1Darjeeling/gi, 'aangan')
     .replace(/1 Darjeeling/gi, 'aangan')
     .replace(/One Darjeeling/gi, 'aangan')
-    .replace(/1darjeeling\.in/gi, 'aangan.in')
+    .replace(/1darjeeling\.in/gi, 'aanganerp.in')
   : value;
 
 // English-only (decided Sep 2026). Hindi, Bengali and Nepali were removed along with the language

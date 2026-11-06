@@ -20,6 +20,9 @@
      Anything fixed above the nav must offset by this, not a hardcoded 4rem. */
   /* The floating pill bar: 64px tall, 8px of air above it, and the safe area (at least 10px) below. */
   --bottom-nav-h: calc(4.5rem + max(env(safe-area-inset-bottom, 0px), 10px));
+  /* Height of a page's own fixed bar above the nav (the listing page's "Request to book").
+     Set by that bar while it is on screen; the footer adds it to its bottom padding. */
+  --page-cta-h: 0px;
   /* Height of the site header. It carries the circular category rail, so it
      tracks the rail's size at each breakpoint - full-screen sections and the
      landing hero offset by this rather than a hardcoded height.

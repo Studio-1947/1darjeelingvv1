@@ -3,7 +3,7 @@ import request from 'supertest';
 import { app } from '../src/app';
 import { eq } from 'drizzle-orm';
 import { db, schema } from '../src/db';
-import { registerUser, createListing, onboardActiveProvider, createConfirmedBooking } from './helpers';
+import { registerUser, createListing, onboardActiveProvider, createConfirmedBooking, inDays } from './helpers';
 
 describe('bookings', () => {
   it('creates a non-homestay booking without dates', async () => {
@@ -19,7 +19,7 @@ describe('bookings', () => {
 
   it('requires check-in/check-out dates for homestay bookings', async () => {
     const { token } = await registerUser({ name: 'Homestay Booker' });
-    const listing = await createListing({ title: 'A Homestay' });
+    const listing = await createListing({ title: 'A Homestay', type: 'homestay' });
     const res = await request(app)
       .post('/api/bookings')
       .set('Authorization', `Bearer ${token}`)
@@ -29,30 +29,30 @@ describe('bookings', () => {
 
   it('rejects a homestay booking where check-out is not after check-in', async () => {
     const { token } = await registerUser({ name: 'Bad Dates Booker' });
-    const listing = await createListing({ title: 'Another Homestay' });
+    const listing = await createListing({ title: 'Another Homestay', type: 'homestay' });
     const res = await request(app)
       .post('/api/bookings')
       .set('Authorization', `Bearer ${token}`)
       .send({
         listing_id: listing.id,
         listing_type: 'homestay',
-        check_in: '2026-08-10',
-        check_out: '2026-08-09',
+        check_in: inDays(11),
+        check_out: inDays(10),
       });
     expect(res.status).toBe(400);
   });
 
   it('accepts a valid homestay date range', async () => {
     const { token } = await registerUser({ name: 'Good Dates Booker' });
-    const listing = await createListing({ title: 'Yet Another Homestay' });
+    const listing = await createListing({ title: 'Yet Another Homestay', type: 'homestay' });
     const res = await request(app)
       .post('/api/bookings')
       .set('Authorization', `Bearer ${token}`)
       .send({
         listing_id: listing.id,
         listing_type: 'homestay',
-        check_in: '2026-08-09',
-        check_out: '2026-08-10',
+        check_in: inDays(10),
+        check_out: inDays(11),
       });
     expect(res.status).toBe(200);
   });
@@ -68,13 +68,13 @@ describe('bookings', () => {
 
   it('rejects a homestay booking that overlaps an existing confirmed booking', async () => {
     const { token: firstGuest } = await registerUser({ name: 'First Guest' });
-    const listing = await createListing({ title: 'Overlap Test Homestay' });
+    const listing = await createListing({ title: 'Overlap Test Homestay', type: 'homestay' });
     await createConfirmedBooking({
       token: firstGuest,
       listingId: listing.id,
       listingType: 'homestay',
-      checkIn: '2026-10-10',
-      checkOut: '2026-10-15',
+      checkIn: inDays(52),
+      checkOut: inDays(57),
     });
 
     const { token: secondGuest } = await registerUser({ name: 'Second Guest' });
@@ -84,8 +84,8 @@ describe('bookings', () => {
       .send({
         listing_id: listing.id,
         listing_type: 'homestay',
-        check_in: '2026-10-12',
-        check_out: '2026-10-18',
+        check_in: inDays(54),
+        check_out: inDays(60),
       });
 
     expect(res.status).toBe(409);
@@ -93,13 +93,13 @@ describe('bookings', () => {
 
   it('allows a homestay booking for non-overlapping dates on the same listing', async () => {
     const { token: firstGuest } = await registerUser({ name: 'Early Guest' });
-    const listing = await createListing({ title: 'Non-Overlap Test Homestay' });
+    const listing = await createListing({ title: 'Non-Overlap Test Homestay', type: 'homestay' });
     await createConfirmedBooking({
       token: firstGuest,
       listingId: listing.id,
       listingType: 'homestay',
-      checkIn: '2026-11-01',
-      checkOut: '2026-11-05',
+      checkIn: inDays(74),
+      checkOut: inDays(78),
     });
 
     const { token: secondGuest } = await registerUser({ name: 'Later Guest' });
@@ -109,8 +109,8 @@ describe('bookings', () => {
       .send({
         listing_id: listing.id,
         listing_type: 'homestay',
-        check_in: '2026-11-05',
-        check_out: '2026-11-08',
+        check_in: inDays(78),
+        check_out: inDays(81),
       });
 
     expect(res.status).toBe(200);
@@ -122,28 +122,28 @@ describe('bookings', () => {
   // The rule now is a time-boxed hold  see lib/bookingAvailability.ts.
   it('holds the dates against another guest while a checkout is still in its hold window', async () => {
     const { token: firstGuest } = await registerUser({ name: 'Unpaid Guest' });
-    const listing = await createListing({ title: 'Pending Overlap Homestay' });
+    const listing = await createListing({ title: 'Pending Overlap Homestay', type: 'homestay' });
     await request(app)
       .post('/api/bookings')
       .set('Authorization', `Bearer ${firstGuest}`)
-      .send({ listing_id: listing.id, listing_type: 'homestay', check_in: '2026-12-01', check_out: '2026-12-05' });
+      .send({ listing_id: listing.id, listing_type: 'homestay', check_in: inDays(101), check_out: inDays(105) });
 
     const { token: secondGuest } = await registerUser({ name: 'Second Unpaid Guest' });
     const res = await request(app)
       .post('/api/bookings')
       .set('Authorization', `Bearer ${secondGuest}`)
-      .send({ listing_id: listing.id, listing_type: 'homestay', check_in: '2026-12-02', check_out: '2026-12-04' });
+      .send({ listing_id: listing.id, listing_type: 'homestay', check_in: inDays(102), check_out: inDays(104) });
 
     expect(res.status).toBe(409);
   });
 
   it('releases the dates once an abandoned checkout falls outside the hold window', async () => {
     const { token: firstGuest } = await registerUser({ name: 'Abandoning Guest' });
-    const listing = await createListing({ title: 'Expired Hold Homestay' });
+    const listing = await createListing({ title: 'Expired Hold Homestay', type: 'homestay' });
     const created = await request(app)
       .post('/api/bookings')
       .set('Authorization', `Bearer ${firstGuest}`)
-      .send({ listing_id: listing.id, listing_type: 'homestay', check_in: '2027-01-10', check_out: '2027-01-14' });
+      .send({ listing_id: listing.id, listing_type: 'homestay', check_in: inDays(125), check_out: inDays(129) });
     expect(created.status).toBe(200);
 
     // Backdate the abandoned checkout past the hold window. Reaching into the DB is the point:
@@ -157,7 +157,7 @@ describe('bookings', () => {
     const res = await request(app)
       .post('/api/bookings')
       .set('Authorization', `Bearer ${secondGuest}`)
-      .send({ listing_id: listing.id, listing_type: 'homestay', check_in: '2027-01-11', check_out: '2027-01-13' });
+      .send({ listing_id: listing.id, listing_type: 'homestay', check_in: inDays(126), check_out: inDays(128) });
 
     expect(res.status).toBe(200);
   });
@@ -170,13 +170,13 @@ describe('bookings', () => {
     await request(app)
       .post('/api/bookings')
       .set('Authorization', `Bearer ${firstGuest}`)
-      .send({ listing_id: listing.id, listing_type: 'driver', check_in: '2027-02-01', check_out: '2027-02-02' });
+      .send({ listing_id: listing.id, listing_type: 'driver', check_in: inDays(147), check_out: inDays(148) });
 
     const { token: secondGuest } = await registerUser({ name: 'Second Rider' });
     const res = await request(app)
       .post('/api/bookings')
       .set('Authorization', `Bearer ${secondGuest}`)
-      .send({ listing_id: listing.id, listing_type: 'driver', check_in: '2027-02-01', check_out: '2027-02-02' });
+      .send({ listing_id: listing.id, listing_type: 'driver', check_in: inDays(147), check_out: inDays(148) });
 
     expect(res.status).toBe(200);
   });
@@ -201,14 +201,14 @@ describe('bookings', () => {
     const listingRes = await request(app)
       .post('/api/listings')
       .set('Authorization', `Bearer ${providerToken}`)
-      .send({ title: 'Provider Owned Spot', type: 'homestay', description: 'x', location: 'y' });
+      .send({ title: 'Provider Owned Spot', type: 'homestay', description: 'x', location: 'Darjeeling', price: 1500 });
     const listing = listingRes.body.item;
 
     const { token: touristToken } = await registerUser({ name: 'Booking Tourist' });
     await request(app)
       .post('/api/bookings')
       .set('Authorization', `Bearer ${touristToken}`)
-      .send({ listing_id: listing.id, listing_type: 'homestay', check_in: '2026-09-01', check_out: '2026-09-02' });
+      .send({ listing_id: listing.id, listing_type: 'homestay', check_in: inDays(31), check_out: inDays(33), guests: 2 });
 
     const res = await request(app)
       .get('/api/bookings/provider')
@@ -217,5 +217,7 @@ describe('bookings', () => {
     expect(res.status).toBe(200);
     expect(res.body.stats.total).toBe(1);
     expect(res.body.items[0].listing.provider_id).toBe(providerId);
+    // Rate x guests x nights, for a dashboard scoped to one listing: 1500 x 2 x 2.
+    expect(res.body.items[0].amount).toBe(6000);
   });
 });

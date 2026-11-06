@@ -289,7 +289,7 @@ export default function ReviewsSection({ item }: { item: any }) {
                     </div>
                     <div className="min-w-0">
                       <div className="font-bold text-ink text-sm truncate">{r.author_name}</div>
-                      <div className="text-[11px] text-ink-soft">{new Date(r.created_at).toLocaleDateString()}</div>
+                      <div className="text-[11px] text-ink-soft">{new Date(r.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
                     </div>
                   </div>
                   <div className="flex items-center gap-3 flex-shrink-0">

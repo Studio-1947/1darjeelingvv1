@@ -7,6 +7,7 @@ import { authenticateToken, optionalUser } from '../middleware/auth';
 import { requireActiveSupport } from '../middleware/support';
 import { SPOT_TYPE, isSpotPublished } from '../lib/spots';
 import { routeParam } from '../lib/routeParam';
+import { REFERRAL_CODE_IN_TEXT, REFERRAL_IN_REVIEW_DETAIL } from '../lib/reviewRules';
 
 const router = Router();
 
@@ -139,6 +140,9 @@ router.post('/', authenticateToken, canReview, async (req: Request, res: Respons
   const text = typeof comment === 'string' ? comment.trim() : '';
   if (text.length > MAX_COMMENT_LEN) {
     return res.status(400).json({ detail: `Comment must be ${MAX_COMMENT_LEN} characters or fewer` });
+  }
+  if (REFERRAL_CODE_IN_TEXT.test(text)) {
+    return res.status(400).json({ detail: REFERRAL_IN_REVIEW_DETAIL, code: 'referral_code' });
   }
   const parsedPhotos = parseReviewPhotos(photos);
   if ('error' in parsedPhotos) return res.status(400).json({ detail: parsedPhotos.error });

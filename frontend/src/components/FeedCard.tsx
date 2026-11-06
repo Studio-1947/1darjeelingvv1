@@ -87,11 +87,15 @@ export default function FeedCard({ item, priority = false, tripSuffix = '' }) {
         <div className="aspect-square w-full overflow-hidden">
           <SmartImg src={img} alt={item.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading={priority ? 'eager' : 'lazy'} />
         </div>
-        {item.price > 0 && (
+        {item.price > 0 ? (
           <div className="absolute bottom-3 left-3 px-3.5 py-1.5 rounded-full bg-black/70 backdrop-blur-md text-white border border-white/20 text-sm font-extrabold shadow-lg">
             ₹{item.price}<span className="text-xs text-white/80 font-semibold">{unit}</span>
           </div>
-        )}
+        ) : ['homestay', 'driver', 'guide'].includes(item.type) ? (
+          <div className="absolute bottom-3 left-3 px-3.5 py-1.5 rounded-full bg-black/70 backdrop-blur-md text-white border border-white/20 text-sm font-bold shadow-lg">
+            {t('common.price_on_request')}
+          </div>
+        ) : null}
       </Link>
 
       {/* Review summary */}

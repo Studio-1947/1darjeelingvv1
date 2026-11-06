@@ -106,6 +106,11 @@ export default function Explore() {
           data-testid="explore-search"
           className="flex-1 min-w-0 bg-transparent outline-none text-sm font-medium text-ink placeholder:text-ink-soft"
         />
+        {/* A visible way to search, not only the Enter key. */}
+        <button type="submit" aria-label={t('explore.search_go')} data-testid="explore-search-go"
+          className="-mr-1.5 h-9 w-9 flex-shrink-0 rounded-full bg-pine text-white grid place-items-center btn-hover">
+          <ArrowRight size={16} weight="bold" />
+        </button>
       </form>
 
       {/* Spots: the hero */}
