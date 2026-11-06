@@ -201,7 +201,7 @@ describe('bookings', () => {
     const listingRes = await request(app)
       .post('/api/listings')
       .set('Authorization', `Bearer ${providerToken}`)
-      .send({ title: 'Provider Owned Spot', type: 'homestay', description: 'x', location: 'y' });
+      .send({ title: 'Provider Owned Spot', type: 'homestay', description: 'x', location: 'Darjeeling' });
     const listing = listingRes.body.item;
 
     const { token: touristToken } = await registerUser({ name: 'Booking Tourist' });

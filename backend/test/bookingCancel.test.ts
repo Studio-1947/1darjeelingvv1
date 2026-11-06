@@ -48,7 +48,7 @@ describe('booking cancellation', () => {
     const listingRes = await request(app)
       .post('/api/listings')
       .set('Authorization', `Bearer ${providerToken}`)
-      .send({ title: 'Provider Homestay For Cancel', type: 'homestay', description: 'x', location: 'y' });
+      .send({ title: 'Provider Homestay For Cancel', type: 'homestay', description: 'x', location: 'Darjeeling' });
     const listingId = listingRes.body.item.id;
 
     const { token: tourist } = await registerUser({ name: 'Booked Tourist' });
