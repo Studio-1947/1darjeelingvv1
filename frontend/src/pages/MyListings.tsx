@@ -180,19 +180,19 @@ export default function MyListings() {
 
       {/* Stats row */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 mb-8">
-        <div className="rounded-2xl p-4 bg-gradient-to-br from-pine to-pine-dark text-white shadow-sm">
+        <div className="rounded-2xl p-4 bg-pine text-white shadow-sm">
           <div className="text-[11px] uppercase tracking-widest font-bold opacity-90">Total Listings</div>
           <div className="mt-1 font-display font-extrabold text-2xl sm:text-3xl leading-none">
             {listings.length}
           </div>
         </div>
-        <div className="rounded-2xl p-4 bg-gradient-to-br from-flag to-[#8a1e1e] text-white shadow-sm">
+        <div className="rounded-2xl p-4 bg-flag text-white shadow-sm">
           <div className="text-[11px] uppercase tracking-widest font-bold opacity-90">Live Listings</div>
           <div className="mt-1 font-display font-extrabold text-2xl sm:text-3xl leading-none">
             {activeCount}
           </div>
         </div>
-        <div className="rounded-2xl p-4 bg-gradient-to-br from-gold to-[#c69108] text-white shadow-sm col-span-2 md:col-span-1">
+        <div className="rounded-2xl p-4 bg-gold text-white shadow-sm col-span-2 md:col-span-1">
           <div className="text-[11px] uppercase tracking-widest font-bold opacity-90">Business Type</div>
           <div className="mt-1 font-display font-bold text-lg sm:text-xl capitalize leading-tight">
             {provider.business_type}

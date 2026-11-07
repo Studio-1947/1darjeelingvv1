@@ -193,10 +193,11 @@ export default function ProviderDashboard() {
   const isDriver = type === 'driver';
   const isGuide = type === 'guide';
   const accent = isGuide ? 'blue' : isDriver ? 'rose' : 'green';
+  // Flat colours, no gradients: solid card fill, label text, panel background, panel border.
   const accentClasses = isGuide
-    ? 'from-sky-600 to-blue-800 text-blue-700 bg-blue-50 border-blue-100'
-    : isDriver ? 'from-rose-500 to-pink-700 text-rose-700 bg-rose-50 border-rose-100'
-      : 'from-emerald-600 to-green-800 text-emerald-700 bg-emerald-50 border-emerald-100';
+    ? 'bg-blue-700 text-blue-700 bg-blue-50 border-blue-100'
+    : isDriver ? 'bg-rose-600 text-rose-700 bg-rose-50 border-rose-100'
+      : 'bg-emerald-700 text-emerald-700 bg-emerald-50 border-emerald-100';
   const activeListing = listings.find((listing: any) => listing.id === activeListingId) || null;
   const scopedBookings = activeListing ? bookings.filter((booking: any) => booking.listing_id === activeListing.id) : bookings;
   const scopedConfirmed = scopedBookings.filter((booking: any) => booking.status === 'confirmed');
@@ -254,7 +255,8 @@ export default function ProviderDashboard() {
             <p className={`text-xs font-extrabold uppercase tracking-[0.16em] ${accentClasses.split(' ')[2]}`}>{isDriver ? 'Driver operations' : isGuide ? 'Guide activity' : 'Business overview'}</p>
             <h2 className="mt-1 font-display text-2xl font-extrabold text-ink">{activeListing ? activeListing.title : isDriver ? 'Every ride, in one place.' : isGuide ? 'Your next guest experience.' : 'Your business, at a glance.'}</h2>
           </div>
-          <div className={`rounded-2xl bg-gradient-to-br ${accentClasses.split(' ').slice(0, 2).join(' ')} px-4 py-3 text-white shadow-sm`}>
+          {/* Full width on phones so the card fills the row instead of leaving blank space beside it. */}
+          <div className={`w-full sm:w-auto sm:min-w-[18rem] rounded-2xl ${accentClasses.split(' ')[0]} px-4 py-3 text-white shadow-sm`}>
             <div className="text-[10px] font-bold uppercase tracking-widest text-white/75">Aangan points</div>
             <div className="mt-1 flex items-center gap-1 text-2xl font-extrabold"><Star weight="fill" size={20} /> {points}</div>
             <PointsRules tone="dark" rows={hostPointsRows(hostStats?.points_rules, hostStats?.points_breakdown)} testId="host-points-rules" />

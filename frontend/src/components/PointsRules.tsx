@@ -25,7 +25,7 @@ export default function PointsRules({ rows, tone = 'light', testId }: { rows: Po
         How points work
         <CaretDown size={12} weight="bold" className="transition-transform group-open:rotate-180" />
       </summary>
-      <ul className="mt-2 min-w-[15rem] max-w-xs space-y-1.5">
+      <ul className="mt-2 w-full sm:min-w-[15rem] sm:max-w-xs space-y-1.5">
         {rows.map((r) => (
           <li key={r.label} className={`flex items-baseline justify-between gap-3 border-t pt-1.5 text-xs ${line}`}>
             <span>
