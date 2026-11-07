@@ -194,7 +194,7 @@ export default function Responsible() {
             <Link
               to="/homestays"
               data-testid="responsible-money-cta"
-              className="mt-8 inline-flex w-fit items-center gap-2 px-5 py-3 bg-white text-pine text-sm font-bold btn-hover"
+              className="btn-main mt-8 inline-flex w-fit items-center gap-2 px-5 py-3 rounded-full bg-white text-pine text-sm font-bold btn-hover"
             >
               {t('responsible.money_cta')} <ArrowRight size={15} />
             </Link>

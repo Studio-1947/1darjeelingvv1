@@ -68,7 +68,7 @@ export default function CategoryFilterBar({
       {/* Primary Glass Filter Toolbar */}
       <div className="bg-white/80 dark:bg-black/60 backdrop-blur-xl border border-[var(--line)] rounded-2xl p-2.5 sm:p-3 shadow-md flex flex-wrap sm:flex-nowrap items-center gap-2">
         {/* Search Input Box */}
-        <div className="relative flex-1 min-w-[200px] flex items-center bg-mist/60 border border-[var(--line)] rounded-xl px-3 py-2 transition-colors focus-within:border-pine">
+        <div className="relative flex-1 min-w-[180px] flex items-center bg-mist/60 border border-[var(--line)] rounded-xl px-3 min-h-11 transition-colors focus-within:border-pine">
           <Search size={16} className="text-ink-soft flex-shrink-0" />
           <input
             type="text"
@@ -76,7 +76,7 @@ export default function CategoryFilterBar({
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder={t('filter.search_placeholder', 'Search by name, landmark or keyword...')}
             data-testid="category-search-input"
-            className="w-full bg-transparent outline-none ml-2 text-xs sm:text-sm font-medium text-ink placeholder:text-ink-soft"
+            className="w-full self-stretch bg-transparent outline-none ml-2 text-xs sm:text-sm font-medium text-ink placeholder:text-ink-soft"
           />
           {searchQuery && (
             <button
@@ -269,54 +269,29 @@ export default function CategoryFilterBar({
             Active Filters:
           </span>
           {searchQuery && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-mist text-ink text-xs font-semibold border border-[var(--line)]">
-              Query: "{searchQuery}"
-              <button type="button" onClick={() => onSearchChange('')} className="hover:text-flag">
-                <X size={12} />
-              </button>
-            </span>
+            <ActiveChip label={`Query: "${searchQuery}"`} onRemove={() => onSearchChange('')} />
           )}
 
           {selectedLocation !== 'All Locations' && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-mist text-ink text-xs font-semibold border border-[var(--line)]">
-              Hub: {selectedLocation}
-              <button type="button" onClick={() => onLocationChange('All Locations')} className="hover:text-flag">
-                <X size={12} />
-              </button>
-            </span>
+            <ActiveChip label={`Hub: ${selectedLocation}`} onRemove={() => onLocationChange('All Locations')} />
           )}
 
           {maxPrice && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-mist text-ink text-xs font-semibold border border-[var(--line)]">
-              Max ₹{maxPrice}
-              <button type="button" onClick={() => onMaxPriceChange?.(undefined)} className="hover:text-flag">
-                <X size={12} />
-              </button>
-            </span>
+            <ActiveChip label={`Max ₹${maxPrice}`} onRemove={() => onMaxPriceChange?.(undefined)} />
           )}
 
           {selectedCab && selectedCab !== 'all' && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-mist text-ink text-xs font-semibold border border-[var(--line)]">
-              Cab: {selectedCab}
-              <button type="button" onClick={() => onCabChange?.('all')} className="hover:text-flag">
-                <X size={12} />
-              </button>
-            </span>
+            <ActiveChip label={`Cab: ${selectedCab}`} onRemove={() => onCabChange?.('all')} />
           )}
 
           {entryFilter !== 'all' && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-mist text-ink text-xs font-semibold border border-[var(--line)]">
-              Entry: {entryFilter}
-              <button type="button" onClick={() => onEntryFilterChange?.('all')} className="hover:text-flag">
-                <X size={12} />
-              </button>
-            </span>
+            <ActiveChip label={`Entry: ${entryFilter}`} onRemove={() => onEntryFilterChange?.('all')} />
           )}
 
           <button
             type="button"
             onClick={onReset}
-            className="text-xs font-bold text-flag hover:underline ml-1 cursor-pointer"
+            className="inline-flex items-center min-h-11 px-1.5 text-xs font-bold text-flag hover:underline cursor-pointer"
           >
             Clear all
           </button>
@@ -401,5 +376,21 @@ export default function CategoryFilterBar({
         </div>
       )}
     </div>
+  );
+}
+
+/* An active filter. The whole chip is the button that removes it: on its own the ✕ was a 12px
+   target. On phones the button rules in index.css make it 40px tall like every other chip. */
+function ActiveChip({ label, onRemove }: { label: string; onRemove: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onRemove}
+      aria-label={`Remove filter ${label}`}
+      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-mist text-ink text-xs font-semibold border border-[var(--line)] hover:text-flag"
+    >
+      {label}
+      <X size={12} aria-hidden="true" />
+    </button>
   );
 }

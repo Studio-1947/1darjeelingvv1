@@ -104,7 +104,7 @@ export default function Explore() {
           placeholder={t('explore.search_placeholder')}
           aria-label={t('explore.search_placeholder')}
           data-testid="explore-search"
-          className="flex-1 min-w-0 bg-transparent outline-none text-sm font-medium text-ink placeholder:text-ink-soft"
+          className="flex-1 min-w-0 self-stretch bg-transparent outline-none text-sm font-medium text-ink placeholder:text-ink-soft"
         />
         {/* A visible way to search, not only the Enter key. */}
         <button type="submit" aria-label={t('explore.search_go')} data-testid="explore-search-go"

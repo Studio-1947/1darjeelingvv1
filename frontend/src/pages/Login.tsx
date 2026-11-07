@@ -248,19 +248,19 @@ export default function Login() {
                 server tries WhatsApp first and falls back to SMS. */}
             <label className="block">
               <span className="text-xs font-semibold text-ink-soft">{t('auth.phone_label')}</span>
-              <div className="mt-1 flex items-center gap-2 px-3 py-2 rounded-xl border border-[var(--line)] bg-white">
+              <div className="mt-1 flex items-center gap-2 px-3 min-h-12 rounded-xl border border-[var(--line)] bg-white">
                 <Phone size={16} className="text-ink-soft" />
                 {/* Only "IN +91" shows in the box; the open list names each country. */}
                 <select value={countryCode} onChange={(e) => { setCountryCode(e.target.value); setPhone(''); }}
                   aria-label="Country calling code" data-testid="login-country"
-                  className="shrink-0 w-auto bg-transparent text-sm font-semibold outline-none pr-0.5 border-r border-[var(--line)] mr-1">
+                  className="shrink-0 self-stretch w-auto bg-transparent text-sm font-semibold outline-none pr-0.5 border-r border-[var(--line)] mr-1">
                   {OTP_COUNTRIES.map((item) => <option key={item.code} value={item.code} label={`${item.iso} ${item.code}`}>{item.iso} {item.code}</option>)}
                 </select>
                 <input value={phone} onChange={(e) => setPhone(nationalPhone(e.target.value, country))} required
                   type="tel" inputMode="tel" autoComplete="tel"
                   aria-describedby="login-phone-hint"
                   data-testid="login-phone" placeholder={'0'.repeat(country.nationalDigits)}
-                  className="flex-1 min-w-0 bg-transparent outline-none py-1" />
+                  className="flex-1 min-w-0 self-stretch bg-transparent outline-none" />
               </div>
               <span id="login-phone-hint" data-testid="login-phone-hint" className="mt-1.5 block text-xs text-ink-soft">
                 {t('auth.phone_hint')}

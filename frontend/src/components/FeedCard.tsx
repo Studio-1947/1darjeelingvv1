@@ -153,7 +153,8 @@ export default function FeedCard({ item, priority = false, tripSuffix = '' }) {
               aria-pressed={saved}
               className={`inline-flex items-center justify-center gap-1.5 rounded-full border px-3 py-2.5 text-sm font-bold btn-hover ${saved ? 'border-pine bg-pine/10 text-pine' : 'border-[var(--line)] text-ink hover:bg-mist'}`}
             >
-              <Heart size={17} weight={saved ? 'fill' : 'regular'} /> <span>{t('common.like')}</span>
+              {/* Below 380px the row can't fit View details plus two labelled buttons: icons only. */}
+              <Heart size={17} weight={saved ? 'fill' : 'regular'} /> <span className="sr-only min-[380px]:not-sr-only">{t('common.like')}</span>
             </button>
             <button
               type="button"
@@ -167,7 +168,7 @@ export default function FeedCard({ item, priority = false, tripSuffix = '' }) {
                 : shareState === 'failed'
                   ? <X size={17} className="text-flag" />
                   : <Share2 size={17} />}
-              <span>{t('common.share')}</span>
+              <span className="sr-only min-[380px]:not-sr-only">{t('common.share')}</span>
             </button>
           </div>
         </div>

@@ -202,12 +202,12 @@ export default function RouteEstimator() {
           <span className="text-xs font-bold text-white/60 uppercase tracking-wider">
             {t('estimator.from', 'Pick Pickup Location')}
           </span>
-          <div className="mt-1 flex min-h-11 items-center gap-2 px-3 py-3 rounded-xl border border-white/20 bg-black/40 text-sm font-semibold">
+          <div className="mt-1 flex min-h-11 items-center gap-2 px-3 rounded-xl border border-white/20 bg-black/40 text-sm font-semibold">
             <MapPin size={16} className="text-pine flex-shrink-0" />
             <select
               value={fromHub}
               onChange={(e) => handleFromChange(e.target.value)}
-              className="w-full bg-transparent outline-none text-white cursor-pointer truncate"
+              className="w-full self-stretch bg-transparent outline-none text-white cursor-pointer truncate"
             >
               {HUBS.map((h) => (
                 <option key={h} value={h} className="bg-ink text-white">
@@ -222,12 +222,12 @@ export default function RouteEstimator() {
           <span className="text-xs font-bold text-white/60 uppercase tracking-wider">
             {t('estimator.to', 'Pick Drop Destination')}
           </span>
-          <div className="mt-1 flex min-h-11 items-center gap-2 px-3 py-3 rounded-xl border border-white/20 bg-black/40 text-sm font-semibold">
+          <div className="mt-1 flex min-h-11 items-center gap-2 px-3 rounded-xl border border-white/20 bg-black/40 text-sm font-semibold">
             <Navigation size={16} className="text-flag flex-shrink-0" />
             <select
               value={toHub}
               onChange={(e) => handleToChange(e.target.value)}
-              className="w-full bg-transparent outline-none text-white cursor-pointer truncate"
+              className="w-full self-stretch bg-transparent outline-none text-white cursor-pointer truncate"
             >
               {HUBS.map((h) => (
                 <option key={h} value={h} className="bg-ink text-white">

@@ -530,7 +530,7 @@ export default function BookingWidget() {
               aria-expanded={panelOpen}
               aria-controls="booking-widget-panel-mobile"
               data-testid="booking-widget-pill-open"
-              className="flex items-center min-w-0 flex-1 pl-1 text-left focus-visible:outline-none"
+              className="flex items-center min-w-0 flex-1 self-stretch pl-1 text-left focus-visible:outline-none"
             >
               {/* One line only: the rotating hint already says "Search …", so no label or pin above it. */}
               <span className="truncate text-[15px] font-bold text-white">

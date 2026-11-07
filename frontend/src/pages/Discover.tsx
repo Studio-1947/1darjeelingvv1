@@ -51,10 +51,13 @@ const NAV_LABEL_KEY: Record<string, string> = {
  * Page numbers to render, with `null` standing in for a gap.
  * Everything fits while there are few pages; past that it stays a fixed width
  * by windowing around the current page so the control never wraps on a phone.
+ * `compact` (phones): page buttons are 44px wide there, so only five buttons fit -
+ * past three pages it shows the first, current and last page only.
  */
-function pageWindow(current: number, count: number): (number | null)[] {
-  if (count <= 7) return Array.from({ length: count }, (_, i) => i);
-  const around = [current - 1, current, current + 1].filter((p) => p > 0 && p < count - 1);
+function pageWindow(current: number, count: number, compact = false): (number | null)[] {
+  if (count <= (compact ? 3 : 7)) return Array.from({ length: count }, (_, i) => i);
+  const near = compact ? [current] : [current - 1, current, current + 1];
+  const around = near.filter((p) => p > 0 && p < count - 1);
   const pages = Array.from(new Set([0, ...around, count - 1])).sort((a, b) => a - b);
   return pages.flatMap((p, i) => (i > 0 && p - pages[i - 1] > 1 ? [null, p] : [p]));
 }
@@ -100,6 +103,14 @@ export default function Discover() {
   );
 
   const pageCount = Math.max(1, Math.ceil(filteredFeed.length / FEED_PAGE_SIZE));
+  const [compactPages, setCompactPages] = useState(() => window.matchMedia?.('(max-width: 639px)').matches ?? false);
+  useEffect(() => {
+    const mq = window.matchMedia?.('(max-width: 639px)');
+    if (!mq) return undefined;
+    const update = () => setCompactPages(mq.matches);
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
   // Clamped rather than stored blindly: switching from a 24-item tab on page 4
   // to a 3-item tab would otherwise render an empty grid.
   const page = Math.min(feedPage, pageCount - 1);
@@ -235,7 +246,7 @@ export default function Discover() {
             <div className="text-[11px] font-bold uppercase tracking-widest text-flag">{t('home.must_visit')}</div>
             <h2 className="font-display font-extrabold text-2xl md:text-3xl text-ink mt-0.5">{t('categories.spot')}</h2>
           </div>
-          <Link to="/spots" className="text-sm font-bold text-pine whitespace-nowrap">{t('home.see_all')} →</Link>
+          <Link to="/spots" className="inline-flex items-center min-h-11 text-sm font-bold text-pine whitespace-nowrap">{t('home.see_all')} →</Link>
         </div>
         <div className="relative group">
           {/* Left Navigation Arrow */}
@@ -291,7 +302,7 @@ export default function Discover() {
             <div className="text-[11px] font-bold uppercase tracking-widest text-flag">{t('home.stay_local')}</div>
             <h2 className="font-display font-extrabold text-2xl md:text-3xl text-ink mt-0.5">{t('categories.homestay')}</h2>
           </div>
-          <Link to="/homestays" className="text-sm font-bold text-pine whitespace-nowrap">{t('home.see_all')} →</Link>
+          <Link to="/homestays" className="inline-flex items-center min-h-11 text-sm font-bold text-pine whitespace-nowrap">{t('home.see_all')} →</Link>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
           {loading && repeat(4, (i) => <StayTileSkeleton key={i} />)}
@@ -309,10 +320,11 @@ export default function Discover() {
                   <span className="font-extrabold text-pine text-sm md:text-base">₹{h.price}</span>
                   <span className="text-[10px] text-ink-soft">{t('common.per_head')}</span>
                 </div>
-                <div className="mt-3 grid grid-cols-[minmax(0,1fr)_2.5rem] gap-2">
+                <div className="mt-3 grid grid-cols-[minmax(0,1fr)_2.75rem] lg:grid-cols-[minmax(0,1fr)_2.5rem] gap-2">
                   <Link to={`/listing/${h.id}`} data-testid={`stay-book-${h.id}`}
-                    className="inline-flex min-w-0 items-center justify-center gap-1.5 rounded-full bg-pine px-3 py-2 text-xs font-bold text-white btn-hover">
-                    <span className="truncate">{t('cta.book_now')}</span> <ArrowRight size={12} />
+                    className="inline-flex min-w-0 items-center justify-center gap-1.5 rounded-full bg-pine px-2.5 min-[400px]:px-3 py-2 text-xs font-bold text-white btn-hover">
+                    {/* Under 400px the tile is too narrow for the label and the arrow; the label wins. */}
+                    <span className="truncate">{t('cta.book_now')}</span> <ArrowRight size={12} className="hidden min-[400px]:block flex-shrink-0" />
                   </Link>
                   <button
                     type="button"
@@ -400,7 +412,7 @@ export default function Discover() {
           <nav
             aria-label={t('home.pagination_label')}
             data-testid="feed-pagination"
-            className="mt-8 flex items-center justify-center gap-1.5"
+            className="mt-8 flex items-center justify-center gap-1 sm:gap-1.5"
           >
             <button
               type="button"
@@ -414,9 +426,9 @@ export default function Discover() {
               <ChevronLeft size={18} />
             </button>
 
-            {pageWindow(page, pageCount).map((p, i) =>
+            {pageWindow(page, pageCount, compactPages).map((p, i) =>
               p === null ? (
-                <span key={`gap-${i}`} aria-hidden="true" className="w-6 text-center text-ink-soft">…</span>
+                <span key={`gap-${i}`} aria-hidden="true" className="w-4 sm:w-6 text-center text-ink-soft">…</span>
               ) : (
                 <button
                   key={p}
@@ -469,7 +481,7 @@ export default function Discover() {
             <span className="chip bg-white/15 !text-black backdrop-blur" data-testid="host-fee-chip"><s className="mr-1 opacity-60">{rupees(HOST_USUAL_BASE)}</s>{t('home.one_time_fee')}</span>
             <h3 className="mt-3 font-display font-extrabold text-2xl sm:text-3xl md:text-4xl leading-tight">{t('provider.onboard_title')}</h3>
             <p className="mt-2 text-white/90 text-sm md:text-base">{t('provider.onboard_sub')}</p>
-            <Link to="/provider/onboard" data-testid="banner-provider-cta" className="mt-5 inline-flex items-center gap-2 px-5 py-3 rounded-full bg-white text-pine font-extrabold btn-hover">
+            <Link to="/provider/onboard" data-testid="banner-provider-cta" className="btn-main mt-5 inline-flex items-center gap-2 px-5 py-3 rounded-full bg-white text-pine font-extrabold btn-hover">
               {t('hero.cta_provider')} <ArrowRight size={16} />
             </Link>
           </div>
