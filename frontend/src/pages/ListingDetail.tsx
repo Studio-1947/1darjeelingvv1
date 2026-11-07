@@ -105,7 +105,9 @@ export default function ListingDetail() {
   if (isHostMode && !ownPreview) return <BusinessModeNotice />;
 
   // A host who switched availability off takes no bookings (the server refuses them too).
-  const available = item.extras?.available !== false;
+  // Off when the host switched availability off, or their free start is used up and not paid yet
+  // (backend lib/hostGrace.ts); the page stays up either way.
+  const available = item.extras?.available !== false && item.bookings_paused !== true;
   const bookable = !ownPreview && available && (item.type === 'homestay' || item.type === 'driver' || item.type === 'guide');
   const reservable = item.type === 'homestay' || item.type === 'driver' || item.type === 'guide';
   // Booked online (homestay/driver) get the reserve form; shops, cafes and events instead get a
@@ -166,7 +168,7 @@ export default function ListingDetail() {
               See the host's page
             </Link>
           )}
-          {['cafe', 'shop', 'homestay'].includes(item.type) && <DeliveryRequestButton listing={item} />}
+          {['cafe', 'shop', 'homestay'].includes(item.type) && !item.bookings_paused && <DeliveryRequestButton listing={item} />}
         </div>
       )}
       {item.not_live && (

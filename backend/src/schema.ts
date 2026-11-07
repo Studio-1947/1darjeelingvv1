@@ -147,6 +147,10 @@ export const providers = pgTable('providers', {
   // the public feed, and refuse bookings, until kyc_status is 'verified'. Hosts who were already
   // live keep the default (false) so the change cut nobody off. See lib/hostPlan.ts.
   approvalRequired: boolean('approval_required').default(false).notNull(),
+  // True while a host lists for free (no payment yet). The grace ends after HOST_GRACE_BOOKINGS
+  // confirmed bookings plus delivered orders: new bookings then pause until the host pays the
+  // first year (provider_registration), which sets this back to false. See lib/hostGrace.ts.
+  grace: boolean('grace').default(false).notNull(),
   // Written on the first administrator decision, so a submitted queue is not misrepresented as
   // an active human review.
   kycReviewStartedAt: text('kyc_review_started_at'),

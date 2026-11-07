@@ -1,19 +1,20 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { rupees, HOST_USUAL_BASE } from '@/lib/prices';
 import { BUSINESS_TYPES } from '@/constants/listingOptions';
 import { OnboardState } from './useProviderOnboard';
+import { HelpWhatsApp, useHostSignupInfo } from './QuickFill';
 
 /** Step 1 - business name and type. */
 export default function BasicInfoStep({ o }: { o: OnboardState }) {
   const { t } = useTranslation();
   const { form, update, msg, startDesignStep } = o;
   const typeKey = form.business_type || 'homestay';
+  const { grace_bookings } = useHostSignupInfo();
 
   return (
     <div className="mx-auto max-w-md px-4 py-16 md:py-24">
       <div className="text-center mb-8">
-        <span className="chip"><s className="mr-1 opacity-60">{rupees(HOST_USUAL_BASE)}</s>{t('ob.fee_chip')}</span>
+        <span className="chip" data-testid="onboard-free-chip">{t('ob.free.chip', { count: grace_bookings })}</span>
         <h1 className="mt-3 font-display font-extrabold text-3xl text-ink">{t('ob.list_business')}</h1>
         <p className="mt-2 text-sm text-ink-soft">{t('ob.get_started')}</p>
       </div>
@@ -52,6 +53,7 @@ export default function BasicInfoStep({ o }: { o: OnboardState }) {
         </button>
         {msg && <p className="text-xs text-center text-flag font-semibold">{msg}</p>}
       </div>
+      <div className="mt-5 text-center"><HelpWhatsApp type={form.business_type} /></div>
     </div>
   );
 }

@@ -6,6 +6,8 @@ import { hostStats } from '../lib/hostStats';
 import { optionalUser } from '../middleware/auth';
 import { missingMandatory, profileKeysFor, profilePatchFrom, startingPriceFor } from '../lib/hostProfile';
 import { isHostApprovalPending, isHostPlanLive } from '../lib/hostPlan';
+import { graceStateFor, publishFirstListing } from '../lib/hostGrace';
+import { serializeProvider } from '../lib/providerShape';
 import { v4 as uuidv4 } from 'uuid';
 import { db, schema } from '../db';
 import { eq, inArray, like, or } from 'drizzle-orm';
@@ -324,9 +326,60 @@ router.get('/me', authenticateToken, async (req: Request, res: Response) => {
     approval_pending: isHostApprovalPending(provider),
     // What a new host still has to fill in before their documents can go for approval.
     profile_missing: missingMandatory(provider.businessType, provider.extras),
+    // The free start: bookings used so far, the limit, and whether new bookings are paused until
+    // the host pays (lib/hostGrace.ts). Null once the host has paid.
+    grace: await graceStateFor(provider),
   };
 
   res.json({ provider: providerReturn });
+});
+
+/**
+ * @openapi
+ * /providers/me/start-free:
+ *   post:
+ *     summary: Go live without paying (the free start)
+ *     description: >
+ *       Turns the caller's unpaid sign-up (status pending_payment) into an active host on the free
+ *       start and puts their first listing up. It is still hidden until their documents are
+ *       approved. After HOST_GRACE_BOOKINGS confirmed bookings (plus delivered orders) new bookings
+ *       pause until they pay the first year (provider_registration). Calling it again while on the
+ *       free start changes nothing.
+ *     tags: [Providers]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: The host, now on the free start }
+ *       403: { description: The business is suspended }
+ *       404: { description: No sign-up to start }
+ *       409: { description: Already registered and paid }
+ */
+router.post('/me/start-free', authenticateToken, rateLimiter(20, 60 * 60 * 1000, 'host_start_free'), async (req: Request, res: Response) => {
+  type Outcome = { status: number; body?: Record<string, unknown>; provider?: typeof schema.providers.$inferSelect };
+  const outcome: Outcome = await db.transaction(async (tx) => {
+    // Locked, so a double tap (or a payment settling at the same moment) cannot make two listings.
+    const [p] = await tx.select().from(schema.providers)
+      .where(eq(schema.providers.userId, req.user.id)).limit(1).for('update');
+    if (!p) return { status: 404, body: { detail: 'Sign up your business first.' } };
+    if (p.status === 'suspended') return { status: 403, body: { detail: 'This business is suspended. Contact support.' } };
+    if (p.status === 'active') {
+      if (p.grace) return { status: 200, provider: p };
+      return { status: 409, body: { detail: 'Your business is already registered.', code: 'already_registered' } };
+    }
+    if (p.status !== 'pending_payment') return { status: 409, body: { detail: 'Your business is already registered.' } };
+
+    const [started] = await tx.update(schema.providers)
+      .set({ status: 'active', grace: true, activatedAt: new Date().toISOString(), approvalRequired: true })
+      .where(eq(schema.providers.id, p.id))
+      .returning();
+    // Made once: an older sign-up may already have a listing an admin added for them.
+    const [existing] = await tx.select({ id: schema.listings.id }).from(schema.listings)
+      .where(eq(schema.listings.providerId, p.id)).limit(1);
+    if (!existing) await publishFirstListing(tx, started);
+    return { status: 200, provider: started };
+  });
+
+  if (!outcome.provider) return res.status(outcome.status).json(outcome.body);
+  res.json({ provider: serializeProvider(outcome.provider), grace: await graceStateFor(outcome.provider) });
 });
 
 // Public mini-site payload. The provider id is a stable, unguessable share identifier; the

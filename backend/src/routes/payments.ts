@@ -9,6 +9,7 @@ import { AMOUNTS, GST_RATE_PERCENT, PLATFORM_FEE_PERCENT, HOST_RENEWAL_WINDOW_DA
 import { computeSupportPassExpiry, isExemptFromSupport, isSupportActive } from '../lib/support';
 import { computeHostPlanExpiry, isHostPlanLive, isListingHostLapsed } from '../lib/hostPlan';
 import { serializeProvider } from '../lib/providerShape';
+import { publishFirstListing } from '../lib/hostGrace';
 import { settleBookingConfirmation } from '../lib/bookingConfirmation';
 import { AWAITING_HOST_DETAIL, isAwaitingHost } from '../lib/bookingApproval';
 import { resolveAmount } from '../lib/payments';
@@ -29,13 +30,17 @@ async function handlePaymentSuccess(
   tx: Executor = db
 ) {
   if (flow === 'provider_registration') {
-    // The ₹499 first year. assertOwnsReference only lets a provider that has never been activated
-    // pay this, so it runs once per host and creates their listing once.
+    // The ₹499 first year. assertOwnsReference only lets a provider pay this once: one that has
+    // never been activated, or one on the free start (grace). A host on the free start already
+    // has their listing, so it is only made here for a host who never started free.
     const [before] = await tx.select().from(schema.providers).where(eq(schema.providers.id, referenceId)).limit(1);
+    const wasOnGrace = !!before?.grace;
     await tx.update(schema.providers)
       .set({
         status: 'active',
-        activatedAt: new Date().toISOString(),
+        grace: false,
+        activatedAt: before?.activatedAt || new Date().toISOString(),
+        // From today: a host who started free begins their paid year the day they pay.
         planExpiresAt: computeHostPlanExpiry(before?.planExpiresAt),
       })
       .where(eq(schema.providers.id, referenceId));
@@ -45,24 +50,7 @@ async function handlePaymentSuccess(
       .where(eq(schema.users.id, userId));
 
     const [p] = await tx.select().from(schema.providers).where(eq(schema.providers.id, referenceId)).limit(1);
-    if (p) {
-      const listing = {
-        id: uuidv4(),
-        title: p.businessName,
-        type: p.businessType,
-        description: p.description,
-        location: p.location,
-        latitude: p.latitude,
-        longitude: p.longitude,
-        price: Number(p.priceFrom || 0),
-        image: (p.images || [''])[0] || '',
-        tags: (p.extras as any)?.tags || [],
-        providerId: p.id,
-        extras: p.extras || {},
-        createdAt: new Date().toISOString()
-      };
-      await tx.insert(schema.listings).values(listing);
-    }
+    if (p && !wasOnGrace) await publishFirstListing(tx, p);
     return p ? serializeProvider(p) : null;
   } else if (flow === 'provider_renewal') {
     // ₹499 for another year. Extends from the current expiry when renewing early, from now when
@@ -122,12 +110,20 @@ async function assertOwnsReference(
     // Registration is the ₹1 first year and happens once. Paying it again on a host that has
     // already been activated would buy a year for ₹1 instead of ₹499 (and used to insert a
     // duplicate listing), so a registered host is sent to the renewal instead.
-    if (flow === 'provider_registration' && provider.activatedAt) {
+    // A host on the free start (grace) has been activated but has not paid: their first year is
+    // still this registration.
+    if (flow === 'provider_registration' && provider.activatedAt && !provider.grace) {
       return { status: 409, detail: 'This business is already registered. Renew the plan instead.' };
+    }
+    if (flow === 'provider_registration' && provider.status === 'suspended') {
+      return { status: 403, detail: 'This business is suspended. Contact support.' };
     }
     if (flow === 'provider_renewal') {
       if (!provider.activatedAt) {
         return { status: 409, detail: 'Finish registering before renewing.' };
+      }
+      if (provider.grace) {
+        return { status: 409, detail: 'You are on the free start. Pay for your first year instead.', code: 'on_grace' };
       }
       if (provider.status === 'suspended') {
         return { status: 403, detail: 'This business is suspended. Contact support.' };

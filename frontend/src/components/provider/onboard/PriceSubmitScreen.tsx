@@ -2,7 +2,9 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Screen, Eyebrow } from './layout';
 import PriceBreakup from '@/components/PriceBreakup';
+import { CaretDown } from '@phosphor-icons/react';
 import { rupees, usePrice } from '@/lib/prices';
+import { HelpWhatsApp, PriceChips, useHostSignupInfo } from './QuickFill';
 
 /** Final onboarding screen: starting price, the first-year plan with its GST and fee breakup, submit + back. */
 export default function PriceSubmitScreen({
@@ -21,6 +23,8 @@ export default function PriceSubmitScreen({
   breakfastIncluded = true,
   onBreakfastChange,
   onSubmit,
+  onPayNow,
+  type,
   onBack,
   busy,
   disabled,
@@ -44,7 +48,12 @@ export default function PriceSubmitScreen({
   showBreakfastOption?: boolean;
   breakfastIncluded?: boolean;
   onBreakfastChange?: (included: boolean) => void;
+  /** The main button: start free (no payment until the first bookings). */
   onSubmit: () => void;
+  /** Pay the first year now instead. */
+  onPayNow?: () => void;
+  /** The business type, for the one-tap price choices. */
+  type?: string;
   onBack: () => void;
   busy: boolean;
   disabled: boolean;
@@ -56,6 +65,8 @@ export default function PriceSubmitScreen({
 }) {
   const { t } = useTranslation();
   const plan = usePrice('provider_registration');
+  const { grace_bookings } = useHostSignupInfo();
+  const blocked = disabled || missing.length > 0;
   return (
     <Screen tone={tone}>
       <Eyebrow n={n}>{heading}</Eyebrow>
@@ -82,6 +93,7 @@ export default function PriceSubmitScreen({
             </div>
           )}
           {priceError && <p className="mt-1.5 text-xs font-semibold text-flag" data-testid="onboard-price-error">{priceError}</p>}
+          {!priceEditor && onPrice && type && <PriceChips type={type} value={price} onPick={onPrice} />}
 
           {showBreakfastOption && (
             <div className="mt-5 p-4 rounded-2xl border border-[var(--line)] bg-mist/60 space-y-2">
@@ -118,7 +130,10 @@ export default function PriceSubmitScreen({
 
         <div className={wide ? 'lg:col-span-1' : 'lg:col-span-3'}>
           <div className="mist-panel p-6 space-y-4">
-            <PriceBreakup breakup={plan} label={t('price.host_first_year')} wasBase={99900} />
+            <div className="rounded-xl border border-pine/30 bg-pine/5 p-3" data-testid="onboard-free-note">
+              <p className="font-display font-extrabold text-ink">{t('ob.free.title')}</p>
+              <p className="mt-0.5 text-sm text-ink-soft">{t('ob.free.note', { count: grace_bookings, total: rupees(plan.total) })}</p>
+            </div>
             {missing.length > 0 && (
               <div className="rounded-xl border border-flag/30 bg-flag/5 p-3" data-testid="onboard-missing">
                 <p className="text-xs font-bold text-flag">{t('ob.check.still_to_fill')}</p>
@@ -129,12 +144,26 @@ export default function PriceSubmitScreen({
             )}
             <button
               onClick={onSubmit}
-              disabled={disabled || missing.length > 0}
+              disabled={blocked}
               data-testid="onboard-submit"
               className="w-full py-4 rounded-full bg-pine text-white font-extrabold text-base btn-hover disabled:opacity-60"
             >
-              {busy ? t('common.processing') : t('ob.submit_pay', { total: rupees(plan.total) })}
+              {busy ? t('common.processing') : t('ob.free.cta')}
             </button>
+            {onPayNow && (
+              <details className="text-sm" data-testid="onboard-pay-now">
+                <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden flex items-center justify-center gap-1.5 font-bold text-pine py-2">
+                  {t('ob.free.pay_now', { total: rupees(plan.total) })} <CaretDown size={14} weight="bold" />
+                </summary>
+                <div className="mt-2 space-y-3">
+                  <PriceBreakup breakup={plan} label={t('price.host_first_year')} wasBase={99900} />
+                  <button type="button" onClick={onPayNow} disabled={blocked} data-testid="onboard-submit-pay"
+                    className="w-full py-3 rounded-full border border-pine text-pine font-bold text-sm btn-hover disabled:opacity-60">
+                    {t('ob.submit_pay', { total: rupees(plan.total) })}
+                  </button>
+                </div>
+              </details>
+            )}
             <button
               type="button"
               onClick={onBack}
@@ -143,6 +172,7 @@ export default function PriceSubmitScreen({
               {t('ob.back_basic')}
             </button>
             {msg && <p className="text-sm text-center text-flag font-semibold">{msg}</p>}
+            <div className="text-center"><HelpWhatsApp type={type} /></div>
           </div>
         </div>
       </div>

@@ -3,8 +3,9 @@ import { useTranslation } from 'react-i18next';
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import type { Map as LeafletMap, Marker as LeafletMarker, LatLng } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { MapPin, MagnifyingGlass as Search, CircleNotch as Loader2, Mountains as Mountain } from '@phosphor-icons/react';
+import { MapPin, MagnifyingGlass as Search, CircleNotch as Loader2, Mountains as Mountain, NavigationArrow } from '@phosphor-icons/react';
 import api from '@/lib/api';
+import { LANDMARKS, nearestAreaLabel } from '@/lib/hostQuickFill';
 
 // Default centre: Darjeeling town (same anchor the read-only maps use).
 const DARJEELING: [number, number] = [27.041, 88.2627];
@@ -13,37 +14,8 @@ const PICK_ZOOM = 16;
 // Well-known places across the Darjeeling hills, offered as instant
 // suggestions - the geocoder often can't resolve informal addresses, so owners
 // can jump to the nearest landmark and drag the pin from there. Coordinates
-// are approximate on purpose; the pin is the source of truth.
-const LANDMARKS: Array<{ name: string; lat: number; lon: number }> = [
-  { name: 'Chowrasta / The Mall, Darjeeling', lat: 27.0425, lon: 88.2663 },
-  { name: 'Darjeeling Railway Station', lat: 27.0387, lon: 88.26 },
-  { name: 'Chowk Bazaar, Darjeeling', lat: 27.0445, lon: 88.2635 },
-  { name: 'Observatory Hill (Mahakal Temple)', lat: 27.044, lon: 88.265 },
-  { name: 'Darjeeling Gymkhana Club', lat: 27.0442, lon: 88.262 },
-  { name: 'Nehru Road (Glenary’s)', lat: 27.0405, lon: 88.2645 },
-  { name: 'Padmaja Naidu Zoo & HMI, Jawahar Parbat', lat: 27.048, lon: 88.257 },
-  { name: 'Darjeeling Ropeway, Singamari', lat: 27.058, lon: 88.256 },
-  { name: 'Happy Valley Tea Estate', lat: 27.055, lon: 88.256 },
-  { name: 'Lebong', lat: 27.062, lon: 88.264 },
-  { name: 'Tenzing & Gombu Rock, Lebong Cart Road', lat: 27.05, lon: 88.26 },
-  { name: 'Lloyd’s Botanical Garden', lat: 27.037, lon: 88.258 },
-  { name: 'Dhirdham Temple', lat: 27.037, lon: 88.261 },
-  { name: 'Peace Pagoda & Japanese Temple, Jalapahar', lat: 27.0333, lon: 88.2606 },
-  { name: 'Lal Kothi, Jalapahar Road', lat: 27.035, lon: 88.263 },
-  { name: 'Batasia Loop & War Memorial', lat: 27.0163, lon: 88.2586 },
-  { name: 'Ghum Railway Station', lat: 27.0087, lon: 88.253 },
-  { name: 'Ghum Monastery (Yiga Choeling)', lat: 27.006, lon: 88.254 },
-  { name: 'Jorebunglow', lat: 27.006, lon: 88.26 },
-  { name: 'Tiger Hill', lat: 27.0028, lon: 88.267 },
-  { name: 'Rock Garden (Barbotey)', lat: 27.0, lon: 88.238 },
-  { name: 'Sonada', lat: 26.98, lon: 88.229 },
-  { name: 'Sukhiapokhri', lat: 26.994, lon: 88.177 },
-  { name: 'Lepchajagat', lat: 27.029, lon: 88.201 },
-  { name: 'Takdah', lat: 27.033, lon: 88.36 },
-  { name: 'Lamahatta', lat: 27.078, lon: 88.365 },
-  { name: 'Kurseong Railway Station', lat: 26.88, lon: 88.279 },
-  { name: 'Mirik Lake (Sumendu)', lat: 26.887, lon: 88.187 },
-];
+// are approximate on purpose; the pin is the source of truth. Shared with the
+// app (lib/hostQuickFill.ts), which also names "I am here now" from it.
 
 interface SearchResult {
   display_name: string;
@@ -124,6 +96,29 @@ export default function LocationPicker({ initialLat, initialLng, onLocationSelec
     return () => clearTimeout(timer);
   }, [query, t]);
 
+  // "I am here now": the phone's own position, named after the nearest known place. Easiest for a
+  // host standing at their own door; no typing and no map.
+  const [locating, setLocating] = useState(false);
+  const [hereMsg, setHereMsg] = useState('');
+  const useHere = () => {
+    setHereMsg('');
+    if (!navigator.geolocation) { setHereMsg(t('ob.quick.no_gps')); return; }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (p) => {
+        setLocating(false);
+        const { latitude, longitude } = p.coords;
+        const name = nearestAreaLabel(latitude, longitude);
+        if (!name) { setHereMsg(t('ob.quick.outside')); return; }
+        pickedRef.current = true;
+        setQuery(name);
+        place(latitude, longitude, true, name);
+      },
+      () => { setLocating(false); setHereMsg(t('ob.quick.no_gps')); },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 },
+    );
+  };
+
   const pickResult = (r: SearchResult) => {
     pickedRef.current = true;
     setQuery(r.display_name);
@@ -134,6 +129,13 @@ export default function LocationPicker({ initialLat, initialLng, onLocationSelec
 
   return (
     <div className={className}>
+      <button type="button" onClick={useHere} disabled={locating} data-testid="location-here"
+        className="mb-2 w-full inline-flex items-center justify-center gap-2 rounded-full bg-pine text-white font-bold text-sm py-2.5 btn-hover disabled:opacity-60">
+        {locating ? <Loader2 size={16} className="animate-spin" /> : <NavigationArrow size={16} weight="fill" />}
+        {locating ? t('ob.quick.locating') : t('ob.quick.here_now')}
+      </button>
+      {hereMsg && <p className="mb-2 text-xs font-semibold text-flag" data-testid="location-here-msg">{hereMsg}</p>}
+
       {/* Address search (approximate - the pin is what gets saved) */}
       <div className="relative">
         <div className="relative">

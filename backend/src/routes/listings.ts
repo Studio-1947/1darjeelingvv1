@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { hostPlanVisibility, isListingHostLapsed } from '../lib/hostPlan';
+import { isGracePaused } from '../lib/hostGrace';
 import { v4 as uuidv4 } from 'uuid';
 import { db, schema } from '../db';
 import { eq, and, inArray } from 'drizzle-orm';
@@ -415,6 +416,9 @@ router.get('/:id', async (req: Request, res: Response) => {
     // Booking it sends the host a request to accept first (lib/bookingApproval.ts), so the button
     // says "Request to book". Team-run listings with no host account still confirm at once.
     request_to_book: HOST_APPROVAL_TYPES.has(item.type) && !!provider,
+    // The host's free start is used up and they have not paid yet: the page stays up, but new
+    // bookings and delivery requests are refused (lib/hostGrace.ts), so the button is turned off.
+    bookings_paused: await isGracePaused(item.providerId),
   };
 
   res.json({ item: itemReturn });
