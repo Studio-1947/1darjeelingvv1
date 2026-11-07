@@ -1461,7 +1461,7 @@
   },
   "terms": {
     "title": "Terms & Conditions",
-    "updated": "Last updated: August 2026",
+    "updated": "Last updated: November 2026",
     "intro": [
       "1Darjeeling (\"we,\" \"us,\" \"our,\" or \"the Platform\") operates www.aanganerp.in (the \"Site\"), a local marketplace and travel guide connecting visitors with homestays, drivers, cafés, shops and guides in and around Darjeeling. These Terms & Conditions govern your use of the Site.",
       "By creating an account, making a booking request, listing a business, or otherwise using the Site, you agree to these Terms. If you do not agree, please do not use the Site."
@@ -1499,8 +1499,8 @@
             "p": "Making a booking request is free. Confirming it is free with the Traveller Pass; without the pass there is a ₹1 convenience fee per booking plus 18% GST and a 2% platform fee (₹1.20 in all), refunded if the booking is cancelled. What you pay for the stay, ride or goods themselves is paid directly to the business."
           },
           {
-            "h": "3.3 Business Listing Plan  ₹499 for the first year, then ₹999 per year, each plus 18% GST and a 2% platform fee",
-            "p": "A local business pays ₹499 to activate its listing for its first year, and ₹999 for each year after that. The plan does not renew automatically: if a year ends without renewal, the business's listings are hidden from travellers and stop taking bookings until it renews. It is not a commission on bookings."
+            "h": "3.3 Business Listing Plan  free until the first 3 bookings, then ₹499 for the first year and ₹999 per year after, each plus 18% GST and a 2% platform fee",
+            "p": "A new local business can list for free. Its documents are still checked and approved before its listing goes live. Once live, it takes bookings without paying until 3 bookings have been confirmed (for cafés and shops, until 3 home-delivery orders have been delivered). After that, new bookings pause until the business pays ₹499 for its first year: the listing stays visible, bookings already confirmed go ahead, and requests already received can still be accepted. The business may pay at any time during the free period, and its first year starts on the day it pays. Each year after that costs ₹999. The plan does not renew automatically: if a year ends without renewal, the business's listings are hidden from travellers and stop taking bookings until it renews. It is not a commission on bookings."
           },
           {
             "h": "3.4 Donations  voluntary, ₹10 to ₹1,00,000",
@@ -1586,7 +1586,7 @@
   },
   "refunds": {
     "title": "Refund & Cancellation Policy",
-    "updated": "Last updated: August 2026",
+    "updated": "Last updated: November 2026",
     "intro": [
       "This policy explains when money paid to 1Darjeeling is returned, how long it takes, and what falls outside it. It forms part of our Terms & Conditions.",
       "One distinction governs everything below. The fees listed in this policy are paid to the Platform, and this policy covers them. The price of your stay, ride, meal or purchase is paid directly to the local business, and that money is governed by the business's own terms  we never receive it and cannot refund it."
@@ -1621,8 +1621,8 @@
             "p": "Refundable in full within 7 days of payment if you have not used it to confirm any booking. After 7 days, or once it has been used, it is not refundable  it has already delivered the access it pays for. It expires after one year and never renews automatically, so there is no recurring charge to cancel."
           },
           {
-            "h": "3.3 Business Listing Plan  ₹499 for the first year, ₹999 per year after, each plus 18% GST and a 2% platform fee",
-            "p": "Each payment is refundable in full within 7 days if your listing has not yet gone live that year. Once the listing is published and visible to travellers, that year's payment is not refundable. If we reject or remove your listing for a reason that is not a breach of our Terms, we refund the current year in full regardless of when. The plan never renews automatically."
+            "h": "3.3 Business Listing Plan  free until the first 3 bookings, then ₹499 for the first year, ₹999 per year after, each plus 18% GST and a 2% platform fee",
+            "p": "Listing is free until your first 3 bookings (3 delivered home-delivery orders for cafés and shops), so nothing is paid before then. If you pay while your listing is already live on the free start, that payment is not refundable, because the listing is already published. Otherwise, each payment is refundable in full within 7 days if your listing has not yet gone live that year. Once the listing is published and visible to travellers, that year's payment is not refundable. If we reject or remove your listing for a reason that is not a breach of our Terms, we refund the current year in full regardless of when. The plan never renews automatically."
           },
           {
             "h": "3.4 Donations",
