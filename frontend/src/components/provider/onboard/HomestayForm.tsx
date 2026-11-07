@@ -10,6 +10,7 @@ import LocationPicker from '@/components/LocationPicker';
 import { Screen, Eyebrow } from './layout';
 import OnboardHero from './OnboardHero';
 import PriceSubmitScreen from './PriceSubmitScreen';
+import { DescriptionChips } from './QuickFill';
 import { OnboardState } from './useProviderOnboard';
 import { isValidPhone, priceProblem } from '@/lib/hostFormChecks';
 
@@ -61,6 +62,8 @@ export default function HomestayForm({ o }: { o: OnboardState }) {
               placeholder={t('ob.hs.describe_ph')}
               className="w-full px-4 py-3.5 rounded-2xl border border-[var(--line)] bg-white outline-none text-sm text-ink leading-relaxed"
             />
+            <DescriptionChips type={form.business_type} text={form.description} place={form.location}
+              onChange={(v) => update({ description: v })} />
 
             <div className="pt-4 space-y-3">
               <span className="text-xs font-semibold text-ink-soft uppercase tracking-wider block">
@@ -219,7 +222,9 @@ export default function HomestayForm({ o }: { o: OnboardState }) {
             o.setSelectedAmenities(o.selectedAmenities.filter((a) => a !== 'Breakfast Included'));
           }
         }}
-        onSubmit={() => o.submit()}
+        onSubmit={() => o.submit('free')}
+        onPayNow={() => o.submit('pay')}
+        type={form.business_type}
         onBack={() => o.setStep(1)}
         busy={o.busy}
         disabled={o.busy || o.uploading}

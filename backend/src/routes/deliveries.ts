@@ -8,6 +8,7 @@ import { requireTravellerMode } from '../middleware/mode';
 import { addHostNotification, addInAppNotification } from '../lib/inApp';
 import { ownListingIds } from '../lib/hostAccess';
 import { isListingHostLapsed } from '../lib/hostPlan';
+import { GRACE_PAUSED_CODE, GRACE_PAUSED_DETAIL, isGracePaused, noteGraceProgress } from '../lib/hostGrace';
 import { isPlausiblePhone } from '../lib/phone';
 
 const router = Router();
@@ -43,6 +44,7 @@ router.post('/', authenticateToken, requireTravellerMode, rateLimiter(20, 60 * 6
     return res.status(400).json({ detail: 'This place does not offer home delivery' });
   }
   if (await isListingHostLapsed(listing.providerId)) return res.status(409).json({ detail: 'This place is not taking requests right now' });
+  if (await isGracePaused(listing.providerId)) return res.status(409).json({ detail: GRACE_PAUSED_DETAIL, code: GRACE_PAUSED_CODE });
   if (listing.extras?.available === false) return res.status(409).json({ detail: 'This place is not taking requests right now', code: 'unavailable' });
 
   const list = Array.isArray(items) ? items : [];
@@ -149,6 +151,8 @@ router.patch('/:id', authenticateToken, async (req: Request, res: Response) => {
     kind: `delivery_${status}`, title: `${listing?.title || 'Your order'}: ${status}`,
     body: `Your home delivery request ${words[status]}.${hostNote ? ` ${hostNote}` : ''}`, refId: row.id,
   });
+  // A delivered order counts toward the free start, as a confirmed booking does.
+  if (status === 'delivered') await noteGraceProgress(row.providerId);
   res.json({ request: out(updated) });
 });
 

@@ -384,6 +384,15 @@ export const HOST_PLAN_DAYS = 365;
 // settling. Both apps show the Renew button on the same window.
 export const HOST_RENEWAL_WINDOW_DAYS = 30;
 
+// A new host can start for free and pays the first year only after this many confirmed bookings
+// (delivered home-delivery orders count too, for cafes and shops). New bookings pause after that
+// until they pay. Requests already waiting can still be accepted. See lib/hostGrace.ts.
+const graceBookings = Number(process.env.HOST_GRACE_BOOKINGS ?? 3);
+if (!Number.isInteger(graceBookings) || graceBookings < 1 || graceBookings > 100) {
+  throw new Error('[config] HOST_GRACE_BOOKINGS must be a whole number from 1 to 100.');
+}
+export const HOST_GRACE_BOOKINGS = graceBookings;
+
 // Bounds on a donation, in paise. The floor stops dust-spam orders; the ceiling is a sanity guard
 // so a fat-fingered extra zero is refused here rather than reaching the gateway.
 export const DONATION_MIN_PAISE = 1000;        // ₹10

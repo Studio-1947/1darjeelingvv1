@@ -1088,7 +1088,17 @@
     "feedback_ph": "Tell us what would make your dashboard better…",
     "feedback_send": "Send feedback",
     "feedback_sending": "Sending…",
-    "feedback_latest": "Latest feedback: {{status}}"
+    "feedback_latest": "Latest feedback: {{status}}",
+    "grace": {
+      "label": "Free start",
+      "title": "{{used}} of {{limit}} free bookings used",
+      "body": "{{count}} free bookings left. After that, pay {{total}} for the year to keep taking new bookings.",
+      "paused_title": "Your free bookings are used up",
+      "paused_body": "Pay {{total}} for the year to take new bookings again. Guests already booked are not affected.",
+      "pay_cta": "Pay {{total}}"
+    },
+    "start_free_title": "Start free, pay later",
+    "start_free_body": "List without paying now, and pay {{total}} for the year after your first bookings. Or pay now."
   },
   "lf": {
     "edit_title": "Edit listing",
@@ -1203,7 +1213,7 @@
       "breakfast_question": "Is Breakfast Included in this price?",
       "breakfast_yes": "Yes, Breakfast Included",
       "breakfast_no": "No, Breakfast Extra / Not Included",
-      "fee_note": "Listing your stay costs ₹499 for the first year (usually ₹999), then ₹999 a year, plus 18% GST and a 2% platform fee, to keep it live on the aangan directory."
+      "fee_note": "Listing your stay is free until your first bookings. After that it is ₹499 for the first year (usually ₹999), then ₹999 a year, plus 18% GST and a 2% platform fee, to keep taking bookings."
     },
     "dr": {
       "type_label": "Driver",
@@ -1237,7 +1247,7 @@
       "complete": "Complete & go live",
       "price_label": "Starting Rate (₹/Day)",
       "price_suffix": "/ day onwards",
-      "fee_note": "Listing your driver profile costs ₹499 for the first year (usually ₹999), then ₹999 a year, plus 18% GST and a 2% platform fee, to keep it live on the aangan directory.",
+      "fee_note": "Listing your driver profile is free until your first bookings. After that it is ₹499 for the first year (usually ₹999), then ₹999 a year, plus 18% GST and a 2% platform fee, to keep taking bookings.",
       "rates_label": "Your Route Rates",
       "rates_note": "Set a fare for each route you operate. Travellers see these on your profile, and the lowest becomes your public starting rate.",
       "rates_empty": "No routes yet  add the routes you operate in step 03 above, then price them here.",
@@ -1275,11 +1285,11 @@
       "price_shop": "Average Item Price (₹)",
       "suffix_cafe": "per person",
       "suffix_shop": "onwards",
-      "fee_note_cafe": "Listing your café costs ₹499 for the first year (usually ₹999), then ₹999 a year, plus 18% GST and a 2% platform fee, to keep it live on the aangan directory.",
-      "fee_note_shop": "Listing your shop costs ₹499 for the first year (usually ₹999), then ₹999 a year, plus 18% GST and a 2% platform fee, to keep it live on the aangan directory."
+      "fee_note_cafe": "Listing your café is free until your first bookings. After that it is ₹499 for the first year (usually ₹999), then ₹999 a year, plus 18% GST and a 2% platform fee, to keep taking bookings.",
+      "fee_note_shop": "Listing your shop is free until your first bookings. After that it is ₹499 for the first year (usually ₹999), then ₹999 a year, plus 18% GST and a 2% platform fee, to keep taking bookings."
     },
     "gd": {
-      "fee_note": "Listing your guide profile costs ₹499 for the first year (usually ₹999), then ₹999 a year, plus 18% GST and a 2% platform fee, to keep it live on the aangan directory.",
+      "fee_note": "Listing your guide profile is free until your first bookings. After that it is ₹499 for the first year (usually ₹999), then ₹999 a year, plus 18% GST and a 2% platform fee, to keep taking bookings.",
       "phone_ph": "e.g. 98765 43210",
       "phone_hint": "Leave it empty to use the number you signed in with.",
       "type_label": "Guide",
@@ -1290,6 +1300,22 @@
       "base_area": "Where you are based",
       "complete": "Your services",
       "services_note": "Add each service you offer with its charge. You need at least one before approval."
+    },
+    "quick": {
+      "tap_to_describe": "Tap to describe your place, or type your own words",
+      "tap_price": "Tap a price, or type your own",
+      "help": "Need help? WhatsApp us",
+      "here_now": "I am here now",
+      "locating": "Finding where you are…",
+      "outside": "You seem to be outside the Darjeeling hills. Search for your place instead.",
+      "no_gps": "Could not get your location. Allow location, or search for your place instead."
+    },
+    "free": {
+      "chip": "Free until your first {{count}} bookings",
+      "title": "List for free",
+      "note": "No payment now. After your first {{count}} bookings, pay {{total}} for the year to keep taking bookings.",
+      "cta": "Start free",
+      "pay_now": "Or pay {{total}} now"
     }
   },
   "pay": {

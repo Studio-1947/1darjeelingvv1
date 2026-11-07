@@ -7,6 +7,7 @@ import { addHostNotification, addInAppNotification, resolveHostUserId } from './
 import { refundPaymentsFor } from './refunds';
 import { releaseVoucherForBooking } from './vouchers';
 import { serializeProvider } from './providerShape';
+import { noteGraceProgress } from './hostGrace';
 
 type BookingRow = typeof schema.bookings.$inferSelect;
 
@@ -138,6 +139,8 @@ export async function settleBookingConfirmation(
       body: `${bookingUser?.name || 'A guest'} confirmed a booking for ${booking.listingTitle}.`,
       refId: booking.id,
     });
+    // A confirmed booking counts toward the host's free start; the last one tells them.
+    await noteGraceProgress(listing?.providerId);
     // notifyBookingConfirmed never throws and records its own outcome on the booking row, so
     // awaiting it is safe and makes a message that did not go out a queryable fact.
     await notifyBookingConfirmed({

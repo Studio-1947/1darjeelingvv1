@@ -13,10 +13,11 @@ type Viewer = { id: string; role: string } | null;
  *   verified - aangan has checked their documents (KYC), shown as a blue tick.
  * A suspended host shows neither.
  */
-export function hostBadges(p: Pick<Provider, 'status' | 'planExpiresAt' | 'kycStatus'>) {
+export function hostBadges(p: Pick<Provider, 'status' | 'planExpiresAt' | 'kycStatus'> & { grace?: boolean | null }) {
   const active = p.status === 'active';
   return {
-    member: active && isHostPlanLive(p as Provider),
+    // A host on the free start has not paid, so is not a member yet.
+    member: active && !p.grace && isHostPlanLive(p as Provider),
     verified: active && p.kycStatus === 'verified',
   };
 }

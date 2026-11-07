@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { MapPin } from '@phosphor-icons/react';
 import OnboardHero from './OnboardHero';
 import PriceSubmitScreen from './PriceSubmitScreen';
+import { DescriptionChips } from './QuickFill';
 import { isValidPhone } from '@/lib/hostFormChecks';
 import { Screen, Eyebrow } from './layout';
 import AvatarUploader from '../AvatarUploader';
@@ -55,11 +56,15 @@ export default function GuideForm({ o }: { o: OnboardState }) {
       <Screen tone="white">
         <Eyebrow n="01">{t('ob.gd.about')}</Eyebrow>
         <div className="mt-8 grid lg:grid-cols-2 gap-8">
-          <label className="block">
-            <span className="text-xs font-semibold text-ink-soft uppercase">{t('ob.gd.introduce')}</span>
-            <textarea rows={5} value={form.description} onChange={(e) => update({ description: e.target.value })}
-              placeholder={t('ob.gd.introduce_ph')} className={input} data-testid="guide-description" />
-          </label>
+          <div className="space-y-4">
+            <label className="block">
+              <span className="text-xs font-semibold text-ink-soft uppercase">{t('ob.gd.introduce')}</span>
+              <textarea rows={5} value={form.description} onChange={(e) => update({ description: e.target.value })}
+                placeholder={t('ob.gd.introduce_ph')} className={input} data-testid="guide-description" />
+            </label>
+            <DescriptionChips type={form.business_type} text={form.description} place={form.location}
+              onChange={(v) => update({ description: v })} />
+          </div>
           <div className="space-y-4">
             <label className="block">
               <span className="text-xs font-semibold text-ink-soft uppercase">{t('ob.gd.base_area')}</span>
@@ -123,7 +128,9 @@ export default function GuideForm({ o }: { o: OnboardState }) {
               addLabel={t('hostProfile.add_service')} testid="guide-services" />
           </div>
         }
-        onSubmit={() => o.submit()}
+        onSubmit={() => o.submit('free')}
+        onPayNow={() => o.submit('pay')}
+        type={form.business_type}
         onBack={() => o.setStep(1)}
         busy={o.busy}
         disabled={o.busy || o.uploading}
