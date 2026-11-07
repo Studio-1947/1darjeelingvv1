@@ -4,13 +4,14 @@ import { and, eq } from 'drizzle-orm';
 import { app } from '../src/app';
 import { db, schema } from '../src/db';
 import { isHostPlanLive } from '../src/lib/hostPlan';
-import { isOnGrace } from '../src/lib/hostGrace';
+import { isOnGrace, sweepGraceEnded } from '../src/lib/hostGrace';
 import { createConfirmedBooking, inDays, loginAdmin, onboardActiveProvider, registerUser } from './helpers';
 
 /**
- * The free start (user decision 2026-11-07): a new host goes live without paying, and pays the
- * first year after 3 confirmed bookings (delivered orders count for cafes and shops). After that,
- * new bookings pause until they pay; the listing stays up and waiting requests can still be taken.
+ * The free start (user decisions 2026-11-07 and -08): a new host goes live without paying, and pays
+ * the first year after 3 completed bookings - confirmed, and the stay, ride or tour has taken place
+ * (delivered orders count for cafes and shops). After that, new bookings pause until they pay; the
+ * listing stays up and waiting requests can still be taken.
  */
 
 const auth = (token: string) => ({ Authorization: `Bearer ${token}` });
@@ -48,6 +49,26 @@ async function requestStay(token: string, listingId: string, from: number) {
   return request(app).post('/api/bookings').set(auth(token))
     .send({ listing_id: listingId, listing_type: 'homestay', check_in: inDays(from), check_out: inDays(from + 1) });
 }
+
+/**
+ * The guests have been and gone: moves the listing's confirmed bookings into the past, each on its
+ * own day, so they count as completed (bookings cannot be made for past dates).
+ */
+async function finishStays(listingId: string) {
+  const rows = await db.select().from(schema.bookings)
+    .where(and(eq(schema.bookings.listingId, listingId), eq(schema.bookings.status, 'confirmed')));
+  let back = 30;
+  for (const b of rows) {
+    await db.update(schema.bookings).set({ checkIn: inDays(-back), checkOut: inDays(-back + 1) }).where(eq(schema.bookings.id, b.id));
+    back += 3;
+  }
+}
+
+const graceNotes = async (providerId: string) => {
+  const [hostRow] = await db.select().from(schema.providers).where(eq(schema.providers.id, providerId));
+  return db.select().from(schema.notifications)
+    .where(and(eq(schema.notifications.userId, hostRow.userId), eq(schema.notifications.kind, 'host_grace_ended')));
+};
 
 async function payRegistration(token: string, providerId: string) {
   const order = await request(app).post('/api/payments/order').set(auth(token))
@@ -134,7 +155,7 @@ describe('POST /providers/me/start-free', () => {
 });
 
 describe('the 3-booking limit', () => {
-  it('pauses new bookings after the 3rd confirmed one, keeps the listing up, and tells the host once', async () => {
+  it('pauses new bookings once the 3rd booking is completed, keeps the listing up, and tells the host once', async () => {
     const host = await freeHost('Busy Bhutia');
     const traveller = await registerUser({ name: 'Frequent Traveller' });
 
@@ -144,8 +165,16 @@ describe('the 3-booking limit', () => {
         checkIn: inDays(from), checkOut: inDays(from + 1),
       });
     }
+    // Confirmed but not yet stayed: nothing used, still taking bookings.
+    expect((await me(host.token)).grace).toEqual({ used: 0, limit: 3, paused: false });
+    await sweepGraceEnded();
+    expect(await graceNotes(host.providerId)).toHaveLength(0);
 
+    await finishStays(host.listing.id);
     expect((await me(host.token)).grace).toEqual({ used: 3, limit: 3, paused: true });
+    // The sweep tells the host; running it again does not repeat the note.
+    await sweepGraceEnded();
+    await sweepGraceEnded();
 
     const blocked = await requestStay(traveller.token, host.listing.id, 40);
     expect(blocked.status).toBe(409);
@@ -158,13 +187,28 @@ describe('the 3-booking limit', () => {
     const feed = await request(app).get('/api/listings?limit=100');
     expect(feed.body.items.some((i: any) => i.id === host.listing.id)).toBe(true);
 
-    const [hostRow] = await db.select().from(schema.providers).where(eq(schema.providers.id, host.providerId));
-    const notes = await db.select().from(schema.notifications)
-      .where(and(eq(schema.notifications.userId, hostRow.userId), eq(schema.notifications.kind, 'host_grace_ended')));
+    const notes = await graceNotes(host.providerId);
     expect(notes).toHaveLength(1);
+    expect(notes[0].body).toMatch(/3 guests have now completed their bookings/);
   });
 
-  it('counts only confirmed bookings, not requests still waiting', async () => {
+  it('counts a booking from the day after its last day; a check-out today is not complete yet', async () => {
+    const host = await freeHost('Careful Chettri');
+    const traveller = await registerUser({ name: 'Weekend Traveller' });
+    await createConfirmedBooking({ token: traveller.token, listingId: host.listing.id, listingType: 'homestay', checkIn: inDays(5), checkOut: inDays(6) });
+    const [b] = await db.select().from(schema.bookings).where(eq(schema.bookings.listingId, host.listing.id));
+
+    await db.update(schema.bookings).set({ checkIn: inDays(-1), checkOut: inDays(0) }).where(eq(schema.bookings.id, b.id));
+    expect((await me(host.token)).grace.used).toBe(0);
+    await db.update(schema.bookings).set({ checkIn: inDays(-2), checkOut: inDays(-1) }).where(eq(schema.bookings.id, b.id));
+    expect((await me(host.token)).grace.used).toBe(1);
+
+    // A cancelled booking never counts, even once its dates have passed.
+    await db.update(schema.bookings).set({ status: 'cancelled' }).where(eq(schema.bookings.id, b.id));
+    expect((await me(host.token)).grace.used).toBe(0);
+  });
+
+  it('counts only completed bookings, not requests still waiting', async () => {
     const host = await freeHost('Patient Pradhan');
     const traveller = await registerUser({ name: 'Undecided Traveller' });
     for (const from of [10, 20, 30, 40]) {
@@ -185,13 +229,15 @@ describe('the 3-booking limit', () => {
     const waiting = await requestStay(late.token, host.listing.id, 50);
     expect(waiting.status).toBe(200);
     await createConfirmedBooking({ token: first.token, listingId: host.listing.id, listingType: 'homestay', checkIn: inDays(30), checkOut: inDays(31) });
+    await finishStays(host.listing.id);
     expect((await me(host.token)).grace.paused).toBe(true);
 
     const accept = await request(app).patch(`/api/bookings/${waiting.body.booking.id}/confirm`).set(auth(host.token));
     expect(accept.status).toBe(200);
     const checkout = await request(app).post(`/api/bookings/${waiting.body.booking.id}/checkout`).set(auth(late.token));
     expect(checkout.status).toBe(200);
-    expect((await me(host.token)).grace.used).toBe(4);
+    // Confirmed, but the stay is still ahead: it counts once it has happened.
+    expect((await me(host.token)).grace.used).toBe(3);
   });
 
   it('never limits a host who paid at sign-up', async () => {
@@ -201,6 +247,7 @@ describe('the 3-booking limit', () => {
     for (const from of [10, 20, 30, 40]) {
       await createConfirmedBooking({ token: traveller.token, listingId: listing.id, listingType: 'homestay', checkIn: inDays(from), checkOut: inDays(from + 1) });
     }
+    await finishStays(listing.id);
     expect((await me(paid.token)).grace).toBeNull();
     expect((await requestStay(traveller.token, listing.id, 50)).status).toBe(200);
   });
@@ -213,6 +260,7 @@ describe('paying ends the free start', () => {
     for (const from of [10, 20, 30]) {
       await createConfirmedBooking({ token: traveller.token, listingId: host.listing.id, listingType: 'homestay', checkIn: inDays(from), checkOut: inDays(from + 1) });
     }
+    await finishStays(host.listing.id);
     expect((await requestStay(traveller.token, host.listing.id, 40)).status).toBe(409);
 
     const paid = await payRegistration(host.token, host.providerId);

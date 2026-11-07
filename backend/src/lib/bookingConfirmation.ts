@@ -139,7 +139,8 @@ export async function settleBookingConfirmation(
       body: `${bookingUser?.name || 'A guest'} confirmed a booking for ${booking.listingTitle}.`,
       refId: booking.id,
     });
-    // A confirmed booking counts toward the host's free start; the last one tells them.
+    // A booking with no date is complete once confirmed, so it may end the free start now (the
+    // sweep in lib/hostGrace.ts catches the rest as their last day passes).
     await noteGraceProgress(listing?.providerId);
     // notifyBookingConfirmed never throws and records its own outcome on the booking row, so
     // awaiting it is safe and makes a message that did not go out a queryable fact.

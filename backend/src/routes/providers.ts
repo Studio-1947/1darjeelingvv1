@@ -342,7 +342,7 @@ router.get('/me', authenticateToken, async (req: Request, res: Response) => {
  *     description: >
  *       Turns the caller's unpaid sign-up (status pending_payment) into an active host on the free
  *       start and puts their first listing up. It is still hidden until their documents are
- *       approved. After HOST_GRACE_BOOKINGS confirmed bookings (plus delivered orders) new bookings
+ *       approved. After HOST_GRACE_BOOKINGS completed bookings (plus delivered orders) new bookings
  *       pause until they pay the first year (provider_registration). Calling it again while on the
  *       free start changes nothing.
  *     tags: [Providers]
