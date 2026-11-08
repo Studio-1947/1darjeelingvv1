@@ -1,24 +1,42 @@
 import { describe, it, expect } from 'vitest';
 import request from 'supertest';
 import { app } from '../src/app';
-import { priceBreakup, flowBreakup, passBreakupFor } from '../src/lib/pricing';
+import { priceBreakup, flowBreakup, passBreakupFor, hostPlanBreakup, gstIncludedBreakup } from '../src/lib/pricing';
 
-/** Every fixed payment is base + 18% GST; host payments also carry the 2% gateway fee. */
+/**
+ * Host plans and the booking fee are base + 18% GST + the 2% gateway fee. The aangan pass already
+ * includes GST: the traveller pays exactly ₹1, then ₹12 (pricing cards, 2026-11-08).
+ */
 describe('price breakup', () => {
   it('adds GST and the platform fee to the host plan', () => {
     expect(priceBreakup(49900)).toEqual({ base: 49900, gst: 8982, platform_fee: 998, total: 59880, gst_rate: 18, platform_fee_rate: 2 });
-    expect(priceBreakup(99900).total).toBe(119880);
+    expect(priceBreakup(9900).total).toBe(11880);
   });
 
-  it('adds GST and the 2% platform fee to every payment: pass, booking fee and host plan', () => {
-    expect(flowBreakup('platform_support')).toMatchObject({ base: 1200, gst: 216, platform_fee: 24, total: 1440 });
+  it('adds GST and the 2% platform fee to the booking fee and both host plans', () => {
     expect(flowBreakup('booking_commission')).toMatchObject({ gst: 18, platform_fee: 2, total: 120 });
     expect(flowBreakup('provider_registration').total).toBe(59880);
+    expect(flowBreakup('provider_renewal').total).toBe(59880);
   });
 
-  it('charges ₹12 for a first pass and ₹99 after that', () => {
-    expect(passBreakupFor({ supportExpiresAt: null }).total).toBe(1440);
-    expect(passBreakupFor({ supportExpiresAt: '2020-01-01T00:00:00.000Z' })).toMatchObject({ base: 9900, total: 11880 });
+  it('charges ₹499 a year for homestays and drivers, ₹99 for cafes, shops and guides, every year', () => {
+    for (const type of ['homestay', 'driver']) {
+      expect(hostPlanBreakup(type)).toMatchObject({ base: 49900, total: 59880 });
+      expect(hostPlanBreakup(type, 'provider_renewal').total).toBe(59880);
+    }
+    for (const type of ['cafe', 'shop', 'guide']) {
+      expect(hostPlanBreakup(type)).toMatchObject({ base: 9900, gst: 1782, platform_fee: 198, total: 11880 });
+      expect(hostPlanBreakup(type, 'provider_renewal').total).toBe(11880);
+    }
+  });
+
+  it('charges exactly ₹1 for a first pass and ₹12 after that, GST included, no fee', () => {
+    expect(passBreakupFor({ supportExpiresAt: null })).toEqual({ base: 85, gst: 15, platform_fee: 0, total: 100, gst_rate: 18, platform_fee_rate: 0, gst_included: true });
+    expect(passBreakupFor({ supportExpiresAt: '2020-01-01T00:00:00.000Z' })).toMatchObject({ base: 1017, gst: 183, platform_fee: 0, total: 1200 });
+    for (const total of [1, 100, 1200, 9999]) {
+      const b = gstIncludedBreakup(total);
+      expect(b.base + b.gst).toBe(total);
+    }
   });
 
   it('adds up exactly, in whole paise', () => {
@@ -35,8 +53,10 @@ describe('price breakup', () => {
     expect(res.body.gst_rate).toBe(18);
     expect(res.body.platform_fee_rate).toBe(2);
     expect(res.body.prices.provider_registration.total).toBe(59880);
-    expect(res.body.prices.platform_support.total).toBe(1440);
-    expect(res.body.prices.platform_support_renewal.total).toBe(11880);
+    expect(res.body.prices.provider_renewal.total).toBe(59880);
+    expect(res.body.prices.host_plan_small.total).toBe(11880);
+    expect(res.body.prices.platform_support.total).toBe(100);
+    expect(res.body.prices.platform_support_renewal.total).toBe(1200);
     expect(res.body.prices.booking_commission.total).toBe(120);
   });
 });

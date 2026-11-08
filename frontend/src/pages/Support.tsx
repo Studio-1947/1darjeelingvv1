@@ -7,7 +7,8 @@ import { createPaymentOrder, completeMockPayment, payWithRazorpay } from '@/lib/
 import { needsSupport } from '@/lib/support';
 import MockPaymentModal from '@/components/MockPaymentModal';
 import PriceBreakup from '@/components/PriceBreakup';
-import { rupees, usePassPrice, PASS_USUAL_BASE } from '@/lib/prices';
+import { rupees, usePassPrice } from '@/lib/prices';
+import PassOffer from '@/components/PassOffer';
 import { useSeo } from '@/components/Seo';
 
 export default function Support() {
@@ -147,10 +148,9 @@ export default function Support() {
           </h1>
         </div>
 
-        <p className="mt-5 text-sm text-ink font-semibold">{t('support.amount_line')}</p>
-        <p className="mt-3 text-sm text-ink-soft">{t('support.body')}</p>
-        <PriceBreakup breakup={pass} label={user?.supportExpiresAt ? t('price.pass') : t('price.pass_first_year')}
-          wasBase={user?.supportExpiresAt ? undefined : PASS_USUAL_BASE} className="mt-5" />
+        <PassOffer renewing={!!user?.supportExpiresAt} className="mt-5 rounded-2xl bg-white border border-[var(--line)] p-5" />
+        <p className="mt-4 text-xs text-ink-soft">{t('support.body')}</p>
+        <PriceBreakup breakup={pass} label={user?.supportExpiresAt ? t('price.pass') : t('price.pass_first_year')} className="mt-3" />
 
         <button
           onClick={startPayment}

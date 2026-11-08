@@ -81,7 +81,7 @@
     "eyebrow": "the invitation",
     "title": "Come into the aangan",
     "amount_line": "Homestays, rides, cafés and quiet corners, from people who actually live in the hills.",
-    "body": "₹12 + 18% GST + 2% platform fee (₹14.40) for your first year (usually ₹99 a year): every booking confirms free. Without the pass, each booking has a ₹1 convenience fee + 18% GST + 2% platform fee (₹1.20).",
+    "body": "Pay exactly what you see: GST is included, nothing is added on top. Without the pass, each booking has a ₹1 convenience fee + 18% GST + 2% platform fee (₹1.20).",
     "cta": "Take the pass · {{total}}",
     "reassurance": "Valid for one year. Nothing auto-charges.",
     "skip": "Not now, I will pay ₹1.20 per booking",
@@ -276,7 +276,7 @@
   },
   "provider": {
     "onboard_title": "List your business",
-    "onboard_sub": "Reach thousands of travellers. Listing is free until your first completed bookings. After that it is ₹499 for the first year (usually ₹999), then ₹999 a year, plus 18% GST and a 2% platform fee.",
+    "onboard_sub": "Reach thousands of travellers. Go live free and pay after your first completed bookings: ₹499 a year for homestays and drivers, ₹99 a year for cafés, shops and guides, plus 18% GST and a 2% platform fee.",
     "business_name": "Business name",
     "business_type": "Business type",
     "description": "Description",
@@ -358,7 +358,7 @@
     "checkout": "Check-out",
     "guests": "Guests",
     "notes": "Notes (optional)",
-    "fee_note": "Free with the aangan pass (₹14.40 for the first year, then ₹118.80 a year), or a ₹1.20 fee for this booking. Both include 18% GST and the 2% platform fee.",
+    "fee_note": "Free with the aangan pass (₹1 for the first year, then ₹12 a year, GST included), or a ₹1.20 fee for this booking (₹1 + 18% GST + 2% platform fee).",
     "pay_confirm": "Confirm booking",
     "success": "Booking confirmed!",
     "status": {
@@ -1039,14 +1039,14 @@
     "plan_label": "Membership card",
     "plan_activation_label": "Payment pending",
     "plan_activate_title": "Activate your host plan",
-    "plan_activate_body": "₹499 for your first year, plus 18% GST and a 2% platform fee, to publish listings and start receiving booking requests.",
+    "plan_activate_body": "{{price}} a year, plus 18% GST and a 2% platform fee, to publish listings and start receiving booking requests.",
     "plan_activate_cta": "Pay {{total}} to activate",
     "plan_valid_until": "Live until {{date}}",
-    "plan_renew_body": "Renewal opens 30 days before your plan ends. It is ₹999 a year + 18% GST + 2% platform fee, and the new year starts when this one ends.",
-    "plan_ends_soon_one": "Ends in {{count}} day. Renew for ₹999 + 18% GST + 2% platform fee to keep your listings live.",
-    "plan_ends_soon_other": "Ends in {{count}} days. Renew for ₹999 + 18% GST + 2% platform fee to keep your listings live.",
+    "plan_renew_body": "Renewal opens 30 days before your plan ends. It is {{price}} a year + 18% GST + 2% platform fee, and the new year starts when this one ends.",
+    "plan_ends_soon_one": "Ends in {{count}} day. Renew for {{price}} + 18% GST + 2% platform fee to keep your listings live.",
+    "plan_ends_soon_other": "Ends in {{count}} days. Renew for {{price}} + 18% GST + 2% platform fee to keep your listings live.",
     "plan_lapsed_title": "Your plan has ended",
-    "plan_lapsed_body": "Your listings are hidden from travellers and not taking bookings. Renew for ₹999 + 18% GST + 2% platform fee to bring them back straight away.",
+    "plan_lapsed_body": "Your listings are hidden from travellers and not taking bookings. Renew for {{price}} + 18% GST + 2% platform fee to bring them back straight away.",
     "plan_renew_cta": "Renew · {{total}}",
     "plan_renew_title": "Renew your host plan",
     "plan_renewing": "Renewing…",
@@ -1166,7 +1166,7 @@
       "your_name": "Your name",
       "price_whole_any": "Price in whole rupees"
     },
-    "fee_chip": "₹499 + GST & fee · first year",
+    "fee_chip": "₹499 / ₹99 a year + GST & fee",
     "list_business": "List Your Business",
     "get_started": "Get started by entering your basic business details.",
     "business_name": "Business Name",
@@ -1216,7 +1216,7 @@
       "breakfast_question": "Is Breakfast Included in this price?",
       "breakfast_yes": "Yes, Breakfast Included",
       "breakfast_no": "No, Breakfast Extra / Not Included",
-      "fee_note": "Listing your stay is free until your first completed bookings. After that it is ₹499 for the first year (usually ₹999), then ₹999 a year, plus 18% GST and a 2% platform fee, to keep taking bookings."
+      "fee_note": "Listing your stay is free until your first completed bookings. After that it is ₹499 a year, plus 18% GST and a 2% platform fee, to keep taking bookings. You can also pay now."
     },
     "dr": {
       "type_label": "Driver",
@@ -1250,7 +1250,7 @@
       "complete": "Complete & go live",
       "price_label": "Starting Rate (₹/Day)",
       "price_suffix": "/ day onwards",
-      "fee_note": "Listing your driver profile is free until your first completed bookings. After that it is ₹499 for the first year (usually ₹999), then ₹999 a year, plus 18% GST and a 2% platform fee, to keep taking bookings.",
+      "fee_note": "Listing your driver profile is free until your first completed bookings. After that it is ₹499 a year, plus 18% GST and a 2% platform fee, to keep taking bookings. You can also pay now.",
       "rates_label": "Your Route Rates",
       "rates_note": "Set a fare for each route you operate. Travellers see these on your profile, and the lowest becomes your public starting rate.",
       "rates_empty": "No routes yet  add the routes you operate in step 03 above, then price them here.",
@@ -1288,11 +1288,11 @@
       "price_shop": "Average Item Price (₹)",
       "suffix_cafe": "per person",
       "suffix_shop": "onwards",
-      "fee_note_cafe": "Listing your café is free until your first completed bookings. After that it is ₹499 for the first year (usually ₹999), then ₹999 a year, plus 18% GST and a 2% platform fee, to keep taking bookings.",
-      "fee_note_shop": "Listing your shop is free until your first completed bookings. After that it is ₹499 for the first year (usually ₹999), then ₹999 a year, plus 18% GST and a 2% platform fee, to keep taking bookings."
+      "fee_note_cafe": "Listing your café is free until your first completed bookings or delivered orders. After that it is ₹99 a year, plus 18% GST and a 2% platform fee, to keep taking bookings. You can also pay now.",
+      "fee_note_shop": "Listing your shop is free until your first completed bookings or delivered orders. After that it is ₹99 a year, plus 18% GST and a 2% platform fee, to keep taking bookings. You can also pay now."
     },
     "gd": {
-      "fee_note": "Listing your guide profile is free until your first completed bookings. After that it is ₹499 for the first year (usually ₹999), then ₹999 a year, plus 18% GST and a 2% platform fee, to keep taking bookings.",
+      "fee_note": "Listing your guide profile is free until your first completed bookings. After that it is ₹99 a year, plus 18% GST and a 2% platform fee, to keep taking bookings. You can also pay now.",
       "phone_ph": "e.g. 98765 43210",
       "phone_hint": "Leave it empty to use the number you signed in with.",
       "type_label": "Guide",
@@ -1495,7 +1495,7 @@
         "p": "All amounts below are what you pay to the Platform. They are separate from, and additional to, whatever you pay the local business for the stay, ride or goods themselves.",
         "sub": [
           {
-            "h": "3.1 Traveller Pass  ₹12 + 18% GST + 2% platform fee for the first year, then ₹99 + 18% GST + 2% platform fee per year",
+            "h": "3.1 Traveller Pass  ₹1 for the first year, then ₹12 per year, GST included",
             "p": "A payment gives a traveller account one year in which every booking confirms with no fee, and lets it save listings and leave reviews. Without the pass, booking requests are free to make and each booking is confirmed with a ₹1 convenience fee plus 18% GST and a 2% platform fee (₹1.20 in all), refunded if the booking is cancelled. It does not renew automatically; after it expires, you may buy another one-year pass."
           },
           {
@@ -1503,8 +1503,8 @@
             "p": "Making a booking request is free. Confirming it is free with the Traveller Pass; without the pass there is a ₹1 convenience fee per booking plus 18% GST and a 2% platform fee (₹1.20 in all), refunded if the booking is cancelled. What you pay for the stay, ride or goods themselves is paid directly to the business."
           },
           {
-            "h": "3.3 Business Listing Plan  free until 3 completed bookings, then ₹499 for the first year and ₹999 per year after, each plus 18% GST and a 2% platform fee",
-            "p": "A new local business can list for free. Its documents are still checked and approved before its listing goes live. Once live, it takes bookings without paying until 3 bookings have been completed, meaning the guest's stay, ride or tour has taken place (for cafés and shops, until 3 home-delivery orders have been delivered). After that, new bookings pause until the business pays ₹499 for its first year: the listing stays visible, bookings already confirmed go ahead, and requests already received can still be accepted. The business may pay at any time during the free period, and its first year starts on the day it pays. Each year after that costs ₹999. The plan does not renew automatically: if a year ends without renewal, the business's listings are hidden from travellers and stop taking bookings until it renews. It is not a commission on bookings."
+            "h": "3.3 Business Listing Plan  ₹499 a year for homestays and drivers, ₹99 a year for cafés, shops and guides, each plus 18% GST and a 2% platform fee; free until 2 completed bookings",
+            "p": "A new local business can list for free. Its documents are still checked and approved before its listing goes live. Once live, it takes bookings without paying until 2 bookings have been completed, meaning the guest's stay, ride or tour has taken place (for cafés and shops, until 2 bookings or home-delivery orders have been completed or delivered). After that, new bookings pause until the business pays for its first year (₹499 for a homestay or driver, ₹99 for a café, shop or guide, each plus 18% GST and a 2% platform fee): the listing stays visible, bookings already confirmed go ahead, and requests already received can still be accepted. The business may pay at any time during the free period, and its first year starts on the day it pays. Each year after that costs the same. The plan does not renew automatically: if a year ends without renewal, the business's listings are hidden from travellers and stop taking bookings until it renews. It is not a commission on bookings."
           },
           {
             "h": "3.4 Donations  voluntary, ₹10 to ₹1,00,000",
@@ -1622,12 +1622,12 @@
             "p": "Asking a host to book is free. A booking is confirmed free with an active Traveller Pass; without one, confirming it costs a ₹1 convenience fee plus 18% GST and a 2% platform fee (₹1.20 in all). That fee is refunded in full if the booking is cancelled, by any party, before the stay, or if its dates go to another traveller who confirmed first."
           },
           {
-            "h": "3.2 Traveller Pass  ₹12 + 18% GST + 2% platform fee for the first year, then ₹99 + 18% GST + 2% platform fee per year",
+            "h": "3.2 Traveller Pass  ₹1 for the first year, then ₹12 per year, GST included",
             "p": "Refundable in full within 7 days of payment if you have not used it to confirm any booking. After 7 days, or once it has been used, it is not refundable  it has already delivered the access it pays for. It expires after one year and never renews automatically, so there is no recurring charge to cancel."
           },
           {
-            "h": "3.3 Business Listing Plan  free until 3 completed bookings, then ₹499 for the first year, ₹999 per year after, each plus 18% GST and a 2% platform fee",
-            "p": "Listing is free until 3 of your bookings are completed (3 delivered home-delivery orders for cafés and shops), so nothing is paid before then. If you pay while your listing is already live on the free start, that payment is not refundable, because the listing is already published. Otherwise, each payment is refundable in full within 7 days if your listing has not yet gone live that year. Once the listing is published and visible to travellers, that year's payment is not refundable. If we reject or remove your listing for a reason that is not a breach of our Terms, we refund the current year in full regardless of when. The plan never renews automatically."
+            "h": "3.3 Business Listing Plan  ₹499 a year for homestays and drivers, ₹99 a year for cafés, shops and guides, each plus 18% GST and a 2% platform fee; free until 2 completed bookings",
+            "p": "Listing is free until 2 of your bookings are completed (for cafés and shops, delivered home-delivery orders count too), so nothing is paid before then. If you pay while your listing is already live on the free start, that payment is not refundable, because the listing is already published. Otherwise, each payment is refundable in full within 7 days if your listing has not yet gone live that year. Once the listing is published and visible to travellers, that year's payment is not refundable. If we reject or remove your listing for a reason that is not a breach of our Terms, we refund the current year in full regardless of when. The plan never renews automatically."
           },
           {
             "h": "3.4 Donations",
@@ -2045,8 +2045,46 @@
     "note": "If the booking is cancelled, the fee comes back to you.",
     "failed": "Payment did not go through. Please try again."
   },
+  "plan_card": {
+    "eyebrow_full": "For homestays and drivers",
+    "eyebrow_small": "For shops and restaurants",
+    "eyebrow_guide": "For guides",
+    "title_full": "Get bookings first, pay later",
+    "title_small": "Put your shop on the traveller’s map",
+    "title_guide": "Put your tours on the traveller’s map",
+    "body_small": "Be found by tourists looking for real local food and shopping.",
+    "body_guide": "Be found by travellers looking for a local guide.",
+    "per_year": "per year, billed once a year",
+    "choose": "Choose how you start",
+    "later_title": "Pay later",
+    "later_body": "Go live free. Pay {{price}} after your first {{count}} bookings through Aangan.",
+    "later_body_small": "Go live free. Pay {{price}} after your first {{count}} bookings or delivered orders through Aangan.",
+    "now_title": "Pay now",
+    "now_body": "Pay {{price}} and go live today.",
+    "site_lead": "Includes your own mini website",
+    "site_full": "to show your rooms or car, photos and reviews, with a link you can share anywhere.",
+    "site_small": "with your menu or products, photos and location, ready to share on WhatsApp and Instagram.",
+    "site_guide": "to show your tours, photos and reviews, with a link you can share anywhere.",
+    "cta_later_full": "List my place free",
+    "cta_later_small": "List my shop free",
+    "cta_later_guide": "List my profile free",
+    "cta_now_full": "List my place for {{price}}",
+    "cta_now_small": "List my shop for {{price}}",
+    "cta_now_guide": "List my profile for {{price}}"
+  },
+  "pass_card": {
+    "title": "Aangan Pass",
+    "first_year": "{{price}} for your first year",
+    "then": "Then {{price}} per year, billed once a year.",
+    "yearly": "{{price}} per year",
+    "billed": "Billed once a year.",
+    "what": "Verified homestays, drivers and local shops, booked directly with hosts.",
+    "no_hidden": "No hidden charges. No commission on your bookings.",
+    "pay_host": "You pay the host directly, at their price."
+  },
   "price": {
     "gst": "GST ({{rate}}%)",
+    "gst_included": "Includes GST ({{rate}}%)",
     "platform_fee": "Platform fee ({{rate}}%)",
     "total": "Total to pay",
     "host_first_year": "Host plan · first year",

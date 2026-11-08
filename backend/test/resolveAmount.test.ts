@@ -24,18 +24,18 @@ describe('resolveAmount  fixed-price flows', () => {
     expect(ok(resolveAmount('platform_support', {}))).toBe(flowBreakup('platform_support').total);
   });
 
-  it('charges base + 18% GST + 2% platform fee: ₹14.40 pass, ₹598.80 first host year, ₹1,198.80 renewal', () => {
-    expect(ok(resolveAmount('platform_support', {}))).toBe(1440);
+  it('charges ₹1 for the pass (GST included) and ₹499 + GST + 2% fee (₹598.80) for a host year', () => {
+    expect(ok(resolveAmount('platform_support', {}))).toBe(100);
     expect(ok(resolveAmount('provider_registration', {}))).toBe(59880);
-    expect(ok(resolveAmount('provider_renewal', {}))).toBe(119880);
+    expect(ok(resolveAmount('provider_renewal', {}))).toBe(59880);
   });
 
   it('ignores an amount supplied by the client', () => {
     // The whole point of the map. A client that names its own price for a fixed flow is
     // either confused or hostile; either way the body is not consulted.
-    expect(ok(resolveAmount('platform_support', { amount: 1 }))).toBe(1440);
+    expect(ok(resolveAmount('platform_support', { amount: 1 }))).toBe(100);
     expect(ok(resolveAmount('provider_registration', { amount: 1 }))).toBe(59880);
-    expect(ok(resolveAmount('provider_renewal', { amount: 1 }))).toBe(119880);
+    expect(ok(resolveAmount('provider_renewal', { amount: 1 }))).toBe(59880);
   });
 
   it('prices the ₹1 booking fee (₹1.20 with GST and the 2% platform fee) from the server, not the body', () => {

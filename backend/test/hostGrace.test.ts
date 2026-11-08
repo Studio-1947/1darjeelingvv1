@@ -96,7 +96,7 @@ describe('POST /providers/me/start-free', () => {
     expect(res.status).toBe(200);
     expect(res.body.provider).toMatchObject({ status: 'active', grace: true, plan_active: true, plan_expires_at: null });
     expect(res.body.provider.badges.member).toBe(false);
-    expect(res.body.grace).toEqual({ used: 0, limit: 3, paused: false });
+    expect(res.body.grace).toEqual({ used: 0, limit: 2, paused: false });
 
     const listings = await db.select().from(schema.listings).where(eq(schema.listings.providerId, host.providerId));
     expect(listings).toHaveLength(1);
@@ -105,7 +105,7 @@ describe('POST /providers/me/start-free', () => {
     expect(payments).toHaveLength(0);
 
     const mine = await me(host.token);
-    expect(mine).toMatchObject({ status: 'active', plan_active: true, grace: { used: 0, limit: 3, paused: false } });
+    expect(mine).toMatchObject({ status: 'active', plan_active: true, grace: { used: 0, limit: 2, paused: false } });
   });
 
   it('is safe to call twice: still one listing', async () => {
@@ -154,24 +154,24 @@ describe('POST /providers/me/start-free', () => {
   });
 });
 
-describe('the 3-booking limit', () => {
-  it('pauses new bookings once the 3rd booking is completed, keeps the listing up, and tells the host once', async () => {
+describe('the 2-booking limit', () => {
+  it('pauses new bookings once the 2nd booking is completed, keeps the listing up, and tells the host once', async () => {
     const host = await freeHost('Busy Bhutia');
     const traveller = await registerUser({ name: 'Frequent Traveller' });
 
-    for (const from of [10, 20, 30]) {
+    for (const from of [10, 20]) {
       await createConfirmedBooking({
         token: traveller.token, listingId: host.listing.id, listingType: 'homestay',
         checkIn: inDays(from), checkOut: inDays(from + 1),
       });
     }
     // Confirmed but not yet stayed: nothing used, still taking bookings.
-    expect((await me(host.token)).grace).toEqual({ used: 0, limit: 3, paused: false });
+    expect((await me(host.token)).grace).toEqual({ used: 0, limit: 2, paused: false });
     await sweepGraceEnded();
     expect(await graceNotes(host.providerId)).toHaveLength(0);
 
     await finishStays(host.listing.id);
-    expect((await me(host.token)).grace).toEqual({ used: 3, limit: 3, paused: true });
+    expect((await me(host.token)).grace).toEqual({ used: 2, limit: 2, paused: true });
     // The sweep tells the host; running it again does not repeat the note.
     await sweepGraceEnded();
     await sweepGraceEnded();
@@ -189,7 +189,7 @@ describe('the 3-booking limit', () => {
 
     const notes = await graceNotes(host.providerId);
     expect(notes).toHaveLength(1);
-    expect(notes[0].body).toMatch(/3 guests have now completed their bookings/);
+    expect(notes[0].body).toMatch(/2 guests have now completed their bookings/);
   });
 
   it('counts a booking from the day after its last day; a check-out today is not complete yet', async () => {
@@ -214,7 +214,7 @@ describe('the 3-booking limit', () => {
     for (const from of [10, 20, 30, 40]) {
       expect((await requestStay(traveller.token, host.listing.id, from)).status).toBe(200);
     }
-    expect((await me(host.token)).grace).toEqual({ used: 0, limit: 3, paused: false });
+    expect((await me(host.token)).grace).toEqual({ used: 0, limit: 2, paused: false });
   });
 
   it('lets a request made before the limit still be accepted and confirmed after it', async () => {
@@ -222,9 +222,7 @@ describe('the 3-booking limit', () => {
     const first = await registerUser({ name: 'First Guest' });
     const late = await registerUser({ name: 'Late Guest' });
 
-    for (const from of [10, 20]) {
-      await createConfirmedBooking({ token: first.token, listingId: host.listing.id, listingType: 'homestay', checkIn: inDays(from), checkOut: inDays(from + 1) });
-    }
+    await createConfirmedBooking({ token: first.token, listingId: host.listing.id, listingType: 'homestay', checkIn: inDays(10), checkOut: inDays(11) });
     // Asked while the host still had a free booking left.
     const waiting = await requestStay(late.token, host.listing.id, 50);
     expect(waiting.status).toBe(200);
@@ -237,7 +235,7 @@ describe('the 3-booking limit', () => {
     const checkout = await request(app).post(`/api/bookings/${waiting.body.booking.id}/checkout`).set(auth(late.token));
     expect(checkout.status).toBe(200);
     // Confirmed, but the stay is still ahead: it counts once it has happened.
-    expect((await me(host.token)).grace.used).toBe(3);
+    expect((await me(host.token)).grace.used).toBe(2);
   });
 
   it('never limits a host who paid at sign-up', async () => {
@@ -308,7 +306,7 @@ describe('paying ends the free start', () => {
 });
 
 describe('cafes and shops: delivered orders count', () => {
-  it('pauses new delivery requests after 3 delivered orders; accepted ones do not count', async () => {
+  it('pauses new delivery requests after 2 delivered orders; accepted ones do not count', async () => {
     const cafe = await freeHost('Momo Corner', 'cafe');
     await db.update(schema.listings).set({ extras: { ...(cafe.listing.extras || {}), home_delivery: true } })
       .where(eq(schema.listings.id, cafe.listing.id));
@@ -318,13 +316,13 @@ describe('cafes and shops: delivered orders count', () => {
     const answer = (id: string, status: string) =>
       request(app).patch(`/api/deliveries/${id}`).set(auth(cafe.token)).send({ status });
 
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 2; i++) {
       const made = await order();
       expect(made.status).toBe(201);
       expect((await answer(made.body.request.id, 'accepted')).status).toBe(200);
-      if (i < 2) expect((await answer(made.body.request.id, 'delivered')).status).toBe(200);
+      if (i < 1) expect((await answer(made.body.request.id, 'delivered')).status).toBe(200);
     }
-    expect((await me(cafe.token)).grace).toEqual({ used: 2, limit: 3, paused: false });
+    expect((await me(cafe.token)).grace).toEqual({ used: 1, limit: 2, paused: false });
 
     const [third] = await db.select().from(schema.deliveryRequests)
       .where(and(eq(schema.deliveryRequests.providerId, cafe.providerId), eq(schema.deliveryRequests.status, 'accepted')));
@@ -351,6 +349,6 @@ describe('admin and help number', () => {
   it('tells the sign-up screens the help number (null when unset) and the free bookings', async () => {
     const res = await request(app).get('/api/app/host-signup');
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({ support_phone: null, grace_bookings: 3 });
+    expect(res.body).toEqual({ support_phone: null, grace_bookings: 2 });
   });
 });

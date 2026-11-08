@@ -1,13 +1,15 @@
-import { AMOUNTS, GST_RATE_PERCENT, PLATFORM_FEE_PERCENT, PASS_RENEWAL_BASE } from '../config';
+import { AMOUNTS, GST_RATE_PERCENT, PLATFORM_FEE_PERCENT, PASS_RENEWAL_BASE, GST_INCLUDED_FLOWS, SMALL_HOST_PLAN_BASE, SMALL_HOST_TYPES } from '../config';
 
 /**
  * What a fixed-price payment is made of, in paise. The base price is the plan, pass or fee itself;
- * 18% GST and the 2% platform fee are each worked out on the base, on every payment.
+ * 18% GST and the 2% platform fee are each worked out on the base.
  *
- *   host first year      ₹499 + ₹89.82 GST + ₹9.98 fee  = ₹598.80
- *   aangan pass, year 1  ₹12  + ₹2.16 GST  + ₹0.24 fee  = ₹14.40
- *   aangan pass, after   ₹99  + ₹17.82 GST + ₹1.98 fee  = ₹118.80
- *   booking fee          ₹1   + ₹0.18 GST  + ₹0.02 fee  = ₹1.20
+ *   homestay or driver, each year   ₹499 + ₹89.82 GST + ₹9.98 fee  = ₹598.80
+ *   cafe, shop or guide, each year  ₹99  + ₹17.82 GST + ₹1.98 fee  = ₹118.80
+ *   booking fee                     ₹1   + ₹0.18 GST  + ₹0.02 fee  = ₹1.20
+ *
+ * The aangan pass already includes GST and has no fee (`gst_included`): ₹1 the first year
+ * (₹0.85 + ₹0.15 GST), ₹12 every year after (₹10.17 + ₹1.83 GST).
  *
  * Both apps show these lines before the payment opens, and the payments row keeps a copy, so a
  * receipt still matches what was paid if the rates change later.
@@ -19,6 +21,8 @@ export type PriceBreakup = {
   total: number;
   gst_rate: number;
   platform_fee_rate: number;
+  /** The price on the card already includes the GST; nothing is added on top. */
+  gst_included?: boolean;
 };
 
 /** Every fixed payment carries the 2% platform fee (host plans, the pass, the ₹1 booking fee). */
@@ -42,13 +46,29 @@ export function priceBreakup(base: number, platformFeeRate: number = PLATFORM_FE
   };
 }
 
+/** A price that already includes GST: the GST is the part of it, not added to it. No fee. */
+export function gstIncludedBreakup(total: number): PriceBreakup {
+  const gst = Math.round((total * GST_RATE_PERCENT) / (100 + GST_RATE_PERCENT));
+  return { base: total - gst, gst, platform_fee: 0, total, gst_rate: GST_RATE_PERCENT, platform_fee_rate: 0, gst_included: true };
+}
+
 /** The breakup of one fixed-price flow, with that flow's fee rate. */
 export function flowBreakup(flow: string, base: number = AMOUNTS[flow]): PriceBreakup {
-  return priceBreakup(base, feeRateFor(flow));
+  return GST_INCLUDED_FLOWS.has(flow) ? gstIncludedBreakup(base) : priceBreakup(base, feeRateFor(flow));
+}
+
+/** A host's yearly plan base: ₹499 for homestays and drivers, ₹99 for cafes, shops and guides. */
+export function hostPlanBase(businessType: string | null | undefined): number {
+  return businessType && SMALL_HOST_TYPES.has(businessType) ? SMALL_HOST_PLAN_BASE : AMOUNTS.provider_registration;
+}
+
+/** What this host pays for a year (first year or renewal: the same price). */
+export function hostPlanBreakup(businessType: string | null | undefined, flow: 'provider_registration' | 'provider_renewal' = 'provider_registration'): PriceBreakup {
+  return flowBreakup(flow, hostPlanBase(businessType));
 }
 
 /**
- * The aangan pass costs ₹12 the first time and ₹99 every year after. Anyone who has held a pass
+ * The aangan pass costs ₹1 the first time and ₹12 every year after, GST included. Anyone who has held a pass
  * before (a stored expiry, lapsed or not) pays the renewal price.
  */
 export function passBreakupFor(user: { supportExpiresAt?: string | null } | null | undefined): PriceBreakup {
@@ -60,5 +80,8 @@ export function priceList(): Record<string, PriceBreakup> {
   return {
     ...Object.fromEntries(Object.keys(AMOUNTS).map((flow) => [flow, flowBreakup(flow)])),
     platform_support_renewal: flowBreakup('platform_support', PASS_RENEWAL_BASE),
+    // provider_registration / provider_renewal above are the ₹499 plan (homestays and drivers);
+    // this is the ₹99 one for cafes, shops and guides.
+    host_plan_small: flowBreakup('provider_registration', SMALL_HOST_PLAN_BASE),
   };
 }

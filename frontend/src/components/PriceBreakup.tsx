@@ -18,6 +18,19 @@ export default function PriceBreakup({ breakup, label, wasBase, compact = false,
 }) {
   const { t } = useTranslation();
   const row = 'flex items-center justify-between gap-3';
+  // The pass: the price already holds the GST, so it is one line and nothing is added on top.
+  if (breakup.gst_included) {
+    return (
+      <dl className={`${compact ? 'text-xs' : 'text-sm'} rounded-xl border border-[var(--line)] bg-white p-3 space-y-1.5 ${className}`} data-testid="price-breakup">
+        <div className={`${row} font-bold text-ink`} data-testid="price-total">
+          <dt>{label}</dt><dd className="tabular-nums">{rupees(breakup.total)}</dd>
+        </div>
+        <div className={`${row} text-ink-soft`}>
+          <dt>{t('price.gst_included', { rate: breakup.gst_rate })}</dt><dd className="tabular-nums">{rupees(breakup.gst)}</dd>
+        </div>
+      </dl>
+    );
+  }
   return (
     <dl className={`${compact ? 'text-xs' : 'text-sm'} rounded-xl border border-[var(--line)] bg-white p-3 space-y-1.5 ${className}`} data-testid="price-breakup">
       <div className={row}>

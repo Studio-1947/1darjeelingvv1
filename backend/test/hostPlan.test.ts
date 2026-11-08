@@ -94,7 +94,7 @@ async function listingOf(providerId: string) {
   return row;
 }
 
-describe('host plan: ₹499 first year, ₹999 after', () => {
+describe('host plan: ₹499 a year (₹99 for cafes, shops and guides)', () => {
   it('registers for ₹499 and starts a one-year plan', async () => {
     const before = Date.now();
     const { token } = await onboardActiveProvider({ name: 'New Host' });
@@ -139,19 +139,34 @@ describe('host plan: ₹499 first year, ₹999 after', () => {
     expect((await providerMe(token)).plan_expires_at).toBe(before);
   });
 
-  it('renews for ₹999 inside the last 30 days and adds a year on top of what is left', async () => {
+  it('renews for ₹499 (₹598.80) inside the last 30 days and adds a year on top of what is left', async () => {
     const { token, providerId } = await onboardActiveProvider({ name: 'Window Renewer' });
     const endsInTenDays = new Date(Date.now() + 10 * DAY_MS).toISOString();
     await db.update(schema.providers).set({ planExpiresAt: endsInTenDays }).where(eq(schema.providers.id, providerId));
 
     const { order, complete } = await pay(token, 'provider_renewal', providerId);
     expect(order.status).toBe(200);
-    expect(order.body.amount).toBe(119880);
+    expect(order.body.amount).toBe(59880);
     expect(complete!.status).toBe(200);
 
     const after = Date.parse((await providerMe(token)).plan_expires_at);
     expect(after - Date.parse(endsInTenDays)).toBeGreaterThan(364 * DAY_MS);
     expect(after - Date.parse(endsInTenDays)).toBeLessThan(366 * DAY_MS);
+  });
+
+  it('charges a cafe, shop or guide ₹99 + GST + fee (₹118.80), first year and renewal', async () => {
+    for (const businessType of ['cafe', 'shop', 'guide']) {
+      const { token, providerId } = await onboardActiveProvider({ name: `Small ${businessType}`, businessType });
+      const [payment] = await db.select().from(schema.payments).where(eq(schema.payments.referenceId, providerId)).limit(1);
+      expect(payment.amount).toBe(11880);
+      expect(payment.breakup).toMatchObject({ base: 9900, total: 11880 });
+      expect((await providerMe(token)).plan_price).toMatchObject({ base: 9900, total: 11880 });
+
+      await lapse(providerId);
+      const { order } = await pay(token, 'provider_renewal', providerId);
+      expect(order.status).toBe(200);
+      expect(order.body.amount).toBe(11880);
+    }
   });
 
   it('renews from now once the plan has lapsed', async () => {
@@ -160,7 +175,7 @@ describe('host plan: ₹499 first year, ₹999 after', () => {
 
     const { order, complete } = await pay(token, 'provider_renewal', providerId);
     expect(order.status).toBe(200);
-    expect(order.body.amount).toBe(119880);
+    expect(order.body.amount).toBe(59880);
     expect(complete!.status).toBe(200);
 
     const after = Date.parse((await providerMe(token)).plan_expires_at);

@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { isExemptFromSupport, isSupportActive } from '../lib/support';
 
 /**
- * Blocks the pass-only extras (saved places, reviews) until the ₹12 yearly aangan pass is paid.
+ * Blocks the pass-only extras (saved places, reviews) until the yearly aangan pass is paid.
  * Bookings are not behind this: without a pass a traveller pays ₹1 on each booking instead.
  * Mount AFTER authenticateToken, which is what puts the user row on the request.
  *
@@ -21,7 +21,7 @@ export function requireActiveSupport(req: Request, res: Response, next: NextFunc
   }
 
   return res.status(402).json({
-    detail: 'The ₹12 aangan pass is required before you can do this.',
+    detail: 'The aangan pass is required before you can do this.',
     code: 'support_required'
   });
 }

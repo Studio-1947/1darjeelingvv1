@@ -4,7 +4,7 @@ import { app } from '../src/app';
 import { registerUser, createListing } from './helpers';
 
 /**
- * The board's booking flow: with the ₹12 aangan pass every booking confirms free; without it the
+ * The board's booking flow: with the aangan pass every booking confirms free; without it the
  * traveller pays a ₹1 convenience fee on each booking, and that payment is what confirms it.
  */
 
@@ -26,7 +26,7 @@ describe('booking without the aangan pass', () => {
     expect(checkout.body.code).toBe('fee_required');
     expect(checkout.body.amount).toBe(120);
     expect(checkout.body.breakup).toMatchObject({ base: 100, gst: 18, platform_fee: 2, total: 120 });
-    expect(checkout.body.pass_breakup.total).toBe(1440);
+    expect(checkout.body.pass_breakup.total).toBe(100);
 
     const order = await request(app).post('/api/payments/order').set('Authorization', `Bearer ${token}`)
       .send({ flow: 'booking_commission', reference_id: id, amount: 1 });

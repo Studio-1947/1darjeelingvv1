@@ -148,8 +148,8 @@ describe('fixed-price flows are unaffected by the amount field', () => {
   it('still charges the map price when an amount is supplied', async () => {
     const { token, user } = await registerUser({ name: 'Sneaky Sunil', paySupport: false });
 
-    const res = await order(token, { flow: 'platform_support', reference_id: user.id, amount: 1 });
+    const res = await order(token, { flow: 'platform_support', reference_id: user.id, amount: 5 });
     expect(res.status).toBe(200);
-    expect(res.body.amount).toBe(1440);
+    expect(res.body.amount).toBe(100);
   });
 });
