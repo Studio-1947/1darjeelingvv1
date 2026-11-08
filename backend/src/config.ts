@@ -348,46 +348,60 @@ export const rzpClient = RAZORPAY_KEY_SECRET ? new Razorpay({
   key_secret: RAZORPAY_KEY_SECRET
 }) : null;
 
-// Every fixed price below is the BASE. On top of it the payer is charged 18% GST, and host payments
-// also a 2% payment gateway fee, both worked out on the base (lib/pricing.ts), e.g.
-// ₹499 + ₹89.82 + ₹9.98 = ₹598.80. Traveller payments (pass, booking fee) carry GST only.
+// Every fixed price below is the BASE. On top of it the payer is charged 18% GST and a 2% payment
+// gateway fee, both worked out on the base (lib/pricing.ts), e.g. ₹499 + ₹89.82 + ₹9.98 = ₹598.80.
+// The aangan pass is the exception: its price already includes GST, so a traveller pays exactly
+// ₹1, then ₹12 (user decision 2026-11-08). See GST_INCLUDED_FLOWS.
 export const GST_RATE_PERCENT = 18;
 export const PLATFORM_FEE_PERCENT = 2;
 
 // Fixed base prices, in paise. `donation` is deliberately absent: its presence here would imply a
 // fixed price, and the whole point of a donation is that the giver chooses. See lib/payments.ts.
 //
-//   platform_support       ₹12   the first year of the aangan pass: every booking confirms free
-//                          (₹99 for every year after: PASS_RENEWAL_BASE)
+//   platform_support       ₹1    the first year of the aangan pass, GST included: every booking
+//                          confirms free (₹12 for every year after: PASS_RENEWAL_BASE)
 //   booking_commission     ₹1    the convenience fee on one booking, for a traveller without a pass
-//   provider_registration  ₹499  a host's first year (launch price; usually ₹999)
-//   provider_renewal       ₹999  every year after that
+//   provider_registration  ₹499  a homestay's or driver's first year (₹99 for cafes, shops and
+//                          guides: SMALL_HOST_PLAN_BASE)
+//   provider_renewal       ₹499  every year after that, the same price (₹99 for the small plan)
+//
+// Pricing cards, user decision 2026-11-08: "₹499 per year" for homestays and drivers, "₹99 per
+// year" for shops and restaurants (guides too), each plus GST and the fee; the pass ₹1 then ₹12.
 //
 // The board ("Booking Flow"): with the pass you can book everything; without it, take the pass or
 // pay ₹1 per service. The flow keeps its old name so refunds of earlier orders still match.
 export const AMOUNTS: Record<string, number> = {
-  platform_support: 1200,
+  platform_support: 100,
   booking_commission: 100,
   provider_registration: 49900,
-  provider_renewal: 99900,
+  provider_renewal: 49900,
 };
+
+// The yearly host plan for cafes, shops and guides, in paise, first year and every year after.
+export const SMALL_HOST_PLAN_BASE = 9900;
+export const SMALL_HOST_TYPES: ReadonlySet<string> = new Set(['cafe', 'shop', 'guide']);
+
+// Flows whose price already includes GST and carries no gateway fee: the traveller pays the
+// price on the card and nothing more.
+export const GST_INCLUDED_FLOWS: ReadonlySet<string> = new Set(['platform_support']);
 
 // The aangan pass after its first year. Same flow (platform_support); the server picks this
 // price for anyone who has held a pass before (lib/pricing.ts passBreakupFor).
-export const PASS_RENEWAL_BASE = 9900;
+export const PASS_RENEWAL_BASE = 1200;
 
 // How long one host payment (registration or renewal) keeps a host's listings live, in days.
 export const HOST_PLAN_DAYS = 365;
 
 // Renewal opens this many days before a plan ends (and stays open after it lapses). Earlier than
-// that, a second ₹999 would be a year bought by accident: a double tap, or a first payment still
+// that, a second year's payment would be bought by accident: a double tap, or a first payment still
 // settling. Both apps show the Renew button on the same window.
 export const HOST_RENEWAL_WINDOW_DAYS = 30;
 
-// A new host can start for free and pays the first year only after this many completed bookings
+// A new host can start for free ("Pay later") and pays the first year only after this many
+// completed bookings (2 on the pricing cards, user decision 2026-11-08)
 // (delivered home-delivery orders count too, for cafes and shops). New bookings pause after that
 // until they pay. Requests already waiting can still be accepted. See lib/hostGrace.ts.
-const graceBookings = Number(process.env.HOST_GRACE_BOOKINGS ?? 3);
+const graceBookings = Number(process.env.HOST_GRACE_BOOKINGS ?? 2);
 if (!Number.isInteger(graceBookings) || graceBookings < 1 || graceBookings > 100) {
   throw new Error('[config] HOST_GRACE_BOOKINGS must be a whole number from 1 to 100.');
 }

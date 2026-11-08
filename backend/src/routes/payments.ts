@@ -13,7 +13,7 @@ import { publishFirstListing } from '../lib/hostGrace';
 import { settleBookingConfirmation } from '../lib/bookingConfirmation';
 import { AWAITING_HOST_DETAIL, isAwaitingHost } from '../lib/bookingApproval';
 import { resolveAmount } from '../lib/payments';
-import { passBreakupFor, priceList } from '../lib/pricing';
+import { hostPlanBreakup, passBreakupFor, priceList } from '../lib/pricing';
 
 const router = Router();
 
@@ -30,7 +30,7 @@ async function handlePaymentSuccess(
   tx: Executor = db
 ) {
   if (flow === 'provider_registration') {
-    // The ₹499 first year. assertOwnsReference only lets a provider pay this once: one that has
+    // The first year (₹499, or ₹99 for a cafe, shop or guide). assertOwnsReference only lets a provider pay this once: one that has
     // never been activated, or one on the free start (grace). A host on the free start already
     // has their listing, so it is only made here for a host who never started free.
     const [before] = await tx.select().from(schema.providers).where(eq(schema.providers.id, referenceId)).limit(1);
@@ -53,7 +53,7 @@ async function handlePaymentSuccess(
     if (p && !wasOnGrace) await publishFirstListing(tx, p);
     return p ? serializeProvider(p) : null;
   } else if (flow === 'provider_renewal') {
-    // ₹499 for another year. Extends from the current expiry when renewing early, from now when
+    // Another year at the same price. Extends from the current expiry when renewing early, from now when
     // the plan has already lapsed, so the host's listings come back the moment this settles.
     const [p] = await tx.select().from(schema.providers).where(eq(schema.providers.id, referenceId)).limit(1);
     if (!p) return null;
@@ -67,7 +67,7 @@ async function handlePaymentSuccess(
     // and refunds it if the dates went to someone else first.
     return settleBookingConfirmation(referenceId, userId, { paid: true });
   } else if (flow === 'platform_support') {
-    // The ₹12 yearly aangan pass. A duplicate settlement never reaches this point because the
+    // The yearly aangan pass (₹1 the first year, ₹12 after). A duplicate settlement never reaches this point because the
     // payment record is settled idempotently before entitlements are granted.
     const [u] = await tx.select().from(schema.users).where(eq(schema.users.id, userId)).limit(1);
     if (!u) return null;
@@ -341,7 +341,7 @@ router.post('/order', authenticateToken, async (req: Request, res: Response) => 
   }
   let { amount } = resolved;
   let breakup = resolved.breakup ?? null;
-  // The pass is ₹12 the first time and ₹99 after that; the payer decides which, not the client.
+  // The pass is ₹1 the first time and ₹12 after that; the payer decides which, not the client.
   if (flow === 'platform_support') {
     breakup = passBreakupFor(req.user);
     amount = breakup.total;
@@ -354,6 +354,14 @@ router.post('/order', authenticateToken, async (req: Request, res: Response) => 
   const ownershipError = await assertOwnsReference(flow, reference_id, req.user.id);
   if (ownershipError) {
     return res.status(ownershipError.status).json({ detail: ownershipError.detail, ...(ownershipError.code ? { code: ownershipError.code } : {}) });
+  }
+  // A host's plan depends on the business: ₹499 for a homestay or driver, ₹99 for a cafe, shop
+  // or guide. The provider is known to exist and be the caller's (assertOwnsReference above).
+  if (flow === 'provider_registration' || flow === 'provider_renewal') {
+    const [p] = await db.select({ businessType: schema.providers.businessType }).from(schema.providers)
+      .where(eq(schema.providers.id, reference_id)).limit(1);
+    breakup = hostPlanBreakup(p?.businessType, flow);
+    amount = breakup.total;
   }
 
   if (!MOCK_PAYMENTS && !rzpClient) {

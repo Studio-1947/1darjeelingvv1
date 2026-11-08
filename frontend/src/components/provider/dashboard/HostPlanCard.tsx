@@ -4,21 +4,22 @@ import { CalendarCheck, Star, WarningCircle } from '@phosphor-icons/react';
 import api, { createPaymentOrder, completeMockPayment, payWithRazorpay } from '@/lib/api';
 import MockPaymentModal from '@/components/MockPaymentModal';
 import PriceBreakup from '@/components/PriceBreakup';
-import { rupees, usePrice } from '@/lib/prices';
+import { rupees, useHostPlanPrice } from '@/lib/prices';
 import { graceLeft, type GraceState } from '@/lib/hostQuickFill';
 
 /**
  * Within this many days of the end, renewal opens and the card starts nudging the host to renew.
  * Mirrors HOST_RENEWAL_WINDOW_DAYS on the server, which refuses an earlier renewal (409) so a
- * second ₹999 is never bought by accident.
+ * second year is never bought by accident.
  */
 const RENEW_SOON_DAYS = 30;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
- * The host's yearly plan: ₹499 for the first year, ₹999 for each year after.
+ * The host's yearly plan: ₹499 a year for homestays and drivers, ₹99 for cafes, shops and guides
+ * (plus GST and the fee), the first year and every year after.
  *
- * Shows when the current year ends and offers the ₹999 renewal once it opens, 30 days before the
+ * Shows when the current year ends and offers the renewal once it opens, 30 days before the
  * end. Renewing inside that window adds the year on top of what is left. Once the year has ended
  * the host's listings
  * are hidden from travellers and stop taking bookings (the server enforces that, see
@@ -35,8 +36,11 @@ export default function HostPlanCard({ provider, user, reviews, onRenewed }: {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [payModal, setPayModal] = useState<any>(null);
-  const firstYear = usePrice('provider_registration');
-  const renewal = usePrice('provider_renewal');
+  // The server sends this host's price (plan_price); the type decides it until that arrives.
+  const typePrice = useHostPlanPrice(provider?.business_type);
+  const firstYear = provider?.plan_price ?? typePrice;
+  const renewal = firstYear;
+  const price = rupees(firstYear.base);
 
   if (!provider) return null;
 
@@ -143,12 +147,12 @@ export default function HostPlanCard({ provider, user, reviews, onRenewed }: {
               : notStarted
               ? t('pd.start_free_body', { total: rupees(firstYear.total) })
               : registrationPending
-              ? t('pd.plan_activate_body')
+              ? t('pd.plan_activate_body', { price })
               : lapsed
-              ? t('pd.plan_lapsed_body')
+              ? t('pd.plan_lapsed_body', { price })
               : soon
-                ? t('pd.plan_ends_soon', { count: Math.max(daysLeft, 0) })
-                : t('pd.plan_renew_body')}
+                ? t('pd.plan_ends_soon', { count: Math.max(daysLeft, 0), price })
+                : t('pd.plan_renew_body', { price })}
           </p>
           {reviews && !registrationPending && (
             <p className="mt-2 inline-flex items-center gap-1.5 text-sm font-bold text-ink" data-testid="host-plan-reviews">
@@ -175,7 +179,6 @@ export default function HostPlanCard({ provider, user, reviews, onRenewed }: {
       {canRenew && provider.access !== 'co_owner' && (
         <PriceBreakup breakup={registrationPending ? firstYear : renewal}
           label={registrationPending ? t('price.host_first_year') : t('price.host_renewal')}
-          wasBase={registrationPending ? renewal.base : undefined}
           className="w-full sm:max-w-xs" />
       )}
       {canRenew && provider.access !== 'co_owner' && (

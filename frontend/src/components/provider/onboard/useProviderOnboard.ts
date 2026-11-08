@@ -220,7 +220,7 @@ export function useProviderOnboard() {
           key_id: orderRes.key_id,
           flow: 'provider_registration',
           reference_id: providerId,
-          description: 'aangan host plan · first year (₹499)',
+          description: 'aangan host plan · first year',
           prefill: { contact: user.phone, name: user.name },
         });
         await refresh();

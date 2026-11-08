@@ -75,12 +75,12 @@ let signupInfo: Promise<{ support_phone: string | null; grace_bookings: number }
 
 /** The help number and the free bookings, read once per page load (GET /app/host-signup). */
 export function useHostSignupInfo() {
-  const [info, setInfo] = useState<{ support_phone: string | null; grace_bookings: number }>({ support_phone: null, grace_bookings: 3 });
+  const [info, setInfo] = useState<{ support_phone: string | null; grace_bookings: number }>({ support_phone: null, grace_bookings: 2 });
   useEffect(() => {
     let live = true;
     signupInfo ??= api.get('/app/host-signup').then((r) => r.data).catch(() => {
       signupInfo = null;
-      return { support_phone: null, grace_bookings: 3 };
+      return { support_phone: null, grace_bookings: 2 };
     });
     signupInfo.then((d) => { if (live && d) setInfo(d); });
     return () => { live = false; };

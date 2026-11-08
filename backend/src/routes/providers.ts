@@ -7,6 +7,7 @@ import { optionalUser } from '../middleware/auth';
 import { missingMandatory, profileKeysFor, profilePatchFrom, startingPriceFor } from '../lib/hostProfile';
 import { isHostApprovalPending, isHostPlanLive } from '../lib/hostPlan';
 import { graceStateFor, publishFirstListing } from '../lib/hostGrace';
+import { hostPlanBreakup } from '../lib/pricing';
 import { serializeProvider } from '../lib/providerShape';
 import { v4 as uuidv4 } from 'uuid';
 import { db, schema } from '../db';
@@ -322,6 +323,8 @@ router.get('/me', authenticateToken, async (req: Request, res: Response) => {
     // A registered host whose plan has lapsed renews through the `provider_renewal` flow.
     plan_expires_at: provider.planExpiresAt,
     plan_active: isHostPlanLive(provider),
+    // What this host pays for a year: ₹499 + GST and fee, or ₹99 for a cafe, shop or guide.
+    plan_price: hostPlanBreakup(provider.businessType),
     kyc_status: provider.kycStatus,
     approval_pending: isHostApprovalPending(provider),
     // What a new host still has to fill in before their documents can go for approval.

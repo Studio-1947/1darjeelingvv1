@@ -138,7 +138,7 @@ export const providers = pgTable('providers', {
   kycStatus: text('kyc_status').default('none').notNull(),
   createdAt: text('created_at').notNull(),
   activatedAt: text('activated_at'),
-  // End of the host's current paid year (₹499 the first year, ₹999 each year after, each plus GST
+  // End of the host's current paid year (₹499 a year, or ₹99 for cafes, shops and guides, plus GST
   // and the platform fee; see lib/pricing.ts). Null until
   // the first payment settles. Once it passes, the host's listings leave the public feed until
   // they renew. See lib/hostPlan.ts.
@@ -148,7 +148,7 @@ export const providers = pgTable('providers', {
   // live keep the default (false) so the change cut nobody off. See lib/hostPlan.ts.
   approvalRequired: boolean('approval_required').default(false).notNull(),
   // True while a host lists for free (no payment yet). The grace ends after HOST_GRACE_BOOKINGS
-  // confirmed bookings plus delivered orders: new bookings then pause until the host pays the
+  // completed bookings plus delivered orders: new bookings then pause until the host pays the
   // first year (provider_registration), which sets this back to false. See lib/hostGrace.ts.
   grace: boolean('grace').default(false).notNull(),
   // Written on the first administrator decision, so a submitted queue is not misrepresented as

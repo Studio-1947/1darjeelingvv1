@@ -1,12 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Screen, Eyebrow } from './layout';
-import PriceBreakup from '@/components/PriceBreakup';
-import { CaretDown } from '@phosphor-icons/react';
-import { rupees, usePrice } from '@/lib/prices';
 import { HelpWhatsApp, PriceChips, useHostSignupInfo } from './QuickFill';
+import HostPlanOffer, { type StartMode } from './HostPlanOffer';
 
-/** Final onboarding screen: starting price, the first-year plan with its GST and fee breakup, submit + back. */
+/** Final onboarding screen: starting price, then the pricing card (pay later or pay now), submit + back. */
 export default function PriceSubmitScreen({
   tone = 'white',
   n,
@@ -64,9 +62,10 @@ export default function PriceSubmitScreen({
   missing?: string[];
 }) {
   const { t } = useTranslation();
-  const plan = usePrice('provider_registration');
   const { grace_bookings } = useHostSignupInfo();
   const blocked = disabled || missing.length > 0;
+  // Pay later is the default, as on the pricing card.
+  const [mode, setMode] = useState<StartMode>('later');
   return (
     <Screen tone={tone}>
       <Eyebrow n={n}>{heading}</Eyebrow>
@@ -129,11 +128,7 @@ export default function PriceSubmitScreen({
         </div>
 
         <div className={wide ? 'lg:col-span-1' : 'lg:col-span-3'}>
-          <div className="mist-panel p-6 space-y-4">
-            <div className="rounded-xl border border-pine/30 bg-pine/5 p-3" data-testid="onboard-free-note">
-              <p className="font-display font-extrabold text-ink">{t('ob.free.title')}</p>
-              <p className="mt-0.5 text-sm text-ink-soft">{t('ob.free.note', { count: grace_bookings, total: rupees(plan.total) })}</p>
-            </div>
+          <div className="space-y-4">
             {missing.length > 0 && (
               <div className="rounded-xl border border-flag/30 bg-flag/5 p-3" data-testid="onboard-missing">
                 <p className="text-xs font-bold text-flag">{t('ob.check.still_to_fill')}</p>
@@ -142,28 +137,15 @@ export default function PriceSubmitScreen({
                 </ul>
               </div>
             )}
-            <button
-              onClick={onSubmit}
-              disabled={blocked}
-              data-testid="onboard-submit"
-              className="w-full py-4 rounded-full bg-pine text-white font-extrabold text-base btn-hover disabled:opacity-60"
-            >
-              {busy ? t('common.processing') : t('ob.free.cta')}
-            </button>
-            {onPayNow && (
-              <details className="text-sm" data-testid="onboard-pay-now">
-                <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden flex items-center justify-center gap-1.5 font-bold text-pine py-2">
-                  {t('ob.free.pay_now', { total: rupees(plan.total) })} <CaretDown size={14} weight="bold" />
-                </summary>
-                <div className="mt-2 space-y-3">
-                  <PriceBreakup breakup={plan} label={t('price.host_first_year')} wasBase={99900} />
-                  <button type="button" onClick={onPayNow} disabled={blocked} data-testid="onboard-submit-pay"
-                    className="w-full py-3 rounded-full border border-pine text-pine font-bold text-sm btn-hover disabled:opacity-60">
-                    {t('ob.submit_pay', { total: rupees(plan.total) })}
-                  </button>
-                </div>
-              </details>
-            )}
+            <HostPlanOffer
+              type={type}
+              mode={onPayNow ? mode : 'later'}
+              onMode={(m) => setMode(onPayNow ? m : 'later')}
+              graceBookings={grace_bookings}
+              onStart={mode === 'now' && onPayNow ? onPayNow : onSubmit}
+              blocked={blocked}
+              busy={busy}
+            />
             <button
               type="button"
               onClick={onBack}

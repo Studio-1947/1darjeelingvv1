@@ -1,5 +1,6 @@
 import { schema } from '../db';
 import { isHostApprovalPending, isHostPlanLive } from './hostPlan';
+import { hostPlanBreakup } from './pricing';
 
 // The DB rows are camelCase (drizzle), but every response the frontend reads is snake_case 
 // see providers.ts / bookings.ts. The confirmation record has to follow the same convention or
@@ -27,6 +28,9 @@ export function serializeProvider(p: typeof schema.providers.$inferSelect) {
     plan_active: isHostPlanLive(p),
     // On the free start: live without a paid year (lib/hostGrace.ts).
     grace: !!p.grace,
+    // What this host pays for a year: ₹499 + GST and fee for a homestay or driver, ₹99 + GST and
+    // fee for a cafe, shop or guide (lib/pricing.ts). The same each year.
+    plan_price: hostPlanBreakup(p.businessType),
     kyc_status: p.kycStatus,
     approval_pending: isHostApprovalPending(p),
     created_at: p.createdAt,

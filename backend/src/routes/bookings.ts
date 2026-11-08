@@ -707,7 +707,7 @@ router.patch('/:id/confirm', authenticateToken, async (req: Request, res: Respon
  *     summary: Confirm a booking (free with the aangan pass)
  *     description: >
  *       Confirms the booking under the listing lock (so two guests cannot both take the same
- *       nights) and sends both parties their confirmation. Free for a traveller with the ₹12
+ *       nights) and sends both parties their confirmation. Free for a traveller with the
  *       aangan pass. Without one this answers 402 `fee_required`: the traveller pays the ₹1
  *       convenience fee (payment flow `booking_commission`, reference = this booking), and that
  *       payment confirms the booking. Only the guest who made the booking can call it.

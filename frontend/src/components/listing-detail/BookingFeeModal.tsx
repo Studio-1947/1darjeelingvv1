@@ -5,13 +5,14 @@ import api, { createPaymentOrder, completeMockPayment, payWithRazorpay } from '@
 import { useAuth } from '@/context/AuthContext';
 import MockPaymentModal from '@/components/MockPaymentModal';
 import PriceBreakup from '@/components/PriceBreakup';
-import { rupees, usePrice, usePassPrice, PASS_USUAL_BASE } from '@/lib/prices';
+import { rupees, usePrice, usePassPrice } from '@/lib/prices';
+import PassOffer from '@/components/PassOffer';
 
 type Flow = 'booking_commission' | 'platform_support';
 
 /**
- * The board's booking flow for a traveller without the aangan pass: take the pass (₹12 a year,
- * every booking free) or pay ₹1 for this one. Either payment ends with the booking confirmed.
+ * The board's booking flow for a traveller without the aangan pass: take the pass (₹1 the first
+ * year, then ₹12, every booking free) or pay ₹1.20 for this one. Either payment ends with the booking confirmed.
  * The app shows the same choice (src/components/BookingFeeSheet.tsx).
  */
 export default function BookingFeeModal({ bookingId, onConfirmed, onClose }: {
@@ -96,11 +97,11 @@ export default function BookingFeeModal({ bookingId, onConfirmed, onClose }: {
           className="mt-5 w-full text-left rounded-2xl border-2 border-pine bg-pine/5 p-4 btn-hover disabled:opacity-60">
           <div className="flex items-center justify-between gap-3">
             <span className="flex items-center gap-2 font-bold text-ink"><Ticket size={20} className="text-pine" /> {t('fee.pass_title')}</span>
-            <span className="font-display font-extrabold text-lg text-pine">{t('fee.pass_price', { total: rupees(pass.total) })}</span>
+            <span className="font-display font-extrabold text-lg text-pine">{rupees(pass.total)}</span>
           </div>
-          <p className="mt-1 text-sm text-ink-soft">{busy === 'platform_support' ? t('common.loading') : t('fee.pass_body')}</p>
-          <PriceBreakup breakup={pass} label={user?.supportExpiresAt ? t('price.pass') : t('price.pass_first_year')}
-            wasBase={user?.supportExpiresAt ? undefined : PASS_USUAL_BASE} compact className="mt-3" />
+          {busy === 'platform_support'
+            ? <p className="mt-1 text-sm text-ink-soft">{t('common.loading')}</p>
+            : <PassOffer renewing={!!user?.supportExpiresAt} compact className="mt-2" />}
         </button>
 
         <button type="button" onClick={() => pay('booking_commission')} disabled={!!busy} data-testid="fee-pay-once"
