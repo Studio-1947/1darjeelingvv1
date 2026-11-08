@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { FacebookLogo, InstagramLogo, EnvelopeSimple as Mail } from '@phosphor-icons/react';
+import { FacebookLogo, InstagramLogo, EnvelopeSimple as Mail, Phone } from '@phosphor-icons/react';
 import Wordmark from '@/components/Wordmark';
 
 /**
@@ -42,6 +42,7 @@ export default function Footer() {
           <a href="https://www.facebook.com/profile.php?id=61594349938326" target="_blank" rel="noreferrer"
             aria-label="Follow Aangan on Facebook" className={icon}><FacebookLogo size={20} aria-hidden="true" /></a>
           <a href="mailto:aanganerp@gmail.com" aria-label="Email aanganerp@gmail.com" className={icon}><Mail size={20} aria-hidden="true" /></a>
+          <a href="tel:+919093277919" aria-label="Call aangan on +91 90932 77919" data-testid="footer-phone" className={icon}><Phone size={20} aria-hidden="true" /></a>
         </div>
       </div>
       <div className="border-t border-[var(--line)] py-4 text-center text-xs text-ink-soft">© 2026 {t('brand')}. {t('footer.rights')}.</div>
