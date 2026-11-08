@@ -47,7 +47,7 @@ describe('legal documents render with content', () => {
     // A payment gateway's review checks that a user can find a way to reach a human from the
     // policy pages, and the grievance rules require it independently of any gateway.
     const withContact = LEGAL_NAMESPACES.filter((ns) =>
-      en[ns].sections.some((s) => s.contact && typeof s.contact.email === 'string')
+      en[ns].sections.some((s) => s.contact && typeof s.contact.email === 'string' && s.contact.phone === '+91 90932 77919')
     );
     expect(withContact.sort()).toEqual(['contact', 'data_deletion', 'privacy', 'refunds', 'terms']);
   });

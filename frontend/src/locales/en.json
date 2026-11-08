@@ -483,6 +483,7 @@
     "title": "Privacy Policy",
     "updated": "Last updated: July 2026",
     "email_label": "Email:",
+    "phone_label": "Phone:",
     "address_label": "Address:",
     "intro": [
       "1Darjeeling (\"we,\" \"us,\" \"our,\" or \"the Platform\") operates www.aanganerp.in (the \"Site\"), a local marketplace and travel guide connecting visitors with local businesses, guides, and services in Darjeeling. This Privacy Policy explains how we collect, use, disclose, and protect your information when you use our Site.",
@@ -575,7 +576,7 @@
           "Withdraw consent (where processing is based on consent)",
           "Request a copy of your data in a portable format"
         ],
-        "note": "To exercise these rights, contact us at aanganerp@gmail.com. We will respond within a reasonable timeframe."
+        "note": "To exercise these rights, contact us at aanganerp@gmail.com or +91 90932 77919. We will respond within a reasonable timeframe."
       },
       {
         "h": "9. Children's Privacy",
@@ -595,6 +596,7 @@
         "contact": {
           "name": "1Darjeeling",
           "email": "aanganerp@gmail.com",
+          "phone": "+91 90932 77919",
           "address": "Ward 4, Krishna Nagar, 1-149, Manbir Thapa Road, Mirik, West Bengal 734214"
         }
       }
@@ -886,6 +888,7 @@
         "contact": {
           "name": "1Darjeeling",
           "email": "aanganerp@gmail.com",
+          "phone": "+91 90932 77919",
           "address": "Ward 4, Krishna Nagar, 1-149, Manbir Thapa Road, Mirik, West Bengal 734214"
         }
       },
@@ -920,6 +923,7 @@
         "contact": {
           "name": "Grievance Officer, 1Darjeeling",
           "email": "aanganerp@gmail.com",
+          "phone": "+91 90932 77919",
           "address": "Ward 4, Krishna Nagar, 1-149, Manbir Thapa Road, Mirik, West Bengal 734214"
         }
       },
@@ -1579,6 +1583,7 @@
         "contact": {
           "name": "1Darjeeling",
           "email": "aanganerp@gmail.com",
+          "phone": "+91 90932 77919",
           "address": "Ward 4, Krishna Nagar, 1-149, Manbir Thapa Road, Mirik, West Bengal 734214"
         }
       }
@@ -1667,6 +1672,7 @@
         "contact": {
           "name": "1Darjeeling",
           "email": "aanganerp@gmail.com",
+          "phone": "+91 90932 77919",
           "address": "Ward 4, Krishna Nagar, 1-149, Manbir Thapa Road, Mirik, West Bengal 734214"
         }
       }
@@ -1749,6 +1755,7 @@
         "contact": {
           "name": "1Darjeeling",
           "email": "aanganerp@gmail.com",
+          "phone": "+91 90932 77919",
           "address": "Ward 4, Krishna Nagar, 1-149, Manbir Thapa Road, Mirik, West Bengal 734214"
         }
       }

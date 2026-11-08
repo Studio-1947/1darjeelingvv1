@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowRight, EnvelopeSimple as Mail, Heart, Check } from '@phosphor-icons/react';
+import { ArrowRight, EnvelopeSimple as Mail, Heart, Check, Phone } from '@phosphor-icons/react';
 import CircularGallery from '@/components/CircularGallery';
 import { sizedImage } from '@/lib/listingContent';
 import { useSeo } from '@/components/Seo';
@@ -251,6 +251,10 @@ export default function About() {
             <a href="mailto:aanganerp@gmail.com"
               className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-white border border-[var(--line)] text-ink font-bold btn-hover">
               <Mail size={16} /> aanganerp@gmail.com
+            </a>
+            <a href="tel:+919093277919" data-testid="about-phone"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-white border border-[var(--line)] text-ink font-bold btn-hover">
+              <Phone size={16} /> +91 90932 77919
             </a>
           </div>
         </div>

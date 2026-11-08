@@ -22,7 +22,7 @@ export interface Block {
   /** Trailing paragraph, for the "you can control cookies…" style closers. */
   note?: string;
   sub?: Block[];
-  contact?: { name: string; email: string; address: string };
+  contact?: { name: string; email: string; phone?: string; address: string };
 }
 
 /** Paragraph + bullets + closer  the body shared by sections and sub-sections. */
@@ -93,6 +93,14 @@ export default function LegalDocument({ ns, testId }: { ns: string; testId: stri
                     {s.contact.email}
                   </a>
                 </div>
+                {s.contact.phone && (
+                  <div className="mt-1">
+                    {t('privacy.phone_label')}{' '}
+                    <a href={`tel:${s.contact.phone.replace(/\s/g, '')}`} className="font-semibold text-pine hover:underline">
+                      {s.contact.phone}
+                    </a>
+                  </div>
+                )}
                 <div className="mt-1">{t('privacy.address_label')} {s.contact.address}</div>
               </address>
             )}
