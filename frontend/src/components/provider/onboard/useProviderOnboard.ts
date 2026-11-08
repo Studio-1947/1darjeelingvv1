@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import api, { createPaymentOrder, completeMockPayment, payWithRazorpay } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { uploadImage, uploadImages } from '@/lib/uploadImage';
 import { RouteFare, startingPriceFrom } from '@/lib/routeFares';
 import type { Priced } from '@/components/provider/PricedEditor';
+import { readHostLink } from '@/lib/hostQuickFill';
 
 /**
  * All state and side effects for provider onboarding: the multi-step form,
@@ -14,11 +15,14 @@ import type { Priced } from '@/components/provider/PricedEditor';
 export function useProviderOnboard() {
   const { user, loading: authLoading, refresh } = useAuth();
   const nav = useNavigate();
+  const location = useLocation();
+  // The shortcut link from a poster or a field agent: /provider/onboard?type=homestay&ref=CODE.
+  const link = readHostLink(Object.fromEntries(new URLSearchParams(location.search)));
 
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({
     business_name: '',
-    business_type: 'homestay',
+    business_type: (link.type || 'homestay') as string,
     description: '',
     location: '',
     latitude: null as number | null,
@@ -66,8 +70,12 @@ export function useProviderOnboard() {
     // bookmarked link bounced a fully logged-in provider straight to /login. ProviderDashboard's
     // equivalent guard already did this; this one did not.
     if (authLoading) return;
-    if (!user) nav('/login');
-  }, [authLoading, user, nav]);
+    // Back here after signing in, with the link's type, and its invite code on the sign-up form.
+    if (!user) {
+      const next = encodeURIComponent(`${location.pathname}${location.search}`);
+      nav(`/login?next=${next}${link.ref ? `&ref=${encodeURIComponent(link.ref)}` : ''}`);
+    }
+  }, [authLoading, user, nav, location.pathname, location.search, link.ref]);
 
   const update = (patch: Partial<typeof form>) => setForm((prev) => ({ ...prev, ...patch }));
 
@@ -119,8 +127,11 @@ export function useProviderOnboard() {
     setStep(2);
   };
 
-  const submit = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
+  /**
+   * Sends the business. `free` (the main button) starts it on the free start: no payment until
+   * the host has had their first bookings (backend lib/hostGrace.ts). `pay` pays the first year now.
+   */
+  const submit = async (mode: 'free' | 'pay' = 'free') => {
     setBusy(true);
     setMsg('');
     const isDriver = form.business_type === 'driver';
@@ -189,6 +200,12 @@ export function useProviderOnboard() {
             },
       });
       const providerId = data.provider.id;
+      if (mode === 'free') {
+        await api.post('/providers/me/start-free');
+        await refresh();
+        nav('/provider/dashboard');
+        return;
+      }
       const orderRes = await createPaymentOrder({ flow: 'provider_registration', reference_id: providerId });
       if (orderRes.mock) {
         setPayModal({

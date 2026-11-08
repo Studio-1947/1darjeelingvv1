@@ -16,6 +16,8 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 export interface HostPlanRow {
   status: string;
   planExpiresAt?: string | null;
+  /** On the free start (lib/hostGrace.ts): live without a paid year. */
+  grace?: boolean | null;
 }
 
 /**
@@ -44,9 +46,14 @@ export function isHostPlanLapsed(row: HostPlanRow, now: Date = new Date()): bool
   return expiry <= now.getTime();
 }
 
-/** Active, paid up and inside the current year. */
+/**
+ * Active, and either paid up and inside the current year or on the free start (lib/hostGrace.ts).
+ * The free start has no year to lapse; it ends with the first payment.
+ */
 export function isHostPlanLive(row: HostPlanRow, now: Date = new Date()): boolean {
-  return row.status === 'active' && !!row.planExpiresAt && !isHostPlanLapsed(row, now);
+  if (row.status !== 'active') return false;
+  if (row.grace) return true;
+  return !!row.planExpiresAt && !isHostPlanLapsed(row, now);
 }
 
 /**

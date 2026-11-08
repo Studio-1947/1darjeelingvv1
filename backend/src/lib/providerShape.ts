@@ -13,7 +13,7 @@ export function serializeProvider(p: typeof schema.providers.$inferSelect) {
     slug: p.slug,
     page_path: p.slug ? `/${p.businessType}/${p.slug}` : null,
     // Member: paid plan live. Verified: documents checked (blue tick). See lib/hostPage.ts.
-    badges: { member: p.status === 'active' && isHostPlanLive(p), verified: p.status === 'active' && p.kycStatus === 'verified' },
+    badges: { member: p.status === 'active' && !p.grace && isHostPlanLive(p), verified: p.status === 'active' && p.kycStatus === 'verified' },
     description: p.description,
     location: p.location,
     latitude: p.latitude,
@@ -25,6 +25,8 @@ export function serializeProvider(p: typeof schema.providers.$inferSelect) {
     status: p.status,
     plan_expires_at: p.planExpiresAt,
     plan_active: isHostPlanLive(p),
+    // On the free start: live without a paid year (lib/hostGrace.ts).
+    grace: !!p.grace,
     kyc_status: p.kycStatus,
     approval_pending: isHostApprovalPending(p),
     created_at: p.createdAt,

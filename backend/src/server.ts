@@ -6,6 +6,7 @@ import { pool } from './db';
 import { ensureBucketsExist } from './lib/s3';
 import { PORT, log } from './config';
 import { startRequestExpiry } from './lib/requestExpiry';
+import { startGraceSweep } from './lib/hostGrace';
 
 
 const server = app.listen(PORT, () => {
@@ -27,6 +28,8 @@ const server = app.listen(PORT, () => {
 
   // Booking requests a host never answered close by themselves (lib/requestExpiry.ts).
   startRequestExpiry();
+  // Hosts on the free start hear when their 3rd booking is completed (lib/hostGrace.ts).
+  startGraceSweep();
 });
 
 process.on('SIGTERM', () => {

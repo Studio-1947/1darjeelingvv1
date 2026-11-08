@@ -10,6 +10,7 @@ import { allRoutesPriced } from '@/lib/routeFares';
 import { Screen, Eyebrow } from './layout';
 import OnboardHero from './OnboardHero';
 import PriceSubmitScreen from './PriceSubmitScreen';
+import { DescriptionChips } from './QuickFill';
 import { isValidPhone } from '@/lib/hostFormChecks';
 import { OnboardState } from './useProviderOnboard';
 
@@ -49,6 +50,8 @@ export default function DriverForm({ o }: { o: OnboardState }) {
               placeholder={t('ob.dr.introduce_ph')}
               className="w-full px-4 py-3.5 rounded-2xl border border-[var(--line)] bg-white outline-none text-sm text-ink leading-relaxed"
             />
+            <DescriptionChips type={form.business_type} text={form.description} place={form.location}
+              onChange={(v) => update({ description: v })} />
           </div>
 
           <div className="lg:col-span-2 mist-panel p-5 md:p-6 w-full space-y-4 bg-white">
@@ -216,7 +219,9 @@ export default function DriverForm({ o }: { o: OnboardState }) {
             <StartingRateSummary routes={o.routes} />
           </div>
         }
-        onSubmit={() => o.submit()}
+        onSubmit={() => o.submit('free')}
+        onPayNow={() => o.submit('pay')}
+        type={form.business_type}
         onBack={() => o.setStep(1)}
         busy={o.busy}
         disabled={o.busy || o.uploading}

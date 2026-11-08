@@ -9,6 +9,7 @@ import LocationPicker from '@/components/LocationPicker';
 import { Screen, Eyebrow } from './layout';
 import OnboardHero from './OnboardHero';
 import PriceSubmitScreen from './PriceSubmitScreen';
+import { DescriptionChips } from './QuickFill';
 import { isValidPhone } from '@/lib/hostFormChecks';
 import { OnboardState } from './useProviderOnboard';
 
@@ -55,6 +56,8 @@ export default function CafeShopForm({ o }: { o: OnboardState }) {
               placeholder={isCafe ? t('ob.cs.describe_cafe_ph') : t('ob.cs.describe_shop_ph')}
               className="w-full px-4 py-3.5 rounded-2xl border border-[var(--line)] bg-white outline-none text-sm text-ink leading-relaxed"
             />
+            <DescriptionChips type={form.business_type} text={form.description} place={form.location}
+              onChange={(v) => update({ description: v })} />
           </div>
 
           <div className="lg:col-span-2 mist-panel p-5 md:p-6 w-full space-y-4 bg-white">
@@ -149,7 +152,9 @@ export default function CafeShopForm({ o }: { o: OnboardState }) {
         feeNote={isCafe ? t('ob.cs.fee_note_cafe') : t('ob.cs.fee_note_shop')}
         price={form.price_from}
         onPrice={(v) => update({ price_from: v })}
-        onSubmit={() => o.submit()}
+        onSubmit={() => o.submit('free')}
+        onPayNow={() => o.submit('pay')}
+        type={form.business_type}
         onBack={() => o.setStep(1)}
         busy={o.busy}
         disabled={o.busy || o.uploading || o.uploadingGallery}

@@ -67,8 +67,10 @@ export default function Header() {
   const showBack = pathname !== '/';
   // Sign-in and the onboarding form are single-task pages; a browse rail there
   // only invites the visitor to abandon what they came to do.
-  // The category rail is for browsing; the business side does not browse.
-  const showCategories = !['/login', '/provider/onboard'].includes(pathname) && !isHostMode;
+  // The category rail is for browsing; the business side does not browse, so in Business mode the
+  // row carries only the Host feed tile (hosts post there).
+  const showCategories = !['/login', '/provider/onboard'].includes(pathname);
+  const showBrowse = showCategories && !isHostMode;
   // The landing hero plays a full-bleed video; the bar rides on top of it and
   // stays out of the flow so the footage runs right up to the top of the page.
   const isLanding = pathname === '/';
@@ -112,7 +114,9 @@ export default function Header() {
       }`}
       data-testid="site-header"
     >
-      <div className="mx-auto max-w-6xl px-2 sm:px-4 md:px-6 h-[var(--header-h)] flex items-center gap-1.5 sm:gap-3 lg:gap-5 xl:gap-8">
+      {/* The bar is wider than the page column (max-w-7xl, not 6xl) so the Host feed and all eight
+          categories fit in one row on a laptop, with no scrolling. */}
+      <div className="mx-auto max-w-7xl px-2 sm:px-4 md:px-6 h-[var(--header-h)] flex items-center gap-1.5 sm:gap-3 lg:gap-4 xl:gap-6">
         {/* Back - mobile/tablet only; desktop keeps the brand plus in-page controls */}
         {showBack && (
           <button
@@ -141,7 +145,7 @@ export default function Header() {
           aria-label={t('brand')}
         >
           <div className="leading-none min-w-0">
-            <Wordmark className={`h-5 sm:h-8 lg:h-9 w-auto ${onVideo ? 'text-white drop-shadow' : 'text-ink'}`} />
+            <Wordmark className={`h-5 sm:h-8 xl:h-9 w-auto ${onVideo ? 'text-white drop-shadow' : 'text-ink'}`} />
           </div>
         </Link>
 
@@ -167,9 +171,26 @@ export default function Header() {
                          rounded-full bg-white border border-[var(--line)] shadow-sm px-1.5 py-1
                          sm:gap-0.5 sm:rounded-none sm:bg-transparent sm:border-0 sm:shadow-none sm:px-0 sm:py-1
                          sm:[&>*:first-child]:ml-auto sm:[&>*:last-child]:mr-auto
-                         lg:gap-2"
+                         lg:gap-0 xl:gap-1.5"
+              // Where the row is still too wide (small laptops), its edges fade out under the arrows
+              // instead of a hard cut through a label. Works over the hero video too.
+              style={railMore.left || railMore.right ? {
+                WebkitMaskImage: `linear-gradient(to right, ${railMore.left ? 'transparent 0, #000 48px' : '#000 0'}, ${railMore.right ? '#000 calc(100% - 48px), transparent 100%' : '#000 100%'})`,
+                maskImage: `linear-gradient(to right, ${railMore.left ? 'transparent 0, #000 48px' : '#000 0'}, ${railMore.right ? '#000 calc(100% - 48px), transparent 100%' : '#000 100%'})`,
+              } : undefined}
             >
-              {CATEGORIES.map(({ key, to, Icon }) => (
+              {/* The host feed is public, so it shows signed in or not. It leads the row, in the
+                  button green, so it reads as the place to see what hosts are posting. */}
+              <StoryCircle
+                to="/feed"
+                label={t('nav.feed')}
+                image={null}
+                icon={ImagesSquare}
+                active={pathname === '/feed'}
+                onDark={onVideo}
+                highlight
+              />
+              {showBrowse && CATEGORIES.map(({ key, to, Icon }) => (
                 <StoryCircle
                   key={key}
                   to={to}
@@ -183,14 +204,14 @@ export default function Header() {
             </div>
             {railMore.left && (
               <button type="button" onClick={() => nudgeRail(-1)} aria-label={t('nav.categories_prev')} data-testid="header-categories-prev"
-                className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full grid place-items-center bg-white/95 border border-[var(--line)] shadow text-ink">
-                <CaretLeft size={16} weight="bold" />
+                className="absolute left-0 top-[24px] -translate-y-1/2 z-10 w-7 h-7 rounded-full grid place-items-center bg-white border border-[var(--line)] shadow-sm text-ink btn-hover">
+                <CaretLeft size={14} weight="bold" />
               </button>
             )}
             {railMore.right && (
               <button type="button" onClick={() => nudgeRail(1)} aria-label={t('nav.categories_next')} data-testid="header-categories-next"
-                className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full grid place-items-center bg-white/95 border border-[var(--line)] shadow text-ink">
-                <CaretRight size={16} weight="bold" />
+                className="absolute right-0 top-[24px] -translate-y-1/2 z-10 w-7 h-7 rounded-full grid place-items-center bg-white border border-[var(--line)] shadow-sm text-ink btn-hover">
+                <CaretRight size={14} weight="bold" />
               </button>
             )}
             </div>
@@ -205,19 +226,9 @@ export default function Header() {
             reach, so the control a visitor actually looks for up here -
             sign-in - now sits in the bar itself. */}
         <div className="flex items-center gap-1.5 sm:gap-2.5 flex-shrink-0 ml-auto">
-          {/* The host feed is public, so it stays visible signed in or not. Below lg it is a tab in the
-              bottom bar, so the header only carries it on desktop, where there is no bottom bar. */}
-          <Link
-            to="/feed"
-            data-testid="header-feed"
-            aria-label={t('nav.feed')}
-            className="hidden lg:inline-flex h-9 items-center justify-center gap-1.5 rounded-full bg-pine px-2.5 text-white shadow-sm btn-hover sm:px-3"
-          >
-            <ImagesSquare size={18} />
-            <span className="hidden xl:inline whitespace-nowrap">{t('nav.feed')}</span>
-          </Link>
-          {/* Saved has its own route from the profile menu and the tab bar, so
-              below lg this shortcut only competes for the width login needs. */}
+          {/* The Host feed now leads the category row (above). Below lg it is a tab in the bottom bar. */}
+          {/* Saved has its own route from the profile menu and the tab bar, so below xl this
+              shortcut gives its width to the category row instead. */}
           {user && (
             <Link to="/notifications" data-testid="header-notifications"
               aria-label={unread ? t('notes.title_unread', { count: unread }) : t('notes.title')}
@@ -228,7 +239,7 @@ export default function Header() {
           )}
           {user && (
             <Link to="/saved" data-testid="header-saved" aria-label={t('nav.saved')}
-              className={`hidden lg:grid w-9 h-9 rounded-full place-items-center btn-hover ${onVideo ? 'text-white hover:bg-white/20' : 'text-ink hover:bg-mist'}`}>
+              className={`hidden xl:grid w-9 h-9 rounded-full place-items-center btn-hover ${onVideo ? 'text-white hover:bg-white/20' : 'text-ink hover:bg-mist'}`}>
               <Heart size={18} />
             </Link>
           )}
@@ -248,7 +259,8 @@ export default function Header() {
             <DownloadSimple size={16} weight="bold" />
             {/* On the narrowest phones (or with large system text) the label would push the row past
                 the screen edge; the icon alone stays, and the label is still read out. */}
-            <span className="sr-only min-[380px]:not-sr-only">{t('nav.download_app')}</span>
+            {/* On small laptops (lg) the bar also carries the nine-tile row, so the label waits for xl. */}
+            <span className="sr-only min-[380px]:not-sr-only lg:max-xl:sr-only">{t('nav.download_app')}</span>
           </a>
           {user ? (
             // On phones the profile photo lives in the bottom bar's Account tab instead.

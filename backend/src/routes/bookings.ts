@@ -16,6 +16,7 @@ import { refundPaymentsFor } from '../lib/refunds';
 import { notifyBookingAccepted, notifyBookingCancelled, notifyBookingRequest } from '../lib/notifications';
 import { routeParam } from '../lib/routeParam';
 import { isListingHostLapsed } from '../lib/hostPlan';
+import { GRACE_PAUSED_CODE, GRACE_PAUSED_DETAIL, isGracePaused } from '../lib/hostGrace';
 import { settleBookingConfirmation } from '../lib/bookingConfirmation';
 import { addHostNotification, addInAppNotification } from '../lib/inApp';
 import { releaseVoucherForBooking } from '../lib/vouchers';
@@ -145,6 +146,11 @@ router.post('/', authenticateToken, requireTravellerMode, async (req: Request, r
   // already out of the public feed; this covers a guest holding an old link.
   if (await isListingHostLapsed(listing.providerId)) {
     return res.status(409).json({ detail: 'This listing is not taking bookings right now' });
+  }
+  // A host whose free start is used up takes no new requests until they pay. Requests already
+  // made can still be accepted and confirmed (lib/hostGrace.ts), so this is checked here only.
+  if (await isGracePaused(listing.providerId)) {
+    return res.status(409).json({ detail: GRACE_PAUSED_DETAIL, code: GRACE_PAUSED_CODE });
   }
   // A guide booking names the services asked for; only the guide's own services count.
   const offered = new Set(

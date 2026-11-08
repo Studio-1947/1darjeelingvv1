@@ -129,7 +129,7 @@ export function ReserveSection({ item, unit, bookable, available = true, cta, bo
     <Screen tone="white" testid="detail-reserve">
       <SectionHead label={t('detail.reserve')}
         title={item.price > 0 ? `₹${item.price}${unit}` : t('detail.reserve')}
-        note={bookable ? undefined : t('detail.walk_in_note')} />
+        note={bookable || !available ? undefined : t('detail.walk_in_note')} />
 
       {/* Phones: the form alone. Desktop: the form and, beside it, how a request turns into a
           booking, so the wide screen is not half empty next to a narrow form. */}

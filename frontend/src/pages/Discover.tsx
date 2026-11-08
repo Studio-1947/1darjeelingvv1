@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { rupees, HOST_USUAL_BASE } from '@/lib/prices';
+import { useHostSignupInfo } from '@/components/provider/onboard/QuickFill';
 import api from '@/lib/api';
 import { listingImage, sizedImage } from '@/lib/listingContent';
 import FeedCard from '@/components/FeedCard';
@@ -60,6 +60,13 @@ function pageWindow(current: number, count: number, compact = false): (number | 
   const around = near.filter((p) => p > 0 && p < count - 1);
   const pages = Array.from(new Set([0, ...around, count - 1])).sort((a, b) => a - b);
   return pages.flatMap((p, i) => (i > 0 && p - pages[i - 1] > 1 ? [null, p] : [p]));
+}
+
+// Hosts start free (server lib/hostGrace.ts), so the banner leads with that, not the price.
+function HostFreeChip() {
+  const { t } = useTranslation();
+  const { grace_bookings } = useHostSignupInfo();
+  return <span className="chip bg-white/15 !text-black backdrop-blur" data-testid="host-fee-chip">{t('ob.free.chip', { count: grace_bookings })}</span>;
 }
 
 export default function Discover() {
@@ -478,7 +485,7 @@ export default function Discover() {
       <section className="mx-auto max-w-6xl px-4 md:px-6 pt-10 md:pt-14">
         <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-pine to-pine-dark text-white p-6 md:p-10">
           <div className="max-w-lg relative z-10">
-            <span className="chip bg-white/15 !text-black backdrop-blur" data-testid="host-fee-chip"><s className="mr-1 opacity-60">{rupees(HOST_USUAL_BASE)}</s>{t('home.one_time_fee')}</span>
+            <HostFreeChip />
             <h3 className="mt-3 font-display font-extrabold text-2xl sm:text-3xl md:text-4xl leading-tight">{t('provider.onboard_title')}</h3>
             <p className="mt-2 text-white/90 text-sm md:text-base">{t('provider.onboard_sub')}</p>
             <Link to="/provider/onboard" data-testid="banner-provider-cta" className="btn-main mt-5 inline-flex items-center gap-2 px-5 py-3 rounded-full bg-white text-pine font-extrabold btn-hover">

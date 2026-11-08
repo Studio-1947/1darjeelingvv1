@@ -499,6 +499,8 @@ router.get('/admin/hosts/waiting', authenticateToken, requireAdmin, async (_req:
       phone: p.contactPhone || owner?.phone || null,
       plan_status: p.status,
       plan_expires_at: p.planExpiresAt,
+      // Live on the free start: has not paid yet (lib/hostGrace.ts).
+      on_free_start: p.status === 'active' && p.grace,
       kyc_status: r.kycStatus,
       created_at: p.createdAt,
       next_step: r.nextStep,

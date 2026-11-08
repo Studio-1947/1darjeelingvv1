@@ -4,6 +4,7 @@ import {
   ArrowRight, Coffee, Copy, House, Medal, ShareNetwork, Sparkle, Star, Storefront, Ticket, Path, ChatCircleText, UserCircle,
 } from '@phosphor-icons/react';
 import { toast } from 'sonner';
+import InviteHostLink from '@/components/provider/InviteHostLink';
 import api from '@/lib/api';
 import { rupees, usePassPrice } from '@/lib/prices';
 import { useAuth } from '@/context/AuthContext';
@@ -141,6 +142,8 @@ export default function TravellerPanels() {
           )}
         </div>
       </div>
+
+      <InviteHostLink />
 
       {/* Total travel */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3" data-testid="panel-totals">

@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CalendarCheck, Star, WarningCircle } from '@phosphor-icons/react';
-import { createPaymentOrder, completeMockPayment, payWithRazorpay } from '@/lib/api';
+import api, { createPaymentOrder, completeMockPayment, payWithRazorpay } from '@/lib/api';
 import MockPaymentModal from '@/components/MockPaymentModal';
 import PriceBreakup from '@/components/PriceBreakup';
 import { rupees, usePrice } from '@/lib/prices';
+import { graceLeft, type GraceState } from '@/lib/hostQuickFill';
 
 /**
  * Within this many days of the end, renewal opens and the card starts nudging the host to renew.
@@ -43,6 +44,10 @@ export default function HostPlanCard({ provider, user, reviews, onRenewed }: {
   // registration payment per business (never activated), not per account. So a host whose earlier
   // business is paid still sees Activate on a new one, rather than "Live until Invalid Date".
   const registrationPending = !provider.plan_expires_at;
+  // The free start (backend lib/hostGrace.ts): live without paying until the first bookings.
+  const grace: GraceState | null = provider.status === 'active' ? provider.grace ?? null : null;
+  // Signed up but stopped at the payment: they can start free from here.
+  const notStarted = provider.status === 'pending_payment';
   const expiry = registrationPending ? Number.NaN : Date.parse(provider.plan_expires_at);
   const lapsed = !registrationPending && !provider.plan_active;
   const daysLeft = Math.ceil((expiry - Date.now()) / DAY_MS);
@@ -52,6 +57,19 @@ export default function HostPlanCard({ provider, user, reviews, onRenewed }: {
   const canRenew = registrationPending || lapsed || soon;
   const flow = registrationPending ? 'provider_registration' : 'provider_renewal';
   const paymentTitle = registrationPending ? t('pd.plan_activate_title') : t('pd.plan_renew_title');
+
+  const startFree = async () => {
+    setBusy(true);
+    setErr('');
+    try {
+      await api.post('/providers/me/start-free');
+      await onRenewed();
+    } catch (e: any) {
+      setErr(e?.response?.data?.detail || t('pd.plan_renew_failed'));
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const renew = async () => {
     setBusy(true);
@@ -93,7 +111,9 @@ export default function HostPlanCard({ provider, user, reviews, onRenewed }: {
     }
   };
 
-  const tone = registrationPending
+  const tone = grace
+    ? grace.paused ? 'border-flag/30 bg-flag/5' : 'border-pine/30 bg-pine/5'
+    : registrationPending
     ? 'border-gold/40 bg-gold/10'
     : lapsed
     ? 'border-flag/30 bg-flag/5'
@@ -104,16 +124,25 @@ export default function HostPlanCard({ provider, user, reviews, onRenewed }: {
   return (
     <div data-testid="host-plan-card" className={`mb-6 rounded-2xl border p-4 md:p-5 flex flex-wrap items-center justify-between gap-4 ${tone}`}>
       <div className="flex items-start gap-3 min-w-0">
-        {lapsed
+        {lapsed || grace?.paused
           ? <WarningCircle size={22} className="text-flag shrink-0 mt-0.5" />
-          : <CalendarCheck size={22} className={`${registrationPending ? 'text-gold' : 'text-pine'} shrink-0 mt-0.5`} />}
+          : <CalendarCheck size={22} className={`${registrationPending && !grace ? 'text-gold' : 'text-pine'} shrink-0 mt-0.5`} />}
         <div className="min-w-0">
-          <div className="text-[11px] font-bold uppercase tracking-widest text-ink-soft">{registrationPending ? t('pd.plan_activation_label') : t('pd.plan_label')}</div>
-          <div className="mt-0.5 font-display font-extrabold text-lg text-ink">
-            {registrationPending ? t('pd.plan_activate_title') : lapsed ? t('pd.plan_lapsed_title') : (provider.approval_pending ? t('pd.plan_paid_until', { date: until }) : t('pd.plan_valid_until', { date: until }))}
+          <div className="text-[11px] font-bold uppercase tracking-widest text-ink-soft">{grace ? t('pd.grace.label') : registrationPending ? t('pd.plan_activation_label') : t('pd.plan_label')}</div>
+          <div className="mt-0.5 font-display font-extrabold text-lg text-ink" data-testid="host-plan-title">
+            {grace
+              ? grace.paused ? t('pd.grace.paused_title') : t('pd.grace.title', { used: grace.used, limit: grace.limit })
+              : notStarted ? t('pd.start_free_title')
+              : registrationPending ? t('pd.plan_activate_title') : lapsed ? t('pd.plan_lapsed_title') : (provider.approval_pending ? t('pd.plan_paid_until', { date: until }) : t('pd.plan_valid_until', { date: until }))}
           </div>
           <p className="text-sm text-ink-soft">
-            {registrationPending
+            {grace
+              ? grace.paused
+                ? t('pd.grace.paused_body', { total: rupees(firstYear.total) })
+                : t('pd.grace.body', { count: graceLeft(grace), total: rupees(firstYear.total) })
+              : notStarted
+              ? t('pd.start_free_body', { total: rupees(firstYear.total) })
+              : registrationPending
               ? t('pd.plan_activate_body')
               : lapsed
               ? t('pd.plan_lapsed_body')
@@ -133,6 +162,16 @@ export default function HostPlanCard({ provider, user, reviews, onRenewed }: {
       {canRenew && provider.access === 'co_owner' && (
         <p className="text-sm text-ink-soft" data-testid="host-plan-owner-pays">{t('owners.plan_main_owner')}</p>
       )}
+      {notStarted && provider.access !== 'co_owner' && (
+        <button
+          onClick={startFree}
+          disabled={busy}
+          data-testid="host-plan-start-free"
+          className="inline-flex items-center justify-center rounded-full bg-pine text-white font-bold text-sm px-5 disabled:opacity-60 btn-hover"
+        >
+          {t('ob.free.cta')}
+        </button>
+      )}
       {canRenew && provider.access !== 'co_owner' && (
         <PriceBreakup breakup={registrationPending ? firstYear : renewal}
           label={registrationPending ? t('price.host_first_year') : t('price.host_renewal')}
@@ -144,9 +183,9 @@ export default function HostPlanCard({ provider, user, reviews, onRenewed }: {
           onClick={renew}
           disabled={busy}
           data-testid="host-plan-renew"
-          className="inline-flex items-center justify-center rounded-full bg-pine text-white font-bold text-sm px-5 disabled:opacity-60 btn-hover"
+          className={`inline-flex items-center justify-center rounded-full font-bold text-sm px-5 disabled:opacity-60 btn-hover ${notStarted ? 'border border-pine text-pine bg-white' : 'bg-pine text-white'}`}
         >
-          {busy ? t('pd.plan_renewing') : registrationPending ? t('pd.plan_activate_cta', { total: rupees(firstYear.total) }) : t('pd.plan_renew_cta', { total: rupees(renewal.total) })}
+          {busy ? t('pd.plan_renewing') : grace ? t('pd.grace.pay_cta', { total: rupees(firstYear.total) }) : registrationPending ? t('pd.plan_activate_cta', { total: rupees(firstYear.total) }) : t('pd.plan_renew_cta', { total: rupees(renewal.total) })}
         </button>
       )}
 

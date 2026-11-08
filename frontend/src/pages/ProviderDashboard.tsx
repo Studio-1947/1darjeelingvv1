@@ -12,6 +12,7 @@ import EditListingModal from '@/components/provider/dashboard/EditListingModal';
 import KycSection from '@/components/provider/dashboard/KycSection';
 import VerificationTracker from '@/components/provider/dashboard/VerificationTracker';
 import HostPlanCard from '@/components/provider/dashboard/HostPlanCard';
+import InviteHostLink from '@/components/provider/InviteHostLink';
 import { DeliveryRequestsPanel, HostPageCard, HostReviewsCard } from '@/components/provider/dashboard/HostExtras';
 import { isFinished, isOngoing, isUpcoming, sumGuests } from '@/lib/tripMessages';
 import VerifiedBadge from '@/components/provider/VerifiedBadge';
@@ -301,6 +302,7 @@ export default function ProviderDashboard() {
       <HostPageCard provider={provider} />
       <HostReviewsCard stats={hostStats} />
       <DeliveryRequestsPanel visible={['cafe', 'shop', 'homestay'].includes(provider.business_type)} />
+      <InviteHostLink className="mb-6" />
 
       {/* The business profile (pages/ProviderProfile.tsx), with what is still needed for approval. */}
       <Link
