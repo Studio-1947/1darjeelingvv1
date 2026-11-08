@@ -384,7 +384,7 @@ export const HOST_PLAN_DAYS = 365;
 // settling. Both apps show the Renew button on the same window.
 export const HOST_RENEWAL_WINDOW_DAYS = 30;
 
-// A new host can start for free and pays the first year only after this many confirmed bookings
+// A new host can start for free and pays the first year only after this many completed bookings
 // (delivered home-delivery orders count too, for cafes and shops). New bookings pause after that
 // until they pay. Requests already waiting can still be accepted. See lib/hostGrace.ts.
 const graceBookings = Number(process.env.HOST_GRACE_BOOKINGS ?? 3);
