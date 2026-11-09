@@ -7,7 +7,8 @@ import { authenticateToken, optionalUser } from '../middleware/auth';
 import { requireActiveSupport } from '../middleware/support';
 import { SPOT_TYPE, isSpotPublished } from '../lib/spots';
 import { routeParam } from '../lib/routeParam';
-import { REFERRAL_CODE_IN_TEXT, REFERRAL_IN_REVIEW_DETAIL } from '../lib/reviewRules';
+import { REFERRAL_CODE_IN_TEXT, REFERRAL_IN_REVIEW_DETAIL, reviewEligibility, type ReviewEligibility } from '../lib/reviewRules';
+import { isExemptFromSupport, isSupportActive } from '../lib/support';
 
 const router = Router();
 
@@ -86,7 +87,19 @@ router.get('/listing/:listingId', async (req: Request, res: Response) => {
   const count = rows.length;
   const average = count === 0 ? 0 : Math.round((rows.reduce((s, r) => s + r.rating, 0) / count) * 10) / 10;
 
-  res.json({ summary: { count, average }, reviews: rows.map(reviewOut) });
+  // Whether this reader may write a review, so the website and app can show "after a completed
+  // booking" instead of a form the server would refuse. null when signed out.
+  let canReviewOut: { allowed: boolean; code?: string } | null = null;
+  if (viewer) {
+    const listingId = routeParam(req, 'listingId');
+    const [listing] = await db.select({ type: schema.listings.type }).from(schema.listings).where(eq(schema.listings.id, listingId)).limit(1);
+    if (listing) {
+      const verdict = await eligibilityFor(viewer, listingId, listing.type);
+      canReviewOut = verdict.allowed ? { allowed: true } : { allowed: false, code: verdict.code };
+    }
+  }
+
+  res.json({ summary: { count, average }, reviews: rows.map(reviewOut), can_review: canReviewOut });
 });
 
 /**
@@ -116,18 +129,34 @@ router.get('/listing/:listingId', async (req: Request, res: Response) => {
  *         content:
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
+ *       403: { description: 'A homestay, driver or guide the caller has no completed booking with (code stay_required)' }
  *       404: { description: Listing not found }
  */
-/** Pass holders can review anything; anyone can review a place they finished a trip with. */
+/** May this user review this listing? See lib/reviewRules.ts reviewEligibility. */
+async function eligibilityFor(user: NonNullable<Request['user']>, listingId: string, listingType: string): Promise<ReviewEligibility> {
+  const mine = await db.select({ status: schema.bookings.status, checkIn: schema.bookings.checkIn, checkOut: schema.bookings.checkOut })
+    .from(schema.bookings)
+    .where(and(eq(schema.bookings.userId, user.id), eq(schema.bookings.listingId, listingId)));
+  return reviewEligibility({
+    listingType,
+    hasCompletedBooking: mine.some((b) => isCompleted(b)),
+    hasPass: isExemptFromSupport(user) || isSupportActive(user),
+  });
+}
+
+/**
+ * Anyone can review a place they finished a trip with. Otherwise pass holders can review, except
+ * homestays, drivers and guides, which need a completed booking (403 stay_required).
+ */
 async function canReview(req: Request, res: Response, next: () => void) {
   const listingId = req.body?.listing_id;
-  if (listingId && req.user) {
-    const mine = await db.select({ status: schema.bookings.status, checkIn: schema.bookings.checkIn, checkOut: schema.bookings.checkOut })
-      .from(schema.bookings)
-      .where(and(eq(schema.bookings.userId, req.user.id), eq(schema.bookings.listingId, String(listingId))));
-    if (mine.some((b) => isCompleted(b))) return next();
-  }
-  return requireActiveSupport(req, res, next);
+  if (!listingId || typeof listingId !== 'string' || !req.user) return requireActiveSupport(req, res, next);
+  const [listing] = await db.select({ type: schema.listings.type }).from(schema.listings).where(eq(schema.listings.id, listingId)).limit(1);
+  // An unknown listing is the handler's 404, not a payment or stay question.
+  if (!listing) return next();
+  const verdict = await eligibilityFor(req.user, listingId, listing.type);
+  if (verdict.allowed) return next();
+  return res.status(verdict.code === 'stay_required' ? 403 : 402).json({ detail: verdict.detail, code: verdict.code });
 }
 
 router.post('/', authenticateToken, canReview, async (req: Request, res: Response) => {

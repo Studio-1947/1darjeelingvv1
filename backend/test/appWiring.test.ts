@@ -289,12 +289,19 @@ describe('GET /providers/me/stats', () => {
     const other = await createListing({ title: 'Someone Elses', type: 'homestay' });
 
     const guest = await registerUser({ name: 'Reviewer' });
-    for (const [id, rating] of [[mine.body.item.id, 5], [mine.body.item.id, 4]] as const) {
-      // One review per guest per listing, so use two guests.
-      const g = rating === 5 ? guest : await registerUser({ name: 'Reviewer Two' });
-      await request(app).post('/api/reviews').set(auth(g.token)).send({ listing_id: id, rating });
-    }
-    await request(app).post('/api/reviews').set(auth(guest.token)).send({ listing_id: other.id, rating: 1 });
+    const guestTwo = await registerUser({ name: 'Reviewer Two' });
+    // This test is about counting, not about who may review (a homestay review needs a completed
+    // stay, reviewEligibility.test.ts), so the review rows are written directly.
+    const { db, schema } = await import('../src/db');
+    const now = new Date().toISOString();
+    const row = (userId: string, listingId: string, rating: number) => ({
+      id: `stats-${userId}-${listingId}`, userId, listingId, rating, comment: '', photos: [], authorName: 'Reviewer', createdAt: now, updatedAt: null,
+    });
+    await db.insert(schema.reviews).values([
+      row(guest.user.id, mine.body.item.id, 5),
+      row(guestTwo.user.id, mine.body.item.id, 4),
+      row(guest.user.id, other.id, 1),
+    ]);
     await request(app).post('/api/bookings').set(auth(guest.token)).send({
       listing_id: mine.body.item.id, listing_type: 'homestay', check_in: inDays(64), check_out: inDays(66),
     });

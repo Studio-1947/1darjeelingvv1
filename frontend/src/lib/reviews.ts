@@ -17,9 +17,16 @@ export interface ReviewSummary {
   average: number;
 }
 
-export async function fetchReviews(listingId: string): Promise<{ summary: ReviewSummary; reviews: Review[] }> {
+/** Whether the signed-in reader may review (null when signed out). `stay_required`: a homestay,
+ *  driver or guide they have no completed booking with. */
+export interface CanReview {
+  allowed: boolean;
+  code?: 'stay_required' | 'support_required';
+}
+
+export async function fetchReviews(listingId: string): Promise<{ summary: ReviewSummary; reviews: Review[]; canReview: CanReview | null }> {
   const { data } = await api.get(`/reviews/listing/${listingId}`);
-  return { summary: data.summary || { count: 0, average: 0 }, reviews: data.reviews || [] };
+  return { summary: data.summary || { count: 0, average: 0 }, reviews: data.reviews || [], canReview: data.can_review ?? null };
 }
 
 export async function postReview(listingId: string, rating: number, comment: string, photos: string[] = []): Promise<Review> {
