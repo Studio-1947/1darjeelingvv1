@@ -246,7 +246,12 @@ export async function notifyHostVerification(providerId: string, news: HostVerif
       : `Please upload "${news.document}" again.${news.reason ? ` Reason: ${news.reason}` : ''}`;
 
     for (const userId of ids) {
-      await addInAppNotification(userId, { kind: news.kind === 'approved' ? 'kyc_approved' : 'kyc_changes', title, body, refId: providerId });
+      await addInAppNotification(userId, {
+        kind: news.kind === 'approved' ? 'kyc_approved' : 'kyc_changes', title, body, refId: providerId,
+        msg: news.kind === 'approved'
+          ? { key: 'kyc_approved', params: { business } }
+          : { key: news.reason ? 'kyc_changes_reason' : 'kyc_changes', params: { document: news.document || '', reason: news.reason || '' } },
+      });
       const [u] = await db.select({ name: schema.users.name, phone: schema.users.phone, email: schema.users.email })
         .from(schema.users).where(eq(schema.users.id, userId)).limit(1);
       if (!u) continue;

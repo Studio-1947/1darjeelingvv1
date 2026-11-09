@@ -70,10 +70,40 @@ function placeTokens(place: string): string[] {
   return place.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length > 2);
 }
 
-/** True when one route line runs through the given place. */
+/**
+ * Names people use for the same stop. Drivers type their routes freely ("New Jalpaiguri →
+ * Darjeeling", "NJP Station - Darj", "IXB drop"), so a search for one name has to find the others.
+ * NJP station is in Siliguri, so the two are one stop for a cab.
+ */
+const PLACE_ALIASES: string[][] = [
+  ['njp', 'new jalpaiguri', 'siliguri', 'jalpaiguri station'],
+  ['bagdogra', 'ixb', 'airport'],
+  ['darjeeling', 'darj', 'djl', 'dj'],
+  ['ghum', 'ghoom'],
+  ['kalimpong', 'kpg'],
+  ['gangtok', 'gtk'],
+  ['kurseong', 'kurseong town'],
+  ['mirik'],
+  ['sittong'],
+  ['lamahatta'],
+];
+
+const normalize = (s: string) => ` ${s.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()} `;
+/** Whole-word (or whole-phrase) match, so "dj" does not match inside another word. */
+const hasWord = (line: string, word: string) => normalize(line).includes(normalize(word));
+
+/** The names a typed place is also known by (itself first). */
+export function placeAliases(place: string): string[] {
+  const p = normalize(place);
+  const group = PLACE_ALIASES.find((names) => names.some((n) => p.includes(normalize(n))));
+  return group ? [place, ...group] : [place];
+}
+
+/** True when one route line runs through the given place, under any of its names. */
 function routeCoversPlace(route: string, place: string): boolean {
   const line = route.toLowerCase();
   if (line.includes(place.trim().toLowerCase())) return true;
+  if (placeAliases(place).slice(1).some((name) => hasWord(route, name))) return true;
   const tokens = placeTokens(place);
   return tokens.length > 0 && tokens.every((token) => line.includes(token));
 }
@@ -98,12 +128,12 @@ export function routesCoverTrip(fares: RouteFare[], from: string, to: string): b
 
 /**
  * How a driver relates to a trip search: their routes cover it, they have listed no routes at
- * all, or their routes clearly do not cover it.
+ * all, or their listed routes do not mention it.
  *
- * Routes are optional at sign-up, and most drivers had none (5 of 8 live, audit 2026-11-08), so
- * a trip search that kept only `covers` hid them completely. They are now shown after the
- * drivers who cover the trip, under "may also do this trip". Same rule in the app
- * (src/lib/routeFares.ts).
+ * Only `covers` drivers lead the results. The others are still shown after them, under "may also
+ * do this trip": routes are free text and rarely complete, and a search for the region's most
+ * common trip (NJP → Darjeeling) used to end on an empty page while drivers were live
+ * (persona test 2026-11-09). Same rule in the app (src/lib/routeFares.ts).
  */
 export type TripMatch = 'covers' | 'unlisted' | 'no';
 export function tripMatch(fares: RouteFare[], from: string, to: string): TripMatch {

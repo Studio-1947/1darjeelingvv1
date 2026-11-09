@@ -17,6 +17,7 @@ import { HOST_APPROVAL_TYPES } from '../lib/bookingApproval';
 import { rank, type Interpretation } from '../lib/search';
 import { maxGuestsFor } from '../lib/bookingRules';
 import { checkNameLike } from '../lib/contentRules';
+import { listingCover } from '../lib/listingCover';
 import {
   SPOT_TYPE, SPOT_FORBIDDEN_MESSAGE, canWriteSpots, parseSpotExtras,
   isSpotPublished, publicSpotVisibility, spotOrdering, SpotValidationError,
@@ -521,7 +522,7 @@ router.post('/', authenticateToken, async (req: Request, res: Response) => {
     latitude: coord(latitude),
     longitude: coord(longitude),
     price: price != null ? Number(price) : 0,
-    image: typeof image === 'string' ? image.trim() : '',
+    image: listingCover(typeof image === 'string' ? image : '', storedExtras),
     tags: Array.isArray(tags) ? tags.map((tag: string) => tag.trim()) : [],
     providerId,
     extras: storedExtras,

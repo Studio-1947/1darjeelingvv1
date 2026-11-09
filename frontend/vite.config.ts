@@ -37,15 +37,22 @@ export default defineConfig(({ mode }) => {
       exclude: ['**/node_modules/**', '**/dist/**', 'e2e/**'],
     },
     build: {
-      rollupOptions: {
+      rolldownOptions: {
         output: {
-          manualChunks(id) {
-            if (!id.includes('node_modules')) return undefined;
-            if (id.includes('@sentry')) return 'vendor-monitoring';
-            if (id.includes('leaflet')) return 'vendor-maps';
-            if (id.includes('framer-motion') || id.includes('gsap') || id.includes('/ogl/')) return 'vendor-motion';
-            if (id.includes('@radix-ui') || id.includes('lucide-react')) return 'vendor-ui';
-            return undefined;
+          // Library groups. A group also takes in the modules its own modules import, so priority
+          // decides who gets a shared one. React has to win: under the old manualChunks setup the
+          // maps group (leaflet, which imports React) captured React's core, so every page
+          // downloaded the 170 KB map library before it could draw.
+          codeSplitting: {
+            groups: [
+              // Every page needs React and it changes far less often than the app, so returning
+              // visitors keep it cached across deploys.
+              { name: 'vendor-react', test: /[\\/]node_modules[\\/](react|react-dom|scheduler)[\\/]/, priority: 50 },
+              { name: 'vendor-monitoring', test: /[\\/]node_modules[\\/]@sentry/, priority: 20 },
+              { name: 'vendor-maps', test: /[\\/]node_modules[\\/](leaflet|react-leaflet|@react-leaflet)[\\/]/, priority: 20 },
+              { name: 'vendor-motion', test: /[\\/]node_modules[\\/](framer-motion|gsap|ogl|motion-dom|motion-utils)[\\/]/, priority: 20 },
+              { name: 'vendor-ui', test: /[\\/]node_modules[\\/](@radix-ui|lucide-react)/, priority: 20 },
+            ],
           },
         },
       },

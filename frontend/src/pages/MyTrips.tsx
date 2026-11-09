@@ -62,15 +62,15 @@ export default function MyTrips() {
         <div className="w-16 h-16 rounded-full bg-flag/10 text-flag grid place-items-center mx-auto mb-4">
           <Ticket size={28} />
         </div>
-        <h1 className="font-display font-extrabold text-2xl sm:text-3xl text-ink">My Trips & Bookings</h1>
+        <h1 className="font-display font-extrabold text-2xl sm:text-3xl text-ink">{t('ui.myTrips.title')}</h1>
         <p className="text-ink-soft max-w-md mx-auto mt-2 text-sm">
-          Log in to view your complete trip history, upcoming homestay reservations, driver bookings, and cultural experiences in Darjeeling.
+          {t('ui.myTrips.logged_out_body')}
         </p>
         <button
           onClick={() => nav('/login?next=/my-trips')}
           className="mt-6 inline-flex items-center gap-2 px-6 py-3 rounded-full bg-pine text-white font-bold text-sm btn-hover shadow-md"
         >
-          <LogIn size={16} /> Log In to View Trips
+          <LogIn size={16} /> {t('ui.myTrips.log_in_cta')}
         </button>
       </div>
     );
@@ -87,14 +87,14 @@ export default function MyTrips() {
           <div className="flex items-center gap-2.5">
             <Store size={18} className="text-pine flex-shrink-0" />
             <span className="text-xs font-semibold text-ink">
-              Looking for your business listings & guest reservations?
+              {t('ui.myTrips.host_banner')}
             </span>
           </div>
           <Link
             to="/my-listings"
             className="inline-flex items-center gap-1 text-xs font-bold text-pine hover:underline"
           >
-            Go to My Listings <ArrowRight size={12} />
+            {t('ui.myTrips.go_to_listings')} <ArrowRight size={12} />
           </Link>
         </div>
       )}
@@ -103,13 +103,13 @@ export default function MyTrips() {
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div>
           <div className="text-[11px] font-bold uppercase tracking-widest text-flag flex items-center gap-1.5">
-            <Ticket size={13} /> Personal History
+            <Ticket size={13} /> {t('ui.myTrips.eyebrow')}
           </div>
           <h1 className="font-display font-extrabold text-2xl sm:text-3xl md:text-4xl text-ink mt-1">
-            My Trips & Bookings
+            {t('ui.myTrips.title')}
           </h1>
           <p className="text-xs sm:text-sm text-ink-soft mt-1">
-            Your journey history, upcoming reservations, and completed stays through aangan.
+            {t('ui.myTrips.subtitle')}
           </p>
         </div>
       </div>
@@ -122,10 +122,10 @@ export default function MyTrips() {
       {/* Filter Tabs */}
       <div className="flex items-center gap-2 border-b border-[var(--line)] mb-6 overflow-x-auto no-scrollbar">
         {[
-          { key: 'all', label: `All (${bookings.length})` },
-          { key: 'upcoming', label: `Upcoming (${upcomingList.length})` },
-          { key: 'completed', label: `Completed (${completedList.length})` },
-          { key: 'cancelled', label: `Cancelled (${cancelledList.length})` },
+          { key: 'all', label: t('ui.myTrips.tab_all', { n: bookings.length }) },
+          { key: 'upcoming', label: t('ui.myTrips.tab_upcoming', { n: upcomingList.length }) },
+          { key: 'completed', label: t('ui.myTrips.tab_completed', { n: completedList.length }) },
+          { key: 'cancelled', label: t('ui.myTrips.tab_cancelled', { n: cancelledList.length }) },
         ].map(({ key, label }) => (
           <button
             key={key}
@@ -147,24 +147,24 @@ export default function MyTrips() {
           <div className="w-12 h-12 rounded-full bg-mist text-ink-soft grid place-items-center mx-auto mb-3">
             <Ticket size={24} />
           </div>
-          <h3 className="font-display font-bold text-lg text-ink">No trips found</h3>
+          <h3 className="font-display font-bold text-lg text-ink">{t('ui.myTrips.empty_title')}</h3>
           <p className="text-xs sm:text-sm text-ink-soft max-w-sm mx-auto mt-1">
             {tabFilter === 'all'
-              ? 'You haven’t booked any homestays, drivers, or experiences yet.'
-              : `You have no ${tabFilter} trips at the moment.`}
+              ? t('ui.myTrips.empty_all')
+              : t(`ui.myTrips.empty_filtered.${tabFilter}`)}
           </p>
           <div className="mt-6 flex flex-wrap gap-2.5 justify-center">
             <Link
               to="/homestays"
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-pine text-white font-bold text-xs sm:text-sm btn-hover"
             >
-              Browse Homestays <ArrowRight size={14} />
+              {t('ui.myTrips.browse_homestays')} <ArrowRight size={14} />
             </Link>
             <Link
               to="/drivers"
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-pine text-white font-bold text-xs sm:text-sm btn-hover"
             >
-              Find a Driver <ArrowRight size={14} />
+              {t('ui.myTrips.find_driver')} <ArrowRight size={14} />
             </Link>
           </div>
         </div>
@@ -183,32 +183,32 @@ export default function MyTrips() {
       {/* Quick suggestions */}
       <div className="mt-12">
         <h2 className="font-display font-extrabold text-xl text-ink mb-4 flex items-center gap-2">
-          <Compass size={20} className="text-pine" /> Explore More in Darjeeling
+          <Compass size={20} className="text-pine" /> {t('ui.myTrips.explore_more')}
         </h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <Link to="/homestays" className="rounded-2xl p-4 bg-white border border-[var(--line)] btn-hover shadow-sm">
             <div className="w-9 h-9 rounded-full bg-mist text-pine grid place-items-center mb-2">
               <Compass size={18} />
             </div>
-            <div className="font-display font-bold text-sm text-ink">Homestays</div>
+            <div className="font-display font-bold text-sm text-ink">{t('ui.myTrips.tile_homestays')}</div>
           </Link>
           <Link to="/drivers" className="rounded-2xl p-4 bg-white border border-[var(--line)] btn-hover shadow-sm">
             <div className="w-9 h-9 rounded-full bg-mist text-pine grid place-items-center mb-2">
               <Phone size={18} />
             </div>
-            <div className="font-display font-bold text-sm text-ink">Drivers & Cabs</div>
+            <div className="font-display font-bold text-sm text-ink">{t('ui.myTrips.tile_drivers')}</div>
           </Link>
           <Link to="/cafes" className="rounded-2xl p-4 bg-white border border-[var(--line)] btn-hover shadow-sm">
             <div className="w-9 h-9 rounded-full bg-mist text-pine grid place-items-center mb-2">
               <Store size={18} />
             </div>
-            <div className="font-display font-bold text-sm text-ink">Cafes & Bakeries</div>
+            <div className="font-display font-bold text-sm text-ink">{t('ui.myTrips.tile_cafes')}</div>
           </Link>
           <Link to="/events" className="rounded-2xl p-4 bg-white border border-[var(--line)] btn-hover shadow-sm">
             <div className="w-9 h-9 rounded-full bg-mist text-pine grid place-items-center mb-2">
               <Ticket size={18} />
             </div>
-            <div className="font-display font-bold text-sm text-ink">Events & Culture</div>
+            <div className="font-display font-bold text-sm text-ink">{t('ui.myTrips.tile_events')}</div>
           </Link>
         </div>
       </div>

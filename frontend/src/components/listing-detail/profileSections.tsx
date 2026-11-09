@@ -1,9 +1,10 @@
+import SmartImg from '@/components/SmartImg';
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   Translate as Languages, Medal, InstagramLogo, FacebookLogo, YoutubeLogo, Globe, PlayCircle,
-  Compass, Bed, ForkKnife, Car, ArrowRight, CalendarBlank, MoonStars, Storefront, Moped, UsersThree,
+  Compass, Bed, ForkKnife, Car, ArrowRight, CalendarBlank, MoonStars, Storefront, Moped, UsersThree, Clock,
 } from '@phosphor-icons/react';
 import api from '@/lib/api';
 import { listingImage } from '@/lib/listingContent';
@@ -178,9 +179,9 @@ export function RoomsFoodSection({ rooms, meals, homeDelivery }: { rooms: Priced
 }
 
 /** A cafe's menu or a shop's goods, each with its price, and whether they deliver. */
-export function PriceListSection({ kind, rows, homeDelivery, capacity = 0, shopKind }: { kind: 'menu' | 'goods'; rows: Priced[]; homeDelivery?: boolean; capacity?: number; shopKind?: string }) {
+export function PriceListSection({ kind, rows, homeDelivery, capacity = 0, shopKind, openingHours = '' }: { kind: 'menu' | 'goods'; rows: Priced[]; homeDelivery?: boolean; capacity?: number; shopKind?: string; openingHours?: string }) {
   const { t } = useTranslation();
-  if (!rows.length && !homeDelivery && !(capacity > 0)) return null;
+  if (!rows.length && !homeDelivery && !(capacity > 0) && !openingHours) return null;
   return (
     <Screen tone="mist" testid={`detail-${kind}`}>
       <SectionHead label={t(`detail.${kind}_label`)} title={t(`detail.${kind}_title`)} note={t(`detail.${kind}_note`)} />
@@ -193,6 +194,11 @@ export function PriceListSection({ kind, rows, homeDelivery, capacity = 0, shopK
         {homeDelivery && (
           <p className={`text-ink-soft flex items-center ${ALIGN_ROW} gap-2`} data-testid="detail-home-delivery">
             <Moped size={18} className="text-pine" /> {kind === 'menu' ? t('profile.home_delivery_on') : t('profile.home_delivery_shop')}
+          </p>
+        )}
+        {openingHours && (
+          <p className={`text-ink-soft flex items-center ${ALIGN_ROW} gap-2`} data-testid="detail-opening-hours">
+            <Clock size={18} className="text-pine" /> {t('profile.opening_hours', { hours: openingHours })}
           </p>
         )}
         {capacity > 0 && (
@@ -250,7 +256,7 @@ export function RecommendedDriversSection({ ids }: { ids: string[] }) {
       <div className="mt-10 grid sm:grid-cols-2 gap-4">
         {drivers.map((d) => (
           <Link key={d.id} to={`/listing/${d.id}`} className="flex items-center gap-4 p-4 rounded-2xl border border-[var(--line)] bg-white btn-hover text-left">
-            <img src={listingImage(d, 200, 200)} alt="" className="w-16 h-16 rounded-xl object-cover bg-mist" />
+            <SmartImg src={listingImage(d, 200, 200)} alt="" className="w-16 h-16 rounded-xl object-cover bg-mist flex-shrink-0" />
             <span className="flex-1 min-w-0">
               <span className="block font-bold text-ink truncate">{d.title}</span>
               <span className="block text-sm text-ink-soft truncate">{d.location}</span>

@@ -98,7 +98,7 @@ export default function Saved() {
               data-testid="build-itinerary-cta"
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-gold text-ink font-extrabold text-sm btn-hover shadow-sm"
             >
-              <Calendar size={16} /> Plan Day 1/2/3 Trip
+              <Calendar size={16} /> {t('ui.saved.plan_day_trip')}
             </button>
             <button
               onClick={() => setShowPlanModal(true)}

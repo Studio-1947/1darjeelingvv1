@@ -14,7 +14,7 @@ type Item = {
   rating?: number | null;
   user: { name: string; phone: string };
   business?: { name: string; type: string };
-  booking?: { id: string; place: string | null } | null;
+  booking?: { id: string; place: string | null; status?: string | null; check_in?: string | null } | null;
 };
 
 const when = (iso: string) =>
@@ -50,6 +50,22 @@ export default function Feedback() {
       setItems((list) => list.map((x) => (x.id === item.id ? { ...x, status } : x)));
     } catch (e: any) {
       window.alert(e?.response?.data?.detail || 'Could not update');
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  // A traveller's "problem with this booking" report: the team can cancel the booking from here
+  // (refunds the fee, tells guest and host), e.g. when a host did not show up.
+  const cancelBooking = async (item: Item) => {
+    if (!item.booking) return;
+    if (!window.confirm(`Cancel the booking${item.booking.place ? ` at ${item.booking.place}` : ''}? The guest's fee is refunded and both sides are told.`)) return;
+    setBusy(item.id);
+    try {
+      await api.patch(`/bookings/${item.booking.id}/cancel`);
+      setItems((list) => list.map((x) => (x.id === item.id && x.booking ? { ...x, booking: { ...x.booking, status: 'cancelled' } } : x)));
+    } catch (e: any) {
+      window.alert(e?.response?.data?.detail || 'Could not cancel the booking');
     } finally {
       setBusy(null);
     }
@@ -119,9 +135,13 @@ export default function Feedback() {
                 ) : null}
                 <span className={`ml-auto px-2.5 py-0.5 rounded-full font-bold ${f.status === 'open' ? 'bg-gold/20 text-[#7a5d00]' : 'bg-pine/10 text-pine'}`}>{f.status}</span>
               </div>
-              {f.booking ? <p className="mt-1 text-xs font-semibold text-[#007C85]" data-testid={`feedback-trip-${f.id}`}>After a trip{f.booking.place ? ` to ${f.booking.place}` : ''}</p> : null}
+              {f.booking ? (
+                <p className="mt-1 text-xs font-semibold text-[#007C85]" data-testid={`feedback-trip-${f.id}`}>
+                  Trip{f.booking.place ? ` to ${f.booking.place}` : ''}{f.booking.check_in ? ` · ${f.booking.check_in}` : ''}{f.booking.status ? ` · ${f.booking.status.replace('_', ' ')}` : ''}
+                </p>
+              ) : null}
               <p className="mt-2 text-sm text-ink whitespace-pre-line">{f.message}</p>
-              <div className="mt-3">
+              <div className="mt-3 flex flex-wrap items-center gap-2">
                 {f.status === 'open' ? (
                   <button onClick={() => setStatus(f, 'resolved')} disabled={busy !== null} data-testid={`feedback-resolve-${f.id}`}
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border border-pine/40 text-pine hover:bg-pine/10 disabled:opacity-50">
@@ -131,6 +151,12 @@ export default function Feedback() {
                   <button onClick={() => setStatus(f, 'open')} disabled={busy !== null}
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border border-[var(--line)] text-ink hover:border-ink disabled:opacity-50">
                     <RotateCcw size={12} /> Reopen
+                  </button>
+                )}
+                {f.status === 'open' && f.booking?.status && f.booking.status !== 'cancelled' && (
+                  <button onClick={() => cancelBooking(f)} disabled={busy !== null} data-testid={`feedback-cancel-booking-${f.id}`}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border border-flag/40 text-flag hover:bg-flag/10 disabled:opacity-50">
+                    Cancel this booking
                   </button>
                 )}
               </div>

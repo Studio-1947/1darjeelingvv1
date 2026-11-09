@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { missingLabel } from '@/lib/serverText';
 import { CheckCircle, WarningCircle, ArrowRight, MagnifyingGlass } from '@phosphor-icons/react';
 import SignOutButton from '@/components/SignOutButton';
 import api from '@/lib/api';
@@ -187,11 +188,12 @@ export default function ProviderProfile() {
       menu: priced(e.menu, 'name', 'plate'),
       goods: priced(e.goods, 'name', 'item'),
       shop_kind: e.shop_kind || '',
+      opening_hours: e.opening_hours || '',
     });
   }, [provider]);
 
   const type: string = p?.business_type || '';
-  const missing: { key: string; label: string }[] = p?.profile_missing || [];
+  const missing: { key: string; label: string; min?: number; have?: number }[] = p?.profile_missing || [];
   const updateForm = (updater: (current: any) => any) => {
     // Once a host makes another edit, the previous success state is no longer current.
     // Restore the save action immediately, including on the mobile layout.
@@ -205,7 +207,7 @@ export default function ProviderProfile() {
     if (!file) return;
     setUploading(field);
     try { set({ [field]: await uploadImage(file) }); }
-    catch (err) { setMsg({ ok: false, text: typeof err === 'string' ? err : 'Upload failed' }); }
+    catch (err) { setMsg({ ok: false, text: typeof err === 'string' ? err : t('kyc.uploadFailed') }); }
     finally { setUploading(null); }
   };
   // The intro video is an uploaded file travellers play on the page, not a link.
@@ -230,7 +232,7 @@ export default function ProviderProfile() {
     if (!files?.length) return;
     setUploading('images');
     try { const urls = await uploadImages(files); updateForm((f: any) => ({ ...f, images: [...f.images, ...urls] })); }
-    catch (err) { setMsg({ ok: false, text: typeof err === 'string' ? err : 'Upload failed' }); }
+    catch (err) { setMsg({ ok: false, text: typeof err === 'string' ? err : t('kyc.uploadFailed') }); }
     finally { setUploading(null); }
   };
 
@@ -278,6 +280,7 @@ export default function ProviderProfile() {
       });
     }
     if ((type === 'cafe' || type === 'shop') && num(form.capacity) !== undefined) profile.capacity = num(form.capacity);
+    if (type === 'cafe' || type === 'shop') profile.opening_hours = (form.opening_hours || '').trim();
     const body: Record<string, unknown> = { profile };
     if (form.business_name.trim() && form.business_name.trim() !== p.business_name) body.business_name = form.business_name.trim();
     if (form.contact_phone.trim() && form.contact_phone.trim() !== p.contact_phone) body.contact_phone = form.contact_phone.trim();
@@ -288,7 +291,7 @@ export default function ProviderProfile() {
       await refreshProvider();
       setMsg({ ok: true, text: t('hostProfile.saved') });
     } catch (e: any) {
-      setMsg({ ok: false, text: e?.response?.data?.detail || e.message || 'Could not save' });
+      setMsg({ ok: false, text: e?.response?.data?.detail || e.message || t('ui.providerProfile.could_not_save') });
     } finally {
       setBusy(false);
     }
@@ -350,7 +353,7 @@ export default function ProviderProfile() {
         <div className="rounded-2xl border border-[#F0B90B] bg-[#FFF8E1] p-5" data-testid="profile-missing">
           <p className="font-bold text-ink flex items-center gap-2"><WarningCircle size={20} className="text-[#B7791F]" /> {t('hostProfile.required_title')}</p>
           <ul className="mt-2 space-y-1 text-sm text-ink">
-            {missing.map((m) => <li key={m.key}>• {m.label}</li>)}
+            {missing.map((m) => <li key={m.key}>• {missingLabel(t, m, p?.business_type)}</li>)}
           </ul>
           <p className="mt-2 text-xs text-ink-soft">{t('hostProfile.required_note')}</p>
         </div>
@@ -533,6 +536,10 @@ export default function ProviderProfile() {
               <AmenityPicker presets={CAFE_AMENITIES} selected={form.amenities} onChange={(amenities: string[]) => set({ amenities })} compact />
             </div>
           </div>
+          <Field label={t('hostProfile.opening_hours')}>
+            <input value={form.opening_hours || ''} onChange={(e) => set({ opening_hours: e.target.value })} maxLength={120}
+              placeholder={t('hostProfile.opening_hours_ph')} className={input} data-testid="profile-opening-hours" />
+          </Field>
           <Field label={t('hostProfile.capacity_cafe')}>
             <input type="number" min={1} max={500} value={form.capacity} onChange={(e) => set({ capacity: e.target.value })} className={`${input} max-w-[10rem]`} data-testid="profile-capacity" />
           </Field>
@@ -548,6 +555,10 @@ export default function ProviderProfile() {
           <PricedEditor rows={form.goods} onChange={(goods) => set({ goods })} units={GOODS_UNITS} unitLabel={unitLabel}
             namePlaceholder={t('hostProfile.goods_ph')} addLabel={t('hostProfile.add_goods')} testid="profile-goods"
             max={MAX_GOODS} fullNote={t('hostProfile.goods_full')} />
+          <Field label={t('hostProfile.opening_hours')}>
+            <input value={form.opening_hours || ''} onChange={(e) => set({ opening_hours: e.target.value })} maxLength={120}
+              placeholder={t('hostProfile.opening_hours_ph')} className={input} data-testid="profile-opening-hours" />
+          </Field>
           <Field label={t('hostProfile.capacity_shop')}>
             <input type="number" min={1} max={500} value={form.capacity} onChange={(e) => set({ capacity: e.target.value })} className={`${input} max-w-[10rem]`} data-testid="profile-capacity" />
           </Field>
@@ -592,7 +603,7 @@ export default function ProviderProfile() {
             <CheckCircle size={22} weight="fill" className="text-pine shrink-0" />
             <p className="flex-1 text-sm font-bold text-pine">{msg.text}</p>
             <Link to="/provider/dashboard" className="inline-flex items-center gap-1.5 rounded-full bg-pine px-4 py-2.5 text-xs font-bold text-white btn-hover whitespace-nowrap">{t('hostProfile.back_dashboard')} <ArrowRight size={14} /></Link>
-            <button type="button" onClick={() => setMsg(null)} className="hidden sm:inline text-xs font-bold text-ink-soft hover:text-ink">Keep editing</button>
+            <button type="button" onClick={() => setMsg(null)} className="hidden sm:inline text-xs font-bold text-ink-soft hover:text-ink">{t('ui.providerProfile.keep_editing')}</button>
           </div>
         ) : <div className="mist-panel p-3 flex items-center gap-3 shadow-lg">
           <p className={`flex-1 min-w-0 text-sm font-semibold ${msg ? 'text-flag' : 'text-ink-soft'}`} data-testid="profile-msg">{msg ? msg.text : <span className="max-sm:hidden">{t('hostProfile.save_hint')}</span>}</p>

@@ -1,5 +1,6 @@
 import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import './App.css';
 import '@/i18n';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
@@ -49,12 +50,23 @@ function HomeForSide() {
   return isHostMode ? <Navigate to="/provider/dashboard" replace /> : <Discover />;
 }
 
+/** Shown while a page's code is loading. */
+function PageLoading() {
+  const { t } = useTranslation();
+  return <div className="page-loading" role="status">{t('common.loading')}</div>;
+}
+
 export default function App() {
   React.useEffect(() => {
     const splash = document.getElementById('app-splash');
     if (!splash) return;
     const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    const delay = reduceMotion ? 0 : SPLASH_MIN_VISIBLE_MS;
+    // The full wordmark reveal plays once per visit, on the home page. A link opened from WhatsApp
+    // (a listing, a host page) or a refresh goes straight to the page once it is ready
+    // (persona test 2026-11-09: every load waited 1.8s).
+    let seen = false;
+    try { seen = sessionStorage.getItem('aangan-splash-seen') === '1'; sessionStorage.setItem('aangan-splash-seen', '1'); } catch { /* private mode */ }
+    const delay = reduceMotion || seen || window.location.pathname !== '/' ? 0 : SPLASH_MIN_VISIBLE_MS;
     const hide = setTimeout(() => {
       splash.classList.add('app-splash-hide');
       setTimeout(() => splash.remove(), 300);
@@ -69,7 +81,7 @@ export default function App() {
           <ScrollToTop />
           <LoginGateProvider>
             <Layout>
-                <Suspense fallback={<div className="page-loading" role="status">Loading…</div>}>
+                <Suspense fallback={<PageLoading />}>
                   <Routes>
                     <Route path="/" element={<HomeForSide />} />
                     <Route path="/spots" element={<TravellerOnly><Category typeOverride="spot" /></TravellerOnly>} />

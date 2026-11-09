@@ -4,6 +4,7 @@ import { HOST_GRACE_BOOKINGS, log } from '../config';
 import { db, schema } from '../db';
 import { addHostNotification } from './inApp';
 import { isCompleted, todayInIndia } from './travellerDashboard';
+import { listingCover } from './listingCover';
 
 type Provider = typeof schema.providers.$inferSelect;
 type Executor = Pick<typeof db, 'select' | 'update' | 'insert'>;
@@ -88,6 +89,7 @@ export async function noteGraceProgress(listingProviderId: string | null | undef
       kind: 'host_grace_ended',
       title: 'Your free bookings are used up',
       body: `${state.limit} guests have now completed their bookings with you on aangan. Pay for your host plan to keep taking new bookings. Guests already booked are not affected.`,
+      msg: { key: 'grace_ended', params: { count: state.limit } },
       refId: listingProviderId,
     });
   } catch {
@@ -125,7 +127,7 @@ export async function publishFirstListing(tx: Executor, p: Provider): Promise<vo
     latitude: p.latitude,
     longitude: p.longitude,
     price: Number(p.priceFrom || 0),
-    image: (p.images || [''])[0] || '',
+    image: listingCover((p.images || [])[0], p.extras),
     tags: (p.extras as any)?.tags || [],
     providerId: p.id,
     extras: p.extras || {},

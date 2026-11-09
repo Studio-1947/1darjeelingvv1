@@ -1,13 +1,15 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Bell, CircleNotch as Loader2 } from '@phosphor-icons/react';
+import { noteText } from '@/lib/serverText';
+import { Bell, CircleNotch as Loader2, Megaphone } from '@phosphor-icons/react';
+import { webLinkTarget } from '@/lib/notificationLink';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { useSeo } from '@/components/Seo';
 import { timeAgo } from '@/lib/timeAgo';
 
-type Note = { id: string; kind: string; title: string; body: string; ref_id: string | null; unread: boolean; created_at: string };
+type Note = { id: string; kind: string; title: string; body: string; ref_id: string | null; link?: string | null; unread: boolean; created_at: string; msg?: { key: string; params?: Record<string, string | number> } | null };
 
 /**
  * What happened while you were away: requests, acceptances, cancellations, confirmations.
@@ -33,14 +35,18 @@ export default function Notifications() {
     window.dispatchEvent(new Event('aangan:notifications'));
   };
 
-  // A booking notice leads to where that booking is handled; anything else is just marked read.
+  // A booking notice leads to where that booking is handled; a team message to its chosen screen.
   const open = async (n: Note) => {
     if (n.unread) {
       await api.patch(`/notifications/${n.id}/read`).catch(() => {});
       setItems((list) => (list || []).map((x) => (x.id === n.id ? { ...x, unread: false } : x)));
       window.dispatchEvent(new Event('aangan:notifications'));
     }
-    if (n.kind?.startsWith('booking_')) nav(isHostMode ? '/provider/dashboard' : '/my-trips');
+    // A message from the team opens the screen it was sent with.
+    const target = webLinkTarget(n.link, isHostMode);
+    if (target?.kind === 'route') nav(target.to);
+    else if (target?.kind === 'external') window.open(target.href, '_blank', 'noopener,noreferrer');
+    else if (n.kind?.startsWith('booking_')) nav(isHostMode ? '/provider/dashboard' : '/my-trips');
     else if (n.kind?.startsWith('delivery')) nav(isHostMode ? '/provider/dashboard' : '/my-trips');
   };
 
@@ -64,10 +70,10 @@ export default function Notifications() {
             <li key={n.id}>
               <button type="button" onClick={() => open(n)} data-testid={`note-${n.id}`}
                 className={`w-full text-left flex gap-3 rounded-2xl border bg-white p-4 btn-hover ${n.unread ? 'border-pine/40 border-l-4 border-l-pine' : 'border-[var(--line)]'}`}>
-                <span className="w-9 h-9 flex-shrink-0 rounded-full bg-mist text-pine grid place-items-center"><Bell size={17} /></span>
+                <span className="w-9 h-9 flex-shrink-0 rounded-full bg-mist text-pine grid place-items-center">{n.kind === 'announcement' ? <Megaphone size={17} /> : <Bell size={17} />}</span>
                 <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-bold text-ink">{n.title}</span>
-                  <span className="block text-[13px] text-ink-soft mt-0.5">{n.body}</span>
+                  <span className="block text-sm font-bold text-ink">{noteText(t, n).title}</span>
+                  <span className="block text-[13px] text-ink-soft mt-0.5 whitespace-pre-line">{noteText(t, n).body}</span>
                   <span className="block text-[11px] text-ink-soft mt-1">{timeAgo(n.created_at, i18n.language, t)}</span>
                 </span>
                 {n.unread && <span className="mt-1.5 w-2 h-2 flex-shrink-0 rounded-full bg-pine" aria-label={t('notes.unread')} />}

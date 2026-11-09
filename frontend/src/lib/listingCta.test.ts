@@ -9,8 +9,8 @@ describe('listing page button', () => {
     expect(ctaFor('homestay', false).key).toBe('book_now');
     expect(ctaFor('homestay').key).toBe('book_now');
   });
-  it('leaves drivers and guides as they were (they already read as requests)', () => {
-    expect(ctaFor('driver', true).key).toBe('talk_to_driver');
+  it('says what the driver and guide buttons do: send a request (persona test 2026-11-09)', () => {
+    expect(ctaFor('driver', true).key).toBe('request_driver');
     expect(ctaFor('guide', true).key).toBe('request_guide');
   });
 });

@@ -24,3 +24,22 @@ describe('tripMatch (audit 2026-11-08: drivers with no routes were hidden from t
     expect(tripMatch([], '', '')).toBe('covers');
   });
 });
+
+describe('trip search knows the other names of a stop (persona test 2026-11-09)', () => {
+  const fare = (route: string): RouteFare[] => [{ route, price: 2500, unit: 'trip' }];
+  it('finds NJP under New Jalpaiguri, Siliguri and short forms', () => {
+    for (const r of ['New Jalpaiguri → Darjeeling', 'Siliguri to Darjeeling', 'NJP Station - Darj', 'NJP-DJ']) {
+      expect(tripMatch(fare(r), 'NJP', 'Darjeeling')).toBe('covers');
+    }
+  });
+  it('finds Bagdogra under IXB and airport', () => {
+    expect(tripMatch(fare('IXB drop to Darjeeling'), 'Bagdogra', 'Darjeeling')).toBe('covers');
+    expect(tripMatch(fare('Airport - Darjeeling'), 'Bagdogra Airport (IXB)', 'Darjeeling')).toBe('covers');
+  });
+  it('keeps different places apart', () => {
+    expect(tripMatch(fare('Bagdogra airport drop to Darjeeling'), 'NJP', 'Darjeeling')).toBe('no');
+    expect(tripMatch(fare('Full-day Darjeeling sightseeing'), 'NJP', 'Darjeeling')).toBe('no');
+    // "dj" is a whole word only, not part of another word.
+    expect(tripMatch(fare('Djamboree to Kalimpong'), 'Darjeeling', 'Kalimpong')).toBe('no');
+  });
+});

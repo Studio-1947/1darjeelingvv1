@@ -27,6 +27,7 @@ import { phoneKey } from '../lib/phone';
 import { MAX_VIDEO_BYTES, VIDEO_MIME, matchesDeclaredType } from './kyc';
 import { uploadToMinIO } from '../lib/s3';
 import { checkNameLike } from '../lib/contentRules';
+import { coverAfterPhotosChange } from '../lib/listingCover';
 
 const SELF_ONBOARDABLE_BUSINESS_TYPES = Object.keys(KYC_REQUIREMENTS);
 
@@ -738,6 +739,10 @@ router.patch('/me', authenticateToken, async (req: Request, res: Response) => {
       const next: Partial<typeof schema.listings.$inferInsert> = {};
       if (profilePatch) next.extras = { ...(l.extras || {}), ...profilePatch };
       if (set.images) next.image = set.images[0];
+      // No chosen cover: the listing shows the host's first photo, and follows it when photos change.
+      else if (profilePatch && 'images' in profilePatch && !(provider.images || [])[0]) {
+        next.image = coverAfterPhotosChange(l.image, l.extras, next.extras);
+      }
       if (set.businessName && l.title === provider.businessName) next.title = set.businessName;
       if (profilePatch && set.priceFrom !== undefined) next.price = set.priceFrom;
       if (Object.keys(next).length) await db.update(schema.listings).set(next).where(eq(schema.listings.id, l.id));

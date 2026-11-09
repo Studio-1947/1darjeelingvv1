@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { MapPin } from '@phosphor-icons/react';
 
 /**
@@ -17,7 +18,8 @@ import { MapPin } from '@phosphor-icons/react';
  * The IntersectionObserver half also preserves the `loading="lazy"` behaviour it
  * replaces: a map below the fold still costs nothing until it is scrolled to.
  */
-export default function MapEmbed({ coords, title = 'Map', className = '' }: { coords: [number, number], title?: string, className?: string }) {
+export default function MapEmbed({ coords, title, className = '' }: { coords: [number, number], title?: string, className?: string }) {
+  const { t } = useTranslation();
   const [lat, lng] = coords;
   const d = 0.02; // ~2km half-window
   const bbox = [lng - d, lat - d, lng + d, lat + d].map((n) => n.toFixed(5)).join('%2C');
@@ -68,7 +70,7 @@ export default function MapEmbed({ coords, title = 'Map', className = '' }: { co
         // Leaflet instance sized for the previous listing.
         <iframe
           key={src}
-          title={title}
+          title={title ?? t('ui.mapEmbed.title')}
           src={src}
           className="absolute inset-0 w-full h-full"
           style={{ border: 0 }}

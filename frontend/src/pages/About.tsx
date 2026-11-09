@@ -19,21 +19,17 @@ const PILLAR_IMAGES = [
 // sizedImage() injects a width/quality transform for it automatically.
 const STORY_IMAGE = 'https://res.cloudinary.com/drgb8w8ak/image/upload/v1784109903/tigerhill_mcmhxp.webp';
 
+// Roles are keys under ui.about.roles; the names stay as they are.
 const TEAM_MEMBERS = [
-  { name: 'Rahul', role: 'Fullstack Developer', image: '/rahul.webp' },
-  { name: 'Rabi', role: 'Creative Director', image: '/rabi.webp' },
-  { name: 'Santam', role: 'Fullstack Developer', image: '/santam.webp' },
-  { name: 'Soumic', role: 'Tech Lead', image: '/soumic.webp' },
-  { name: 'Subhendu', role: 'Advisor', image: '/punpun.webp' },
-  { name: 'Nikhil R', role: 'Sound Engineer', image: '/nikhilrai.webp' },
-  { name: 'Anjali', role: 'HR', image: '/anjali.webp' },
-  { name: 'Nikhil S', role: 'Graphic Designer', image: '/nikhilsubba.webp' },
+  { name: 'Rahul', role: 'fullstack_developer', image: '/rahul.webp' },
+  { name: 'Rabi', role: 'creative_director', image: '/rabi.webp' },
+  { name: 'Santam', role: 'fullstack_developer', image: '/santam.webp' },
+  { name: 'Soumic', role: 'tech_lead', image: '/soumic.webp' },
+  { name: 'Subhendu', role: 'advisor', image: '/punpun.webp' },
+  { name: 'Nikhil R', role: 'sound_engineer', image: '/nikhilrai.webp' },
+  { name: 'Anjali', role: 'hr', image: '/anjali.webp' },
+  { name: 'Nikhil S', role: 'graphic_designer', image: '/nikhilsubba.webp' },
 ];
-
-const GALLERY_ITEMS = TEAM_MEMBERS.map(m => ({
-  image: m.image,
-  text: `${m.name}<br>${m.role}`
-}));
 
 /**
  * Public "about" page. All copy lives in the locale files so it translates with
@@ -46,6 +42,11 @@ export default function About() {
   const pillars = t('about.pillars', { returnObjects: true }) as { t: string; d: string }[];
   const chips = t('about.why_chips', { returnObjects: true }) as string[];
   const steps = t('about.steps', { returnObjects: true }) as { t: string; d: string }[];
+  // Memoised: the WebGL gallery rebuilds itself whenever `items` is a new array.
+  const galleryItems = React.useMemo(() => TEAM_MEMBERS.map(m => ({
+    image: m.image,
+    text: `${m.name}<br>${t(`ui.about.roles.${m.role}`)}`
+  })), [t]);
 
   // The mission copy is authored as two paragraphs: the first sets up the
   // problem, the second is the promise. The redesign renders the second as a
@@ -116,7 +117,7 @@ export default function About() {
             <p className="text-base md:text-lg text-ink-soft leading-relaxed">{missionIntro}</p>
             {missionQuote && (
               <blockquote className="mt-6 rounded-2xl border-l-4 border-pine bg-pine/5 p-5 md:p-6">
-                <p className="font-display font-bold text-lg md:text-xl text-pine leading-snug">{missionQuote}</p>
+                <p className="font-display font-bold text-lg md:text-xl text-pine-dark leading-snug">{missionQuote}</p>
               </blockquote>
             )}
             <div className="mt-5 flex flex-wrap gap-2.5">
@@ -216,7 +217,7 @@ export default function About() {
               />
               <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent pt-12 pb-3.5 px-3.5 flex flex-col justify-end text-left">
                 <h3 className="font-display font-bold text-base text-white leading-tight drop-shadow-sm">{member.name}</h3>
-                <p className="text-xs text-white/85 font-medium mt-0.5 leading-snug">{member.role}</p>
+                <p className="text-xs text-white/85 font-medium mt-0.5 leading-snug">{t(`ui.about.roles.${member.role}`)}</p>
               </div>
             </div>
           ))}
@@ -225,7 +226,7 @@ export default function About() {
         {/* Desktop: interactive WebGL circular gallery */}
         <div className="hidden md:block relative left-1/2 -translate-x-1/2 w-screen h-[500px] sm:h-[600px] md:h-[680px] overflow-hidden bg-gradient-to-b from-mist/60 via-mist/30 to-white mt-8 border-y border-[var(--line)] shadow-inner">
           <CircularGallery
-            items={GALLERY_ITEMS}
+            items={galleryItems}
             bend={3}
             textColor="#1b2e24"
             borderRadius={0.05}

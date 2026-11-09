@@ -13,23 +13,25 @@ import { hostUserIds } from './hostAccess';
  */
 export async function addInAppNotification(
   userId: string | null | undefined,
-  n: { kind: string; title: string; body: string; refId?: string | null }
+  n: { kind: string; title: string; body: string; refId?: string | null; msg?: { key: string; params?: Record<string, string | number> } }
 ): Promise<void> {
   if (!userId) return;
   try {
+    const id = uuidv4();
     await db.insert(schema.notifications).values({
-      id: uuidv4(),
+      id,
       userId,
       kind: n.kind,
       title: n.title.slice(0, 200),
       body: n.body.slice(0, 500),
       refId: n.refId ?? null,
+      msg: n.msg ?? null,
       readAt: null,
       createdAt: new Date().toISOString(),
     });
     // The same message to the person's phones. Not awaited: a push is a courtesy, and the request
     // that caused it (a booking, a payment) should not wait on Expo's servers.
-    void sendPushToUser(userId, { title: n.title, body: n.body, data: { kind: n.kind, refId: n.refId ?? null } });
+    void sendPushToUser(userId, { title: n.title, body: n.body, data: { kind: n.kind, refId: n.refId ?? null, notificationId: id } });
   } catch (err) {
     log.error(`[inapp] could not record "${n.kind}" for user ${userId}: ${(err as Error)?.message || err}`);
   }
@@ -59,7 +61,7 @@ export async function resolveHostUserId(listingProviderId: string | null | undef
  */
 export async function addHostNotification(
   listingProviderId: string | null | undefined,
-  n: { kind: string; title: string; body: string; refId?: string | null }
+  n: { kind: string; title: string; body: string; refId?: string | null; msg?: { key: string; params?: Record<string, string | number> } }
 ): Promise<void> {
   if (!listingProviderId) return;
   let ids: string[] = [];

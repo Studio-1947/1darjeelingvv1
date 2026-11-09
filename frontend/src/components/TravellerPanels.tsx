@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Trans, useTranslation } from 'react-i18next';
 import {
   ArrowRight, Coffee, Copy, House, Medal, ShareNetwork, Sparkle, Star, Storefront, Ticket, Path, ChatCircleText, UserCircle,
 } from '@phosphor-icons/react';
@@ -26,19 +27,22 @@ type Dashboard = {
   profile: { complete: boolean; missing: string[] };
 };
 
+/** i18n keys (en.json ui.travellerPanels.awards) for each award's name and how to earn it. */
+const award = (id: string) => ({ title: `ui.travellerPanels.awards.${id}.title`, how: `ui.travellerPanels.awards.${id}.how` });
 export const AWARD_TEXT: Record<string, { title: string; how: string }> = {
-  first_trip: { title: 'First trip', how: 'Finish your first booking' },
-  homestay_explorer: { title: 'Homestay explorer', how: 'Stay at 3 homestays' },
-  cafe_hopper: { title: 'Cafe hopper', how: 'Visit 3 cafes' },
-  local_supporter: { title: 'Local supporter', how: 'Buy from 3 local shops' },
-  road_tripper: { title: 'Road tripper', how: 'Take 3 rides or guided trips' },
-  storyteller: { title: 'Storyteller', how: 'Write 3 reviews' },
-  connector: { title: 'Connector', how: 'Invite a friend who joins' },
-  pass_holder: { title: 'Pass holder', how: 'Take the aangan pass' },
-  profile_complete: { title: 'All set', how: 'Complete your profile' },
+  first_trip: award('first_trip'),
+  homestay_explorer: award('homestay_explorer'),
+  cafe_hopper: award('cafe_hopper'),
+  local_supporter: award('local_supporter'),
+  road_tripper: award('road_tripper'),
+  storyteller: award('storyteller'),
+  connector: award('connector'),
+  pass_holder: award('pass_holder'),
+  profile_complete: award('profile_complete'),
 };
 
 export default function TravellerPanels() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [data, setData] = useState<Dashboard | null>(null);
   const [code, setCode] = useState<string | null>(null);
@@ -57,23 +61,23 @@ export default function TravellerPanels() {
   const inviteLink = `${window.location.origin}/login?ref=${encodeURIComponent(code || '')}`;
   const share = async () => {
     if (!code) return;
-    const text = `Plan your Darjeeling trip on aangan. Use my code ${code} when you sign up: ${inviteLink}`;
+    const text = t('ui.travellerPanels.share_text', { code, link: inviteLink });
     try {
       if (navigator.share) await navigator.share({ title: 'aangan', text, url: inviteLink });
-      else { await navigator.clipboard.writeText(text); toast.success('Invite copied'); }
+      else { await navigator.clipboard.writeText(text); toast.success(t('ui.travellerPanels.invite_copied')); }
     } catch { /* closed */ }
   };
 
   const sendFeedback = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (fb.message.trim().length < 5) { toast.error('Write a few words first.'); return; }
+    if (fb.message.trim().length < 5) { toast.error(t('ui.travellerPanels.feedback_too_short')); return; }
     setSending(true);
     try {
       await api.post('/feedback/aangan', { message: fb.message.trim(), rating: fb.rating || null });
       setFb({ rating: 0, message: '' });
-      toast.success('Thank you! The aangan team reads every note.');
+      toast.success(t('ui.travellerPanels.feedback_thanks'));
     } catch (err: any) {
-      toast.error(err?.response?.data?.detail || 'Could not send. Try again.');
+      toast.error(err?.response?.data?.detail || t('ui.travellerPanels.feedback_failed'));
     } finally {
       setSending(false);
     }
@@ -83,10 +87,10 @@ export default function TravellerPanels() {
 
   const earned = data.awards.filter((a) => a.earned).length;
   const totals = [
-    { label: 'Trips taken', value: data.totals.trips, Icon: Path },
-    { label: 'Homestays stayed', value: data.totals.homestays, Icon: House },
-    { label: 'Cafes visited', value: data.totals.cafes, Icon: Coffee },
-    { label: 'Local shops', value: data.totals.shops, Icon: Storefront },
+    { label: t('ui.travellerPanels.totals.trips'), value: data.totals.trips, Icon: Path },
+    { label: t('ui.travellerPanels.totals.homestays'), value: data.totals.homestays, Icon: House },
+    { label: t('ui.travellerPanels.totals.cafes'), value: data.totals.cafes, Icon: Coffee },
+    { label: t('ui.travellerPanels.totals.shops'), value: data.totals.shops, Icon: Storefront },
   ];
 
   return (
@@ -95,7 +99,7 @@ export default function TravellerPanels() {
         <Link to="/profile/edit" data-testid="panel-finish-profile"
           className="flex items-center gap-3 p-4 rounded-2xl border border-[#1F6656]/30 bg-[rgba(31,102,86,0.06)] btn-hover">
           <UserCircle size={22} className="text-[#1F6656] flex-shrink-0" />
-          <span className="flex-1 text-sm text-ink"><b>Finish your profile</b> so hosts know what you like. {data.profile.missing.length} left.</span>
+          <span className="flex-1 text-sm text-ink"><Trans i18nKey="ui.travellerPanels.finish_profile" values={{ left: data.profile.missing.length }} components={{ b: <b /> }} /></span>
           <ArrowRight size={16} className="text-[#1F6656]" />
         </Link>
       )}
@@ -103,18 +107,20 @@ export default function TravellerPanels() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* aangan pass */}
         <div className="rounded-3xl p-5 bg-[#14201A] text-white" data-testid="panel-pass">
-          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-white/70"><Ticket size={14} /> aangan pass</div>
+          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-white/70"><Ticket size={14} /> {t('ui.travellerPanels.pass_title')}</div>
           {data.pass.active ? (
             <>
-              <div className="mt-2 font-display font-extrabold text-2xl">Active</div>
-              <div className="text-sm text-white/75">Every booking confirms free{data.pass.expires_at && !data.pass.expires_at.startsWith('9999') ? ` until ${new Date(data.pass.expires_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}.</div>
+              <div className="mt-2 font-display font-extrabold text-2xl">{t('ui.travellerPanels.pass_active')}</div>
+              <div className="text-sm text-white/75">{data.pass.expires_at && !data.pass.expires_at.startsWith('9999')
+                ? t('ui.travellerPanels.pass_free_until', { date: new Date(data.pass.expires_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) })
+                : t('ui.travellerPanels.pass_free')}</div>
             </>
           ) : (
             <>
-              <div className="mt-2 font-display font-extrabold text-2xl">Not active</div>
-              <div className="text-sm text-white/75">Book everything free for a year.</div>
+              <div className="mt-2 font-display font-extrabold text-2xl">{t('ui.travellerPanels.pass_inactive')}</div>
+              <div className="text-sm text-white/75">{t('ui.travellerPanels.pass_pitch')}</div>
               <Link to="/support" className="mt-3 inline-flex items-center gap-1.5 h-10 px-4 rounded-full bg-[#1F6656] text-white font-bold text-[13px] btn-hover" data-testid="panel-get-pass">
-                Get the pass · {rupees(pass.total)} <ArrowRight size={14} />
+                {t('ui.travellerPanels.get_pass', { price: rupees(pass.total) })} <ArrowRight size={14} />
               </Link>
             </>
           )}
@@ -122,21 +128,21 @@ export default function TravellerPanels() {
 
         {/* Aangan Points */}
         <div className="rounded-3xl p-5 bg-[#DDF0F1] text-[#0E4A4F]" data-testid="panel-points">
-          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest"><Sparkle size={14} /> Aangan Points</div>
+          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest"><Sparkle size={14} /> {t('ui.travellerPanels.points_title')}</div>
           <div className="mt-2 font-display font-extrabold text-4xl">{data.points.toLocaleString('en-IN')}</div>
           <PointsRules rows={travellerPointsRows(data.points_rules, data.points_breakdown)} testId="panel-points-rules" />
         </div>
 
         {/* Referrals */}
         <div className="rounded-3xl p-5 bg-white border border-[var(--line)]" data-testid="panel-referrals">
-          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-ink-soft"><ShareNetwork size={14} /> Refer friends</div>
-          <div className="mt-2 font-display font-extrabold text-2xl text-ink">{data.referrals.joined} joined</div>
+          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-ink-soft"><ShareNetwork size={14} /> {t('ui.travellerPanels.refer_title')}</div>
+          <div className="mt-2 font-display font-extrabold text-2xl text-ink">{t('ui.travellerPanels.joined', { n: data.referrals.joined })}</div>
           {code && (
             <div className="mt-2 flex items-center gap-2">
               <code className="px-2.5 py-1 rounded-lg bg-mist font-bold text-ink">{code}</code>
-              <button type="button" onClick={() => { navigator.clipboard?.writeText(code); toast.success('Code copied'); }} aria-label="Copy code" className="w-8 h-8 rounded-full grid place-items-center hover:bg-mist"><Copy size={15} /></button>
+              <button type="button" onClick={() => { navigator.clipboard?.writeText(code); toast.success(t('ui.travellerPanels.code_copied')); }} aria-label={t('ui.travellerPanels.copy_code')} className="w-8 h-8 rounded-full grid place-items-center hover:bg-mist"><Copy size={15} /></button>
               <button type="button" onClick={share} className="ml-auto inline-flex items-center gap-1 h-9 px-3.5 rounded-full bg-[#1F6656] text-white text-xs font-bold btn-hover" data-testid="panel-share-invite">
-                Invite <ArrowRight size={13} />
+                {t('ui.travellerPanels.invite')} <ArrowRight size={13} />
               </button>
             </div>
           )}
@@ -159,12 +165,13 @@ export default function TravellerPanels() {
       {/* Aangan Awards */}
       <section className="rounded-3xl p-5 bg-white border border-[var(--line)]" data-testid="panel-awards">
         <div className="flex items-center justify-between">
-          <h2 className="font-display font-extrabold text-lg text-ink flex items-center gap-2"><Medal size={18} className="text-[#C69108]" /> Aangan Awards</h2>
-          <span className="text-xs font-bold text-ink-soft">{earned} of {data.awards.length}</span>
+          <h2 className="font-display font-extrabold text-lg text-ink flex items-center gap-2"><Medal size={18} className="text-[#C69108]" /> {t('ui.travellerPanels.awards_title')}</h2>
+          <span className="text-xs font-bold text-ink-soft">{t('ui.travellerPanels.earned_of', { earned, total: data.awards.length })}</span>
         </div>
         <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-3">
           {data.awards.map((a) => {
-            const text = AWARD_TEXT[a.id] || { title: a.id, how: '' };
+            const keys = AWARD_TEXT[a.id];
+            const text = keys ? { title: t(keys.title), how: t(keys.how) } : { title: a.id, how: '' };
             return (
               <div key={a.id} data-testid={`award-${a.id}`}
                 className={`rounded-2xl p-3 border ${a.earned ? 'border-[#C69108]/40 bg-[#FFF8E6]' : 'border-[var(--line)] bg-mist/40'}`}>
@@ -188,22 +195,22 @@ export default function TravellerPanels() {
 
       {/* Feedback for aangan */}
       <form onSubmit={sendFeedback} className="rounded-3xl p-5 bg-white border border-[var(--line)]" data-testid="panel-feedback">
-        <h2 className="font-display font-extrabold text-lg text-ink flex items-center gap-2"><ChatCircleText size={18} className="text-[#007C85]" /> Feedback for aangan</h2>
-        <p className="text-sm text-ink-soft mt-0.5">What should we do better? The team reads every note.</p>
-        <div className="mt-3 flex items-center gap-1" role="radiogroup" aria-label="Rating">
+        <h2 className="font-display font-extrabold text-lg text-ink flex items-center gap-2"><ChatCircleText size={18} className="text-[#007C85]" /> {t('ui.travellerPanels.feedback_title')}</h2>
+        <p className="text-sm text-ink-soft mt-0.5">{t('ui.travellerPanels.feedback_lead')}</p>
+        <div className="mt-3 flex items-center gap-1" role="radiogroup" aria-label={t('ui.travellerPanels.rating')}>
           {[1, 2, 3, 4, 5].map((n) => (
-            <button key={n} type="button" role="radio" aria-checked={fb.rating === n} aria-label={`${n} star${n > 1 ? 's' : ''}`}
+            <button key={n} type="button" role="radio" aria-checked={fb.rating === n} aria-label={t('ui.travellerPanels.stars', { count: n })}
               onClick={() => setFb((f) => ({ ...f, rating: f.rating === n ? 0 : n }))} className="p-1">
               <Star size={24} weight={n <= fb.rating ? 'fill' : 'regular'} className={n <= fb.rating ? 'text-[#C69108]' : 'text-ink-soft'} />
             </button>
           ))}
         </div>
         <textarea value={fb.message} onChange={(e) => setFb((f) => ({ ...f, message: e.target.value }))} rows={3} maxLength={2000}
-          placeholder="Tell us what you liked or what got in the way…" data-testid="feedback-message"
+          placeholder={t('ui.travellerPanels.feedback_placeholder')} data-testid="feedback-message"
           className="mt-2 w-full px-3.5 py-2.5 rounded-xl border border-[var(--line)] outline-none text-sm text-ink focus:border-pine" />
         <button type="submit" disabled={sending} data-testid="feedback-send"
           className="mt-2 inline-flex items-center gap-1.5 h-10 px-5 rounded-full bg-[#1F6656] text-white font-bold text-[13px] btn-hover disabled:opacity-60">
-          {sending ? 'Sending…' : 'Send feedback'} <ArrowRight size={14} />
+          {sending ? t('ui.travellerPanels.sending') : t('ui.travellerPanels.send_feedback')} <ArrowRight size={14} />
         </button>
       </form>
     </div>

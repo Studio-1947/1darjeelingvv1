@@ -48,12 +48,14 @@ export async function expireStaleRequests(now: Date = new Date()): Promise<numbe
       kind: 'booking_expired',
       title: 'Your request was not answered',
       body: `The host of ${b.listingTitle} did not answer within ${REQUEST_EXPIRY_HOURS} hours, so your request was closed. Nothing was charged. You can ask another host.`,
+      msg: { key: 'request_expired_guest', params: { place: b.listingTitle, hours: REQUEST_EXPIRY_HOURS } },
       refId: b.id,
     });
     await addHostNotification(b.providerId, {
       kind: 'booking_expired',
       title: 'A booking request lapsed',
       body: `A request for ${b.listingTitle} closed because it was not answered within ${REQUEST_EXPIRY_HOURS} hours. Accept requests soon so guests can book you.`,
+      msg: { key: 'request_expired_host', params: { place: b.listingTitle, hours: REQUEST_EXPIRY_HOURS } },
       refId: b.id,
     });
   }

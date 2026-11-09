@@ -17,7 +17,7 @@ const MAX_REVIEW_PHOTOS = 6;
 function Stars({ value, size = 16 }: { value: number; size?: number }) {
   const { t } = useTranslation();
   return (
-    <span className="inline-flex items-center gap-0.5" aria-label={t('reviews.out_of_5', { value })}>
+    <span className="inline-flex items-center gap-0.5" role="img" aria-label={t('reviews.out_of_5', { value })}>
       {[1, 2, 3, 4, 5].map((s) => (
         <Star key={s} size={size} weight={s <= Math.round(value) ? 'fill' : 'regular'} className={s <= Math.round(value) ? 'text-gold' : 'text-ink-soft/40'} />
       ))}
@@ -155,7 +155,7 @@ export default function ReviewsSection({ item }: { item: any }) {
       toast.success(t('reviews.removed_toast', 'Your review has been removed.'));
       await load();
     } catch (e: any) {
-      toast.error(e?.response?.data?.detail || 'Failed to remove review');
+      toast.error(e?.response?.data?.detail || t('ui.reviewsSection.remove_failed'));
     } finally {
       setSubmitting(false);
     }

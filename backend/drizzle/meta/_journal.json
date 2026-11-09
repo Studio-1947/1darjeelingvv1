@@ -239,6 +239,34 @@
       "when": 1794076042729,
       "tag": "0033_host_grace",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1794223317622,
+      "tag": "0034_listing_cover_from_photos",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1794224531897,
+      "tag": "0035_retire_seeded_promotions",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1794227526933,
+      "tag": "0036_notification_msg",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1794230181051,
+      "tag": "0037_admin_broadcasts",
+      "breakpoints": true
     }
   ]
 }

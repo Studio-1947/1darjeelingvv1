@@ -186,7 +186,7 @@ export default function HostPlanCard({ provider, user, reviews, onRenewed }: {
           onClick={renew}
           disabled={busy}
           data-testid="host-plan-renew"
-          className={`inline-flex items-center justify-center rounded-full font-bold text-sm px-5 disabled:opacity-60 btn-hover ${notStarted ? 'border border-pine text-pine bg-white' : 'bg-pine text-white'}`}
+          className={`inline-flex items-center justify-center rounded-full font-bold text-sm px-5 disabled:opacity-60 btn-hover ${notStarted || (grace && !grace.paused) ? 'border border-pine text-pine bg-white' : 'bg-pine text-white'}`}
         >
           {busy ? t('pd.plan_renewing') : grace ? t('pd.grace.pay_cta', { total: rupees(firstYear.total) }) : registrationPending ? t('pd.plan_activate_cta', { total: rupees(firstYear.total) }) : t('pd.plan_renew_cta', { total: rupees(renewal.total) })}
         </button>

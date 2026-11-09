@@ -229,12 +229,11 @@ describe('GET /listings/:id/availability', () => {
 });
 
 describe('promotions', () => {
-  it('serves the seeded cards publicly, in order', async () => {
+  it('serves no made-up offers: the three example cards 0018 seeded are switched off (0035)', async () => {
     const res = await request(app).get('/api/promotions');
     expect(res.status).toBe(200);
-    expect(res.body.items.map((p: any) => p.title)).toEqual([
-      'Monsoon escapes', 'Sunrise at Tiger Hill', 'Tea garden tours',
-    ]);
+    expect(res.body.items.map((p: any) => p.title)).not.toContain('Monsoon escapes');
+    expect(res.body.items.map((p: any) => p.tag)).not.toContain('25% OFF');
   });
 
   it('is admin-only to change, validates, and hides inactive cards', async () => {

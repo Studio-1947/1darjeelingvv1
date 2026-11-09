@@ -397,8 +397,14 @@ export function listingImage(item: any, w = 1200, h = 900): string {
   // an admin uploads in the console (which the curated hero used to override and hide) without
   // disturbing the editorial hero on listings nobody has touched.
   if (item?.image && !SEED_IMAGE_SET.has(item.image)) return sizedImage(item.image, w);
+  // No chosen cover: the host's own first photo (the server now stores it as the cover too).
+  const own = Array.isArray(item?.extras?.images) ? item.extras.images.find((u: unknown) => typeof u === 'string' && u) : '';
+  if (own) return sizedImage(own, w);
   const curatedHero = CONTENT[item?.title]?.hero;
   if (curatedHero) return sizedImage(curatedHero, w);
+  // A real host's listing never gets a random stock photo of somewhere else: the card shows the
+  // plain "no photo" placeholder instead. Stock photos stay for the curated spots and events.
+  if (item?.provider_id && item.provider_id !== 'admin-seed-provider') return '';
   return stockPhoto(primaryKeyword(item), w, h, seedFor(item?.title));
 }
 
@@ -497,7 +503,8 @@ export function spotInfoFor(item: any): {
   const info = {
     highlights: Array.isArray(extras.highlights) ? extras.highlights.filter(Boolean) : [],
     timings: extras.timings || undefined,
-    entryFee: extras.entry_fee || undefined,
+    // The admin's own wording first; otherwise the price the spot is listed at (e.g. ₹200).
+    entryFee: extras.entry_fee || (Number(item?.price) > 0 ? `₹${Number(item.price).toLocaleString('en-IN')}` : undefined),
     bestTime: extras.best_time || undefined,
     altitude: extras.altitude || undefined,
     howToReach: extras.how_to_reach || undefined,

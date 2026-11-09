@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
+import i18n, { isLangCode, setLanguage } from '@/i18n';
 import api, { setRequestSide } from '@/lib/api';
 import { asHostType, type Audience, type HostType } from '@/lib/audience';
 
@@ -56,6 +57,19 @@ export function AuthProvider({ children }) {
   }, []);
 
   useEffect(() => { refresh(); }, [refresh]);
+
+  // Language follows the person: their saved choice applies when they sign in on another device,
+  // and a change made here is saved to the account (best effort; the device keeps it anyway).
+  useEffect(() => {
+    if (user?.language && isLangCode(user.language) && user.language !== i18n.language) setLanguage(user.language);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+  useEffect(() => {
+    if (!user?.id) return undefined;
+    const save = (lng: string) => { if (isLangCode(lng) && lng !== user.language) api.patch('/users/me', { language: lng }).catch(() => {}); };
+    i18n.on('languageChanged', save);
+    return () => { i18n.off('languageChanged', save); };
+  }, [user?.id, user?.language]);
 
   const refreshProvider = useCallback(async () => {
     try {

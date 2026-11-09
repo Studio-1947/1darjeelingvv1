@@ -16,6 +16,7 @@ import paymentsRouter from './routes/payments';
 import adminRouter from './routes/admin';
 import adminSpotsRouter from './routes/adminSpots';
 import adminMaintenanceRouter from './routes/adminMaintenance';
+import adminBroadcastsRouter from './routes/adminBroadcasts';
 import geocodeRouter from './routes/geocode';
 import mapTilesRouter from './routes/mapTiles';
 import kycRouter from './routes/kyc';
@@ -265,6 +266,7 @@ app.use('/api', reportsRouter); // /api/reports, /api/users/me/blocks, /api/admi
 app.use('/api', adminRouter); // Mount admin routes directly under /api (e.g. /api/admin/seed, /api/admin/stats)
 app.use('/api', adminSpotsRouter); // Admin-only tourist-spot CRUD (e.g. /api/admin/spots)
 app.use('/api', adminMaintenanceRouter); // Admin Clean-up tab (e.g. /api/admin/maintenance/demo)
+app.use('/api', adminBroadcastsRouter); // Admin Notifications page (e.g. /api/admin/broadcasts)
 
 // ============ 404 + ERROR HANDLING ============
 // Must stay last: Express matches in order, so anything reaching here matched no route.

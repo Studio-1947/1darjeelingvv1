@@ -109,7 +109,7 @@ export default function DetailHero({ item, unit, onShare }: {
       {/* Left-aligned hero content. It spans the whole hero, so it has to stay
           click-through or it swallows the back/like/share buttons underneath. */}
       <div ref={heroContentRef} style={{ opacity: 0 }} className="absolute inset-0 pointer-events-none flex flex-col items-start justify-center text-left px-4 md:px-8 lg:px-16">
-        <span className="chip bg-white/90 capitalize">{t(`categories.${item.type}`)}</span>
+        <span className="chip bg-white/90 text-ink capitalize">{t(`categories.${item.type}`)}</span>
         <h1 className="mt-5 font-display font-extrabold text-5xl sm:text-6xl md:text-8xl text-white leading-[0.95] max-w-4xl"
           data-testid="listing-title">{item.title}</h1>
         {item.provider_verified && (
@@ -121,7 +121,8 @@ export default function DetailHero({ item, unit, onShare }: {
           <span className="flex items-center gap-1.5"><MapPin size={18} /> {item.location}</span>
           {item.price > 0 && (
             <span className="flex items-center gap-1.5">
-              ₹{item.price}<span className="font-normal text-white/75">{unit || ` ${t('detail.onwards')}`}</span>
+              {unit ? <>₹{item.price}<span className="font-normal text-white/75">{unit}</span></>
+                : <><span className="font-normal text-white/75">{t('common.starting_from')}</span> ₹{item.price}</>}
             </span>
           )}
         </div>
