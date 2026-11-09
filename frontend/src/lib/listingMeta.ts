@@ -1,6 +1,11 @@
+import i18n from '@/i18n';
 import { WifiHigh as Wifi, ForkKnife as Utensils, Fire as Flame, Mountains as Mountain, Tree as TreePine, House as Home, Park as ParkingCircle, Coffee, Bread as Croissant, Car, Translate as Languages, Clock, ShieldCheck, Suitcase as Luggage, GasPump as Fuel, Storefront as Store, Gift, CreditCard, Package, Leaf, Bank as Landmark, Users, PawPrint, Camera, Sun as Sunrise, MusicNote as Music, Ticket, Tag, Check, Binoculars, Path as Route } from '@phosphor-icons/react';
 
-export type Amenity = { Icon: any; label: string };
+/**
+ * `label` is the canonical English value (also the de-duplication key); OffersSection shows it
+ * through `options.*`. Built-in labels with no `options.*` entry carry `labelKey` instead.
+ */
+export type Amenity = { Icon: any; label: string; labelKey?: string };
 
 /**
  * Listings only carry `tags` - there is no amenities column. We map known tags to
@@ -46,10 +51,10 @@ const TYPE_AMENITIES: Record<string, Amenity[]> = {
     { Icon: Luggage, label: 'Luggage space' },
   ],
   guide: [
-    { Icon: ShieldCheck, label: 'Local guide' },
-    { Icon: Route, label: 'Routes planned for you' },
-    { Icon: Languages, label: 'Speaks the local languages' },
-    { Icon: Camera, label: 'Knows the photo spots' },
+    { Icon: ShieldCheck, label: 'Local guide', labelKey: 'ui.listingMeta.local_guide' },
+    { Icon: Route, label: 'Routes planned for you', labelKey: 'ui.listingMeta.routes_planned_for_you' },
+    { Icon: Languages, label: 'Speaks the local languages', labelKey: 'ui.listingMeta.speaks_the_local_languages' },
+    { Icon: Camera, label: 'Knows the photo spots', labelKey: 'ui.listingMeta.knows_the_photo_spots' },
   ],
   shop: [
     { Icon: Store, label: 'Locally owned' },
@@ -102,7 +107,7 @@ export function amenitiesFor(item: any, max = 8): Amenity[] {
     push(rule ? { Icon: rule.Icon, label: rule.label } : { Icon: Tag, label: prettify(tag) });
   });
 
-  if (item?.extras?.home_delivery === true) push({ Icon: Package, label: 'Home delivery' });
+  if (item?.extras?.home_delivery === true) push({ Icon: Package, label: 'Home delivery', labelKey: 'ui.listingMeta.home_delivery' });
   (TYPE_AMENITIES[item?.type] || []).forEach(push);
 
   return out.slice(0, max);
@@ -127,7 +132,7 @@ export function hostFor(item: any) {
     // isRealProvider stays in use above for the name fallback, which is a separate concern.
     verified: !!item?.provider_verified,
     phone: e.host_phone || e.contact_phone || '',
-    bio: e.host_bio || 'This home is run by a Darjeeling family who live on site and look after guests themselves.',
+    bio: e.host_bio || i18n.t('ui.listingMeta.default_host_bio'),
     languages: e.languages || ['Nepali', 'Hindi', 'English'],
     avatar: e.host_avatar || '',
   };
@@ -137,14 +142,14 @@ export function hostFor(item: any) {
 export function areaNoteFor(type: string): string {
   switch (type) {
     case 'homestay':
-      return 'The exact address is shared with you once your booking is confirmed.';
+      return i18n.t('ui.listingMeta.area_note.homestay');
     case 'driver':
-      return 'Your driver picks you up anywhere in and around this area.';
+      return i18n.t('ui.listingMeta.area_note.driver');
     case 'event':
-      return 'Timings vary by year - confirm locally before you travel.';
+      return i18n.t('ui.listingMeta.area_note.event');
     case 'biodiversity':
-      return 'A protected habitat. Visit with a registered guide and keep your distance.';
+      return i18n.t('ui.listingMeta.area_note.biodiversity');
     default:
-      return 'Tap below for turn-by-turn directions in Google Maps.';
+      return i18n.t('ui.listingMeta.area_note.default');
   }
 }

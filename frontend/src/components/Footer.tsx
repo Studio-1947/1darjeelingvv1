@@ -27,7 +27,7 @@ export default function Footer() {
       <div className="mx-auto max-w-6xl px-4 md:px-8 py-8 flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
         <div className="flex items-center gap-3">
           <Wordmark className="h-6 w-auto text-ink" />
-          <span className="text-[11px] font-semibold text-ink-soft">By studio 1947</span>
+          <span className="text-[11px] font-semibold text-ink-soft">{t('ui.footer.by_studio', { name: 'studio 1947' })}</span>
         </div>
         <nav aria-label={t('footer.links')}>
           <ul className="flex flex-wrap gap-x-5 lg:gap-y-2 text-sm text-ink-soft">
@@ -38,11 +38,11 @@ export default function Footer() {
         </nav>
         <div className="flex items-center gap-1 -mx-3">
           <a href="https://www.instagram.com/aanganerp?dlrf=MWRnZ2tneHBqM2JiaQ%3D%3D" target="_blank" rel="noreferrer"
-            aria-label="Follow Aangan on Instagram" className={icon}><InstagramLogo size={20} aria-hidden="true" /></a>
+            aria-label={t('ui.footer.follow_instagram')} className={icon}><InstagramLogo size={20} aria-hidden="true" /></a>
           <a href="https://www.facebook.com/profile.php?id=61594349938326" target="_blank" rel="noreferrer"
-            aria-label="Follow Aangan on Facebook" className={icon}><FacebookLogo size={20} aria-hidden="true" /></a>
-          <a href="mailto:aanganerp@gmail.com" aria-label="Email aanganerp@gmail.com" className={icon}><Mail size={20} aria-hidden="true" /></a>
-          <a href="tel:+919093277919" aria-label="Call aangan on +91 90932 77919" data-testid="footer-phone" className={icon}><Phone size={20} aria-hidden="true" /></a>
+            aria-label={t('ui.footer.follow_facebook')} className={icon}><FacebookLogo size={20} aria-hidden="true" /></a>
+          <a href="mailto:aanganerp@gmail.com" aria-label={t('ui.footer.email_us', { email: 'aanganerp@gmail.com' })} className={icon}><Mail size={20} aria-hidden="true" /></a>
+          <a href="tel:+919093277919" aria-label={t('ui.footer.call_us', { phone: '+91 90932 77919' })} data-testid="footer-phone" className={icon}><Phone size={20} aria-hidden="true" /></a>
         </div>
       </div>
       <div className="border-t border-[var(--line)] py-4 text-center text-xs text-ink-soft">© 2026 {t('brand')}. {t('footer.rights')}.</div>

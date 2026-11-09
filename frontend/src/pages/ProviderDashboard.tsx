@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
+import { missingLabel } from '@/lib/serverText';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
@@ -65,8 +66,10 @@ export default function ProviderDashboard() {
 
   const loadDashboard = React.useCallback(async () => {
     try {
-      const [p, b, kyc, summary, feedbackResult] = await Promise.all([
-        api.get('/providers/me'),
+      // No business yet: the rest would only answer "not found" (and fill the console with 404s).
+      const p = await api.get('/providers/me');
+      if (!p.data?.provider) { setProvider(null); return; }
+      const [b, kyc, summary, feedbackResult] = await Promise.all([
         api.get('/bookings/provider'),
         // The provider may not have an active profile yet (or the request may simply fail) -
         // that must never take down the rest of the dashboard, so it's caught independently
@@ -245,7 +248,7 @@ export default function ProviderDashboard() {
           Plan paid, documents sent, team reviewing, live. Same as the app. */}
       {provider.approval_pending && kycProfile && (
         <div className="mb-6 [&>div]:mt-0">
-          <VerificationTracker verification={kycProfile.verification} paid={active} phone={user?.phone}
+          <VerificationTracker verification={kycProfile.verification} paid={active} freeStart={active && !!provider.grace} profileMissing={provider.profile_missing || []} businessType={provider.business_type} onOpenProfile={() => nav('/provider/profile')} phone={user?.phone}
             onOpen={() => setTab('profile')} />
         </div>
       )}
@@ -253,46 +256,46 @@ export default function ProviderDashboard() {
       <section className={`mb-6 rounded-3xl border p-5 md:p-7 ${accentClasses.split(' ').slice(3).join(' ')}`} data-testid={`dashboard-${accent}`}>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className={`text-xs font-extrabold uppercase tracking-[0.16em] ${accentClasses.split(' ')[2]}`}>{isDriver ? 'Driver operations' : isGuide ? 'Guide activity' : 'Business overview'}</p>
-            <h2 className="mt-1 font-display text-2xl font-extrabold text-ink">{activeListing ? activeListing.title : isDriver ? 'Every ride, in one place.' : isGuide ? 'Your next guest experience.' : 'Your business, at a glance.'}</h2>
+            <p className={`text-xs font-extrabold uppercase tracking-[0.16em] ${accentClasses.split(' ')[2]}`}>{isDriver ? t('ui.providerDashboard.driver_operations') : isGuide ? t('ui.providerDashboard.guide_activity') : t('ui.providerDashboard.business_overview')}</p>
+            <h2 className="mt-1 font-display text-2xl font-extrabold text-ink">{activeListing ? activeListing.title : isDriver ? t('ui.providerDashboard.driver_heading') : isGuide ? t('ui.providerDashboard.guide_heading') : t('ui.providerDashboard.business_heading')}</h2>
           </div>
           {/* Full width on phones so the card fills the row instead of leaving blank space beside it. */}
           <div className={`w-full sm:w-auto sm:min-w-[18rem] rounded-2xl ${accentClasses.split(' ')[0]} px-4 py-3 text-white shadow-sm`}>
-            <div className="text-[10px] font-bold uppercase tracking-widest text-white/75">Aangan points</div>
+            <div className="text-[10px] font-bold uppercase tracking-widest text-white/75">{t('ui.providerDashboard.aangan_points')}</div>
             <div className="mt-1 flex items-center gap-1 text-2xl font-extrabold"><Star weight="fill" size={20} /> {points}</div>
             <PointsRules tone="dark" rows={hostPointsRows(hostStats?.points_rules, hostStats?.points_breakdown)} testId="host-points-rules" />
           </div>
         </div>
         {/* The board's dashboard sticky for each host type. */}
         <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-3" data-testid="host-figures">
-          <Insight icon={isDriver ? Car : CalendarCheck} label={isDriver ? 'Completed rides' : isGuide ? 'Covered trips' : 'Bookings'} value={completed} accent={accent} />
+          <Insight icon={isDriver ? Car : CalendarCheck} label={isDriver ? t('ui.providerDashboard.completed_rides') : isGuide ? t('ui.providerDashboard.covered_trips') : t('ui.providerDashboard.completed_stays')} value={completed} accent={accent} />
           {isGuide ? (
             <>
-              <Insight icon={Users} label="Covered guests" value={sumGuests(finishedList)} accent={accent} />
-              <Insight icon={Clock} label="Upcoming guests" value={sumGuests(upcomingList)} accent={accent} />
-              <Insight icon={Clock} label="Ongoing guests" value={sumGuests(ongoingList)} accent={accent} />
+              <Insight icon={Users} label={t('ui.providerDashboard.covered_guests')} value={sumGuests(finishedList)} accent={accent} />
+              <Insight icon={Clock} label={t('ui.providerDashboard.upcoming_guests')} value={sumGuests(upcomingList)} accent={accent} />
+              <Insight icon={Clock} label={t('ui.providerDashboard.ongoing_guests')} value={sumGuests(ongoingList)} accent={accent} />
             </>
           ) : (
             <>
-              <Insight icon={Clock} label="Ongoing" value={ongoingList.length} accent={accent} />
-              <Insight icon={Users} label={isDriver ? 'Passengers covered' : 'Guests served'} value={sumGuests(finishedList)} accent={accent} />
+              <Insight icon={Clock} label={t('ui.providerDashboard.ongoing')} value={ongoingList.length} accent={accent} />
+              <Insight icon={Users} label={isDriver ? t('ui.providerDashboard.passengers_covered') : t('ui.providerDashboard.guests_served')} value={sumGuests(finishedList)} accent={accent} />
             </>
           )}
           {isDriver && (
             <>
-              <Insight icon={MapPin} label="Km covered" value={activeListing ? '–' : (hostStats?.km_covered ?? 0).toLocaleString('en-IN')} accent={accent} />
-              <Insight icon={MapPin} label="Locations covered" value={activeListing ? '–' : (hostStats?.locations_covered?.length ?? 0)} accent={accent} />
+              <Insight icon={MapPin} label={t('ui.providerDashboard.km_covered')} value={activeListing ? '–' : (hostStats?.km_covered ?? 0).toLocaleString('en-IN')} accent={accent} />
+              <Insight icon={MapPin} label={t('ui.providerDashboard.locations_covered')} value={activeListing ? '–' : (hostStats?.locations_covered?.length ?? 0)} accent={accent} />
             </>
           )}
-          <Insight icon={Wallet} label={isGuide ? 'Amount earned' : 'Booking value'} value={`₹${(activeListing ? scopedRevenue : stats.revenue || 0).toLocaleString('en-IN')}`} accent={accent} />
+          <Insight icon={Wallet} label={isGuide ? t('ui.providerDashboard.confirmed_value') : t('ui.providerDashboard.confirmed_booking_value')} value={`₹${(activeListing ? scopedRevenue : stats.revenue || 0).toLocaleString('en-IN')}`} accent={accent} />
         </div>
         {isDriver && !activeListing && hostStats?.locations_covered?.length > 0 && (
-          <p className="mt-3 text-xs text-ink-soft" data-testid="host-locations">Places covered: {hostStats.locations_covered.join(', ')}</p>
+          <p className="mt-3 text-xs text-ink-soft" data-testid="host-locations">{t('ui.providerDashboard.places_covered', { places: hostStats.locations_covered.join(', ') })}</p>
         )}
         {isDriver && !activeListing && hostStats?.unknown_route_trips > 0 && (
-          <p className="mt-1 text-[11px] text-ink-soft">{hostStats.unknown_route_trips} finished {hostStats.unknown_route_trips === 1 ? 'trip did' : 'trips did'} not say the route, so {hostStats.unknown_route_trips === 1 ? 'it is' : 'they are'} not in the km.</p>
+          <p className="mt-1 text-[11px] text-ink-soft">{t('ui.providerDashboard.unknown_route_trips', { count: hostStats.unknown_route_trips })}</p>
         )}
-        {listings.length > 1 && <div className="mt-5 flex gap-2 overflow-x-auto pb-1" aria-label="Choose a listing to manage"><button onClick={() => setActiveListingId(null)} className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-bold ${!activeListingId ? 'bg-ink text-white' : 'bg-white text-ink border border-[var(--line)]'}`}>All listings</button>{listings.map((listing: any) => <button key={listing.id} onClick={() => setActiveListingId(listing.id)} className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-bold ${activeListingId === listing.id ? 'bg-ink text-white' : 'bg-white text-ink border border-[var(--line)]'}`}>{listing.title} · {listing.type}</button>)}</div>}
+        {listings.length > 1 && <div className="mt-5 flex gap-2 overflow-x-auto pb-1" aria-label={t('ui.providerDashboard.choose_listing')}><button onClick={() => setActiveListingId(null)} className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-bold ${!activeListingId ? 'bg-ink text-white' : 'bg-white text-ink border border-[var(--line)]'}`}>{t('ui.providerDashboard.all_listings')}</button>{listings.map((listing: any) => <button key={listing.id} onClick={() => setActiveListingId(listing.id)} className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-bold ${activeListingId === listing.id ? 'bg-ink text-white' : 'bg-white text-ink border border-[var(--line)]'}`}>{listing.title} · {listing.type}</button>)}</div>}
       </section>
 
       {/* The membership card: the yearly host plan, with reviews. One card, not two. */}
@@ -317,7 +320,7 @@ export default function ProviderDashboard() {
             </p>
             {provider?.profile_missing?.length ? (
               <ul className="mt-1 text-sm text-ink space-y-0.5">
-                {provider.profile_missing.map((m: { key: string; label: string }) => <li key={m.key}>• {m.label}</li>)}
+                {provider.profile_missing.map((m: { key: string; label: string; min?: number; have?: number }) => <li key={m.key}>• {missingLabel(t, m, provider.business_type)}</li>)}
               </ul>
             ) : (
               <p className="mt-1 text-sm text-ink-soft">{t('hostProfile.subtitle')}</p>

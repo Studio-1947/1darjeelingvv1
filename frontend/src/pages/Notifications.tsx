@@ -1,13 +1,14 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { noteText } from '@/lib/serverText';
 import { Bell, CircleNotch as Loader2 } from '@phosphor-icons/react';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { useSeo } from '@/components/Seo';
 import { timeAgo } from '@/lib/timeAgo';
 
-type Note = { id: string; kind: string; title: string; body: string; ref_id: string | null; unread: boolean; created_at: string };
+type Note = { id: string; kind: string; title: string; body: string; ref_id: string | null; unread: boolean; created_at: string; msg?: { key: string; params?: Record<string, string | number> } | null };
 
 /**
  * What happened while you were away: requests, acceptances, cancellations, confirmations.
@@ -66,8 +67,8 @@ export default function Notifications() {
                 className={`w-full text-left flex gap-3 rounded-2xl border bg-white p-4 btn-hover ${n.unread ? 'border-pine/40 border-l-4 border-l-pine' : 'border-[var(--line)]'}`}>
                 <span className="w-9 h-9 flex-shrink-0 rounded-full bg-mist text-pine grid place-items-center"><Bell size={17} /></span>
                 <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-bold text-ink">{n.title}</span>
-                  <span className="block text-[13px] text-ink-soft mt-0.5">{n.body}</span>
+                  <span className="block text-sm font-bold text-ink">{noteText(t, n).title}</span>
+                  <span className="block text-[13px] text-ink-soft mt-0.5">{noteText(t, n).body}</span>
                   <span className="block text-[11px] text-ink-soft mt-1">{timeAgo(n.created_at, i18n.language, t)}</span>
                 </span>
                 {n.unread && <span className="mt-1.5 w-2 h-2 flex-shrink-0 rounded-full bg-pine" aria-label={t('notes.unread')} />}

@@ -140,7 +140,7 @@ export default function TouristDashboard() {
         return (
           <div className="mt-10">
             <h2 className="font-display font-extrabold text-xl md:text-2xl text-ink mb-4 flex items-center gap-2">
-              <Ticket size={18} className="text-flag" /> Activity
+              <Ticket size={18} className="text-flag" /> {t('ui.touristDashboard.activity')}
             </h2>
             <div className="space-y-3">
               {needsAction.map((b) => (
@@ -151,15 +151,15 @@ export default function TouristDashboard() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="font-bold text-sm text-ink line-clamp-1">
-                      Booking awaiting confirmation
+                      {t('ui.touristDashboard.awaiting_confirmation')}
                     </div>
                     <div className="text-xs text-ink-soft mt-0.5 line-clamp-1">
-                      {b.listing?.title || b.listing_title} — waiting for host
+                      {t('ui.touristDashboard.waiting_for_host', { title: b.listing?.title || b.listing_title || '' })}
                     </div>
                   </div>
                   <Link to="/my-trips"
                     className="text-xs font-bold text-pine hover:underline flex-shrink-0 flex items-center gap-1">
-                    View <ArrowRight size={11} />
+                    {t('common.view')} <ArrowRight size={11} />
                   </Link>
                 </div>
               ))}
@@ -171,16 +171,16 @@ export default function TouristDashboard() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="font-bold text-sm text-ink line-clamp-1">
-                      Booking confirmed ✓
+                      {t('ui.touristDashboard.booking_confirmed')}
                     </div>
                     <div className="text-xs text-ink-soft mt-0.5 line-clamp-1">
                       {b.listing?.title || b.listing_title}
-                      {b.check_in ? ` · Check-in ${b.check_in}` : ''}
+                      {b.check_in ? t('ui.touristDashboard.check_in', { date: b.check_in }) : ''}
                     </div>
                   </div>
                   <Link to="/my-trips"
                     className="text-xs font-bold text-pine hover:underline flex-shrink-0 flex items-center gap-1">
-                    View <ArrowRight size={11} />
+                    {t('common.view')} <ArrowRight size={11} />
                   </Link>
                 </div>
               ))}

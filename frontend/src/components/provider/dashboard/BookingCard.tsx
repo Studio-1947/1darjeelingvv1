@@ -65,8 +65,8 @@ export default function BookingCard({ b, onCancel, onAccept, host }: {
           {b.check_in && <div>{t('booking.checkin')}: <b className="text-ink">{formatTripDates(b.check_in, b.check_out, i18n.language)}</b></div>}
           <div>{t('booking.guests')}: <b className="text-ink">{b.guests}</b> · {t('pd.placed')}: {new Date(b.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
           {b.notes && <div className="italic">“{b.notes}”</div>}
-          {b.services?.length > 0 && <div data-testid={`booking-asked-${b.id}`}>Asked for: <b className="text-ink">{b.services.join(', ')}</b></div>}
-          {b.route_name && <div>Route: <b className="text-ink">{b.route_name}</b></div>}
+          {b.services?.length > 0 && <div data-testid={`booking-asked-${b.id}`}>{t('ui.bookingCard.asked_for')}: <b className="text-ink">{b.services.join(', ')}</b></div>}
+          {b.route_name && <div>{t('ui.bookingCard.route')}: <b className="text-ink">{b.route_name}</b></div>}
         </div>
         {b.awaiting_host && <p className="mt-2 text-xs font-semibold text-[#7a5d00]" data-testid={`booking-request-note-${b.id}`}>{t('approval.host_request_note')}</p>}
         {b.status === 'accepted' && <p className="mt-2 text-xs font-semibold text-pine">{t('approval.host_accepted_note')}</p>}
@@ -111,7 +111,7 @@ export default function BookingCard({ b, onCancel, onAccept, host }: {
               data-testid={`booking-guide-details-${b.id}`}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[#25D366] text-[#128C4A] font-bold text-xs btn-hover"
             >
-              <MessageCircle size={12} /> Send trip details
+              <MessageCircle size={12} /> {t('ui.bookingCard.send_trip_details')}
             </a>
           )}
           {onCancel && b.status !== 'cancelled' && (

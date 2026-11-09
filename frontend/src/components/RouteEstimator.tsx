@@ -67,6 +67,48 @@ const ROUTE_DATA: Record<string, Omit<RouteDetail, 'driverCount'>> = {
   'Kurseong Motor Stand->Mirik Lake & Simana Border': { distanceKm: 34, durationHours: 1.3, minFare: 1800, maxFare: 3300, hatchbackFare: 1800, suvFare: 3000, routeNote: 'Pine forests & Tea estates scenic road', terrainDifficulty: 'Moderate Hill' },
 };
 
+// Route notes and terrain names are shown to the traveller, so each English text maps to a
+// translation key. The server's /routes/estimate answer carries the same English notes.
+const NOTE_KEYS: Record<string, string> = {
+  'Scenic climb via Rohini Road & Ghum Hill Pass': 'ui.routeEstimator.notes.bagdogra_darjeeling',
+  'Direct climb to highest railway elevation (2,258m)': 'ui.routeEstimator.notes.bagdogra_ghum',
+  'River Teesta highway via Sevoke Coronation Bridge': 'ui.routeEstimator.notes.bagdogra_kalimpong',
+  'Direct climb via Pankhabari / Rohini Road': 'ui.routeEstimator.notes.bagdogra_kurseong',
+  'Smooth Tea Garden highway via Dudhia & Mirik Lake': 'ui.routeEstimator.notes.bagdogra_mirik',
+  'Bypass Highway via Fulbari / Mahananda': 'ui.routeEstimator.notes.bagdogra_njp',
+  'City Corridor via Matigara & Hill Cart Road': 'ui.routeEstimator.notes.bagdogra_siliguri',
+  'Parallels historic DHR Toy Train tracks via Sonada': 'ui.routeEstimator.notes.njp_darjeeling',
+  'Hill Cart Road climb via Kurseong & Sonada': 'ui.routeEstimator.notes.njp_ghum',
+  'Teesta Valley highway via Sevoke Forest Sanctuary': 'ui.routeEstimator.notes.njp_kalimpong',
+  'Giddapahar Pine forest bypass': 'ui.routeEstimator.notes.njp_kurseong',
+  'Tea estate route via Simana Viewpoint': 'ui.routeEstimator.notes.njp_mirik',
+  'City arterial route along Hill Cart Road': 'ui.routeEstimator.notes.njp_siliguri',
+  'Hill Cart Road via Sukna Forest & Tindharia': 'ui.routeEstimator.notes.siliguri_darjeeling',
+  'Hill Cart Road climb to Ghum Monastery (2,258m)': 'ui.routeEstimator.notes.siliguri_ghum',
+  'Coronation Bridge & NH10 Teesta Corridor': 'ui.routeEstimator.notes.siliguri_kalimpong',
+  'Direct Hill Cart Road climb': 'ui.routeEstimator.notes.siliguri_kurseong',
+  'Dudhia River bridge & Mechi Valley route': 'ui.routeEstimator.notes.siliguri_mirik',
+  'Local ridge road via Batasia Loop': 'ui.routeEstimator.notes.darjeeling_ghum',
+  'Peshok Tea Garden viewpoint & Teesta Confluence': 'ui.routeEstimator.notes.darjeeling_kalimpong',
+  'Hill Cart Road via Batasia Loop & Ghum': 'ui.routeEstimator.notes.darjeeling_kurseong',
+  'Indo-Nepal border road via Pashupati Market': 'ui.routeEstimator.notes.darjeeling_mirik',
+  'Peshok Road via 6th Mile & Teesta Bridge': 'ui.routeEstimator.notes.ghum_kalimpong',
+  'Highland ridge road via Sonada & Hope Town': 'ui.routeEstimator.notes.ghum_kurseong',
+  'Scenic pine forest highway via Jorepokhri & Simana': 'ui.routeEstimator.notes.ghum_mirik',
+  'Teesta Valley & Ghum Junction bypass': 'ui.routeEstimator.notes.kalimpong_kurseong',
+  'Long scenic ridge highway via Peshok': 'ui.routeEstimator.notes.kalimpong_mirik',
+  'Pine forests & Tea estates scenic road': 'ui.routeEstimator.notes.kurseong_mirik',
+  'Same pickup and drop location selected': 'ui.routeEstimator.notes.same_location',
+  'Scenic mountain highway route': 'ui.routeEstimator.notes.default',
+};
+
+const TERRAIN_KEYS: Record<string, string> = {
+  'Easy Plain': 'ui.routeEstimator.terrain.easy_plain',
+  'Moderate Hill': 'ui.routeEstimator.terrain.moderate_hill',
+  'Winding Mountain': 'ui.routeEstimator.terrain.winding_mountain',
+  'Steep Ascent': 'ui.routeEstimator.terrain.steep_ascent',
+};
+
 function normalizeHub(s: string): string {
   const lower = s.toLowerCase();
   if (lower.includes('bagdogra')) return 'bagdogra';
@@ -192,7 +234,7 @@ export default function RouteEstimator() {
         {/* Driver availability badge */}
         <div className="inline-flex self-stretch sm:self-auto justify-center items-center gap-1.5 px-3 py-2 rounded-full bg-gold/20 border border-gold/40 text-gold text-xs font-extrabold">
           <Zap size={14} className="animate-pulse" />
-          <span>{info.driverCount ? `${info.driverCount} Local Drivers Available` : 'Local Drivers Available'}</span>
+          <span>{info.driverCount ? t('ui.routeEstimator.drivers_available_n', { n: info.driverCount }) : t('ui.routeEstimator.drivers_available')}</span>
         </div>
       </div>
 
@@ -242,24 +284,24 @@ export default function RouteEstimator() {
       {/* Result Metrics */}
       <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="bg-white/5 border border-white/10 rounded-2xl p-3">
-          <div className="text-[10px] font-bold text-white/60 uppercase">Distance</div>
+          <div className="text-[10px] font-bold text-white/60 uppercase">{t('ui.routeEstimator.distance')}</div>
           <div className="font-display font-extrabold text-xl mt-1 text-white">
-            {info.distanceKm} <span className="text-xs font-normal text-white/60">km</span>
+            {info.distanceKm} <span className="text-xs font-normal text-white/60">{t('ui.routeEstimator.unit_km')}</span>
           </div>
         </div>
 
         <div className="bg-white/5 border border-white/10 rounded-2xl p-3">
-          <div className="text-[10px] font-bold text-white/60 uppercase">Est. Travel Time</div>
+          <div className="text-[10px] font-bold text-white/60 uppercase">{t('ui.routeEstimator.travel_time')}</div>
           <div className="font-display font-extrabold text-xl mt-1 text-white flex items-center gap-1">
-            <Clock size={16} className="text-gold" /> {info.durationHours} <span className="text-xs font-normal text-white/60">hrs</span>
+            <Clock size={16} className="text-gold" /> {info.durationHours} <span className="text-xs font-normal text-white/60">{t('ui.routeEstimator.unit_hrs')}</span>
           </div>
         </div>
 
         <div className="col-span-2 bg-white/10 border border-white/20 rounded-2xl p-3 flex flex-col justify-between">
           <div className="text-[10px] font-bold text-gold uppercase tracking-wider flex flex-col items-start gap-1 sm:flex-row sm:items-center sm:justify-between">
-            <span className="flex items-center gap-1"><ShieldCheck size={13} /> Est. Reference Fare Range</span>
+            <span className="flex items-center gap-1"><ShieldCheck size={13} /> {t('ui.routeEstimator.fare_range')}</span>
             <span className="text-[10px] text-white/60 font-semibold flex items-center gap-1">
-              <Mountain size={11} /> {info.terrainDifficulty}
+              <Mountain size={11} /> {TERRAIN_KEYS[info.terrainDifficulty] ? t(TERRAIN_KEYS[info.terrainDifficulty]) : info.terrainDifficulty}
             </span>
           </div>
           <div className="font-display font-extrabold text-xl text-white mt-1">
@@ -278,8 +320,8 @@ export default function RouteEstimator() {
               : 'bg-white/5 text-white/80 border-white/10 hover:bg-white/10'
             }`}
         >
-          <span className="truncate mr-2">Hatchback / Sedan (Dzire)</span>
-          <span className="font-bold flex-shrink-0">Ref. ₹{info.hatchbackFare.toLocaleString('en-IN')}</span>
+          <span className="truncate mr-2">{t('ui.routeEstimator.hatchback')}</span>
+          <span className="font-bold flex-shrink-0">{t('ui.routeEstimator.ref_fare', { amount: info.hatchbackFare.toLocaleString('en-IN') })}</span>
         </button>
 
         <button
@@ -290,21 +332,21 @@ export default function RouteEstimator() {
               : 'bg-white/5 text-white/80 border-white/10 hover:bg-white/10'
             }`}
         >
-          <span className="truncate mr-2">SUV (Innova / Bolero)</span>
-          <span className="font-bold flex-shrink-0">Ref. ₹{info.suvFare.toLocaleString('en-IN')}</span>
+          <span className="truncate mr-2">{t('ui.routeEstimator.suv')}</span>
+          <span className="font-bold flex-shrink-0">{t('ui.routeEstimator.ref_fare', { amount: info.suvFare.toLocaleString('en-IN') })}</span>
         </button>
       </div>
 
       <p className="mt-3 text-xs text-white/70 italic flex items-center gap-1.5">
         <span className="w-1.5 h-1.5 rounded-full bg-gold inline-block flex-shrink-0" />
-        {info.routeNote}
+        {NOTE_KEYS[info.routeNote] ? t(NOTE_KEYS[info.routeNote]) : info.routeNote}
       </p>
 
       {/* Direct Connection Notice */}
       <div className="mt-3 p-3 rounded-2xl bg-white/5 border border-white/10 text-white/80 text-xs flex items-start gap-2.5 leading-relaxed">
         <span className="text-gold font-bold flex-shrink-0 mt-0.5">ℹ️</span>
         <div>
-          <span className="font-extrabold text-white">Direct Local Connection:</span> aangan connects travelers directly with independent local drivers. Fares listed are standard local reference rates for guidance  not direct booking fees or Uber/Ola style automated cab dispatches.
+          <span className="font-extrabold text-white">{t('ui.routeEstimator.notice_title')}</span>{' '}{t('ui.routeEstimator.notice_body')}
         </div>
       </div>
 
@@ -317,8 +359,8 @@ export default function RouteEstimator() {
       >
         <span>
           {selectedFare > 0
-            ? `Find & Connect Drivers (Ref. ₹${selectedFare.toLocaleString('en-IN')})`
-            : 'Find Drivers Running This Route'}
+            ? t('ui.routeEstimator.find_drivers_fare', { amount: selectedFare.toLocaleString('en-IN') })
+            : t('ui.routeEstimator.find_drivers')}
         </span>
         <ArrowRight size={18} />
       </button>

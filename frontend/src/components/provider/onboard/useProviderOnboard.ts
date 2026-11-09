@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import api, { createPaymentOrder, completeMockPayment, payWithRazorpay } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { uploadImage, uploadImages } from '@/lib/uploadImage';
@@ -13,6 +14,7 @@ import { readHostLink } from '@/lib/hostQuickFill';
  * screens are pure layout over the object this hook returns.
  */
 export function useProviderOnboard() {
+  const { t } = useTranslation();
   const { user, loading: authLoading, refresh } = useAuth();
   const nav = useNavigate();
   const location = useLocation();
@@ -89,7 +91,7 @@ export function useProviderOnboard() {
         const url = await uploadImage(file);
         setForm((prev) => ({ ...prev, [field]: url }));
       } catch (err) {
-        setMsg(typeof err === 'string' ? err : 'Upload failed');
+        setMsg(typeof err === 'string' ? err : t('kyc.uploadFailed'));
       } finally {
         setFlag(false);
       }
@@ -107,7 +109,7 @@ export function useProviderOnboard() {
       const urls = await uploadImages(files);
       setGallery((prev) => [...prev, ...urls]);
     } catch (err) {
-      setMsg(typeof err === 'string' ? err : 'Upload failed');
+      setMsg(typeof err === 'string' ? err : t('kyc.uploadFailed'));
     } finally {
       setUploadingGallery(false);
     }
@@ -116,7 +118,7 @@ export function useProviderOnboard() {
   /** Step 1 → 2, defaulting the host name from the business name. */
   const startDesignStep = () => {
     if (!form.business_name.trim()) {
-      setMsg('Business name is required');
+      setMsg(t('ui.useProviderOnboard.business_name_required'));
       return;
     }
     setMsg('');
@@ -211,7 +213,7 @@ export function useProviderOnboard() {
         setPayModal({
           amount: orderRes.amount,
           order: orderRes.order,
-          description: 'one-time registration',
+          description: t('ui.useProviderOnboard.registration_description'),
           providerId,
         });
       } else {
@@ -227,7 +229,7 @@ export function useProviderOnboard() {
         nav('/provider/dashboard');
       }
     } catch (e: any) {
-      setMsg(e?.response?.data?.detail || e.message || 'Failed');
+      setMsg(e?.response?.data?.detail || e.message || t('ui.useProviderOnboard.failed'));
     } finally {
       setBusy(false);
     }

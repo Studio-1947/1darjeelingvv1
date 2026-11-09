@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Plus, Trash, Camera } from '@phosphor-icons/react';
 import { uploadImage } from '@/lib/uploadImage';
 
@@ -13,6 +14,7 @@ export default function PricedEditor({ rows, onChange, units, unitLabel, namePla
   /** Most rows allowed (a shop's goods stop at ten); the add button gives way to `fullNote`. */
   max?: number; fullNote?: string;
 }) {
+  const { t } = useTranslation();
   const full = max !== undefined && rows.length >= max;
   const [busy, setBusy] = React.useState<number | null>(null);
   const pickPhoto = async (i: number, file?: File) => {
@@ -26,18 +28,18 @@ export default function PricedEditor({ rows, onChange, units, unitLabel, namePla
       {rows.map((r, i) => (
         <div key={i} className="grid grid-cols-[2.5rem_1fr_8.5rem_auto] sm:grid-cols-[2.5rem_1fr_7rem_8.5rem_auto] gap-2 items-center">
           <label className="w-10 h-10 rounded-xl border border-[var(--line)] bg-white overflow-hidden grid place-items-center cursor-pointer text-ink-soft row-span-2 sm:row-span-1"
-            title="Add a photo" aria-label="Add a photo">
+            title={t('ui.pricedEditor.add_photo')} aria-label={t('ui.pricedEditor.add_photo')}>
             {busy === i ? <span className="text-[10px]">…</span> : r.photo ? <img src={r.photo} alt="" className="w-full h-full object-cover" /> : <Camera size={16} />}
             <input type="file" accept="image/*" className="hidden" onChange={(e) => pickPhoto(i, e.target.files?.[0])} />
           </label>
           <input value={r.name} onChange={(e) => set(i, { name: e.target.value })} placeholder={namePlaceholder}
             aria-label={namePlaceholder} className={`${input} col-span-3 sm:col-span-1`} />
           <input type="number" min={0} value={r.price} onChange={(e) => set(i, { price: e.target.value === '' ? '' : Math.max(0, Number(e.target.value)) })}
-            placeholder="₹" aria-label="Price" className={`${input}`} />
-          <select value={r.unit} onChange={(e) => set(i, { unit: e.target.value })} aria-label="Unit" className={`${input}`}>
+            placeholder="₹" aria-label={t('ui.pricedEditor.price')} className={`${input}`} />
+          <select value={r.unit} onChange={(e) => set(i, { unit: e.target.value })} aria-label={t('ui.pricedEditor.unit')} className={`${input}`}>
             {units.map((u) => <option key={u} value={u}>{unitLabel(u)}</option>)}
           </select>
-          <button type="button" onClick={() => onChange(rows.filter((_, j) => j !== i))} aria-label="Remove"
+          <button type="button" onClick={() => onChange(rows.filter((_, j) => j !== i))} aria-label={t('ui.pricedEditor.remove')}
             className="w-10 h-10 rounded-full grid place-items-center text-ink-soft hover:bg-white">
             <Trash size={18} />
           </button>

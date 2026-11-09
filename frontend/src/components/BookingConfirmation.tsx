@@ -130,7 +130,7 @@ export default function BookingConfirmation({ open, onClose, mode = 'booking', d
                   data-testid="confirm-explore-spots"
                   className="inline-flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-full bg-mist border border-[var(--line)] text-ink font-bold text-xs btn-hover text-center"
                 >
-                  <MapPin size={13} className="text-pine" /> Explore Spots
+                  <MapPin size={13} className="text-pine" /> {t('ui.bookingConfirmation.explore_spots')}
                 </Link>
                 <Link
                   to="/drivers"
@@ -138,7 +138,7 @@ export default function BookingConfirmation({ open, onClose, mode = 'booking', d
                   data-testid="confirm-find-drivers"
                   className="inline-flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-full bg-mist border border-[var(--line)] text-ink font-bold text-xs btn-hover text-center"
                 >
-                  <Phone size={13} className="text-pine" /> Find Drivers
+                  <Phone size={13} className="text-pine" /> {t('ui.bookingConfirmation.find_drivers')}
                 </Link>
               </div>
             )}

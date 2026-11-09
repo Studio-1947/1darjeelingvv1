@@ -30,44 +30,44 @@ const TYPE_MAP = {
 const OFFBEAT_PLACES = [
   {
     name: 'Lamahatta',
-    line: 'Pine forest park with a small lake at the top',
-    tag: 'Pine Forest',
+    lineKey: 'ui.category.offbeat.lamahatta.line',
+    tagKey: 'ui.category.offbeat.lamahatta.tag',
     image: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800&q=80',
   },
   {
     name: 'Takdah',
-    line: 'Old cantonment village with an orchid centre',
-    tag: 'Heritage Village',
+    lineKey: 'ui.category.offbeat.takdah.line',
+    tagKey: 'ui.category.offbeat.takdah.tag',
     image: 'https://images.unsplash.com/photo-1544735716-392fe2489ffa?w=800&q=80',
   },
   {
     name: 'Sittong',
-    line: 'Orange orchards, best in the winter harvest',
-    tag: 'Orange Valley',
+    lineKey: 'ui.category.offbeat.sittong.line',
+    tagKey: 'ui.category.offbeat.sittong.tag',
     image: 'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=800&q=80',
   },
   {
     name: 'Chatakpur',
-    line: 'Eco-village inside Senchal Wildlife Sanctuary',
-    tag: 'Eco Sanctuary',
+    lineKey: 'ui.category.offbeat.chatakpur.line',
+    tagKey: 'ui.category.offbeat.chatakpur.tag',
     image: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=800&q=80',
   },
   {
     name: 'Tinchuley',
-    line: 'Village viewpoints over the Teesta valley',
-    tag: 'Teesta Views',
+    lineKey: 'ui.category.offbeat.tinchuley.line',
+    tagKey: 'ui.category.offbeat.tinchuley.tag',
     image: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800&q=80',
   },
   {
     name: 'Mungpoo',
-    line: 'Cinchona plantations and the Tagore house',
-    tag: 'Cinchona & Tagore',
+    lineKey: 'ui.category.offbeat.mungpoo.line',
+    tagKey: 'ui.category.offbeat.mungpoo.tag',
     image: 'https://images.unsplash.com/photo-1584395631446-e41b0fc3f68d?w=800&q=80',
   },
   {
     name: 'Lepchajagat',
-    line: 'Forest hamlet on the road to Sukhiapokhri',
-    tag: 'Quiet Hamlet',
+    lineKey: 'ui.category.offbeat.lepchajagat.line',
+    tagKey: 'ui.category.offbeat.lepchajagat.tag',
     image: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=800&q=80',
   },
 ];
@@ -154,12 +154,11 @@ export default function Category({ typeOverride }) {
   // `extras.routes` or - for the seeded drivers - only in the editorial map, so
   // `contentFor` is the one place that sees both and the API can't filter on it.
   const routeTrip = [from.trim(), to.trim()].filter(Boolean).join(' → ');
-  // Drivers whose routes cover the trip, then drivers who have listed no routes (they may well
-  // do it; routes are optional at sign-up). Drivers whose routes clearly miss it are left out.
+  // Drivers whose routes cover the trip first, then every other driver under "may also do this
+  // trip": routes are free text and rarely complete, so leaving them out ended the region's most
+  // common search (NJP → Darjeeling) on an empty page.
   const matchOf = (it: any) => tripMatch(contentFor(it).routes || [], from, to);
-  const baseResults = (type === 'driver' && routeTrip)
-    ? items.filter((it) => matchOf(it) !== 'no')
-    : items;
+  const baseResults = items;
 
   // Realtime Filter & Sorting Pipeline
   const results = useMemo(() => {
@@ -226,17 +225,23 @@ export default function Category({ typeOverride }) {
       list.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
     }
 
+    // A homestay that cannot take the whole group is left out (persona test 2026-11-09: a family of
+    // six saw homestays for two). Listings with no stated capacity stay, the host can say.
+    if (type === 'homestay' && trip.guests > 1) {
+      list = list.filter((it) => !(Number(it.max_guests) > 0) || Number(it.max_guests) >= trip.guests);
+    }
+
     // A trip search lists the drivers who cover it first, in the chosen order, then the rest.
     if (type === 'driver' && routeTrip) {
-      list = [...list.filter((it) => matchOf(it) === 'covers'), ...list.filter((it) => matchOf(it) === 'unlisted')];
+      list = [...list.filter((it) => matchOf(it) === 'covers'), ...list.filter((it) => matchOf(it) !== 'covers')];
     }
 
     return list;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [baseResults, searchQuery, smart, type, routeTrip, from, to, selectedLocation, maxPrice, selectedCab, entryFilter, sortOrder, near, radius]);
+  }, [baseResults, searchQuery, smart, type, routeTrip, from, to, selectedLocation, maxPrice, selectedCab, entryFilter, sortOrder, near, radius, trip.guests]);
 
   // Where "may also do this trip" starts in a driver trip search (-1 when it does not apply).
-  const unlistedFrom = (type === 'driver' && routeTrip) ? results.findIndex((it) => matchOf(it) === 'unlisted') : -1;
+  const unlistedFrom = (type === 'driver' && routeTrip) ? results.findIndex((it) => matchOf(it) !== 'covers') : -1;
   const unlistedHeading = (
     <div className="col-span-full mt-4" data-testid="trip-unlisted-heading">
       <h3 className="font-display font-bold text-lg text-ink">{t('category.trip_unlisted_title')}</h3>
@@ -286,7 +291,13 @@ export default function Category({ typeOverride }) {
         : '';
 
   const priceBadge = (it: any) => {
-    if (it.price > 0) return `₹${it.price}`;
+    if (it.price > 0) {
+      const amount = `₹${Number(it.price).toLocaleString('en-IN')}`;
+      if (it.type === 'homestay') return `${amount} ${t('common.per_person')}`;
+      if (it.type === 'driver') return `${amount} ${t('common.per_day')}`;
+      if (['guide', 'cafe', 'shop'].includes(it.type)) return `${t('common.starting_from')} ${amount}`;
+      return amount;
+    }
     if (it.extras?.entry_fee) return it.extras.entry_fee;
     if (it.type === 'spot' || it.type === 'biodiversity' || it.type === 'event') return t('common.entry_varies');
     // A host who has not set a rate yet: say so, rather than a card with no price at all.
@@ -370,6 +381,24 @@ export default function Category({ typeOverride }) {
         </div>
       </div>
 
+      {type === 'homestay' && (
+        <div className="mb-4 flex flex-wrap items-center gap-2" data-testid="guest-filter" role="group" aria-label={t('filter.guests', 'Guests')}>
+          <span className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-widest text-ink-soft mr-1">
+            <Users size={13} /> {t('filter.guests', 'Guests')}:
+          </span>
+          {[1, 2, 4, 6, 8].map((n) => {
+            const on = n === 1 ? trip.guests <= 1 : trip.guests === n;
+            return (
+              <button key={n} type="button" data-testid={`guest-filter-${n}`} aria-pressed={on}
+                onClick={() => setSp((prev) => { const next = new URLSearchParams(prev); if (n === 1) next.delete('guests'); else next.set('guests', String(n)); return next; })}
+                className={`h-10 px-4 rounded-full text-[13px] font-bold border ${on ? 'bg-pine text-white border-pine' : 'bg-white text-ink border-[var(--line)]'}`}>
+                {n === 1 ? t('filter.any', 'Any') : `${n}+`}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {hasTrip(trip) && (
         <div data-testid="trip-summary" className="mb-4 flex flex-wrap items-center gap-2">
           {dateSummary && (
@@ -414,7 +443,7 @@ export default function Category({ typeOverride }) {
                   <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-black/35" />
                   <div className="absolute top-3 left-3 right-3 flex items-center justify-between">
                     <span className="px-2.5 py-0.5 rounded-full bg-black/50 backdrop-blur border border-white/20 text-[10px] font-bold text-white tracking-wider flex items-center gap-1">
-                      <MapPin size={10} weight="fill" /> {place.tag}
+                      <MapPin size={10} weight="fill" /> {t(place.tagKey)}
                     </span>
                     <span className="w-6 h-6 rounded-full bg-black/40 backdrop-blur border border-white/20 grid place-items-center text-white">
                       <ArrowRight size={12} className="-rotate-45" />
@@ -422,7 +451,7 @@ export default function Category({ typeOverride }) {
                   </div>
                   <div className="absolute bottom-0 inset-x-0 p-3 md:p-4 text-white">
                     <div className="font-display font-extrabold text-lg md:text-xl leading-tight drop-shadow">{place.name}</div>
-                    <div className="text-xs text-white/85 line-clamp-2 mt-1 leading-snug">{place.line}</div>
+                    <div className="text-xs text-white/85 line-clamp-2 mt-1 leading-snug">{t(place.lineKey)}</div>
                     <div className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white text-pine font-bold text-xs">
                       <Mountain size={12} weight="fill" /> {t('cta.explore', 'Explore')}
                     </div>
@@ -457,12 +486,12 @@ export default function Category({ typeOverride }) {
       <div className="-mt-3 mb-5 flex items-center gap-2 overflow-x-auto no-scrollbar text-xs" data-testid="near-me">
         <button type="button" onClick={near ? () => { setNear(null); setRadius(null); } : locate} disabled={locating} data-testid="near-me-toggle"
           className={`flex-shrink-0 whitespace-nowrap inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full border font-semibold ${near ? 'bg-pine text-white border-pine' : 'bg-white text-ink border-[var(--line)]'}`}>
-          <MapPin size={13} /> {locating ? 'Finding you…' : near ? 'Near me · on' : 'Near me'}
+          <MapPin size={13} /> {locating ? t('ui.category.finding_you') : near ? t('ui.category.near_me_on') : t('ui.category.near_me')}
         </button>
         {near && [null, 5, 10, 25].map((km) => (
           <button key={String(km)} type="button" onClick={() => setRadius(km)} data-testid={`near-${km ?? 'any'}`}
             className={`flex-shrink-0 whitespace-nowrap px-3.5 py-2 rounded-full border font-semibold ${radius === km ? 'bg-pine text-white border-pine' : 'bg-white text-ink border-[var(--line)]'}`}>
-            {km ? `Within ${km} km` : 'Any distance'}
+            {km ? t('ui.category.within_km', { km }) : t('ui.category.any_distance')}
           </button>
         ))}
       </div>

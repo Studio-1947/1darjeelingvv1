@@ -5,7 +5,15 @@ import { formatTripDates } from '@/lib/dates';
 import BookingFeeModal from '@/components/listing-detail/BookingFeeModal';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowRight, XCircle, CircleNotch as Loader2, Compass, MapPin, CheckCircle, Clock, CalendarBlank, Users, Receipt } from '@phosphor-icons/react';
+import { ArrowRight, XCircle, CircleNotch as Loader2, Compass, MapPin, CheckCircle, Clock, CalendarBlank, Users, Receipt, Phone, WhatsappLogo, NavigationArrow, CurrencyInr } from '@phosphor-icons/react';
+
+const digits = (p: string) => p.replace(/\D/g, '');
+/** wa.me needs the country code; numbers saved as 10 digits are Indian. */
+const waNumber = (p: string) => { const d = digits(p); return d.length === 10 ? `91${d}` : d; };
+const mapsUrl = (c: { latitude: number | null; longitude: number | null; address: string | null }) =>
+  c.latitude != null && c.longitude != null
+    ? `https://www.google.com/maps/dir/?api=1&destination=${c.latitude},${c.longitude}`
+    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(c.address || '')}`;
 
 function StatusPill({ status, isPast, awaitingHost }: { status: string; isPast: boolean; awaitingHost?: boolean }) {
   const { t } = useTranslation();
@@ -69,6 +77,22 @@ export default function TripCard({ booking: b, confirming, busy, onAskCancel, on
       setConfirmBusy(false);
     }
   };
+  // "Report a problem" on a confirmed trip (host did not show up, wrong address, asked for more
+  // money): it reaches the team's Feedback page with this booking, where they can cancel it.
+  const [problemOpen, setProblemOpen] = useState(false);
+  const [problem, setProblem] = useState('');
+  const [problemState, setProblemState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
+  const sendProblem = async () => {
+    if (problem.trim().length < 5) return;
+    setProblemState('sending');
+    try {
+      await api.post('/feedback/aangan', { message: `Problem with this booking: ${problem.trim()}`, booking_id: b.id });
+      setProblemState('sent');
+      setProblem('');
+    } catch {
+      setProblemState('error');
+    }
+  };
   const now = new Date(new Date().setHours(0, 0, 0, 0));
   // The server says when a trip is finished (India dates); older answers fall back to the date.
   const isPast = b.completed ?? Boolean(b.check_in && new Date(b.check_in) < now);
@@ -99,13 +123,13 @@ export default function TripCard({ booking: b, confirming, busy, onAskCancel, on
         {b.check_in && (
           <div className={row}>
             <CalendarBlank size={15} className="text-pine flex-shrink-0" />
-            <dt className="text-ink-soft">{t('booking.checkin')}</dt>
+            <dt className="text-ink-soft">{b.listing_type === 'homestay' ? t('booking.checkin') : t('trips.date')}</dt>
             <dd className="font-semibold ml-auto text-right">{formatTripDates(b.check_in, b.check_out, i18n.language)}</dd>
           </div>
         )}
         <div className={row}>
           <Users size={15} className="text-pine flex-shrink-0" />
-          <dt className="text-ink-soft">{t('booking.guests')}</dt>
+          <dt className="text-ink-soft">{b.listing_type === 'driver' ? t('trips.passengers') : b.listing_type === 'homestay' ? t('booking.guests') : t('trips.people')}</dt>
           <dd className="font-semibold ml-auto">{b.guests}</dd>
         </div>
         <div className={row}>
@@ -114,6 +138,48 @@ export default function TripCard({ booking: b, confirming, busy, onAskCancel, on
           <dd className="font-semibold ml-auto">{new Date(b.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</dd>
         </div>
       </dl>
+
+      {/* Confirmed and still ahead: the host's contact, which the confirmation promised. */}
+      {b.status === 'confirmed' && !isPast && (b.host_contact || b.amount_due) && (
+        <div className="rounded-xl bg-[#E6F2EA] border border-[#1F6656]/20 px-3 py-3" data-testid={`trip-contact-${b.id}`}>
+          <p className="text-[13px] font-bold text-[#1F6656]">{t('trips.contact_title')}</p>
+          <p className="mt-0.5 text-xs text-ink-soft">{t('trips.contact_note')}</p>
+          {b.host_contact?.address && (
+            <p className="mt-2 flex items-start gap-1.5 text-[13px] text-ink">
+              <MapPin size={14} className="text-pine flex-shrink-0 mt-0.5" /> <span>{b.host_contact.address}</span>
+            </p>
+          )}
+          {b.amount_due ? (
+            <p className="mt-1.5 flex items-center gap-1.5 text-[13px] text-ink" data-testid={`trip-amount-${b.id}`}>
+              <CurrencyInr size={14} className="text-pine flex-shrink-0" />
+              <span className="text-ink-soft">{t('trips.amount_due')}</span>
+              <span className="font-bold ml-auto">₹{Number(b.amount_due).toLocaleString('en-IN')}</span>
+            </p>
+          ) : null}
+          {b.host_contact && (
+            <div className="mt-2.5 flex flex-wrap gap-2">
+              {b.host_contact.phone && (
+                <a href={`tel:${b.host_contact.phone}`} data-testid={`trip-call-${b.id}`}
+                  className="inline-flex items-center gap-1.5 h-10 px-4 rounded-full bg-[#1F6656] text-white font-bold text-[13px] btn-hover">
+                  <Phone size={14} /> {t('trips.call')}
+                </a>
+              )}
+              {b.host_contact.whatsapp && (
+                <a href={`https://wa.me/${waNumber(b.host_contact.whatsapp)}`} target="_blank" rel="noopener noreferrer" data-testid={`trip-whatsapp-${b.id}`}
+                  className="inline-flex items-center gap-1.5 h-10 px-4 rounded-full bg-[#25D366] text-white font-bold text-[13px] btn-hover">
+                  <WhatsappLogo size={14} /> {t('trips.whatsapp')}
+                </a>
+              )}
+              {(b.host_contact.address || b.host_contact.latitude != null) && (
+                <a href={mapsUrl(b.host_contact)} target="_blank" rel="noopener noreferrer" data-testid={`trip-directions-${b.id}`}
+                  className="inline-flex items-center gap-1.5 h-10 px-4 rounded-full border border-[#1F6656] text-[#1F6656] bg-white font-bold text-[13px] btn-hover">
+                  {t('trips.directions')} <NavigationArrow size={14} />
+                </a>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {b.awaiting_host && (
         <p className="text-[13px] text-[#7a5d00] bg-gold/10 rounded-xl px-3 py-2" data-testid={`trip-waiting-${b.id}`}>{t('approval.waiting_note')}</p>
@@ -138,6 +204,30 @@ export default function TripCard({ booking: b, confirming, busy, onAskCancel, on
           <ShareStoryButton place={b.listing?.title || b.listing_title} />
         </div>
       )}
+      {b.status === 'confirmed' && (
+        problemState === 'sent' ? (
+          <p className="text-xs font-semibold text-[#1F6656]" data-testid={`problem-sent-${b.id}`}>{t('trips.problem_sent')}</p>
+        ) : problemOpen ? (
+          <div className="rounded-xl border border-[var(--line)] p-3" data-testid={`problem-form-${b.id}`}>
+            <label className="text-[13px] font-bold text-ink" htmlFor={`problem-${b.id}`}>{t('trips.problem_title')}</label>
+            <textarea id={`problem-${b.id}`} value={problem} onChange={(e) => setProblem(e.target.value)} rows={3} maxLength={1900}
+              placeholder={t('trips.problem_ph')} className="mt-2 w-full rounded-xl border border-[var(--line)] p-2.5 text-sm" />
+            {problemState === 'error' && <p className="mt-1 text-xs font-semibold text-flag">{t('trips.problem_error')}</p>}
+            <div className="mt-2 flex gap-2">
+              <button type="button" onClick={sendProblem} disabled={problemState === 'sending' || problem.trim().length < 5}
+                data-testid={`problem-send-${b.id}`}
+                className="h-10 px-4 rounded-full bg-[#1F6656] text-white font-bold text-[13px] disabled:opacity-50">{t('trips.problem_send')}</button>
+              <button type="button" onClick={() => setProblemOpen(false)} className="h-10 px-4 rounded-full font-bold text-[13px] text-ink-soft">{t('common.cancel')}</button>
+            </div>
+          </div>
+        ) : (
+          <button type="button" onClick={() => setProblemOpen(true)} data-testid={`problem-open-${b.id}`}
+            className="self-start min-h-11 text-[13px] font-semibold text-ink-soft underline">{t('trips.problem_open')}</button>
+        )
+      )}
+      {confirming && (
+        <p className="text-xs text-ink-soft -mb-1" data-testid={`cancel-free-${b.id}`}>{t('dashboard.cancel_free')}</p>
+      )}
       <div className="flex items-center justify-between gap-2">
         <Link to={`/listing/${b.listing_id}`} className="inline-flex items-center gap-1.5 text-sm font-bold text-pine hover:underline">
           {t('dashboard.view_listing')} <ArrowRight size={14} />
@@ -145,7 +235,7 @@ export default function TripCard({ booking: b, confirming, busy, onAskCancel, on
         {b.status !== 'cancelled' && !isPast && (
           confirming ? (
             <span className="inline-flex items-center gap-2 text-sm">
-              <span className="text-ink-soft">{t('dashboard.cancel_confirm')}</span>
+              <span className="text-ink-soft" title={t('dashboard.cancel_free')}>{t('dashboard.cancel_confirm')}</span>
               <button onClick={onCancel} disabled={busy} data-testid={`confirm-cancel-${b.id}`}
                 className="inline-flex items-center gap-1 font-bold text-flag disabled:opacity-50">
                 {busy ? <Loader2 size={12} className="animate-spin" /> : null} {t('common.yes')}

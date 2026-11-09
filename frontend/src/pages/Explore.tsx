@@ -120,7 +120,7 @@ export default function Explore() {
             {t('explore.most_visited')}
           </span>
           <span className="px-2 py-1 rounded-full bg-[rgba(29,78,216,0.86)] border border-white/45 text-[9px] font-bold tracking-wider">
-            OFFBEAT
+            {t('ui.explore.offbeat')}
           </span>
         </div>
         <div className="flex items-end gap-3">

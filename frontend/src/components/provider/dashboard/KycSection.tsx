@@ -1,11 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { checklistLabel } from '@/lib/serverText';
+import { useAuth } from '@/context/AuthContext';
 import { Upload, CheckCircle as CheckCircle2, Clock, XCircle, Circle } from '@phosphor-icons/react';
 import { getMyProfile, uploadKycDoc, uploadKycVideo, deleteKycDoc, KycApiError, KycProfile, ChecklistItem, verifyMapsLink, captureLiveLocation } from '@/lib/kyc';
 import ProfileCompletionBar from '../ProfileCompletionBar';
 
 export default function KycSection({ onProfileChange }: { onProfileChange?: (p: KycProfile) => void }) {
   const { t } = useTranslation();
+  const businessType = (useAuth() as any).provider?.business_type as string | undefined;
   const [profile, setProfile] = useState<KycProfile | null>(null);
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -127,7 +130,7 @@ export default function KycSection({ onProfileChange }: { onProfileChange?: (p: 
               <li key={item.key} className="text-sm">
                 <div className="flex items-center gap-2">
                   <span className={m.cls}>{m.icon}</span>
-                  <span className={item.state === 'done' ? 'text-ink-soft line-through' : 'text-ink'}>{item.label}</span>
+                  <span className={item.state === 'done' ? 'text-ink-soft line-through' : 'text-ink'}>{checklistLabel(t, item, businessType)}</span>
                 </div>
                 {item.action && item.state !== 'done' && (
                   <LocationCheck action={item.action} onDone={async () => { await load().catch(() => {}); }} />
@@ -152,7 +155,7 @@ export default function KycSection({ onProfileChange }: { onProfileChange?: (p: 
                     <span className={m.cls}>{m.icon}</span>
                     <div>
                       <div className="text-sm font-semibold text-ink">
-                        {item.label}{!item.required && <span className="text-ink-soft font-normal"> ({t('kyc.optional')})</span>}
+                        {checklistLabel(t, item, businessType)}{!item.required && <span className="text-ink-soft font-normal"> ({t('kyc.optional')})</span>}
                       </div>
                       <div className={`text-xs ${m.cls}`}>{m.label}</div>
                       {item.media === 'video' && item.state === 'missing' && (

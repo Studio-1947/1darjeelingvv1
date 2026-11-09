@@ -86,11 +86,11 @@ export default function Login() {
       const { data } = await api.post('/auth/google', { idToken, role });
       finishSignIn(data);
     } catch (e: any) {
-      setErr(e?.response?.data?.detail || 'Google sign-in failed');
+      setErr(e?.response?.data?.detail || t('ui.login.google_failed'));
     } finally {
       setGoogleBusy(false);
     }
-  }, [finishSignIn, role]);
+  }, [finishSignIn, role, t]);
 
   // Load the GIS script once and initialize.
   useEffect(() => {
@@ -183,7 +183,7 @@ export default function Login() {
                     });
                   }
                   if (!window.google?.accounts?.id) {
-                    setErr('Google Sign-In could not load. Please try again.');
+                    setErr(t('ui.login.google_unavailable'));
                     setGoogleBusy(false);
                     return;
                   }
@@ -195,7 +195,7 @@ export default function Login() {
                   });
                   window.google.accounts.id.prompt();
                 } catch (e: any) {
-                  setErr(e?.message || 'Google sign-in failed');
+                  setErr(e?.message || t('ui.login.google_failed'));
                   setGoogleBusy(false);
                 }
               }}
@@ -210,13 +210,13 @@ export default function Login() {
                     <path d="M3.964 10.71c-.18-.54-.282-1.117-.282-1.71s.102-1.17.282-1.71V4.958H.957C.347 6.173 0 7.548 0 9s.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
                     <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
                   </svg>
-                  Continue with Google
+                  {t('auth.google_login')}
                 </>
               )}
             </button>
             <div className="flex items-center gap-2">
               <div className="flex-1 h-px bg-[var(--line)]" />
-              <span className="text-xs text-ink-soft">OR</span>
+              <span className="text-xs text-ink-soft">{t('ui.login.or')}</span>
               <div className="flex-1 h-px bg-[var(--line)]" />
             </div>
           </div>
@@ -252,7 +252,7 @@ export default function Login() {
                 <Phone size={16} className="text-ink-soft" />
                 {/* Only "IN +91" shows in the box; the open list names each country. */}
                 <select value={countryCode} onChange={(e) => { setCountryCode(e.target.value); setPhone(''); }}
-                  aria-label="Country calling code" data-testid="login-country"
+                  aria-label={t('ui.login.country_code')} data-testid="login-country"
                   className="shrink-0 self-stretch w-auto bg-transparent text-sm font-semibold outline-none pr-0.5 border-r border-[var(--line)] mr-1">
                   {OTP_COUNTRIES.map((item) => <option key={item.code} value={item.code} label={`${item.iso} ${item.code}`}>{item.iso} {item.code}</option>)}
                 </select>

@@ -11,6 +11,8 @@ import { User, Heart, ArrowLeft, ImagesSquare, DownloadSimple, CaretLeft, CaretR
 import api from '@/lib/api';
 import { APP_DOWNLOAD_URL } from '@/constants/app';
 import { toast } from 'sonner';
+import LanguageSwitcher from '@/components/LanguageSwitcher';
+import AppComingSoon from '@/components/AppComingSoon';
 
 /** When the bell last asked for the unread count (shared across page changes). */
 let lastUnreadCheck = 0;
@@ -18,6 +20,8 @@ let lastUnreadCount = 0;
 
 export default function Header() {
   const { t } = useTranslation();
+  const [appSoon, setAppSoon] = React.useState(false);
+  const closeAppSoon = React.useCallback(() => setAppSoon(false), []);
   const { user, logout, isHostMode, setMode } = useAuth();
   const isHost = user?.role === 'provider';
   const [dropdownOpen, setDropdownOpen] = React.useState(false);
@@ -243,13 +247,14 @@ export default function Header() {
               <Heart size={18} />
             </Link>
           )}
+          <LanguageSwitcher onDark={onVideo} />
           {/* Get the app: beside Log in at every width. Until the store link exists (the app is not
               in Play or the App Store yet) a tap says it is coming soon instead of doing nothing. */}
           <a
             href={APP_DOWNLOAD_URL || '#get-the-app'}
             target={APP_DOWNLOAD_URL ? '_blank' : undefined}
             rel="noreferrer"
-            onClick={APP_DOWNLOAD_URL ? undefined : (e) => { e.preventDefault(); toast(t('nav.app_coming_soon')); }}
+            onClick={APP_DOWNLOAD_URL ? undefined : (e) => { e.preventDefault(); setAppSoon(true); }}
             data-testid="header-download-app"
             aria-label={t('nav.download_app')}
             className={`inline-flex items-center justify-center gap-1.5 min-w-11 lg:min-w-10 h-9 sm:h-10 px-2.5 min-[380px]:px-3 sm:px-4 rounded-full border font-bold text-xs sm:text-sm btn-hover whitespace-nowrap ${
@@ -262,6 +267,7 @@ export default function Header() {
             {/* On small laptops (lg) the bar also carries the nine-tile row, so the label waits for xl. */}
             <span className="sr-only min-[380px]:not-sr-only lg:max-xl:sr-only">{t('nav.download_app')}</span>
           </a>
+          <AppComingSoon open={appSoon} onClose={closeAppSoon} />
           {user ? (
             // On phones the profile photo lives in the bottom bar's Account tab instead.
             <div className="relative hidden lg:block" ref={dropdownRef}>

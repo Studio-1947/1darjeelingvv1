@@ -1,9 +1,9 @@
-import { ArrowRight, Phone, Storefront as Store, Coffee, Ticket, Leaf, Mountains as Mountain } from '@phosphor-icons/react';
+import { ArrowRight, Storefront as Store, Coffee, Ticket, Leaf, Mountains as Mountain } from '@phosphor-icons/react';
 
 // Contextual CTA per listing type: i18n key, icon, and button colour.
 export const CTA_CONFIG = {
   homestay: { key: 'book_now', Icon: ArrowRight, color: 'bg-pine text-white' },
-  driver: { key: 'talk_to_driver', Icon: Phone, color: 'bg-pine text-white' },
+  driver: { key: 'request_driver', Icon: ArrowRight, color: 'bg-pine text-white' },
   guide: { key: 'request_guide', Icon: ArrowRight, color: 'bg-pine text-white' },
   shop: { key: 'contact_shop', Icon: Store, color: 'bg-ink text-white' },
   cafe: { key: 'visit_cafe', Icon: Coffee, color: 'bg-ink text-white' },

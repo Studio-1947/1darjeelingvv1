@@ -84,6 +84,7 @@ function PriceBreakdown({ item, unit, nights, guests, voucherPct = 0 }: {
       <p className="mt-4 pt-3 border-t border-[var(--line)] text-sm font-semibold text-pine">
         {t('booking.fee_note')}
       </p>
+      <p className="mt-2 text-xs text-ink-soft" data-testid="booking-cancel-note">{t('booking.cancel_note')}</p>
 
       <Link to="/refunds" className="mt-1 inline-flex items-center min-h-11 text-xs font-semibold text-pine underline">
         {t('booking.fees_and_refunds')}
@@ -187,7 +188,7 @@ export function ReserveSection({ item, unit, bookable, available = true, cta, bo
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-semibold text-ink-soft">{t('booking.guests')}</span>
                       <span className="text-[11px] text-ink-soft font-medium">
-                        Max {maxGuests} {item.type === 'driver' ? 'passengers' : item.type === 'guide' ? 'people' : 'guests'}
+                        {t(item.type === 'driver' ? 'ui.reserveSection.max_passengers' : item.type === 'guide' ? 'ui.reserveSection.max_people' : 'ui.reserveSection.max_guests', { max: maxGuests })}
                       </span>
                     </div>
                     <input
@@ -335,10 +336,23 @@ export function MobileStickyBar({ item, unit, bookable, cta, busy, onBook, onOpe
     return () => { ro?.disconnect(); root.style.removeProperty('--page-cta-h'); };
   }, []);
 
+  // While the booking form itself is on screen the bar only repeats its button and covers the
+  // price breakdown (persona test 2026-11-09), so it slides away until the form scrolls off.
+  const [formInView, setFormInView] = React.useState(false);
+  React.useEffect(() => {
+    const form = document.querySelector('[data-testid="detail-reserve"]');
+    if (!form || typeof IntersectionObserver === 'undefined') return undefined;
+    const io = new IntersectionObserver(([e]) => setFormInView(e.isIntersecting), { threshold: 0.15 });
+    io.observe(form);
+    return () => io.disconnect();
+  }, []);
+
   return (
     <div
       ref={barRef}
-      className="lg:hidden fixed inset-x-0 z-30 px-4 pb-2"
+      data-testid="mobile-sticky-bar"
+      aria-hidden={formInView || undefined}
+      className={`lg:hidden fixed inset-x-0 z-30 px-4 pb-2 transition-all duration-200 ${formInView ? 'opacity-0 translate-y-4 pointer-events-none' : 'opacity-100'}`}
       style={{ bottom: 'calc(var(--bottom-nav-h) + 0.5rem)' }}
     >
       {bare ? (

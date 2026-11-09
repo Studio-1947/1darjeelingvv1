@@ -51,9 +51,32 @@
     "guides": "Guides",
     "download_app": "Get the app",
     "edit_profile": "Edit profile",
-    "app_coming_soon": "The aangan app is coming soon to Google Play and the App Store."
+    "app_coming_soon": "The aangan app is coming soon to Google Play and the App Store.",
+    "app_soon_tag": "Coming soon",
+    "app_soon_title": "The aangan app is on its way",
+    "app_soon_body": "We are putting the finishing touches on it for Android and iPhone. Until then, everything works right here on the website.",
+    "app_soon_ok": "Keep using the website",
+    "host_with_us": "List your Stay / Taxi"
+  },
+  "lang": {
+    "choose": "Language"
   },
   "trips": {
+    "contact_title": "You're booked. Contact your host",
+    "contact_note": "Call or WhatsApp to agree the arrival time and anything you need.",
+    "call": "Call",
+    "whatsapp": "WhatsApp",
+    "directions": "Directions",
+    "amount_due": "Stay total, paid to the host",
+    "date": "Date",
+    "people": "People",
+    "passengers": "Passengers",
+    "problem_open": "Report a problem with this booking",
+    "problem_title": "What went wrong?",
+    "problem_ph": "e.g. the host did not answer, the address was wrong, I was asked for more money",
+    "problem_send": "Send to the aangan team",
+    "problem_sent": "Sent. Our team will look into it and get in touch.",
+    "problem_error": "Could not send. Please try again.",
     "total_bookings": "Total bookings",
     "upcoming": "Upcoming",
     "completed": "Completed",
@@ -128,7 +151,10 @@
     "placeholder": "Search  place, shop or event"
   },
   "estimator": {
-    "title": "Darjeeling Route & Driver Fare Guide"
+    "title": "Darjeeling Route & Driver Fare Guide",
+    "tag": "TRANSIT & REFERENCE FARES",
+    "from": "Pick Pickup Location",
+    "to": "Pick Drop Destination"
   },
   "common": {
     "price_on_request": "Ask for price",
@@ -137,7 +163,8 @@
     "explore": "Explore",
     "starting_from": "From",
     "per_night": "/ night",
-    "per_head": "/ head",
+    "per_head": "/ person / night",
+    "per_person": "/ person",
     "per_day": "/ day",
     "loading": "Loading…",
     "explore_all": "Explore all",
@@ -161,13 +188,16 @@
     "something_wrong": "Something went wrong",
     "save_failed": "Save failed",
     "not_found": "Listing not found.",
-    "entry_varies": "Entry varies"
+    "entry_varies": "Entry varies",
+    "previous": "Previous",
+    "next": "Next"
   },
   "cta": {
     "book_now": "Reserve",
     "explore": "Explore",
     "view": "View",
     "talk_to_driver": "Talk to Driver",
+    "request_driver": "Request this driver",
     "contact_shop": "Visit Shop",
     "visit_cafe": "Visit Cafe",
     "join_event": "Join Event",
@@ -192,6 +222,10 @@
     "walk_in_note": "Walk in any day, or call ahead to reserve a table.",
     "info_note": "This entry is informational. Visit responsibly.",
     "photos": "Photos",
+    "car_photos": "The car",
+    "getting_there": "Getting there",
+    "find_driver_here": "Find a driver to here",
+    "find_guide": "Find a guide",
     "gallery_note": "A glimpse of what to expect",
     "best_time": "Best time to visit",
     "highlights": "Why go",
@@ -213,7 +247,7 @@
     "stay_gallery_title": "Explore the Stay",
     "gallery_alt": "Gallery {{index}}",
     "routes_label": "Routes & Trips Covered",
-    "routes_title": "Routes (Where to - From)",
+    "routes_title": "Routes and fares",
     "about_guide": "About this guide",
     "meet_guide": "Meet your guide",
     "services_label": "Services",
@@ -233,7 +267,8 @@
     "goods_title": "Goods and rates",
     "goods_note": "What this shop sells, and the rate for each",
     "owner_label": "The owner",
-    "owner_title": "Meet the owner"
+    "owner_title": "Meet the owner",
+    "ticket_disclaimer": "Note: Entry fees, ticket charges, and timings are set by local administration and subject to seasonal revision. We strive to keep details updated."
   },
   "auth": {
     "welcome": "Welcome",
@@ -378,7 +413,8 @@
     "nights_one": "{{count}} night",
     "nights_other": "{{count}} nights",
     "pick_dates_for_total": "Pick your dates to see the full amount.",
-    "paid_to_host": "Paid directly to your host.",
+    "paid_to_host": "Paid directly to your host, the way you agree with them. aangan never takes a share of it.",
+    "cancel_note": "Free to cancel any time before your trip. If you paid the ₹1.20 fee, it comes back to you automatically.",
     "confirmation_fee": "Booking confirmation fee",
     "payable_now": "Payable now",
     "fees_and_refunds": "Fees & refund policy",
@@ -690,23 +726,6 @@
     "stay_local": "Stay local",
     "explore_darjeeling": "Explore Darjeeling",
     "see_all": "See all",
-    "deals": {
-      "monsoon": {
-        "title": "Monsoon escapes",
-        "sub": "Homestays from ₹1,200",
-        "tag": "25% OFF"
-      },
-      "sunrise": {
-        "title": "Sunrise at Tiger Hill",
-        "sub": "Full day cab + guide",
-        "tag": "BEST SELLER"
-      },
-      "tea": {
-        "title": "Tea garden tours",
-        "sub": "Live tasting sessions",
-        "tag": "NEW"
-      }
-    },
     "scroll_left": "Scroll left",
     "scroll_right": "Scroll right",
     "filter_all": "All",
@@ -715,7 +734,10 @@
     "prev_page": "Previous page",
     "next_page": "Next page",
     "page_n": "Page {{page}}",
-    "showing_range": "Showing {{from}}-{{to}} of {{total}}"
+    "showing_range": "Showing {{from}}-{{to}} of {{total}}",
+    "hidden_gems": "HIDDEN GEMS",
+    "offbeat": "Offbeat & Quiet Villages",
+    "offbeat_sub": "Quieter villages a day trip or a night away from town"
   },
   "widget": {
     "destination": "Destination",
@@ -770,6 +792,8 @@
   },
   "filter": {
     "search_placeholder": "Search by name, landmark or keyword…",
+    "guests": "Guests",
+    "any": "Any",
     "all_locations": "All Hubs & Locations",
     "sort_recommended": "Featured / Popular",
     "sort_price_asc": "Price: Low to High",
@@ -795,7 +819,7 @@
     "found_elsewhere_other": "{{count}} results for “{{query}}” in other categories",
     "found_elsewhere_note": "Not in this category, but it might be what you were looking for.",
     "trip_unlisted_title": "May also do this trip",
-    "trip_unlisted_body": "These drivers have not listed their routes yet. Ask them before you book."
+    "trip_unlisted_body": "Their listed routes do not mention this trip yet. Ask them before you book."
   },
   "notes": {
     "title": "Notifications",
@@ -966,7 +990,12 @@
     "out_of_5": "{{value}} out of 5",
     "star_aria_one": "{{count}} star",
     "star_aria_other": "{{count}} stars",
-    "attachment_alt": "Review attachment"
+    "attachment_alt": "Review attachment",
+    "photo_uploaded": "Photo attached successfully!",
+    "updated_toast": "Your review has been updated!",
+    "posted_toast": "Thank you! Your review has been posted.",
+    "removed_toast": "Your review has been removed.",
+    "single_review_hint": "Editing your existing review"
   },
   "saved": {
     "label": "Saved",
@@ -1003,6 +1032,7 @@
     "booked_on": "Booked",
     "view_listing": "View listing",
     "cancel_confirm": "Cancel this?",
+    "cancel_free": "Free to cancel. Any fee you paid comes back automatically.",
     "quick_actions": "Quick actions",
     "browse_stays": "Browse stays",
     "cultural_events": "Cultural events"
@@ -1196,7 +1226,7 @@
       "type_label": "Homestay",
       "name_ph": "Enter stay name…",
       "default_location": "Pick your location below",
-      "per_night_starting": "/head starting",
+      "per_night_starting": "/ person / night",
       "about": "About the stay",
       "describe": "Describe Your Homestay",
       "describe_ph": "Describe your homestay, rooms, meals, view, and unique things about your stay…",
@@ -1215,7 +1245,7 @@
       "languages": "Languages Spoken (comma separated)",
       "complete": "Complete profile",
       "price_label": "Starting Price (₹/Head)",
-      "price_suffix": "/ head onwards",
+      "price_suffix": "/ person / night",
       "breakfast_question": "Is Breakfast Included in this price?",
       "breakfast_yes": "Yes, Breakfast Included",
       "breakfast_no": "No, Breakfast Extra / Not Included",
@@ -1244,7 +1274,7 @@
       "female": "Female",
       "languages": "Languages Spoken",
       "pin_routes": "Pin your routes",
-      "route_config": "Route Configuration (Where to / From)",
+      "route_config": "Routes and fares",
       "route_note": "Pin the exact routes and trips you operate (From - To). Travellers see these directly on your driver profile page.",
       "routes_empty": "No routes added yet. Use the input below.",
       "additional_photos": "Additional photos",
@@ -1813,6 +1843,7 @@
     "preview": "This is how travellers see your listing. Booking is turned off while you're in Business mode."
   },
   "profile": {
+    "opening_hours": "Open {{hours}}",
     "experience_years_one": "{{count}} year of experience",
     "experience_years_other": "{{count}} years of experience",
     "watch_intro": "Watch intro",
@@ -1865,6 +1896,8 @@
     "capacity_shop": "Room for {{count}} customers at a time"
   },
   "hostProfile": {
+    "opening_hours": "Opening hours",
+    "opening_hours_ph": "e.g. 8 am - 9 pm, closed Tuesday",
     "title": "Business profile",
     "subtitle": "What travellers see about you and your business. Keep it up to date.",
     "required_title": "Needed before approval",
@@ -1986,6 +2019,10 @@
   "verify": {
     "progress": "Review progress",
     "step_paid": "Plan paid",
+    "step_free": "Free start",
+    "title_profile": "Finish your profile first",
+    "body_profile": "Our team checks your documents once your business profile is complete. Still needed:",
+    "cta_profile": "Open business profile",
     "step_sent": "Documents sent",
     "step_review": "Team reviewing",
     "step_live": "Live on aangan",
@@ -1993,6 +2030,7 @@
     "body_pay": "Once your plan is paid you can send your documents for approval.",
     "title_send": "Send your documents for approval",
     "body_send": "Your plan is paid. Upload your documents so our team can check them. Your listing stays private until then.",
+    "body_send_free": "You are on the free start, so there is nothing to pay now. Upload your documents so our team can check them. Your listing stays private until then.",
     "title_waiting": "Documents sent",
     "body_waiting": "Our team will start checking them soon. Your listing stays private until the review is complete.",
     "title_reviewing": "Our team is checking your documents",
@@ -2128,5 +2166,762 @@
     "group_outside": "Outside",
     "group_room": "Rooms",
     "group_other": "More photos"
+  },
+  "ui": {
+    "editProfile": {
+      "upload_failed": "Upload failed",
+      "fix_fields": "Please fix the fields marked in red.",
+      "saved": "Profile saved",
+      "save_failed": "Could not save. Please try again.",
+      "step_2_of_2": "Step 2 of 2",
+      "your_account": "Your account",
+      "setup_title": "Set up your profile",
+      "setup_lead": "Tell hosts a little about you. Everything except your name can be filled in later.",
+      "edit_lead": "Change your details any time. Only your name is required.",
+      "change_photo": "Change photo",
+      "add_photo": "Add photo",
+      "name": "Name",
+      "name_error": "Please enter your name.",
+      "phone": "Phone number",
+      "phone_note": "Used to sign in; cannot be changed here",
+      "whatsapp": "WhatsApp",
+      "same_as_phone": "Same as my phone number",
+      "whatsapp_error": "Enter a 10-digit WhatsApp number.",
+      "gender": "Gender",
+      "age": "Age",
+      "age_placeholder": "e.g. 28",
+      "age_error": "Age should be between 13 and 100.",
+      "address": "Address",
+      "address_placeholder": "House, street, town",
+      "pincode": "Pincode",
+      "pincode_error": "6 digits.",
+      "email": "Email",
+      "optional": "(optional)",
+      "email_error": "That email does not look right.",
+      "how_you_travel": "How you travel",
+      "places_you_love": "Places you love",
+      "foods_you_like": "Foods you like",
+      "traveller_type": "Type of traveller",
+      "food_preference": "Food preference",
+      "save": "Save profile",
+      "skip": "Skip for now"
+    },
+    "travellerProfile": {
+      "gender": {
+        "female": "Female",
+        "male": "Male",
+        "other": "Other",
+        "prefer_not": "Prefer not to say"
+      },
+      "traveller_type": {
+        "solo": "Solo",
+        "couple": "Couple",
+        "family": "Family",
+        "friends": "Friends",
+        "business": "Work trip",
+        "backpacker": "Backpacker"
+      },
+      "diet": {
+        "veg": "Veg",
+        "non_veg": "Non-veg",
+        "vegan": "Vegan"
+      },
+      "food": {
+        "momo": "Momo",
+        "thukpa": "Thukpa",
+        "nepali_thali": "Nepali thali",
+        "tea": "Darjeeling tea",
+        "coffee": "Coffee",
+        "bakery": "Bakery",
+        "street_food": "Street food",
+        "chinese": "Chinese",
+        "tibetan": "Tibetan",
+        "continental": "Continental",
+        "bengali": "Bengali",
+        "sweets": "Sweets"
+      },
+      "place_interest": {
+        "nature": "Nature & wildlife",
+        "food": "Local food",
+        "treks": "Treks & sunrise",
+        "culture": "Culture & heritage",
+        "photo": "Photo spots",
+        "shopping": "Shopping local"
+      }
+    },
+    "travellerPanels": {
+      "awards": {
+        "first_trip": {
+          "title": "First trip",
+          "how": "Finish your first booking"
+        },
+        "homestay_explorer": {
+          "title": "Homestay explorer",
+          "how": "Stay at 3 homestays"
+        },
+        "cafe_hopper": {
+          "title": "Cafe hopper",
+          "how": "Visit 3 cafes"
+        },
+        "local_supporter": {
+          "title": "Local supporter",
+          "how": "Buy from 3 local shops"
+        },
+        "road_tripper": {
+          "title": "Road tripper",
+          "how": "Take 3 rides or guided trips"
+        },
+        "storyteller": {
+          "title": "Storyteller",
+          "how": "Write 3 reviews"
+        },
+        "connector": {
+          "title": "Connector",
+          "how": "Invite a friend who joins"
+        },
+        "pass_holder": {
+          "title": "Pass holder",
+          "how": "Take the aangan pass"
+        },
+        "profile_complete": {
+          "title": "All set",
+          "how": "Complete your profile"
+        }
+      },
+      "share_text": "Plan your Darjeeling trip on aangan. Use my code {{code}} when you sign up: {{link}}",
+      "invite_copied": "Invite copied",
+      "feedback_too_short": "Write a few words first.",
+      "feedback_thanks": "Thank you! The aangan team reads every note.",
+      "feedback_failed": "Could not send. Try again.",
+      "totals": {
+        "trips": "Trips taken",
+        "homestays": "Homestays stayed",
+        "cafes": "Cafes visited",
+        "shops": "Local shops"
+      },
+      "finish_profile": "<b>Finish your profile</b> so hosts know what you like. {{left}} left.",
+      "pass_title": "aangan pass",
+      "pass_active": "Active",
+      "pass_free_until": "Every booking confirms free until {{date}}.",
+      "pass_free": "Every booking confirms free.",
+      "pass_inactive": "Not active",
+      "pass_pitch": "Book everything free for a year.",
+      "get_pass": "Get the pass · {{price}}",
+      "points_title": "Aangan Points",
+      "refer_title": "Refer friends",
+      "joined": "{{n}} joined",
+      "code_copied": "Code copied",
+      "copy_code": "Copy code",
+      "invite": "Invite",
+      "awards_title": "Aangan Awards",
+      "earned_of": "{{earned}} of {{total}}",
+      "feedback_title": "Feedback for aangan",
+      "feedback_lead": "What should we do better? The team reads every note.",
+      "rating": "Rating",
+      "stars_one": "{{count}} star",
+      "stars_other": "{{count}} stars",
+      "feedback_placeholder": "Tell us what you liked or what got in the way…",
+      "sending": "Sending…",
+      "send_feedback": "Send feedback"
+    },
+    "pointsRules": {
+      "how_points_work": "How points work",
+      "each_finished_trip": "each finished trip",
+      "each_review_you_write": "each review you write",
+      "each_friend_joins": "each friend who joins with your code",
+      "completing_profile": "completing your profile (once)",
+      "taking_pass": "taking the aangan pass (once)",
+      "each_finished_booking": "each finished booking",
+      "each_guest_review": "each guest review",
+      "each_five_star_review": "each 5-star review (instead of {{n}})",
+      "getting_verified": "getting verified (once)"
+    },
+    "touristDashboard": {
+      "activity": "Activity",
+      "awaiting_confirmation": "Booking awaiting confirmation",
+      "waiting_for_host": "{{title}} — waiting for host",
+      "booking_confirmed": "Booking confirmed ✓",
+      "check_in": " · Check-in {{date}}"
+    },
+    "saved": {
+      "plan_day_trip": "Plan Day 1/2/3 Trip"
+    },
+    "myTrips": {
+      "title": "My Trips & Bookings",
+      "logged_out_body": "Log in to view your complete trip history, upcoming homestay reservations, driver bookings, and cultural experiences in Darjeeling.",
+      "log_in_cta": "Log In to View Trips",
+      "host_banner": "Looking for your business listings & guest reservations?",
+      "go_to_listings": "Go to My Listings",
+      "eyebrow": "Personal History",
+      "subtitle": "Your journey history, upcoming reservations, and completed stays through aangan.",
+      "tab_all": "All ({{n}})",
+      "tab_upcoming": "Upcoming ({{n}})",
+      "tab_completed": "Completed ({{n}})",
+      "tab_cancelled": "Cancelled ({{n}})",
+      "empty_title": "No trips found",
+      "empty_all": "You haven’t booked any homestays, drivers, or experiences yet.",
+      "empty_filtered": {
+        "upcoming": "You have no upcoming trips at the moment.",
+        "completed": "You have no completed trips at the moment.",
+        "cancelled": "You have no cancelled trips at the moment."
+      },
+      "browse_homestays": "Browse Homestays",
+      "find_driver": "Find a Driver",
+      "explore_more": "Explore More in Darjeeling",
+      "tile_homestays": "Homestays",
+      "tile_drivers": "Drivers & Cabs",
+      "tile_cafes": "Cafes & Bakeries",
+      "tile_events": "Events & Culture"
+    },
+    "afterTrip": {
+      "share_story": "Share your trip story",
+      "tap_stars": "Tap the stars to rate your trip",
+      "review_error": "Could not save your review",
+      "rate_trip": "Rate your trip",
+      "how_was": "How was {{place}}?",
+      "thanks_title": "Thank you for your review",
+      "thanks_body": "Tell your friends about the trip, and invite them to aangan.",
+      "rating": "Rating",
+      "stars_one": "{{count}} star",
+      "stars_other": "{{count}} stars",
+      "your_review": "Your review",
+      "review_ph": "What did you love? Anything others should know?",
+      "suggestion_label": "A suggestion for aangan (optional)",
+      "suggestion_ph": "How could aangan make your next trip better?",
+      "send_review": "Send review",
+      "cancel_error": "Could not cancel",
+      "deliveries_title": "Home delivery requests",
+      "status": {
+        "open": "Waiting for the place",
+        "accepted": "Accepted",
+        "delivered": "Delivered",
+        "declined": "Declined",
+        "cancelled": "Cancelled"
+      },
+      "to_address": "To: {{address}}",
+      "host_note": "From the place: “{{note}}”",
+      "cancel_request": "Cancel request"
+    },
+    "deliveryRequestButton": {
+      "pick_item": "Pick at least one item",
+      "write_what": "Write what you would like",
+      "address_error": "Add the full delivery address",
+      "send_error": "Could not send the request",
+      "open_cta": "Ask for home delivery",
+      "dialog_label": "Home delivery",
+      "title": "Home delivery from {{title}}",
+      "sent_title": "Request sent",
+      "sent_body": "{{title}} will answer in the app; you will see it under My Trips. Pay them when it arrives.",
+      "see_requests": "See my requests",
+      "fewer": "Fewer {{name}}",
+      "more": "More {{name}}",
+      "no_menu": "This place has not listed its items yet. Write what you need below.",
+      "what_ph": "What would you like?",
+      "deliver_to": "Deliver to",
+      "address_ph": "Homestay or house, road, town",
+      "phone_label": "Phone (optional)",
+      "note_label": "Note (optional)",
+      "note_ph": "Less spicy, ring the bell…",
+      "about_total": "About ₹{{amount}}, paid to the place on delivery.",
+      "send": "Send request"
+    },
+    "bookingConfirmation": {
+      "explore_spots": "Explore Spots",
+      "find_drivers": "Find Drivers"
+    },
+    "bookingWidget": {
+      "close_search": "Close search options"
+    },
+    "audioGuide": {
+      "heading": "Audio Story & Narration",
+      "play": "Play Narration",
+      "pause": "Pause Narration",
+      "playing": "Playing Narration...",
+      "playing_muted": "Playing (Muted)...",
+      "listen": "Listen to Audio Guide",
+      "mute": "Mute Audio",
+      "unmute": "Unmute Audio"
+    },
+    "listingDetail": {
+      "see_host_page": "See the host's page"
+    },
+    "listingMeta": {
+      "local_guide": "Local guide",
+      "routes_planned_for_you": "Routes planned for you",
+      "speaks_the_local_languages": "Speaks the local languages",
+      "knows_the_photo_spots": "Knows the photo spots",
+      "home_delivery": "Home delivery",
+      "default_host_bio": "This home is run by a Darjeeling family who live on site and look after guests themselves.",
+      "area_note": {
+        "homestay": "The exact address is shared with you once your booking is confirmed.",
+        "driver": "Your driver picks you up anywhere in and around this area.",
+        "event": "Timings vary by year - confirm locally before you travel.",
+        "biodiversity": "A protected habitat. Visit with a registered guide and keep your distance.",
+        "default": "Tap below for turn-by-turn directions in Google Maps."
+      }
+    },
+    "reserveSection": {
+      "max_passengers": "Max {{max}} passengers",
+      "max_people": "Max {{max}} people",
+      "max_guests": "Max {{max}} guests"
+    },
+    "reviewsSection": {
+      "remove_failed": "Failed to remove review"
+    },
+    "publicBusiness": {
+      "loading": "Loading business…",
+      "not_found": "Business not found.",
+      "from_price": "From ₹{{price}}"
+    },
+    "providerDashboard": {
+      "driver_operations": "Driver operations",
+      "guide_activity": "Guide activity",
+      "business_overview": "Business overview",
+      "driver_heading": "Every ride, in one place.",
+      "guide_heading": "Your next guest experience.",
+      "business_heading": "Your business, at a glance.",
+      "aangan_points": "Aangan points",
+      "completed_rides": "Completed rides",
+      "covered_trips": "Covered trips",
+      "completed_stays": "Completed stays",
+      "covered_guests": "Covered guests",
+      "upcoming_guests": "Upcoming guests",
+      "ongoing_guests": "Ongoing guests",
+      "ongoing": "Ongoing",
+      "passengers_covered": "Passengers covered",
+      "guests_served": "Guests served",
+      "km_covered": "Km covered",
+      "locations_covered": "Locations covered",
+      "confirmed_value": "Confirmed value",
+      "confirmed_booking_value": "Confirmed booking value",
+      "places_covered": "Places covered: {{places}}",
+      "unknown_route_trips_one": "{{count}} finished trip did not say the route, so it is not in the km.",
+      "unknown_route_trips_other": "{{count}} finished trips did not say the route, so they are not in the km.",
+      "choose_listing": "Choose a listing to manage",
+      "all_listings": "All listings"
+    },
+    "bookingCard": {
+      "asked_for": "Asked for",
+      "route": "Route",
+      "send_trip_details": "Send trip details"
+    },
+    "hostExtras": {
+      "link_copied": "Link copied",
+      "page_title": "Your page on aangan",
+      "private_until_approved": "Only you can open it until our team approves your documents.",
+      "private_until_active": "Only you can open it until your plan is active and verified.",
+      "open_my_page": "Open my page",
+      "copy_link": "Copy link",
+      "share_message": "Find {{name}} on aangan: {{url}}",
+      "share_whatsapp": "Share on WhatsApp",
+      "ratings_title": "Ratings and reviews",
+      "no_reviews": "No reviews yet. Guests are asked for one after every finished trip.",
+      "accept_note_prompt": "A note for the guest (optional), e.g. \"About 30 minutes\"",
+      "update_failed": "Could not update",
+      "delivery_title": "Home delivery requests",
+      "no_requests": "No requests yet. Guests can ask from your listing page while home delivery is on.",
+      "guest": "Guest",
+      "status": {
+        "open": "open",
+        "accepted": "accepted",
+        "declined": "declined",
+        "delivered": "delivered"
+      },
+      "deliver_to": "Deliver to: {{address}}",
+      "call": "Call",
+      "wa_order_message": "Hello {{name}}, about your order from {{listing}} on aangan: ",
+      "whatsapp": "WhatsApp",
+      "accept": "Accept",
+      "decline": "Decline",
+      "delivered": "Delivered"
+    },
+    "myListings": {
+      "guest_title": "Service Provider Listings",
+      "guest_body": "Log in as a homestay host, driver, cafe, or local shop owner to manage your business listings on aangan.",
+      "guest_cta": "Log In to Manage Listings",
+      "onboard_title": "List Your Business on aangan",
+      "onboard_body": "Are you a local homestay owner, taxi driver, cafe owner, or local artisan in Darjeeling? Reach thousands of visitors with direct zero-commission bookings.",
+      "view_trips": "View My Personal Trips",
+      "title": "My Listings",
+      "subtitle": "Manage your public business listings, room rates, driver profiles, and offerings.",
+      "add_new": "Add New Listing",
+      "total": "Total Listings",
+      "live": "Live Listings",
+      "business_type": "Business Type",
+      "empty_title": "No active listings yet",
+      "empty_body": "Add your homestay rooms, driver profile, or cafe menu details to start showcasing your services to Darjeeling travellers.",
+      "add_first": "Add Your First Listing",
+      "starting": "starting"
+    },
+    "hostPage": {
+      "missing_title": "This page is not available",
+      "missing_body": "The host may not be taking guests right now.",
+      "explore": "Explore aangan",
+      "share_text": "{{name}} on aangan: {{url}}",
+      "link_copied": "Link copied",
+      "not_live": "Only you can see this page. Travellers will see it once your plan is active and your documents are verified.",
+      "wa_hello": "Hello {{name}}, I found you on aangan.",
+      "locked": "The number opens once you book, or with the aangan pass.",
+      "share": "Share",
+      "share_whatsapp": "Share on WhatsApp",
+      "book_with": "Book with {{name}}",
+      "from_price": " · from ₹{{price}}",
+      "view_and_book": "View and book",
+      "reviews": "Reviews",
+      "no_reviews": "No reviews yet."
+    },
+    "inviteHostLink": {
+      "type": {
+        "homestay": "Homestay",
+        "driver": "Driver",
+        "guide": "Guide",
+        "cafe": "Cafe",
+        "shop": "Shop"
+      },
+      "link_copied": "Link copied",
+      "share_text": "List your {{type}} on aangan for free: {{link}}",
+      "invite_copied": "Invite copied",
+      "title": "Invite a host",
+      "body": "Know a homestay, driver or cafe? Send them this link. It opens a short sign-up with their business type already picked.",
+      "business_type": "Business type",
+      "copy_link": "Copy link",
+      "share": "Share"
+    },
+    "pricedEditor": {
+      "add_photo": "Add a photo",
+      "price": "Price",
+      "unit": "Unit",
+      "remove": "Remove"
+    },
+    "providerProfile": {
+      "could_not_save": "Could not save",
+      "keep_editing": "Keep editing"
+    },
+    "useProviderOnboard": {
+      "business_name_required": "Business name is required",
+      "failed": "Failed",
+      "registration_description": "one-time registration"
+    },
+    "routeEstimator": {
+      "drivers_available_n": "{{n}} Local Drivers Available",
+      "drivers_available": "Local Drivers Available",
+      "distance": "Distance",
+      "unit_km": "km",
+      "travel_time": "Est. Travel Time",
+      "unit_hrs": "hrs",
+      "fare_range": "Est. Reference Fare Range",
+      "hatchback": "Hatchback / Sedan (Dzire)",
+      "suv": "SUV (Innova / Bolero)",
+      "ref_fare": "Ref. ₹{{amount}}",
+      "notice_title": "Direct Local Connection:",
+      "notice_body": "aangan connects travelers directly with independent local drivers. Fares listed are standard local reference rates for guidance  not direct booking fees or Uber/Ola style automated cab dispatches.",
+      "find_drivers_fare": "Find & Connect Drivers (Ref. ₹{{amount}})",
+      "find_drivers": "Find Drivers Running This Route",
+      "terrain": {
+        "easy_plain": "Easy Plain",
+        "moderate_hill": "Moderate Hill",
+        "winding_mountain": "Winding Mountain",
+        "steep_ascent": "Steep Ascent"
+      },
+      "notes": {
+        "bagdogra_darjeeling": "Scenic climb via Rohini Road & Ghum Hill Pass",
+        "bagdogra_ghum": "Direct climb to highest railway elevation (2,258m)",
+        "bagdogra_kalimpong": "River Teesta highway via Sevoke Coronation Bridge",
+        "bagdogra_kurseong": "Direct climb via Pankhabari / Rohini Road",
+        "bagdogra_mirik": "Smooth Tea Garden highway via Dudhia & Mirik Lake",
+        "bagdogra_njp": "Bypass Highway via Fulbari / Mahananda",
+        "bagdogra_siliguri": "City Corridor via Matigara & Hill Cart Road",
+        "njp_darjeeling": "Parallels historic DHR Toy Train tracks via Sonada",
+        "njp_ghum": "Hill Cart Road climb via Kurseong & Sonada",
+        "njp_kalimpong": "Teesta Valley highway via Sevoke Forest Sanctuary",
+        "njp_kurseong": "Giddapahar Pine forest bypass",
+        "njp_mirik": "Tea estate route via Simana Viewpoint",
+        "njp_siliguri": "City arterial route along Hill Cart Road",
+        "siliguri_darjeeling": "Hill Cart Road via Sukna Forest & Tindharia",
+        "siliguri_ghum": "Hill Cart Road climb to Ghum Monastery (2,258m)",
+        "siliguri_kalimpong": "Coronation Bridge & NH10 Teesta Corridor",
+        "siliguri_kurseong": "Direct Hill Cart Road climb",
+        "siliguri_mirik": "Dudhia River bridge & Mechi Valley route",
+        "darjeeling_ghum": "Local ridge road via Batasia Loop",
+        "darjeeling_kalimpong": "Peshok Tea Garden viewpoint & Teesta Confluence",
+        "darjeeling_kurseong": "Hill Cart Road via Batasia Loop & Ghum",
+        "darjeeling_mirik": "Indo-Nepal border road via Pashupati Market",
+        "ghum_kalimpong": "Peshok Road via 6th Mile & Teesta Bridge",
+        "ghum_kurseong": "Highland ridge road via Sonada & Hope Town",
+        "ghum_mirik": "Scenic pine forest highway via Jorepokhri & Simana",
+        "kalimpong_kurseong": "Teesta Valley & Ghum Junction bypass",
+        "kalimpong_mirik": "Long scenic ridge highway via Peshok",
+        "kurseong_mirik": "Pine forests & Tea estates scenic road",
+        "same_location": "Same pickup and drop location selected",
+        "default": "Scenic mountain highway route"
+      }
+    },
+    "tripPlannerModal": {
+      "day1": {
+        "title": "Heritage & Mall Road Explore",
+        "mall_road": "Chowrasta / Darjeeling Mall Road walk",
+        "observatory_hill": "Observatory Hill & Mahakal Temple visit",
+        "glenarys": "Glenary’s Bakery & Cafe afternoon tea"
+      },
+      "day2": {
+        "title": "Tiger Hill Sunrise & Monasteries",
+        "tiger_hill": "Tiger Hill sunrise over Mt. Kanchenjunga (04:30 AM)",
+        "ghum_batasia": "Ghum Monastery & Batasia Loop War Memorial",
+        "peace_pagoda": "Peace Pagoda & Japanese Temple"
+      },
+      "day3": {
+        "title": "Tea Estate & Mirik Lake Drive",
+        "happy_valley": "Happy Valley Tea Estate factory tour & tea tasting",
+        "mirik_lake": "Mirik Lake boating & Pashupati Indo-Nepal Border"
+      },
+      "day_n": "Day {{day}}",
+      "day_short": "D{{day}}",
+      "add_from_saved": "Add from your Saved Favorites:",
+      "add_to_day1": "Add to Day 1",
+      "plus_day1": "+Day1",
+      "activities": "{{n}} Activities",
+      "remove_activity": "Remove activity",
+      "remove_item": "Remove {{item}}",
+      "select_day": "Select trip day",
+      "add_placeholder": "Add custom place or activity...",
+      "add_label": "Add custom place or activity",
+      "add": "Add",
+      "copied_note": "Itinerary copied to clipboard!",
+      "ready_note": "Ready to share with family & local drivers",
+      "copied": "Copied!",
+      "share": "Share Itinerary"
+    },
+    "category": {
+      "offbeat": {
+        "lamahatta": {
+          "line": "Pine forest park with a small lake at the top",
+          "tag": "Pine Forest"
+        },
+        "takdah": {
+          "line": "Old cantonment village with an orchid centre",
+          "tag": "Heritage Village"
+        },
+        "sittong": {
+          "line": "Orange orchards, best in the winter harvest",
+          "tag": "Orange Valley"
+        },
+        "chatakpur": {
+          "line": "Eco-village inside Senchal Wildlife Sanctuary",
+          "tag": "Eco Sanctuary"
+        },
+        "tinchuley": {
+          "line": "Village viewpoints over the Teesta valley",
+          "tag": "Teesta Views"
+        },
+        "mungpoo": {
+          "line": "Cinchona plantations and the Tagore house",
+          "tag": "Cinchona & Tagore"
+        },
+        "lepchajagat": {
+          "line": "Forest hamlet on the road to Sukhiapokhri",
+          "tag": "Quiet Hamlet"
+        }
+      },
+      "finding_you": "Finding you…",
+      "near_me_on": "Near me · on",
+      "near_me": "Near me",
+      "within_km": "Within {{km}} km",
+      "any_distance": "Any distance"
+    },
+    "explore": {
+      "offbeat": "OFFBEAT"
+    },
+    "mapEmbed": {
+      "title": "Map"
+    },
+    "categoryFilterBar": {
+      "clear_search": "Clear search",
+      "max_rate": "Max Rate:",
+      "any_rate": "Any Rate",
+      "under_amount": "Under ₹{{amount}}",
+      "cab_type": "Cab Type:",
+      "cab_all": "All Cabs",
+      "cab_hatchback": "Hatchback / Sedan",
+      "cab_suv": "Mountain SUV",
+      "entry": "Entry:",
+      "entry_all": "All Spots",
+      "entry_free": "Free Entry",
+      "entry_paid": "Ticketed / Paid",
+      "active_filters": "Active Filters:",
+      "chip_query": "Query: \"{{query}}\"",
+      "chip_hub": "Hub: {{hub}}",
+      "chip_max": "Max ₹{{amount}}",
+      "chip_cab": "Cab: {{cab}}",
+      "chip_entry": "Entry: {{entry}}",
+      "clear_all": "Clear all",
+      "filter_sort_title": "Filter & Sort Listings",
+      "close_filters": "Close filters",
+      "location_hub": "Location Hub",
+      "all_locations": "All Locations",
+      "sort_order": "Sort Order",
+      "apply_filters": "Apply Filters",
+      "remove_filter": "Remove filter {{label}}"
+    },
+    "login": {
+      "google_failed": "Google sign-in failed",
+      "google_unavailable": "Google Sign-In could not load. Please try again.",
+      "or": "OR",
+      "country_code": "Country calling code"
+    },
+    "footer": {
+      "by_studio": "By {{name}}",
+      "follow_instagram": "Follow Aangan on Instagram",
+      "follow_facebook": "Follow Aangan on Facebook",
+      "email_us": "Email {{email}}",
+      "call_us": "Call aangan on {{phone}}"
+    },
+    "scrollToTop": {
+      "back_to_top": "Back to top"
+    },
+    "circularGallery": {
+      "aria_label": "Circular image gallery. Use left and right arrow keys to navigate."
+    },
+    "about": {
+      "roles": {
+        "fullstack_developer": "Fullstack Developer",
+        "creative_director": "Creative Director",
+        "tech_lead": "Tech Lead",
+        "advisor": "Advisor",
+        "sound_engineer": "Sound Engineer",
+        "hr": "HR",
+        "graphic_designer": "Graphic Designer"
+      }
+    }
+  },
+  "planner": {
+    "title": "Himalayan Trip Itinerary Builder",
+    "subtitle": "Organize your days & share directly via WhatsApp"
+  },
+  "serverText": {
+    "someone": "A guest",
+    "notif": {
+      "dates_taken_booking": {
+        "title": "Booking cancelled",
+        "body": "The dates for {{place}} went to another guest first, so your booking was cancelled."
+      },
+      "booking_confirmed_guest": {
+        "title": "Booking confirmed",
+        "body": "Your booking for {{place}} is confirmed."
+      },
+      "booking_confirmed_host": {
+        "title": "Booking confirmed",
+        "body": "{{guest}} confirmed a booking for {{place}}."
+      },
+      "grace_ended": {
+        "title": "Your free bookings are used up",
+        "body": "{{count}} guests have now completed their bookings with you on aangan. Pay for your host plan to keep taking new bookings. Guests already booked are not affected."
+      },
+      "request_expired_guest": {
+        "title": "Your request was not answered",
+        "body": "The host of {{place}} did not answer within {{hours}} hours, so your request was closed. Nothing was charged. You can ask another host."
+      },
+      "request_expired_host": {
+        "title": "A booking request lapsed",
+        "body": "A request for {{place}} closed because it was not answered within {{hours}} hours. Accept requests soon so guests can book you."
+      },
+      "booking_request_host": {
+        "title": "New booking request",
+        "body": "{{guest}} asked to book {{place}}. Accept or decline it on your dashboard."
+      },
+      "booking_enquiry_host": {
+        "title": "New booking request",
+        "body": "{{guest}} asked about {{place}}."
+      },
+      "request_sent": {
+        "title": "Request sent",
+        "body": "Your request for {{place}} has gone to the host. You will hear back within {{hours}} hours; nothing is charged until you confirm."
+      },
+      "dates_taken_request": {
+        "title": "Those dates are no longer free",
+        "body": "The host of {{place}} accepted another guest for some of the same nights, so your request was closed. Nothing was charged."
+      },
+      "request_accepted": {
+        "title": "Your request was accepted",
+        "body": "The host accepted your request for {{place}}. Confirm it to lock it in."
+      },
+      "cancelled_by_host": {
+        "title": "Booking cancelled",
+        "body": "Your booking for {{place}} was cancelled by the host."
+      },
+      "cancelled_by_team": {
+        "title": "Booking cancelled",
+        "body": "Your booking for {{place}} was cancelled by the aangan team."
+      },
+      "cancelled_by_guest": {
+        "title": "Booking cancelled",
+        "body": "A guest cancelled their booking for {{place}}."
+      },
+      "delivery_request_host": {
+        "title": "Home delivery request: {{place}}",
+        "body": "{{guest}} asks for {{items}}. Deliver to {{address}}."
+      },
+      "delivery_accepted": {
+        "title": "{{place}}: accepted",
+        "body": "Your home delivery request is on its way soon."
+      },
+      "delivery_declined": {
+        "title": "{{place}}: declined",
+        "body": "Your home delivery request could not be taken."
+      },
+      "delivery_delivered": {
+        "title": "{{place}}: delivered",
+        "body": "Your home delivery request has been delivered."
+      },
+      "kyc_approved": {
+        "title": "You are verified and live",
+        "body": "{{business}} is approved. Travellers can now find and book you on aangan."
+      },
+      "kyc_changes": {
+        "title": "A document needs changing",
+        "body": "Please upload \"{{document}}\" again."
+      },
+      "kyc_changes_reason": {
+        "title": "A document needs changing",
+        "body": "Please upload \"{{document}}\" again. Reason: {{reason}}"
+      }
+    },
+    "missing": {
+      "images_driver": "Add at least {{min}} photos of your car ({{have}} so far)",
+      "images_homestay": "Add at least {{min}} photos of the property ({{have}} so far)",
+      "images_cafe": "Add at least {{min}} photos of your cafe or restaurant ({{have}} so far)",
+      "images_shop": "Add at least {{min}} photos of your shop ({{have}} so far)",
+      "host_name_host": "Add the host's name",
+      "host_name_owner": "Add the owner's name",
+      "services": "Add at least one service with its charge"
+    },
+    "check": {
+      "description": "Add a description (60+ characters)",
+      "photos": "Add at least one photo",
+      "price": "Set a starting price",
+      "location_maps_link": "Verify your location with a Google Maps link",
+      "location_live_capture": "Capture your location while you are at your premises",
+      "location_pin": "Pin your location on the map"
+    },
+    "doc": {
+      "aadhaar": "Aadhaar card",
+      "driving_license": "Driving licence",
+      "fssai_license": "FSSAI food licence",
+      "gst_certificate": "GST certificate",
+      "guide_licence": "Guide licence or certificate (if you have one)",
+      "owner_photo": "Owner photo / selfie",
+      "owner_photo_self": "Your photo / selfie",
+      "pan": "PAN card",
+      "pollution_certificate": "Pollution certificate (PUC)",
+      "premises_photo_front": "Photo of the front (name board visible)",
+      "premises_photo_inside_cafe": "Photo of the inside (seating or counter)",
+      "premises_photo_inside_shop": "Photo of the inside (shelves or counter)",
+      "property_photo_front": "Photo of the property (front of the building)",
+      "property_photo_room": "Photo of a guest room",
+      "property_proof": "Property proof (deed / rent / electricity bill)",
+      "tourism_registration": "Homestay / tourism registration certificate",
+      "trade_license": "Shop & Establishment / trade licence",
+      "vehicle_insurance": "Vehicle insurance",
+      "vehicle_rc": "Vehicle registration (RC)"
+    }
   }
 }

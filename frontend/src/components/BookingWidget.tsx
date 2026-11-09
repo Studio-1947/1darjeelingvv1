@@ -593,7 +593,7 @@ export default function BookingWidget() {
                     <button
                       type="button"
                       onClick={() => setPanelOpen(false)}
-                      aria-label="Close search options"
+                      aria-label={t('ui.bookingWidget.close_search')}
                       className="w-8 h-8 rounded-full bg-white/10 text-white flex items-center justify-center active:scale-90"
                     >
                       <X size={18} />

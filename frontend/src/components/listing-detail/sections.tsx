@@ -124,11 +124,12 @@ export function VisitInfoSection({ facts, howToReach }: {
 }
 
 /** Curated keyword-photo gallery (editorial content, not provider uploads). */
-export function PhotosSection({ item, gallery }: { item: any; gallery: string[] }) {
+export function PhotosSection({ item, gallery, title }: { item: any; gallery: string[]; title?: string }) {
   const { t } = useTranslation();
+  const heading = title || t('detail.photos');
   return (
     <Screen tone="white" testid="detail-photos">
-      <SectionHead label={t('detail.photos')} title={t('detail.photos')} note={t('detail.gallery_note')} />
+      <SectionHead label={heading} title={heading} note={t('detail.gallery_note')} />
       <div className="mt-10 grid sm:grid-cols-3 gap-4 md:gap-5">
         {gallery.map((src, i) => (
           <SmartImg key={src + i} src={src} alt={`${item.title} ${i + 1}`}
@@ -140,18 +141,19 @@ export function PhotosSection({ item, gallery }: { item: any; gallery: string[] 
 }
 
 /** "What this place offers" amenity grid. */
-export function OffersSection({ amenities, title }: { amenities: { Icon: any; label: string }[]; title?: string }) {
+export function OffersSection({ amenities, title }: { amenities: { Icon: any; label: string; labelKey?: string }[]; title?: string }) {
   const { t } = useTranslation();
   const heading = title || t('detail.offers');
   return (
     <Screen tone="mist" testid="detail-offers">
       <SectionHead label={heading} title={heading} />
       <div className={`mt-10 grid sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5 max-w-4xl ${ALIGN_BLOCK}`}>
-        {amenities.map(({ Icon, label }) => (
+        {amenities.map(({ Icon, label, labelKey }) => (
           <div key={label} className="flex items-center gap-4 p-5 rounded-2xl border border-[var(--line)] bg-white">
             <Icon size={24} className="text-pine flex-shrink-0" />
-            {/* Amenities are stored in English; only the display is localised. */}
-            <span className="text-ink font-semibold">{optionLabel(t, label)}</span>
+            {/* Amenities are stored in English; only the display is localised. Built-in labels with
+                no options.* entry carry their own key (lib/listingMeta). */}
+            <span className="text-ink font-semibold">{labelKey ? t(labelKey) : optionLabel(t, label)}</span>
           </div>
         ))}
       </div>

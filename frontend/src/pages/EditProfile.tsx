@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { ArrowRight, Check, Phone, Upload, WhatsappLogo } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import api from '@/lib/api';
@@ -14,7 +15,8 @@ import { DIETS, FOODS, GENDERS, PLACE_INTERESTS, TRAVELLER_TYPES, ageFromBirthYe
  * Every field but the name is optional; the server checks each one.
  */
 export default function EditProfile() {
-  useSeo({ title: 'Edit profile', noindex: true });
+  const { t } = useTranslation();
+  useSeo({ title: t('nav.edit_profile'), noindex: true });
   const { user, loading, setUser } = useAuth();
   const nav = useNavigate();
   const [sp] = useSearchParams();
@@ -64,7 +66,7 @@ export default function EditProfile() {
     try {
       set({ avatar: await uploadImage(file) });
     } catch (msg: any) {
-      toast.error(typeof msg === 'string' ? msg : 'Upload failed');
+      toast.error(typeof msg === 'string' ? msg : t('ui.editProfile.upload_failed'));
     } finally {
       setUploading(false);
     }
@@ -82,7 +84,7 @@ export default function EditProfile() {
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (invalid) { setErr('Please fix the fields marked in red.'); return; }
+    if (invalid) { setErr(t('ui.editProfile.fix_fields')); return; }
     setBusy(true); setErr('');
     try {
       const { data } = await api.patch('/users/me', {
@@ -100,16 +102,16 @@ export default function EditProfile() {
         diet: form.diet || null,
       });
       setUser(data.user);
-      toast.success('Profile saved');
+      toast.success(t('ui.editProfile.saved'));
       nav(next);
     } catch (e: any) {
-      setErr(e?.response?.data?.detail || 'Could not save. Please try again.');
+      setErr(e?.response?.data?.detail || t('ui.editProfile.save_failed'));
     } finally {
       setBusy(false);
     }
   };
 
-  if (loading || !user) return <div className="p-10 text-center text-ink-soft">Loading…</div>;
+  if (loading || !user) return <div className="p-10 text-center text-ink-soft">{t('common.loading')}</div>;
 
   const field = (bad: boolean) => `mt-1 w-full px-3.5 py-2.5 rounded-xl border bg-white outline-none text-sm text-ink ${bad ? 'border-flag' : 'border-[var(--line)] focus:border-pine'}`;
   const chip = (on: boolean) => `px-3.5 py-2 rounded-full border text-sm font-semibold transition-colors ${on ? 'bg-[#1F6656] text-white border-[#1F6656]' : 'bg-white text-ink border-[var(--line)] hover:border-pine/50'}`;
@@ -118,10 +120,10 @@ export default function EditProfile() {
   return (
     <form onSubmit={save} className="mx-auto max-w-2xl px-4 md:px-6 py-6 md:py-10 space-y-6" data-testid="edit-profile">
       <div>
-        <div className="text-[11px] font-bold uppercase tracking-widest text-flag">{setup ? 'Step 2 of 2' : 'Your account'}</div>
-        <h1 className="font-display font-extrabold text-3xl text-ink mt-1">{setup ? 'Set up your profile' : 'Edit profile'}</h1>
+        <div className="text-[11px] font-bold uppercase tracking-widest text-flag">{setup ? t('ui.editProfile.step_2_of_2') : t('ui.editProfile.your_account')}</div>
+        <h1 className="font-display font-extrabold text-3xl text-ink mt-1">{setup ? t('ui.editProfile.setup_title') : t('nav.edit_profile')}</h1>
         <p className="text-sm text-ink-soft mt-1">
-          {setup ? 'Tell hosts a little about you. Everything except your name can be filled in later.' : 'Change your details any time. Only your name is required.'}
+          {setup ? t('ui.editProfile.setup_lead') : t('ui.editProfile.edit_lead')}
         </p>
       </div>
 
@@ -132,30 +134,30 @@ export default function EditProfile() {
             {form.avatar ? <img src={form.avatar} alt="" className="w-full h-full object-cover" /> : (form.name.trim().charAt(0).toUpperCase() || 'T')}
           </div>
           <label className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-[var(--line)] text-ink font-bold text-sm btn-hover cursor-pointer" data-testid="edit-photo">
-            <Upload size={14} /> {uploading ? 'Uploading…' : form.avatar ? 'Change photo' : 'Add photo'}
+            <Upload size={14} /> {uploading ? t('common.uploading') : form.avatar ? t('ui.editProfile.change_photo') : t('ui.editProfile.add_photo')}
             <input type="file" accept={SUPPORTED_IMAGE_ACCEPT} onChange={pickPhoto} className="hidden" />
           </label>
         </div>
 
         <label className="block">
-          <span className={label}>Name</span>
+          <span className={label}>{t('ui.editProfile.name')}</span>
           <input value={form.name} onChange={(e) => set({ name: e.target.value })} maxLength={100} data-testid="edit-name" className={field(nameBad)} />
-          {nameBad && <span className="text-xs text-flag font-semibold">Please enter your name.</span>}
+          {nameBad && <span className="text-xs text-flag font-semibold">{t('ui.editProfile.name_error')}</span>}
         </label>
 
         <div>
-          <span className={label}>Phone number</span>
+          <span className={label}>{t('ui.editProfile.phone')}</span>
           <div className="mt-1 flex items-center gap-2 px-3.5 py-2.5 rounded-xl border border-[var(--line)] bg-mist/60 text-sm text-ink">
             <Phone size={14} className="text-ink-soft" /> {user.phone}
-            <span className="ml-auto text-xs text-ink-soft">Used to sign in; cannot be changed here</span>
+            <span className="ml-auto text-xs text-ink-soft">{t('ui.editProfile.phone_note')}</span>
           </div>
         </div>
 
         <div>
-          <span className={label}>WhatsApp</span>
+          <span className={label}>{t('ui.editProfile.whatsapp')}</span>
           <label className="mt-1 flex items-center gap-2 text-sm text-ink cursor-pointer">
             <input type="checkbox" checked={form.sameWhatsapp} onChange={(e) => set({ sameWhatsapp: e.target.checked })} className="accent-[#1F6656] w-4 h-4" data-testid="edit-same-whatsapp" />
-            Same as my phone number
+            {t('ui.editProfile.same_as_phone')}
           </label>
           {!form.sameWhatsapp && (
             <div className={`${field(waBad)} flex items-center gap-2`}>
@@ -164,76 +166,76 @@ export default function EditProfile() {
                 data-testid="edit-whatsapp" className="flex-1 min-w-0 outline-none bg-transparent" />
             </div>
           )}
-          {waBad && <span className="text-xs text-flag font-semibold">Enter a 10-digit WhatsApp number.</span>}
+          {waBad && <span className="text-xs text-flag font-semibold">{t('ui.editProfile.whatsapp_error')}</span>}
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <span className={label}>Gender</span>
+            <span className={label}>{t('ui.editProfile.gender')}</span>
             <div className="mt-1.5 flex flex-wrap gap-2">
               {GENDERS.map((g) => (
-                <button key={g.id} type="button" onClick={() => set({ gender: form.gender === g.id ? '' : g.id })} className={chip(form.gender === g.id)} data-testid={`edit-gender-${g.id}`}>{g.label}</button>
+                <button key={g.id} type="button" onClick={() => set({ gender: form.gender === g.id ? '' : g.id })} className={chip(form.gender === g.id)} data-testid={`edit-gender-${g.id}`}>{t(g.labelKey)}</button>
               ))}
             </div>
           </div>
           <label className="block">
-            <span className={label}>Age</span>
-            <input value={form.age} onChange={(e) => set({ age: e.target.value.replace(/\D/g, '').slice(0, 3) })} inputMode="numeric" placeholder="e.g. 28" data-testid="edit-age" className={field(ageBad)} />
-            {ageBad && <span className="text-xs text-flag font-semibold">Age should be between 13 and 100.</span>}
+            <span className={label}>{t('ui.editProfile.age')}</span>
+            <input value={form.age} onChange={(e) => set({ age: e.target.value.replace(/\D/g, '').slice(0, 3) })} inputMode="numeric" placeholder={t('ui.editProfile.age_placeholder')} data-testid="edit-age" className={field(ageBad)} />
+            {ageBad && <span className="text-xs text-flag font-semibold">{t('ui.editProfile.age_error')}</span>}
           </label>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <label className="block sm:col-span-2">
-            <span className={label}>Address</span>
-            <input value={form.address} onChange={(e) => set({ address: e.target.value })} maxLength={300} placeholder="House, street, town" data-testid="edit-address" className={field(false)} />
+            <span className={label}>{t('ui.editProfile.address')}</span>
+            <input value={form.address} onChange={(e) => set({ address: e.target.value })} maxLength={300} placeholder={t('ui.editProfile.address_placeholder')} data-testid="edit-address" className={field(false)} />
           </label>
           <label className="block">
-            <span className={label}>Pincode</span>
+            <span className={label}>{t('ui.editProfile.pincode')}</span>
             <input value={form.pincode} onChange={(e) => set({ pincode: e.target.value.replace(/\D/g, '').slice(0, 6) })} inputMode="numeric" placeholder="734101" data-testid="edit-pincode" className={field(pinBad)} />
-            {pinBad && <span className="text-xs text-flag font-semibold">6 digits.</span>}
+            {pinBad && <span className="text-xs text-flag font-semibold">{t('ui.editProfile.pincode_error')}</span>}
           </label>
         </div>
 
         <label className="block">
-          <span className={label}>Email <span className="normal-case font-semibold">(optional)</span></span>
+          <span className={label}>{t('ui.editProfile.email')} <span className="normal-case font-semibold">{t('ui.editProfile.optional')}</span></span>
           <input value={form.email} onChange={(e) => set({ email: e.target.value })} type="email" placeholder="you@example.com" data-testid="edit-email" className={field(emailBad)} />
-          {emailBad && <span className="text-xs text-flag font-semibold">That email does not look right.</span>}
+          {emailBad && <span className="text-xs text-flag font-semibold">{t('ui.editProfile.email_error')}</span>}
         </label>
       </section>
 
       {/* How you travel */}
       <section className="rounded-3xl border border-[var(--line)] bg-white p-5 space-y-5">
-        <h2 className="font-display font-bold text-lg text-ink">How you travel</h2>
+        <h2 className="font-display font-bold text-lg text-ink">{t('ui.editProfile.how_you_travel')}</h2>
         <div>
-          <span className={label}>Places you love</span>
+          <span className={label}>{t('ui.editProfile.places_you_love')}</span>
           <div className="mt-1.5 flex flex-wrap gap-2">
             {PLACE_INTERESTS.map((i) => (
-              <button key={i.id} type="button" onClick={() => toggle('interests', i.id)} className={chip(form.interests.includes(i.id))} data-testid={`edit-interest-${i.id}`}>{i.label}</button>
+              <button key={i.id} type="button" onClick={() => toggle('interests', i.id)} className={chip(form.interests.includes(i.id))} data-testid={`edit-interest-${i.id}`}>{t(i.labelKey)}</button>
             ))}
           </div>
         </div>
         <div>
-          <span className={label}>Foods you like</span>
+          <span className={label}>{t('ui.editProfile.foods_you_like')}</span>
           <div className="mt-1.5 flex flex-wrap gap-2">
             {FOODS.map((f) => (
-              <button key={f.id} type="button" onClick={() => toggle('likedFoods', f.id)} className={chip(form.likedFoods.includes(f.id))} data-testid={`edit-food-${f.id}`}>{f.label}</button>
+              <button key={f.id} type="button" onClick={() => toggle('likedFoods', f.id)} className={chip(form.likedFoods.includes(f.id))} data-testid={`edit-food-${f.id}`}>{t(f.labelKey)}</button>
             ))}
           </div>
         </div>
         <div>
-          <span className={label}>Type of traveller</span>
+          <span className={label}>{t('ui.editProfile.traveller_type')}</span>
           <div className="mt-1.5 flex flex-wrap gap-2">
             {TRAVELLER_TYPES.map((x) => (
-              <button key={x.id} type="button" onClick={() => set({ travellerType: form.travellerType === x.id ? '' : x.id })} className={chip(form.travellerType === x.id)} data-testid={`edit-type-${x.id}`}>{x.label}</button>
+              <button key={x.id} type="button" onClick={() => set({ travellerType: form.travellerType === x.id ? '' : x.id })} className={chip(form.travellerType === x.id)} data-testid={`edit-type-${x.id}`}>{t(x.labelKey)}</button>
             ))}
           </div>
         </div>
         <div>
-          <span className={label}>Food preference</span>
+          <span className={label}>{t('ui.editProfile.food_preference')}</span>
           <div className="mt-1.5 flex flex-wrap gap-2">
             {DIETS.map((d) => (
-              <button key={d.id} type="button" onClick={() => set({ diet: form.diet === d.id ? '' : d.id })} className={chip(form.diet === d.id)} data-testid={`edit-diet-${d.id}`}>{d.label}</button>
+              <button key={d.id} type="button" onClick={() => set({ diet: form.diet === d.id ? '' : d.id })} className={chip(form.diet === d.id)} data-testid={`edit-diet-${d.id}`}>{t(d.labelKey)}</button>
             ))}
           </div>
         </div>
@@ -244,12 +246,12 @@ export default function EditProfile() {
       <div className="flex flex-col sm:flex-row gap-3">
         <button type="submit" disabled={busy || uploading} data-testid="edit-save"
           className="inline-flex items-center justify-center gap-2 h-[50px] px-8 rounded-full bg-[#1F6656] text-white font-bold text-[15px] btn-hover disabled:opacity-60">
-          <Check size={16} weight="bold" /> {busy ? 'Saving…' : 'Save profile'}
+          <Check size={16} weight="bold" /> {busy ? t('common.saving') : t('ui.editProfile.save')}
         </button>
         {setup && (
           <button type="button" onClick={() => nav(next)} data-testid="edit-skip"
             className="inline-flex items-center justify-center gap-2 h-[50px] px-6 rounded-full border border-[var(--line)] text-ink font-bold text-[15px] btn-hover">
-            Skip for now <ArrowRight size={16} />
+            {t('ui.editProfile.skip')} <ArrowRight size={16} />
           </button>
         )}
       </div>

@@ -1,5 +1,7 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { CaretDown } from '@phosphor-icons/react';
+import i18n from '@/i18n';
 
 export type PointsRow = {
   /** How the points are earned, in the user's words. */
@@ -16,13 +18,14 @@ export type PointsRow = {
  * cannot drift from what the server counts. Renders nothing when an older server sends no rules.
  */
 export default function PointsRules({ rows, tone = 'light', testId }: { rows: PointsRow[]; tone?: 'light' | 'dark'; testId?: string }) {
+  const { t } = useTranslation();
   if (!rows.length) return null;
   const muted = tone === 'dark' ? 'text-white/75' : 'text-current opacity-75';
   const line = tone === 'dark' ? 'border-white/15' : 'border-black/10';
   return (
     <details className="group mt-3" data-testid={testId}>
       <summary className="flex cursor-pointer list-none items-center gap-1 text-xs font-bold [&::-webkit-details-marker]:hidden">
-        How points work
+        {t('ui.pointsRules.how_points_work')}
         <CaretDown size={12} weight="bold" className="transition-transform group-open:rotate-180" />
       </summary>
       <ul className="mt-2 w-full sm:min-w-[15rem] sm:max-w-xs space-y-1.5">
@@ -39,18 +42,18 @@ export default function PointsRules({ rows, tone = 'light', testId }: { rows: Po
   );
 }
 
-/** Traveller rows, from GET /users/me/dashboard. */
+/** Traveller rows, from GET /users/me/dashboard. Labels are translated when this is called (at render). */
 export function travellerPointsRows(
   rules?: Partial<Record<'completedTrip' | 'review' | 'referral' | 'profileComplete' | 'pass', number>>,
   earned?: Partial<Record<'trips' | 'reviews' | 'referrals' | 'profile' | 'pass', number>>,
 ): PointsRow[] {
   if (!rules) return [];
   const rows: Array<PointsRow | null> = [
-    rules.completedTrip != null ? { label: 'each finished trip', points: rules.completedTrip, earned: earned?.trips } : null,
-    rules.review != null ? { label: 'each review you write', points: rules.review, earned: earned?.reviews } : null,
-    rules.referral != null ? { label: 'each friend who joins with your code', points: rules.referral, earned: earned?.referrals } : null,
-    rules.profileComplete != null ? { label: 'completing your profile (once)', points: rules.profileComplete, earned: earned?.profile } : null,
-    rules.pass != null ? { label: 'taking the aangan pass (once)', points: rules.pass, earned: earned?.pass } : null,
+    rules.completedTrip != null ? { label: i18n.t('ui.pointsRules.each_finished_trip'), points: rules.completedTrip, earned: earned?.trips } : null,
+    rules.review != null ? { label: i18n.t('ui.pointsRules.each_review_you_write'), points: rules.review, earned: earned?.reviews } : null,
+    rules.referral != null ? { label: i18n.t('ui.pointsRules.each_friend_joins'), points: rules.referral, earned: earned?.referrals } : null,
+    rules.profileComplete != null ? { label: i18n.t('ui.pointsRules.completing_profile'), points: rules.profileComplete, earned: earned?.profile } : null,
+    rules.pass != null ? { label: i18n.t('ui.pointsRules.taking_pass'), points: rules.pass, earned: earned?.pass } : null,
   ];
   return rows.filter((r): r is PointsRow => r !== null);
 }
@@ -62,11 +65,11 @@ export function hostPointsRows(
 ): PointsRow[] {
   if (!rules) return [];
   const rows: Array<PointsRow | null> = [
-    rules.completedBooking != null ? { label: 'each finished booking', points: rules.completedBooking, earned: earned?.bookings } : null,
-    rules.review != null ? { label: 'each guest review', points: rules.review, earned: earned?.reviews } : null,
-    rules.fiveStarReview != null ? { label: `each 5-star review (instead of ${rules.review ?? 0})`, points: rules.fiveStarReview } : null,
-    rules.verified != null ? { label: 'getting verified (once)', points: rules.verified, earned: earned?.verified } : null,
-    rules.profileComplete != null ? { label: 'completing your profile (once)', points: rules.profileComplete, earned: earned?.profile } : null,
+    rules.completedBooking != null ? { label: i18n.t('ui.pointsRules.each_finished_booking'), points: rules.completedBooking, earned: earned?.bookings } : null,
+    rules.review != null ? { label: i18n.t('ui.pointsRules.each_guest_review'), points: rules.review, earned: earned?.reviews } : null,
+    rules.fiveStarReview != null ? { label: i18n.t('ui.pointsRules.each_five_star_review', { n: rules.review ?? 0 }), points: rules.fiveStarReview } : null,
+    rules.verified != null ? { label: i18n.t('ui.pointsRules.getting_verified'), points: rules.verified, earned: earned?.verified } : null,
+    rules.profileComplete != null ? { label: i18n.t('ui.pointsRules.completing_profile'), points: rules.profileComplete, earned: earned?.profile } : null,
   ];
   return rows.filter((r): r is PointsRow => r !== null);
 }

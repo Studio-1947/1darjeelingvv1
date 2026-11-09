@@ -1,5 +1,6 @@
 import { Camera, Mesh, Plane, Program, Renderer, Texture, Transform } from 'ogl';
 import { useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import './CircularGallery.css';
 
@@ -658,6 +659,7 @@ export default function CircularGallery({
   scrollSpeed = 2,
   scrollEase = 0.05
 }) {
+  const { t } = useTranslation();
   const containerRef = useRef(null);
   useEffect(() => {
     if (!containerRef.current) return;
@@ -687,7 +689,7 @@ export default function CircularGallery({
       ref={containerRef}
       tabIndex={0}
       role="region"
-      aria-label="Circular image gallery. Use left and right arrow keys to navigate."
+      aria-label={t('ui.circularGallery.aria_label')}
     />
   );
 }

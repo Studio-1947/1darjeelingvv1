@@ -94,15 +94,15 @@ export default function MyListings() {
         <div className="w-16 h-16 rounded-full bg-pine/10 text-pine grid place-items-center mx-auto mb-4">
           <Store size={28} />
         </div>
-        <h1 className="font-display font-extrabold text-2xl sm:text-3xl text-ink">Service Provider Listings</h1>
+        <h1 className="font-display font-extrabold text-2xl sm:text-3xl text-ink">{t('ui.myListings.guest_title')}</h1>
         <p className="text-ink-soft max-w-md mx-auto mt-2 text-sm">
-          Log in as a homestay host, driver, cafe, or local shop owner to manage your business listings on aangan.
+          {t('ui.myListings.guest_body')}
         </p>
         <button
           onClick={() => nav('/login?next=/my-listings')}
           className="mt-6 inline-flex items-center gap-2 px-6 py-3 rounded-full bg-pine text-white font-bold text-sm btn-hover shadow-md"
         >
-          Log In to Manage Listings
+          {t('ui.myListings.guest_cta')}
         </button>
       </div>
     );
@@ -115,9 +115,9 @@ export default function MyListings() {
         <div className="w-16 h-16 rounded-full bg-flag/10 text-flag grid place-items-center mx-auto mb-4">
           <Building2 size={28} />
         </div>
-        <h1 className="font-display font-extrabold text-2xl sm:text-3xl text-ink">List Your Business on aangan</h1>
+        <h1 className="font-display font-extrabold text-2xl sm:text-3xl text-ink">{t('ui.myListings.onboard_title')}</h1>
         <p className="text-ink-soft max-w-md mx-auto mt-2 text-sm leading-relaxed">
-          Are you a local homestay owner, taxi driver, cafe owner, or local artisan in Darjeeling? Reach thousands of visitors with direct zero-commission bookings.
+          {t('ui.myListings.onboard_body')}
         </p>
         <div className="mt-6 flex flex-wrap gap-3 justify-center">
           <Link
@@ -130,7 +130,7 @@ export default function MyListings() {
             to="/my-trips"
             className="inline-flex items-center gap-2 px-6 py-3 rounded-full border border-[var(--line)] text-ink font-semibold text-sm btn-hover"
           >
-            View My Personal Trips
+            {t('ui.myListings.view_trips')}
           </Link>
         </div>
       </div>
@@ -149,10 +149,10 @@ export default function MyListings() {
             <Store size={13} /> {provider.business_name}
           </div>
           <h1 className="font-display font-extrabold text-2xl sm:text-3xl md:text-4xl text-ink mt-1">
-            My Listings
+            {t('ui.myListings.title')}
           </h1>
           <p className="text-xs sm:text-sm text-ink-soft mt-1">
-            Manage your public business listings, room rates, driver profiles, and offerings.
+            {t('ui.myListings.subtitle')}
           </p>
         </div>
 
@@ -171,7 +171,7 @@ export default function MyListings() {
             data-testid="add-listing-cta"
             className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-pine text-white font-bold text-xs sm:text-sm btn-hover shadow-sm"
           >
-            <Plus size={15} /> Add New Listing
+            <Plus size={15} /> {t('ui.myListings.add_new')}
           </button>
         </div>
       </div>
@@ -181,19 +181,19 @@ export default function MyListings() {
       {/* Stats row */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 mb-8">
         <div className="rounded-2xl p-4 bg-pine text-white shadow-sm">
-          <div className="text-[11px] uppercase tracking-widest font-bold opacity-90">Total Listings</div>
+          <div className="text-[11px] uppercase tracking-widest font-bold opacity-90">{t('ui.myListings.total')}</div>
           <div className="mt-1 font-display font-extrabold text-2xl sm:text-3xl leading-none">
             {listings.length}
           </div>
         </div>
         <div className="rounded-2xl p-4 bg-flag text-white shadow-sm">
-          <div className="text-[11px] uppercase tracking-widest font-bold opacity-90">Live Listings</div>
+          <div className="text-[11px] uppercase tracking-widest font-bold opacity-90">{t('ui.myListings.live')}</div>
           <div className="mt-1 font-display font-extrabold text-2xl sm:text-3xl leading-none">
             {activeCount}
           </div>
         </div>
         <div className="rounded-2xl p-4 bg-gold text-white shadow-sm col-span-2 md:col-span-1">
-          <div className="text-[11px] uppercase tracking-widest font-bold opacity-90">Business Type</div>
+          <div className="text-[11px] uppercase tracking-widest font-bold opacity-90">{t('ui.myListings.business_type')}</div>
           <div className="mt-1 font-display font-bold text-lg sm:text-xl capitalize leading-tight">
             {provider.business_type}
           </div>
@@ -206,15 +206,15 @@ export default function MyListings() {
           <div className="w-12 h-12 rounded-full bg-mist text-ink-soft grid place-items-center mx-auto mb-3">
             <LayoutList size={24} />
           </div>
-          <h3 className="font-display font-bold text-lg text-ink">No active listings yet</h3>
+          <h3 className="font-display font-bold text-lg text-ink">{t('ui.myListings.empty_title')}</h3>
           <p className="text-xs sm:text-sm text-ink-soft max-w-md mx-auto mt-1">
-            Add your homestay rooms, driver profile, or cafe menu details to start showcasing your services to Darjeeling travellers.
+            {t('ui.myListings.empty_body')}
           </p>
           <button
             onClick={() => setListingModal({ open: true, editing: null })}
             className="mt-6 inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full bg-pine text-white font-bold text-xs sm:text-sm btn-hover"
           >
-            <Plus size={16} /> Add Your First Listing
+            <Plus size={16} /> {t('ui.myListings.add_first')}
           </button>
         </div>
       ) : (
@@ -251,7 +251,7 @@ export default function MyListings() {
                   {l.price > 0 && (
                     <div className="mt-2 font-extrabold text-pine text-base">
                       ₹{l.price.toLocaleString('en-IN')}{' '}
-                      <span className="text-[11px] font-normal text-ink-soft">starting</span>
+                      <span className="text-[11px] font-normal text-ink-soft">{t('ui.myListings.starting')}</span>
                     </div>
                   )}
                 </div>
@@ -264,7 +264,7 @@ export default function MyListings() {
                     data-testid={`view-listing-${l.id}`}
                     className="inline-flex items-center gap-1 text-xs font-bold text-pine hover:underline"
                   >
-                    View <ExternalLink size={11} />
+                    {t('common.view')} <ExternalLink size={11} />
                   </Link>
 
                   <button
@@ -272,7 +272,7 @@ export default function MyListings() {
                     data-testid={`edit-listing-${l.id}`}
                     className="inline-flex items-center gap-1 text-xs font-bold text-ink-soft hover:text-ink"
                   >
-                    <Pencil size={11} /> Edit
+                    <Pencil size={11} /> {t('common.edit')}
                   </button>
 
                   <button
@@ -280,7 +280,7 @@ export default function MyListings() {
                     data-testid={`delete-listing-${l.id}`}
                     className="inline-flex items-center gap-1 text-xs font-bold text-flag hover:text-[#8a1e1e]"
                   >
-                    <Trash2 size={11} /> Delete
+                    <Trash2 size={11} /> {t('common.delete')}
                   </button>
                 </div>
               </div>

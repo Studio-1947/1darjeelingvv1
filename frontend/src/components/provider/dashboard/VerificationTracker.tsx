@@ -1,5 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { missingLabel } from '@/lib/serverText';
 import { ArrowRight, Phone } from '@phosphor-icons/react';
 import { verificationSteps, type Headline, type StepKey, type VerificationStatus } from '@/lib/verificationSteps';
 
@@ -29,9 +30,15 @@ const HEADLINES: Record<Headline, [string, string]> = {
   live: ['verify.title_live', 'verify.body_live'],
 };
 
-export default function VerificationTracker({ verification, paid, phone, onOpen }: {
+export default function VerificationTracker({ verification, paid, freeStart = false, profileMissing = [], businessType, onOpenProfile, phone, onOpen }: {
   verification?: Verification | null;
   paid: boolean;
+  /** On the free start (pay later): the first step is done, but nothing was paid. */
+  freeStart?: boolean;
+  /** What the business profile still lacks: documents are refused until it is complete. */
+  profileMissing?: { key: string; label: string; min?: number; have?: number }[];
+  businessType?: string;
+  onOpenProfile?: () => void;
   phone?: string | null;
   onOpen: () => void;
 }) {
@@ -41,12 +48,21 @@ export default function VerificationTracker({ verification, paid, phone, onOpen 
   const { steps, done, total, headline } = verificationSteps(status, paid);
   const [titleKey, bodyKey] = HEADLINES[headline];
   const cta = headline === 'send' ? t('verify.cta_send') : headline === 'changes' ? t('verify.cta_changes') : t('verify.cta_view');
-  const label = (k: StepKey) => t(`verify.step_${k}`);
+  const label = (k: StepKey) => t(k === 'paid' && freeStart ? 'verify.step_free' : `verify.step_${k}`);
+  // Documents are refused until the profile is complete (server 409 profile_incomplete), so that
+  // comes first rather than a "Upload documents" button that cannot work yet (persona test 2026-11-09).
+  const profileFirst = headline === 'send' && profileMissing.length > 0 && !!onOpenProfile;
+  const body = profileFirst ? 'verify.body_profile' : headline === 'send' && freeStart ? 'verify.body_send_free' : bodyKey;
 
   return (
     <div className="mt-8 rounded-2xl border border-gold bg-white p-5 md:p-6" data-testid="verification-tracker">
-      <h2 className="font-display font-extrabold text-lg text-ink">{t(titleKey)}</h2>
-      <p className="mt-1 text-sm text-ink-soft">{t(bodyKey)}</p>
+      <h2 className="font-display font-extrabold text-lg text-ink">{t(profileFirst ? 'verify.title_profile' : titleKey)}</h2>
+      <p className="mt-1 text-sm text-ink-soft">{t(body)}</p>
+      {profileFirst && (
+        <ul className="mt-2 text-sm font-semibold text-ink space-y-0.5" data-testid="verification-profile-missing">
+          {profileMissing.map((m) => <li key={m.key}>• {missingLabel(t, m, businessType)}</li>)}
+        </ul>
+      )}
 
       <div className="mt-4 flex items-center justify-between text-[11px] font-bold uppercase tracking-widest">
         <span className="text-pine">{t('verify.progress')}</span>
@@ -88,9 +104,9 @@ export default function VerificationTracker({ verification, paid, phone, onOpen 
       )}
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
-        <button type="button" onClick={onOpen} data-testid="verification-cta"
+        <button type="button" onClick={profileFirst ? onOpenProfile : onOpen} data-testid="verification-cta"
           className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full bg-pine text-white font-bold text-sm btn-hover">
-          {cta} <ArrowRight size={14} />
+          {profileFirst ? t('verify.cta_profile') : cta} <ArrowRight size={14} />
         </button>
         {verification?.support_phone && (
           <a href={`tel:${verification.support_phone}`} className="inline-flex items-center gap-1.5 text-sm font-bold text-pine">

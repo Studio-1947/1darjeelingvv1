@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import DeliveryRequestButton from '@/components/DeliveryRequestButton';
 import { Link, useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { ArrowRight } from '@phosphor-icons/react';
 import api from '@/lib/api';
 import { shareLink } from '@/lib/share';
 import { openDirections } from '@/lib/directions';
@@ -129,6 +130,7 @@ export default function ListingDetail() {
   const initial = (item.title || '?').trim().charAt(0).toUpperCase();
 
   const gallery = galleryImagesFor(item);
+  const ownPhotos: string[] = Array.isArray(item.extras?.images) ? item.extras.images.filter((u: unknown) => typeof u === 'string' && u) : [];
   const personSrc = host.avatar || personImageFor(item);
   // Drivers show the same photo here as the hero, so the face you scrolled past
   // is the face you meet - no second stock person.
@@ -165,7 +167,7 @@ export default function ListingDetail() {
           {item.host_page_path && (
             <Link to={item.host_page_path} data-testid="listing-host-page"
               className="inline-flex items-center gap-1.5 h-10 px-4 rounded-full border border-[var(--line)] bg-white text-ink font-bold text-[13px] btn-hover">
-              See the host's page
+              {t('ui.listingDetail.see_host_page')}
             </Link>
           )}
           {['cafe', 'shop', 'homestay'].includes(item.type) && !item.bookings_paused && <DeliveryRequestButton listing={item} />}
@@ -193,10 +195,11 @@ export default function ListingDetail() {
       {/* A curated spot leads with why it's worth the trip, before the photos. */}
       {isSpot && spotInfo.highlights.length > 0 && <HighlightsSection highlights={spotInfo.highlights} />}
 
-      {/* Drivers get their portrait and routes instead of a place gallery. */}
-      {item.type !== 'driver' && gallery.length > 0 && (
-        <PhotosSection item={item} gallery={gallery} />
-      )}
+      {/* Drivers show the car photos they uploaded (at least 6 are required to go live), never a
+          stand-in gallery; everyone else gets their own photos or the curated set. */}
+      {item.type === 'driver'
+        ? ownPhotos.length > 0 && <PhotosSection item={item} gallery={ownPhotos} title={t('detail.car_photos')} />
+        : gallery.length > 0 && <PhotosSection item={item} gallery={gallery} />}
 
       {/* Timings, entry fee, best season, altitude and directions  all admin-entered, so
           the section is skipped entirely for a spot that has none of them filled in. */}
@@ -210,6 +213,24 @@ export default function ListingDetail() {
           }}
           howToReach={spotInfo.howToReach}
         />
+      )}
+
+      {/* Getting there: a spot or event links to drivers who go there and to guides
+          (persona test 2026-11-09: spot pages were a dead end for planning the trip). */}
+      {(isSpot || item.type === 'event') && (
+        <section className="mx-auto max-w-6xl px-4 md:px-6 py-8" data-testid="detail-getting-there">
+          <h2 className="font-display font-extrabold text-xl text-ink">{t('detail.getting_there')}</h2>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Link to={`/drivers?to=${encodeURIComponent(item.location || item.title)}`} data-testid="getting-there-drivers"
+              className="inline-flex items-center gap-1.5 h-11 px-5 rounded-full bg-[#1F6656] text-white font-bold text-sm btn-hover">
+              {t('detail.find_driver_here')} <ArrowRight size={16} />
+            </Link>
+            <Link to="/guides" data-testid="getting-there-guides"
+              className="inline-flex items-center gap-1.5 h-11 px-5 rounded-full border border-[#1F6656] text-[#1F6656] bg-white font-bold text-sm btn-hover">
+              {t('detail.find_guide')} <ArrowRight size={16} />
+            </Link>
+          </div>
+        </section>
       )}
 
       {/* Biodiversity entries are a species or habitat, not somewhere with
@@ -238,6 +259,7 @@ export default function ListingDetail() {
           rows={Array.isArray(item.extras?.[item.type === 'cafe' ? 'menu' : 'goods']) ? item.extras[item.type === 'cafe' ? 'menu' : 'goods'] : []}
           homeDelivery={item.extras?.home_delivery === true}
           capacity={Number(item.extras?.capacity) || 0}
+          openingHours={typeof item.extras?.opening_hours === 'string' ? item.extras.opening_hours : ''}
           shopKind={item.type === 'shop' ? item.extras?.shop_kind : undefined}
         />
       )}
