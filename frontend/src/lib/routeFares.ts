@@ -96,3 +96,18 @@ export function routesCoverTrip(fares: RouteFare[], from: string, to: string): b
   );
 }
 
+/**
+ * How a driver relates to a trip search: their routes cover it, they have listed no routes at
+ * all, or their routes clearly do not cover it.
+ *
+ * Routes are optional at sign-up, and most drivers had none (5 of 8 live, audit 2026-11-08), so
+ * a trip search that kept only `covers` hid them completely. They are now shown after the
+ * drivers who cover the trip, under "may also do this trip". Same rule in the app
+ * (src/lib/routeFares.ts).
+ */
+export type TripMatch = 'covers' | 'unlisted' | 'no';
+export function tripMatch(fares: RouteFare[], from: string, to: string): TripMatch {
+  if (routesCoverTrip(fares, from, to)) return 'covers';
+  return fares.length === 0 ? 'unlisted' : 'no';
+}
+

@@ -793,7 +793,9 @@
     "search_all": "Search all categories",
     "found_elsewhere_one": "{{count}} result for “{{query}}” in another category",
     "found_elsewhere_other": "{{count}} results for “{{query}}” in other categories",
-    "found_elsewhere_note": "Not in this category, but it might be what you were looking for."
+    "found_elsewhere_note": "Not in this category, but it might be what you were looking for.",
+    "trip_unlisted_title": "May also do this trip",
+    "trip_unlisted_body": "These drivers have not listed their routes yet. Ask them before you book."
   },
   "notes": {
     "title": "Notifications",
@@ -944,6 +946,7 @@
     "count_one": "{{count}} review",
     "count_other": "{{count}} reviews",
     "write": "Write a review",
+    "stay_required": "You can review this host after a completed booking with them. Reviews come from people who stayed, rode or toured with them.",
     "update_title": "Update your review",
     "remove": "Remove",
     "comment_placeholder": "Share a little about your experience (optional)",
