@@ -14,6 +14,7 @@ import { isPlausiblePhone, phoneKey } from '../lib/phone';
 import { generateReferralCode, redeemReferralCode } from '../lib/referrals';
 import { hashOtp, verifyOtpHash } from '../lib/otpHash';
 import { claimCoOwnerInvites } from '../lib/hostAccess';
+import { cleanName } from '../lib/accountFields';
 
 const router = Router();
 
@@ -320,13 +321,16 @@ router.post('/otp/verify', rateLimiter(10, 60 * 1000, 'otp_verify'), async (req:
 
   let [user] = await db.select().from(schema.users).where(eq(schema.users.phone, phone)).limit(1);
   if (!user) {
-    if (!name || name.trim() === '') {
+    if (!name || typeof name !== 'string' || name.trim() === '') {
       return res.status(400).json({ detail: 'Name is required for registration' });
     }
+    // Same limits as editing the profile later (lib/accountFields.ts).
+    const cleaned = cleanName(name);
+    if ('error' in cleaned) return res.status(400).json({ detail: cleaned.error });
     user = {
       id: uuidv4(),
       phone,
-      name: name.trim(),
+      name: cleaned.name,
       // Never trust the body for this: 'admin' is what every requireAdmin guard keys on,
       // so anything outside the self-serviceable roles registers as a plain tourist.
       role: SELF_ASSIGNABLE_ROLES.includes(role) ? role : 'tourist',

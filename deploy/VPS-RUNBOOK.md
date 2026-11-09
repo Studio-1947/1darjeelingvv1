@@ -309,8 +309,10 @@ ssh root@187.127.185.82 \
 The backend contains utility scripts in `backend/scripts/` for database domain URL migration and MinIO storage orphan cleanup:
 
 ```bash
-# 1. Rewrite asset domain URLs in PostgreSQL (e.g. from staging to production domain)
-npx tsx scripts/rewrite-prod-urls.ts --from https://aanganerp.in --to https://aanganerp.in [--dry-run]
+# 1. Repair photo addresses stored with a retired or broken origin (1darjeeling.in, the
+#    "https://1darjeeling.in,https//aaganerp.in" comma mix-up, the aaganerp.in typo). Reports only;
+#    add --check to test that the repaired addresses load, then --execute to write.
+npx tsx scripts/rewrite-prod-urls.ts [--check] [--execute] [--from <extra retired origin>] [--to https://aanganerp.in]
 
 # 2. Scan and prune unreferenced orphan files in MinIO public & private KYC storage
 npx tsx scripts/cleanup-orphan-storage.ts [--execute]

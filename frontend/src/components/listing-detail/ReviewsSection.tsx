@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Star, CircleNotch as Loader2, Trash as Trash2, Camera, Image as ImageIcon, X } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
-import { fetchReviews, postReview, deleteReview, Review, ReviewSummary } from '@/lib/reviews';
+import { fetchReviews, postReview, deleteReview, CanReview, Review, ReviewSummary } from '@/lib/reviews';
 import { uploadImages } from '@/lib/uploadImage';
 import { ReviewSkeleton, LoadingStatus, repeat } from '@/components/skeletons';
 import { ALIGN_TEXT, ALIGN_ROW, ALIGN_BLOCK, SCREEN_COL } from './primitives';
@@ -57,6 +57,7 @@ export default function ReviewsSection({ item }: { item: any }) {
   const loc = useLocation();
   const [summary, setSummary] = useState<ReviewSummary>({ count: 0, average: 0 });
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [canReview, setCanReview] = useState<CanReview | null>(null);
   const [loading, setLoading] = useState(true);
 
   const [rating, setRating] = useState(0);
@@ -75,6 +76,7 @@ export default function ReviewsSection({ item }: { item: any }) {
       const data = await fetchReviews(item.id);
       setSummary(data.summary);
       setReviews(data.reviews);
+      setCanReview(data.canReview);
     } finally {
       setLoading(false);
     }
@@ -183,7 +185,12 @@ export default function ReviewsSection({ item }: { item: any }) {
 
         {/* Compose / edit (signed-in) or a sign-in prompt */}
         <div className="mt-10 mist-panel p-6 md:p-8">
-          {user ? (
+          {user && !myReview && canReview?.code === 'stay_required' ? (
+            // Homestays, drivers and guides are reviewed by people who stayed or rode with them.
+            <p data-testid="review-stay-required" className="text-ink-soft text-sm leading-relaxed">
+              {t('reviews.stay_required')}
+            </p>
+          ) : user ? (
             <div>
               <div className="flex items-center justify-between gap-3 flex-wrap">
                 <h3 className="font-display font-bold text-lg text-ink">

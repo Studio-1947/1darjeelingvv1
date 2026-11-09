@@ -19,7 +19,48 @@ const path = require('path');
 const REPO_ROOT = path.join(__dirname, '..', '..');
 const NGINX_CONF = path.join(REPO_ROOT, 'deploy', 'nginx', 'app.conf');
 const SNIPPET_DIR = path.join(REPO_ROOT, 'deploy', 'nginx', 'snippets');
-const INDEX_HTML = path.join(__dirname, '..', 'public', 'index.html');
+// The page Vite actually builds is frontend/index.html. These tests used to read the old CRA copy
+// in public/index.html only, which is how an inline Google Analytics snippet in the real entry
+// shipped and was blocked on every live page (audit 2026-11-08). Both are checked now.
+const INDEX_HTMLS = [path.join(__dirname, '..', 'index.html'), path.join(__dirname, '..', 'public', 'index.html')];
+const ADMIN_INDEX_HTML = path.join(REPO_ROOT, 'frontend-admin', 'index.html');
+const GTAG_INIT = path.join(__dirname, '..', 'public', 'gtag-init.js');
+
+/** Runs gtag-init.js as if the page were on `hostname`; returns the scripts it added. */
+function runGtagInit(hostname) {
+  const added = [];
+  const win = { location: { hostname } };
+  const doc = { createElement: () => ({}), head: { appendChild: (el) => added.push(el) } };
+  new Function('window', 'document', fs.readFileSync(GTAG_INIT, 'utf8'))(win, doc);
+  return { added, win };
+}
+
+describe('Google Analytics setup (public/gtag-init.js)', () => {
+  it('runs on the live site', () => {
+    for (const host of ['aanganerp.in', 'www.aanganerp.in']) {
+      const { added, win } = runGtagInit(host);
+      expect(added.map((s) => s.src)).toEqual(['https://www.googletagmanager.com/gtag/js?id=G-F0L875ND2V']);
+      expect(win.dataLayer.length).toBe(2);
+    }
+  });
+
+  it('does nothing anywhere else, so local runs and test walks stay out of the numbers', () => {
+    for (const host of ['localhost', '127.0.0.1', '192.168.1.6', 'staging.aanganerp.in', 'aanganerp.in.evil.com']) {
+      const { added, win } = runGtagInit(host);
+      expect(added, host).toEqual([]);
+      expect(win.dataLayer, host).toBeUndefined();
+    }
+  });
+});
+
+/** index.html without comments (a comment can mention "<script>" in prose). */
+function htmlOf(file) {
+  return fs.readFileSync(file, 'utf8').replace(/<!--[\s\S]*?-->/g, '');
+}
+/** The origins of every external <script src="https://..."> in a page. */
+function externalScriptOrigins(html) {
+  return [...html.matchAll(/<script[^>]*\ssrc=["'](https:\/\/[^/"']+)/gi)].map((m) => m[1]);
+}
 const SRC_DIR = __dirname;
 
 const CSP_HEADER = /add_header\s+Content-Security-Policy\s+"([^"]+)"/;
@@ -93,13 +134,35 @@ describe('public SPA Content-Security-Policy', () => {
     // not quietly deleted  it is most of what the policy buys.
     expect(directiveSources(publicCsp, 'script-src')).not.toContain("'unsafe-inline'");
 
-    // Comments are stripped first: the explanatory comment above the shim's <script src=...> tag
-    // mentions "<script>" in prose, and matching that would be a false positive.
-    const html = fs.readFileSync(INDEX_HTML, 'utf8').replace(/<!--[\s\S]*?-->/g, '');
-    // An inline script is a <script> with no src. It works perfectly under `yarn start` and is
-    // blocked only in production, which is what made the original one easy to ship and miss.
-    const inline = html.match(/<script(?![^>]*\ssrc=)[^>]*>[\s\S]*?<\/script>/gi) || [];
-    expect(inline).toEqual([]);
+    for (const file of INDEX_HTMLS) {
+      // Comments are stripped first: the explanatory comment above the shim's <script src=...> tag
+      // mentions "<script>" in prose, and matching that would be a false positive.
+      const html = htmlOf(file);
+      // An inline script is a <script> with no src. It works perfectly under `yarn start` and is
+      // blocked only in production, which is what made the original one easy to ship and miss.
+      const inline = html.match(/<script(?![^>]*\ssrc=)[^>]*>[\s\S]*?<\/script>/gi) || [];
+      expect(inline, file).toEqual([]);
+    }
+  });
+
+  it('allows every external script index.html loads (Google Analytics)', () => {
+    const scriptSrc = directiveSources(publicCsp, 'script-src');
+    for (const file of INDEX_HTMLS) {
+      const blocked = externalScriptOrigins(htmlOf(file)).filter((origin) => !scriptSrc.includes(origin));
+      expect(blocked, file).toEqual([]);
+    }
+    // gtag-init.js adds the Google tag itself, so its script host must be allowed too.
+    const fromInit = [...fs.readFileSync(GTAG_INIT, 'utf8').matchAll(/src\s*=\s*['"](https:\/\/[^/'"]+)/g)].map((m) => m[1]);
+    expect(fromInit).toEqual(['https://www.googletagmanager.com']);
+    expect(fromInit.filter((origin) => !scriptSrc.includes(origin))).toEqual([]);
+  });
+
+  it('lets Google Analytics report its page views', () => {
+    const usesGa = [...INDEX_HTMLS, GTAG_INIT].some((f) => /googletagmanager\.com/.test(htmlOf(f)));
+    if (!usesGa) return;
+    const connectSrc = directiveSources(publicCsp, 'connect-src');
+    expect(connectSrc).toContain('https://*.google-analytics.com');
+    expect(connectSrc).toContain('https://*.analytics.google.com');
   });
 
   it('allows every external iframe the app actually renders', () => {
@@ -135,6 +198,12 @@ describe('admin console Content-Security-Policy', () => {
     // someone widening the policy to match whatever was just added.
     expect(directiveSources(adminCsp, 'script-src')).toEqual(["'self'"]);
     expect(directiveSources(adminCsp, 'connect-src')).toEqual(["'self'"]);
+  });
+
+  it("has an index.html with no inline or outside scripts, which that policy would block", () => {
+    const html = htmlOf(ADMIN_INDEX_HTML);
+    expect(html.match(/<script(?![^>]*\ssrc=)[^>]*>[\s\S]*?<\/script>/gi) || []).toEqual([]);
+    expect(externalScriptOrigins(html)).toEqual([]);
   });
 
   it('needs no frame-src, because it renders no iframes', () => {

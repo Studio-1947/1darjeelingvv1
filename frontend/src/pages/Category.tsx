@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { distanceTo, kmLabel } from '@/lib/places';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -10,7 +10,7 @@ import { FeedCardSkeleton, GridTileSkeleton, LoadingStatus, repeat } from '@/com
 import { SquaresFour as LayoutGrid, Rows as Rows3, MapPin, ArrowRight, CalendarDots as CalendarRange, Users, MagnifyingGlass as SearchIcon, Mountains as Mountain, CaretLeft, CaretRight } from '@phosphor-icons/react';
 import CategoryFilterBar from '@/components/CategoryFilterBar';
 import { contentFor, listingImage } from '@/lib/listingContent';
-import { routesCoverTrip } from '@/lib/routeFares';
+import { tripMatch } from '@/lib/routeFares';
 import { readTrip, hasTrip, tripSuffix } from '@/lib/tripParams';
 import { cardCtaKey } from '@/lib/cardCta';
 import { formatDay, formatRange } from '@/lib/dates';
@@ -154,8 +154,11 @@ export default function Category({ typeOverride }) {
   // `extras.routes` or - for the seeded drivers - only in the editorial map, so
   // `contentFor` is the one place that sees both and the API can't filter on it.
   const routeTrip = [from.trim(), to.trim()].filter(Boolean).join(' → ');
+  // Drivers whose routes cover the trip, then drivers who have listed no routes (they may well
+  // do it; routes are optional at sign-up). Drivers whose routes clearly miss it are left out.
+  const matchOf = (it: any) => tripMatch(contentFor(it).routes || [], from, to);
   const baseResults = (type === 'driver' && routeTrip)
-    ? items.filter((it) => routesCoverTrip(contentFor(it).routes || [], from, to))
+    ? items.filter((it) => matchOf(it) !== 'no')
     : items;
 
   // Realtime Filter & Sorting Pipeline
@@ -166,7 +169,7 @@ export default function Category({ typeOverride }) {
     if (term && smart?.q === term) {
       // Server order is best match first; a driver trip still narrows it to the route.
       list = (type === 'driver' && routeTrip)
-        ? smart.items.filter((it) => routesCoverTrip(contentFor(it).routes || [], from, to))
+        ? smart.items.filter((it) => matchOf(it) !== 'no')
         : [...smart.items];
     } else if (term) {
       const s = term.toLowerCase();
@@ -223,8 +226,23 @@ export default function Category({ typeOverride }) {
       list.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
     }
 
+    // A trip search lists the drivers who cover it first, in the chosen order, then the rest.
+    if (type === 'driver' && routeTrip) {
+      list = [...list.filter((it) => matchOf(it) === 'covers'), ...list.filter((it) => matchOf(it) === 'unlisted')];
+    }
+
     return list;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [baseResults, searchQuery, smart, type, routeTrip, from, to, selectedLocation, maxPrice, selectedCab, entryFilter, sortOrder, near, radius]);
+
+  // Where "may also do this trip" starts in a driver trip search (-1 when it does not apply).
+  const unlistedFrom = (type === 'driver' && routeTrip) ? results.findIndex((it) => matchOf(it) === 'unlisted') : -1;
+  const unlistedHeading = (
+    <div className="col-span-full mt-4" data-testid="trip-unlisted-heading">
+      <h3 className="font-display font-bold text-lg text-ink">{t('category.trip_unlisted_title')}</h3>
+      <p className="text-sm text-ink-soft">{t('category.trip_unlisted_body')}</p>
+    </div>
+  );
 
   const resetFilters = () => {
     setSearchQuery('');
@@ -506,10 +524,21 @@ export default function Category({ typeOverride }) {
         </div>
       ) : view === 'grid' ? (
         // Instagram Explore-style grid: tight, image-first
-        gridTiles(results)
+        unlistedFrom > -1 ? (
+          <>
+            {unlistedFrom > 0 && gridTiles(results.slice(0, unlistedFrom))}
+            {unlistedHeading}
+            <div className="mt-3">{gridTiles(results.slice(unlistedFrom))}</div>
+          </>
+        ) : gridTiles(results)
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
-          {results.map((it, i) => <FeedCard key={it.id} item={it} priority={i < 2} tripSuffix={suffix} />)}
+          {results.map((it, i) => (
+            <Fragment key={it.id}>
+              {i === unlistedFrom && unlistedHeading}
+              <FeedCard item={it} priority={i < 2} tripSuffix={suffix} />
+            </Fragment>
+          ))}
         </div>
       )}
     </div>

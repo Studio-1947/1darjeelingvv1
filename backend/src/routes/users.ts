@@ -8,6 +8,7 @@ import { deleteListingsOwnedBy, deleteKycFilesOwnedBy } from '../lib/accountClea
 import { toPublicUser } from '../lib/publicUser';
 import { assignReferralCode, countReferrals } from '../lib/referrals';
 import { readProfilePatch } from '../lib/travellerProfile';
+import { readAccountPatch } from '../lib/accountFields';
 import { travellerDashboard } from '../lib/travellerDashboard';
 
 const router = Router();
@@ -66,8 +67,12 @@ const router = Router();
 // Update User Profile
 router.patch('/me', authenticateToken, async (req: Request, res: Response) => {
   const patch = req.body || {};
-  const allowed = ['name', 'email', 'language', 'avatar'];
   const updateFields: Record<string, any> = {};
+
+  // Name, email, photo and language are checked, not stored as sent (lib/accountFields.ts).
+  const account = readAccountPatch(patch);
+  if ('error' in account) return res.status(400).json({ detail: account.error });
+  Object.assign(updateFields, account.patch);
 
   // Interests are a short list of plain ids. Validated rather than trusted: this lands in a jsonb
   // column and is echoed back to every client, so anything but short strings is refused outright.
@@ -79,12 +84,6 @@ router.patch('/me', authenticateToken, async (req: Request, res: Response) => {
       return res.status(400).json({ detail: 'interests must be an array of up to 20 short ids' });
     }
     updateFields.interests = [...new Set(ids as string[])];
-  }
-
-  for (const key of allowed) {
-    if (patch[key] !== undefined) {
-      updateFields[key] = patch[key];
-    }
   }
 
   // The traveller profile (board: Profile Setup). Checked field by field; a bad value is refused.

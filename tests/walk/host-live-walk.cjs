@@ -23,7 +23,19 @@ function png(seed) {
 }
 const IMG = [...Array(10)].map((_, i) => { const f = path.join(OUT, `img${i}.png`); fs.writeFileSync(f, png(i + 1)); return f; });
 
-const TYPES = (process.env.TYPES || 'homestay,driver,cafe,shop').split(',');
+const TYPES = (process.env.TYPES || 'homestay,driver,guide,cafe,shop').split(',');
+// What each plan costs at checkout (pricing cards, 2026-11-08): ₹499 or ₹99 + 18% GST + 2% fee.
+const PLAN_TOTAL = { homestay: 59880, driver: 59880, guide: 11880, cafe: 11880, shop: 11880 };
+// The documents step needs a short video. Made here with ffmpeg when it is installed; otherwise the
+// smallest file the server accepts as MP4 (an "ftyp" box), the same as backend/test/helpers.ts.
+const CLIP = path.join(OUT, 'clip.mp4');
+if (!fs.existsSync(CLIP)) {
+  try {
+    require('child_process').execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-f', 'lavfi', '-i', 'testsrc=size=320x240:rate=15', '-t', '2', '-pix_fmt', 'yuv420p', '-c:v', 'libx264', CLIP]);
+  } catch {
+    fs.writeFileSync(CLIP, Buffer.concat([Buffer.from([0, 0, 0, 0x18]), Buffer.from('ftypmp42'), Buffer.alloc(32)]));
+  }
+}
 const report = [];
 const line = (type, ok, m, x = '') => { const s = `${ok ? 'OK  ' : 'FAIL'} [${type}] ${m}${x ? ' | ' + x : ''}`; console.log(s); if (!ok) report.push(s); };
 const j = async (m, p, body, token) => { const r = await fetch(API + p, { method: m, headers: { 'content-type': 'application/json', ...(token ? { authorization: 'Bearer ' + token } : {}) }, body: body ? JSON.stringify(body) : undefined }); return { s: r.status, d: await r.json().catch(() => null) }; };
@@ -38,6 +50,9 @@ const j = async (m, p, body, token) => { const r = await fetch(API + p, { method
     const errs = [];
     p.on('pageerror', (e) => errs.push(e.message));
     p.on('response', (r) => { if (r.url().includes('/api/') && r.status() >= 500) errs.push(`${r.status()} ${r.url().replace(/^.*\/api/, '')}`); });
+    // The amount the server put on the checkout order (it is created as the form is submitted).
+    let charged = null;
+    p.on('response', async (r) => { if (r.url().includes('/payments/order') && r.ok()) charged = (await r.json().catch(() => null))?.amount ?? charged; });
     let n = 0;
     const snap = (name) => p.screenshot({ path: path.join(OUT, `${type}-${String(++n).padStart(2, '0')}-${name}.png`) });
     const digits = '8' + String(Date.now()).slice(-9);
@@ -93,6 +108,10 @@ const j = async (m, p, body, token) => { const r = await fetch(API + p, { method
         await inp.fill(/language/.test(ph) ? 'English, Nepali' : /model|car/.test(ph) ? 'Bolero' : /number/.test(ph) ? 'WB 76 A 1234' : 'Mall Road, Darjeeling');
       }
       await p.waitForTimeout(600);
+      // The plan card starts on "Pay later" (the free start). This walk takes "Pay now", so the
+      // paid route, the checkout amount and the Member badge are all exercised.
+      const payNow = p.locator('[data-testid="plan-now"]');
+      if (await payNow.count()) await payNow.click();
       await snap('form');
       const submit = p.locator('[data-testid="onboard-submit"]');
       await submit.scrollIntoViewIfNeeded();
@@ -109,12 +128,15 @@ const j = async (m, p, body, token) => { const r = await fetch(API + p, { method
       if (formMsg) line(type, false, 'form refused on submit', formMsg.slice(0, 200));
 
       // 4. Pay (mock checkout).
-      const pay = p.getByRole('button', { name: /pay|complete/i }).last();
-      await pay.click();
+      const mockPay = p.locator('[data-testid="mock-payment-pay"]');
+      await mockPay.waitFor({ timeout: 10000 }).catch(() => {});
+      if (await mockPay.count()) await mockPay.click();
+      else await p.getByRole('button', { name: /pay|complete/i }).last().click();
       await p.waitForTimeout(2500);
       const token = await p.evaluate(() => localStorage.getItem('token'));
       let me = (await j('GET', '/providers/me', null, token)).d?.provider;
-      line(type, me?.plan_active === true, 'plan paid (₹598.80)', `status ${me?.status}`);
+      const wantTotal = PLAN_TOTAL[type];
+      line(type, me?.plan_active === true && !me?.grace && charged === wantTotal, `plan paid (₹${(wantTotal / 100).toFixed(2)})`, `charged ${charged ?? '?'} paise, status ${me?.status}, free start ${me?.grace ? 'yes' : 'no'}`);
       if (!me?.plan_active) { await snap('not-paid'); await ctx.close(); continue; }
 
       // 5. Profile: the board's mandatory items before documents.
@@ -143,7 +165,6 @@ const j = async (m, p, body, token) => { const r = await fetch(API + p, { method
       if (await up.count()) await up.click();
       await p.waitForTimeout(1200);
       const nFiles = await p.locator('input[type="file"]').count();
-      const CLIP = path.join(OUT, 'clip.mp4');
       for (let i = 0; i < nFiles; i++) {
         const box = p.locator('input[type="file"]').nth(i);
         const accept = (await box.getAttribute('accept')) || '';
@@ -157,7 +178,9 @@ const j = async (m, p, body, token) => { const r = await fetch(API + p, { method
       if (needed.length) line(type, false, 'documents still needed after uploading every box', needed.map((r) => r.label || r.docType || r.doc_type).join(', '));
       await p.waitForTimeout(1200);
       await snap('documents');
-      const docErr = (await p.locator('text=/upload failed|could not|complete your profile|profile.*first/i').allInnerTexts()).join(' ');
+      // Only error messages count: the dashboard's normal "Documents sent" text used to match the
+      // loose words here and report a refusal that never happened.
+      const docErr = (await p.locator('[role="alert"], [data-testid$="-error"]').filter({ hasText: /upload failed|could not|complete your profile|profile.*first/i }).allInnerTexts()).join(' ');
       if (docErr) line(type, false, 'documents refused', docErr.slice(0, 200));
       // The location check on the same page.
       const maps = p.locator('[data-testid="location-maps-url"]');

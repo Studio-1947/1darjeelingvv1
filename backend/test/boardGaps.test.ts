@@ -123,10 +123,23 @@ describe('after a trip', () => {
     expect((await request(app).post('/api/feedback/aangan').set(auth(other.token)).send({ message: 'Not my trip', booking_id: bookingId })).status).toBe(400);
   });
 
-  it('still needs the pass to review a place you have not finished a trip with', async () => {
+  it('refuses a review of a host you have not finished a trip with, pass or not', async () => {
     const h = await onboardActiveProvider({ name: 'Unvisited Host' });
     const listing = await firstListing(h.providerId);
-    const t = await registerUser({ name: 'Drive-by Reviewer', paySupport: false });
+    // Audit 2026-11-08: homestays, drivers and guides need a completed booking; the pass alone is
+    // not enough any more (reviewEligibility.test.ts).
+    for (const paySupport of [false, true]) {
+      const t = await registerUser({ name: 'Drive-by Reviewer', paySupport });
+      const res = await request(app).post('/api/reviews').set(auth(t.token)).send({ listing_id: listing.id, rating: 1 });
+      expect(res.status).toBe(403);
+      expect(res.body.code).toBe('stay_required');
+    }
+  });
+
+  it('still needs the pass to review a cafe you have not ordered from', async () => {
+    const h = await onboardActiveProvider({ name: 'Unvisited Cafe', businessType: 'cafe' });
+    const listing = await firstListing(h.providerId);
+    const t = await registerUser({ name: 'Cafe Drive-by', paySupport: false });
     expect((await request(app).post('/api/reviews').set(auth(t.token)).send({ listing_id: listing.id, rating: 1 })).status).toBe(402);
   });
 });

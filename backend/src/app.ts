@@ -1,7 +1,7 @@
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import swaggerUi from 'swagger-ui-express';
-import { IS_PROD, CORS_ORIGINS, TRUST_PROXY_HOPS, log } from './config';
+import { IS_PROD, API_DOCS_ENABLED, CORS_ORIGINS, TRUST_PROXY_HOPS, log } from './config';
 import { swaggerSpec } from './swagger';
 
 // Import router modules
@@ -37,6 +37,9 @@ import { checkStorage } from './lib/s3';
 import { pool } from './db';
 
 export const app = express();
+
+// Don't announce the framework on every reply ("X-Powered-By: Express").
+app.disable('x-powered-by');
 
 // Without this, req.ip is the address of the nearest proxy rather than the real client, so every
 // request behind the production Nginx chain shares one rate-limit bucket (see middleware/rateLimiter.ts).
@@ -154,12 +157,15 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 });
 
 // ============ API DOCS ============
-app.get('/api-docs.json', (req: Request, res: Response) => {
-  res.json(swaggerSpec);
-});
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
-  customSiteTitle: 'aangan API Docs',
-}));
+// Off in production unless API_DOCS=true (config.ts API_DOCS_ENABLED).
+if (API_DOCS_ENABLED) {
+  app.get('/api-docs.json', (req: Request, res: Response) => {
+    res.json(swaggerSpec);
+  });
+  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+    customSiteTitle: 'aangan API Docs',
+  }));
+}
 
 /**
  * @openapi
