@@ -25,6 +25,25 @@ export const SEED_LISTINGS: SeedListing[] = [
   { title: "Mirik Lake (Sumendu Lake)", type: "spot", description: "Natural lake surrounded by tea gardens and pine forests, with an arched rainbow bridge and boating.", location: "Mirik, Darjeeling", price: 0, image: "https://images.unsplash.com/photo-1506744038136-46273834b3fb", tags: ["lake", "boating", "pine forest", "nature"] },
   { title: "Simana Border Viewpoint", type: "spot", description: "Indo-Nepal border ridge offering sweeping 360-degree views of Nepal's mountain slopes and valley towns.", location: "Simana, Indo-Nepal Border", price: 0, image: "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b", tags: ["viewpoint", "indo-nepal-border", "panoramic"] },
 
+  // -------- Cultural Events --------
+  { title: "Darjeeling Carnival", type: "event", description: "Annual celebration of Gorkha culture with music, dance and food stalls.", location: "Chowrasta Mall Road", price: 0, image: "https://res.cloudinary.com/drgb8w8ak/image/upload/v1784112327/meloteafest_hxp4my.webp", tags: ["festival", "music", "gorkha"], extras: { month: "November" } },
+  { title: "Losar - Tibetan New Year", type: "event", description: "Traditional Tibetan New Year celebrations at local monasteries.", location: "Ghum Monastery", price: 0, image: "https://res.cloudinary.com/drgb8w8ak/image/upload/v1784112327/losar_omcdmh.webp", tags: ["tibetan", "spiritual"], extras: { month: "February/March" } },
+  { title: "Tihar / Deepawali Festival", type: "event", description: "Five-day festival of lights with Deusi-Bhailo song traditions.", location: "Across Darjeeling", price: 0, image: "https://res.cloudinary.com/drgb8w8ak/image/upload/v1784112327/dasai_gy8yoo.webp", tags: ["festival", "lights"], extras: { month: "October/November" } },
+  { title: "Teesta Rangeet Tourism Festival", type: "event", description: "Cultural showcase of the hills  folk dance, adventure and food.", location: "Darjeeling & Sikkim", price: 0, image: "https://res.cloudinary.com/drgb8w8ak/image/upload/v1784195367/carnival_xc1av7.webp", tags: ["cultural", "adventure"], extras: { month: "December" } },
+
+  // -------- Biodiversity --------
+  { title: "Red Panda", type: "biodiversity", description: "Darjeeling's state animal. Elusive and endangered  spotted in Singalila NP.", location: "Singalila National Park", price: 0, image: RED_PANDA, tags: ["endangered", "state-animal"] },
+  { title: "Himalayan Salamander", type: "biodiversity", description: "Rare amphibian found only in the eastern Himalayas.", location: "Namthing Pokhri", price: 0, image: "https://res.cloudinary.com/drgb8w8ak/image/upload/v1784195367/himalayansalamander_extbzc.webp", tags: ["endemic", "amphibian"] },
+  { title: "Rhododendron Forests", type: "biodiversity", description: "36+ species of rhododendron bloom across the hills every spring.", location: "Singalila & Senchal", price: 0, image: "https://res.cloudinary.com/drgb8w8ak/image/upload/v1784195367/rhododendron_d3mvjk.webp", tags: ["flora", "spring"] },
+  { title: "Satyr Tragopan Pheasant", type: "biodiversity", description: "A vulnerable pheasant with stunning red plumage native to these forests.", location: "Senchal Wildlife Sanctuary", price: 0, image: "https://res.cloudinary.com/drgb8w8ak/image/upload/v1784195366/Satyrtragopanpheasant_g7fyxn.webp", tags: ["birdlife", "vulnerable"] },
+];
+
+/**
+ * Sample businesses that used to be in SEED_LISTINGS. They are NOT seeded any more: they looked like
+ * real, bookable places (some with real shop names) but no host ever signed up for them. Kept only so
+ * scripts/clean-demo-data.ts can find the copies already in a database, and as search test data.
+ */
+export const DEMO_BUSINESSES: SeedListing[] = [
   // -------- Homestays --------
   { title: "Mist & Pine Homestay", type: "homestay", description: "Cozy family-run stay overlooking pine forests. Traditional Nepali meals included.", location: "Lebong, Darjeeling", price: 1800, image: "https://res.cloudinary.com/drgb8w8ak/image/upload/v1784118976/mistpine_qc0xlt.webp", tags: ["family", "meals-included", "forest"] },
   { title: "Kanchenjunga View Retreat", type: "homestay", description: "Wake up to unobstructed mountain views. Warm rooms with wooden interiors.", location: "Sonada, Darjeeling", price: 2400, image: "https://res.cloudinary.com/drgb8w8ak/image/upload/v1784118977/kanchenjungaview_ljomty.webp", tags: ["mountain-view", "peaceful"] },
@@ -45,16 +64,4 @@ export const SEED_LISTINGS: SeedListing[] = [
   { title: "Sonam's Kitchen", type: "cafe", description: "Breakfast institution loved by locals & travellers. Try the pancakes.", location: "Dr. Zakir Hussain Road, Darjeeling", price: 300, image: "https://res.cloudinary.com/drgb8w8ak/image/upload/v1784111263/sonamkitchen_tkkacn.webp", tags: ["breakfast", "cozy"] },
   { title: "Glenary's Bakery & Cafe", type: "cafe", description: "Heritage colonial-era bakery. Fresh pastries and hearty meals.", location: "Nehru Road, Darjeeling", price: 500, image: "https://res.cloudinary.com/drgb8w8ak/image/upload/v1784111263/glenarys_fmy1k3.webp", tags: ["bakery", "heritage"] },
   { title: "Keventer's Rooftop", type: "cafe", description: "Iconic rooftop breakfast spot since 1911.", location: "Nehru Road, Darjeeling", price: 450, image: "https://res.cloudinary.com/drgb8w8ak/image/upload/v1784111263/keventers_zwibyf.webp", tags: ["breakfast", "iconic"] },
-
-  // -------- Cultural Events --------
-  { title: "Darjeeling Carnival", type: "event", description: "Annual celebration of Gorkha culture with music, dance and food stalls.", location: "Chowrasta Mall Road", price: 0, image: "https://res.cloudinary.com/drgb8w8ak/image/upload/v1784112327/meloteafest_hxp4my.webp", tags: ["festival", "music", "gorkha"], extras: { month: "November" } },
-  { title: "Losar - Tibetan New Year", type: "event", description: "Traditional Tibetan New Year celebrations at local monasteries.", location: "Ghum Monastery", price: 0, image: "https://res.cloudinary.com/drgb8w8ak/image/upload/v1784112327/losar_omcdmh.webp", tags: ["tibetan", "spiritual"], extras: { month: "February/March" } },
-  { title: "Tihar / Deepawali Festival", type: "event", description: "Five-day festival of lights with Deusi-Bhailo song traditions.", location: "Across Darjeeling", price: 0, image: "https://res.cloudinary.com/drgb8w8ak/image/upload/v1784112327/dasai_gy8yoo.webp", tags: ["festival", "lights"], extras: { month: "October/November" } },
-  { title: "Teesta Rangeet Tourism Festival", type: "event", description: "Cultural showcase of the hills  folk dance, adventure and food.", location: "Darjeeling & Sikkim", price: 0, image: "https://res.cloudinary.com/drgb8w8ak/image/upload/v1784195367/carnival_xc1av7.webp", tags: ["cultural", "adventure"], extras: { month: "December" } },
-
-  // -------- Biodiversity --------
-  { title: "Red Panda", type: "biodiversity", description: "Darjeeling's state animal. Elusive and endangered  spotted in Singalila NP.", location: "Singalila National Park", price: 0, image: RED_PANDA, tags: ["endangered", "state-animal"] },
-  { title: "Himalayan Salamander", type: "biodiversity", description: "Rare amphibian found only in the eastern Himalayas.", location: "Namthing Pokhri", price: 0, image: "https://res.cloudinary.com/drgb8w8ak/image/upload/v1784195367/himalayansalamander_extbzc.webp", tags: ["endemic", "amphibian"] },
-  { title: "Rhododendron Forests", type: "biodiversity", description: "36+ species of rhododendron bloom across the hills every spring.", location: "Singalila & Senchal", price: 0, image: "https://res.cloudinary.com/drgb8w8ak/image/upload/v1784195367/rhododendron_d3mvjk.webp", tags: ["flora", "spring"] },
-  { title: "Satyr Tragopan Pheasant", type: "biodiversity", description: "A vulnerable pheasant with stunning red plumage native to these forests.", location: "Senchal Wildlife Sanctuary", price: 0, image: "https://res.cloudinary.com/drgb8w8ak/image/upload/v1784195366/Satyrtragopanpheasant_g7fyxn.webp", tags: ["birdlife", "vulnerable"] },
 ];

@@ -306,7 +306,26 @@ ssh root@187.127.185.82 \
 
 ### 7.2 Database & Object Storage Maintenance Utilities
 
-The backend contains utility scripts in `backend/scripts/` for database domain URL migration and MinIO storage orphan cleanup:
+The backend contains utility scripts in `backend/scripts/` for database domain URL migration and MinIO storage orphan cleanup.
+
+**On the VPS, run them inside the backend container.** It already has the code, `tsx` and
+`DATABASE_URL`. Running `npx tsx scripts/...` from `/var/www/1darjeeling-in` fails: that is the
+repo root, the scripts live in `backend/scripts/`, and the host has no database address. Take a
+fresh backup first (the backup sidecar dumps on start):
+
+```bash
+docker restart 1darjeeling_in_db_backup && sleep 20 && docker logs 1darjeeling_in_db_backup --tail 2
+docker exec -it 1darjeeling_in_backend npx tsx scripts/rewrite-prod-urls.ts            # report
+docker exec -it 1darjeeling_in_backend npx tsx scripts/rewrite-prod-urls.ts --check    # report + test the new addresses
+docker exec -it 1darjeeling_in_backend npx tsx scripts/rewrite-prod-urls.ts --execute  # repair
+docker exec -it 1darjeeling_in_backend npx tsx scripts/clean-demo-data.ts              # report
+docker exec -it 1darjeeling_in_backend npx tsx scripts/clean-demo-data.ts --execute    # delete the demo businesses
+docker exec -it 1darjeeling_in_backend npx tsx scripts/find-placeholder-content.ts     # read-only list of test-looking text
+```
+
+The container only has the scripts once the code that contains them is deployed. Before the
+2026-11-09 deploy, `rewrite-prod-urls.ts` in the container is the old version, which WRITES by
+default; do not run it without `--dry-run`.
 
 ```bash
 # 1. Repair photo addresses stored with a retired or broken origin (1darjeeling.in, the
@@ -316,6 +335,12 @@ npx tsx scripts/rewrite-prod-urls.ts [--check] [--execute] [--from <extra retire
 
 # 2. Scan and prune unreferenced orphan files in MinIO public & private KYC storage
 npx tsx scripts/cleanup-orphan-storage.ts [--execute]
+
+# 3. Remove the 13 sample businesses the old admin "Seed" button created (Mist & Pine Homestay,
+#    Glenary's, Keventer's...). Reports only; --execute deletes the ones with no bookings. Also
+#    lists booked demo businesses, other admin-owned host listings and stock-photo listings,
+#    which it never touches. Curated spots, events and nature entries stay.
+npx tsx scripts/clean-demo-data.ts [--execute]
 ```
 
 The dumps contain every booking, phone number, and provider record in the system — the same class
