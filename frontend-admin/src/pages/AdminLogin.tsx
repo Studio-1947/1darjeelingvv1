@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ShieldAlert, KeyRound, Phone, Eye, EyeOff } from 'lucide-react';
 import api from '@/lib/api';
+import { loginErrorMessage } from '@/lib/loginError';
 import { useAuth } from '@/context/AuthContext';
 
 export default function AdminLogin() {
@@ -24,7 +25,7 @@ export default function AdminLogin() {
       login(data.token, data.user);
       nav('/');
     } catch (e: any) {
-      setErr(e?.response?.data?.detail || 'Invalid admin credentials');
+      setErr(loginErrorMessage(e));
     } finally {
       setBusy(false);
     }
