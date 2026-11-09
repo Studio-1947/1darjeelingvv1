@@ -7,6 +7,7 @@ import KycReview from '@/pages/KycReview';
 import Moderation from '@/pages/Moderation';
 import Feedback from '@/pages/Feedback';
 import Deliveries from '@/pages/Deliveries';
+import PushNotifications from '@/pages/PushNotifications';
 
 // Nav entries shown for any authenticated admin page. Add new protected
 // pages here to have them appear in the top nav automatically.
@@ -16,6 +17,7 @@ const NAV_LINKS = [
   { to: '/moderation', label: 'Moderation' },
   { to: '/feedback', label: 'Feedback' },
   { to: '/deliveries', label: 'Deliveries' },
+  { to: '/notifications', label: 'Notifications' },
 ];
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -95,6 +97,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <Deliveries />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/notifications"
+            element={
+              <ProtectedRoute>
+                <PushNotifications />
               </ProtectedRoute>
             }
           />

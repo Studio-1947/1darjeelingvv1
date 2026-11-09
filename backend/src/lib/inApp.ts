@@ -17,8 +17,9 @@ export async function addInAppNotification(
 ): Promise<void> {
   if (!userId) return;
   try {
+    const id = uuidv4();
     await db.insert(schema.notifications).values({
-      id: uuidv4(),
+      id,
       userId,
       kind: n.kind,
       title: n.title.slice(0, 200),
@@ -30,7 +31,7 @@ export async function addInAppNotification(
     });
     // The same message to the person's phones. Not awaited: a push is a courtesy, and the request
     // that caused it (a booking, a payment) should not wait on Expo's servers.
-    void sendPushToUser(userId, { title: n.title, body: n.body, data: { kind: n.kind, refId: n.refId ?? null } });
+    void sendPushToUser(userId, { title: n.title, body: n.body, data: { kind: n.kind, refId: n.refId ?? null, notificationId: id } });
   } catch (err) {
     log.error(`[inapp] could not record "${n.kind}" for user ${userId}: ${(err as Error)?.message || err}`);
   }

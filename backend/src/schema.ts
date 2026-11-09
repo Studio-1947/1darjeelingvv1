@@ -50,10 +50,40 @@ export const notifications = pgTable('notifications', {
   // The message as a key + details ({ key: 'request_accepted', params: { place } }), so the
   // website and app can show it in the reader's language. title/body stay the English text.
   msg: jsonb('msg').$type<{ key: string; params?: Record<string, string | number> }>(),
+  // Where tapping it leads, for messages the team sends (broadcasts): a screen key such as 'feed'
+  // or an https address. Booking notices leave it empty and are routed by kind + refId.
+  link: text('link'),
   readAt: text('read_at'),
   createdAt: text('created_at').notNull(),
 }, (t) => ({
   userCreatedIdx: index('notifications_user_id_created_at_idx').on(t.userId, t.createdAt),
+}));
+
+/**
+ * Messages the team sends from the admin panel (Notifications page): one row per send. Each
+ * recipient also gets a `notifications` row (kind 'announcement', ref_id = this id) and a push.
+ */
+export const broadcasts = pgTable('broadcasts', {
+  id: text('id').primaryKey(),
+  title: text('title').notNull(),
+  body: text('body').notNull(),
+  link: text('link'),
+  // 'everyone' | 'travellers' | 'hosts' | 'person'; business_type narrows 'hosts'.
+  audience: text('audience').notNull(),
+  businessType: text('business_type'),
+  phone: text('phone'),
+  recipients: integer('recipients').default(0).notNull(),
+  devices: integer('devices').default(0).notNull(),
+  pushed: integer('pushed').default(0).notNull(),
+  pushFailed: integer('push_failed').default(0).notNull(),
+  // 'sending' while phone pushes go out, then 'sent'.
+  status: text('status').notNull(),
+  // The admin's user id; not a foreign key, because the built-in admin login ('admin-system') has no row.
+  sentBy: text('sent_by'),
+  createdAt: text('created_at').notNull(),
+  finishedAt: text('finished_at'),
+}, (t) => ({
+  createdIdx: index('broadcasts_created_at_idx').on(t.createdAt),
 }));
 
 /**
