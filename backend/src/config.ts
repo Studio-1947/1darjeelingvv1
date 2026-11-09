@@ -2,6 +2,7 @@ import Razorpay from 'razorpay';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 import { isPlausiblePhone } from './lib/phone';
+import { isValidPublicAssetOrigin } from './lib/assetUrls';
 
 dotenv.config({ path: path.join(__dirname, '../.env'), quiet: true });
 
@@ -30,6 +31,10 @@ if (!VALID_APP_ENVS.includes(rawAppEnv)) {
 
 export const APP_ENV = rawAppEnv;
 export const IS_PROD = APP_ENV === 'production';
+
+// The Swagger page (/api-docs) is a map of every endpoint. Useful while building, so it stays on
+// outside production; on the live site it is off unless API_DOCS=true (audit 2026-11-08).
+export const API_DOCS_ENABLED = !IS_PROD || process.env.API_DOCS?.trim().toLowerCase() === 'true';
 
 // Values that are safe to default in local dev but must never reach production. In production the
 // variable has to be set to something that isn't the dev default; otherwise startup fails loudly
@@ -340,6 +345,16 @@ if (IS_PROD && /^https?:\/\/(localhost|127\.0\.0\.1)([:/]|$)/i.test(MINIO_PUBLIC
   throw new Error(
     `[config] MINIO_PUBLIC_URL is set to a localhost URL ("${MINIO_PUBLIC_URL}") but APP_ENV=production. ` +
     `Set it to the real public site origin (e.g. https://your-domain.tld)  see .env.production.example.`
+  );
+}
+
+// The same setting once held two origins glued by a comma ("https://1darjeeling.in,https//aaganerp.in"),
+// and every photo uploaded meanwhile was stored with that broken address (audit 2026-11-08). It
+// must be exactly one http(s) origin; scripts/rewrite-prod-urls.ts repairs the stored rows.
+if (IS_PROD && !isValidPublicAssetOrigin(MINIO_PUBLIC_URL)) {
+  throw new Error(
+    `[config] MINIO_PUBLIC_URL must be one http(s) origin such as https://aanganerp.in, got "${MINIO_PUBLIC_URL}". ` +
+    'No commas, spaces or second address.'
   );
 }
 
