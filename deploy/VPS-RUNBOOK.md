@@ -333,7 +333,10 @@ default; do not run it without `--dry-run`.
 #    add --check to test that the repaired addresses load, then --execute to write.
 npx tsx scripts/rewrite-prod-urls.ts [--check] [--execute] [--from <extra retired origin>] [--to https://aanganerp.in]
 
-# 2. Scan and prune unreferenced orphan files in MinIO public & private KYC storage
+# 2. Delete stored files (public photos and KYC documents) that nothing in the database mentions.
+#    A file counts as in use if its name appears in ANY table or column. The version before
+#    2026-11-09 read only three columns and deleted gallery photos still in use: do not run an
+#    older copy.
 npx tsx scripts/cleanup-orphan-storage.ts [--execute]
 
 # 3. Remove the 13 sample businesses the old admin "Seed" button created (Mist & Pine Homestay,

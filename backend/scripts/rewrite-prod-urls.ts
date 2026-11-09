@@ -27,25 +27,14 @@
 import { Client } from 'pg';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
-import { RETIRED_ASSET_ORIGINS, rewriteAssetUrls } from '../src/lib/assetUrls';
+import { RETIRED_ASSET_ORIGINS } from '../src/lib/assetUrls';
+import { LIVE_ORIGIN, applyPhotoRepairs, findPhotoRepairs, repairedUrls, PHOTO_COLUMNS } from '../src/lib/photoRepair';
 
 dotenv.config({ path: path.join(__dirname, '../.env') });
 
-/** [table, column, is jsonb] */
-const COLUMNS: Array<[string, string, boolean]> = [
-  ['listings', 'image', false],
-  ['listings', 'extras', true],
-  ['providers', 'images', true],
-  ['providers', 'extras', true],
-  ['users', 'avatar', false],
-  ['reviews', 'photos', true],
-  ['host_posts', 'photos', true],
-  ['promotions', 'image', false],
-];
-
 function parseArgs(argv: string[]) {
   const from = [...RETIRED_ASSET_ORIGINS];
-  let to = 'https://aanganerp.in';
+  let to = LIVE_ORIGIN;
   let execute = false;
   let check = false;
   for (let i = 0; i < argv.length; i++) {
@@ -81,37 +70,18 @@ async function main() {
 
   const client = new Client({ connectionString: dbUrl });
   await client.connect();
-  const likes = from.map((o) => `%${o}%`);
-  const changes: Array<{ table: string; column: string; id: string; before: string; after: string; jsonb: boolean }> = [];
-
   try {
-    for (const [table, column, jsonb] of COLUMNS) {
-      const exists = await client.query(
-        `SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = $1 AND column_name = $2`,
-        [table, column],
-      );
-      if (!exists.rowCount) continue;
-      const rows = await client.query(
-        `SELECT id, ${column}::text AS value FROM ${table} WHERE ${column}::text ILIKE ANY($1::text[])`,
-        [likes],
-      );
-      let n = 0;
-      for (const row of rows.rows as Array<{ id: string; value: string }>) {
-        const after = rewriteAssetUrls(row.value, from, to);
-        if (after === row.value) continue;
-        n++;
-        changes.push({ table, column, id: row.id, before: row.value, after, jsonb });
-      }
-      console.log(`  ${table}.${column}: ${n} row(s) to repair`);
+    const changes = await findPhotoRepairs(client, { from, to });
+    for (const [table, column] of PHOTO_COLUMNS) {
+      console.log(`  ${table}.${column}: ${changes.filter((c) => c.table === table && c.column === column).length} row(s) to repair`);
     }
-
     for (const c of changes.slice(0, 10)) {
       console.log(`\n  ${c.table}.${c.column} ${c.id}\n    from ${c.before.slice(0, 160)}\n    to   ${c.after.slice(0, 160)}`);
     }
     if (changes.length > 10) console.log(`\n  ...and ${changes.length - 10} more`);
 
     if (check) {
-      const urls = [...new Set(changes.flatMap((c) => c.after.match(new RegExp(`${to.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/[^"\\s,]+`, 'g')) || []))];
+      const urls = repairedUrls(changes, to);
       let bad = 0;
       for (const u of urls) {
         if (!(await loads(u))) {
@@ -126,18 +96,9 @@ async function main() {
       console.log(`\n[rewrite-urls] ${changes.length} row(s) would change. Nothing was written.`);
       return;
     }
-
-    await client.query('BEGIN');
-    for (const c of changes) {
-      await client.query(
-        `UPDATE ${c.table} SET ${c.column} = $1${c.jsonb ? '::jsonb' : ''} WHERE id = $2`,
-        [c.after, c.id],
-      );
-    }
-    await client.query('COMMIT');
-    console.log(`\n[rewrite-urls] Done: ${changes.length} row(s) updated.`);
+    const n = await applyPhotoRepairs(client, changes);
+    console.log(`\n[rewrite-urls] Done: ${n} row(s) updated.`);
   } catch (err) {
-    await client.query('ROLLBACK').catch(() => {});
     console.error('[rewrite-urls] Failed, nothing was changed:', err);
     process.exitCode = 1;
   } finally {
