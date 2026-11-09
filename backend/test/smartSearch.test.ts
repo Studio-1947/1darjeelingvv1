@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { SEED_LISTINGS } from '../src/seed_data';
+import { DEMO_BUSINESSES, SEED_LISTINGS } from '../src/seed_data';
 import { editDistance, interpret, rank, type SearchableListing } from '../src/lib/search';
 
 /**
@@ -7,7 +7,7 @@ import { editDistance, interpret, rank, type SearchableListing } from '../src/li
  * The old search matched the whole query as one substring, so most of these found nothing.
  */
 const listings: SearchableListing[] = [
-  ...SEED_LISTINGS.map((l, i) => ({
+  ...[...SEED_LISTINGS, ...DEMO_BUSINESSES].map((l, i) => ({
     id: `seed-${i}`, title: l.title, type: l.type, description: l.description, location: l.location,
     price: l.price ?? 0, tags: l.tags ?? [], extras: {},
   })),
