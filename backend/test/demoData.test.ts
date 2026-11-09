@@ -59,7 +59,10 @@ describe('demo business clean-up', () => {
     expect(ids(report.stockPhotos)).toEqual([stock]);
 
     // Asked to delete everything, it still deletes only the unbooked demo businesses.
-    const deleted = await deleteDemoListings(pool, [mist, glenarys, bookedDemo, adminStay, tigerHill, sameName, stock, own]);
+    // One connection, as the script and the admin route use: BEGIN and COMMIT must share a session.
+    const client = await pool.connect();
+    const deleted = await deleteDemoListings(client, [mist, glenarys, bookedDemo, adminStay, tigerHill, sameName, stock, own])
+      .finally(() => client.release());
     expect(deleted.sort()).toEqual([mist, glenarys].sort());
     const { rows } = await pool.query('SELECT id FROM listings ORDER BY id');
     expect(rows.map((r) => r.id).sort()).toEqual([bookedDemo, adminStay, tigerHill, sameName, stock, own].sort());

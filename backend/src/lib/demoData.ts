@@ -100,6 +100,7 @@ export async function findDemoData(db: Db): Promise<DemoReport> {
  * Deletes the given demo businesses in one transaction. Each one is checked again inside the
  * delete, so a listing that gained a booking since the report, or is not a demo business, stays.
  * Their saves and reviews go with them (foreign keys cascade). Returns the ids deleted.
+ * `db` must be one connection (a Client or a PoolClient), not a pool.
  */
 export async function deleteDemoListings(db: Db, ids: string[]): Promise<string[]> {
   if (ids.length === 0) return [];

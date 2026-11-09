@@ -8,6 +8,7 @@ import {
   PutObjectCommand,
   GetObjectCommand,
   DeleteObjectCommand,
+  ListObjectsV2Command,
 } from '@aws-sdk/client-s3';
 import { Readable } from 'stream';
 import {
@@ -248,4 +249,25 @@ export async function getPrivateObject(key: string): Promise<{ stream: Readable;
 export async function deletePrivate(key: string): Promise<void> {
   await bootstrapKycBucket();
   await s3Client.send(new DeleteObjectCommand({ Bucket: MINIO_KYC_BUCKET, Key: key }));
+}
+
+/** Both buckets, for the admin clean-up of unused files. */
+export const STORAGE_BUCKETS = [MINIO_KYC_BUCKET, MINIO_BUCKET];
+
+/** Every object key in a bucket. */
+export async function listBucketKeys(bucket: string): Promise<string[]> {
+  const keys: string[] = [];
+  let token: string | undefined;
+  do {
+    const res = await s3Client.send(new ListObjectsV2Command({ Bucket: bucket, ContinuationToken: token }));
+    for (const item of res.Contents || []) if (item.Key) keys.push(item.Key);
+    token = res.NextContinuationToken;
+  } while (token);
+  return keys;
+}
+
+/** Deletes one object from one of the two buckets. */
+export async function deleteStoredObject(bucket: string, key: string): Promise<void> {
+  if (!STORAGE_BUCKETS.includes(bucket)) throw new Error(`Unknown bucket ${bucket}`);
+  await s3Client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
 }

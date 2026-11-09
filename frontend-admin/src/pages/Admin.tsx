@@ -23,6 +23,7 @@ import SpotsTab, { type AdminSpot } from '@/components/admin/SpotsTab';
 import SpotFormModal, { type SpotFormPayload } from '@/components/admin/SpotFormModal';
 import BookingsTab from '@/components/admin/BookingsTab';
 import PaymentsTab from '@/components/admin/PaymentsTab';
+import MaintenanceTab from '@/components/admin/MaintenanceTab';
 
 /**
  * Admin Console page acts as the state manager and layout shell.
@@ -32,7 +33,7 @@ export default function Admin() {
   const { user, loading: authLoading, logout } = useAuth();
   const nav = useNavigate();
 
-  // Tab state: 'overview' | 'users' | 'listings' | 'spots' | 'bookings' | 'payments'
+  // Tab state: 'overview' | 'users' | 'listings' | 'spots' | 'bookings' | 'payments' | 'cleanup'
   const [activeTab, setActiveTab] = useState('overview');
 
   // Database lists
@@ -111,11 +112,11 @@ export default function Admin() {
 
   // Seeding action
   const handleSeed = async () => {
-    if (!confirm('Are you sure you want to seed default sample listings?')) return;
+    if (!confirm('Add the curated tourist spots, events and nature entries that are missing? No businesses are added.')) return;
     setActionMsg('Seeding...');
     try {
       const { data } = await api.post('/admin/seed');
-      setActionMsg(`Successfully seeded ${data.seeded} listings!`);
+      setActionMsg(`Added ${data.seeded} spots, events and nature entries.`);
       loadAdminData({ background: true });
     } catch (e) {
       setActionMsg('Failed to seed listings.');
@@ -257,7 +258,7 @@ export default function Admin() {
             Refresh Data
           </button>
           <button onClick={handleSeed} className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold bg-pine text-white rounded-full btn-hover transition-all">
-            <Database size={13} /> Seed Listings
+            <Database size={13} /> Seed spots &amp; events
           </button>
           <button onClick={handleLogout} className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold bg-ink text-white rounded-full btn-hover transition-all">
             <LogOut size={13} /> Log Out
@@ -293,7 +294,8 @@ export default function Admin() {
           { id: 'listings', label: 'Services (Listings)' },
           { id: 'spots', label: 'Tourist Spots' },
           { id: 'bookings', label: 'Bookings' },
-          { id: 'payments', label: 'Payments' }
+          { id: 'payments', label: 'Payments' },
+          { id: 'cleanup', label: 'Clean-up' }
         ].map((tab) => (
           <button
             key={tab.id}
@@ -325,6 +327,7 @@ export default function Admin() {
           onToggleFeatured={handleToggleSpotFeatured}
         />
       )}
+      {activeTab === 'cleanup' && <MaintenanceTab onChanged={() => loadAdminData({ background: true })} />}
       {activeTab === 'bookings' && <BookingsTab bookings={bookingsList} onChanged={() => loadAdminData({ background: true })} />}
       {/* Background refetch after a refund: the blocking path would unmount the dashboard and
           lose the operator's place, same reasoning as the row actions above. */}
