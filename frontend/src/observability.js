@@ -1,7 +1,10 @@
-import * as Sentry from "@sentry/react";
-
 /**
- * Browser error reporting. Imported first in index.tsx so it is listening before the app renders.
+ * Browser error reporting. Imported first in index.tsx so it starts as early as possible.
+ *
+ * The Sentry SDK (about 90 KB) is loaded with a dynamic import, and only when a DSN is set. It used
+ * to be a static import, so every visitor downloaded it before the page could draw, even on a build
+ * with no DSN, which is how the live site runs. The cost of loading it this way: an error thrown in
+ * the first moments, before the SDK arrives, is not reported.
  *
  * Inert without REACT_APP_SENTRY_DSN, which is the normal state for development. Note the
  * build-time catch: Create React App inlines REACT_APP_* variables into the bundle during
@@ -82,13 +85,13 @@ function scrubUrl(url) {
 function deploymentEnvironment() {
   if (process.env.NODE_ENV !== "production") return "development";
   const host = window.location.hostname.toLowerCase();
-  return /^(www\.)?aangan\.in$/.test(host) ? "production" : "staging";
+  return /^(www\.)?aanganerp\.in$/.test(host) ? "production" : "staging";
 }
 
 export const SENTRY_ENABLED = Boolean(DSN);
 
 if (DSN) {
-  Sentry.init({
+  import("@sentry/react").then((Sentry) => Sentry.init({
     dsn: DSN,
     environment: deploymentEnvironment(),
 
@@ -123,5 +126,7 @@ if (DSN) {
       if (breadcrumb.category === "ui.input") return null;
       return breadcrumb;
     },
+  })).catch(() => {
+    // A failed download of the SDK must never break the page; it only means no error reports.
   });
 }

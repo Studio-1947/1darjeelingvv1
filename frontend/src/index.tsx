@@ -1,11 +1,12 @@
-// First import so error reporting is listening before anything can throw. Inert unless the build
-// was given REACT_APP_SENTRY_DSN  see observability.js.
+// First import so error reporting starts as early as possible. Inert unless the build was given
+// VITE_SENTRY_DSN, and then it loads the SDK on its own  see observability.js.
 import "@/observability";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import "@/index.css";
-import "@/lib/leafletIconFix";
+// The Leaflet marker fix is imported by LocationPicker, the only Leaflet map, so the map library
+// (about 170 KB) loads with that page instead of before every page.
 import App from "@/App";
 import * as serviceWorkerRegistration from "@/serviceWorkerRegistration";
 
