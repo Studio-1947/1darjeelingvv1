@@ -109,6 +109,7 @@ export async function settleBookingConfirmation(
       kind: 'booking_cancelled',
       title: 'Booking cancelled',
       body: `The dates for ${booking.listingTitle} went to another guest first, so your booking was cancelled.`,
+      msg: { key: 'dates_taken_booking', params: { place: booking.listingTitle } },
       refId: booking.id,
     });
     if (paid) {
@@ -127,6 +128,7 @@ export async function settleBookingConfirmation(
       kind: 'booking_confirmed',
       title: 'Booking confirmed',
       body: `Your booking for ${booking.listingTitle} is confirmed.`,
+      msg: { key: 'booking_confirmed_guest', params: { place: booking.listingTitle } },
       refId: booking.id,
     });
     const hostUserId = await resolveHostUserId(listing?.providerId);
@@ -137,6 +139,7 @@ export async function settleBookingConfirmation(
       kind: 'booking_confirmed',
       title: 'Booking confirmed',
       body: `${bookingUser?.name || 'A guest'} confirmed a booking for ${booking.listingTitle}.`,
+      msg: { key: 'booking_confirmed_host', params: { guest: bookingUser?.name || '', place: booking.listingTitle } },
       refId: booking.id,
     });
     // A booking with no date is complete once confirmed, so it may end the free start now (the

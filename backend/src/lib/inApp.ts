@@ -13,7 +13,7 @@ import { hostUserIds } from './hostAccess';
  */
 export async function addInAppNotification(
   userId: string | null | undefined,
-  n: { kind: string; title: string; body: string; refId?: string | null }
+  n: { kind: string; title: string; body: string; refId?: string | null; msg?: { key: string; params?: Record<string, string | number> } }
 ): Promise<void> {
   if (!userId) return;
   try {
@@ -24,6 +24,7 @@ export async function addInAppNotification(
       title: n.title.slice(0, 200),
       body: n.body.slice(0, 500),
       refId: n.refId ?? null,
+      msg: n.msg ?? null,
       readAt: null,
       createdAt: new Date().toISOString(),
     });
@@ -59,7 +60,7 @@ export async function resolveHostUserId(listingProviderId: string | null | undef
  */
 export async function addHostNotification(
   listingProviderId: string | null | undefined,
-  n: { kind: string; title: string; body: string; refId?: string | null }
+  n: { kind: string; title: string; body: string; refId?: string | null; msg?: { key: string; params?: Record<string, string | number> } }
 ): Promise<void> {
   if (!listingProviderId) return;
   let ids: string[] = [];

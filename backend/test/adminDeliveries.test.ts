@@ -50,6 +50,7 @@ describe('admin: home delivery requests and trip suggestions', () => {
     expect((await request(app).post('/api/feedback/aangan').set(auth(t.token)).send({ message: 'More cafes near the mall please', booking_id: bookingId })).status).toBe(201);
     const all = await request(app).get('/api/feedback/aangan/all').set(auth(admin));
     const item = all.body.items.find((i: any) => i.message === 'More cafes near the mall please');
-    expect(item.booking).toEqual({ id: bookingId, place: listing.title });
+    expect(item.booking).toMatchObject({ id: bookingId, place: listing.title });
+    expect(item.booking).toHaveProperty("status");
   });
 });

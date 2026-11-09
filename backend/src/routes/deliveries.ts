@@ -69,6 +69,7 @@ router.post('/', authenticateToken, requireTravellerMode, rateLimiter(20, 60 * 6
   await addHostNotification(listing.providerId, {
     kind: 'delivery_request', title: `Home delivery request: ${listing.title}`,
     body: `${req.user.name || 'A traveller'} asks for ${summary}. Deliver to ${addr}.`, refId: row.id,
+    msg: { key: 'delivery_request_host', params: { guest: req.user.name || '', place: listing.title, items: summary, address: addr } },
   });
   res.status(201).json({ request: out(row, { listing_title: listing.title }) });
 });
@@ -150,6 +151,7 @@ router.patch('/:id', authenticateToken, async (req: Request, res: Response) => {
   await addInAppNotification(row.userId, {
     kind: `delivery_${status}`, title: `${listing?.title || 'Your order'}: ${status}`,
     body: `Your home delivery request ${words[status]}.${hostNote ? ` ${hostNote}` : ''}`, refId: row.id,
+    msg: { key: `delivery_${status}`, params: { place: listing?.title || '', note: hostNote || '' } },
   });
   // A delivered order counts toward the free start, as a confirmed booking does.
   if (status === 'delivered') await noteGraceProgress(row.providerId);

@@ -47,6 +47,9 @@ export const notifications = pgTable('notifications', {
   body: text('body').notNull(),
   // The booking (or other row) this is about, so the app can deep-link.
   refId: text('ref_id'),
+  // The message as a key + details ({ key: 'request_accepted', params: { place } }), so the
+  // website and app can show it in the reader's language. title/body stay the English text.
+  msg: jsonb('msg').$type<{ key: string; params?: Record<string, string | number> }>(),
   readAt: text('read_at'),
   createdAt: text('created_at').notNull(),
 }, (t) => ({

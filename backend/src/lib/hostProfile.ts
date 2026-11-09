@@ -192,6 +192,8 @@ const BY_TYPE: Record<string, Record<string, (v: unknown) => unknown | ProfileEr
     ...PREMISES,
     amenities: (v) => list(v, 30, 'Amenities', (x) => text(x, 60, 'Amenity')),
     home_delivery: (v) => (typeof v === 'boolean' ? v : { error: 'Home delivery must be on or off' }),
+    // Free text the owner writes, e.g. "8 am - 9 pm, closed Tuesday" (persona test 2026-11-09).
+    opening_hours: (v) => text(v, 120, 'Opening hours'),
   },
   shop: {
     host_name: (v) => text(v, 80, 'Owner name'),
@@ -199,6 +201,7 @@ const BY_TYPE: Record<string, Record<string, (v: unknown) => unknown | ProfileEr
     goods: (v) => list(v, MAX_GOODS, 'Goods', priced(GOODS_UNITS, 'item', 'item')),
     ...PREMISES,
     home_delivery: (v) => (typeof v === 'boolean' ? v : { error: 'Home delivery must be on or off' }),
+    opening_hours: (v) => text(v, 120, 'Opening hours'),
   },
 };
 
@@ -225,7 +228,8 @@ export function profilePatchFrom(businessType: string, input: unknown): ProfileP
   return patch;
 }
 
-export type MissingItem = { key: string; label: string };
+/** `label` is English; `min`/`have` let the website and app word it in the reader's language. */
+export type MissingItem = { key: string; label: string; min?: number; have?: number };
 
 /** What a new host still has to fill in before their documents can go for approval. */
 export function missingMandatory(businessType: string, extras: Record<string, any> | null | undefined): MissingItem[] {
@@ -234,14 +238,14 @@ export function missingMandatory(businessType: string, extras: Record<string, an
   const missing: MissingItem[] = [];
   if (businessType === 'driver') {
     if (photos < MIN_CAR_PHOTOS) {
-      missing.push({ key: 'images', label: `Add at least ${MIN_CAR_PHOTOS} photos of your car (${photos} so far)` });
+      missing.push({ key: 'images', label: `Add at least ${MIN_CAR_PHOTOS} photos of your car (${photos} so far)`, min: MIN_CAR_PHOTOS, have: photos });
     }
   } else if ((PREMISES_TYPES as readonly string[]).includes(businessType)) {
     const who = businessType === 'homestay' ? "the host's name" : "the owner's name";
     const place = businessType === 'homestay' ? 'the property' : businessType === 'cafe' ? 'your cafe or restaurant' : 'your shop';
     if (!String(e.host_name ?? '').trim()) missing.push({ key: 'host_name', label: `Add ${who}` });
     if (photos < MIN_PROPERTY_PHOTOS) {
-      missing.push({ key: 'images', label: `Add at least ${MIN_PROPERTY_PHOTOS} photos of ${place} (${photos} so far)` });
+      missing.push({ key: 'images', label: `Add at least ${MIN_PROPERTY_PHOTOS} photos of ${place} (${photos} so far)`, min: MIN_PROPERTY_PHOTOS, have: photos });
     }
   } else if (businessType === 'guide') {
     const services = Array.isArray(e.services) ? e.services.filter((s: any) => s && s.name && Number(s.price) > 0) : [];

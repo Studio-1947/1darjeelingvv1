@@ -267,12 +267,22 @@ router.post('/', authenticateToken, requireTravellerMode, async (req: Request, r
     body: awaitingHost
       ? `${req.user.name || 'A guest'} asked to book ${listing.title}. Accept or decline it on your dashboard.`
       : `${req.user.name || 'A guest'} asked about ${listing.title}.`,
+    msg: { key: awaitingHost ? 'booking_request_host' : 'booking_enquiry_host', params: { guest: req.user.name || '', place: listing.title } },
     refId: booking.id,
   });
   // A request needs the host to act, so it also goes out by WhatsApp/email (not awaited: the
   // guest's answer must not wait on a gateway).
   if (awaitingHost && listing.providerId) {
     void notifyBookingRequest(booking, listing.providerId, req.user.name || 'A guest');
+    // The guest's own record that the request went out (persona test 2026-11-09: the bell stayed
+    // empty until the host answered).
+    void addInAppNotification(req.user.id, {
+      kind: 'booking_requested',
+      title: 'Request sent',
+      body: `Your request for ${listing.title} has gone to the host. You will hear back within ${REQUEST_EXPIRY_HOURS} hours; nothing is charged until you confirm.`,
+      msg: { key: 'request_sent', params: { place: listing.title, hours: REQUEST_EXPIRY_HOURS } },
+      refId: booking.id,
+    });
   }
 
   const bookingReturn = {
@@ -338,6 +348,28 @@ router.get('/me', authenticateToken, async (req: Request, res: Response) => {
     : [];
   const listingById = new Map(myListingRows.map((l) => [l.id, l]));
   const hosts = await realHostIds(myListingRows.map((l) => l.providerId));
+  // The host's contact for confirmed bookings: a confirmed booking is exactly what releases a host's
+  // number (lib/listingContact.ts canSeeProviderPhone), so the trip card can show Call / WhatsApp /
+  // Directions instead of sending the guest back to the listing to find them.
+  const confirmedProviderIds = [...new Set(bookings
+    .filter((b) => b.status === 'confirmed')
+    .map((b) => listingById.get(b.listingId)?.providerId)
+    .filter((id): id is string => !!id))];
+  const providerRows = confirmedProviderIds.length
+    ? await db.select({ id: schema.providers.id, contactPhone: schema.providers.contactPhone, extras: schema.providers.extras })
+      .from(schema.providers).where(inArray(schema.providers.id, confirmedProviderIds))
+    : [];
+  const providerById = new Map(providerRows.map((p) => [p.id, p]));
+  const hostContactFor = (b: typeof bookings[number], listing: typeof myListingRows[number] | undefined) => {
+    if (b.status !== 'confirmed' || !listing) return null;
+    const provider = providerById.get(listing.providerId);
+    const e = { ...((provider?.extras as Record<string, any>) || {}), ...((listing.extras as Record<string, any>) || {}) };
+    const phone = provider?.contactPhone || (typeof e.contact_phone === 'string' ? e.contact_phone : '') || null;
+    const whatsapp = (typeof e.whatsapp === 'string' && e.whatsapp.trim()) || phone;
+    const address = typeof e.address === 'string' && e.address.trim() ? e.address.trim() : listing.location || null;
+    if (!phone && !address) return null;
+    return { phone, whatsapp: whatsapp || null, address, latitude: listing.latitude ?? null, longitude: listing.longitude ?? null };
+  };
   const enrichedBookings = [];
   for (const b of bookings) {
     const listing = listingById.get(b.listingId);
@@ -377,7 +409,13 @@ router.get('/me', authenticateToken, async (req: Request, res: Response) => {
       reviewed: reviewedListings.has(b.listingId),
       // A request still waiting for the host's accept (drivers, homestays, guides).
       awaiting_host: b.status === 'pending_payment' && !!listing && approvalRequired(listing.type, listing.providerId, hosts),
-      listing: listingReturn
+      listing: listingReturn,
+      host_contact: hostContactFor(b, listing),
+      // A homestay's total is a fixed rule (rate x guests x nights), paid to the host directly.
+      // Drivers and guides settle their fare with the guest, so no figure is claimed for them.
+      amount_due: listing && b.status === 'confirmed' && b.listingType === 'homestay'
+        ? bookingGrossAmount({ listingType: b.listingType, price: listing.price, guests: b.guests, checkIn: b.checkIn, checkOut: b.checkOut })
+        : null,
     });
   }
 
@@ -685,6 +723,7 @@ router.patch('/:id/confirm', authenticateToken, async (req: Request, res: Respon
       kind: 'booking_cancelled',
       title: 'Those dates are no longer free',
       body: `The host of ${other.listingTitle} accepted another guest for some of the same nights, so your request was closed. Nothing was charged.`,
+      msg: { key: 'dates_taken_request', params: { place: other.listingTitle } },
       refId: other.id,
     });
   }
@@ -693,6 +732,7 @@ router.patch('/:id/confirm', authenticateToken, async (req: Request, res: Respon
     kind: 'booking_accepted',
     title: 'Your request was accepted',
     body: `The host accepted your request for ${booking.listingTitle}. Confirm it to lock it in.`,
+    msg: { key: 'request_accepted', params: { place: booking.listingTitle } },
     refId: booking.id,
   });
   void notifyBookingAccepted(outcome.booking);
@@ -823,7 +863,8 @@ router.patch('/:id/cancel', authenticateToken, async (req: Request, res: Respons
     await addInAppNotification(booking.userId, {
       kind: 'booking_cancelled',
       title: 'Booking cancelled',
-      body: `Your booking for ${booking.listingTitle} was cancelled by the host.`,
+      body: `Your booking for ${booking.listingTitle} was cancelled by ${req.user.role === 'admin' ? 'the aangan team' : 'the host'}.`,
+      msg: { key: req.user.role === 'admin' ? 'cancelled_by_team' : 'cancelled_by_host', params: { place: booking.listingTitle } },
       refId: booking.id,
     });
   } else if (wasStatus === 'confirmed' || wasStatus === 'accepted') {
@@ -833,6 +874,7 @@ router.patch('/:id/cancel', authenticateToken, async (req: Request, res: Respons
       kind: 'booking_cancelled',
       title: 'Booking cancelled',
       body: `A guest cancelled their booking for ${booking.listingTitle}.`,
+      msg: { key: 'cancelled_by_guest', params: { place: booking.listingTitle } },
       refId: booking.id,
     });
   }

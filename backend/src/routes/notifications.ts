@@ -12,6 +12,7 @@ const shape = (n: typeof schema.notifications.$inferSelect) => ({
   title: n.title,
   body: n.body,
   ref_id: n.refId,
+  msg: n.msg ?? null,
   unread: n.readAt === null,
   created_at: n.createdAt,
 });
