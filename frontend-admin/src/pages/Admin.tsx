@@ -257,7 +257,7 @@ export default function Admin() {
           <button onClick={() => loadAdminData()} className="px-4 py-2 text-xs font-bold border border-[var(--line)] rounded-full text-ink hover:bg-mist transition-all">
             Refresh Data
           </button>
-          <button onClick={handleSeed} className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold bg-pine text-white rounded-full btn-hover transition-all">
+          <button onClick={handleSeed} title="Adds back any built-in spots and events that are missing (also ones deleted on purpose)" className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold border border-[var(--line)] text-ink rounded-full hover:bg-mist transition-all">
             <Database size={13} /> Seed spots &amp; events
           </button>
           <button onClick={handleLogout} className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold bg-ink text-white rounded-full btn-hover transition-all">

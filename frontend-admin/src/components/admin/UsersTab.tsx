@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Check, X, Trash2, Users as UsersIcon, Store } from 'lucide-react';
 
-import CleanupPanel from './CleanupPanel';
 import TravellerDrawer from './TravellerDrawer';
 
 interface UsersTabProps {
@@ -15,7 +14,7 @@ interface UsersTabProps {
 /**
  * UsersTab displays registered system users and businesses split into dedicated sections.
  */
-export default function UsersTab({ users, onDeleteUser, onToggleProviderStatus, onCleaned }: UsersTabProps) {
+export default function UsersTab({ users, onDeleteUser, onToggleProviderStatus }: UsersTabProps) {
   const [subTab, setSubTab] = useState<'individuals' | 'businesses'>('individuals');
   // The traveller whose full profile and dashboard is open in the side drawer.
   const [open, setOpen] = useState<any | null>(null);
@@ -27,7 +26,7 @@ export default function UsersTab({ users, onDeleteUser, onToggleProviderStatus, 
   return (
     <div className="space-y-6">
       {open && <TravellerDrawer user={open} onClose={() => setOpen(null)} />}
-      <CleanupPanel onDone={() => onCleaned?.()} />
+      {/* Delete-all lives only in the Clean-up tab, away from the everyday user list. */}
 
       {/* Segmented Control / Sub-tabs Switcher */}
       <div className="inline-flex p-1 bg-mist rounded-xl border border-[var(--line)]">
