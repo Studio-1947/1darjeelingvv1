@@ -109,7 +109,15 @@ describe('voucher claimed by two bookings at once', () => {
     const results = await Promise.all([attempt(), attempt(), attempt()]);
 
     expect(results.filter((r) => r.status === 200)).toHaveLength(1);
-    expect(results.filter((r) => r.status === 400)).toHaveLength(2);
+    // The other two are refused either way. Which refusal depends on timing: one that checked the
+    // voucher before the winner committed then finds the winner's request for the same day (409
+    // already_requested); one that checked after finds the voucher spent (400). What matters is
+    // below: one booking, and the voucher used once.
+    const refused = results.filter((r) => r.status !== 200);
+    expect(refused).toHaveLength(2);
+    for (const r of refused) {
+      expect(r.status === 400 || (r.status === 409 && r.body.code === 'already_requested')).toBe(true);
+    }
 
     const rows = await db.select().from(schema.bookings).where(eq(schema.bookings.userId, user.id));
     expect(rows.filter((b) => b.voucherId === voucherId)).toHaveLength(1);
