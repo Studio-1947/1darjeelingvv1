@@ -206,15 +206,17 @@ export default function Header() {
                 />
               ))}
             </div>
+            {/* Arrows sit on the circles' centre line, not the tile's: the rail's
+                4px top padding plus half the circle (48px at lg, 52px at xl). */}
             {railMore.left && (
               <button type="button" onClick={() => nudgeRail(-1)} aria-label={t('nav.categories_prev')} data-testid="header-categories-prev"
-                className="absolute left-0 top-[24px] -translate-y-1/2 z-10 w-7 h-7 rounded-full grid place-items-center bg-white border border-[var(--line)] shadow-sm text-ink btn-hover">
+                className="absolute left-0 top-[28px] xl:top-[30px] -translate-y-1/2 z-10 w-7 h-7 rounded-full grid place-items-center bg-white border border-[var(--line)] shadow-sm text-ink btn-hover">
                 <CaretLeft size={14} weight="bold" />
               </button>
             )}
             {railMore.right && (
               <button type="button" onClick={() => nudgeRail(1)} aria-label={t('nav.categories_next')} data-testid="header-categories-next"
-                className="absolute right-0 top-[24px] -translate-y-1/2 z-10 w-7 h-7 rounded-full grid place-items-center bg-white border border-[var(--line)] shadow-sm text-ink btn-hover">
+                className="absolute right-0 top-[28px] xl:top-[30px] -translate-y-1/2 z-10 w-7 h-7 rounded-full grid place-items-center bg-white border border-[var(--line)] shadow-sm text-ink btn-hover">
                 <CaretRight size={14} weight="bold" />
               </button>
             )}
