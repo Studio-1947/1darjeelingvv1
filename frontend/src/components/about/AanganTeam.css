@@ -1,0 +1,261 @@
+/*
+ * "The people behind aangan" — mirrors the team section on
+ * https://www.1947.io/products/aangan/ (Studio 1947). Values are copied from
+ * that page so the two stay visually identical; the palette is scoped to this
+ * section only and does not leak into the rest of the site.
+ */
+.team {
+  --a-accent: #C2452D;
+  --a-accent-ink: #FBF8F2;
+  --a-ink: #2A1F17;
+  --a-tea: #9A6A3A;
+  --a-paper: #F4EDE1;
+  --a-ease: cubic-bezier(.22, 1, .36, 1);
+
+  background: var(--a-paper);
+  color: var(--a-ink);
+  padding: clamp(64px, 9vw, 130px) clamp(16px, 5vw, 72px);
+}
+
+.team__inner { max-width: 1320px; margin: 0 auto; }
+.team__head { max-width: 640px; margin-bottom: clamp(28px, 4vw, 56px); }
+.team__heading {
+  margin: 0 0 14px;
+  font-size: clamp(30px, 3.4vw, 48px);
+  font-weight: 400;
+  line-height: 1.1;
+  letter-spacing: normal;
+  color: var(--a-ink);
+}
+.team__intro { margin: 0; font-size: 17px; line-height: 1.55; color: #4A3B2F; }
+
+/* --- Grid --- */
+.team__grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: clamp(10px, 1.2vw, 16px);
+}
+.team__card {
+  aspect-ratio: 1 / 1;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity .6s ease calc(var(--i) * .07s), transform .6s ease calc(var(--i) * .07s);
+}
+.team.is-in .team__card { opacity: 1; transform: none; }
+
+.team__link {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 14px;
+  overflow: hidden;
+  background: rgba(154, 106, 58, 0.14);
+  color: var(--a-accent-ink);
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  isolation: isolate;
+}
+.team__link:focus-visible { outline: 3px solid var(--a-ink); outline-offset: 3px; }
+.team__link::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(to top, rgba(42, 31, 23, 0.78) 0%, rgba(42, 31, 23, 0.25) 32%, transparent 55%);
+}
+.team__photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: var(--x) var(--y);
+  transform: scale(var(--z));
+  transform-origin: var(--x) var(--y);
+  filter: grayscale(0.2) sepia(0.08);
+  transition: transform .7s var(--a-ease), filter .4s ease;
+}
+.team__link:hover .team__photo { transform: scale(calc(var(--z) * 1.05)); filter: none; }
+
+.team__meta {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: clamp(10px, 1.1vw, 16px);
+}
+.team__role { font-size: 11px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.85; }
+.team__name { font-size: clamp(17px, 1.4vw, 21px); font-weight: 400; line-height: 1.15; }
+
+.team__arrow {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--a-accent);
+  color: var(--a-accent-ink);
+  opacity: 0;
+  transform: scale(0.8);
+  transition: opacity .25s, transform .25s;
+}
+.team__link:hover .team__arrow,
+.team__link:focus-visible .team__arrow { opacity: 1; transform: none; }
+
+/* --- Dialog --- */
+.team__dialog {
+  --a-accent: #C2452D;
+  --a-ink: #2A1F17;
+  --a-tea: #9A6A3A;
+
+  position: fixed;
+  width: min(760px, 100vw - 32px);
+  max-width: none;
+  max-height: 92vh;
+  margin: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 22px;
+  overflow: hidden;
+  background: #FBF8F2;
+  color: var(--a-ink);
+  box-shadow: 0 40px 100px rgba(28, 20, 14, 0.35);
+}
+.team__dialog[open] { display: flex; flex-direction: column; animation: team-pop .32s cubic-bezier(.2, .8, .2, 1); }
+.team__dialog::backdrop { background: rgba(28, 20, 14, 0.55); backdrop-filter: blur(4px); }
+@keyframes team-pop {
+  from { opacity: 0; transform: translateY(14px) scale(.97); }
+  to { opacity: 1; transform: none; }
+}
+.team__dialog::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 56px;
+  pointer-events: none;
+  background: linear-gradient(to top, #FBF8F2, rgba(251, 248, 242, 0));
+  opacity: 0;
+  transition: opacity .25s;
+}
+.team__dialog.has-more::after { opacity: 1; }
+
+.team__panel { overflow-y: auto; overscroll-behavior: contain; padding: clamp(22px, 4vw, 40px); }
+.team__close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: #EDE5D6;
+  color: var(--a-ink);
+  cursor: pointer;
+  transition: background .2s;
+}
+.team__close:hover { background: #E0D6C3; }
+.team__close:focus-visible,
+.team__more:focus-visible { outline: 3px solid var(--a-accent); outline-offset: 2px; }
+
+.team__person { display: flex; align-items: center; gap: clamp(16px, 3vw, 24px); margin: 0 44px clamp(18px, 3vw, 26px) 0; }
+.team__portrait {
+  flex: 0 0 auto;
+  width: clamp(84px, 18vw, 120px);
+  aspect-ratio: 1 / 1;
+  border-radius: 18px;
+  object-fit: cover;
+  object-position: var(--x) var(--y);
+  background: rgba(154, 106, 58, 0.14);
+}
+.team__person-role { margin: 0 0 6px; font-size: 12px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: var(--a-accent); }
+.team__person-name { margin: 0 0 6px; font-size: clamp(24px, 3.4vw, 34px); font-weight: 400; line-height: 1.1; letter-spacing: normal; }
+.team__person-at { margin: 0; font-size: 14.5px; line-height: 1.4; color: var(--a-tea); }
+
+.team__block { border-top: 1px solid rgba(154, 106, 58, 0.3); padding: clamp(14px, 2vw, 18px) 0; }
+.team__block h4 {
+  margin: 0 0 6px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--a-tea);
+}
+.team__block p { margin: 0; font-size: 16px; line-height: 1.5; color: #3A2D22; }
+
+.team__projects { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.team__projects a {
+  display: block;
+  padding: 7px 14px;
+  border-radius: 999px;
+  font-size: 14px;
+  line-height: 1.2;
+  color: var(--a-ink);
+  text-decoration: none;
+  box-shadow: inset 0 0 0 1px rgba(154, 106, 58, 0.45);
+  transition: background .2s;
+}
+.team__projects a:hover { background: rgba(154, 106, 58, 0.12); }
+
+.team__bio { border-top: 1px solid rgba(154, 106, 58, 0.3); padding: clamp(16px, 2.4vw, 22px) 0 4px; }
+.team__bio p { margin: 0 0 .9em; font-size: 16px; line-height: 1.6; color: #3A2D22; }
+.team__bio .team-bio__lead { font-size: 19px; line-height: 1.35; color: var(--a-ink); }
+.team__bio a { color: var(--a-accent); text-underline-offset: 3px; }
+
+.team__more {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  font-size: 15px;
+  line-height: 1;
+  font-weight: 500;
+  color: var(--a-accent);
+  text-decoration: none;
+}
+.team__more:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+/* --- Phones --- */
+@media (max-width: 720px) {
+  .team__grid { grid-template-columns: repeat(2, 1fr); }
+  .team__role { font-size: 10px; }
+}
+@media (hover: none), (max-width: 720px) {
+  .team__arrow {
+    opacity: 1;
+    transform: none;
+    background: rgba(255, 255, 255, 0.2);
+    color: #fff;
+    backdrop-filter: blur(10px) saturate(1.5);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.5), 0 4px 14px rgba(28, 20, 14, 0.25);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .team__card, .team__photo, .team__arrow { transition: none; }
+  .team__card { opacity: 1; transform: none; }
+  .team__link:hover .team__photo { transform: scale(var(--z)); }
+  .team__dialog[open] { animation: none; }
+}
