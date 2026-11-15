@@ -20,21 +20,22 @@ export type PointsRow = {
 export default function PointsRules({ rows, tone = 'light', testId }: { rows: PointsRow[]; tone?: 'light' | 'dark'; testId?: string }) {
   const { t } = useTranslation();
   if (!rows.length) return null;
-  const muted = tone === 'dark' ? 'text-white/75' : 'text-current opacity-75';
-  const line = tone === 'dark' ? 'border-white/15' : 'border-black/10';
+  const muted = tone === 'dark' ? 'text-white/75' : 'text-[var(--ink-muted)]';
+  const line = tone === 'dark' ? 'border-white/15' : 'border-[var(--warmline)]';
+  const head = tone === 'dark' ? '' : 'text-[var(--r)]';
   return (
     <details className="group mt-3" data-testid={testId}>
-      <summary className="flex cursor-pointer list-none items-center gap-1 text-xs font-bold [&::-webkit-details-marker]:hidden">
+      <summary className={`flex cursor-pointer list-none items-center gap-1 text-sm font-medium [&::-webkit-details-marker]:hidden ${head}`}>
         {t('ui.pointsRules.how_points_work')}
-        <CaretDown size={12} weight="bold" className="transition-transform group-open:rotate-180" />
+        <CaretDown size={14} weight="bold" className="transition-transform group-open:rotate-180" />
       </summary>
-      <ul className="mt-2 w-full sm:min-w-[15rem] sm:max-w-xs space-y-1.5">
+      <ul className="mt-2 grid w-full gap-1.5">
         {rows.map((r) => (
-          <li key={r.label} className={`flex items-baseline justify-between gap-3 border-t pt-1.5 text-xs ${line}`}>
+          <li key={r.label} className={`flex items-baseline justify-between gap-3 border-t pt-1.5 text-sm ${line}`}>
             <span>
-              <span className="font-extrabold">+{r.points}</span> <span className={muted}>{r.label}</span>
+              <b className="font-medium">+{r.points}</b> <span className={muted}>{r.label}</span>
             </span>
-            {r.earned !== undefined && <span className="shrink-0 font-bold">{r.earned.toLocaleString('en-IN')}</span>}
+            {r.earned !== undefined && <span className="shrink-0 font-medium tabular-nums">{r.earned.toLocaleString('en-IN')}</span>}
           </li>
         ))}
       </ul>

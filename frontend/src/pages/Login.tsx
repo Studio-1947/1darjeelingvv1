@@ -3,8 +3,8 @@ import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
-import { Phone, Key as KeyRound, Compass, Storefront } from '@phosphor-icons/react';
-import Wordmark from '@/components/Wordmark';
+import { Compass, Storefront } from '@phosphor-icons/react';
+import { Box, Button, Option, PageHead, SelectField, TextField } from '@/components/ag';
 import Seo from '@/components/Seo';
 import { nationalPhone, OTP_COUNTRIES, otpPhone } from '@/lib/phoneRegions';
 
@@ -154,189 +154,140 @@ export default function Login() {
     finally { setBusy(false); }
   };
 
-  return (
-    <div className="mx-auto max-w-md px-4 md:px-8 py-8 md:py-14">
-      <Seo title={t('auth.welcome')} noindex />
-      <div className="mist-panel p-6 md:p-8">
-        <div className="text-center mb-6">
-          <Wordmark className="mx-auto h-10 w-auto text-ink" />
-          <h1 className="mt-4 font-display font-extrabold text-3xl text-ink">{t('auth.welcome')}</h1>
-          <p className="text-sm text-ink-soft mt-1">{t('brand_tagline')}</p>
-        </div>
+  const googleSignIn = async () => {
+    setGoogleBusy(true);
+    setErr('');
+    try {
+      // Wait for GIS to load if not yet available
+      if (!window.google?.accounts?.id) {
+        await new Promise<void>((resolve) => {
+          const check = setInterval(() => {
+            if (window.google?.accounts?.id) { clearInterval(check); resolve(); }
+          }, 100);
+          setTimeout(() => { clearInterval(check); resolve(); }, 5000);
+        });
+      }
+      if (!window.google?.accounts?.id) {
+        setErr(t('ui.login.google_unavailable'));
+        setGoogleBusy(false);
+        return;
+      }
+      window.google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: (response: any) => handleGoogleSignIn(response.credential),
+        auto_select: false,
+        cancel_on_tap_outside: true,
+      });
+      window.google.accounts.id.prompt();
+    } catch (e: any) {
+      setErr(e?.message || t('ui.login.google_failed'));
+      setGoogleBusy(false);
+    }
+  };
 
-        {/* Google Sign-In Button */}
-        {GOOGLE_CLIENT_ID && step === 1 && (
-          <div className="space-y-4 mb-4">
-            <button
-              disabled={googleBusy || busy}
-              onClick={async () => {
-                setGoogleBusy(true);
-                setErr('');
-                try {
-                  // Wait for GIS to load if not yet available
-                  if (!window.google?.accounts?.id) {
-                    await new Promise<void>((resolve) => {
-                      const check = setInterval(() => {
-                        if (window.google?.accounts?.id) { clearInterval(check); resolve(); }
-                      }, 100);
-                      setTimeout(() => { clearInterval(check); resolve(); }, 5000);
-                    });
-                  }
-                  if (!window.google?.accounts?.id) {
-                    setErr(t('ui.login.google_unavailable'));
-                    setGoogleBusy(false);
-                    return;
-                  }
-                  window.google.accounts.id.initialize({
-                    client_id: GOOGLE_CLIENT_ID,
-                    callback: (response: any) => handleGoogleSignIn(response.credential),
-                    auto_select: false,
-                    cancel_on_tap_outside: true,
-                  });
-                  window.google.accounts.id.prompt();
-                } catch (e: any) {
-                  setErr(e?.message || t('ui.login.google_failed'));
-                  setGoogleBusy(false);
-                }
-              }}
-              className="w-full py-3 rounded-full border border-[var(--line)] bg-white text-ink font-bold btn-hover disabled:opacity-60 flex items-center justify-center gap-2"
-              data-testid="login-google"
-            >
-              {googleBusy ? t('common.loading') : (
-                <>
-                  <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-                    <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
-                    <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z" fill="#34A853"/>
-                    <path d="M3.964 10.71c-.18-.54-.282-1.117-.282-1.71s.102-1.17.282-1.71V4.958H.957C.347 6.173 0 7.548 0 9s.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
-                    <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
-                  </svg>
-                  {t('auth.google_login')}
-                </>
-              )}
-            </button>
-            <div className="flex items-center gap-2">
-              <div className="flex-1 h-px bg-[var(--line)]" />
-              <span className="text-xs text-ink-soft">{t('ui.login.or')}</span>
-              <div className="flex-1 h-px bg-[var(--line)]" />
-            </div>
-          </div>
-        )}
+  return (
+    <div className="ag-wrap">
+      <Seo title={t('auth.welcome')} noindex />
+      <div className="ag-main">
+        <PageHead eyebrow={t('ui.account.eyebrow', 'Your account')} title={t('auth.welcome')} sub={t('brand_tagline')} />
 
         {step === 1 && (
-          <form onSubmit={sendOtp} className="space-y-4" data-testid="login-step-1">
-            <div className="grid grid-cols-2 gap-3">
-              <button type="button" onClick={() => setRole('tourist')} data-testid="role-tourist"
-                className={`text-left p-3 rounded-2xl border transition-colors ${role === 'tourist' ? 'border-pine bg-pine/5 shadow-sm' : 'border-[var(--line)] bg-white hover:border-pine/40'}`}>
-                <Compass size={22} weight={role === 'tourist' ? 'fill' : 'regular'} className={role === 'tourist' ? 'text-pine' : 'text-ink-soft'} />
-                <div className={`mt-2 text-sm font-bold ${role === 'tourist' ? 'text-pine' : 'text-ink'}`}>{t('auth.role_tourist')}</div>
-                <div className="mt-0.5 text-xs text-ink-soft leading-snug">{t('auth.role_tourist_desc')}</div>
-              </button>
-              <button type="button" onClick={() => setRole('provider')} data-testid="role-provider"
-                className={`text-left p-3 rounded-2xl border transition-colors ${role === 'provider' ? 'border-pine bg-pine/5 shadow-sm' : 'border-[var(--line)] bg-white hover:border-pine/40'}`}>
-                <Storefront size={22} weight={role === 'provider' ? 'fill' : 'regular'} className={role === 'provider' ? 'text-pine' : 'text-ink-soft'} />
-                <div className={`mt-2 text-sm font-bold ${role === 'provider' ? 'text-pine' : 'text-ink'}`}>{t('auth.role_provider')}</div>
-                <div className="mt-0.5 text-xs text-ink-soft leading-snug">{t('auth.role_provider_desc')}</div>
-              </button>
+          <form onSubmit={sendOtp} className="flex flex-col gap-4" data-testid="login-step-1">
+            <div className="ag-pick" role="radiogroup" aria-label={t('ui.login.who', 'How will you use aangan?')}>
+              <Option role="radio" aria-checked={role === 'tourist'} on={role === 'tourist'} onClick={() => setRole('tourist')} data-testid="role-tourist"
+                icon={<Compass />} title={t('auth.role_tourist')} sub={t('auth.role_tourist_desc')} />
+              <Option role="radio" aria-checked={role === 'provider'} on={role === 'provider'} onClick={() => setRole('provider')} data-testid="role-provider"
+                icon={<Storefront />} title={t('auth.role_provider')} sub={t('auth.role_provider_desc')} />
             </div>
 
-            {/* One field, one name. English called this "Phone number" while
-                Hindi, Nepali and Bengali all called it "WhatsApp number", so the
-                same form told different visitors different things about where
-                their code would arrive (QA 3.2). The label is the neutral, true
-                one everywhere; the hint below says how delivery actually works,
-                which is what the discrepancy was really trying to convey - the
-                server tries WhatsApp first and falls back to SMS. */}
-            <label className="block">
-              <span className="text-xs font-semibold text-ink-soft">{t('auth.phone_label')}</span>
-              <div className="mt-1 flex items-center gap-2 px-3 min-h-12 rounded-xl border border-[var(--line)] bg-white">
-                <Phone size={16} className="text-ink-soft" />
+            {/* One field, one name: "Phone number" everywhere; the hint says the code goes on
+                WhatsApp first and falls back to SMS (QA 3.2). */}
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-end gap-2">
                 {/* Only "IN +91" shows in the box; the open list names each country. */}
-                <select value={countryCode} onChange={(e) => { setCountryCode(e.target.value); setPhone(''); }}
-                  aria-label={t('ui.login.country_code')} data-testid="login-country"
-                  className="shrink-0 self-stretch w-auto bg-transparent text-sm font-semibold outline-none pr-0.5 border-r border-[var(--line)] mr-1">
+                <SelectField label={t('auth.phone_label')} value={countryCode} onChange={(e) => { setCountryCode(e.target.value); setPhone(''); }}
+                  aria-label={t('ui.login.country_code')} data-testid="login-country" className="w-[124px] flex-none">
                   {OTP_COUNTRIES.map((item) => <option key={item.code} value={item.code} label={`${item.iso} ${item.code}`}>{item.iso} {item.code}</option>)}
-                </select>
-                <input value={phone} onChange={(e) => setPhone(nationalPhone(e.target.value, country))} required
-                  type="tel" inputMode="tel" autoComplete="tel"
-                  aria-describedby="login-phone-hint"
-                  data-testid="login-phone" placeholder={'0'.repeat(country.nationalDigits)}
-                  className="flex-1 min-w-0 self-stretch bg-transparent outline-none" />
+                </SelectField>
+                <TextField value={phone} onChange={(e) => setPhone(nationalPhone(e.target.value, country))} required
+                  type="tel" inputMode="tel" autoComplete="tel" aria-label={t('auth.phone_label')}
+                  aria-describedby="login-phone-hint" className="flex-1 min-w-0"
+                  data-testid="login-phone" placeholder={'0'.repeat(country.nationalDigits)} />
               </div>
-              <span id="login-phone-hint" data-testid="login-phone-hint" className="mt-1.5 block text-xs text-ink-soft">
-                {t('auth.phone_hint')}
-              </span>
-            </label>
+              <p id="login-phone-hint" data-testid="login-phone-hint" className="ag-small !text-xs !leading-4">{t('auth.phone_hint')}</p>
+            </div>
 
-            <button disabled={busy || !canonicalPhone} data-testid="login-send-otp"
-              className="w-full py-3 rounded-full bg-pine text-white font-bold btn-hover disabled:opacity-60">
+            <Button type="submit" variant="primary" go block disabled={busy || !canonicalPhone} data-testid="login-send-otp">
               {busy ? t('common.loading') : t('auth.send_otp')}
-            </button>
+            </Button>
+
+            {GOOGLE_CLIENT_ID && (
+              <>
+                <div className="flex items-center gap-3" aria-hidden="true">
+                  <span className="flex-1 h-px bg-[var(--hairline)]" />
+                  <span className="ag-small">{t('ui.login.or')}</span>
+                  <span className="flex-1 h-px bg-[var(--hairline)]" />
+                </div>
+                <Button block center disabled={googleBusy || busy} onClick={googleSignIn} data-testid="login-google"
+                  icon={googleBusy ? undefined : (
+                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+                      <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
+                      <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z" fill="#34A853"/>
+                      <path d="M3.964 10.71c-.18-.54-.282-1.117-.282-1.71s.102-1.17.282-1.71V4.958H.957C.347 6.173 0 7.548 0 9s.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
+                      <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+                    </svg>
+                  )}>
+                  {googleBusy ? t('common.loading') : t('auth.google_login')}
+                </Button>
+              </>
+            )}
           </form>
         )}
 
         {step === 2 && (
-          <form onSubmit={verify} className="space-y-4" data-testid="login-step-2">
-            {/* Names the app the code was actually sent through, rather than
-                leaving the visitor to check both. */}
+          <form onSubmit={verify} className="flex flex-col gap-4" data-testid="login-step-2">
+            {/* Names the app the code was actually sent through. */}
             {sentChannel && (
-              <p data-testid="login-sent-via" className="text-sm text-ink-soft">
+              <p data-testid="login-sent-via" className="ag-small">
                 {t(sentChannel === 'whatsapp' ? 'auth.sent_whatsapp' : 'auth.sent_sms', { phone: canonicalPhone })}
               </p>
             )}
             {mockOtp && (
-              <div className="rounded-xl bg-gold/20 border border-gold/40 px-4 py-3 text-sm text-ink">
-                <span className="font-bold">{t('auth.mock_otp')}</span> {mockOtp}
-                <div className="text-xs text-ink-soft mt-1">{t('auth.mock_note')}</div>
-              </div>
+              <Box flat className="!gap-1">
+                <p className="text-sm text-[var(--ink-strong)]"><b className="font-medium">{t('auth.mock_otp')}</b> <span className="tabular-nums">{mockOtp}</span></p>
+                <p className="ag-small">{t('auth.mock_note')}</p>
+              </Box>
             )}
-            <label className="block">
-              <span className="text-xs font-semibold text-ink-soft">{t('auth.otp_label')}</span>
-              <div className="mt-1 flex items-center gap-2 px-3 py-2 rounded-xl border border-[var(--line)] bg-white">
-                <KeyRound size={16} className="text-ink-soft" />
-                <input value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))} required maxLength={6}
-                  inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" title={t('auth.otp_six_digits')}
-                  data-testid="login-otp" placeholder="123456"
-                  className="flex-1 bg-transparent outline-none py-1 tracking-widest tabular-nums text-lg" />
-              </div>
-            </label>
+            <TextField label={t('auth.otp_label')} value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))} required maxLength={6}
+              inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" title={t('auth.otp_six_digits')}
+              data-testid="login-otp" placeholder="123456" className="[&_input]:tracking-[0.3em] [&_input]:tabular-nums [&_input]:text-lg" />
             {!userExists && (
-              <label className="block">
-                <span className="text-xs font-semibold text-ink-soft">{t('auth.name')}</span>
-                <input value={name} onChange={(e) => setName(e.target.value)} required={!userExists}
-                  data-testid="login-name" placeholder={t('auth.name_placeholder')} autoComplete="name"
-                  className="mt-1 w-full px-3 py-2.5 rounded-xl border border-[var(--line)] bg-white outline-none" />
-              </label>
+              <TextField label={t('auth.name')} value={name} onChange={(e) => setName(e.target.value)} required={!userExists}
+                data-testid="login-name" placeholder={t('auth.name_placeholder')} autoComplete="name" />
             )}
             {!userExists && role !== 'provider' && (
-              <label className="block">
-                <span className="text-xs font-semibold text-ink-soft">{t('auth.referral_label')}</span>
-                <input value={referral} onChange={(e) => setReferral(e.target.value.toUpperCase().slice(0, 12))}
-                  data-testid="login-referral" placeholder="ANG26-XXXXXX" autoCapitalize="characters" autoComplete="off"
-                  className="mt-1 w-full px-3 py-2.5 rounded-xl border border-[var(--line)] bg-white outline-none tracking-wider" />
-              </label>
+              <TextField label={t('auth.referral_label')} value={referral} onChange={(e) => setReferral(e.target.value.toUpperCase().slice(0, 12))}
+                data-testid="login-referral" placeholder="ANG26-XXXXXX" autoCapitalize="characters" autoComplete="off" className="[&_input]:tracking-wider" />
             )}
 
-            <button disabled={busy} data-testid="login-verify"
-              className="w-full py-3 rounded-full bg-pine text-white font-bold btn-hover disabled:opacity-60">
+            <Button type="submit" variant="primary" go block disabled={busy} data-testid="login-verify">
               {busy ? t('common.loading') : t('auth.verify')}
-            </button>
-            <p className="text-center text-xs text-ink-soft" data-testid="login-resend">
+            </Button>
+            <p className="ag-small text-center" data-testid="login-resend">
               {t('auth.resend_prompt')}{' '}
               {resendIn > 0 ? (
                 <span className="tabular-nums">{t('auth.resend_in', { seconds: resendIn })}</span>
               ) : (
-                <button type="button" onClick={requestCode} disabled={busy} className="font-bold text-pine underline disabled:opacity-60">
-                  {t('auth.resend')}
-                </button>
+                <Button variant="text" onClick={requestCode} disabled={busy} className="!inline-flex !p-0 align-baseline">{t('auth.resend')}</Button>
               )}
             </p>
-            <button type="button" onClick={() => setStep(1)} className="w-full text-xs text-ink-soft">← {t('auth.change_number')}</button>
+            <Button variant="text" onClick={() => setStep(1)} className="self-center">{t('auth.change_number')}</Button>
           </form>
         )}
 
-        {err && <p data-testid="login-error" className="mt-4 text-sm text-flag font-semibold text-center">{err}</p>}
+        {err && <p data-testid="login-error" role="alert" className="ag-err !text-sm text-center">{err}</p>}
 
-        <p className="mt-6 text-xs text-center text-ink-soft">
+        <p className="ag-small !text-xs !leading-4 text-center">
           {t('auth.terms_prefix')} <Link to="/terms" className="underline">{t('auth.terms_conditions_link')}</Link> {t('auth.terms_and')} <Link to="/privacy" className="underline">{t('auth.terms_link')}</Link>{t('auth.terms_suffix')}
         </p>
       </div>

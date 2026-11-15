@@ -1,20 +1,20 @@
 import React, { Fragment, useEffect, useMemo, useRef, useState } from 'react';
-import { distanceTo, kmLabel } from '@/lib/places';
+import { distanceTo } from '@/lib/places';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import api from '@/lib/api';
-import FeedCard from '@/components/FeedCard';
 import SmartImg from '@/components/SmartImg';
 import Seo from '@/components/Seo';
-import { FeedCardSkeleton, GridTileSkeleton, LoadingStatus, repeat } from '@/components/skeletons';
-import { SquaresFour as LayoutGrid, Rows as Rows3, MapPin, ArrowRight, CalendarDots as CalendarRange, Users, MagnifyingGlass as SearchIcon, Mountains as Mountain, CaretLeft, CaretRight } from '@phosphor-icons/react';
+import { GridTileSkeleton, ListRowSkeleton, repeat } from '@/components/skeletons';
+import { SquaresFour as LayoutGrid, Rows as Rows3, MapPin, CalendarDots as CalendarRange, Users, MagnifyingGlass as SearchIcon, CaretLeft, CaretRight } from '@phosphor-icons/react';
 import CategoryFilterBar from '@/components/CategoryFilterBar';
-import { contentFor, listingImage } from '@/lib/listingContent';
+import { contentFor } from '@/lib/listingContent';
 import { tripMatch } from '@/lib/routeFares';
 import { readTrip, hasTrip, tripSuffix } from '@/lib/tripParams';
-import { cardCtaKey } from '@/lib/cardCta';
 import { formatDay, formatRange } from '@/lib/dates';
 import SearchUnderstood, { type SearchInterpretation } from '@/components/SearchUnderstood';
+import { Box, ButtonLink, Chip, Chips, IconButton, PageHead, SecHead, Status } from '@/components/ag';
+import { ListRow, SpotCard, StayCard } from '@/components/home/cards';
 
 const TYPE_MAP = {
   spots: 'spot',
@@ -75,6 +75,21 @@ const OFFBEAT_PLACES = [
 /** Categories a business can list itself in (the rest are curated by our team). */
 const HOST_TYPES = new Set(['homestay', 'driver', 'guide', 'cafe', 'shop']);
 
+/** Results shown as stay cards (photo, price, button, heart); the rest get the tall photo card. */
+const STAY_TYPES = HOST_TYPES;
+
+/** Page eyebrow and title per category, in the prototype's words. */
+const HEAD: Record<string, { eyebrow: [string, string]; title: [string, string] }> = {
+  homestay: { eyebrow: ['home.stay_local', 'Stay local'], title: ['home.tile.stays', 'Homestay'] },
+  driver: { eyebrow: ['home.eyebrow_cars', 'Ride local'], title: ['home.tile.cars', 'Car & Driver'] },
+  spot: { eyebrow: ['home.must_visit', 'Must visit'], title: ['home.tile.spots', 'Offbeat Places'] },
+  cafe: { eyebrow: ['home.eyebrow_eat', 'Eat local'], title: ['home.cafes_title', 'Cafes & Restaurants'] },
+  shop: { eyebrow: ['home.eyebrow_shop', 'Shop local'], title: ['home.shops_title', 'Local Shops'] },
+  guide: { eyebrow: ['home.eyebrow_guides', 'Go with a local'], title: ['home.tile.guides', 'Tour Guides'] },
+  event: { eyebrow: ['home.eyebrow_events', 'Celebrate'], title: ['home.tile.events', 'Festivals'] },
+  biodiversity: { eyebrow: ['home.eyebrow_nature', 'Wild side'], title: ['home.nature_title', 'Nature'] },
+};
+
 export default function Category({ typeOverride }) {
   const { t, i18n } = useTranslation();
   const { type: paramType } = useParams();
@@ -92,7 +107,9 @@ export default function Category({ typeOverride }) {
   // Everything matching the query in *other* categories. Only fetched when the
   // scoped search comes back empty - see the effect below.
   const [elsewhere, setElsewhere] = useState([]);
-  const [view, setView] = useState('grid'); // 'grid' or 'feed'
+  // 'grid' (two columns of cards) or 'feed' (104px list rows). Search across every category opens as
+  // the list, as the prototype shows it; a category opens as the grid.
+  const [viewPick, setView] = useState<'grid' | 'feed' | null>(null);
   // The offbeat rail scrolls sideways; a mouse has no swipe, so it gets arrow buttons.
   const railRef = useRef<HTMLDivElement>(null);
   const scrollRail = (dir: 1 | -1) => {
@@ -243,9 +260,9 @@ export default function Category({ typeOverride }) {
   // Where "may also do this trip" starts in a driver trip search (-1 when it does not apply).
   const unlistedFrom = (type === 'driver' && routeTrip) ? results.findIndex((it) => matchOf(it) !== 'covers') : -1;
   const unlistedHeading = (
-    <div className="col-span-full mt-4" data-testid="trip-unlisted-heading">
-      <h3 className="font-display font-bold text-lg text-ink">{t('category.trip_unlisted_title')}</h3>
-      <p className="text-sm text-ink-soft">{t('category.trip_unlisted_body')}</p>
+    <div className="col-span-full" data-testid="trip-unlisted-heading">
+      <SecHead title={t('category.trip_unlisted_title')} className="!mb-1" />
+      <p className="ag-small m-0">{t('category.trip_unlisted_body')}</p>
     </div>
   );
 
@@ -277,7 +294,12 @@ export default function Category({ typeOverride }) {
     return () => { cancelled = true; };
   }, [loading, searching, type, results.length, fallbackTerm]);
 
-  const title = routeTrip || (q ? `“${q}”` : type ? t(`categories.${type}`) : t('nav.discover'));
+  const head = type ? HEAD[type] : undefined;
+  const title = routeTrip || (q ? `“${q}”` : head ? t(head.title[0], head.title[1]) : t('nav.discover'));
+  const eyebrow = searching
+    ? (type ? `${t('category.search')} · ${t(`categories.${type}`)}` : t('category.search'))
+    : head ? t(head.eyebrow[0], head.eyebrow[1]) : t('nav.discover');
+  const view = viewPick ?? (type ? 'grid' : 'feed');
   const suffix = tripSuffix(trip);
   const listingHref = (id: string) => `/listing/${id}${suffix}`;
 
@@ -290,75 +312,38 @@ export default function Category({ typeOverride }) {
         ? t('widget.until_date', { date: formatDay(trip.checkOut, locale) })
         : '';
 
-  const priceBadge = (it: any) => {
-    if (it.price > 0) {
-      const amount = `₹${Number(it.price).toLocaleString('en-IN')}`;
-      if (it.type === 'homestay') return `${amount} ${t('common.per_person')}`;
-      if (it.type === 'driver') return `${amount} ${t('common.per_day')}`;
-      if (['guide', 'cafe', 'shop'].includes(it.type)) return `${t('common.starting_from')} ${amount}`;
-      return amount;
-    }
-    if (it.extras?.entry_fee) return it.extras.entry_fee;
-    if (it.type === 'spot' || it.type === 'biodiversity' || it.type === 'event') return t('common.entry_varies');
-    // A host who has not set a rate yet: say so, rather than a card with no price at all.
-    if (['homestay', 'driver', 'guide'].includes(it.type)) return t('common.price_on_request');
-    return '';
-  };
+  // Stays, drivers, guides, cafes and shops get the stay card; spots, nature and festivals the tall
+  // photo card. Every result carries grid-tile-<id>: the release walks count them.
+  const resultCard = (it: any) => (STAY_TYPES.has(it.type)
+    ? <StayCard key={it.id} it={it} href={listingHref(it.id)} km={it._km} testId={`grid-tile-${it.id}`} ctaTestId={`grid-cta-${it.id}`} />
+    : <SpotCard key={it.id} it={it} href={listingHref(it.id)} km={it._km} testId={`grid-tile-${it.id}`} />);
+  const listRow = (it: any) => <ListRow key={it.id} it={it} href={listingHref(it.id)} km={it._km} testId={`grid-tile-${it.id}`} />;
 
-  const gridTiles = (list: any[]) => (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
-      {list.map((it) => {
-        const badge = priceBadge(it);
-        return (
-          <div key={it.id} data-testid={`grid-tile-${it.id}`} className="flex flex-col rounded-xl sm:rounded-2xl bg-white border border-[var(--line)] overflow-hidden btn-hover">
-            <Link to={listingHref(it.id)} className="block relative aspect-square overflow-hidden bg-mist group">
-              <SmartImg src={listingImage(it, 600, 600)} alt={it.title}
-                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
-              <div className="absolute bottom-0 inset-x-0 p-2 sm:p-3 text-white">
-                <div className="font-display font-extrabold text-xs sm:text-sm md:text-base leading-tight line-clamp-2 drop-shadow">{it.title}</div>
-                <div className="text-[10px] text-white/90 flex items-center gap-1 mt-0.5"><MapPin size={10} /> <span className="line-clamp-1">{it._km ? `${kmLabel(it._km)} · ` : ''}{it.location}</span></div>
-              </div>
-              {badge && (
-                <div className="absolute top-2 right-2 max-w-[75%] truncate px-2.5 py-0.5 rounded-full bg-black/70 backdrop-blur-md text-white border border-white/20 text-[11px] font-extrabold shadow-sm">
-                  {badge}
-                </div>
-              )}
-            </Link>
-            <div className="p-2 sm:p-3">
-              <Link to={listingHref(it.id)} data-testid={`grid-cta-${it.id}`}
-                className="w-full inline-flex items-center justify-center gap-1.5 py-2 rounded-full bg-pine text-white font-bold text-xs btn-hover">
-                {t(cardCtaKey(it.type))} <ArrowRight size={12} />
-              </Link>
-            </div>
-          </div>
-        );
-      })}
+  const resultsOf = (list: any[], offset = 0) => (
+    <div className={view === 'grid' ? 'grid grid-cols-2 gap-2.5' : 'flex flex-col gap-2.5'}>
+      {list.map((it, i) => (
+        <Fragment key={it.id}>
+          {i + offset === unlistedFrom && unlistedHeading}
+          {view === 'grid' ? resultCard(it) : listRow(it)}
+        </Fragment>
+      ))}
     </div>
   );
 
-  return (
-    <div className="mx-auto max-w-6xl px-4 md:px-6 py-6 md:py-8">
-      <Seo
-        title={searching ? `${t('category.search')}: ${routeTrip || q}` : (type ? t(`categories.${type}`) : t('nav.discover'))}
-        noindex={searching || hasTrip(trip)}
-      />
+  const countLine = loading ? t('common.loading') : type === 'spot' && !searching
+    // On Tourism spots the curated villages rail sits above the list, so say what the number counts.
+    ? t('category.spots_listed', { count: results.length })
+    : t('category.results', { count: results.length });
 
-      {/* Sticky sub-header */}
-      <div className="flex items-end justify-between mb-4 md:mb-6">
-        <div>
-          {searching && (
-            <div className="text-[11px] font-bold uppercase tracking-widest text-flag">
-              {type ? `${t('category.search')} · ${t(`categories.${type}`)}` : t('category.search')}
-            </div>
-          )}
-          <h1 className="font-display font-extrabold text-3xl sm:text-4xl md:text-5xl text-ink leading-tight">{title}</h1>
-          <p className="mt-1 text-sm text-ink-soft">
-            {/* On Tourism spots the curated villages rail sits above the list, so say what the number counts. */}
-            {loading ? t('common.loading') : type === 'spot' && !searching
-              ? t('category.spots_listed', { count: results.length })
-              : t('category.results', { count: results.length })}
-          </p>
+  return (
+    <div className="ag-wrap">
+      <div className="ag-main">
+        <Seo
+          title={searching ? `${t('category.search')}: ${routeTrip || q}` : (type ? t(`categories.${type}`) : t('nav.discover'))}
+          noindex={searching || hasTrip(trip)}
+        />
+
+        <PageHead eyebrow={eyebrow} title={title}>
           {smart?.search && smart.q === searchQuery.trim() && (
             <SearchUnderstood search={smart.search} fixedType={type} onUse={(text) => {
               // The corrected words become the search itself, heading and address included.
@@ -366,210 +351,152 @@ export default function Category({ typeOverride }) {
               setSearchQuery(text);
             }} />
           )}
-        </div>
-        <div className="hidden sm:flex items-center gap-1 p-1 rounded-full bg-white border border-[var(--line)]">
-          <button onClick={() => setView('grid')} data-testid="view-grid" type="button"
-            aria-label={t('category.view_grid')} aria-pressed={view === 'grid'}
-            className={`p-2 rounded-full ${view === 'grid' ? 'bg-mist text-pine' : 'text-ink-soft'}`}>
-            <LayoutGrid size={16} />
-          </button>
-          <button onClick={() => setView('feed')} data-testid="view-feed" type="button"
-            aria-label={t('category.view_list')} aria-pressed={view === 'feed'}
-            className={`p-2 rounded-full ${view === 'feed' ? 'bg-mist text-pine' : 'text-ink-soft'}`}>
-            <Rows3 size={16} />
-          </button>
-        </div>
-      </div>
+        </PageHead>
 
-      {type === 'homestay' && (
-        <div className="mb-4 flex flex-wrap items-center gap-2" data-testid="guest-filter" role="group" aria-label={t('filter.guests', 'Guests')}>
-          <span className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-widest text-ink-soft mr-1">
-            <Users size={13} /> {t('filter.guests', 'Guests')}:
-          </span>
-          {[1, 2, 4, 6, 8].map((n) => {
-            const on = n === 1 ? trip.guests <= 1 : trip.guests === n;
-            return (
-              <button key={n} type="button" data-testid={`guest-filter-${n}`} aria-pressed={on}
-                onClick={() => setSp((prev) => { const next = new URLSearchParams(prev); if (n === 1) next.delete('guests'); else next.set('guests', String(n)); return next; })}
-                className={`h-10 px-4 rounded-full text-[13px] font-bold border ${on ? 'bg-pine text-white border-pine' : 'bg-white text-ink border-[var(--line)]'}`}>
-                {n === 1 ? t('filter.any', 'Any') : `${n}+`}
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      {hasTrip(trip) && (
-        <div data-testid="trip-summary" className="mb-4 flex flex-wrap items-center gap-2">
-          {dateSummary && (
-            <span className="chip bg-white border border-[var(--line)] text-ink">
-              <CalendarRange size={13} className="mr-1.5" /> {dateSummary}
-            </span>
-          )}
-          {trip.guests > 1 && (
-            <span className="chip bg-white border border-[var(--line)] text-ink">
-              <Users size={13} className="mr-1.5" /> {t('widget.guest_count', { count: trip.guests })}
-            </span>
-          )}
-        </div>
-      )}
-
-      {/* Offbeat rail when viewing Spots */}
-      {type === 'spot' && !searching && (
-        <section className="mb-8 pt-1">
-          <div className="flex items-end justify-between mb-3">
-            <div>
-              <div className="text-[11px] font-bold uppercase tracking-widest text-flag">{t('home.hidden_gems', 'HIDDEN GEMS')}</div>
-              <h2 className="font-display font-extrabold text-xl md:text-2xl text-ink mt-0.5">{t('home.offbeat', 'Offbeat & Quiet Villages')}</h2>
-              <p className="text-xs text-ink-soft mt-0.5">{t('home.offbeat_sub', 'Quieter villages a day trip or a night away from town')}</p>
-            </div>
-            <div className="hidden sm:flex items-center gap-2">
-              <button type="button" onClick={() => scrollRail(-1)} aria-label={t('common.previous', 'Previous')} data-testid="offbeat-prev"
-                className="w-9 h-9 rounded-full bg-white border border-[var(--line)] grid place-items-center text-ink btn-hover"><CaretLeft size={16} weight="bold" /></button>
-              <button type="button" onClick={() => scrollRail(1)} aria-label={t('common.next', 'Next')} data-testid="offbeat-next"
-                className="w-9 h-9 rounded-full bg-white border border-[var(--line)] grid place-items-center text-ink btn-hover"><CaretRight size={16} weight="bold" /></button>
-            </div>
-          </div>
-          <div ref={railRef} data-testid="offbeat-rail"
-            className="flex gap-3 md:gap-4 overflow-x-auto no-scrollbar snap-x snap-mandatory scroll-smooth overscroll-x-contain -mx-4 px-4 md:mx-0 md:px-0 pb-2">
-            {OFFBEAT_PLACES.map((place) => (
-              <Link
-                key={place.name}
-                to={`/search?q=${encodeURIComponent(place.name)}`}
-                className="snap-start flex-shrink-0 w-[70%] sm:w-[45%] md:w-[28%] rounded-2xl overflow-hidden bg-white border border-[var(--line)] btn-hover"
-              >
-                <div className="aspect-[4/5] relative bg-mist overflow-hidden">
-                  <SmartImg src={place.image} alt={place.name} className="w-full h-full object-cover" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-black/35" />
-                  <div className="absolute top-3 left-3 right-3 flex items-center justify-between">
-                    <span className="px-2.5 py-0.5 rounded-full bg-black/50 backdrop-blur border border-white/20 text-[10px] font-bold text-white tracking-wider flex items-center gap-1">
-                      <MapPin size={10} weight="fill" /> {t(place.tagKey)}
-                    </span>
-                    <span className="w-6 h-6 rounded-full bg-black/40 backdrop-blur border border-white/20 grid place-items-center text-white">
-                      <ArrowRight size={12} className="-rotate-45" />
-                    </span>
-                  </div>
-                  <div className="absolute bottom-0 inset-x-0 p-3 md:p-4 text-white">
-                    <div className="font-display font-extrabold text-lg md:text-xl leading-tight drop-shadow">{place.name}</div>
-                    <div className="text-xs text-white/85 line-clamp-2 mt-1 leading-snug">{t(place.lineKey)}</div>
-                    <div className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white text-pine font-bold text-xs">
-                      <Mountain size={12} weight="fill" /> {t('cta.explore', 'Explore')}
-                    </div>
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Universal Search & Filter Component */}
-      <CategoryFilterBar
-        categoryType={type}
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        selectedLocation={selectedLocation}
-        onLocationChange={setSelectedLocation}
-        sortOrder={sortOrder}
-        onSortChange={setSortOrder}
-        maxPrice={maxPrice}
-        onMaxPriceChange={setMaxPrice}
-        selectedCab={selectedCab}
-        onCabChange={setSelectedCab}
-        entryFilter={entryFilter}
-        onEntryFilterChange={setEntryFilter}
-        onReset={resetFilters}
-        totalCount={results.length}
-      />
-
-      {/* Near me: nearest first, then within 5 / 10 / 25 km. */}
-      <div className="-mt-3 mb-5 flex items-center gap-2 overflow-x-auto no-scrollbar text-xs" data-testid="near-me">
-        <button type="button" onClick={near ? () => { setNear(null); setRadius(null); } : locate} disabled={locating} data-testid="near-me-toggle"
-          className={`flex-shrink-0 whitespace-nowrap inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full border font-semibold ${near ? 'bg-pine text-white border-pine' : 'bg-white text-ink border-[var(--line)]'}`}>
-          <MapPin size={13} /> {locating ? t('ui.category.finding_you') : near ? t('ui.category.near_me_on') : t('ui.category.near_me')}
-        </button>
-        {near && [null, 5, 10, 25].map((km) => (
-          <button key={String(km)} type="button" onClick={() => setRadius(km)} data-testid={`near-${km ?? 'any'}`}
-            className={`flex-shrink-0 whitespace-nowrap px-3.5 py-2 rounded-full border font-semibold ${radius === km ? 'bg-pine text-white border-pine' : 'bg-white text-ink border-[var(--line)]'}`}>
-            {km ? t('ui.category.within_km', { km }) : t('ui.category.any_distance')}
-          </button>
-        ))}
-      </div>
-
-      {loading ? (
-        <>
-          <LoadingStatus label={t('common.loading')} />
-          {view === 'grid' ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
-              {repeat(8, (i) => <GridTileSkeleton key={i} />)}
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
-              {repeat(4, (i) => <FeedCardSkeleton key={i} />)}
-            </div>
-          )}
-        </>
-      ) : results.length === 0 ? (
-        <div data-testid="category-empty">
-          <div className="mist-panel p-8 md:p-10 text-center">
-            <p className="text-ink-soft">
-              {searching && type
-                ? t('category.none_in_category', { category: t(`categories.${type}`), query: routeTrip || q })
-                : t('category.empty')}
-            </p>
-            {searching && (
-              <Link
-                to={`/search?q=${encodeURIComponent(routeTrip || q)}`}
-                data-testid="search-all-categories"
-                className="mt-5 inline-flex items-center gap-2 px-5 py-3 rounded-full bg-pine text-white font-bold btn-hover"
-              >
-                <SearchIcon size={15} /> {t('category.search_all')}
-              </Link>
+        {hasTrip(trip) && (
+          <div data-testid="trip-summary" className="ag-row">
+            {dateSummary && (
+              <Status tone="info"><CalendarRange size={14} aria-hidden="true" /> {dateSummary}</Status>
             )}
-            {/* An empty category (no guides live yet, say) is not a dead end: ask us, or list yours. */}
-            {!searching && (
-              <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3" data-testid="category-empty-actions">
-                <Link to="/contact" className="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-pine text-white font-bold btn-hover">
-                  {t('category.empty_ask')}
+            {trip.guests > 1 && (
+              <Status tone="info"><Users size={14} aria-hidden="true" /> {t('widget.guest_count', { count: trip.guests })}</Status>
+            )}
+          </div>
+        )}
+
+        {/* Offbeat villages above the list on Tourism spots */}
+        {type === 'spot' && !searching && (
+          <section aria-labelledby="offbeat-h">
+            <SecHead
+              id="offbeat-h"
+              eyebrow={t('home.hidden_gems', 'HIDDEN GEMS')}
+              title={t('home.offbeat', 'Offbeat & Quiet Villages')}
+              action={(
+                <span className="hidden gap-2 sm:flex">
+                  <IconButton label={t('common.previous', 'Previous')} onClick={() => scrollRail(-1)} data-testid="offbeat-prev"><CaretLeft /></IconButton>
+                  <IconButton label={t('common.next', 'Next')} onClick={() => scrollRail(1)} data-testid="offbeat-next"><CaretRight /></IconButton>
+                </span>
+              )}
+            />
+            <p className="ag-small -mt-1 mb-3">{t('home.offbeat_sub', 'Quieter villages a day trip or a night away from town')}</p>
+            <div ref={railRef} data-testid="offbeat-rail"
+              className="-mx-4 flex snap-x snap-mandatory scroll-px-4 gap-2.5 overflow-x-auto overscroll-x-contain scroll-smooth px-4 pb-2 no-scrollbar">
+              {OFFBEAT_PLACES.map((place) => (
+                <Link
+                  key={place.name}
+                  to={`/search?q=${encodeURIComponent(place.name)}`}
+                  className="relative block aspect-[3/4] w-[44%] flex-none snap-start overflow-hidden rounded-[var(--r-card)] border border-[var(--warmline)] bg-[var(--creme2)] text-white no-underline sm:w-[30%]"
+                >
+                  <SmartImg src={place.image} alt={place.name} className="absolute inset-0 h-full w-full object-cover" />
+                  <span className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/15 to-transparent" aria-hidden="true" />
+                  <span className="ag-status absolute left-2 top-2 max-w-[85%] truncate">{t(place.tagKey)}</span>
+                  <span className="absolute inset-x-0 bottom-0 flex flex-col gap-0.5 p-3">
+                    <b className="text-base font-medium leading-snug">{place.name}</b>
+                    <span className="line-clamp-2 text-xs text-white/85">{t(place.lineKey)}</span>
+                  </span>
                 </Link>
-                {HOST_TYPES.has(type) && (
-                  <Link to="/provider/onboard" className="inline-flex items-center gap-2 px-5 py-3 rounded-full border border-[var(--line)] bg-white text-ink font-bold btn-hover">
-                    {t('category.empty_list')}
-                  </Link>
-                )}
-              </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        <CategoryFilterBar
+          categoryType={type}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          selectedLocation={selectedLocation}
+          onLocationChange={setSelectedLocation}
+          sortOrder={sortOrder}
+          onSortChange={setSortOrder}
+          maxPrice={maxPrice}
+          onMaxPriceChange={setMaxPrice}
+          selectedCab={selectedCab}
+          onCabChange={setSelectedCab}
+          entryFilter={entryFilter}
+          onEntryFilterChange={setEntryFilter}
+          onReset={resetFilters}
+          totalCount={results.length}
+        >
+          {/* Near me: nearest first, then within 5 / 10 / 25 km. */}
+          <Chips scroll data-testid="near-me">
+            <Chip on={!!near} onClick={near ? () => { setNear(null); setRadius(null); } : locate} disabled={locating} data-testid="near-me-toggle">
+              <MapPin aria-hidden="true" /> {locating ? t('ui.category.finding_you') : near ? t('ui.category.near_me_on') : t('ui.category.near_me')}
+            </Chip>
+            {near && [null, 5, 10, 25].map((km) => (
+              <Chip key={String(km)} on={radius === km} onClick={() => setRadius(km)} data-testid={`near-${km ?? 'any'}`}>
+                {km ? t('ui.category.within_km', { km }) : t('ui.category.any_distance')}
+              </Chip>
+            ))}
+          </Chips>
+
+          {type === 'homestay' && (
+            <Chips scroll data-testid="guest-filter" role="group" aria-label={t('filter.guests', 'Guests')}>
+              {[1, 2, 4, 6, 8].map((n) => {
+                const on = n === 1 ? trip.guests <= 1 : trip.guests === n;
+                return (
+                  <Chip key={n} on={on} data-testid={`guest-filter-${n}`}
+                    onClick={() => setSp((prev) => { const next = new URLSearchParams(prev); if (n === 1) next.delete('guests'); else next.set('guests', String(n)); return next; })}>
+                    {n === 1 && <Users aria-hidden="true" />}
+                    {n === 1 ? `${t('filter.guests', 'Guests')}: ${t('filter.any', 'Any')}` : `${n}+`}
+                  </Chip>
+                );
+              })}
+            </Chips>
+          )}
+        </CategoryFilterBar>
+
+        <div className="flex items-center justify-between gap-3">
+          <p className="ag-small m-0" role="status">{countLine}</p>
+          <span className="flex gap-2">
+            <IconButton label={t('category.view_grid')} tint={view === 'grid'} aria-pressed={view === 'grid'} onClick={() => setView('grid')} data-testid="view-grid">
+              <LayoutGrid />
+            </IconButton>
+            <IconButton label={t('category.view_list')} tint={view === 'feed'} aria-pressed={view === 'feed'} onClick={() => setView('feed')} data-testid="view-feed">
+              <Rows3 />
+            </IconButton>
+          </span>
+        </div>
+
+        {loading ? (
+          view === 'grid' ? (
+            <div className="grid grid-cols-2 gap-2.5">{repeat(6, (i) => <GridTileSkeleton key={i} />)}</div>
+          ) : (
+            <div className="flex flex-col gap-2.5">{repeat(5, (i) => <ListRowSkeleton key={i} />)}</div>
+          )
+        ) : results.length === 0 ? (
+          <div data-testid="category-empty" className="flex flex-col gap-4">
+            <Box>
+              <p className="ag-lead m-0">
+                {searching && type
+                  ? t('category.none_in_category', { category: t(`categories.${type}`), query: routeTrip || q })
+                  : t('category.empty')}
+              </p>
+              {searching && (
+                <ButtonLink to={`/search?q=${encodeURIComponent(routeTrip || q)}`} go icon={<SearchIcon />} className="self-start" data-testid="search-all-categories">
+                  {t('category.search_all')}
+                </ButtonLink>
+              )}
+              {/* An empty category (no guides live yet, say) is not a dead end: ask us, or list yours. */}
+              {!searching && (
+                <div className="flex flex-col gap-2 sm:flex-row" data-testid="category-empty-actions">
+                  <ButtonLink to="/contact" go>{t('category.empty_ask')}</ButtonLink>
+                  {HOST_TYPES.has(type) && <ButtonLink to="/provider/onboard" go>{t('category.empty_list')}</ButtonLink>}
+                </div>
+              )}
+            </Box>
+
+            {elsewhere.length > 0 && (
+              <section data-testid="results-elsewhere" aria-labelledby="elsewhere-h">
+                <SecHead id="elsewhere-h" title={t('category.found_elsewhere', { count: elsewhere.length, query: routeTrip || q })} />
+                <p className="ag-small -mt-1 mb-3">{t('category.found_elsewhere_note')}</p>
+                <div className="flex flex-col gap-2.5">{elsewhere.map(listRow)}</div>
+              </section>
             )}
           </div>
-
-          {elsewhere.length > 0 && (
-            <section className="mt-10" data-testid="results-elsewhere">
-              <h2 className="font-display font-extrabold text-xl md:text-2xl text-ink">
-                {t('category.found_elsewhere', { count: elsewhere.length, query: routeTrip || q })}
-              </h2>
-              <p className="mt-1 mb-4 text-sm text-ink-soft">{t('category.found_elsewhere_note')}</p>
-              {gridTiles(elsewhere)}
-            </section>
-          )}
-        </div>
-      ) : view === 'grid' ? (
-        // Instagram Explore-style grid: tight, image-first
-        unlistedFrom > -1 ? (
-          <>
-            {unlistedFrom > 0 && gridTiles(results.slice(0, unlistedFrom))}
-            {unlistedHeading}
-            <div className="mt-3">{gridTiles(results.slice(unlistedFrom))}</div>
-          </>
-        ) : gridTiles(results)
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
-          {results.map((it, i) => (
-            <Fragment key={it.id}>
-              {i === unlistedFrom && unlistedHeading}
-              <FeedCard item={it} priority={i < 2} tripSuffix={suffix} />
-            </Fragment>
-          ))}
-        </div>
-      )}
+        ) : (
+          resultsOf(results)
+        )}
+      </div>
     </div>
   );
 }

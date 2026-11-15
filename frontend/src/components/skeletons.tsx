@@ -32,77 +32,54 @@ export function LoadingStatus({ label }: { label: string }) {
   return <span role="status" aria-live="polite" className="sr-only">{label}</span>;
 }
 
-/** Matches FeedCard: avatar row, square image, action row, caption, CTA. */
-export function FeedCardSkeleton() {
+/** Matches the 104px list card (search across every category, list view). */
+export function ListRowSkeleton() {
   return (
-    <SkeletonBlock
-      testid="feed-card-skeleton"
-      className="bg-white rounded-3xl border border-[var(--line)] overflow-hidden max-w-xl mx-auto md:mx-0 w-full"
-    >
-      <div className="flex items-center gap-3 p-3.5">
-        <Bar className="w-10 h-10 rounded-full flex-shrink-0" />
-        <div className="flex-1 space-y-1.5">
-          <Bar className="h-3.5 w-1/3" />
-          <Bar className="h-2.5 w-1/5" />
-        </div>
-      </div>
-      <Bar className="aspect-square w-full rounded-none" />
-      <div className="flex items-center gap-4 px-3.5 pt-3">
-        <Bar className="w-5 h-5 rounded-full" />
-        <Bar className="w-16 h-4" />
-        <Bar className="w-5 h-5 rounded-full ml-auto" />
-      </div>
-      <div className="px-3.5 py-3 space-y-2">
-        <Bar className="h-5 w-3/5" />
-        <Bar className="h-3 w-2/5" />
-        <Bar className="h-3 w-full" />
-        <Bar className="h-3 w-4/5" />
-        <Bar className="h-10 w-full rounded-full mt-3.5" />
+    <SkeletonBlock testid="list-row-skeleton" className="ag-card grid grid-cols-[104px_minmax(0,1fr)] items-center gap-3.5 p-2.5">
+      <Bar className="aspect-square w-[104px] rounded-[14px]" />
+      <div className="space-y-2">
+        <Bar className="h-4 w-4/5" />
+        <Bar className="h-3 w-3/5" />
+        <Bar className="h-4 w-1/3" />
       </div>
     </SkeletonBlock>
   );
 }
 
-/** Matches Category's grid tile: square image plus a pill CTA. */
+/** Matches the stay card: photo, name, place, price, button (Category's grid and Home's rows). */
 export function GridTileSkeleton() {
   return (
-    <SkeletonBlock
-      testid="grid-tile-skeleton"
-      className="rounded-xl sm:rounded-2xl bg-white border border-[var(--line)] overflow-hidden"
-    >
-      <Bar className="aspect-square w-full rounded-none" />
-      <div className="p-2 sm:p-3">
-        <Bar className="h-8 w-full rounded-full" />
+    <SkeletonBlock testid="grid-tile-skeleton" className="ag-card">
+      <Bar className="aspect-[4/3] w-full rounded-none" />
+      <div className="space-y-2 p-3.5">
+        <Bar className="h-4 w-4/5" />
+        <Bar className="h-3 w-3/5" />
+        <Bar className="h-4 w-1/3" />
+        <Bar className="mt-3 h-11 w-full rounded-full" />
       </div>
     </SkeletonBlock>
   );
 }
 
-/** Matches Discover's horizontally scrolled spot tiles. */
+/** Matches the tall spot card (Home's Offbeat Places and Nature). */
 export function SpotTileSkeleton() {
   return (
-    <SkeletonBlock
-      testid="spot-tile-skeleton"
-      className="flex-shrink-0 w-[70%] sm:w-[45%] md:w-[30%] rounded-2xl overflow-hidden bg-white border border-[var(--line)]"
-    >
-      <Bar className="aspect-[4/5] w-full rounded-none" />
+    <SkeletonBlock testid="spot-tile-skeleton" className="overflow-hidden rounded-[var(--r-card)] border border-[var(--warmline)]">
+      <Bar className="aspect-[3/4] w-full rounded-none" />
     </SkeletonBlock>
   );
 }
 
-/** Matches Discover's homestay quick-pick tile. */
+/** Matches Home's homestay cards. */
 export function StayTileSkeleton() {
   return (
-    <SkeletonBlock
-      testid="stay-tile-skeleton"
-      className="rounded-2xl overflow-hidden bg-white border border-[var(--line)]"
-    >
-      <Bar className="aspect-square w-full rounded-none" />
-      <div className="p-3 space-y-2">
+    <SkeletonBlock testid="stay-tile-skeleton" className="ag-card">
+      <Bar className="aspect-[4/3] w-full rounded-none" />
+      <div className="space-y-2 p-3.5">
         <Bar className="h-4 w-4/5" />
-        <Bar className="h-2.5 w-2/5" />
+        <Bar className="h-3 w-2/5" />
         <Bar className="h-4 w-1/3" />
-        <Bar className="h-8 w-full rounded-full mt-3" />
+        <Bar className="mt-3 h-11 w-full rounded-full" />
       </div>
     </SkeletonBlock>
   );
@@ -134,19 +111,20 @@ export function ReviewSkeleton() {
  * shift when the real content arrives.
  */
 export function ListingDetailSkeleton() {
+  // The listing page's shape: one 720px column, a 16:10 photo, the title block, then text.
   return (
-    <SkeletonBlock testid="listing-detail-skeleton" className="pb-28 lg:pb-0">
-      <div className="relative h-[calc(100svh-var(--header-h))] w-full bg-mist">
-        <div className="absolute inset-x-0 bottom-0 p-4 md:p-8 lg:px-16 lg:pb-20 space-y-4">
-          <Bar className="h-6 w-28 rounded-full bg-white/60" />
-          <Bar className="h-12 md:h-20 w-4/5 bg-white/60" />
-          <Bar className="h-5 w-1/2 bg-white/60" />
+    <SkeletonBlock testid="listing-detail-skeleton" className="ag-wrap">
+      <div className="ag-main">
+        <Bar className="w-full aspect-[16/10] rounded-[var(--r-card)]" />
+        <div className="space-y-2">
+          <Bar className="h-3 w-24" />
+          <Bar className="h-9 w-3/4" />
+          <Bar className="h-4 w-1/2" />
         </div>
-      </div>
-      <div className="mx-auto w-full max-w-4xl px-4 md:px-8 py-16 md:py-24 space-y-4">
-        <Bar className="h-3 w-24 mx-auto" />
-        <Bar className="h-9 md:h-12 w-3/4 mx-auto" />
-        <div className="pt-4 space-y-3">
+        <div className="flex gap-2">
+          {repeat(3, (i) => <Bar key={i} className="h-[150px] w-[200px] flex-none rounded-[var(--r-card)]" />)}
+        </div>
+        <div className="space-y-3">
           <Bar className="h-4 w-full" />
           <Bar className="h-4 w-full" />
           <Bar className="h-4 w-2/3" />

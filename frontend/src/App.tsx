@@ -6,6 +6,7 @@ import '@/i18n';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import TravellerOnly from '@/components/TravellerOnly';
 import { FavoritesProvider } from '@/context/FavoritesContext';
+import PageErrorBoundary from '@/components/PageErrorBoundary';
 import Layout from '@/components/Layout';
 import ScrollToTop from '@/components/ScrollToTop';
 import { LoginGateProvider } from '@/components/LoginGate';
@@ -42,7 +43,7 @@ const HostPage = lazy(() => import('@/pages/HostPage'));
 // How long the splash in index.html stays up once the app has mounted - long enough for its
 // wordmark reveal (1.8s, kept in sync with that markup) to actually finish playing rather
 // than being cut off on a fast load.
-const SPLASH_MIN_VISIBLE_MS = 1800;
+const SPLASH_MIN_VISIBLE_MS = 2100;
 
 /** Home is Discover for a traveller; on the business side it is the host's own dashboard. */
 function HomeForSide() {
@@ -69,7 +70,7 @@ export default function App() {
     const delay = reduceMotion || seen || window.location.pathname !== '/' ? 0 : SPLASH_MIN_VISIBLE_MS;
     const hide = setTimeout(() => {
       splash.classList.add('app-splash-hide');
-      setTimeout(() => splash.remove(), 300);
+      setTimeout(() => splash.remove(), 450);
     }, delay);
     return () => clearTimeout(hide);
   }, []);
@@ -81,6 +82,7 @@ export default function App() {
           <ScrollToTop />
           <LoginGateProvider>
             <Layout>
+                <PageErrorBoundary>
                 <Suspense fallback={<PageLoading />}>
                   <Routes>
                     <Route path="/" element={<HomeForSide />} />
@@ -129,6 +131,7 @@ export default function App() {
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </Suspense>
+                </PageErrorBoundary>
             </Layout>
           </LoginGateProvider>
         </BrowserRouter>

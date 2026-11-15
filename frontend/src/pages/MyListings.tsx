@@ -1,13 +1,15 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
-import { Storefront as Store, Plus, Trash as Trash2, Pencil, ArrowSquareOut as ExternalLink, ArrowRight, CheckCircle as CheckCircle2, Clock, ListBullets as LayoutList, CircleNotch as Loader2, Sparkle as Sparkles, Buildings as Building2, MapPin, Tag } from '@phosphor-icons/react';
+import { Storefront, Plus, Trash, Pencil, CheckCircle, Clock, ListBullets, CircleNotch as Loader2, MapPin } from '@phosphor-icons/react';
 import ListingFormModal from '@/components/ListingFormModal';
 import EditListingModal from '@/components/provider/dashboard/EditListingModal';
 import HostPlanCard from '@/components/provider/dashboard/HostPlanCard';
 import { useSeo } from '@/components/Seo';
+import { Insight } from '@/components/provider/dashboard/Insight';
+import { Box, Button, ButtonLink, MenuIcon, PageHead, Status } from '@/components/ag';
 
 export default function MyListings() {
   const { t } = useTranslation();
@@ -18,7 +20,6 @@ export default function MyListings() {
   const [provider, setProvider] = useState<any>(null);
   const [listings, setListings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filterTab, setFilterTab] = useState<'all' | 'active' | 'pending'>('all');
   const [selectedListing, setSelectedListing] = useState<any>(null);
   const [listingModal, setListingModal] = useState<{ open: boolean; editing: any | null }>({
     open: false,
@@ -80,9 +81,10 @@ export default function MyListings() {
 
   if (authLoading || loading) {
     return (
-      <div className="mx-auto max-w-5xl px-4 py-16 text-center text-ink-soft">
-        <Loader2 size={24} className="animate-spin mx-auto mb-2 text-flag" />
-        {t('common.loading')}
+      <div className="ag-wrap">
+        <div className="ag-main">
+          <p className="ag-small flex items-center gap-2"><Loader2 size={20} className="animate-spin text-[var(--r)]" aria-hidden="true" />{t('common.loading')}</p>
+        </div>
       </div>
     );
   }
@@ -90,20 +92,11 @@ export default function MyListings() {
   // Non-logged-in user
   if (!user) {
     return (
-      <div className="mx-auto max-w-3xl px-4 py-12 md:py-20 text-center">
-        <div className="w-16 h-16 rounded-full bg-pine/10 text-pine grid place-items-center mx-auto mb-4">
-          <Store size={28} />
+      <div className="ag-wrap">
+        <div className="ag-main">
+          <PageHead eyebrow={t('provider.dashboard_title')} title={t('ui.myListings.guest_title')} sub={t('ui.myListings.guest_body')} />
+          <Button variant="primary" go className="self-start" onClick={() => nav('/login?next=/my-listings')}>{t('ui.myListings.guest_cta')}</Button>
         </div>
-        <h1 className="font-display font-extrabold text-2xl sm:text-3xl text-ink">{t('ui.myListings.guest_title')}</h1>
-        <p className="text-ink-soft max-w-md mx-auto mt-2 text-sm">
-          {t('ui.myListings.guest_body')}
-        </p>
-        <button
-          onClick={() => nav('/login?next=/my-listings')}
-          className="mt-6 inline-flex items-center gap-2 px-6 py-3 rounded-full bg-pine text-white font-bold text-sm btn-hover shadow-md"
-        >
-          {t('ui.myListings.guest_cta')}
-        </button>
       </div>
     );
   }
@@ -111,27 +104,13 @@ export default function MyListings() {
   // Logged-in user, but not onboarded as a provider yet
   if (!provider) {
     return (
-      <div className="mx-auto max-w-3xl px-4 py-12 md:py-16 text-center">
-        <div className="w-16 h-16 rounded-full bg-flag/10 text-flag grid place-items-center mx-auto mb-4">
-          <Building2 size={28} />
-        </div>
-        <h1 className="font-display font-extrabold text-2xl sm:text-3xl text-ink">{t('ui.myListings.onboard_title')}</h1>
-        <p className="text-ink-soft max-w-md mx-auto mt-2 text-sm leading-relaxed">
-          {t('ui.myListings.onboard_body')}
-        </p>
-        <div className="mt-6 flex flex-wrap gap-3 justify-center">
-          <Link
-            to="/provider/onboard"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-pine text-white font-bold text-sm btn-hover shadow-md"
-          >
-            {t('provider.onboard_title')} <ArrowRight size={16} />
-          </Link>
-          <Link
-            to="/my-trips"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-full border border-[var(--line)] text-ink font-semibold text-sm btn-hover"
-          >
-            {t('ui.myListings.view_trips')}
-          </Link>
+      <div className="ag-wrap">
+        <div className="ag-main">
+          <PageHead eyebrow={t('provider.dashboard_title')} title={t('ui.myListings.onboard_title')} sub={t('ui.myListings.onboard_body')} />
+          <div className="ag-row">
+            <ButtonLink to="/provider/onboard" variant="primary" go>{t('provider.onboard_title')}</ButtonLink>
+            <ButtonLink to="/my-trips" go>{t('ui.myListings.view_trips')}</ButtonLink>
+          </div>
         </div>
       </div>
     );
@@ -141,153 +120,63 @@ export default function MyListings() {
   const isBusinessActive = provider.status === 'active';
 
   return (
-    <div className="mx-auto max-w-6xl px-4 md:px-6 py-6 md:py-10 pb-24 lg:pb-12">
-      {/* Header Block */}
-      <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
-        <div>
-          <div className="text-[11px] font-bold uppercase tracking-widest text-flag flex items-center gap-1.5">
-            <Store size={13} /> {provider.business_name}
+    <div className="ag-wrap">
+      <div className="ag-main">
+        <PageHead eyebrow={provider.business_name} title={t('ui.myListings.title')} sub={t('ui.myListings.subtitle')}>
+          <div className="ag-row mt-2">
+            <Status tone={isBusinessActive ? 'ok' : 'pending'}>
+              {isBusinessActive ? <CheckCircle size={14} weight="fill" aria-hidden="true" /> : <Clock size={14} aria-hidden="true" />}
+              {isBusinessActive ? t('provider.active') : t('provider.pending')}
+            </Status>
           </div>
-          <h1 className="font-display font-extrabold text-2xl sm:text-3xl md:text-4xl text-ink mt-1">
-            {t('ui.myListings.title')}
-          </h1>
-          <p className="text-xs sm:text-sm text-ink-soft mt-1">
-            {t('ui.myListings.subtitle')}
-          </p>
+        </PageHead>
+
+        <Button variant="primary" icon={<Plus />} go className="self-start" onClick={() => setListingModal({ open: true, editing: null })} data-testid="add-listing-cta">
+          {t('ui.myListings.add_new')}
+        </Button>
+
+        <HostPlanCard provider={provider} user={user} onRenewed={refreshProviderAccess} />
+
+        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+          <Insight icon={ListBullets} label={t('ui.myListings.total')} value={listings.length} />
+          <Insight icon={CheckCircle} label={t('ui.myListings.live')} value={activeCount} />
+          <Insight icon={Storefront} label={t('ui.myListings.business_type')} value={t(`categories.${provider.business_type}`, { defaultValue: provider.business_type })} />
         </div>
 
-        <div className="flex items-center gap-3">
-          <span
-            className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full font-bold text-xs ${
-              isBusinessActive ? 'bg-pine/10 text-pine' : 'bg-gold/20 text-[#8a6b04]'
-            }`}
-          >
-            {isBusinessActive ? <CheckCircle2 size={14} /> : <Clock size={14} />}
-            {isBusinessActive ? t('provider.active') : t('provider.pending')}
-          </span>
-
-          <button
-            onClick={() => setListingModal({ open: true, editing: null })}
-            data-testid="add-listing-cta"
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-pine text-white font-bold text-xs sm:text-sm btn-hover shadow-sm"
-          >
-            <Plus size={15} /> {t('ui.myListings.add_new')}
-          </button>
-        </div>
-      </div>
-
-      <HostPlanCard provider={provider} user={user} onRenewed={refreshProviderAccess} />
-
-      {/* Stats row */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 mb-8">
-        <div className="rounded-2xl p-4 bg-pine text-white shadow-sm">
-          <div className="text-[11px] uppercase tracking-widest font-bold opacity-90">{t('ui.myListings.total')}</div>
-          <div className="mt-1 font-display font-extrabold text-2xl sm:text-3xl leading-none">
-            {listings.length}
-          </div>
-        </div>
-        <div className="rounded-2xl p-4 bg-flag text-white shadow-sm">
-          <div className="text-[11px] uppercase tracking-widest font-bold opacity-90">{t('ui.myListings.live')}</div>
-          <div className="mt-1 font-display font-extrabold text-2xl sm:text-3xl leading-none">
-            {activeCount}
-          </div>
-        </div>
-        <div className="rounded-2xl p-4 bg-gold text-white shadow-sm col-span-2 md:col-span-1">
-          <div className="text-[11px] uppercase tracking-widest font-bold opacity-90">{t('ui.myListings.business_type')}</div>
-          <div className="mt-1 font-display font-bold text-lg sm:text-xl capitalize leading-tight">
-            {provider.business_type}
-          </div>
-        </div>
-      </div>
-
-      {/* Listings section */}
-      {listings.length === 0 ? (
-        <div className="mist-panel p-8 md:p-12 text-center rounded-3xl">
-          <div className="w-12 h-12 rounded-full bg-mist text-ink-soft grid place-items-center mx-auto mb-3">
-            <LayoutList size={24} />
-          </div>
-          <h3 className="font-display font-bold text-lg text-ink">{t('ui.myListings.empty_title')}</h3>
-          <p className="text-xs sm:text-sm text-ink-soft max-w-md mx-auto mt-1">
-            {t('ui.myListings.empty_body')}
-          </p>
-          <button
-            onClick={() => setListingModal({ open: true, editing: null })}
-            className="mt-6 inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full bg-pine text-white font-bold text-xs sm:text-sm btn-hover"
-          >
-            <Plus size={16} /> {t('ui.myListings.add_first')}
-          </button>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
-          {listings.map((l) => (
-            <div
-              key={l.id}
-              data-testid={`my-listing-card-${l.id}`}
-              className="bg-white rounded-2xl border border-[var(--line)] overflow-hidden flex flex-col justify-between hover:shadow-md transition-shadow"
-            >
-              <div>
-                <div className="aspect-[4/3] bg-mist overflow-hidden relative">
-                  {l.image ? (
-                    <img src={l.image} alt={l.title} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full grid place-items-center text-ink-soft">
-                      <Store size={32} />
-                    </div>
-                  )}
-                  <div className="absolute top-2.5 left-2.5">
-                    <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase bg-white/90 backdrop-blur-sm text-ink shadow-sm">
-                      {l.type}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="p-4">
-                  <h3 className="font-display font-bold text-ink text-base line-clamp-1">{l.title}</h3>
-                  <div className="text-xs text-ink-soft mt-0.5 flex items-center gap-1">
-                    <MapPin size={11} className="text-pine flex-shrink-0" />
-                    <span className="truncate">{l.location}</span>
-                  </div>
-
-                  {l.price > 0 && (
-                    <div className="mt-2 font-extrabold text-pine text-base">
-                      ₹{l.price.toLocaleString('en-IN')}{' '}
-                      <span className="text-[11px] font-normal text-ink-soft">{t('ui.myListings.starting')}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="p-4 pt-0 border-t border-[var(--line)]/50 mt-2">
-                <div className="mt-3 flex items-center justify-between gap-2">
-                  <Link
-                    to={`/listing/${l.id}`}
-                    data-testid={`view-listing-${l.id}`}
-                    className="inline-flex items-center gap-1 text-xs font-bold text-pine hover:underline"
-                  >
-                    {t('common.view')} <ExternalLink size={11} />
-                  </Link>
-
-                  <button
-                    onClick={() => setSelectedListing(l)}
-                    data-testid={`edit-listing-${l.id}`}
-                    className="inline-flex items-center gap-1 text-xs font-bold text-ink-soft hover:text-ink"
-                  >
-                    <Pencil size={11} /> {t('common.edit')}
-                  </button>
-
-                  <button
-                    onClick={() => handleDeleteListing(l.id)}
-                    data-testid={`delete-listing-${l.id}`}
-                    className="inline-flex items-center gap-1 text-xs font-bold text-flag hover:text-[#8a1e1e]"
-                  >
-                    <Trash2 size={11} /> {t('common.delete')}
-                  </button>
-                </div>
-              </div>
+        {listings.length === 0 ? (
+          <Box>
+            <MenuIcon><ListBullets /></MenuIcon>
+            <div>
+              <h2>{t('ui.myListings.empty_title')}</h2>
+              <p className="ag-small">{t('ui.myListings.empty_body')}</p>
             </div>
-          ))}
-        </div>
-      )}
+            <Button icon={<Plus />} className="self-start" onClick={() => setListingModal({ open: true, editing: null })}>{t('ui.myListings.add_first')}</Button>
+          </Box>
+        ) : (
+          <div className="grid gap-2.5 sm:grid-cols-2">
+            {listings.map((l) => (
+              <article key={l.id} data-testid={`my-listing-card-${l.id}`} className="ag-card">
+                <div className="relative">
+                  {l.image ? <img src={l.image} alt="" className="img" /> : <div className="img !grid place-items-center text-[var(--r)]"><Storefront size={32} aria-hidden="true" /></div>}
+                  <Status tone="info" className="absolute left-2.5 top-2.5 !bg-[var(--surface)]">{t(`categories.${l.type}`, { defaultValue: l.type })}</Status>
+                </div>
+                <div className="body">
+                  <span className="name line-clamp-1">{l.title}</span>
+                  <span className="meta flex items-center gap-1"><MapPin size={14} className="flex-none text-[var(--r)]" aria-hidden="true" /><span className="truncate">{l.location}</span></span>
+                  {l.price > 0 && (
+                    <span className="ag-price">₹{l.price.toLocaleString('en-IN')} <span className="unit">{t('ui.myListings.starting')}</span></span>
+                  )}
+                  <div className="ag-row mt-2">
+                    <ButtonLink to={`/listing/${l.id}`} size="sm" data-testid={`view-listing-${l.id}`}>{t('common.view')}</ButtonLink>
+                    <Button size="sm" icon={<Pencil />} onClick={() => setSelectedListing(l)} data-testid={`edit-listing-${l.id}`}>{t('common.edit')}</Button>
+                    <Button size="sm" variant="stop" icon={<Trash />} onClick={() => handleDeleteListing(l.id)} data-testid={`delete-listing-${l.id}`}>{t('common.delete')}</Button>
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </div>
 
       {selectedListing && (
         <EditListingModal

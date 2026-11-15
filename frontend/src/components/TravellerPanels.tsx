@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Trans, useTranslation } from 'react-i18next';
 import {
-  ArrowRight, Coffee, Copy, House, Medal, ShareNetwork, Sparkle, Star, Storefront, Ticket, Path, ChatCircleText, UserCircle,
+  ArrowUpRight, Check, Coffee, Copy, House, Medal, ShareNetwork, Sparkle, Star, Storefront, Ticket, Path, ChatCircleText, UserCircle,
 } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import InviteHostLink from '@/components/provider/InviteHostLink';
@@ -10,6 +10,7 @@ import api from '@/lib/api';
 import { rupees, usePassPrice } from '@/lib/prices';
 import { useAuth } from '@/context/AuthContext';
 import PointsRules, { travellerPointsRows } from '@/components/PointsRules';
+import { Box, Button, ButtonLink, IconButton, MenuIcon, Status, TextArea } from '@/components/ag';
 
 /**
  * The traveller dashboard from the board: aangan pass, Aangan Points, Aangan Awards, total travel
@@ -83,7 +84,7 @@ export default function TravellerPanels() {
     }
   };
 
-  if (!data) return <div className="mb-8 h-40 rounded-3xl bg-mist animate-pulse" data-testid="traveller-panels-loading" />;
+  if (!data) return <div className="h-40 rounded-[22px] bg-[var(--creme2)] animate-pulse" data-testid="traveller-panels-loading" />;
 
   const earned = data.awards.filter((a) => a.earned).length;
   const totals = [
@@ -92,127 +93,133 @@ export default function TravellerPanels() {
     { label: t('ui.travellerPanels.totals.cafes'), value: data.totals.cafes, Icon: Coffee },
     { label: t('ui.travellerPanels.totals.shops'), value: data.totals.shops, Icon: Storefront },
   ];
+  const big = 'font-medium text-[28px] leading-[34px] text-[var(--ink-strong)] tabular-nums';
 
   return (
-    <div className="mb-8 space-y-4" data-testid="traveller-panels">
+    <div className="flex flex-col gap-4" data-testid="traveller-panels">
       {!data.profile.complete && (
-        <Link to="/profile/edit" data-testid="panel-finish-profile"
-          className="flex items-center gap-3 p-4 rounded-2xl border border-[#1F6656]/30 bg-[rgba(31,102,86,0.06)] btn-hover">
-          <UserCircle size={22} className="text-[#1F6656] flex-shrink-0" />
-          <span className="flex-1 text-sm text-ink"><Trans i18nKey="ui.travellerPanels.finish_profile" values={{ left: data.profile.missing.length }} components={{ b: <b /> }} /></span>
-          <ArrowRight size={16} className="text-[#1F6656]" />
+        <Link to="/profile/edit" data-testid="panel-finish-profile" className="ag-box blush !flex-row items-center !gap-3 no-underline">
+          <MenuIcon><UserCircle /></MenuIcon>
+          <span className="flex-1 min-w-0 text-[var(--ink-strong)]"><Trans i18nKey="ui.travellerPanels.finish_profile" values={{ left: data.profile.missing.length }} components={{ b: <b className="font-medium" /> }} /></span>
+          <ArrowUpRight weight="bold" size={20} className="flex-none text-[var(--r)]" aria-hidden="true" />
         </Link>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* aangan pass */}
-        <div className="rounded-3xl p-5 bg-[#14201A] text-white" data-testid="panel-pass">
-          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-white/70"><Ticket size={14} /> {t('ui.travellerPanels.pass_title')}</div>
-          {data.pass.active ? (
-            <>
-              <div className="mt-2 font-display font-extrabold text-2xl">{t('ui.travellerPanels.pass_active')}</div>
-              <div className="text-sm text-white/75">{data.pass.expires_at && !data.pass.expires_at.startsWith('9999')
-                ? t('ui.travellerPanels.pass_free_until', { date: new Date(data.pass.expires_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) })
-                : t('ui.travellerPanels.pass_free')}</div>
-            </>
-          ) : (
-            <>
-              <div className="mt-2 font-display font-extrabold text-2xl">{t('ui.travellerPanels.pass_inactive')}</div>
-              <div className="text-sm text-white/75">{t('ui.travellerPanels.pass_pitch')}</div>
-              <Link to="/support" className="mt-3 inline-flex items-center gap-1.5 h-10 px-4 rounded-full bg-[#1F6656] text-white font-bold text-[13px] btn-hover" data-testid="panel-get-pass">
-                {t('ui.travellerPanels.get_pass', { price: rupees(pass.total) })} <ArrowRight size={14} />
-              </Link>
-            </>
-          )}
-        </div>
+      {/* aangan pass */}
+      <Box data-testid="panel-pass">
+        <span className="ag-eyebrow inline-flex items-center gap-1.5"><Ticket size={16} aria-hidden="true" /> {t('ui.travellerPanels.pass_title')}</span>
+        {data.pass.active ? (
+          <div className="flex flex-col gap-1">
+            <Status tone="ok" className="self-start"><Check weight="bold" aria-hidden="true" /> {t('ui.travellerPanels.pass_active')}</Status>
+            <p className="ag-small">{data.pass.expires_at && !data.pass.expires_at.startsWith('9999')
+              ? t('ui.travellerPanels.pass_free_until', { date: new Date(data.pass.expires_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) })
+              : t('ui.travellerPanels.pass_free')}</p>
+          </div>
+        ) : (
+          <>
+            <div>
+              <h3>{t('ui.travellerPanels.pass_inactive')}</h3>
+              <p className="ag-small">{t('ui.travellerPanels.pass_pitch')}</p>
+            </div>
+            <ButtonLink to="/support" go className="self-start" data-testid="panel-get-pass">
+              {t('ui.travellerPanels.get_pass', { price: rupees(pass.total) })}
+            </ButtonLink>
+          </>
+        )}
+      </Box>
 
-        {/* Aangan Points */}
-        <div className="rounded-3xl p-5 bg-[#DDF0F1] text-[#0E4A4F]" data-testid="panel-points">
-          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest"><Sparkle size={14} /> {t('ui.travellerPanels.points_title')}</div>
-          <div className="mt-2 font-display font-extrabold text-4xl">{data.points.toLocaleString('en-IN')}</div>
+      {/* Aangan Points */}
+      <Box tone="blush" data-testid="panel-points">
+        <span className="ag-eyebrow inline-flex items-center gap-1.5"><Sparkle size={16} aria-hidden="true" /> {t('ui.travellerPanels.points_title')}</span>
+        <div className={big}>{data.points.toLocaleString('en-IN')}</div>
+        <div className="text-[var(--ink7)] -mt-3">
           <PointsRules rows={travellerPointsRows(data.points_rules, data.points_breakdown)} testId="panel-points-rules" />
         </div>
+      </Box>
 
-        {/* Referrals */}
-        <div className="rounded-3xl p-5 bg-white border border-[var(--line)]" data-testid="panel-referrals">
-          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-ink-soft"><ShareNetwork size={14} /> {t('ui.travellerPanels.refer_title')}</div>
-          <div className="mt-2 font-display font-extrabold text-2xl text-ink">{t('ui.travellerPanels.joined', { n: data.referrals.joined })}</div>
-          {code && (
-            <div className="mt-2 flex items-center gap-2">
-              <code className="px-2.5 py-1 rounded-lg bg-mist font-bold text-ink">{code}</code>
-              <button type="button" onClick={() => { navigator.clipboard?.writeText(code); toast.success(t('ui.travellerPanels.code_copied')); }} aria-label={t('ui.travellerPanels.copy_code')} className="w-8 h-8 rounded-full grid place-items-center hover:bg-mist"><Copy size={15} /></button>
-              <button type="button" onClick={share} className="ml-auto inline-flex items-center gap-1 h-9 px-3.5 rounded-full bg-[#1F6656] text-white text-xs font-bold btn-hover" data-testid="panel-share-invite">
-                {t('ui.travellerPanels.invite')} <ArrowRight size={13} />
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
+      {/* Referrals */}
+      <Box data-testid="panel-referrals">
+        <span className="ag-eyebrow inline-flex items-center gap-1.5"><ShareNetwork size={16} aria-hidden="true" /> {t('ui.travellerPanels.refer_title')}</span>
+        <h3>{t('ui.travellerPanels.joined', { n: data.referrals.joined })}</h3>
+        {code && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <code className="px-3 py-1.5 rounded-lg bg-[var(--creme2)] font-medium text-[var(--ink-strong)]">{code}</code>
+            <IconButton label={t('ui.travellerPanels.copy_code')} small onClick={() => { navigator.clipboard?.writeText(code); toast.success(t('ui.travellerPanels.code_copied')); }}>
+              <Copy />
+            </IconButton>
+            <Button size="sm" icon={<ShareNetwork />} onClick={share} className="ml-auto" data-testid="panel-share-invite">
+              {t('ui.travellerPanels.invite')}
+            </Button>
+          </div>
+        )}
+      </Box>
 
       <InviteHostLink />
 
       {/* Total travel */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3" data-testid="panel-totals">
+      <div className="grid grid-cols-2 gap-2.5" data-testid="panel-totals">
         {totals.map(({ label, value, Icon }) => (
-          <div key={label} className="rounded-2xl p-4 bg-white border border-[var(--line)]">
-            <Icon size={18} className="text-[#007C85]" />
-            <div className="mt-1.5 font-display font-extrabold text-2xl text-ink">{value}</div>
-            <div className="text-xs text-ink-soft font-semibold">{label}</div>
-          </div>
+          <Box key={label} className="!gap-1">
+            <Icon size={20} className="text-[var(--r)]" aria-hidden="true" />
+            <div className={big}>{value}</div>
+            <div className="ag-small">{label}</div>
+          </Box>
         ))}
       </div>
 
       {/* Aangan Awards */}
-      <section className="rounded-3xl p-5 bg-white border border-[var(--line)]" data-testid="panel-awards">
-        <div className="flex items-center justify-between">
-          <h2 className="font-display font-extrabold text-lg text-ink flex items-center gap-2"><Medal size={18} className="text-[#C69108]" /> {t('ui.travellerPanels.awards_title')}</h2>
-          <span className="text-xs font-bold text-ink-soft">{t('ui.travellerPanels.earned_of', { earned, total: data.awards.length })}</span>
+      <Box as="section" data-testid="panel-awards" aria-labelledby="awards-title">
+        <div className="flex items-center justify-between gap-3">
+          <h2 id="awards-title" className="inline-flex items-center gap-2"><Medal size={20} className="text-[var(--r)]" aria-hidden="true" /> {t('ui.travellerPanels.awards_title')}</h2>
+          <span className="ag-small whitespace-nowrap">{t('ui.travellerPanels.earned_of', { earned, total: data.awards.length })}</span>
         </div>
-        <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 gap-2.5">
           {data.awards.map((a) => {
             const keys = AWARD_TEXT[a.id];
             const text = keys ? { title: t(keys.title), how: t(keys.how) } : { title: a.id, how: '' };
             return (
               <div key={a.id} data-testid={`award-${a.id}`}
-                className={`rounded-2xl p-3 border ${a.earned ? 'border-[#C69108]/40 bg-[#FFF8E6]' : 'border-[var(--line)] bg-mist/40'}`}>
-                <Medal size={22} weight={a.earned ? 'fill' : 'regular'} className={a.earned ? 'text-[#C69108]' : 'text-ink-soft'} />
-                <div className="mt-1 text-sm font-bold text-ink">{text.title}</div>
-                <div className="text-[11px] text-ink-soft leading-snug">{text.how}</div>
+                className={`rounded-[18px] p-3 border flex flex-col gap-1 ${a.earned ? 'border-[var(--r)] bg-[var(--r-tint)]' : 'border-[var(--warmline)] bg-[var(--surface)]'}`}>
+                <Medal size={22} weight={a.earned ? 'fill' : 'regular'} className={a.earned ? 'text-[var(--r)]' : 'text-[var(--ink-faint)]'} aria-hidden="true" />
+                <div className="text-sm font-medium text-[var(--ink-strong)]">{text.title}</div>
+                <div className="text-xs leading-4 text-[var(--ink-muted)]">{text.how}</div>
                 {!a.earned && a.goal > 1 && (
-                  <div className="mt-2 flex items-center gap-2" data-testid={`award-progress-${a.id}`}>
-                    <div className="flex-1 h-1.5 rounded-full bg-[var(--line)] overflow-hidden" role="progressbar"
+                  <div className="mt-1 flex items-center gap-2" data-testid={`award-progress-${a.id}`}>
+                    <div className="flex-1 h-1.5 rounded-full bg-[var(--hairline)] overflow-hidden" role="progressbar"
                       aria-valuemin={0} aria-valuemax={a.goal} aria-valuenow={a.progress}>
-                      <div className="h-full bg-[#1F6656]" style={{ width: `${(a.progress / a.goal) * 100}%` }} />
+                      <div className="h-full bg-[var(--r)]" style={{ width: `${(a.progress / a.goal) * 100}%` }} />
                     </div>
-                    <span className="text-[11px] font-bold text-ink-soft tabular-nums">{a.progress}/{a.goal}</span>
+                    <span className="text-xs font-medium text-[var(--ink-muted)] tabular-nums">{a.progress}/{a.goal}</span>
                   </div>
                 )}
               </div>
             );
           })}
         </div>
-      </section>
+      </Box>
 
       {/* Feedback for aangan */}
-      <form onSubmit={sendFeedback} className="rounded-3xl p-5 bg-white border border-[var(--line)]" data-testid="panel-feedback">
-        <h2 className="font-display font-extrabold text-lg text-ink flex items-center gap-2"><ChatCircleText size={18} className="text-[#007C85]" /> {t('ui.travellerPanels.feedback_title')}</h2>
-        <p className="text-sm text-ink-soft mt-0.5">{t('ui.travellerPanels.feedback_lead')}</p>
-        <div className="mt-3 flex items-center gap-1" role="radiogroup" aria-label={t('ui.travellerPanels.rating')}>
-          {[1, 2, 3, 4, 5].map((n) => (
-            <button key={n} type="button" role="radio" aria-checked={fb.rating === n} aria-label={t('ui.travellerPanels.stars', { count: n })}
-              onClick={() => setFb((f) => ({ ...f, rating: f.rating === n ? 0 : n }))} className="p-1">
-              <Star size={24} weight={n <= fb.rating ? 'fill' : 'regular'} className={n <= fb.rating ? 'text-[#C69108]' : 'text-ink-soft'} />
-            </button>
-          ))}
-        </div>
-        <textarea value={fb.message} onChange={(e) => setFb((f) => ({ ...f, message: e.target.value }))} rows={3} maxLength={2000}
-          placeholder={t('ui.travellerPanels.feedback_placeholder')} data-testid="feedback-message"
-          className="mt-2 w-full px-3.5 py-2.5 rounded-xl border border-[var(--line)] outline-none text-sm text-ink focus:border-pine" />
-        <button type="submit" disabled={sending} data-testid="feedback-send"
-          className="mt-2 inline-flex items-center gap-1.5 h-10 px-5 rounded-full bg-[#1F6656] text-white font-bold text-[13px] btn-hover disabled:opacity-60">
-          {sending ? t('ui.travellerPanels.sending') : t('ui.travellerPanels.send_feedback')} <ArrowRight size={14} />
-        </button>
-      </form>
+      <Box as="section" data-testid="panel-feedback" aria-labelledby="feedback-title">
+        <form onSubmit={sendFeedback} className="flex flex-col gap-3">
+          <div>
+            <h2 id="feedback-title" className="inline-flex items-center gap-2"><ChatCircleText size={20} className="text-[var(--r)]" aria-hidden="true" /> {t('ui.travellerPanels.feedback_title')}</h2>
+            <p className="ag-small">{t('ui.travellerPanels.feedback_lead')}</p>
+          </div>
+          <div className="flex items-center gap-1" role="radiogroup" aria-label={t('ui.travellerPanels.rating')}>
+            {[1, 2, 3, 4, 5].map((n) => (
+              <button key={n} type="button" role="radio" aria-checked={fb.rating === n} aria-label={t('ui.travellerPanels.stars', { count: n })}
+                onClick={() => setFb((f) => ({ ...f, rating: f.rating === n ? 0 : n }))} className="w-11 h-11 grid place-items-center">
+                <Star size={26} weight={n <= fb.rating ? 'fill' : 'regular'} className={n <= fb.rating ? 'text-[var(--star)]' : 'text-[var(--ink-faint)]'} />
+              </button>
+            ))}
+          </div>
+          <TextArea value={fb.message} onChange={(e) => setFb((f) => ({ ...f, message: e.target.value }))} rows={3} maxLength={2000}
+            aria-label={t('ui.travellerPanels.feedback_title')} placeholder={t('ui.travellerPanels.feedback_placeholder')} data-testid="feedback-message" />
+          <Button type="submit" disabled={sending} className="self-start" data-testid="feedback-send">
+            {sending ? t('ui.travellerPanels.sending') : t('ui.travellerPanels.send_feedback')}
+          </Button>
+        </form>
+      </Box>
     </div>
   );
 }

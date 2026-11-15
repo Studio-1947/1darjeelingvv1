@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Heart, ChatCircle, ShareNetwork, X, PaperPlaneRight, Trash, SealCheck, MapPin, Smiley, CircleNotch as Loader2 } from '@phosphor-icons/react';
+import { Heart, ChatCircle, ShareNetwork, X, PaperPlaneRight, Trash, SealCheck, MapPin, Smiley, Flag, ArrowUpRight, CircleNotch as Loader2 } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
 import {
@@ -10,13 +10,16 @@ import {
   type Engagement, type HostPost, type PostComment, type ReactionKind,
 } from '@/lib/posts';
 import { timeAgo } from '@/lib/timeAgo';
+import { Button, Chip, Chips, IconButton } from '@/components/ag';
 
-/** Like, comment and share under a post, as on Instagram. Liking and commenting need a sign-in. */
-export function PostActionBar({ post, engagement, onEngagement, onComment }: {
+/** Like (four reactions), comment, share and report under a post, as chips. Liking and commenting need a sign-in. */
+export function PostActionBar({ post, engagement, onEngagement, onComment, onReport }: {
   post: HostPost;
   engagement: Engagement;
   onEngagement: (e: Engagement) => void;
   onComment: () => void;
+  /** Readers who may report the post get a Report chip at the end of the row. */
+  onReport?: () => void;
 }) {
   const { t } = useTranslation();
   const { user } = useAuth();
@@ -60,47 +63,44 @@ export function PostActionBar({ post, engagement, onEngagement, onComment }: {
     }
   };
 
-  const btn = 'inline-flex items-center gap-1.5 h-9 px-2.5 rounded-full text-sm font-semibold transition-colors hover:bg-mist';
   return (
-    <div className="mt-3 flex items-center gap-1 border-t border-[var(--line)] pt-2" data-testid={`post-actions-${post.id}`}>
-      <div className="relative inline-flex items-center">
-        <button type="button" onClick={toggleLike} disabled={busy} aria-pressed={!!mine}
-          aria-label={t('feed.like')} data-testid={`post-like-${post.id}`}
-          className={`${btn} ${mine ? 'text-flag' : 'text-ink'}`}>
-          {mine && mine !== 'heart' ? <span className="text-lg leading-none">{mineEmoji}</span>
-            : <Heart size={20} weight={mine ? 'fill' : 'regular'} />}
-          {top.length > 1 && <span className="text-sm leading-none" aria-hidden="true">{top.join('')}</span>}
-          <span className="tabular-nums">{engagement.like_count || ''}</span>
-        </button>
-        <button type="button" onClick={() => (user ? setPicking((v) => !v) : react('heart'))} disabled={busy}
-          aria-label={t('feed.react')} aria-expanded={picking} data-testid={`post-react-${post.id}`}
-          className="w-8 h-8 rounded-full grid place-items-center text-ink-soft hover:bg-mist">
-          <Smiley size={18} />
-        </button>
-        {picking && (
-          <div role="menu" className="absolute bottom-full left-0 mb-1 z-10 flex gap-1 rounded-full bg-white border border-[var(--line)] shadow-lg px-2 py-1"
-            data-testid={`post-reactions-${post.id}`}>
-            {REACTIONS.map((r) => (
-              <button key={r.kind} type="button" role="menuitem" onClick={() => react(mine === r.kind ? null : r.kind)}
-                aria-label={t(`feed.reaction_${r.kind}`)} aria-pressed={mine === r.kind}
-                data-testid={`post-reaction-${r.kind}-${post.id}`}
-                className={`w-9 h-9 rounded-full grid place-items-center text-xl transition-transform hover:scale-125 ${mine === r.kind ? 'bg-mist' : ''}`}>
-                {r.emoji}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-      <button type="button" onClick={onComment} aria-label={t('feed.comment')} data-testid={`post-comment-${post.id}`}
-        className={`${btn} text-ink`}>
-        <ChatCircle size={20} />
-        <span className="tabular-nums">{engagement.comment_count || ''}</span>
-      </button>
-      <button type="button" onClick={share} aria-label={t('feed.share')} data-testid={`post-share-${post.id}`}
-        className={`${btn} text-ink ml-auto`}>
-        <ShareNetwork size={20} /> <span className="hidden sm:inline">{t('feed.share')}</span>
-      </button>
-    </div>
+    <Chips className="relative [&>.ag-chip]:!px-3" data-testid={`post-actions-${post.id}`}>
+      <Chip on={!!mine} onClick={toggleLike} disabled={busy} aria-label={t('feed.like')} data-testid={`post-like-${post.id}`}>
+        {mine && mine !== 'heart' ? <span className="text-base leading-none">{mineEmoji}</span>
+          : <Heart weight={mine ? 'fill' : 'regular'} />}
+        {top.length > 1 && <span className="text-sm leading-none" aria-hidden="true">{top.join('')}</span>}
+        {engagement.like_count > 0 && <span className="tabular-nums">{engagement.like_count}</span>}
+      </Chip>
+      <Chip onClick={() => (user ? setPicking((v) => !v) : react('heart'))} disabled={busy}
+        aria-label={t('feed.react')} aria-expanded={picking} data-testid={`post-react-${post.id}`}>
+        <Smiley />
+      </Chip>
+      {picking && (
+        <div role="menu" data-testid={`post-reactions-${post.id}`}
+          className="absolute bottom-full left-0 mb-2 z-10 flex gap-1 rounded-full bg-[var(--surface)] border border-[var(--warmline)] shadow-[var(--shadow-lg)] p-1">
+          {REACTIONS.map((r) => (
+            <button key={r.kind} type="button" role="menuitem" onClick={() => react(mine === r.kind ? null : r.kind)}
+              aria-label={t(`feed.reaction_${r.kind}`)} aria-pressed={mine === r.kind}
+              data-testid={`post-reaction-${r.kind}-${post.id}`}
+              className={`w-11 h-11 rounded-full grid place-items-center text-xl transition-transform hover:scale-125 ${mine === r.kind ? 'bg-[var(--r-tint)]' : ''}`}>
+              {r.emoji}
+            </button>
+          ))}
+        </div>
+      )}
+      <Chip onClick={onComment} aria-label={t('feed.comment')} data-testid={`post-comment-${post.id}`}>
+        <ChatCircle />
+        {engagement.comment_count > 0 && <span className="tabular-nums">{engagement.comment_count}</span>}
+      </Chip>
+      <Chip onClick={share} aria-label={t('feed.share')} data-testid={`post-share-${post.id}`}>
+        <ShareNetwork /> <span className="hidden sm:inline">{t('feed.share')}</span>
+      </Chip>
+      {onReport && (
+        <Chip onClick={onReport} aria-label={t('report.review_link')} data-testid={`post-report-${post.id}`}>
+          <Flag /> <span className="hidden sm:inline">{t('report.review_link')}</span>
+        </Chip>
+      )}
+    </Chips>
   );
 }
 
@@ -173,68 +173,49 @@ export function PostViewer({ post, engagement, onEngagement, onClose, focusComme
   return createPortal(
     <div className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center" role="dialog" aria-modal="true"
       aria-label={post.host.name} data-testid="post-viewer">
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative z-10 w-full sm:max-w-2xl h-[92dvh] sm:h-[88vh] bg-white rounded-t-3xl sm:rounded-3xl flex flex-col overflow-hidden shadow-2xl animate-in slide-in-from-bottom duration-300">
-        <header className="flex items-center gap-3 px-4 py-3 border-b border-[var(--line)] flex-shrink-0">
-          {post.host.image ? (
-            <img src={post.host.image} alt="" className="w-10 h-10 rounded-full object-cover" />
-          ) : (
-            <div className="w-10 h-10 rounded-full bg-pine text-white grid place-items-center font-bold">{(post.host.name || '?').charAt(0).toUpperCase()}</div>
-          )}
+      <div className="absolute inset-0 bg-ink/50 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative z-10 w-full sm:max-w-[640px] h-[92dvh] sm:h-[88vh] bg-[var(--page)] rounded-t-[22px] sm:rounded-[22px] flex flex-col overflow-hidden shadow-[var(--shadow-lg)] animate-in slide-in-from-bottom duration-300">
+        <header className="flex items-center gap-3 px-4 py-3 border-b border-[var(--warmline)] flex-shrink-0">
+          <HostAvatar post={post} />
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
-              <Link to={`/business/${post.host.provider_id}`} onClick={onClose} className="font-bold text-ink text-sm truncate hover:underline">{post.host.name}</Link>
-              {post.host.verified && <SealCheck size={15} weight="fill" className="text-pine" />}
+              <Link to={`/business/${post.host.provider_id}`} onClick={onClose} className="font-medium text-[var(--ink-strong)] truncate hover:underline">{post.host.name}</Link>
+              {post.host.verified && <SealCheck size={16} weight="fill" className="text-[var(--r)] flex-none" aria-label={t('feed.verified_host')} />}
             </div>
-            <div className="text-[11px] text-ink-soft truncate">{post.host.location} · {timeAgo(post.created_at, i18n.language, t)}</div>
+            <div className="ag-small truncate">{post.host.location} · {timeAgo(post.created_at, i18n.language, t)}</div>
           </div>
-          <button type="button" onClick={onClose} aria-label={t('common.close')} data-testid="post-viewer-close"
-            className="w-9 h-9 rounded-full grid place-items-center hover:bg-mist"><X size={20} /></button>
+          <IconButton label={t('common.close')} onClick={onClose} data-testid="post-viewer-close"><X /></IconButton>
         </header>
 
-        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 py-4">
-          <p className="text-ink text-[15px] leading-relaxed whitespace-pre-line break-words">{post.body}</p>
-          {photos.length > 0 && (
-            <div className="mt-3 space-y-2">
-              {photos.map((src, i) => (
-                <img key={src + i} src={src} alt={t('feed.photo_alt', { name: post.host.name })}
-                  className="w-full rounded-2xl object-contain bg-mist max-h-[70vh]" />
-              ))}
-            </div>
-          )}
-          {post.listing && (
-            <Link to={`/listing/${post.listing.id}`} onClick={onClose}
-              className="mt-3 flex items-center gap-3 rounded-2xl border border-[var(--line)] p-2.5 hover:border-pine">
-              {post.listing.image ? <img src={post.listing.image} alt="" className="w-12 h-12 rounded-xl object-cover" />
-                : <div className="w-12 h-12 rounded-xl bg-mist grid place-items-center text-pine"><MapPin size={18} /></div>}
-              <div className="min-w-0">
-                <div className="text-[11px] uppercase tracking-widest font-bold text-ink-soft">{t('feed.about_listing')}</div>
-                <div className="font-bold text-ink text-sm truncate">{post.listing.title}</div>
-              </div>
-            </Link>
-          )}
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 py-4 flex flex-col gap-3">
+          <p className="m-0 text-base leading-relaxed text-[var(--ink7)] whitespace-pre-line break-words">{post.body}</p>
+          {photos.map((src, i) => (
+            <img key={src + i} src={src} alt={t('feed.photo_alt', { name: post.host.name })}
+              className="w-full rounded-[22px] object-contain bg-[var(--creme2)] max-h-[70vh]" />
+          ))}
+          {post.listing && <ListingLink post={post} onClick={onClose} />}
 
           <PostActionBar post={post} engagement={engagement} onEngagement={onEngagement} onComment={() => inputRef.current?.focus()} />
 
-          <h3 className="mt-4 text-xs font-bold uppercase tracking-widest text-ink-soft">{t('feed.comments')}</h3>
+          <h3 className="ag-eyebrow mt-2">{t('feed.comments')}</h3>
           {comments === null ? (
-            <div className="py-6 grid place-items-center text-ink-soft"><Loader2 size={18} className="animate-spin" /></div>
+            <div className="py-6 grid place-items-center text-[var(--ink-muted)]"><Loader2 size={18} className="animate-spin" /></div>
           ) : comments.length === 0 ? (
-            <p className="py-4 text-sm text-ink-soft" data-testid="post-no-comments">{t('feed.no_comments')}</p>
+            <p className="ag-small m-0" data-testid="post-no-comments">{t('feed.no_comments')}</p>
           ) : (
-            <ul className="mt-2 space-y-3" data-testid="post-comments">
+            <ul className="flex flex-col gap-3" data-testid="post-comments">
               {comments.map((c) => (
                 <li key={c.id} className="flex gap-2.5">
-                  {c.user.avatar ? <img src={c.user.avatar} alt="" className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
-                    : <div className="w-8 h-8 rounded-full bg-mist text-ink grid place-items-center text-xs font-bold flex-shrink-0">{(c.user.name || '?').charAt(0).toUpperCase()}</div>}
+                  {c.user.avatar ? <img src={c.user.avatar} alt="" className="w-8 h-8 rounded-full object-cover flex-none" />
+                    : <span className="w-8 h-8 rounded-full bg-[var(--r-tint)] text-[var(--r)] grid place-items-center text-xs font-medium flex-none">{(c.user.name || '?').charAt(0).toUpperCase()}</span>}
                   <div className="min-w-0 flex-1">
-                    <div className="text-sm"><span className="font-bold text-ink">{c.user.name}</span> <span className="text-ink break-words">{c.body}</span></div>
-                    <div className="text-[11px] text-ink-soft mt-0.5 flex items-center gap-3">
+                    <p className="m-0 text-sm text-[var(--ink7)] break-words"><b className="font-medium text-[var(--ink-strong)]">{c.user.name}</b> {c.body}</p>
+                    <div className="ag-small !text-xs mt-0.5 flex items-center gap-3">
                       {timeAgo(c.created_at, i18n.language, t)}
                       {c.can_delete && (
-                        <button type="button" onClick={() => remove(c)} className="inline-flex items-center gap-1 text-flag font-semibold">
-                          <Trash size={11} /> {t('feed.delete')}
-                        </button>
+                        <Button variant="text" onClick={() => remove(c)} icon={<Trash />} className="!text-[var(--fail)] !text-xs [&>svg]:!text-[var(--fail)]">
+                          {t('feed.delete')}
+                        </Button>
                       )}
                     </div>
                   </div>
@@ -244,19 +225,47 @@ export function PostViewer({ post, engagement, onEngagement, onClose, focusComme
           )}
         </div>
 
-        <form onSubmit={send} className="flex items-center gap-2 px-3 py-2.5 border-t border-[var(--line)] flex-shrink-0"
+        <form onSubmit={send} className="flex items-center gap-2 px-3 pt-2.5 border-t border-[var(--warmline)] flex-shrink-0"
           style={{ paddingBottom: 'max(0.625rem, env(safe-area-inset-bottom))' }}>
           <input ref={inputRef} value={draft} onChange={(e) => setDraft(e.target.value)} maxLength={500}
             placeholder={user ? t('feed.comment_placeholder') : t('feed.comment_sign_in')}
-            data-testid="post-comment-input"
-            className="flex-1 min-w-0 h-11 px-4 rounded-full bg-mist outline-none text-sm text-ink placeholder:text-ink-soft" />
-          <button type="submit" disabled={sending || (!!user && !draft.trim())} aria-label={t('feed.send')} data-testid="post-comment-send"
-            className="w-11 h-11 rounded-full bg-pine text-white grid place-items-center disabled:opacity-50">
-            {sending ? <Loader2 size={16} className="animate-spin" /> : <PaperPlaneRight size={18} weight="fill" />}
-          </button>
+            aria-label={t('feed.comment')} data-testid="post-comment-input"
+            className="ag-in flex-1 min-w-0 !h-12" />
+          <IconButton type="submit" tint label={t('feed.send')} disabled={sending || (!!user && !draft.trim())} data-testid="post-comment-send">
+            {sending ? <Loader2 className="animate-spin" /> : <PaperPlaneRight weight="fill" />}
+          </IconButton>
         </form>
       </div>
     </div>,
     document.body,
+  );
+}
+
+/** The host's photo, or the first letter of the business on a red tint. */
+export function HostAvatar({ post }: { post: HostPost }) {
+  return post.host.image ? (
+    <img src={post.host.image} alt="" className="w-11 h-11 rounded-full object-cover flex-none" />
+  ) : (
+    <span className="w-11 h-11 rounded-full bg-[var(--r-tint)] text-[var(--r)] grid place-items-center font-medium text-lg flex-none" aria-hidden="true">
+      {(post.host.name || '?').trim().charAt(0).toUpperCase()}
+    </span>
+  );
+}
+
+/** The listing a post is about, as a small row with its photo. */
+export function ListingLink({ post, onClick, testId }: { post: HostPost; onClick?: () => void; testId?: string }) {
+  const { t } = useTranslation();
+  if (!post.listing) return null;
+  return (
+    <Link to={`/listing/${post.listing.id}`} onClick={onClick} data-testid={testId}
+      className="flex items-center gap-3 rounded-[18px] border border-[var(--warmline)] bg-[var(--surface)] p-2.5 hover:border-[var(--r)] transition-colors">
+      {post.listing.image ? <img src={post.listing.image} alt="" className="w-12 h-12 rounded-xl object-cover flex-none" />
+        : <span className="w-12 h-12 rounded-xl bg-[var(--r-tint)] grid place-items-center text-[var(--r)] flex-none"><MapPin size={20} /></span>}
+      <span className="min-w-0 flex-1">
+        <span className="ag-eyebrow block">{t('feed.about_listing')}</span>
+        <span className="block font-medium text-[var(--ink-strong)] truncate">{post.listing.title}</span>
+      </span>
+      <ArrowUpRight size={18} className="text-[var(--r)] flex-none" aria-hidden="true" />
+    </Link>
   );
 }

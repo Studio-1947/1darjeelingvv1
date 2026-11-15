@@ -72,56 +72,43 @@ const j = async (m, p, body, token) => { const r = await fetch(API + p, { method
       if (!p.url().includes('/provider/onboard')) await p.goto(WEB + '/provider/onboard', { waitUntil: 'networkidle' });
       line(type, true, 'signed in as host');
 
-      // 2. Business type and name.
-      await p.locator('select').first().selectOption(type);
-      await p.locator('input').first().fill(name);
-      await p.getByRole('button', { name: /next/i }).first().click();
-      await p.waitForTimeout(1000);
-
-      // 3. The type's form.
-      if (type === 'driver') {
-        await p.getByRole('button', { name: /^\+ / }).first().click();
-        await p.waitForTimeout(300);
-      }
-      const search = p.locator('[data-testid="location-search"]');
-      if (await search.count()) {
-        await search.first().click();
-        await search.first().fill('Chow');
-        await p.waitForTimeout(800);
-        const pick = p.locator('[data-testid="location-landmark-0"], [data-testid="location-result-0"]').first();
-        if (await pick.count()) await pick.click();
-        else line(type, false, 'map search offers no place to pick');
+      // 2-3. The one-question-per-screen wizard (Aangan 2.0): type and when to pay, place, name and
+      // number, price or menu, what you give, review. Each Next must move on; a refusal is a failure.
+      const nextStep = async (step) => {
+        await p.click('[data-testid="wz-next"]');
         await p.waitForTimeout(400);
+        const err = (await p.locator('[data-testid="wz-err"]').allInnerTexts()).join(' ');
+        if (err) line(type, false, `wizard refused at ${step}`, err);
+        return !err;
+      };
+      await p.click(`[data-testid="wz-type-${type}"]`);
+      // "Pay later" (the free start) is the default. This walk takes "Pay now", so the paid route,
+      // the checkout amount and the Member badge are all exercised.
+      await p.click('[data-testid="plan-now"]');
+      let ok = await nextStep('type');
+      if (ok) { await p.click('[data-testid="wz-place-Darjeeling"]'); ok = await nextStep('place'); }
+      if (ok) {
+        await p.fill('[data-testid="wz-name"]', name);
+        await p.fill('[data-testid="onboard-phone"]', '9' + digits.slice(-9));
+        ok = await nextStep('name');
       }
-      for (const ta of await p.locator('textarea:visible').all()) if (!(await ta.inputValue())) await ta.fill('Family-run in Darjeeling for ten years. Warm welcome, local food and honest prices.');
-      for (const inp of await p.locator('input:visible').all()) {
-        const tp = (await inp.getAttribute('type')) || 'text';
-        const ph = ((await inp.getAttribute('placeholder')) || '').toLowerCase();
-        const im = (await inp.getAttribute('inputmode')) || '';
-        const tid = (await inp.getAttribute('data-testid')) || '';
-        const aria = ((await inp.getAttribute('aria-label')) || '').toLowerCase();
-        if (['file', 'checkbox', 'radio', 'hidden'].includes(tp) || tid === 'location-search') continue;
-        if (await inp.inputValue()) continue;
-        if (tp === 'tel' || im === 'tel' || tid === 'onboard-phone' || /phone|mobile|98765/.test(ph)) { await inp.fill('9' + digits.slice(-9)); continue; }
-        if (tp === 'number' || im === 'numeric' || tid === 'onboard-price' || ph === '₹' || /price|rate|fare/.test(aria) || /price|rate|fare|₹|^\d+$/.test(ph)) { await inp.fill('1800'); continue; }
-        if (/http|instagram|facebook|youtube|website|url|@/.test(ph)) continue;
-        await inp.fill(/language/.test(ph) ? 'English, Nepali' : /model|car/.test(ph) ? 'Bolero' : /number/.test(ph) ? 'WB 76 A 1234' : 'Mall Road, Darjeeling');
+      if (ok && (type === 'cafe' || type === 'shop')) {
+        await p.click('[data-testid="wz-add-dish"]');
+        await p.fill('[data-testid="wz-dish-name-0"]', 'Veg momos');
+        await p.fill('[data-testid="wz-dish-price-0"]', '120');
+        ok = await nextStep('menu');
+      } else if (ok) {
+        await p.fill('[data-testid="onboard-price"]', '1800');
+        ok = await nextStep('price');
       }
-      await p.waitForTimeout(600);
-      // The plan card starts on "Pay later" (the free start). This walk takes "Pay now", so the
-      // paid route, the checkout amount and the Member badge are all exercised.
-      const payNow = p.locator('[data-testid="plan-now"]');
-      if (await payNow.count()) await payNow.click();
+      if (ok) {
+        await p.locator('[data-testid="wz-photos"]').setInputFiles(IMG.slice(0, 3)).catch(() => {});
+        await p.waitForTimeout(3000);
+        ok = await nextStep('extras');
+      }
       await snap('form');
+      if (!ok) { await snap('blocked'); await ctx.close(); continue; }
       const submit = p.locator('[data-testid="onboard-submit"]');
-      await submit.scrollIntoViewIfNeeded();
-      if (await submit.isDisabled()) {
-        const why = (await p.locator('[data-testid="onboard-missing"]').allInnerTexts()).join(' ').replace(/\s+/g, ' ');
-        line(type, false, 'form still blocked after filling', why);
-        await snap('blocked');
-        await ctx.close();
-        continue;
-      }
       await submit.click();
       await p.waitForTimeout(2000);
       const formMsg = (await p.locator('text=/must|required|invalid|failed/i').allInnerTexts()).join(' ');

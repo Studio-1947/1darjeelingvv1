@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Car, NavigationArrow as Navigation, Clock, ShieldCheck, ArrowRight, MapPin, Lightning as Zap, Mountains as Mountain } from '@phosphor-icons/react';
+import { Car, Clock, ShieldCheck, Mountains as Mountain, Info } from '@phosphor-icons/react';
 import api from '@/lib/api';
+import { Box, Button, Option, SelectField, Status } from '@/components/ag';
 
 export interface RouteDetail {
   distanceKm: number;
@@ -212,158 +213,61 @@ export default function RouteEstimator() {
   };
 
   return (
-    <div
-      data-testid="route-estimator"
-      className="relative bg-gradient-to-br from-[#14201A] to-[#1F332A] rounded-3xl p-4 sm:p-5 md:p-8 text-white border border-white/15 shadow-2xl border-light"
-    >
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-pine/50 border border-pine text-white flex items-center justify-center">
-            <Car size={20} />
-          </div>
-          <div>
-            <div className="text-[10px] font-bold uppercase tracking-widest text-flag">
-              {t('estimator.tag', 'TRANSIT & REFERENCE FARES')}
-            </div>
-            <h3 className="font-display font-extrabold text-lg sm:text-xl md:text-2xl text-white leading-tight">
-              {t('estimator.title', 'Darjeeling Route & Driver Fare Guide')}
-            </h3>
-          </div>
-        </div>
-
-        {/* Driver availability badge */}
-        <div className="inline-flex self-stretch sm:self-auto justify-center items-center gap-1.5 px-3 py-2 rounded-full bg-gold/20 border border-gold/40 text-gold text-xs font-extrabold">
-          <Zap size={14} className="animate-pulse" />
-          <span>{info.driverCount ? t('ui.routeEstimator.drivers_available_n', { n: info.driverCount }) : t('ui.routeEstimator.drivers_available')}</span>
+    <Box data-testid="route-estimator">
+      <div className="flex items-start gap-3">
+        <span className="ag-micon" aria-hidden="true"><Car /></span>
+        <div className="min-w-0 flex-1">
+          <span className="ag-eyebrow block">{t('estimator.tag', 'TRANSIT & REFERENCE FARES')}</span>
+          <h3>{t('estimator.title', 'Darjeeling Route & Driver Fare Guide')}</h3>
         </div>
       </div>
+      <Status tone="info" className="self-start">
+        {info.driverCount ? t('ui.routeEstimator.drivers_available_n', { n: info.driverCount }) : t('ui.routeEstimator.drivers_available')}
+      </Status>
 
-      {/* Selectors */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
-        <label className="block">
-          <span className="text-xs font-bold text-white/60 uppercase tracking-wider">
-            {t('estimator.from', 'Pick Pickup Location')}
-          </span>
-          <div className="mt-1 flex min-h-11 items-center gap-2 px-3 rounded-xl border border-white/20 bg-black/40 text-sm font-semibold">
-            <MapPin size={16} className="text-pine flex-shrink-0" />
-            <select
-              value={fromHub}
-              onChange={(e) => handleFromChange(e.target.value)}
-              className="w-full self-stretch bg-transparent outline-none text-white cursor-pointer truncate"
-            >
-              {HUBS.map((h) => (
-                <option key={h} value={h} className="bg-ink text-white">
-                  {h}
-                </option>
-              ))}
-            </select>
-          </div>
-        </label>
+      <SelectField label={t('estimator.from', 'Pick Pickup Location')} value={fromHub} onChange={(e) => handleFromChange(e.target.value)}>
+        {HUBS.map((h) => <option key={h} value={h}>{h}</option>)}
+      </SelectField>
+      <SelectField label={t('estimator.to', 'Pick Drop Destination')} value={toHub} onChange={(e) => handleToChange(e.target.value)}>
+        {HUBS.map((h) => <option key={h} value={h}>{h}</option>)}
+      </SelectField>
 
-        <label className="block">
-          <span className="text-xs font-bold text-white/60 uppercase tracking-wider">
-            {t('estimator.to', 'Pick Drop Destination')}
-          </span>
-          <div className="mt-1 flex min-h-11 items-center gap-2 px-3 rounded-xl border border-white/20 bg-black/40 text-sm font-semibold">
-            <Navigation size={16} className="text-flag flex-shrink-0" />
-            <select
-              value={toHub}
-              onChange={(e) => handleToChange(e.target.value)}
-              className="w-full self-stretch bg-transparent outline-none text-white cursor-pointer truncate"
-            >
-              {HUBS.map((h) => (
-                <option key={h} value={h} className="bg-ink text-white">
-                  {h}
-                </option>
-              ))}
-            </select>
-          </div>
-        </label>
+      <dl className="m-0 grid grid-cols-2 gap-2">
+        <div className="rounded-2xl border border-[var(--warmline)] bg-white p-3">
+          <dt className="ag-small">{t('ui.routeEstimator.distance')}</dt>
+          <dd className="ag-price m-0">{info.distanceKm} <span className="unit">{t('ui.routeEstimator.unit_km')}</span></dd>
+        </div>
+        <div className="rounded-2xl border border-[var(--warmline)] bg-white p-3">
+          <dt className="ag-small flex items-center gap-1"><Clock size={14} className="text-[var(--r)]" aria-hidden="true" /> {t('ui.routeEstimator.travel_time')}</dt>
+          <dd className="ag-price m-0">{info.durationHours} <span className="unit">{t('ui.routeEstimator.unit_hrs')}</span></dd>
+        </div>
+        <div className="col-span-2 rounded-2xl border border-[var(--warmline)] bg-white p-3">
+          <dt className="ag-small flex flex-wrap items-center justify-between gap-x-3">
+            <span className="flex items-center gap-1"><ShieldCheck size={14} className="text-[var(--r)]" aria-hidden="true" /> {t('ui.routeEstimator.fare_range')}</span>
+            <span className="flex items-center gap-1"><Mountain size={14} aria-hidden="true" /> {TERRAIN_KEYS[info.terrainDifficulty] ? t(TERRAIN_KEYS[info.terrainDifficulty]) : info.terrainDifficulty}</span>
+          </dt>
+          <dd className="ag-price m-0">₹{info.minFare.toLocaleString('en-IN')} - ₹{info.maxFare.toLocaleString('en-IN')}</dd>
+        </div>
+      </dl>
+
+      <div className="ag-pick">
+        <Option on={vehicleType === 'hatchback'} onClick={() => setVehicleType('hatchback')}
+          title={t('ui.routeEstimator.hatchback')} sub={t('ui.routeEstimator.ref_fare', { amount: info.hatchbackFare.toLocaleString('en-IN') })} />
+        <Option on={vehicleType === 'suv'} onClick={() => setVehicleType('suv')}
+          title={t('ui.routeEstimator.suv')} sub={t('ui.routeEstimator.ref_fare', { amount: info.suvFare.toLocaleString('en-IN') })} />
       </div>
 
-      {/* Result Metrics */}
-      <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="bg-white/5 border border-white/10 rounded-2xl p-3">
-          <div className="text-[10px] font-bold text-white/60 uppercase">{t('ui.routeEstimator.distance')}</div>
-          <div className="font-display font-extrabold text-xl mt-1 text-white">
-            {info.distanceKm} <span className="text-xs font-normal text-white/60">{t('ui.routeEstimator.unit_km')}</span>
-          </div>
-        </div>
-
-        <div className="bg-white/5 border border-white/10 rounded-2xl p-3">
-          <div className="text-[10px] font-bold text-white/60 uppercase">{t('ui.routeEstimator.travel_time')}</div>
-          <div className="font-display font-extrabold text-xl mt-1 text-white flex items-center gap-1">
-            <Clock size={16} className="text-gold" /> {info.durationHours} <span className="text-xs font-normal text-white/60">{t('ui.routeEstimator.unit_hrs')}</span>
-          </div>
-        </div>
-
-        <div className="col-span-2 bg-white/10 border border-white/20 rounded-2xl p-3 flex flex-col justify-between">
-          <div className="text-[10px] font-bold text-gold uppercase tracking-wider flex flex-col items-start gap-1 sm:flex-row sm:items-center sm:justify-between">
-            <span className="flex items-center gap-1"><ShieldCheck size={13} /> {t('ui.routeEstimator.fare_range')}</span>
-            <span className="text-[10px] text-white/60 font-semibold flex items-center gap-1">
-              <Mountain size={11} /> {TERRAIN_KEYS[info.terrainDifficulty] ? t(TERRAIN_KEYS[info.terrainDifficulty]) : info.terrainDifficulty}
-            </span>
-          </div>
-          <div className="font-display font-extrabold text-xl text-white mt-1">
-            ₹{info.minFare.toLocaleString('en-IN')} - ₹{info.maxFare.toLocaleString('en-IN')}
-          </div>
-        </div>
-      </div>
-
-      {/* Interactive Vehicle Selection Chips */}
-      <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-        <button
-          type="button"
-          onClick={() => setVehicleType('hatchback')}
-          className={`min-h-11 px-3 py-3 rounded-xl border flex items-center justify-between transition-all cursor-pointer ${vehicleType === 'hatchback'
-              ? 'bg-white text-ink border-white font-extrabold shadow-md scale-[1.01]'
-              : 'bg-white/5 text-white/80 border-white/10 hover:bg-white/10'
-            }`}
-        >
-          <span className="truncate mr-2">{t('ui.routeEstimator.hatchback')}</span>
-          <span className="font-bold flex-shrink-0">{t('ui.routeEstimator.ref_fare', { amount: info.hatchbackFare.toLocaleString('en-IN') })}</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setVehicleType('suv')}
-          className={`min-h-11 px-3 py-3 rounded-xl border flex items-center justify-between transition-all cursor-pointer ${vehicleType === 'suv'
-              ? 'bg-gold text-ink border-gold font-extrabold shadow-md scale-[1.01]'
-              : 'bg-white/5 text-white/80 border-white/10 hover:bg-white/10'
-            }`}
-        >
-          <span className="truncate mr-2">{t('ui.routeEstimator.suv')}</span>
-          <span className="font-bold flex-shrink-0">{t('ui.routeEstimator.ref_fare', { amount: info.suvFare.toLocaleString('en-IN') })}</span>
-        </button>
-      </div>
-
-      <p className="mt-3 text-xs text-white/70 italic flex items-center gap-1.5">
-        <span className="w-1.5 h-1.5 rounded-full bg-gold inline-block flex-shrink-0" />
-        {NOTE_KEYS[info.routeNote] ? t(NOTE_KEYS[info.routeNote]) : info.routeNote}
+      <p className="ag-small m-0">{NOTE_KEYS[info.routeNote] ? t(NOTE_KEYS[info.routeNote]) : info.routeNote}</p>
+      <p className="ag-small m-0 flex items-start gap-2">
+        <Info size={18} className="mt-0.5 flex-none text-[var(--r)]" aria-hidden="true" />
+        <span><b className="font-medium text-[var(--ink-strong)]">{t('ui.routeEstimator.notice_title')}</b> {t('ui.routeEstimator.notice_body')}</span>
       </p>
 
-      {/* Direct Connection Notice */}
-      <div className="mt-3 p-3 rounded-2xl bg-white/5 border border-white/10 text-white/80 text-xs flex items-start gap-2.5 leading-relaxed">
-        <span className="text-gold font-bold flex-shrink-0 mt-0.5">ℹ️</span>
-        <div>
-          <span className="font-extrabold text-white">{t('ui.routeEstimator.notice_title')}</span>{' '}{t('ui.routeEstimator.notice_body')}
-        </div>
-      </div>
-
-      {/* Dynamic CTA Button */}
-      <button
-        type="button"
-        onClick={handleSearchDrivers}
-        data-testid="estimator-search-drivers"
-        className="mt-4 w-full py-3.5 rounded-full bg-pine hover:bg-pine-dark text-white font-extrabold flex items-center justify-center gap-2 btn-hover transition-all"
-      >
-        <span>
-          {selectedFare > 0
-            ? t('ui.routeEstimator.find_drivers_fare', { amount: selectedFare.toLocaleString('en-IN') })
-            : t('ui.routeEstimator.find_drivers')}
-        </span>
-        <ArrowRight size={18} />
-      </button>
-    </div>
+      <Button go block onClick={handleSearchDrivers} data-testid="estimator-search-drivers">
+        {selectedFare > 0
+          ? t('ui.routeEstimator.find_drivers_fare', { amount: selectedFare.toLocaleString('en-IN') })
+          : t('ui.routeEstimator.find_drivers')}
+      </Button>
+    </Box>
   );
 }

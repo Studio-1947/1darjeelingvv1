@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowRight, Check, Phone, Upload, WhatsappLogo } from '@phosphor-icons/react';
+import { Phone, Upload } from '@phosphor-icons/react';
+import { Box, Button, Chip, Chips, FieldError, PageHead, TextField } from '@/components/ag';
 import { toast } from 'sonner';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
@@ -111,150 +112,105 @@ export default function EditProfile() {
     }
   };
 
-  if (loading || !user) return <div className="p-10 text-center text-ink-soft">{t('common.loading')}</div>;
+  if (loading || !user) return <div className="ag-wrap"><div className="ag-main"><p className="ag-small">{t('common.loading')}</p></div></div>;
 
-  const field = (bad: boolean) => `mt-1 w-full px-3.5 py-2.5 rounded-xl border bg-white outline-none text-sm text-ink ${bad ? 'border-flag' : 'border-[var(--line)] focus:border-pine'}`;
-  const chip = (on: boolean) => `px-3.5 py-2 rounded-full border text-sm font-semibold transition-colors ${on ? 'bg-[#1F6656] text-white border-[#1F6656]' : 'bg-white text-ink border-[var(--line)] hover:border-pine/50'}`;
-  const label = 'text-xs font-bold uppercase tracking-wider text-ink-soft';
+  /** A labelled chip group; one or many can be on. */
+  const group = (label: string, children: React.ReactNode) => (
+    <div className="flex flex-col gap-2" role="group" aria-label={label}>
+      <span className="text-sm font-medium text-[var(--ink-strong)]">{label}</span>
+      <Chips>{children}</Chips>
+    </div>
+  );
 
   return (
-    <form onSubmit={save} className="mx-auto max-w-2xl px-4 md:px-6 py-6 md:py-10 space-y-6" data-testid="edit-profile">
-      <div>
-        <div className="text-[11px] font-bold uppercase tracking-widest text-flag">{setup ? t('ui.editProfile.step_2_of_2') : t('ui.editProfile.your_account')}</div>
-        <h1 className="font-display font-extrabold text-3xl text-ink mt-1">{setup ? t('ui.editProfile.setup_title') : t('nav.edit_profile')}</h1>
-        <p className="text-sm text-ink-soft mt-1">
-          {setup ? t('ui.editProfile.setup_lead') : t('ui.editProfile.edit_lead')}
-        </p>
-      </div>
+    <div className="ag-wrap">
+      <form onSubmit={save} className="ag-main" data-testid="edit-profile" noValidate>
+        <PageHead eyebrow={setup ? t('ui.editProfile.step_2_of_2') : t('ui.editProfile.your_account')}
+          title={setup ? t('ui.editProfile.setup_title') : t('nav.edit_profile')}
+          sub={setup ? t('ui.editProfile.setup_lead') : t('ui.editProfile.edit_lead')} />
 
-      {/* Who you are */}
-      <section className="rounded-3xl border border-[var(--line)] bg-white p-5 space-y-4">
-        <div className="flex items-center gap-4">
-          <div className="w-20 h-20 rounded-full overflow-hidden bg-gradient-to-br from-pine to-pine-dark text-white grid place-items-center font-display font-extrabold text-3xl flex-shrink-0">
-            {form.avatar ? <img src={form.avatar} alt="" className="w-full h-full object-cover" /> : (form.name.trim().charAt(0).toUpperCase() || 'T')}
+        {/* Who you are */}
+        <Box as="section">
+          <div className="flex items-center gap-4">
+            <span className="w-[72px] h-[72px] flex-none rounded-full overflow-hidden bg-[var(--r)] text-[var(--on-r)] grid place-items-center text-3xl font-medium">
+              {form.avatar ? <img src={form.avatar} alt="" className="w-full h-full object-cover" /> : (form.name.trim().charAt(0).toUpperCase() || 'T')}
+            </span>
+            <label className="ag-btn sm cursor-pointer" data-testid="edit-photo">
+              <Upload aria-hidden="true" /> {uploading ? t('common.uploading') : form.avatar ? t('ui.editProfile.change_photo') : t('ui.editProfile.add_photo')}
+              <input type="file" accept={SUPPORTED_IMAGE_ACCEPT} onChange={pickPhoto} className="hidden" />
+            </label>
           </div>
-          <label className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-[var(--line)] text-ink font-bold text-sm btn-hover cursor-pointer" data-testid="edit-photo">
-            <Upload size={14} /> {uploading ? t('common.uploading') : form.avatar ? t('ui.editProfile.change_photo') : t('ui.editProfile.add_photo')}
-            <input type="file" accept={SUPPORTED_IMAGE_ACCEPT} onChange={pickPhoto} className="hidden" />
-          </label>
-        </div>
 
-        <label className="block">
-          <span className={label}>{t('ui.editProfile.name')}</span>
-          <input value={form.name} onChange={(e) => set({ name: e.target.value })} maxLength={100} data-testid="edit-name" className={field(nameBad)} />
-          {nameBad && <span className="text-xs text-flag font-semibold">{t('ui.editProfile.name_error')}</span>}
-        </label>
+          <TextField label={t('ui.editProfile.name')} value={form.name} onChange={(e) => set({ name: e.target.value })} maxLength={100} autoComplete="name"
+            data-testid="edit-name" error={nameBad ? t('ui.editProfile.name_error') : undefined} errorId="edit-name-error" />
 
-        <div>
-          <span className={label}>{t('ui.editProfile.phone')}</span>
-          <div className="mt-1 flex items-center gap-2 px-3.5 py-2.5 rounded-xl border border-[var(--line)] bg-mist/60 text-sm text-ink">
-            <Phone size={14} className="text-ink-soft" /> {user.phone}
-            <span className="ml-auto text-xs text-ink-soft">{t('ui.editProfile.phone_note')}</span>
-          </div>
-        </div>
-
-        <div>
-          <span className={label}>{t('ui.editProfile.whatsapp')}</span>
-          <label className="mt-1 flex items-center gap-2 text-sm text-ink cursor-pointer">
-            <input type="checkbox" checked={form.sameWhatsapp} onChange={(e) => set({ sameWhatsapp: e.target.checked })} className="accent-[#1F6656] w-4 h-4" data-testid="edit-same-whatsapp" />
-            {t('ui.editProfile.same_as_phone')}
-          </label>
-          {!form.sameWhatsapp && (
-            <div className={`${field(waBad)} flex items-center gap-2`}>
-              <WhatsappLogo size={16} className="text-[#25D366]" />
-              <input value={form.whatsapp} onChange={(e) => set({ whatsapp: e.target.value.replace(/[^\d+\s-]/g, '') })} type="tel" inputMode="tel" placeholder="98765 43210"
-                data-testid="edit-whatsapp" className="flex-1 min-w-0 outline-none bg-transparent" />
+          <div className="ag-field">
+            <span>{t('ui.editProfile.phone')}</span>
+            <div className="ag-in flex items-center gap-2 !bg-[var(--soft)] text-[var(--ink-strong)]">
+              <Phone size={16} className="text-[var(--ink-muted)]" aria-hidden="true" /> {user.phone}
             </div>
+            <span className="hint">{t('ui.editProfile.phone_note')}</span>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <span className="text-sm font-medium text-[var(--ink-strong)]">{t('ui.editProfile.whatsapp')}</span>
+            <label className="flex items-center gap-2 text-sm text-[var(--ink7)] cursor-pointer min-h-11">
+              <input type="checkbox" checked={form.sameWhatsapp} onChange={(e) => set({ sameWhatsapp: e.target.checked })} className="accent-[var(--r)] w-5 h-5" data-testid="edit-same-whatsapp" />
+              {t('ui.editProfile.same_as_phone')}
+            </label>
+            {!form.sameWhatsapp && (
+              <TextField aria-label={t('ui.editProfile.whatsapp')} value={form.whatsapp} onChange={(e) => set({ whatsapp: e.target.value.replace(/[^\d+\s-]/g, '') })}
+                type="tel" inputMode="tel" placeholder="98765 43210" data-testid="edit-whatsapp"
+                error={waBad ? t('ui.editProfile.whatsapp_error') : undefined} errorId="edit-whatsapp-error" />
+            )}
+          </div>
+
+          {group(t('ui.editProfile.gender'), GENDERS.map((g) => (
+            <Chip key={g.id} on={form.gender === g.id} onClick={() => set({ gender: form.gender === g.id ? '' : g.id })} data-testid={`edit-gender-${g.id}`}>{t(g.labelKey)}</Chip>
+          )))}
+
+          <TextField label={t('ui.editProfile.age')} value={form.age} onChange={(e) => set({ age: e.target.value.replace(/\D/g, '').slice(0, 3) })} inputMode="numeric"
+            placeholder={t('ui.editProfile.age_placeholder')} data-testid="edit-age" error={ageBad ? t('ui.editProfile.age_error') : undefined} errorId="edit-age-error" />
+
+          <TextField label={t('ui.editProfile.address')} value={form.address} onChange={(e) => set({ address: e.target.value })} maxLength={300} autoComplete="street-address"
+            placeholder={t('ui.editProfile.address_placeholder')} data-testid="edit-address" />
+
+          <TextField label={t('ui.editProfile.pincode')} value={form.pincode} onChange={(e) => set({ pincode: e.target.value.replace(/\D/g, '').slice(0, 6) })} inputMode="numeric"
+            autoComplete="postal-code" placeholder="734101" data-testid="edit-pincode" error={pinBad ? t('ui.editProfile.pincode_error') : undefined} errorId="edit-pincode-error" />
+
+          <TextField label={<>{t('ui.editProfile.email')} <span className="font-normal text-[var(--ink-muted)]">{t('ui.editProfile.optional')}</span></>}
+            value={form.email} onChange={(e) => set({ email: e.target.value })} type="email" autoComplete="email" placeholder="you@example.com"
+            data-testid="edit-email" error={emailBad ? t('ui.editProfile.email_error') : undefined} errorId="edit-email-error" />
+        </Box>
+
+        {/* How you travel */}
+        <Box as="section" aria-labelledby="travel-title">
+          <h2 id="travel-title">{t('ui.editProfile.how_you_travel')}</h2>
+          {group(t('ui.editProfile.places_you_love'), PLACE_INTERESTS.map((i) => (
+            <Chip key={i.id} on={form.interests.includes(i.id)} onClick={() => toggle('interests', i.id)} data-testid={`edit-interest-${i.id}`}>{t(i.labelKey)}</Chip>
+          )))}
+          {group(t('ui.editProfile.foods_you_like'), FOODS.map((f) => (
+            <Chip key={f.id} on={form.likedFoods.includes(f.id)} onClick={() => toggle('likedFoods', f.id)} data-testid={`edit-food-${f.id}`}>{t(f.labelKey)}</Chip>
+          )))}
+          {group(t('ui.editProfile.traveller_type'), TRAVELLER_TYPES.map((x) => (
+            <Chip key={x.id} on={form.travellerType === x.id} onClick={() => set({ travellerType: form.travellerType === x.id ? '' : x.id })} data-testid={`edit-type-${x.id}`}>{t(x.labelKey)}</Chip>
+          )))}
+          {group(t('ui.editProfile.food_preference'), DIETS.map((d) => (
+            <Chip key={d.id} on={form.diet === d.id} onClick={() => set({ diet: form.diet === d.id ? '' : d.id })} data-testid={`edit-diet-${d.id}`}>{t(d.labelKey)}</Chip>
+          )))}
+        </Box>
+
+        <FieldError id="edit-error">{err}</FieldError>
+
+        <div className="ag-flowbar flex-col">
+          <Button type="submit" variant="primary" go block disabled={busy || uploading} data-testid="edit-save">
+            {busy ? t('common.saving') : t('ui.editProfile.save')}
+          </Button>
+          {setup && (
+            <Button block onClick={() => nav(next)} data-testid="edit-skip">{t('ui.editProfile.skip')}</Button>
           )}
-          {waBad && <span className="text-xs text-flag font-semibold">{t('ui.editProfile.whatsapp_error')}</span>}
         </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <span className={label}>{t('ui.editProfile.gender')}</span>
-            <div className="mt-1.5 flex flex-wrap gap-2">
-              {GENDERS.map((g) => (
-                <button key={g.id} type="button" onClick={() => set({ gender: form.gender === g.id ? '' : g.id })} className={chip(form.gender === g.id)} data-testid={`edit-gender-${g.id}`}>{t(g.labelKey)}</button>
-              ))}
-            </div>
-          </div>
-          <label className="block">
-            <span className={label}>{t('ui.editProfile.age')}</span>
-            <input value={form.age} onChange={(e) => set({ age: e.target.value.replace(/\D/g, '').slice(0, 3) })} inputMode="numeric" placeholder={t('ui.editProfile.age_placeholder')} data-testid="edit-age" className={field(ageBad)} />
-            {ageBad && <span className="text-xs text-flag font-semibold">{t('ui.editProfile.age_error')}</span>}
-          </label>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <label className="block sm:col-span-2">
-            <span className={label}>{t('ui.editProfile.address')}</span>
-            <input value={form.address} onChange={(e) => set({ address: e.target.value })} maxLength={300} placeholder={t('ui.editProfile.address_placeholder')} data-testid="edit-address" className={field(false)} />
-          </label>
-          <label className="block">
-            <span className={label}>{t('ui.editProfile.pincode')}</span>
-            <input value={form.pincode} onChange={(e) => set({ pincode: e.target.value.replace(/\D/g, '').slice(0, 6) })} inputMode="numeric" placeholder="734101" data-testid="edit-pincode" className={field(pinBad)} />
-            {pinBad && <span className="text-xs text-flag font-semibold">{t('ui.editProfile.pincode_error')}</span>}
-          </label>
-        </div>
-
-        <label className="block">
-          <span className={label}>{t('ui.editProfile.email')} <span className="normal-case font-semibold">{t('ui.editProfile.optional')}</span></span>
-          <input value={form.email} onChange={(e) => set({ email: e.target.value })} type="email" placeholder="you@example.com" data-testid="edit-email" className={field(emailBad)} />
-          {emailBad && <span className="text-xs text-flag font-semibold">{t('ui.editProfile.email_error')}</span>}
-        </label>
-      </section>
-
-      {/* How you travel */}
-      <section className="rounded-3xl border border-[var(--line)] bg-white p-5 space-y-5">
-        <h2 className="font-display font-bold text-lg text-ink">{t('ui.editProfile.how_you_travel')}</h2>
-        <div>
-          <span className={label}>{t('ui.editProfile.places_you_love')}</span>
-          <div className="mt-1.5 flex flex-wrap gap-2">
-            {PLACE_INTERESTS.map((i) => (
-              <button key={i.id} type="button" onClick={() => toggle('interests', i.id)} className={chip(form.interests.includes(i.id))} data-testid={`edit-interest-${i.id}`}>{t(i.labelKey)}</button>
-            ))}
-          </div>
-        </div>
-        <div>
-          <span className={label}>{t('ui.editProfile.foods_you_like')}</span>
-          <div className="mt-1.5 flex flex-wrap gap-2">
-            {FOODS.map((f) => (
-              <button key={f.id} type="button" onClick={() => toggle('likedFoods', f.id)} className={chip(form.likedFoods.includes(f.id))} data-testid={`edit-food-${f.id}`}>{t(f.labelKey)}</button>
-            ))}
-          </div>
-        </div>
-        <div>
-          <span className={label}>{t('ui.editProfile.traveller_type')}</span>
-          <div className="mt-1.5 flex flex-wrap gap-2">
-            {TRAVELLER_TYPES.map((x) => (
-              <button key={x.id} type="button" onClick={() => set({ travellerType: form.travellerType === x.id ? '' : x.id })} className={chip(form.travellerType === x.id)} data-testid={`edit-type-${x.id}`}>{t(x.labelKey)}</button>
-            ))}
-          </div>
-        </div>
-        <div>
-          <span className={label}>{t('ui.editProfile.food_preference')}</span>
-          <div className="mt-1.5 flex flex-wrap gap-2">
-            {DIETS.map((d) => (
-              <button key={d.id} type="button" onClick={() => set({ diet: form.diet === d.id ? '' : d.id })} className={chip(form.diet === d.id)} data-testid={`edit-diet-${d.id}`}>{t(d.labelKey)}</button>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {err && <p className="text-sm font-semibold text-flag" data-testid="edit-error">{err}</p>}
-
-      <div className="flex flex-col sm:flex-row gap-3">
-        <button type="submit" disabled={busy || uploading} data-testid="edit-save"
-          className="inline-flex items-center justify-center gap-2 h-[50px] px-8 rounded-full bg-[#1F6656] text-white font-bold text-[15px] btn-hover disabled:opacity-60">
-          <Check size={16} weight="bold" /> {busy ? t('common.saving') : t('ui.editProfile.save')}
-        </button>
-        {setup && (
-          <button type="button" onClick={() => nav(next)} data-testid="edit-skip"
-            className="inline-flex items-center justify-center gap-2 h-[50px] px-6 rounded-full border border-[var(--line)] text-ink font-bold text-[15px] btn-hover">
-            {t('ui.editProfile.skip')} <ArrowRight size={16} />
-          </button>
-        )}
-      </div>
-    </form>
+      </form>
+    </div>
   );
 }

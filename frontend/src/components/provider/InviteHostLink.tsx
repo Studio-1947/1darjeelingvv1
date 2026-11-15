@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Copy, ShareNetwork } from '@phosphor-icons/react';
 import api from '@/lib/api';
 import { HOST_TYPES, hostJoinLink, type HostType } from '@/lib/hostQuickFill';
+import { Box, Button, Chip, Chips, IconButton, MenuIcon } from '@/components/ag';
 
 // i18n keys under ui.inviteHostLink.type; t() is called at render.
 const TYPE_LABEL: Record<HostType, string> = {
@@ -43,22 +44,26 @@ export default function InviteHostLink({ className = '' }: { className?: string 
   };
 
   return (
-    <div className={`rounded-3xl p-5 bg-white border border-[var(--line)] ${className}`} data-testid="invite-host">
-      <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-ink-soft"><ShareNetwork size={14} /> {t('ui.inviteHostLink.title')}</div>
-      <p className="mt-2 text-sm text-ink-soft">{t('ui.inviteHostLink.body')}</p>
-      <div className="mt-3 flex flex-wrap gap-1.5" role="radiogroup" aria-label={t('ui.inviteHostLink.business_type')}>
+    <Box as="section" className={className} data-testid="invite-host">
+      <div className="flex items-start gap-3">
+        <MenuIcon><ShareNetwork /></MenuIcon>
+        <div className="min-w-0">
+          <h2>{t('ui.inviteHostLink.title')}</h2>
+          <p className="ag-small">{t('ui.inviteHostLink.body')}</p>
+        </div>
+      </div>
+      <Chips role="radiogroup" aria-label={t('ui.inviteHostLink.business_type')}>
         {HOST_TYPES.map((tp) => (
-          <button key={tp} type="button" role="radio" aria-checked={type === tp} onClick={() => setType(tp)}
-            className={`px-3 py-1.5 rounded-full text-xs font-bold border ${type === tp ? 'bg-pine text-white border-pine' : 'bg-white text-ink-soft border-[var(--line)]'}`}>
+          <Chip key={tp} role="radio" aria-checked={type === tp} className={type === tp ? 'on' : undefined} onClick={() => setType(tp)}>
             {t(TYPE_LABEL[tp])}
-          </button>
+          </Chip>
         ))}
+      </Chips>
+      <div className="flex items-center gap-2">
+        <code className="min-w-0 flex-1 truncate rounded-full bg-[var(--surface)] border border-[var(--warmline)] px-4 py-2.5 text-sm text-[var(--ink-strong)]" data-testid="invite-host-link">{link}</code>
+        <IconButton label={t('ui.inviteHostLink.copy_link')} onClick={copy}><Copy /></IconButton>
       </div>
-      <div className="mt-3 flex items-center gap-2">
-        <code className="flex-1 min-w-0 truncate px-2.5 py-2 rounded-lg bg-mist text-xs font-semibold text-ink" data-testid="invite-host-link">{link}</code>
-        <button type="button" onClick={copy} aria-label={t('ui.inviteHostLink.copy_link')} className="w-10 h-10 rounded-full grid place-items-center border border-[var(--line)] hover:bg-mist"><Copy size={16} /></button>
-        <button type="button" onClick={share} className="inline-flex items-center gap-1 h-10 px-4 rounded-full bg-[#1F6656] text-white text-xs font-bold btn-hover" data-testid="invite-host-share">{t('ui.inviteHostLink.share')}</button>
-      </div>
-    </div>
+      <Button size="sm" icon={<ShareNetwork />} className="self-start" onClick={share} data-testid="invite-host-share">{t('ui.inviteHostLink.share')}</Button>
+    </Box>
   );
 }

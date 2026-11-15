@@ -1,15 +1,13 @@
-import { ArrowRight, Storefront as Store, Coffee, Ticket, Leaf, Mountains as Mountain } from '@phosphor-icons/react';
-
-// Contextual CTA per listing type: i18n key, icon, and button colour.
-export const CTA_CONFIG = {
-  homestay: { key: 'book_now', Icon: ArrowRight, color: 'bg-pine text-white' },
-  driver: { key: 'request_driver', Icon: ArrowRight, color: 'bg-pine text-white' },
-  guide: { key: 'request_guide', Icon: ArrowRight, color: 'bg-pine text-white' },
-  shop: { key: 'contact_shop', Icon: Store, color: 'bg-ink text-white' },
-  cafe: { key: 'visit_cafe', Icon: Coffee, color: 'bg-ink text-white' },
-  event: { key: 'join_event', Icon: Ticket, color: 'bg-pine text-white' },
-  biodiversity: { key: 'learn_more', Icon: Leaf, color: 'bg-pine text-white' },
-  spot: { key: 'explore', Icon: Mountain, color: 'bg-pine text-white' },
+// The booking button's label per listing type (an i18n key under `cta.`).
+export const CTA_CONFIG: Record<string, { key: string }> = {
+  homestay: { key: 'book_now' },
+  driver: { key: 'request_driver' },
+  guide: { key: 'request_guide' },
+  shop: { key: 'contact_shop' },
+  cafe: { key: 'visit_cafe' },
+  event: { key: 'join_event' },
+  biodiversity: { key: 'learn_more' },
+  spot: { key: 'explore' },
 };
 
 /**

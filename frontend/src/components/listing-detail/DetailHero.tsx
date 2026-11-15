@@ -1,46 +1,48 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import gsap from 'gsap';
 import SmartImg from '@/components/SmartImg';
 import { listingImage } from '@/lib/listingContent';
 import VerifiedBadge from '@/components/provider/VerifiedBadge';
-import { MapPin, ArrowLeft, ShareNetwork as Share2, Heart, CaretDown as ChevronDown, Check } from '@phosphor-icons/react';
-import { SCREEN_H } from './primitives';
+import { MapPin, ShareNetwork as Share2, Heart, Check, Star } from '@phosphor-icons/react';
+import { IconButton, Status } from '@/components/ag';
 import { useFavorites } from '@/context/FavoritesContext';
 import { useLoginGate } from '@/components/LoginGate';
 import type { ShareOutcome } from '@/lib/share';
 
-/** Full-screen hero: cover image, back/like/share, and the title block. */
-export default function DetailHero({ item, unit, onShare }: {
+/** The area each listing type belongs to: the eyebrow over its title (prototype DESIGN.md). */
+const EYEBROW: Record<string, [string, string]> = {
+  homestay: ['detail.eye_homestay', 'Stay local'],
+  driver: ['detail.eye_driver', 'Ride local'],
+  spot: ['detail.eye_spot', 'Must visit'],
+  cafe: ['detail.eye_cafe', 'Eat local'],
+  shop: ['detail.eye_shop', 'Eat local'],
+  guide: ['detail.eye_guide', 'Go with a local'],
+  event: ['detail.eye_event', 'Celebrate'],
+  biodiversity: ['detail.eye_biodiversity', 'Wild side'],
+};
+
+/**
+ * Top of the listing page (prototype item view): the 16:10 photo with save and share on it (Back is
+ * the header's),
+ * then the eyebrow, the name, the place and the verified / rating line.
+ */
+export default function DetailHero({ item, onShare, children }: {
   item: any;
-  unit: string;
   onShare: () => Promise<ShareOutcome>;
+  /** Under the title block: the host line and the price. */
+  children?: React.ReactNode;
 }) {
   const { t } = useTranslation();
-  const nav = useNavigate();
-  const loc = useLocation();
   const { isFavorite, toggle } = useFavorites();
   const { requireAuth } = useLoginGate();
   const liked = isFavorite(item.id);
   const [shareState, setShareState] = useState<'idle' | 'copied' | 'failed'>('idle');
-  const heroRef = useRef<HTMLElement>(null);
-  const heroContentRef = useRef<HTMLDivElement>(null);
 
   // Saving requires an account (favorites are per-user). The gate explains that before sending
   // anyone to sign in, matching how the feed cards behave.
   const handleLike = () => {
     if (!requireAuth('save')) return;
     toggle(item.id).catch(() => {});
-  };
-
-  // `nav(-1)` goes nowhere when this is the first entry in the SPA's history - i.e. the visitor
-  // landed here directly via a shared link, a new tab, or a refresh (React Router marks that entry
-  // with key 'default'). In that case send them to the home feed instead of leaving them on a dead
-  // button (or bouncing them off the site entirely).
-  const goBack = () => {
-    if (loc.key === 'default') nav('/');
-    else nav(-1);
   };
 
   const handleShare = async () => {
@@ -54,83 +56,55 @@ export default function DetailHero({ item, unit, onShare }: {
     }
   };
 
-  // On landing, only the hero image shows; then the title block rises up from
-  // below into place on its own. The page scrolls normally throughout.
-  useEffect(() => {
-    const ctx = gsap.context(() => {
-      gsap.fromTo(
-        heroContentRef.current,
-        { yPercent: 55, autoAlpha: 0 },
-        { yPercent: 0, autoAlpha: 1, duration: 1.1, delay: 0.35, ease: 'power3.out' },
-      );
-    }, heroRef);
-    return () => ctx.revert();
-  }, []);
-
   // A distinct per-listing hero (provider image kept; shared seed images replaced).
-  const heroSrc = listingImage(item, 2000, 1200);
+  const heroSrc = listingImage(item, 1440, 900);
+  const [eyeKey, eyeEn] = EYEBROW[item.type] || EYEBROW.spot;
+  const rated = Number(item.review_count) > 0;
 
   return (
-    <section ref={heroRef} className={`relative ${SCREEN_H} h-[calc(100svh-var(--header-h))] w-full overflow-hidden bg-mist`} data-testid="detail-hero">
-      <SmartImg src={heroSrc} alt={item.title} className="absolute inset-0 w-full h-full object-cover" />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/45" />
-
-      {/* Below lg the sticky header supplies the back control - avoid two. */}
-      <button onClick={goBack} data-testid="detail-back"
-        className="absolute z-10 top-4 left-4 md:top-6 md:left-8 hidden lg:inline-flex items-center gap-2 pl-3 pr-4 py-2.5 rounded-full bg-white/95 backdrop-blur text-sm font-bold text-ink btn-hover">
-        <ArrowLeft size={16} /> {t('common.back')}
-      </button>
-
-      <div className="absolute z-10 top-4 right-4 md:top-6 md:right-8 flex flex-col items-end gap-2">
-        <div className="flex gap-2">
-          <button onClick={handleLike} data-testid="detail-like"
-            aria-label={t('common.save')} aria-pressed={liked}
-            className="w-11 h-11 rounded-full bg-white/95 backdrop-blur grid place-items-center btn-hover">
-            <Heart size={18} weight={liked ? 'fill' : 'regular'} className={liked ? 'text-flag' : 'text-ink'} />
-          </button>
-          <button onClick={handleShare} data-testid="detail-share" aria-label={t('feed.share')}
-            className="w-11 h-11 rounded-full bg-white/95 backdrop-blur grid place-items-center btn-hover">
-            <Share2 size={18} className="text-ink" />
-          </button>
-        </div>
-        {shareState !== 'idle' && (
-          <span
-            role="status"
-            data-testid="detail-share-feedback"
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold shadow-md ${
-              shareState === 'copied' ? 'bg-white/95 text-ink' : 'bg-pine text-white'
-            }`}
-          >
-            {shareState === 'copied' ? <><Check size={13} /> {t('detail.share_copied')}</> : t('detail.share_failed')}
-          </span>
-        )}
-      </div>
-
-      {/* Left-aligned hero content. It spans the whole hero, so it has to stay
-          click-through or it swallows the back/like/share buttons underneath. */}
-      <div ref={heroContentRef} style={{ opacity: 0 }} className="absolute inset-0 pointer-events-none flex flex-col items-start justify-center text-left px-4 md:px-8 lg:px-16">
-        <span className="chip bg-white/90 text-ink capitalize">{t(`categories.${item.type}`)}</span>
-        <h1 className="mt-5 font-display font-extrabold text-5xl sm:text-6xl md:text-8xl text-white leading-[0.95] max-w-4xl"
-          data-testid="listing-title">{item.title}</h1>
-        {item.provider_verified && (
-          <span className="mt-3 inline-flex rounded-full bg-white/90 backdrop-blur p-0.5">
-            <VerifiedBadge size="md" />
-          </span>
-        )}
-        <div className="mt-5 flex flex-wrap justify-start items-center gap-x-6 gap-y-2 text-white/90 text-base md:text-lg font-semibold">
-          <span className="flex items-center gap-1.5"><MapPin size={18} /> {item.location}</span>
-          {item.price > 0 && (
-            <span className="flex items-center gap-1.5">
-              {unit ? <>₹{item.price}<span className="font-normal text-white/75">{unit}</span></>
-                : <><span className="font-normal text-white/75">{t('common.starting_from')}</span> ₹{item.price}</>}
-            </span>
+    <>
+      <div className="relative w-full aspect-[16/10] rounded-[20px] overflow-hidden bg-[var(--creme2)]" data-testid="detail-hero">
+        <SmartImg src={heroSrc} alt={item.title} className="absolute inset-0 w-full h-full object-cover" />
+        <div className="absolute right-3 top-3 flex flex-col items-end gap-2">
+          <div className="flex gap-2">
+            <IconButton label={liked ? t('detail.saved', 'Saved') : t('common.save')} on={liked} aria-pressed={liked} onClick={handleLike} data-testid="detail-like">
+              <Heart weight={liked ? 'fill' : 'regular'} />
+            </IconButton>
+            <IconButton label={t('feed.share')} onClick={handleShare} data-testid="detail-share"><Share2 /></IconButton>
+          </div>
+          {shareState !== 'idle' && (
+            <Status role="status" data-testid="detail-share-feedback" tone={shareState === 'copied' ? 'ok' : 'no'}>
+              {shareState === 'copied' ? <><Check weight="bold" aria-hidden="true" /> {t('detail.share_copied')}</> : t('detail.share_failed')}
+            </Status>
           )}
         </div>
       </div>
 
-      <div className="absolute inset-x-0 bottom-6 hidden md:flex justify-center text-white/70">
-        <ChevronDown size={26} className="animate-bounce" />
+      <div className="flex flex-col gap-2">
+        <div className="ag-pagehead">
+          <span className="ag-eyebrow">{t(eyeKey, eyeEn)}</span>
+          <h1 data-testid="listing-title">{item.title}</h1>
+        </div>
+        {item.location && (
+          <p className="m-0 inline-flex items-center gap-1.5 text-[16px] leading-6 text-[var(--ink-muted)]">
+            <MapPin className="w-5 h-5 flex-none" aria-hidden="true" /> {item.location}
+          </p>
+        )}
+        {(item.provider_verified || rated) && (
+          <div className="ag-row">
+            {item.provider_verified && <VerifiedBadge size="sm" />}
+            {rated && (
+              <a href="#reviews" className="inline-flex items-center gap-1 text-[var(--r)] no-underline"
+                aria-label={t('reviews.out_of_5', { value: Number(item.rating).toFixed(1) })}>
+                <Star weight="fill" className="w-[18px] h-[18px]" aria-hidden="true" />
+                <span className="font-medium">{Number(item.rating).toFixed(1)}</span>
+                <span className="ag-small">({item.review_count})</span>
+              </a>
+            )}
+          </div>
+        )}
+        {children}
       </div>
-    </section>
+    </>
   );
 }

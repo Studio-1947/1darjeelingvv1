@@ -1,25 +1,26 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;0,9..40,900;1,9..40,400;1,9..40,600&family=Noto+Sans+Bengali:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Google+Sans+Flex:wght@400..700&family=Noto+Sans:wght@400;500;600&family=Noto+Sans+Bengali:wght@400;500;600&family=Noto+Sans+Devanagari:wght@400;500;600&display=swap');
+@import './styles/aangan.css';
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --bg: #FAFAF7;
-  --surface: #FFFFFF;
-  --ink: #14201A;
-  --ink-soft: #4B5C55;
-  --muted: #6B7C74;
-  --line: #E6E8E3;
-  --pine: #007C85;
-  --pine-dark: #005F66;
-  --flag: #C42E2E;
-  --gold: #F0B90B;
-  --mist: #EEF2ED;
+  /* Legacy names, now pointing at the red /7 system in styles/aangan.css. */
+  --bg: transparent;
+  --ink: var(--ink-strong);
+  --ink-soft: var(--ink-muted);
+  --muted: var(--ink-muted);
+  --line: var(--hairline);
+  --pine: var(--r);
+  --pine-dark: var(--r-press);
+  --flag: var(--fail);
+  --gold: #F5B400;
+  --mist: var(--creme2);
   /* Height of the mobile BottomNav, including the home-indicator inset.
      Anything fixed above the nav must offset by this, not a hardcoded 4rem. */
   /* The floating pill bar: 64px tall, 8px of air above it, and the safe area (at least 10px) below. */
-  --bottom-nav-h: calc(4.5rem + max(env(safe-area-inset-bottom, 0px), 10px));
+  --bottom-nav-h: var(--tabbar-h);
   /* Height of a page's own fixed bar above the nav (the listing page's "Request to book").
      Set by that bar while it is on screen; the footer adds it to its bottom padding. */
   --page-cta-h: 0px;
@@ -28,19 +29,7 @@
      landing hero offset by this rather than a hardcoded height.
      Phones scroll icon-only tiles inside one pill; sm+ adds a single-line
      label under each and the whole row fits without scrolling. */
-  --header-h: 3.75rem;
-}
-
-@media (min-width: 640px) {
-  :root { --header-h: 4.75rem; }
-}
-
-@media (min-width: 1024px) {
-  :root { --header-h: 5rem; }
-}
-
-@media (min-width: 1280px) {
-  :root { --header-h: 5.25rem; }
+  --header-h: 64px;
 }
 
 @layer base {
@@ -82,30 +71,21 @@ html, body {
 
 body {
   margin: 0;
-  background: var(--bg);
-  color: var(--ink);
-  /* One font everywhere, the same DM Sans the app uses. Noto covers Bengali and Devanagari. */
-  font-family: 'DM Sans', 'Noto Sans Bengali', 'Noto Sans Devanagari', system-ui, -apple-system, sans-serif;
-  font-feature-settings: "ss01";
+  background: transparent;
+  color: var(--ink7);
+  /* Google Sans Flex with Noto Sans for Devanagari and Bengali (the --font token). */
+  font-family: var(--font);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 h1, h2, h3, h4 {
-  font-family: 'DM Sans', 'Noto Sans Bengali', 'Noto Sans Devanagari', system-ui, sans-serif;
+  font-family: var(--font);
+  font-weight: 500;
   letter-spacing: -0.015em;
 }
+b, strong { font-weight: 500; }
 
-html[lang="bn"] body,
-html[lang="bn"] h1, html[lang="bn"] h2, html[lang="bn"] h3, html[lang="bn"] h4 {
-  font-family: 'DM Sans', 'Noto Sans Bengali', system-ui, sans-serif;
-}
-
-html[lang="hi"] body, html[lang="ne"] body,
-html[lang="hi"] h1, html[lang="hi"] h2, html[lang="hi"] h3, html[lang="hi"] h4,
-html[lang="ne"] h1, html[lang="ne"] h2, html[lang="ne"] h3, html[lang="ne"] h4 {
-  font-family: 'DM Sans', 'Noto Sans Devanagari', system-ui, sans-serif;
-}
 
 /* Grain overlay utility */
 .grain::before {
@@ -119,11 +99,11 @@ html[lang="ne"] h1, html[lang="ne"] h2, html[lang="ne"] h3, html[lang="ne"] h4 {
 }
 
 /* Selection */
-::selection { background: #F0B90B; color: #14201A; }
+::selection { background: var(--r-tint); color: var(--ink-strong); }
 
 /* Scrollbar */
 ::-webkit-scrollbar { width: 10px; height: 10px; }
-::-webkit-scrollbar-thumb { background: #C9D3CC; border-radius: 8px; }
+::-webkit-scrollbar-thumb { background: var(--outline); border-radius: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
 
 .no-scrollbar::-webkit-scrollbar { display: none; }
@@ -131,7 +111,7 @@ html[lang="ne"] h1, html[lang="ne"] h2, html[lang="ne"] h3, html[lang="ne"] h4 {
 
 /* Utility */
 .btn-hover { transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease; }
-.btn-hover:hover { transform: translateY(-2px); box-shadow: 0 12px 24px -8px rgba(20,32,26,0.18); }
+.btn-hover:hover { box-shadow: none; }
 
 /* Border light: a short white streak orbiting the element's border in a loop.
    A conic gradient fills a pseudo-element, the XOR mask cuts everything but a
@@ -206,114 +186,23 @@ html[lang="ne"] h1, html[lang="ne"] h2, html[lang="ne"] h3, html[lang="ne"] h4 {
 
 .chip {
   display: inline-flex; align-items: center; padding: 4px 10px;
-  border-radius: 999px; background: #EEF2ED; color: #2C5E3B; font-weight: 600;
+  border-radius: 999px; background: var(--creme2); color: var(--ink-strong); font-weight: 500;
   font-size: 12px; letter-spacing: 0.02em;
 }
 
 .card-shell {
-  background: #fff; border: 1px solid var(--line); border-radius: 20px;
-  overflow: hidden; transition: transform 0.25s ease, box-shadow 0.25s ease;
+  background: linear-gradient(180deg, #FFFBF6 0%, var(--creme) 100%); border: 1px solid var(--warmline); border-radius: var(--r-card);
+  box-shadow: var(--warmshadow); overflow: hidden;
 }
-.card-shell:hover { transform: translateY(-4px); box-shadow: 0 24px 40px -20px rgba(20,32,26,0.18); }
 
 .mist-panel {
-  background: linear-gradient(180deg, #FFFFFF 0%, #EEF2ED 100%);
-  border: 1px solid var(--line);
-  border-radius: 24px;
+  background: linear-gradient(180deg, #FFFBF6 0%, var(--creme) 100%);
+  border: 1px solid var(--warmline);
+  border-radius: var(--r-card);
+  box-shadow: var(--warmshadow);
 }
 
-/* Every button reads the same: DM Sans bold, normal spacing, as the app's buttons do. Only the
-   size changes between small chips and big primary buttons. `!important` because the buttons
-   carry their own font-semibold / font-extrabold utilities, which would otherwise win.
-   Pill links (a.rounded-full) are buttons too, as far as anyone tapping them can tell. */
-button,
-[role="button"],
-a.rounded-full,
-input[type="submit"] {
-  font-family: inherit;
-  font-weight: 700 !important;
-  letter-spacing: normal;
-}
-
-/* Button colour: #1F6656 on every filled button, on the site and in the app (colors.button).
-   Buttons are styled with bg-pine / from-pine utilities all over; this recolours exactly those
-   on buttons and pill links, without touching pine text, icons and badges elsewhere.
-   `!important` beats the hover:bg-pine-dark and gradient utilities they also carry.
-   Red (decline/delete), WhatsApp green and white or see-through buttons keep their colours. */
-:root {
-  --button: #1F6656;
-  --button-hover: #184F43;
-}
-button.bg-pine, a.bg-pine, [role="button"].bg-pine,
-button.from-pine, a.from-pine, [role="button"].from-pine {
-  background: var(--button) !important;
-  border-color: var(--button);
-}
-button.bg-pine:hover:not(:disabled), a.bg-pine:hover, [role="button"].bg-pine:hover,
-button.from-pine:hover:not(:disabled), a.from-pine:hover {
-  background: var(--button-hover) !important;
-}
-/* Outline buttons: the same green for their label and border. */
-button.text-pine, a.rounded-full.text-pine { color: var(--button); }
-button.border-pine, a.rounded-full.border-pine { border-color: var(--button); }
-
-/* Button sizes, the same as the app (theme `button` sizes in src/theme/index.ts):
-   main  - 50px tall, 15px text: page actions such as Reserve, Send OTP, Pay, Post.
-   small - var(--btn-small) tall, 13px text: buttons inside cards and lists (marked with
-           text-xs / text-sm). 40px on desktop, 44px on phones and tablets (set below).
-   Round icon buttons with a fixed height (h-9, h-11), filter chips (border-pine) and the header
-   are left alone. */
-:root { --btn-small: 40px; }
-main :is(button, a).bg-pine.rounded-full:not([class*="h-"]):not(.border-pine),
-main :is(button, a).rounded-full.btn-main {
-  min-height: 50px;
-  padding-top: 0 !important;
-  padding-bottom: 0 !important;
-  align-items: center;
-  font-size: 15px !important;
-  line-height: 1.25;
-}
-main :is(button, a).bg-pine.rounded-full:is(.text-xs, .text-sm):not([class*="h-"]):not(.border-pine):not(.btn-main) {
-  min-height: var(--btn-small);
-  font-size: 13px !important;
-}
-
-/* Phones and tablets (below lg, where the bottom tab bar shows). People tap these with a thumb,
-   so every tappable control is at least the small button: 44px tall (Apple's minimum touch
-   target), 13px text, and round icon buttons 44 x 44. Chips, outline, white and icon buttons follow the same sizes as the green
-   ones, on every page, signed in or not, header included. These rules only ever make a control
-   bigger, never smaller. Desktop keeps its own sizes. */
-@media (max-width: 1023px) {
-  :root { --btn-small: 44px; }
-  /* Pills, chips and rounded buttons and links of every colour: 44px tall. */
-  :is(button, a, [role="button"]):is(.rounded-full, .rounded-xl, .rounded-lg):not(:empty):not([role="switch"], [role="radio"], [role="checkbox"]) {
-    min-height: var(--btn-small);
-  }
-  /* Icon-only pills (Like and Share on narrow phones) are at least as wide as they are tall. */
-  :is(button, a, [role="button"]).rounded-full:not(:empty) {
-    min-width: var(--btn-small);
-  }
-  /* A pill's small vertical padding gives way to that height, so pills all come out at 44px
-     instead of 34, 36, 38, 40 or 42. Pills with bigger padding (py-3 and up) keep it. */
-  :is(button, a, [role="button"]).rounded-full:is(.py-1, .py-1\.5, .py-2, .py-2\.5):not(:empty) {
-    padding-top: 0 !important;
-    padding-bottom: 0 !important;
-    align-items: center;
-  }
-  /* Their labels: 13px at the least (text-xs is 12px). */
-  :is(button, a, [role="button"]):is(.rounded-full, .rounded-xl, .rounded-lg):is(.text-xs, .text-\[11px\], .text-\[10px\]):not(:empty) {
-    font-size: 13px !important;
-  }
-  /* Round icon buttons with a fixed width (back, close, save, play, steppers, page numbers). */
-  :is(button, a, [role="button"]).rounded-full:is(.w-6, .w-7, .w-8, .w-9, .w-10) {
-    min-width: var(--btn-small);
-    min-height: var(--btn-small);
-    flex-shrink: 0;
-  }
-  /* Icon-only buttons sized by their padding (close ✕, mute). */
-  button:is(.p-1, .p-1\.5, .p-2):is(.rounded-full, .rounded-lg, .rounded-md) {
-    min-width: var(--btn-small);
-    min-height: var(--btn-small);
-    justify-content: center;
-  }
-}
+/* Buttons and pill links: the theme font at medium weight, as /7 sets every label.
+   Filled pine buttons read the brand red (--button is the legacy name). */
+button, [role="button"], a.rounded-full, input[type="submit"] { font-family: inherit; letter-spacing: normal; }
+:root { --button: var(--r); --button-hover: var(--r-press); }

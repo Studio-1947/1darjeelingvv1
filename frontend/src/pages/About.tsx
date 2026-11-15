@@ -1,23 +1,17 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowRight, EnvelopeSimple as Mail, Heart, Check, Phone } from '@phosphor-icons/react';
-import CircularGallery from '@/components/CircularGallery';
+import { EnvelopeSimple as Mail, Phone, Check, Mountains, Stack, Translate, CurrencyInr } from '@phosphor-icons/react';
 import { sizedImage } from '@/lib/listingContent';
 import { useSeo } from '@/components/Seo';
-
-// One photo per pillar, in the order the strings are listed.
-const PILLAR_IMAGES = [
-  'https://images.unsplash.com/photo-1615634042767-cf6ca0135666?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTZ8fGRhcmplZWxpbmclMjBsb2NhbHN8ZW58MHx8MHx8fDA%3D',
-  'https://images.unsplash.com/photo-1549817997-f6958ecf47b9?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NXx8ZGFyamVlbGluZyUyMGhpbGxzfGVufDB8fDB8fHww',
-  'https://images.unsplash.com/photo-1781717378976-5d308b865e7c?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8bmVwYWxpJTIwbGFuZ3VhZ2V8ZW58MHx8MHx8fDA%3D',
-  'https://images.unsplash.com/photo-1729077537326-91749c1c9197?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8N3x8aW5kaWFuJTIwY3VycmVuY3l8ZW58MHx8MHx8fDA%3D',
-];
+import { Box, ButtonA, ButtonLink, MenuIcon, PageHead, SecHead, Status } from '@/components/ag';
 
 // Tiger Hill ridgeline shot for the story band. Hosted on the same Cloudinary
 // account as the homepage hero video, so it needs no new CSP allowance;
 // sizedImage() injects a width/quality transform for it automatically.
 const STORY_IMAGE = 'https://res.cloudinary.com/drgb8w8ak/image/upload/v1784109903/tigerhill_mcmhxp.webp';
+
+// One icon per promise, in the order the strings are listed.
+const PILLAR_ICONS = [Mountains, Stack, Translate, CurrencyInr];
 
 // Roles are keys under ui.about.roles; the names stay as they are.
 const TEAM_MEMBERS = [
@@ -31,235 +25,155 @@ const TEAM_MEMBERS = [
   { name: 'Nikhil S', role: 'graphic_designer', image: '/nikhilsubba.webp' },
 ];
 
+/** "Where it works": now, next, always. */
+const REACH = [
+  { when: ['about.reach_now', 'Now'], t: ['about.reach_now_t', 'The Darjeeling hills and Sikkim'], d: ['about.reach_now_d', 'Where we live and where we started.'] },
+  { when: ['about.reach_next', 'Next'], t: ['about.reach_next_t', 'Wherever you are'], d: ['about.reach_next_d', 'If you host, drive, cook or guide anywhere in India, list now. aangan works the same in every town and village.'] },
+  { when: ['about.reach_always', 'Always'], t: ['about.reach_always_t', 'Built here, for everyone'], d: ['about.reach_always_d', 'Every improvement is tested first in the hills, then shared with every place that uses aangan.'] },
+] as const;
+
 /**
- * Public "about" page. All copy lives in the locale files so it translates with
+ * Public "about" page: one editorial column. Copy lives in the locale files so it translates with
  * the rest of the site; this file only decides how it is laid out.
  */
 export default function About() {
   const { t } = useTranslation();
   useSeo({ title: t('about.title'), description: t('about.mission_body') });
-  const stats = t('about.stats', { returnObjects: true }) as { v: string; l: string }[];
-  const pillars = t('about.pillars', { returnObjects: true }) as { t: string; d: string }[];
-  const chips = t('about.why_chips', { returnObjects: true }) as string[];
-  const steps = t('about.steps', { returnObjects: true }) as { t: string; d: string }[];
-  // Memoised: the WebGL gallery rebuilds itself whenever `items` is a new array.
-  const galleryItems = React.useMemo(() => TEAM_MEMBERS.map(m => ({
-    image: m.image,
-    text: `${m.name}<br>${t(`ui.about.roles.${m.role}`)}`
-  })), [t]);
-
-  // The mission copy is authored as two paragraphs: the first sets up the
-  // problem, the second is the promise. The redesign renders the second as a
-  // highlighted quote, so split rather than duplicate the string.
-  const [missionIntro, ...missionRest] = t('about.mission_body').split('\n\n');
-  const missionQuote = missionRest.join('\n\n');
+  const list = <T,>(key: string): T[] => {
+    const v = t(key, { returnObjects: true });
+    return Array.isArray(v) ? (v as T[]) : [];
+  };
+  const stats = list<{ v: string; l: string }>('about.stats');
+  const pillars = list<{ t: string; d: string }>('about.pillars');
+  const chips = list<string>('about.why_chips');
+  const steps = list<{ t: string; d: string }>('about.steps');
+  const mission = t('about.mission_body').split('\n\n');
 
   return (
-    <div data-testid="about-page">
-      {/* ===== Hero ===== */}
-      <section className="relative overflow-hidden">
-        {/* Soft colour blooms behind the intro, echoing the mock. */}
-        <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
-          <div className="absolute -top-10 left-[8%] w-72 h-72 rounded-full bg-flag/10 blur-3xl" />
-          <div className="absolute top-24 right-[6%] w-80 h-80 rounded-full bg-pine/10 blur-3xl" />
-        </div>
-
-        <div className="mx-auto max-w-5xl px-4 md:px-8 pt-12 md:pt-20 pb-4 text-center">
-
-
-          <h1 className="mt-6 font-display font-extrabold text-4xl sm:text-5xl md:text-6xl text-ink leading-[1.05] tracking-tight">
-            {t('about.title')}
-          </h1>
-          <p className="mt-5 text-base md:text-lg text-ink-soft leading-relaxed max-w-2xl mx-auto">
-            {t('about.lead')}
+    <div className="ag-wrap" data-testid="about-page">
+      <div className="ag-main">
+        <PageHead eyebrow={t('about.ab_eye', 'About aangan')} title={t('about.hero_title', 'Made in Darjeeling. Use it anywhere.')}>
+          <p className="ag-lead mt-2 mb-0 !text-[var(--r)]">{t('about.slogan', 'Travel locally.')}</p>
+          <p className="mt-2 mb-0 text-base leading-relaxed text-[var(--ink7)]">
+            {t('about.hero_body', 'aangan connects travellers with the people who live where they travel: the homestay family, the driver who knows every curve, the guide with the old stories, the cafe and the corner shop. It was made in the Darjeeling hills, and it works the same way in any town or village that wants it.')}
           </p>
-        </div>
+        </PageHead>
 
-        {/* Stat cards */}
-        <div className="mx-auto max-w-5xl px-4 md:px-8 mt-8 md:mt-10">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-5">
-            {stats.map((s, i) => (
-              <div key={i} className="card-shell p-6 md:p-8 text-center" data-testid={`about-stat-${i}`}>
-                <div className={`font-display font-extrabold text-4xl md:text-5xl leading-none ${i === 0 ? 'text-flag' : 'text-pine'}`}>
-                  {s.v}
-                </div>
-                <p className="mt-2 text-sm text-ink-soft leading-snug">{s.l}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ===== Why we built this ===== */}
-      <section className="mx-auto max-w-6xl px-4 md:px-8 mt-16 md:mt-24">
-        {/* Story image band */}
-        <div className="relative rounded-3xl overflow-hidden border border-[var(--line)] shadow-sm h-56 sm:h-72 md:h-80">
-          <img
-            src={sizedImage(STORY_IMAGE, 1600)}
-            alt={t('about.image_caption')}
-            className="absolute inset-0 w-full h-full object-cover"
-            loading="lazy"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-black/10 to-transparent" />
-          <span className="absolute left-4 bottom-4 px-3 py-1.5 rounded-lg bg-black/45 backdrop-blur-sm text-white text-xs md:text-sm font-medium">
-            {t('about.image_caption')}
-          </span>
-        </div>
-
-        <div className="mt-10 md:mt-14 grid lg:grid-cols-2 gap-8 lg:gap-16 items-start">
-          <div>
-            <div className="text-[11px] font-bold uppercase tracking-widest text-flag">{t('about.mission_title')}</div>
-            <h2 className="mt-3 font-display font-extrabold text-3xl md:text-4xl text-ink leading-tight">
-              {t('about.why_headline')}
-            </h2>
-          </div>
-          <div>
-            <p className="text-base md:text-lg text-ink-soft leading-relaxed">{missionIntro}</p>
-            {missionQuote && (
-              <blockquote className="mt-6 rounded-2xl border-l-4 border-pine bg-pine/5 p-5 md:p-6">
-                <p className="font-display font-bold text-lg md:text-xl text-pine-dark leading-snug">{missionQuote}</p>
-              </blockquote>
-            )}
-            <div className="mt-5 flex flex-wrap gap-2.5">
-              {chips.map((c, i) => (
-                <span key={i} className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white border border-[var(--line)] text-sm font-semibold text-ink">
-                  <Check size={14} className="text-pine" /> {c}
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ===== What makes it different ===== */}
-      <section className="mx-auto max-w-6xl px-4 md:px-8 mt-16 md:mt-24">
-        <div className="text-center text-[11px] font-bold uppercase tracking-widest text-flag">
-          {t('about.pillars_eyebrow')}
-        </div>
-        <div className="mt-6 grid md:grid-cols-2 gap-4 md:gap-6">
-          {pillars.map((p, i) => {
-            const image = PILLAR_IMAGES[i % PILLAR_IMAGES.length];
-            return (
-              <div
-                key={p.t}
-                data-testid={`about-pillar-${i}`}
-                className="group relative h-72 md:h-80 rounded-[20px] overflow-hidden border border-[var(--line)] shadow-sm hover:shadow-xl transition-shadow"
-              >
-                <img
-                  src={image}
-                  alt=""
-                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                  loading="lazy"
-                />
-                {/* Faint number watermark, kept from the mock. */}
-                <span className="absolute top-3 right-5 font-display font-extrabold text-5xl md:text-6xl text-white/25 select-none drop-shadow">
-                  {String(i + 1).padStart(2, '0')}
-                </span>
-                {/* Dark gradient behind the text so white copy stays legible. */}
-                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/55 to-transparent pt-24 pb-6 px-6 md:px-7">
-                  <h3 className="font-display font-bold text-xl md:text-2xl text-white drop-shadow-sm">{p.t}</h3>
-                  <p className="mt-2 text-sm md:text-base text-white/85 leading-relaxed drop-shadow-sm">{p.d}</p>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* ===== How it works ===== */}
-      <section className="mx-auto max-w-5xl px-4 md:px-8 mt-16 md:mt-24">
-        <h2 className="font-display font-extrabold text-3xl md:text-4xl text-ink text-center">{t('about.how_title')}</h2>
-        <div className="relative mt-10 grid sm:grid-cols-3 gap-8 sm:gap-4">
-          {/* One dashed rail behind all three dots - spans the centre of the
-              first column to the centre of the last (1/6 -> 5/6 of the row),
-              aligned to the dot centre. Desktop only; the mobile layout stacks. */}
-          <span
-            aria-hidden
-            className="hidden sm:block absolute top-7 left-[16.6%] right-[16.6%] border-t-2 border-dashed border-[var(--line)]"
-          />
-          {steps.map((s, i) => {
-            const isLast = i === steps.length - 1;
-            return (
-              <div key={s.t} className="relative text-center" data-testid={`about-step-${i}`}>
-                <div
-                  className={`relative z-10 mx-auto w-14 h-14 rounded-full grid place-items-center text-white font-display font-extrabold text-lg ${isLast ? 'bg-flag' : 'bg-pine'
-                    }`}
-                >
-                  {i + 1}
-                </div>
-                <h3 className="mt-4 font-display font-bold text-lg text-ink">{s.t}</h3>
-                <p className="mt-1.5 text-sm text-ink-soft leading-relaxed max-w-xs mx-auto">{s.d}</p>
-              </div>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* ===== Who built this ===== */}
-      <section className="mt-16 md:mt-24" data-testid="about-team">
-        <div className="mx-auto max-w-2xl px-4 md:px-8 text-center">
-          <h2 className="font-display font-extrabold text-3xl md:text-4xl text-ink">{t('about.team_title')}</h2>
-          <p className="mt-3 text-sm md:text-base text-ink-soft leading-relaxed">{t('about.team_lead')}</p>
-        </div>
-
-        {/* Mobile: 2x4 grid of cards */}
-        <div className="mx-auto max-w-5xl px-4 grid grid-cols-2 gap-3 sm:gap-4 mt-8 md:hidden" data-testid="mobile-team-grid">
-          {TEAM_MEMBERS.map((member) => (
-            <div
-              key={member.name}
-              className="relative aspect-[3/4] rounded-2xl overflow-hidden shadow-md border border-[var(--line)] group transition-transform duration-200 active:scale-[0.98]"
-            >
-              <img
-                src={member.image}
-                alt={member.name}
-                className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                loading="lazy"
-              />
-              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent pt-12 pb-3.5 px-3.5 flex flex-col justify-end text-left">
-                <h3 className="font-display font-bold text-base text-white leading-tight drop-shadow-sm">{member.name}</h3>
-                <p className="text-xs text-white/85 font-medium mt-0.5 leading-snug">{t(`ui.about.roles.${member.role}`)}</p>
-              </div>
-            </div>
+        <div className="grid grid-cols-3 gap-2.5">
+          {stats.map((s, i) => (
+            <Box key={i} className="!gap-1 !p-3" data-testid={`about-stat-${i}`}>
+              <b className="text-[28px] leading-[32px] font-medium text-[var(--r)]">{s.v}</b>
+              <span className="ag-small !text-[13px] !leading-[18px]">{s.l}</span>
+            </Box>
           ))}
         </div>
 
-        {/* Desktop: interactive WebGL circular gallery */}
-        <div className="hidden md:block relative left-1/2 -translate-x-1/2 w-screen h-[500px] sm:h-[600px] md:h-[680px] overflow-hidden bg-gradient-to-b from-mist/60 via-mist/30 to-white mt-8 border-y border-[var(--line)] shadow-inner">
-          <CircularGallery
-            items={galleryItems}
-            bend={3}
-            textColor="#1b2e24"
-            borderRadius={0.05}
-            scrollEase={0.03}
-          />
-        </div>
+        <figure className="m-0 flex flex-col gap-1.5">
+          <img src={sizedImage(STORY_IMAGE, 1200)} alt={t('about.image_caption')} loading="lazy"
+            className="w-full aspect-[16/9] object-cover rounded-[22px] bg-[var(--creme2)]" />
+          <figcaption className="ag-small inline-flex items-center gap-1.5"><Mountains size={16} className="text-[var(--r)]" /> {t('about.image_caption')}</figcaption>
+        </figure>
 
-        <p className="mt-6 text-center text-sm text-ink-soft flex items-center justify-center gap-1.5">
-          <Heart size={13} className="text-flag" /> {t('about.team_note')}
-        </p>
-      </section>
-
-      {/* ===== Providers + contact ===== */}
-      <section className="mx-auto max-w-5xl px-4 md:px-8 mt-16 md:mt-24 mb-8 md:mb-16">
-        <div className="mist-panel p-8 md:p-12 text-center">
-          <h2 className="font-display font-extrabold text-2xl md:text-3xl text-ink">{t('about.providers_title')}</h2>
-          <p className="mt-3 text-sm md:text-base text-ink-soft max-w-2xl mx-auto leading-relaxed">{t('about.providers_body')}</p>
-          <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
-            <Link to="/provider/onboard" data-testid="about-provider-cta"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-pine text-white font-bold btn-hover">
-              {t('nav.provider')} <ArrowRight size={16} />
-            </Link>
-            <a href="mailto:aanganerp@gmail.com"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-white border border-[var(--line)] text-ink font-bold btn-hover">
-              <Mail size={16} /> aanganerp@gmail.com
-            </a>
-            <a href="tel:+919093277919" data-testid="about-phone"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-white border border-[var(--line)] text-ink font-bold btn-hover">
-              <Phone size={16} /> +91 90932 77919
-            </a>
+        <Box as="section">
+          <span className="ag-eyebrow">{t('about.mission_title')}</span>
+          <h2 className="!text-xl !leading-7">{t('about.why_headline')}</h2>
+          {mission.map((p, i) => (
+            <p key={i} className="m-0 text-base leading-relaxed text-[var(--ink7)]">{p}</p>
+          ))}
+          <div className="ag-row">
+            {chips.map((c, i) => (
+              <Status key={i} tone="ok"><Check size={14} weight="bold" /> {c}</Status>
+            ))}
           </div>
-        </div>
-      </section>
+        </Box>
+
+        <section>
+          <SecHead eyebrow={t('about.reach_eye', 'Where it works')} title={t('about.reach_title', 'Made here, used anywhere')} />
+          <Box>
+            <ol className="flex flex-col gap-4 m-0 p-0 list-none">
+              {REACH.map((r, i) => (
+                <li key={r.when[0]} className="flex gap-3">
+                  <Status tone={i === 0 ? 'info' : 'pending'} className="flex-none self-start min-w-[64px] justify-center">{t(r.when[0], r.when[1])}</Status>
+                  <span className="min-w-0">
+                    <b className="block font-medium text-[var(--ink-strong)]">{t(r.t[0], r.t[1])}</b>
+                    <span className="ag-small">{t(r.d[0], r.d[1])}</span>
+                  </span>
+                </li>
+              ))}
+            </ol>
+          </Box>
+        </section>
+
+        <section>
+          <SecHead eyebrow={t('about.pillars_eyebrow')} title={t('about.pillars_title', 'Four promises')} />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            {pillars.map((p, i) => {
+              const Icon = PILLAR_ICONS[i % PILLAR_ICONS.length];
+              return (
+                <Box key={p.t} tone={i % 2 ? 'blush' : undefined} data-testid={`about-pillar-${i}`}>
+                  <div className="flex items-center justify-between">
+                    <MenuIcon><Icon /></MenuIcon>
+                    <span className="ag-eyebrow tabular-nums">{String(i + 1).padStart(2, '0')}</span>
+                  </div>
+                  <h3>{p.t}</h3>
+                  <p className="ag-small m-0">{p.d}</p>
+                </Box>
+              );
+            })}
+          </div>
+        </section>
+
+        <section>
+          <SecHead eyebrow={t('about.how_eye', 'How it works')} title={t('about.how_title_v2', 'Three simple steps')} />
+          <Box>
+            <ol className="flex flex-col gap-4 m-0 p-0 list-none">
+              {steps.map((s, i) => (
+                <li key={s.t} className="flex gap-3" data-testid={`about-step-${i}`}>
+                  <span className="w-9 h-9 flex-none rounded-full bg-[var(--r)] text-white grid place-items-center font-medium" aria-hidden="true">{i + 1}</span>
+                  <span className="min-w-0">
+                    <b className="block font-medium text-[var(--ink-strong)]">{s.t}</b>
+                    <span className="ag-small">{s.d}</span>
+                  </span>
+                </li>
+              ))}
+            </ol>
+          </Box>
+        </section>
+
+        <section data-testid="about-team">
+          <SecHead eyebrow={t('about.team_title')} title={t('about.team_heading', 'The people behind aangan')} />
+          <p className="ag-small m-0 mb-3">{t('about.team_lead')}</p>
+          {/* A swipeable strip of faces; the column's gutter is kept so the first card lines up. */}
+          <ul className="flex gap-2.5 overflow-x-auto snap-x snap-mandatory m-0 p-0 list-none pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            data-testid="about-team-strip" aria-label={t('about.team_heading', 'The people behind aangan')}>
+            {TEAM_MEMBERS.map((m) => (
+              <li key={m.name} className="ag-card snap-start flex-none w-[148px]">
+                <img src={m.image} alt={m.name} loading="lazy" className="img !aspect-[3/4]" />
+                <div className="body !py-2.5">
+                  <b className="name">{m.name}</b>
+                  <span className="meta">{t(`ui.about.roles.${m.role}`)}</span>
+                </div>
+              </li>
+            ))}
+          </ul>
+          <p className="ag-small mt-3 mb-0">{t('about.team_note')}</p>
+          <ButtonA href="https://www.1947.io" target="_blank" rel="noopener noreferrer" go size="sm" className="mt-3">
+            {t('about.know_studio', 'Know Studio 1947')}
+          </ButtonA>
+        </section>
+
+        <Box as="section" tone="blush">
+          <h2 className="!text-xl !leading-7">{t('about.providers_title')}</h2>
+          <p className="ag-small m-0 !text-[var(--ink7)]">{t('about.providers_body')}</p>
+          <ButtonLink to="/provider/onboard" variant="primary" go block data-testid="about-provider-cta">
+            {t('about.list_cta', 'Add my homestay, car or shop')}
+          </ButtonLink>
+          <div className="flex flex-wrap gap-2">
+            <ButtonA href="mailto:aanganerp@gmail.com" size="sm" icon={<Mail />}>aanganerp@gmail.com</ButtonA>
+            <ButtonA href="tel:+919093277919" size="sm" icon={<Phone />} data-testid="about-phone">+91 90932 77919</ButtonA>
+          </div>
+        </Box>
+      </div>
     </div>
   );
 }

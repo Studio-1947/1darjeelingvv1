@@ -2,6 +2,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { MagicWand } from '@phosphor-icons/react';
 import { describeSearch, type SearchInterpretation } from '@/lib/searchText';
+import { Button, Status } from '@/components/ag';
 
 export type { SearchInterpretation };
 
@@ -18,17 +19,17 @@ export default function SearchUnderstood({ search, fixedType, onUse }: {
   const parts = describeSearch(search, fixedType, t);
   if (!parts.length && !search.corrected) return null;
   return (
-    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs" data-testid="search-understood">
+    <div className="ag-row mt-2" data-testid="search-understood">
       {parts.length > 0 && (
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-mist px-2.5 py-1 font-semibold text-pine">
-          <MagicWand size={13} weight="bold" /> {parts.join(' · ')}
-        </span>
+        <Status tone="info">
+          <MagicWand size={14} weight="bold" aria-hidden="true" /> {parts.join(' · ')}
+        </Status>
       )}
       {search.corrected && (
-        <span className="text-ink-soft">
-          {t('search.did_you_mean')}{' '}
-          <button type="button" onClick={() => onUse(search.corrected as string)} data-testid="search-did-you-mean"
-            className="font-bold text-flag underline underline-offset-2">{search.corrected}</button>
+        <span className="ag-small inline-flex flex-wrap items-center gap-1">
+          {t('search.did_you_mean')}
+          <Button variant="text" onClick={() => onUse(search.corrected as string)} data-testid="search-did-you-mean"
+            className="underline underline-offset-2">{search.corrected}</Button>
         </span>
       )}
     </div>

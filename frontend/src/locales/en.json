@@ -268,7 +268,41 @@
     "goods_note": "What this shop sells, and the rate for each",
     "owner_label": "The owner",
     "owner_title": "Meet the owner",
-    "ticket_disclaimer": "Note: Entry fees, ticket charges, and timings are set by local administration and subject to seasonal revision. We strive to keep details updated."
+    "ticket_disclaimer": "Note: Entry fees, ticket charges, and timings are set by local administration and subject to seasonal revision. We strive to keep details updated.",
+    "saved": "Saved",
+    "total_host": "Total to pay the host",
+    "people": "People",
+    "people_minus": "One person less",
+    "people_plus": "One more person",
+    "your_stay": "Your stay",
+    "your_ride": "Your ride",
+    "journey_date": "Journey date",
+    "which_day": "Which day?",
+    "today": "Today",
+    "tomorrow": "Tomorrow",
+    "other_day": "Or pick another date",
+    "send_request": "Send your request",
+    "note_host": "Message for the host (you can skip)",
+    "price": "Price",
+    "book_now": "Book now",
+    "rate_q": "How was it? Tap the stars.",
+    "report_problem": "Report a problem",
+    "under_1km": "under 1 km",
+    "see_all": "See all",
+    "nothing_near": "Nothing within 40 km yet.",
+    "stay_near": "Stay nearby",
+    "ride_near": "Drivers nearby",
+    "not_live_tag": "Not live yet",
+    "host_label": "Host:",
+    "direction": "Direction",
+    "eye_homestay": "Stay local",
+    "eye_driver": "Ride local",
+    "eye_spot": "Must visit",
+    "eye_cafe": "Eat local",
+    "eye_shop": "Eat local",
+    "eye_guide": "Go with a local",
+    "eye_event": "Celebrate",
+    "eye_biodiversity": "Wild side"
   },
   "auth": {
     "welcome": "Welcome",
@@ -718,7 +752,28 @@
       "Providers keep what they earn"
     ],
     "pillars_eyebrow": "What makes it different",
-    "image_caption": "Mt. Kangchenjunga"
+    "image_caption": "Mt. Kangchenjunga",
+    "ab_eye": "About aangan",
+    "hero_title": "Made in Darjeeling. Use it anywhere.",
+    "slogan": "Travel locally.",
+    "hero_body": "aangan connects travellers with the people who live where they travel: the homestay family, the driver who knows every curve, the guide with the old stories, the cafe and the corner shop. It was made in the Darjeeling hills, and it works the same way in any town or village that wants it.",
+    "reach_eye": "Where it works",
+    "reach_title": "Made here, used anywhere",
+    "pillars_title": "Four promises",
+    "how_eye": "How it works",
+    "how_title_v2": "Three simple steps",
+    "team_heading": "The people behind aangan",
+    "know_studio": "Know Studio 1947",
+    "list_cta": "Add my homestay, car or shop",
+    "reach_now": "Now",
+    "reach_now_t": "The Darjeeling hills and Sikkim",
+    "reach_now_d": "Where we live and where we started.",
+    "reach_next": "Next",
+    "reach_next_t": "Wherever you are",
+    "reach_next_d": "If you host, drive, cook or guide anywhere in India, list now. aangan works the same in every town and village.",
+    "reach_always": "Always",
+    "reach_always_t": "Built here, for everyone",
+    "reach_always_d": "Every improvement is tested first in the hills, then shared with every place that uses aangan."
   },
   "home": {
     "trending": "Trending in Darjeeling",
@@ -737,7 +792,32 @@
     "showing_range": "Showing {{from}}-{{to}} of {{total}}",
     "hidden_gems": "HIDDEN GEMS",
     "offbeat": "Offbeat & Quiet Villages",
-    "offbeat_sub": "Quieter villages a day trip or a night away from town"
+    "offbeat_sub": "Quieter villages a day trip or a night away from town",
+    "join_title": "List your Business",
+    "join_sub": "Homestays, drivers, cafes, shops and guides. Free to list, bookings come to you.",
+    "join_cta": "List now",
+    "tile": {
+      "spots": "Offbeat Places",
+      "stays": "Homestay",
+      "guides": "Tour Guides",
+      "cars": "Car & Driver",
+      "stays_sub": "A room with a local family",
+      "cars_sub": "Airport, station, sightseeing",
+      "spots_sub": "Tiger Hill, Ghum, tea gardens",
+      "food": "Foods & Shops",
+      "food_sub": "Local food, tea and snacks",
+      "events": "Festivals"
+    },
+    "eyebrow_guides": "Go with a local",
+    "eyebrow_cars": "Ride local",
+    "find_ride": "Find a ride",
+    "eyebrow_eat": "Eat local",
+    "cafes_title": "Cafes & Restaurants",
+    "eyebrow_shop": "Shop local",
+    "shops_title": "Local Shops",
+    "eyebrow_nature": "Wild side",
+    "nature_title": "Nature",
+    "eyebrow_events": "Celebrate"
   },
   "widget": {
     "destination": "Destination",
@@ -788,7 +868,10 @@
       "rain": "Rain",
       "snow": "Snow",
       "storm": "Storm"
-    }
+    },
+    "failed": "Could not load the forecast. Check your internet.",
+    "places": "Places",
+    "source": "Forecast data: Open-Meteo"
   },
   "filter": {
     "search_placeholder": "Search by name, landmark or keyword…",
@@ -891,7 +974,11 @@
     "type_homestay": "Homestay",
     "type_driver": "Driver",
     "type_cafe": "Café",
-    "type_shop": "Shop"
+    "type_shop": "Shop",
+    "kind_weather": "Weather",
+    "show_me": "Show me",
+    "kind_posts": "Host posts",
+    "list_cta": "Add my homestay, car or shop"
   },
   "contact": {
     "event_note": "Reach the organizer directly, add it to your calendar, or get directions.",
@@ -1134,7 +1221,9 @@
       "pay_cta": "Pay {{total}}"
     },
     "start_free_title": "Start free, pay later",
-    "start_free_body": "List without paying now, and pay {{total}} for the year after your first completed bookings. Or pay now."
+    "start_free_body": "List without paying now, and pay {{total}} for the year after your first completed bookings. Or pay now.",
+    "mode": "Mode",
+    "mode_tourist": "Tourist"
   },
   "lf": {
     "edit_title": "Edit listing",
@@ -1352,6 +1441,105 @@
       "note": "No payment now. After {{count}} guests have completed their bookings, pay {{total}} for the year to keep taking bookings.",
       "cta": "Start free",
       "pay_now": "Or pay {{total}} now"
+    },
+    "wz": {
+      "what": "What do you want to list?",
+      "onelist": "One listing at a time. You can add more later from your dashboard.",
+      "t_homestay": "Homestay",
+      "t_driver": "Driver",
+      "t_guide": "Tour guide",
+      "t_cafe": "Cafe & restaurant",
+      "t_shop": "Local shop",
+      "t_homestay_s": "Rooms in your home for travellers",
+      "t_driver_s": "Airport, station and day trips",
+      "t_guide_s": "Treks, walks and local stories",
+      "t_cafe_s": "Cooked food, tea and snacks",
+      "t_shop_s": "Crafts, groceries and medicines",
+      "ch_eye": "Charges",
+      "ch_when": "When to pay",
+      "fp_5": "No commission per booking. Only this yearly charge.",
+      "pickone": "Choose one to continue.",
+      "where": "Where is it?",
+      "wz_find": "Search your town or village…",
+      "myloc": "My location",
+      "tp_none": "No match. Try another name or place.",
+      "noloc": "Could not get your location. Pick a place instead.",
+      "wz_noplace": "Choose where it is.",
+      "who": "Your name and number",
+      "nmStay": "Name of your homestay",
+      "nmShop": "Name of your shop or cafe",
+      "name": "Your name",
+      "phone": "Your mobile number (10 digits)",
+      "badname": "Please write your name.",
+      "badphone": "The mobile number must have 10 digits.",
+      "prStay": "Price for one person, one night",
+      "prDay": "Price for one day",
+      "prOne": "One price",
+      "prRooms": "Price per room",
+      "prEditS": "Tap the amount to type any price.",
+      "roomsS2": "Add each room with its price per night and how many guests it sleeps.",
+      "rnShort": "Room name",
+      "addroom": "Add a room",
+      "needroom": "Add at least one room with a rate.",
+      "n_price": "Set a starting price",
+      "rStd": "Standard room",
+      "mn_h": "Your menu",
+      "mn_s": "Add what you serve with a price. A photo helps people choose. You can edit this any time from your dashboard.",
+      "mn_quick": "Quick add",
+      "mn_dish": "Dish",
+      "mn_price": "Price ₹",
+      "mn_add": "+ Add a dish",
+      "mn_need": "Add at least one dish with a price.",
+      "offers": "What do you give? Tap all that are true.",
+      "wzph": "Photos",
+      "wzph0": "No photos yet",
+      "cover": "Cover photo",
+      "addphotos": "Add photos",
+      "addmore": "Add more",
+      "wzphS": "Add up to 8 photos. The first one is the cover. You can skip and add them later.",
+      "review": "Travellers will see this",
+      "put": "Put my listing up",
+      "night": "per person, per night",
+      "day": "per day",
+      "biz": "Business dashboard",
+      "addveh": "Add a vehicle",
+      "addprop": "Add a property",
+      "next": "Next",
+      "remove": "Remove",
+      "price": "Price",
+      "photo": "Photo",
+      "step": "Step {{n}} / {{total}}",
+      "fee_full": "Homestays and drivers: {{price}} a year",
+      "fee_small": "Guides, cafes and shops: {{price}} a year",
+      "gst_note": "GST and a 2% payment fee are added when you pay.",
+      "price_range": "Set a price between ₹100 and ₹1,00,000.",
+      "minus": "Minus 100",
+      "plus": "Plus 100",
+      "photos_added_one": "{{count}} photo added",
+      "photos_added_other": "{{count}} photos added",
+      "put_pay": "Pay {{price}} and put my listing up",
+      "in_title": "Your listing is in",
+      "in_body": "Next, add your documents from the Business dashboard. Once the aangan team approves them, travellers can find you and book.",
+      "day_route": "Full day hire",
+      "day_service": "Day tour",
+      "fo": {
+        "stays_0": "Home cooked food",
+        "stays_1": "Hot water",
+        "stays_2": "Wi-Fi",
+        "stays_3": "Parking",
+        "stays_4": "Pets allowed",
+        "cars_0": "Small car",
+        "cars_1": "Big car (Bolero, Innova)",
+        "cars_2": "Airport and station pickup",
+        "cars_3": "Sightseeing",
+        "food_0": "Tea",
+        "food_1": "Momo and food",
+        "food_2": "Local things to buy",
+        "guides_0": "Trek",
+        "guides_1": "Town walk",
+        "guides_2": "Speaks Hindi",
+        "guides_3": "Speaks English"
+      }
     }
   },
   "pay": {
@@ -1804,7 +1992,8 @@
       "responsible": "How we ask travellers and hosts to treat the hills and the people in them.",
       "contact": "How to reach us, including the grievance officer.",
       "delete_account": "How to close your account and remove your data."
-    }
+    },
+    "eyebrow": "aangan"
   },
   "report": {
     "listing_link": "Report this listing",
@@ -2344,7 +2533,10 @@
       "check_in": " · Check-in {{date}}"
     },
     "saved": {
-      "plan_day_trip": "Plan Day 1/2/3 Trip"
+      "plan_day_trip": "Plan Day 1/2/3 Trip",
+      "plan": "Plan a trip",
+      "eyebrow": "Your favourites",
+      "empty_hint": "Tap the heart on any place, homestay or driver to keep it here."
     },
     "myTrips": {
       "title": "My Trips & Bookings",
@@ -2440,7 +2632,9 @@
       "playing_muted": "Playing (Muted)...",
       "listen": "Listen to Audio Guide",
       "mute": "Mute Audio",
-      "unmute": "Unmute Audio"
+      "unmute": "Unmute Audio",
+      "short_pause": "Pause",
+      "short_listen": "Listen"
     },
     "listingDetail": {
       "see_host_page": "See the host's page"
@@ -2766,14 +2960,17 @@
       "google_failed": "Google sign-in failed",
       "google_unavailable": "Google Sign-In could not load. Please try again.",
       "or": "OR",
-      "country_code": "Country calling code"
+      "country_code": "Country calling code",
+      "who": "How will you use aangan?"
     },
     "footer": {
       "by_studio": "By {{name}}",
       "follow_instagram": "Follow Aangan on Instagram",
       "follow_facebook": "Follow Aangan on Facebook",
       "email_us": "Email {{email}}",
-      "call_us": "Call aangan on {{phone}}"
+      "call_us": "Call aangan on {{phone}}",
+      "call": "Call",
+      "email": "Email"
     },
     "scrollToTop": {
       "back_to_top": "Back to top"
@@ -2791,6 +2988,37 @@
         "hr": "HR",
         "graphic_designer": "Graphic Designer"
       }
+    },
+    "header": {
+      "app": "App"
+    },
+    "trips": {
+      "band": "{{type}} booking",
+      "cx_go": "Cancel booking",
+      "cx_keep": "Keep booking",
+      "filter": "Show trips",
+      "eyebrow": "Your journey",
+      "none": "You have no trips yet.",
+      "find": "Find a place",
+      "all": "Everything"
+    },
+    "donate": {
+      "eyebrow": "Support aangan"
+    },
+    "account": {
+      "eyebrow": "Your account",
+      "not_in": "Not logged in",
+      "login_lead": "Log in to see your trips, saved places, points and aangan pass.",
+      "for_business": "For businesses",
+      "biz_start": "Start your business on aangan",
+      "biz_start_s": "Homestay, driver, guide, cafe or shop. No booking commission.",
+      "check_biz": "Check your business",
+      "list_now": "List now",
+      "tdash": "Traveller dashboard",
+      "help": "Help and contact"
+    },
+    "notes": {
+      "eyebrow": "Updates"
     }
   },
   "planner": {

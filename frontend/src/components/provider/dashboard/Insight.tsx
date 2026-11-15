@@ -1,6 +1,12 @@
 import React from 'react';
 
-export function Insight({ icon: Icon, label, value, accent }: { icon: any; label: string; value: React.ReactNode; accent: string }) {
-  const tone = accent === 'blue' ? 'text-blue-700 bg-blue-100' : accent === 'rose' ? 'text-rose-700 bg-rose-100' : 'text-emerald-700 bg-emerald-100';
-  return <div className="rounded-2xl border border-white/70 bg-white/80 p-4 shadow-sm"><div className={`inline-flex rounded-xl p-2 ${tone}`}><Icon size={17} /></div><div className="mt-3 text-2xl font-display font-extrabold text-ink">{value}</div><div className="mt-1 text-[11px] font-bold uppercase tracking-wide text-ink-soft">{label}</div></div>;
+/** One small figure tile on the dashboard: red icon, the number, a short label. */
+export function Insight({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-1 rounded-[18px] border border-[var(--warmline)] bg-[var(--surface)] p-3">
+      <Icon size={20} className="text-[var(--r)]" aria-hidden="true" />
+      <b className="text-xl leading-6 text-[var(--ink-strong)] tabular-nums">{value}</b>
+      <span className="ag-small !text-xs !leading-4">{label}</span>
+    </div>
+  );
 }

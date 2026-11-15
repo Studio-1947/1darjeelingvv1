@@ -1,10 +1,10 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { missingLabel } from '@/lib/serverText';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
-import { MapPin, CheckCircle as CheckCircle2, Clock, Wallet, CalendarCheck, Users, Phone, ArrowRight, ArrowSquareOut as ExternalLink, X, Upload, Plus, Trash as Trash2, Pencil, Star, Car, PaperPlaneTilt } from '@phosphor-icons/react';
+import { MapPin, CheckCircle, Clock, Wallet, CalendarCheck, Users, Plus, Trash, Pencil, Star, Car, PaperPlaneTilt, Storefront, Briefcase, User } from '@phosphor-icons/react';
 import ListingFormModal from '@/components/ListingFormModal';
 import ListingJourney from '@/components/provider/dashboard/ListingJourney';
 import { Insight } from '@/components/provider/dashboard/Insight';
@@ -20,22 +20,28 @@ import VerifiedBadge from '@/components/provider/VerifiedBadge';
 import ProfileCompletionBar from '@/components/provider/ProfileCompletionBar';
 import { getMyProfile } from '@/lib/kyc';
 import type { KycProfile } from '@/lib/kyc';
-
-import AvatarUploader from '@/components/provider/AvatarUploader';
-import { uploadImage } from '@/lib/uploadImage';
 import { useSeo } from '@/components/Seo';
 import PointsRules, { hostPointsRows } from '@/components/PointsRules';
+import { Box, Button, ButtonLink, Chip, Chips, PageHead, Seg, Status, TextArea, cx } from '@/components/ag';
 
-// The edit-listing tile names what the provider is actually configuring. Only
-// a homestay has a "stay"; a driver's listing is a profile of themselves, their
-// vehicle and routes, and a cafe/shop is the venue itself. Homestay is the
-// unlisted default, so an unknown type falls back to it.
-const CONFIGURE_LABEL_KEY: Record<string, string> = {
-  driver: 'pd.configure_profile',
-  guide: 'pd.configure_profile',
-  cafe: 'pd.configure_cafe',
-  shop: 'pd.configure_shop',
-};
+type Tab = 'bookings' | 'listings' | 'profile';
+
+/**
+ * The page tabs, drawn as the /7 segmented control. Plain buttons (not ARIA tabs) with
+ * aria-pressed, so "Bookings" stays reachable as a button by name.
+ */
+function PageTabs({ value, onChange, options, label }: { value: Tab; onChange: (v: Tab) => void; options: Array<{ value: Tab; label: string }>; label: string }) {
+  return (
+    <div className="ag-seg" role="group" aria-label={label}>
+      {options.map((o) => (
+        <button key={o.value} type="button" aria-pressed={value === o.value} data-testid={`tab-${o.value}`} onClick={() => onChange(o.value)}
+          className={cx(value === o.value && '!bg-[var(--surface)] !text-[var(--r)] shadow-sm')}>
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 /** Provider home: booking stats, the bookings list, and business profile. */
 export default function ProviderDashboard() {
@@ -49,11 +55,11 @@ export default function ProviderDashboard() {
   useEffect(() => {
     if (user?.role === 'provider') setMode('provider');
   }, [user, setMode]);
-  const [provider, setProvider] = useState(null);
-  const [stats, setStats] = useState({ total: 0, confirmed: 0, pending: 0, accepted: 0, revenue: 0 });
-  const [bookings, setBookings] = useState([]);
-  const [listings, setListings] = useState([]);
-  const [tab, setTab] = useState('bookings');
+  const [provider, setProvider] = useState<any>(null);
+  const [stats, setStats] = useState<any>({ total: 0, confirmed: 0, pending: 0, accepted: 0, revenue: 0 });
+  const [bookings, setBookings] = useState<any[]>([]);
+  const [listings, setListings] = useState<any[]>([]);
+  const [tab, setTab] = useState<Tab>('bookings');
   const [selectedListing, setSelectedListing] = useState<any>(null);
   const [activeListingId, setActiveListingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -122,7 +128,7 @@ export default function ProviderDashboard() {
 
   // Re-check on: the tab/window regaining focus or becoming visible again (covers an admin
   // approving a document while this page was open in the background), and on switching into
-  // the Business Profile tab (the one place the KYC status is actually shown in detail).
+  // the Documents tab (the one place the KYC status is actually shown in detail).
   useEffect(() => {
     if (!provider) return;
     const onFocus = () => { refreshKycProfile(); };
@@ -177,17 +183,25 @@ export default function ProviderDashboard() {
     } finally { setSendingFeedback(false); }
   };
 
-  if (authLoading || loading) return <div className="p-10 text-center text-ink-soft">{t('common.loading')}</div>;
+  // Business / Tourist: the tourist side is the traveller's own account page.
+  const toTraveller = () => {
+    setMode('tourist');
+    nav('/dashboard');
+  };
+
+  if (authLoading || loading) {
+    return <div className="ag-wrap"><div className="ag-main"><p className="ag-small">{t('common.loading')}</p></div></div>;
+  }
 
   if (!provider) {
     return (
-      <div className="mx-auto max-w-2xl p-10 text-center">
-        <h1 className="font-display font-extrabold text-3xl text-ink">{t('pd.no_business_title')}</h1>
-        <p className="text-ink-soft mt-2">{t('pd.no_business_note')}</p>
-        <button onClick={() => nav('/provider/onboard')} data-testid="onboard-cta"
-          className="mt-6 inline-flex items-center gap-2 px-6 py-3 rounded-full bg-pine text-white font-bold btn-hover">
-          {t('provider.onboard_title')} <ArrowRight size={16} />
-        </button>
+      <div className="ag-wrap">
+        <div className="ag-main">
+          <PageHead eyebrow={t('provider.dashboard_title')} title={t('pd.no_business_title')} sub={t('pd.no_business_note')} />
+          <Button variant="primary" go className="self-start" onClick={() => nav('/provider/onboard')} data-testid="onboard-cta">
+            {t('provider.onboard_title')}
+          </Button>
+        </div>
       </div>
     );
   }
@@ -197,11 +211,6 @@ export default function ProviderDashboard() {
   const isDriver = type === 'driver';
   const isGuide = type === 'guide';
   const accent = isGuide ? 'blue' : isDriver ? 'rose' : 'green';
-  // Flat colours, no gradients: solid card fill, label text, panel background, panel border.
-  const accentClasses = isGuide
-    ? 'bg-blue-700 text-blue-700 bg-blue-50 border-blue-100'
-    : isDriver ? 'bg-rose-600 text-rose-700 bg-rose-50 border-rose-100'
-      : 'bg-emerald-700 text-emerald-700 bg-emerald-50 border-emerald-100';
   const activeListing = listings.find((listing: any) => listing.id === activeListingId) || null;
   const scopedBookings = activeListing ? bookings.filter((booking: any) => booking.listing_id === activeListing.id) : bookings;
   const scopedConfirmed = scopedBookings.filter((booking: any) => booking.status === 'confirmed');
@@ -214,292 +223,218 @@ export default function ProviderDashboard() {
   const completed = finishedList.length;
   // Host Aangan Points come from the server (lib/hostStats.ts).
   const points = hostStats?.points ?? 0;
+  const live = active && !provider.approval_pending;
+  const missing: { key: string; label: string; min?: number; have?: number }[] = provider.profile_missing || [];
 
   return (
-    <div className="mx-auto max-w-6xl px-4 md:px-6 py-6 md:py-10">
-      {/* Header block */}
-      <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
-        <div>
-          <div className="text-[11px] font-bold uppercase tracking-widest text-flag">{t('provider.dashboard_title')}</div>
-          <h1 className="mt-1 font-display font-extrabold text-3xl sm:text-4xl md:text-5xl text-ink leading-tight">{provider.business_name}</h1>
-          <p className="text-sm text-ink-soft mt-1">{t(`categories.${provider.business_type}`, { defaultValue: provider.business_type })} · {provider.location}</p>
-        </div>
-        <div className="flex items-center gap-3 flex-wrap">
-          <button
-            onClick={() => {
-              setMode('tourist');
-              nav('/dashboard');
-            }}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-pine border border-pine/30 rounded-full px-3.5 py-1.5 hover:bg-pine/5 transition-colors"
-          >
-            {t('pd.switch_traveller')}
-          </button>
-          {/* Paid but not yet approved reads "Pending review", as in the app; listings are still private. */}
-          <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full font-bold text-xs ${active && !provider.approval_pending ? 'bg-pine/10 text-pine' : 'bg-gold/20 text-[#8a6b04]'}`}
-            data-testid="provider-status">
-            {active && !provider.approval_pending ? <CheckCircle2 size={14} /> : <Clock size={14} />}{' '}
-            {!active ? t('provider.pending') : provider.approval_pending ? t('provider.pending_review') : t('provider.active')}
-          </span>
-          {kycProfile?.kyc_status === 'verified' && <VerifiedBadge size="md" />}
-        </div>
-      </div>
+    <div className="ag-wrap">
+      <div className="ag-main">
+        <PageHead eyebrow={t('provider.dashboard_title')} title={provider.business_name}
+          sub={`${t(`categories.${type}`, { defaultValue: type })} · ${provider.location}`}>
+          <div className="ag-row mt-2">
+            {/* Paid but not yet approved reads "Pending review", as in the app; listings are still private. */}
+            <Status tone={live ? 'ok' : 'pending'} data-testid="provider-status">
+              {live ? <CheckCircle size={14} weight="fill" aria-hidden="true" /> : <Clock size={14} aria-hidden="true" />}
+              {!active ? t('provider.pending') : provider.approval_pending ? t('provider.pending_review') : t('provider.active')}
+            </Status>
+            {kycProfile?.kyc_status === 'verified' && <VerifiedBadge size="md" />}
+          </div>
+        </PageHead>
 
-      {/* Verification tracker first: for a host waiting on approval it is the one thing to act on.
-          Plan paid, documents sent, team reviewing, live. Same as the app. */}
-      {provider.approval_pending && kycProfile && (
-        <div className="mb-6 [&>div]:mt-0">
-          <VerificationTracker verification={kycProfile.verification} paid={active} freeStart={active && !!provider.grace} profileMissing={provider.profile_missing || []} businessType={provider.business_type} onOpenProfile={() => nav('/provider/profile')} phone={user?.phone}
+        <Seg label={t('pd.mode', 'Mode')} value="business" onChange={(v) => { if (v === 'tourist') toTraveller(); }}
+          options={[
+            { value: 'business', label: t('nav.mode_business'), icon: <Briefcase size={18} aria-hidden="true" /> },
+            { value: 'tourist', label: t('pd.mode_tourist', 'Tourist'), icon: <User size={18} aria-hidden="true" /> },
+          ]} />
+
+        {/* Verification tracker first: for a host waiting on approval it is the one thing to act on.
+            Plan paid, documents sent, team reviewing, live. Same as the app. */}
+        {provider.approval_pending && kycProfile && (
+          <VerificationTracker verification={kycProfile.verification} paid={active} freeStart={active && !!provider.grace} profileMissing={missing} businessType={type} onOpenProfile={() => nav('/provider/profile')} phone={user?.phone}
             onOpen={() => setTab('profile')} />
-        </div>
-      )}
+        )}
 
-      <section className={`mb-6 rounded-3xl border p-5 md:p-7 ${accentClasses.split(' ').slice(3).join(' ')}`} data-testid={`dashboard-${accent}`}>
-        <div className="flex flex-wrap items-start justify-between gap-4">
+        {/* The board's dashboard figures for each host type. */}
+        <Box as="section" data-testid={`dashboard-${accent}`}>
           <div>
-            <p className={`text-xs font-extrabold uppercase tracking-[0.16em] ${accentClasses.split(' ')[2]}`}>{isDriver ? t('ui.providerDashboard.driver_operations') : isGuide ? t('ui.providerDashboard.guide_activity') : t('ui.providerDashboard.business_overview')}</p>
-            <h2 className="mt-1 font-display text-2xl font-extrabold text-ink">{activeListing ? activeListing.title : isDriver ? t('ui.providerDashboard.driver_heading') : isGuide ? t('ui.providerDashboard.guide_heading') : t('ui.providerDashboard.business_heading')}</h2>
+            <span className="ag-eyebrow">{isDriver ? t('ui.providerDashboard.driver_operations') : isGuide ? t('ui.providerDashboard.guide_activity') : t('ui.providerDashboard.business_overview')}</span>
+            <h2>{activeListing ? activeListing.title : isDriver ? t('ui.providerDashboard.driver_heading') : isGuide ? t('ui.providerDashboard.guide_heading') : t('ui.providerDashboard.business_heading')}</h2>
           </div>
-          {/* Full width on phones so the card fills the row instead of leaving blank space beside it. */}
-          <div className={`w-full sm:w-auto sm:min-w-[18rem] rounded-2xl ${accentClasses.split(' ')[0]} px-4 py-3 text-white shadow-sm`}>
-            <div className="text-[10px] font-bold uppercase tracking-widest text-white/75">{t('ui.providerDashboard.aangan_points')}</div>
-            <div className="mt-1 flex items-center gap-1 text-2xl font-extrabold"><Star weight="fill" size={20} /> {points}</div>
-            <PointsRules tone="dark" rows={hostPointsRows(hostStats?.points_rules, hostStats?.points_breakdown)} testId="host-points-rules" />
+          {listings.length > 1 && (
+            <Chips scroll aria-label={t('ui.providerDashboard.choose_listing')}>
+              <Chip on={!activeListingId} onClick={() => setActiveListingId(null)}>{t('ui.providerDashboard.all_listings')}</Chip>
+              {listings.map((listing: any) => (
+                <Chip key={listing.id} on={activeListingId === listing.id} onClick={() => setActiveListingId(listing.id)}>{listing.title}</Chip>
+              ))}
+            </Chips>
+          )}
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3" data-testid="host-figures">
+            <Insight icon={isDriver ? Car : CalendarCheck} label={isDriver ? t('ui.providerDashboard.completed_rides') : isGuide ? t('ui.providerDashboard.covered_trips') : t('ui.providerDashboard.completed_stays')} value={completed} />
+            {isGuide ? (
+              <>
+                <Insight icon={Users} label={t('ui.providerDashboard.covered_guests')} value={sumGuests(finishedList)} />
+                <Insight icon={Clock} label={t('ui.providerDashboard.upcoming_guests')} value={sumGuests(upcomingList)} />
+                <Insight icon={Clock} label={t('ui.providerDashboard.ongoing_guests')} value={sumGuests(ongoingList)} />
+              </>
+            ) : (
+              <>
+                <Insight icon={Clock} label={t('ui.providerDashboard.ongoing')} value={ongoingList.length} />
+                <Insight icon={Users} label={isDriver ? t('ui.providerDashboard.passengers_covered') : t('ui.providerDashboard.guests_served')} value={sumGuests(finishedList)} />
+              </>
+            )}
+            {isDriver && (
+              <>
+                <Insight icon={MapPin} label={t('ui.providerDashboard.km_covered')} value={activeListing ? '–' : (hostStats?.km_covered ?? 0).toLocaleString('en-IN')} />
+                <Insight icon={MapPin} label={t('ui.providerDashboard.locations_covered')} value={activeListing ? '–' : (hostStats?.locations_covered?.length ?? 0)} />
+              </>
+            )}
+            <Insight icon={Wallet} label={isGuide ? t('ui.providerDashboard.confirmed_value') : t('ui.providerDashboard.confirmed_booking_value')} value={`₹${(activeListing ? scopedRevenue : stats.revenue || 0).toLocaleString('en-IN')}`} />
+            <Insight icon={Star} label={t('ui.providerDashboard.aangan_points')} value={points} />
           </div>
-        </div>
-        {/* The board's dashboard sticky for each host type. */}
-        <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-3" data-testid="host-figures">
-          <Insight icon={isDriver ? Car : CalendarCheck} label={isDriver ? t('ui.providerDashboard.completed_rides') : isGuide ? t('ui.providerDashboard.covered_trips') : t('ui.providerDashboard.completed_stays')} value={completed} accent={accent} />
-          {isGuide ? (
-            <>
-              <Insight icon={Users} label={t('ui.providerDashboard.covered_guests')} value={sumGuests(finishedList)} accent={accent} />
-              <Insight icon={Clock} label={t('ui.providerDashboard.upcoming_guests')} value={sumGuests(upcomingList)} accent={accent} />
-              <Insight icon={Clock} label={t('ui.providerDashboard.ongoing_guests')} value={sumGuests(ongoingList)} accent={accent} />
-            </>
-          ) : (
-            <>
-              <Insight icon={Clock} label={t('ui.providerDashboard.ongoing')} value={ongoingList.length} accent={accent} />
-              <Insight icon={Users} label={isDriver ? t('ui.providerDashboard.passengers_covered') : t('ui.providerDashboard.guests_served')} value={sumGuests(finishedList)} accent={accent} />
-            </>
+          {isDriver && !activeListing && hostStats?.locations_covered?.length > 0 && (
+            <p className="ag-small" data-testid="host-locations">{t('ui.providerDashboard.places_covered', { places: hostStats.locations_covered.join(', ') })}</p>
           )}
-          {isDriver && (
-            <>
-              <Insight icon={MapPin} label={t('ui.providerDashboard.km_covered')} value={activeListing ? '–' : (hostStats?.km_covered ?? 0).toLocaleString('en-IN')} accent={accent} />
-              <Insight icon={MapPin} label={t('ui.providerDashboard.locations_covered')} value={activeListing ? '–' : (hostStats?.locations_covered?.length ?? 0)} accent={accent} />
-            </>
+          {isDriver && !activeListing && hostStats?.unknown_route_trips > 0 && (
+            <p className="ag-small">{t('ui.providerDashboard.unknown_route_trips', { count: hostStats.unknown_route_trips })}</p>
           )}
-          <Insight icon={Wallet} label={isGuide ? t('ui.providerDashboard.confirmed_value') : t('ui.providerDashboard.confirmed_booking_value')} value={`₹${(activeListing ? scopedRevenue : stats.revenue || 0).toLocaleString('en-IN')}`} accent={accent} />
-        </div>
-        {isDriver && !activeListing && hostStats?.locations_covered?.length > 0 && (
-          <p className="mt-3 text-xs text-ink-soft" data-testid="host-locations">{t('ui.providerDashboard.places_covered', { places: hostStats.locations_covered.join(', ') })}</p>
-        )}
-        {isDriver && !activeListing && hostStats?.unknown_route_trips > 0 && (
-          <p className="mt-1 text-[11px] text-ink-soft">{t('ui.providerDashboard.unknown_route_trips', { count: hostStats.unknown_route_trips })}</p>
-        )}
-        {listings.length > 1 && <div className="mt-5 flex gap-2 overflow-x-auto pb-1" aria-label={t('ui.providerDashboard.choose_listing')}><button onClick={() => setActiveListingId(null)} className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-bold ${!activeListingId ? 'bg-ink text-white' : 'bg-white text-ink border border-[var(--line)]'}`}>{t('ui.providerDashboard.all_listings')}</button>{listings.map((listing: any) => <button key={listing.id} onClick={() => setActiveListingId(listing.id)} className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-bold ${activeListingId === listing.id ? 'bg-ink text-white' : 'bg-white text-ink border border-[var(--line)]'}`}>{listing.title} · {listing.type}</button>)}</div>}
-      </section>
+          <PointsRules rows={hostPointsRows(hostStats?.points_rules, hostStats?.points_breakdown)} testId="host-points-rules" />
+        </Box>
 
-      {/* The membership card: the yearly host plan, with reviews. One card, not two. */}
-      <HostPlanCard provider={provider} user={user} reviews={{ count: hostStats?.review_count || 0, average: hostStats?.average_rating || null }}
-        onRenewed={async () => { await refresh(); await loadDashboard(); }} />
+        {/* The membership card: the yearly host plan, with reviews. One card, not two. */}
+        <HostPlanCard provider={provider} user={user} reviews={{ count: hostStats?.review_count || 0, average: hostStats?.average_rating || null }}
+          onRenewed={async () => { await refresh(); await loadDashboard(); }} />
 
-      <HostPageCard provider={provider} />
-      <HostReviewsCard stats={hostStats} />
-      <DeliveryRequestsPanel visible={['cafe', 'shop', 'homestay'].includes(provider.business_type)} />
-      <InviteHostLink className="mb-6" />
+        <HostPageCard provider={provider} />
+        <HostReviewsCard stats={hostStats} />
+        <DeliveryRequestsPanel visible={['cafe', 'shop', 'homestay'].includes(type)} />
+        <InviteHostLink />
 
-      {/* The business profile (pages/ProviderProfile.tsx), with what is still needed for approval. */}
-      <Link
-        to="/provider/profile"
-        data-testid="dashboard-profile-card"
-        className={`block rounded-2xl border p-5 btn-hover ${provider?.profile_missing?.length ? 'border-[#F0B90B] bg-[#FFF8E1]' : 'border-[var(--line)] bg-white'}`}
-      >
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
-          <div className="min-w-0">
-            <p className="font-display font-extrabold text-lg text-ink">
-              {provider?.profile_missing?.length ? t('hostProfile.complete_title') : t('hostProfile.title')}
-            </p>
-            {provider?.profile_missing?.length ? (
-              <ul className="mt-1 text-sm text-ink space-y-0.5">
-                {provider.profile_missing.map((m: { key: string; label: string; min?: number; have?: number }) => <li key={m.key}>• {missingLabel(t, m, provider.business_type)}</li>)}
+        {/* The business profile (pages/ProviderProfile.tsx), with what is still needed for approval. */}
+        <Box as="section" tone={missing.length ? 'blush' : undefined} data-testid="dashboard-profile-card">
+          <div>
+            <h2>{missing.length ? t('hostProfile.complete_title') : t('hostProfile.title')}</h2>
+            {missing.length ? (
+              <ul className="mt-1 grid gap-0.5 text-sm text-[var(--ink-strong)]">
+                {missing.map((m) => <li key={m.key}>• {missingLabel(t, m, type)}</li>)}
               </ul>
             ) : (
-              <p className="mt-1 text-sm text-ink-soft">{t('hostProfile.subtitle')}</p>
+              <p className="ag-small">{t('hostProfile.subtitle')}</p>
             )}
           </div>
-          <span className="inline-flex items-center gap-1.5 text-sm font-bold text-pine whitespace-nowrap">
-            {t('hostProfile.complete_cta')} <ArrowRight size={16} />
-          </span>
-        </div>
-      </Link>
+          <ButtonLink to="/provider/profile" go size="sm" className="self-start">{t('hostProfile.complete_cta')}</ButtonLink>
+        </Box>
 
-      {/* Complete your profile (hosts who were live before approval was required) */}
-      {!provider.approval_pending && kycProfile && kycProfile.completion_percent < 100 && (() => {
-        // Items the provider can still act on (never uploaded, or bounced back). A document
-        // sitting in `in_review` is neither of these - it contributes nothing to
-        // completion_percent yet, but there's nothing left for the provider to do either, so
-        // it must never be counted as "remaining" (that reads as an actionable checklist item
-        // when there's nothing to click).
-        const actionableCount = kycProfile.checklist.filter(c => c.state === 'missing' || c.state === 'rejected').length;
-        const hasActionable = actionableCount > 0;
-        return (
-          <div className="mt-8 mist-panel p-5 md:p-6" data-testid="kyc-progress-card">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-              <div className="flex-1 min-w-0">
-                <h2 className="font-display font-extrabold text-lg text-ink">
-                  {hasActionable ? t('kyc.completeYourProfile') : t('kyc.underReviewTitle')}
-                </h2>
-                <p className="text-xs text-ink-soft mt-1">
-                  {hasActionable
-                    ? t('kyc.remainingItems', { count: actionableCount })
-                    : t('kyc.underReviewMessage')}
-                </p>
-                <div className="mt-3 max-w-md">
-                  <ProfileCompletionBar percent={kycProfile.completion_percent} />
-                </div>
+        {/* Complete your profile (hosts who were live before approval was required) */}
+        {!provider.approval_pending && kycProfile && kycProfile.completion_percent < 100 && (() => {
+          // Items the provider can still act on (never uploaded, or bounced back). A document
+          // sitting in `in_review` is neither of these - it contributes nothing to
+          // completion_percent yet, but there's nothing left for the provider to do either, so
+          // it must never be counted as "remaining".
+          const actionableCount = kycProfile.checklist.filter(c => c.state === 'missing' || c.state === 'rejected').length;
+          const hasActionable = actionableCount > 0;
+          return (
+            <Box as="section" data-testid="kyc-progress-card">
+              <div>
+                <h2>{hasActionable ? t('kyc.completeYourProfile') : t('kyc.underReviewTitle')}</h2>
+                <p className="ag-small">{hasActionable ? t('kyc.remainingItems', { count: actionableCount }) : t('kyc.underReviewMessage')}</p>
               </div>
-              <button
-                onClick={() => setTab('profile')}
-                data-testid="kyc-complete-profile-cta"
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-pine text-white font-bold text-xs btn-hover whitespace-nowrap self-start md:self-auto"
-              >
-                {hasActionable ? t('kyc.completeProfileCta') : t('kyc.viewStatusCta')} <ArrowRight size={14} />
-              </button>
-            </div>
-          </div>
-        );
-      })()}
+              <ProfileCompletionBar percent={kycProfile.completion_percent} />
+              <Button size="sm" go className="self-start" onClick={() => setTab('profile')} data-testid="kyc-complete-profile-cta">
+                {hasActionable ? t('kyc.completeProfileCta') : t('kyc.viewStatusCta')}
+              </Button>
+            </Box>
+          );
+        })()}
 
-      {/* Tabs */}
-      <div className="mt-8 flex items-center gap-1 sm:gap-2 border-b border-[var(--line)] overflow-x-auto no-scrollbar">
-        {[
-          { k: 'bookings', label: t('pd.tab_bookings') },
-          { k: 'listings', label: t('pd.tab_listings') },
-          { k: 'profile', label: t('pd.tab_profile') },
-        ].map(({ k, label }) => (
-          <button key={k} onClick={() => setTab(k)} data-testid={`tab-${k}`}
-            className={`shrink-0 whitespace-nowrap px-3 sm:px-4 py-2.5 font-bold text-sm ${tab === k ? 'text-flag border-b-2 border-flag -mb-px' : 'text-ink-soft hover:text-ink'}`}>
-            {label}
-          </button>
-        ))}
-      </div>
+        <PageTabs value={tab} onChange={setTab} label={t('provider.dashboard_title')}
+          options={[
+            { value: 'bookings', label: t('pd.tab_bookings') },
+            { value: 'listings', label: t('pd.tab_listings') },
+            { value: 'profile', label: t('pd.tab_profile') },
+          ]} />
 
-      {/* Bookings */}
-      {tab === 'bookings' && (
-        <div className="mt-6">
-          {scopedBookings.length === 0 ? (
-            <div className="mist-panel p-8 md:p-10 text-center">
-              <p className="text-ink-soft">{t('pd.no_bookings')}</p>
-            </div>
+        {tab === 'bookings' && (
+          scopedBookings.length === 0 ? (
+            <Box><p className="ag-small">{t('pd.no_bookings')}</p></Box>
           ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="grid gap-3">
               {scopedBookings.map((b) => <BookingCard key={b.id} b={b} onCancel={handleCancelBooking} onAccept={handleAcceptBooking} host={{ name: provider.extras?.host_name || user?.name || provider.business_name, business: provider.business_name, phone: provider.contact_phone, location: provider.location }} />)}
             </div>
-          )}
-        </div>
-      )}
-
-      {/* Listings */}
-      {tab === 'listings' && (
-        <div className="mt-6">
-          <div className="flex justify-end gap-2 mb-4">
-            <Link
-              to="/feed"
-              data-testid="post-update-cta"
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-[var(--line)] text-ink font-bold text-xs btn-hover"
-            >
-              <Pencil size={14} /> {t('pd.post_update')}
-            </Link>
-            <button
-              onClick={() => setListingModal({ open: true, editing: null })}
-              data-testid="add-listing-cta"
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-pine text-white font-bold text-xs btn-hover"
-            >
-              <Plus size={14} /> {t('pd.add_listing')}
-            </button>
-          </div>
-          {listings.length < 3 && (
-            <ListingJourney count={listings.length} onAdd={() => setListingModal({ open: true, editing: null })} />
-          )}
-          {listings.length === 0 ? null : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {listings.map((l) => (
-                <div key={l.id} className="bg-white rounded-2xl border border-[var(--line)] overflow-hidden">
-                  <div className="aspect-[4/3] bg-mist overflow-hidden">
-                    {l.image && <img src={l.image} alt={l.title} className="w-full h-full object-cover" />}
-                  </div>
-                  <div className="p-4">
-                    <div className="font-display font-bold text-ink line-clamp-1">{l.title}</div>
-                    <div className="text-xs text-ink-soft mt-0.5">{t(`categories.${l.type}`, { defaultValue: l.type })} · {l.location}</div>
-                    {l.price > 0 && <div className="mt-2 font-extrabold text-pine">₹{l.price}</div>}
-                    <div className="mt-3 flex items-center gap-3">
-                      <Link to={`/listing/${l.id}`} data-testid={`view-listing-${l.id}`}
-                        className="inline-flex items-center gap-1.5 text-xs font-bold text-pine">
-                        {t('common.view')} <ExternalLink size={11} />
-                      </Link>
-                      <button onClick={() => setSelectedListing(l)} data-testid={`edit-listing-${l.id}`}
-                        className="inline-flex items-center gap-1.5 text-xs font-bold text-ink-soft hover:text-ink">
-                        <Pencil size={11} /> {t('common.edit')}
-                      </button>
-                      <button onClick={() => handleDeleteListing(l.id)} data-testid={`delete-listing-${l.id}`}
-                        className="inline-flex items-center gap-1.5 text-xs font-bold text-flag hover:text-[#8a1e1e]">
-                        <Trash2 size={11} /> {t('common.delete')}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Profile */}
-      {tab === 'profile' && (
-        <div className="mt-6">
-          <div className="mist-panel p-5 md:p-6 mb-6">
-            <KycSection onProfileChange={setKycProfile} />
-          </div>
-          <div className="mist-panel p-5 md:p-6">
-            <div className="grid md:grid-cols-2 gap-6">
-              <div>
-                <div className="text-xs uppercase tracking-widest text-ink-soft">{t('pd.business')}</div>
-                <div className="mt-1 font-display font-extrabold text-2xl text-ink">{provider.business_name}</div>
-                <div className="text-sm text-ink-soft">{t(`categories.${provider.business_type}`, { defaultValue: provider.business_type })} · {provider.location}</div>
-              </div>
-              <div>
-                <div className="text-xs uppercase tracking-widest text-ink-soft">{t('pd.contact')}</div>
-                <div className="mt-1 font-display font-extrabold text-2xl text-ink">{provider.contact_phone}</div>
-              </div>
-            </div>
-            <div className="mt-6">
-              <div className="text-xs uppercase tracking-widest text-ink-soft">{t('pd.description')}</div>
-              <p className="mt-1 text-ink leading-relaxed">{provider.description}</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Feedback for the aangan team (board: host dashboard "Feedback"), closed until asked for. */}
-      <div className="mt-10 border-t border-[var(--line)] pt-6" data-testid="host-feedback">
-        {!feedbackOpen ? (
-          <button type="button" onClick={() => setFeedbackOpen(true)} data-testid="host-feedback-open"
-            className="inline-flex items-center gap-1.5 text-sm font-bold text-pine">
-            {t('pd.feedback_open')} <ArrowRight size={14} />
-          </button>
-        ) : (
-          <form onSubmit={sendFeedback} className="max-w-xl">
-            <h2 className="font-display text-lg font-extrabold text-ink">{t('pd.feedback_title')}</h2>
-            <textarea value={feedbackMessage} onChange={(event) => setFeedbackMessage(event.target.value)} minLength={10} maxLength={2000} required
-              placeholder={t('pd.feedback_ph')} className="mt-3 min-h-24 w-full rounded-xl border border-[var(--line)] bg-white p-3 text-sm outline-none focus:border-pine" />
-            <div className="mt-2 flex items-center gap-3">
-              <button disabled={sendingFeedback} className="inline-flex items-center gap-1.5 rounded-full bg-pine px-5 text-sm font-bold text-white btn-hover disabled:opacity-60">
-                {sendingFeedback ? t('pd.feedback_sending') : t('pd.feedback_send')} <PaperPlaneTilt size={14} />
-              </button>
-              <button type="button" onClick={() => setFeedbackOpen(false)} className="text-sm font-bold text-ink-soft">{t('owners.cancel')}</button>
-            </div>
-            {feedback[0] && <p className="mt-3 text-xs text-ink-soft">{t('pd.feedback_latest', { status: feedback[0].status })}</p>}
-          </form>
+          )
         )}
+
+        {tab === 'listings' && (
+          <>
+            <div className="ag-row">
+              <ButtonLink to="/feed" size="sm" icon={<Pencil />} data-testid="post-update-cta">{t('pd.post_update')}</ButtonLink>
+              <Button size="sm" icon={<Plus />} onClick={() => setListingModal({ open: true, editing: null })} data-testid="add-listing-cta">{t('pd.add_listing')}</Button>
+            </div>
+            {listings.length < 3 && (
+              <ListingJourney count={listings.length} onAdd={() => setListingModal({ open: true, editing: null })} />
+            )}
+            {listings.length > 0 && (
+              <div className="grid gap-2.5 sm:grid-cols-2">
+                {listings.map((l) => (
+                  <article key={l.id} className="ag-card">
+                    {l.image ? <img src={l.image} alt="" className="img" /> : <div className="img !grid place-items-center text-[var(--r)]"><Storefront size={32} aria-hidden="true" /></div>}
+                    <div className="body">
+                      <span className="name line-clamp-1">{l.title}</span>
+                      <span className="meta">{t(`categories.${l.type}`, { defaultValue: l.type })} · {l.location}</span>
+                      {l.price > 0 && <span className="ag-price">₹{Number(l.price).toLocaleString('en-IN')}</span>}
+                      <div className="ag-row mt-2">
+                        <ButtonLink to={`/listing/${l.id}`} size="sm" data-testid={`view-listing-${l.id}`}>{t('common.view')}</ButtonLink>
+                        <Button size="sm" icon={<Pencil />} onClick={() => setSelectedListing(l)} data-testid={`edit-listing-${l.id}`}>{t('common.edit')}</Button>
+                        <Button size="sm" variant="stop" icon={<Trash />} onClick={() => handleDeleteListing(l.id)} data-testid={`delete-listing-${l.id}`}>{t('common.delete')}</Button>
+                      </div>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {tab === 'profile' && (
+          <>
+            <KycSection onProfileChange={setKycProfile} />
+            <Box as="section">
+              <div>
+                <span className="ag-eyebrow">{t('pd.business')}</span>
+                <h2>{provider.business_name}</h2>
+                <p className="ag-small">{t(`categories.${type}`, { defaultValue: type })} · {provider.location}</p>
+              </div>
+              <div>
+                <span className="ag-eyebrow">{t('pd.contact')}</span>
+                <p className="text-[var(--ink-strong)]">{provider.contact_phone}</p>
+              </div>
+              <div>
+                <span className="ag-eyebrow">{t('pd.description')}</span>
+                <p className="text-[var(--ink7)]">{provider.description || '—'}</p>
+              </div>
+            </Box>
+          </>
+        )}
+
+        {/* Feedback for the aangan team (board: host dashboard "Feedback"), closed until asked for. */}
+        <div data-testid="host-feedback">
+          {feedbackOpen ? (
+            <form className="ag-box" onSubmit={sendFeedback}>
+              <h2>{t('pd.feedback_title')}</h2>
+              <TextArea value={feedbackMessage} onChange={(event) => setFeedbackMessage(event.target.value)} minLength={10} maxLength={2000} required
+                placeholder={t('pd.feedback_ph')} aria-label={t('pd.feedback_title')} />
+              <div className="ag-row">
+                <Button type="submit" size="sm" disabled={sendingFeedback} icon={<PaperPlaneTilt />}>
+                  {sendingFeedback ? t('pd.feedback_sending') : t('pd.feedback_send')}
+                </Button>
+                <Button variant="text" onClick={() => setFeedbackOpen(false)}>{t('owners.cancel')}</Button>
+              </div>
+              {feedback[0] && <p className="ag-small">{t('pd.feedback_latest', { status: feedback[0].status })}</p>}
+            </form>
+          ) : (
+            <Button variant="text" onClick={() => setFeedbackOpen(true)} data-testid="host-feedback-open">{t('pd.feedback_open')}</Button>
+          )}
+        </div>
+        <Button go className="self-start" onClick={toTraveller}>{t('pd.switch_traveller')}</Button>
       </div>
 
       {selectedListing && (
@@ -519,4 +454,3 @@ export default function ProviderDashboard() {
     </div>
   );
 }
-

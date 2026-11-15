@@ -1,5 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { Check } from '@phosphor-icons/react';
 import { rupees, usePrice } from '@/lib/prices';
 
 /**
@@ -17,17 +18,19 @@ export default function PassOffer({ renewing, compact = false, className = '' }:
   const first = usePrice('platform_support');
   const yearly = usePrice('platform_support_renewal');
   return (
-    <div className={`text-left ${className}`} data-testid="pass-offer">
-      {!compact && <p className="font-display font-bold text-ink">{t('pass_card.title')}</p>}
-      <p className={`${compact ? '' : 'mt-1'} font-display font-extrabold text-[var(--button)] ${compact ? 'text-xl' : 'text-3xl'}`} data-testid="pass-offer-price">
+    <div className={`flex flex-col gap-1 text-left ${className}`} data-testid="pass-offer">
+      {!compact && <span className="ag-eyebrow">{t('pass_card.title')}</span>}
+      <p className={`font-medium text-[var(--r)] ${compact ? 'text-xl leading-7' : 'text-[34px] leading-[38px] tracking-[-0.03em]'}`} data-testid="pass-offer-price">
         {renewing ? t('pass_card.yearly', { price: rupees(yearly.total) }) : t('pass_card.first_year', { price: rupees(first.total) })}
       </p>
-      <p className="mt-1 text-sm text-ink-soft">
+      <p className="ag-small">
         {renewing ? t('pass_card.billed') : t('pass_card.then', { price: rupees(yearly.total) })}
       </p>
-      <p className="mt-3 text-sm text-ink">{t('pass_card.what')}</p>
-      <p className="mt-2 text-sm font-bold text-ink">{t('pass_card.no_hidden')}</p>
-      <p className="mt-1 text-sm text-ink">{t('pass_card.pay_host')}</p>
+      <ul className="mt-2 flex flex-col gap-1.5 text-sm text-[var(--ink7)]">
+        <li className="flex items-start gap-2"><Check size={16} weight="bold" className="mt-0.5 flex-none text-[var(--ok)]" aria-hidden="true" />{t('pass_card.what')}</li>
+        <li className="flex items-start gap-2 font-medium text-[var(--ink-strong)]"><Check size={16} weight="bold" className="mt-0.5 flex-none text-[var(--ok)]" aria-hidden="true" />{t('pass_card.no_hidden')}</li>
+        <li className="flex items-start gap-2"><Check size={16} weight="bold" className="mt-0.5 flex-none text-[var(--ok)]" aria-hidden="true" />{t('pass_card.pay_host')}</li>
+      </ul>
     </div>
   );
 }

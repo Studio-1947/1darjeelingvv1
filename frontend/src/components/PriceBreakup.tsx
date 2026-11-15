@@ -21,32 +21,32 @@ export default function PriceBreakup({ breakup, label, wasBase, compact = false,
   // The pass: the price already holds the GST, so it is one line and nothing is added on top.
   if (breakup.gst_included) {
     return (
-      <dl className={`${compact ? 'text-xs' : 'text-sm'} rounded-xl border border-[var(--line)] bg-white p-3 space-y-1.5 ${className}`} data-testid="price-breakup">
-        <div className={`${row} font-bold text-ink`} data-testid="price-total">
+      <dl className={`${compact ? 'text-[12px] leading-4' : 'text-sm'} rounded-[14px] border border-[var(--warmline)] bg-[var(--surface)] p-3 space-y-1.5 ${className}`} data-testid="price-breakup">
+        <div className={`${row} font-medium text-[var(--ink-strong)]`} data-testid="price-total">
           <dt>{label}</dt><dd className="tabular-nums">{rupees(breakup.total)}</dd>
         </div>
-        <div className={`${row} text-ink-soft`}>
+        <div className={`${row} text-[var(--ink-muted)]`}>
           <dt>{t('price.gst_included', { rate: breakup.gst_rate })}</dt><dd className="tabular-nums">{rupees(breakup.gst)}</dd>
         </div>
       </dl>
     );
   }
   return (
-    <dl className={`${compact ? 'text-xs' : 'text-sm'} rounded-xl border border-[var(--line)] bg-white p-3 space-y-1.5 ${className}`} data-testid="price-breakup">
+    <dl className={`${compact ? 'text-[12px] leading-4' : 'text-sm'} rounded-[14px] border border-[var(--warmline)] bg-[var(--surface)] p-3 space-y-1.5 ${className}`} data-testid="price-breakup">
       <div className={row}>
-        <dt className="text-ink-soft">{label}</dt>
-        <dd className="tabular-nums text-ink">
+        <dt className="text-[var(--ink-muted)]">{label}</dt>
+        <dd className="tabular-nums text-[var(--ink-strong)]">
           {wasBase && wasBase > breakup.base && (
-            <s className="mr-1.5 text-ink-soft" data-testid="price-was">{rupees(wasBase)}</s>
+            <s className="mr-1.5 text-[var(--ink-muted)]" data-testid="price-was">{rupees(wasBase)}</s>
           )}
           {rupees(breakup.base)}
         </dd>
       </div>
-      <div className={row}><dt className="text-ink-soft">{t('price.gst', { rate: breakup.gst_rate })}</dt><dd className="tabular-nums text-ink">{rupees(breakup.gst)}</dd></div>
+      <div className={row}><dt className="text-[var(--ink-muted)]">{t('price.gst', { rate: breakup.gst_rate })}</dt><dd className="tabular-nums text-[var(--ink-strong)]">{rupees(breakup.gst)}</dd></div>
       {breakup.platform_fee > 0 && (
-        <div className={row}><dt className="text-ink-soft">{t('price.platform_fee', { rate: breakup.platform_fee_rate })}</dt><dd className="tabular-nums text-ink">{rupees(breakup.platform_fee)}</dd></div>
+        <div className={row}><dt className="text-[var(--ink-muted)]">{t('price.platform_fee', { rate: breakup.platform_fee_rate })}</dt><dd className="tabular-nums text-[var(--ink-strong)]">{rupees(breakup.platform_fee)}</dd></div>
       )}
-      <div className={`${row} border-t border-[var(--line)] pt-1.5 font-bold text-ink`} data-testid="price-total">
+      <div className={`${row} border-t border-[var(--warmline)] pt-1.5 font-medium text-[var(--ink-strong)]`} data-testid="price-total">
         <dt>{t('price.total')}</dt><dd className="tabular-nums">{rupees(breakup.total)}</dd>
       </div>
     </dl>

@@ -2,7 +2,8 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { noteText } from '@/lib/serverText';
-import { Bell, CircleNotch as Loader2, Megaphone } from '@phosphor-icons/react';
+import { Bell, Checks, CircleNotch as Loader2, Megaphone } from '@phosphor-icons/react';
+import { Box, Button, MenuIcon, PageHead } from '@/components/ag';
 import { webLinkTarget } from '@/lib/notificationLink';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
@@ -50,38 +51,46 @@ export default function Notifications() {
     else if (n.kind?.startsWith('delivery')) nav(isHostMode ? '/provider/dashboard' : '/my-trips');
   };
 
+  const unread = !!items && items.some((n) => n.unread);
+
   return (
-    <div className="mx-auto max-w-2xl px-4 md:px-6 py-6 md:py-10">
-      <div className="flex items-end justify-between gap-3 mb-6">
-        <h1 className="font-display font-extrabold text-3xl md:text-4xl text-ink leading-tight">{t('notes.title')}</h1>
-        {items && items.some((n) => n.unread) && (
-          <button type="button" onClick={markAll} data-testid="notes-read-all" className="text-sm font-bold text-pine hover:underline">
-            {t('notes.read_all')}
-          </button>
+    <div className="ag-wrap">
+      <div className="ag-main">
+        <PageHead eyebrow={t('ui.notes.eyebrow', 'Updates')} title={t('notes.title')} />
+        {unread && (
+          <Button size="sm" icon={<Checks />} className="self-start" onClick={markAll} data-testid="notes-read-all">{t('notes.read_all')}</Button>
+        )}
+        {items === null ? (
+          <p className="ag-small inline-flex items-center gap-2"><Loader2 size={18} className="animate-spin text-[var(--r)]" aria-hidden="true" /> {t('common.loading')}</p>
+        ) : items.length === 0 ? (
+          <Box data-testid="notes-empty">
+            <span className="ag-micon"><Bell /></span>
+            <p className="text-[var(--ink7)]">{t('notes.empty')}</p>
+          </Box>
+        ) : (
+          <Box className="!gap-0 !py-1">
+            <ul className="ag-menu" data-testid="notes-list">
+              {items.map((n) => {
+                const text = noteText(t, n);
+                return (
+                  <li key={n.id} className="!p-0">
+                    <button type="button" onClick={() => open(n)} data-testid={`note-${n.id}`}
+                      className="w-full flex items-start gap-3.5 py-3 px-1 text-left bg-transparent border-0 cursor-pointer">
+                      <MenuIcon>{n.kind === 'announcement' ? <Megaphone /> : <Bell />}</MenuIcon>
+                      <span className="ag-mlab">
+                        <span className={`text-[var(--ink-strong)] ${n.unread ? 'font-medium' : 'font-normal'}`}>{text.title}</span>
+                        {text.body && <span className="ag-small whitespace-pre-line">{text.body}</span>}
+                        <span className="text-xs text-[var(--ink-faint)]">{timeAgo(n.created_at, i18n.language, t)}</span>
+                      </span>
+                      {n.unread && <span className="mt-2 w-2.5 h-2.5 flex-none rounded-full bg-[var(--r)]" role="img" aria-label={t('notes.unread')} />}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </Box>
         )}
       </div>
-      {items === null ? (
-        <div className="flex justify-center py-16 text-ink-soft"><Loader2 size={24} className="animate-spin" /></div>
-      ) : items.length === 0 ? (
-        <div className="text-center py-16 text-ink-soft" data-testid="notes-empty">{t('notes.empty')}</div>
-      ) : (
-        <ul className="space-y-3" data-testid="notes-list">
-          {items.map((n) => (
-            <li key={n.id}>
-              <button type="button" onClick={() => open(n)} data-testid={`note-${n.id}`}
-                className={`w-full text-left flex gap-3 rounded-2xl border bg-white p-4 btn-hover ${n.unread ? 'border-pine/40 border-l-4 border-l-pine' : 'border-[var(--line)]'}`}>
-                <span className="w-9 h-9 flex-shrink-0 rounded-full bg-mist text-pine grid place-items-center">{n.kind === 'announcement' ? <Megaphone size={17} /> : <Bell size={17} />}</span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-bold text-ink">{noteText(t, n).title}</span>
-                  <span className="block text-[13px] text-ink-soft mt-0.5 whitespace-pre-line">{noteText(t, n).body}</span>
-                  <span className="block text-[11px] text-ink-soft mt-1">{timeAgo(n.created_at, i18n.language, t)}</span>
-                </span>
-                {n.unread && <span className="mt-1.5 w-2 h-2 flex-shrink-0 rounded-full bg-pine" aria-label={t('notes.unread')} />}
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
     </div>
   );
 }

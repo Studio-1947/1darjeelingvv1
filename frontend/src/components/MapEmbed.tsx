@@ -64,7 +64,7 @@ export default function MapEmbed({ coords, title, className = '' }: { coords: [n
   }, [live, src]);
 
   return (
-    <div ref={holderRef} className={`relative bg-mist ${className}`} data-testid="map-embed">
+    <div ref={holderRef} className={`relative bg-[var(--creme2)] ${className}`} data-testid="map-embed">
       {live ? (
         // Keyed on src so moving the pin remounts the frame rather than leaving a
         // Leaflet instance sized for the previous listing.
@@ -78,8 +78,8 @@ export default function MapEmbed({ coords, title, className = '' }: { coords: [n
       ) : (
         // Something deliberate rather than the white box the bug produced, so a
         // map that genuinely can't load still reads as "map here", not "broken".
-        <div className="absolute inset-0 grid place-items-center text-ink-soft" aria-hidden="true">
-          <MapPin size={28} className="text-pine/50" />
+        <div className="absolute inset-0 grid place-items-center" aria-hidden="true">
+          <MapPin size={28} className="text-[var(--r)] opacity-50" />
         </div>
       )}
     </div>

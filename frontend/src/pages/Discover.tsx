@@ -1,30 +1,23 @@
-import React, { useEffect, useState, useRef, useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { MagnifyingGlass } from '@phosphor-icons/react';
 import { useHostSignupInfo } from '@/components/provider/onboard/QuickFill';
 import api from '@/lib/api';
-import { listingImage, sizedImage } from '@/lib/listingContent';
-import FeedCard from '@/components/FeedCard';
-import SmartImg from '@/components/SmartImg';
+import { sizedImage } from '@/lib/listingContent';
 import Seo from '@/components/Seo';
 import BookingWidget from '@/components/BookingWidget';
 import HostFeedStrip from '@/components/feed/HostFeedStrip';
-import HeroMedia from '@/components/HeroMedia';
 import RouteEstimator from '@/components/RouteEstimator';
-import { useFavorites } from '@/context/FavoritesContext';
-import { useLoginGate } from '@/components/LoginGate';
-import { CATEGORIES } from '@/constants/categories';
-import { FeedCardSkeleton, SpotTileSkeleton, StayTileSkeleton, LoadingStatus, repeat } from '@/components/skeletons';
-import { Mountains as Mountain, ArrowRight, Compass, TrendUp as TrendingUp, CaretLeft as ChevronLeft, CaretRight as ChevronRight, Heart } from '@phosphor-icons/react';
+import { Box, ButtonLink, SecHead, SeeAll, Status } from '@/components/ag';
+import { CategoryTiles, SpotCard, StayCard } from '@/components/home/cards';
+import { SpotTileSkeleton, StayTileSkeleton, LoadingStatus, repeat } from '@/components/skeletons';
 
 const RED_PANDA = 'https://images.unsplash.com/photo-1542880941-1abfea46bba6';
-const HERO_POSTER = 'https://images.unsplash.com/photo-1544735716-392fe2489ffa';
 
-// The trending strip shows only offers an admin has switched on (GET /api/promotions), the same as
-// the app's DealsStrip. It used to show three built-in cards ("25% OFF", "BEST SELLER", "NEW") that
-// nobody offered; with no live promotions the strip is simply not shown.
+// Offers an admin has switched on (GET /api/promotions), the same as the app's DealsStrip. With no
+// live promotions the section is simply not shown.
 type Promotion = { id: string; tag: string; title: string; subtitle: string; image: string; link: string };
-const DEAL_COLORS = ['from-pine to-pine-dark', 'from-flag to-[#8a1e1e]', 'from-gold to-[#c69108]'];
 // Promotions are shared with the app, whose links read "/category/<type>"; the website's pages are
 // "/homestays", "/drivers" and so on.
 const dealHref = (link: string) => {
@@ -33,163 +26,58 @@ const dealHref = (link: string) => {
   return m[1] === 'biodiversity' ? '/biodiversity' : `/${m[1]}s`;
 };
 
-// Six fills three rows of the two-column desktop grid exactly, and is about as
-// far as anyone scrolls a phone before wanting a control rather than more feed.
-const FEED_PAGE_SIZE = 6;
+/** Cards per Home section: two rows of the two-column grid. */
+const PER_SECTION = 4;
 
-// The pills use the short nav.* labels rather than the editorial categories.*
-// ones, which are too long to sit in a row of chips.
-const NAV_LABEL_KEY: Record<string, string> = {
-  spot: 'spots',
-  homestay: 'homestays',
-  driver: 'drivers',
-  guide: 'guides',
-  shop: 'shops',
-  cafe: 'cafes',
-  event: 'events',
-  biodiversity: 'biodiversity',
-};
-
-/**
- * Page numbers to render, with `null` standing in for a gap.
- * Everything fits while there are few pages; past that it stays a fixed width
- * by windowing around the current page so the control never wraps on a phone.
- * `compact` (phones): page buttons are 44px wide there, so only five buttons fit -
- * past three pages it shows the first, current and last page only.
- */
-function pageWindow(current: number, count: number, compact = false): (number | null)[] {
-  if (count <= (compact ? 3 : 7)) return Array.from({ length: count }, (_, i) => i);
-  const near = compact ? [current] : [current - 1, current, current + 1];
-  const around = near.filter((p) => p > 0 && p < count - 1);
-  const pages = Array.from(new Set([0, ...around, count - 1])).sort((a, b) => a - b);
-  return pages.flatMap((p, i) => (i > 0 && p - pages[i - 1] > 1 ? [null, p] : [p]));
-}
-
-// Hosts start free (server lib/hostGrace.ts), so the banner leads with that, not the price.
+// Hosts start free (server lib/hostGrace.ts), so the card leads with that, not the price.
 function HostFreeChip() {
   const { t } = useTranslation();
   const { grace_bookings } = useHostSignupInfo();
-  return <span className="chip bg-white/15 !text-black backdrop-blur" data-testid="host-fee-chip">{t('ob.free.chip', { count: grace_bookings })}</span>;
+  return <Status tone="info" className="self-start" data-testid="host-fee-chip">{t('ob.free.chip', { count: grace_bookings })}</Status>;
+}
+
+/** One Home section: eyebrow + title, See all, then a two-column grid. */
+function Section({ id, eyebrow, title, to, seeAll, children }: {
+  id: string; eyebrow: string; title: string; to: string; seeAll?: React.ReactNode; children: React.ReactNode;
+}) {
+  const { t } = useTranslation();
+  return (
+    <section aria-labelledby={id}>
+      <SecHead id={id} eyebrow={eyebrow} title={title} action={<SeeAll to={to}>{seeAll ?? t('home.see_all')}</SeeAll>} />
+      <div className="grid grid-cols-2 gap-2.5">{children}</div>
+    </section>
+  );
 }
 
 export default function Discover() {
   const { t } = useTranslation();
-  const { isFavorite, toggle } = useFavorites();
-  const { requireAuth } = useLoginGate();
-  const [feed, setFeed] = useState([]);
-  const [spots, setSpots] = useState([]);
-  const [homestays, setHomestays] = useState([]);
+  const [feed, setFeed] = useState<any[]>([]);
+  const [spots, setSpots] = useState<any[]>([]);
+  const [homestays, setHomestays] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [deals, setDeals] = useState<Promotion[]>([]);
+
   useEffect(() => {
     let live = true;
     api.get('/promotions')
       .then((r) => { if (live) setDeals(Array.isArray(r.data?.items) ? r.data.items : []); })
-      .catch(() => { /* no strip without the server's list */ });
+      .catch(() => { /* no section without the server's list */ });
     return () => { live = false; };
   }, []);
-  const [feedType, setFeedType] = useState('all');
-  const [feedPage, setFeedPage] = useState(0);
-  const spotsScrollRef = useRef<HTMLDivElement>(null);
-  const feedTopRef = useRef<HTMLElement>(null);
-  const pointerRestoreRef = useRef<number>(undefined);
-
-  const toggleStayFavorite = (id: string) => {
-    if (!requireAuth('save')) return;
-    toggle(id).catch(() => {});
-  };
-
-  // Only offer a pill for a type the feed actually contains, in the canonical
-  // category order - an "Events" tab that always lands on an empty grid is
-  // worse than no tab. Counts come along so each pill can show its weight.
-  const feedTabs = useMemo(() => {
-    const counts = feed.reduce((acc, it) => {
-      acc[it.type] = (acc[it.type] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-    return [
-      { key: 'all', label: t('home.filter_all'), count: feed.length },
-      ...CATEGORIES
-        .filter(({ key }) => counts[key])
-        .map(({ key }) => ({ key, label: t(`nav.${NAV_LABEL_KEY[key]}`), count: counts[key] })),
-    ];
-  }, [feed, t]);
-
-  const filteredFeed = useMemo(
-    () => (feedType === 'all' ? feed : feed.filter((it) => it.type === feedType)),
-    [feed, feedType],
-  );
-
-  const pageCount = Math.max(1, Math.ceil(filteredFeed.length / FEED_PAGE_SIZE));
-  const [compactPages, setCompactPages] = useState(() => window.matchMedia?.('(max-width: 639px)').matches ?? false);
-  useEffect(() => {
-    const mq = window.matchMedia?.('(max-width: 639px)');
-    if (!mq) return undefined;
-    const update = () => setCompactPages(mq.matches);
-    mq.addEventListener('change', update);
-    return () => mq.removeEventListener('change', update);
-  }, []);
-  // Clamped rather than stored blindly: switching from a 24-item tab on page 4
-  // to a 3-item tab would otherwise render an empty grid.
-  const page = Math.min(feedPage, pageCount - 1);
-  const visibleFeed = filteredFeed.slice(page * FEED_PAGE_SIZE, (page + 1) * FEED_PAGE_SIZE);
-
-  const goToPage = (next: number) => {
-    setFeedPage(next);
-    // Paging without this leaves you at the bottom of the old page, looking at
-    // the last two cards of the new one.
-    feedTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
-
-  const selectTab = (key: string) => {
-    setFeedType(key);
-    setFeedPage(0);
-  };
-
-  const scrollSpots = (direction: 'left' | 'right') => {
-    if (spotsScrollRef.current) {
-      const container = spotsScrollRef.current;
-      const scrollAmount = container.clientWidth * 0.75;
-      // As cards glide under a stationary cursor, :hover flips on/off per card,
-      // each firing a 200ms box-shadow/transform transition that repaints the
-      // tile. Suspend pointer events until the smooth scroll settles.
-      container.style.pointerEvents = 'none';
-      window.clearTimeout(pointerRestoreRef.current);
-      pointerRestoreRef.current = window.setTimeout(() => { container.style.pointerEvents = ''; }, 650);
-      container.scrollBy({ left: direction === 'left' ? -scrollAmount : scrollAmount, behavior: 'smooth' });
-    }
-  };
 
   useEffect(() => {
     (async () => {
       try {
-        const load = async () => {
-          const [f, s, h] = await Promise.all([
-            api.get('/listings', { params: { limit: 40 } }),
-            api.get('/listings', { params: { type: 'spot', limit: 8 } }),
-            api.get('/listings', { params: { type: 'homestay', limit: 8 } }),
-          ]);
-          setSpots(s.data.items || []);
-          setHomestays(h.data.items || []);
-          // interleave a feed with variety: homestay, spot, cafe, biodiversity...
-          const all = f.data.items || [];
-          const ordered = [
-            ...all.filter((x) => x.type === 'homestay'),
-            ...all.filter((x) => x.type === 'spot'),
-            ...all.filter((x) => x.type === 'cafe'),
-            ...all.filter((x) => x.type === 'biodiversity'),
-            ...all.filter((x) => x.type === 'driver'),
-            ...all.filter((x) => x.type === 'shop'),
-            ...all.filter((x) => x.type === 'event'),
-          ];
-          setFeed(ordered);
-          return ordered.length;
-        };
-        // An empty feed is not something a visitor can fix: seeding now lives
-        // behind POST /api/admin/seed (auth + admin) and is triggered from the
-        // admin panel. The old unauthenticated /dev/seed route was removed on
-        // purpose - backend/test/admin.test.ts asserts it stays a 404.
-        await load();
+        const [f, s, h] = await Promise.all([
+          api.get('/listings', { params: { limit: 40 } }),
+          api.get('/listings', { params: { type: 'spot', limit: 8 } }),
+          api.get('/listings', { params: { type: 'homestay', limit: 8 } }),
+        ]);
+        setSpots(s.data.items || []);
+        setHomestays(h.data.items || []);
+        setFeed(f.data.items || []);
+        // An empty feed is not something a visitor can fix: seeding lives behind
+        // POST /api/admin/seed (auth + admin) and is triggered from the admin panel.
       } catch (e) {
         if (process.env.NODE_ENV !== 'production') console.error(e);
       } finally {
@@ -198,322 +86,124 @@ export default function Discover() {
     })();
   }, []);
 
+  const ofType = (type: string) => feed.filter((x) => x.type === type).slice(0, PER_SECTION);
+  const guides = ofType('guide');
+  const drivers = ofType('driver');
+  const cafes = ofType('cafe');
+  const shops = ofType('shop');
+  const nature = ofType('biodiversity');
+  const card = (it: any) => <StayCard key={it.id} it={it} href={`/listing/${it.id}`} />;
+
   return (
-    <div>
-      <Seo description={t('seo.home_description')} />
+    <div className="ag-wrap">
+      <div className="ag-main">
+        <Seo description={t('seo.home_description')} />
 
-      {/* HERO / Booking widget - starts at y=0 and carries the header height as
-          padding, since the bar is drawn on top of the video. */}
-      <section className="relative min-h-[100dvh] flex flex-col justify-center" data-hero>
-        <HeroMedia poster={HERO_POSTER} />
-        {/* Bottom padding outweighs the top on purpose: it lifts the centered
-            block above the hero's midline so the search panel that opens under
-            the bar has breathing space before the fold. */}
-        <div className="relative z-10 mx-auto max-w-6xl w-full px-4 sm:px-6 md:px-8 pt-[calc(var(--header-h)+1rem)] pb-20 md:pt-[calc(var(--header-h)+2rem)] md:pb-28 flex-1 flex flex-col justify-center">
-          <div className="text-white max-w-2xl">
-            {/* data-hero-cutoff: the header drops its transparency the moment
-                it would overlap this headline, instead of waiting for the whole
-                hero to scroll away. */}
-            <h1 data-hero-cutoff className="font-display font-extrabold text-[2.4rem] leading-[1.08] sm:text-5xl md:text-6xl tracking-tight drop-shadow-lg">
-              {t('hero.title_1')}<br />{t('hero.title_2')}
-            </h1>
-            <p className="mt-4 md:mt-5 text-white/90 text-base sm:text-lg md:text-xl max-w-xl leading-relaxed drop-shadow">
-              {t('hero.subtitle')}
-            </p>
-          </div>
-          <div className="mt-7 md:mt-10">
-            <BookingWidget />
-          </div>
+        <div className="ag-hero pt-2">
+          <h1>
+            {t('hero.title_1')}<br />{t('hero.title_2')}<span className="ag-caret" aria-hidden="true" />
+          </h1>
+          <p>{t('hero.subtitle')}</p>
         </div>
-      </section>
 
-      {/* Deals strip (MMT-style) */}
-      <section className="mx-auto max-w-6xl px-4 md:px-6 pt-6 md:pt-8">
+        <BookingWidget />
+
+        <CategoryTiles testIdPrefix="home-tile-" label={t('nav.categories')} />
+
+        {/* List your business: the provider card, right under the categories as in the prototype. */}
+        <Box className="!p-0 overflow-hidden" data-testid="home-join-card">
+          <img src={sizedImage(RED_PANDA, 800)} alt="" loading="lazy" className="aspect-[16/7] w-full object-cover" />
+          <div className="flex flex-col gap-2 px-4 pb-4">
+            <HostFreeChip />
+            <h2>{t('home.join_title', 'List your Business')}</h2>
+            <p className="ag-small m-0">{t('home.join_sub', 'Homestays, drivers, cafes, shops and guides. Free to list, bookings come to you.')}</p>
+            <ButtonLink to="/provider/onboard" go className="self-start" data-testid="banner-provider-cta">
+              {t('home.join_cta', 'List now')}
+            </ButtonLink>
+          </div>
+        </Box>
+
         {deals.length > 0 && (
-          <>
-            <div className="flex items-center gap-2 mb-3">
-              <TrendingUp size={18} className="text-flag" />
-              <h2 className="font-display font-extrabold text-lg md:text-xl text-ink">{t('home.trending')}</h2>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 mb-8" data-testid="deals-strip">
-              {deals.map((d, i) => (
+          <section aria-labelledby="home-deals-h">
+            <SecHead id="home-deals-h" title={t('home.trending')} />
+            <div className="grid grid-cols-2 gap-2.5" data-testid="deals-strip">
+              {deals.map((d) => (
                 <Link key={d.id} to={dealHref(d.link)} data-testid={`deal-${d.id}`}
-                  className={`relative overflow-hidden rounded-2xl p-4 md:p-5 text-white bg-gradient-to-br ${DEAL_COLORS[i % DEAL_COLORS.length]} btn-hover min-h-[110px] flex flex-col justify-between`}>
-                  {d.image && (
-                    <img src={sizedImage(d.image, 600)} alt="" aria-hidden="true" loading="lazy"
-                      className="absolute inset-0 w-full h-full object-cover" />
-                  )}
+                  className="relative flex aspect-[4/3] flex-col justify-between overflow-hidden rounded-[var(--r-card)] border border-[var(--warmline)] bg-[var(--r)] p-3 text-white no-underline">
+                  {d.image && <img src={sizedImage(d.image, 600)} alt="" aria-hidden="true" loading="lazy" className="absolute inset-0 h-full w-full object-cover" />}
                   {/* Keeps the title and tag legible over whatever the photo does. */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/35 to-black/20" />
-                  {d.tag ? (
-                    <span className="relative inline-block w-fit px-2 py-0.5 rounded-full bg-white/25 backdrop-blur text-[10px] font-extrabold tracking-wider">{d.tag}</span>
-                  ) : <span />}
-                  <div className="relative">
-                    <div className="font-display font-extrabold text-xl md:text-2xl leading-tight">{d.title}</div>
-                    {d.subtitle && <div className="text-sm text-white/90 mt-0.5">{d.subtitle}</div>}
-                  </div>
-                  <ArrowRight size={18} className="absolute top-4 right-4 opacity-80" />
+                  <span className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/30 to-black/10" aria-hidden="true" />
+                  {d.tag ? <span className="ag-status info relative self-start">{d.tag}</span> : <span />}
+                  <span className="relative">
+                    <b className="block text-base font-medium leading-snug">{d.title}</b>
+                    {d.subtitle && <span className="block text-xs text-white/90">{d.subtitle}</span>}
+                  </span>
                 </Link>
               ))}
             </div>
-          </>
+          </section>
         )}
 
-        {/* Route Estimator Section */}
-        <div>
-          <RouteEstimator />
-        </div>
-      </section>
+        {loading && <LoadingStatus label={t('common.loading')} />}
 
-      {/* Featured Spots - horizontal scroll (MMT style) */}
-      <section className="mx-auto max-w-6xl px-4 md:px-6 pt-8 md:pt-10">
-        <div className="flex items-end justify-between mb-4">
-          <div>
-            <div className="text-[11px] font-bold uppercase tracking-widest text-flag">{t('home.must_visit')}</div>
-            <h2 className="font-display font-extrabold text-2xl md:text-3xl text-ink mt-0.5">{t('categories.spot')}</h2>
-          </div>
-          <Link to="/spots" className="inline-flex items-center min-h-11 text-sm font-bold text-pine whitespace-nowrap">{t('home.see_all')} →</Link>
-        </div>
-        <div className="relative group">
-          {/* Left Navigation Arrow */}
-          <button
-            onClick={() => scrollSpots('left')}
-            className="absolute -left-5 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-white shadow-lg border border-[var(--line)] text-ink flex items-center justify-center transition-all hover:bg-mist active:scale-95 hidden md:flex"
-            aria-label={t('home.scroll_left')}
-          >
-            <ChevronLeft size={20} className="text-ink" />
-          </button>
-
-          {/* Scroll Container */}
-          <div
-            ref={spotsScrollRef}
-            className="flex gap-3 md:gap-4 overflow-x-auto no-scrollbar -mx-4 px-4 md:mx-0 md:px-0 pb-2"
-          >
-            {loading && repeat(4, (i) => <SpotTileSkeleton key={i} />)}
-            {spots.map((s) => (
-              <Link key={s.id} to={`/listing/${s.id}`} data-testid={`spot-tile-${s.id}`}
-                className="flex-shrink-0 w-[70%] sm:w-[45%] md:w-[30%] rounded-2xl overflow-hidden bg-white border border-[var(--line)] btn-hover">
-                <div className="aspect-[4/5] relative bg-mist overflow-hidden">
-                  {/* Per-listing, not the raw seed image five listings share - see
-                      the note in Category.tsx's grid tile. */}
-                  <SmartImg src={listingImage(s, 800, 1000)} alt={s.title} className="w-full h-full object-cover" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
-                  <div className="absolute bottom-0 inset-x-0 p-3 md:p-4 text-white">
-                    <div className="text-[10px] uppercase tracking-widest opacity-90">{s.location}</div>
-                    <div className="font-display font-extrabold text-lg md:text-xl leading-tight drop-shadow line-clamp-2">{s.title}</div>
-                    <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white text-pine font-bold text-xs">
-                      <Mountain size={12} /> {t('cta.explore')}
-                    </div>
-                  </div>
-                </div>
-              </Link>
+        {(loading || spots.length > 0) && (
+          <Section id="home-spots-h" eyebrow={t('home.must_visit')} title={t('home.tile.spots', 'Offbeat Places')} to="/spots">
+            {loading && repeat(PER_SECTION, (i) => <SpotTileSkeleton key={i} />)}
+            {spots.slice(0, PER_SECTION).map((s) => (
+              <SpotCard key={s.id} it={s} href={`/listing/${s.id}`} testId={`spot-tile-${s.id}`} />
             ))}
-          </div>
-
-          {/* Right Navigation Arrow */}
-          <button
-            onClick={() => scrollSpots('right')}
-            className="absolute -right-5 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-white shadow-lg border border-[var(--line)] text-ink flex items-center justify-center transition-all hover:bg-mist active:scale-95 hidden md:flex"
-            aria-label={t('home.scroll_right')}
-          >
-            <ChevronRight size={20} className="text-ink" />
-          </button>
-        </div>
-      </section>
-
-      {/* Homestays quick pick */}
-      <section className="mx-auto max-w-6xl px-4 md:px-6 pt-8 md:pt-10">
-        <div className="flex items-end justify-between mb-4">
-          <div>
-            <div className="text-[11px] font-bold uppercase tracking-widest text-flag">{t('home.stay_local')}</div>
-            <h2 className="font-display font-extrabold text-2xl md:text-3xl text-ink mt-0.5">{t('categories.homestay')}</h2>
-          </div>
-          <Link to="/homestays" className="inline-flex items-center min-h-11 text-sm font-bold text-pine whitespace-nowrap">{t('home.see_all')} →</Link>
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-          {loading && repeat(4, (i) => <StayTileSkeleton key={i} />)}
-          {homestays.slice(0, 4).map((h) => {
-            const saved = isFavorite(h.id);
-            return (
-            <div key={h.id} data-testid={`stay-tile-${h.id}`} className="flex flex-col rounded-2xl overflow-hidden bg-white border border-[var(--line)] btn-hover">
-              <Link to={`/listing/${h.id}`} className="block aspect-square bg-mist overflow-hidden">
-                <SmartImg src={listingImage(h, 500, 500)} alt={h.title} className="w-full h-full object-cover" />
-              </Link>
-              <div className="p-3 flex-1 flex flex-col">
-                <div className="font-display font-bold text-sm md:text-base text-ink line-clamp-1">{h.title}</div>
-                <div className="text-[11px] text-ink-soft line-clamp-1 mt-0.5">{h.location}</div>
-                <div className="mt-1.5 flex items-baseline gap-1">
-                  <span className="font-extrabold text-pine text-sm md:text-base">₹{h.price}</span>
-                  <span className="text-[10px] text-ink-soft">{t('common.per_head')}</span>
-                </div>
-                <div className="mt-3 grid grid-cols-[minmax(0,1fr)_2.75rem] lg:grid-cols-[minmax(0,1fr)_2.5rem] gap-2">
-                  <Link to={`/listing/${h.id}`} data-testid={`stay-book-${h.id}`}
-                    className="inline-flex min-w-0 items-center justify-center gap-1.5 rounded-full bg-pine px-2.5 min-[400px]:px-3 py-2 text-xs font-bold text-white btn-hover">
-                    {/* Under 400px the tile is too narrow for the label and the arrow; the label wins. */}
-                    <span className="truncate">{t('cta.book_now')}</span> <ArrowRight size={12} className="hidden min-[400px]:block flex-shrink-0" />
-                  </Link>
-                  <button
-                    type="button"
-                    onClick={() => toggleStayFavorite(h.id)}
-                    data-testid={`stay-save-${h.id}`}
-                    aria-label={t('common.save')}
-                    aria-pressed={saved}
-                    className={`inline-flex items-center justify-center rounded-full border btn-hover ${saved ? 'border-pine bg-pine/10 text-pine' : 'border-[var(--line)] text-ink hover:bg-mist'}`}
-                  >
-                    <Heart size={17} weight={saved ? 'fill' : 'regular'} />
-                  </button>
-                </div>
-              </div>
-            </div>
-            );
-          })}
-        </div>
-      </section>
-
-      <HostFeedStrip />
-
-      {/* Instagram-style feed */}
-      {/* scroll-mt clears the sticky header when paging jumps back up here. */}
-      <section ref={feedTopRef} className="mx-auto max-w-6xl px-4 md:px-6 pt-10 md:pt-14 scroll-mt-[calc(var(--header-h)+1rem)]">
-        <div className="flex items-center gap-2">
-          <Compass size={20} className="text-pine" />
-          <h2 className="font-display font-extrabold text-2xl md:text-3xl text-ink">{t('home.explore_darjeeling')}</h2>
-        </div>
-
-        {/* Type filter. A horizontal scroller rather than a wrap, so the row
-            stays one line on a phone and the header below it doesn't move as
-            the selection changes. */}
-        {!loading && feedTabs.length > 1 && (
-          <div
-            role="group"
-            aria-label={t('home.filter_label')}
-            data-testid="feed-filter"
-            className="mt-4 flex items-center gap-2 overflow-x-auto no-scrollbar -mx-4 px-4 md:mx-0 md:px-0 pb-1"
-          >
-            {feedTabs.map(({ key, label, count }) => {
-              const active = feedType === key;
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => selectTab(key)}
-                  aria-pressed={active}
-                  data-testid={`feed-filter-${key}`}
-                  className={`flex-shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-sm font-bold
-                    border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine
-                    ${active
-                      ? 'bg-pine text-white border-pine'
-                      : 'bg-white text-ink border-[var(--line)] hover:border-pine/40'}`}
-                >
-                  {label}
-                  <span className={`text-[11px] font-extrabold ${active ? 'text-white' : 'text-ink-soft'}`}>{count}</span>
-                </button>
-              );
-            })}
-          </div>
+          </Section>
         )}
 
-        <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
-          {loading ? (
-            <>
-              <LoadingStatus label={t('common.loading')} />
-              {repeat(FEED_PAGE_SIZE, (i) => <FeedCardSkeleton key={i} />)}
-            </>
-          ) : (
-            visibleFeed.map((it, idx) => (
-              // Only the first page's opening cards are above the fold; the rest
-              // stay lazy so paging doesn't eagerly fetch six full-size images.
-              <FeedCard key={it.id} item={it} priority={page === 0 && idx < 2} />
-            ))
-          )}
-        </div>
-
-        {!loading && filteredFeed.length === 0 && (
-          <div className="mist-panel p-8 text-center" data-testid="feed-empty">
-            <p className="text-ink-soft">{t('category.empty')}</p>
-          </div>
+        {(loading || homestays.length > 0) && (
+          <Section id="home-stays-h" eyebrow={t('home.stay_local')} title={t('home.tile.stays', 'Homestay')} to="/homestays">
+            {loading && repeat(PER_SECTION, (i) => <StayTileSkeleton key={i} />)}
+            {homestays.slice(0, PER_SECTION).map((h) => (
+              <StayCard key={h.id} it={h} href={`/listing/${h.id}`} ctaLabel={t('cta.book_now')}
+                testId={`stay-tile-${h.id}`} ctaTestId={`stay-book-${h.id}`} saveTestId={`stay-save-${h.id}`} />
+            ))}
+          </Section>
         )}
 
-        {!loading && pageCount > 1 && (
-          <nav
-            aria-label={t('home.pagination_label')}
-            data-testid="feed-pagination"
-            className="mt-8 flex items-center justify-center gap-1 sm:gap-1.5"
-          >
-            <button
-              type="button"
-              onClick={() => goToPage(page - 1)}
-              disabled={page === 0}
-              aria-label={t('home.prev_page')}
-              data-testid="feed-page-prev"
-              className="w-10 h-10 rounded-full grid place-items-center border border-[var(--line)] bg-white text-ink
-                         disabled:opacity-40 disabled:cursor-not-allowed hover:border-pine/40 transition-colors"
-            >
-              <ChevronLeft size={18} />
-            </button>
-
-            {pageWindow(page, pageCount, compactPages).map((p, i) =>
-              p === null ? (
-                <span key={`gap-${i}`} aria-hidden="true" className="w-4 sm:w-6 text-center text-ink-soft">…</span>
-              ) : (
-                <button
-                  key={p}
-                  type="button"
-                  onClick={() => goToPage(p)}
-                  aria-label={t('home.page_n', { page: p + 1 })}
-                  aria-current={p === page ? 'page' : undefined}
-                  data-testid={`feed-page-${p + 1}`}
-                  className={`w-10 h-10 rounded-full text-sm font-bold border transition-colors
-                    ${p === page
-                      ? 'bg-pine text-white border-pine'
-                      : 'bg-white text-ink border-[var(--line)] hover:border-pine/40'}`}
-                >
-                  {p + 1}
-                </button>
-              ),
-            )}
-
-            <button
-              type="button"
-              onClick={() => goToPage(page + 1)}
-              disabled={page >= pageCount - 1}
-              aria-label={t('home.next_page')}
-              data-testid="feed-page-next"
-              className="w-10 h-10 rounded-full grid place-items-center border border-[var(--line)] bg-white text-ink
-                         disabled:opacity-40 disabled:cursor-not-allowed hover:border-pine/40 transition-colors"
-            >
-              <ChevronRight size={18} />
-            </button>
-          </nav>
+        {guides.length > 0 && (
+          <Section id="home-guides-h" eyebrow={t('home.eyebrow_guides', 'Go with a local')} title={t('home.tile.guides', 'Tour Guides')} to="/guides">
+            {guides.map(card)}
+          </Section>
         )}
 
-        {/* Announced to screen readers on every page change; the numbers above
-            convey this visually but never as a live update. */}
-        {!loading && filteredFeed.length > 0 && (
-          <p role="status" aria-live="polite" data-testid="feed-range" className="mt-3 text-center text-xs text-ink-soft">
-            {t('home.showing_range', {
-              from: page * FEED_PAGE_SIZE + 1,
-              to: Math.min((page + 1) * FEED_PAGE_SIZE, filteredFeed.length),
-              total: filteredFeed.length,
-            })}
-          </p>
-        )}
-      </section>
+        <section aria-labelledby="home-cars-h" className="flex flex-col gap-2.5">
+          <SecHead id="home-cars-h" eyebrow={t('home.eyebrow_cars', 'Ride local')} title={t('home.tile.cars', 'Car & Driver')}
+            action={<SeeAll to="/drivers"><MagnifyingGlass size={14} weight="bold" className="mr-1 inline-block align-[-2px]" aria-hidden="true" />{t('home.find_ride', 'Find a ride')}</SeeAll>} />
+          {drivers.length > 0 && <div className="grid grid-cols-2 gap-2.5">{drivers.map(card)}</div>}
+          <RouteEstimator />
+        </section>
 
-      {/* Provider CTA banner */}
-      <section className="mx-auto max-w-6xl px-4 md:px-6 pt-10 md:pt-14">
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-pine to-pine-dark text-white p-6 md:p-10">
-          <div className="max-w-lg relative z-10">
-            <HostFreeChip />
-            <h3 className="mt-3 font-display font-extrabold text-2xl sm:text-3xl md:text-4xl leading-tight">{t('provider.onboard_title')}</h3>
-            <p className="mt-2 text-white/90 text-sm md:text-base">{t('provider.onboard_sub')}</p>
-            <Link to="/provider/onboard" data-testid="banner-provider-cta" className="btn-main mt-5 inline-flex items-center gap-2 px-5 py-3 rounded-full bg-white text-pine font-extrabold btn-hover">
-              {t('hero.cta_provider')} <ArrowRight size={16} />
-            </Link>
-          </div>
-          <img src={sizedImage(RED_PANDA, 400)} alt="" className="absolute -right-8 -bottom-8 md:right-6 md:bottom-6 w-40 h-40 md:w-52 md:h-52 rounded-full object-cover border-4 border-white/20 opacity-90" />
-        </div>
-      </section>
+        {cafes.length > 0 && (
+          <Section id="home-cafes-h" eyebrow={t('home.eyebrow_eat', 'Eat local')} title={t('home.cafes_title', 'Cafes & Restaurants')} to="/cafes">
+            {cafes.map(card)}
+          </Section>
+        )}
+
+        {shops.length > 0 && (
+          <Section id="home-shops-h" eyebrow={t('home.eyebrow_shop', 'Shop local')} title={t('home.shops_title', 'Local Shops')} to="/shops">
+            {shops.map(card)}
+          </Section>
+        )}
+
+        {nature.length > 0 && (
+          <Section id="home-nature-h" eyebrow={t('home.eyebrow_nature', 'Wild side')} title={t('home.nature_title', 'Nature')} to="/biodiversity">
+            {nature.map((n) => <SpotCard key={n.id} it={n} href={`/listing/${n.id}`} />)}
+          </Section>
+        )}
+
+        <HostFeedStrip />
+
+        {/* The six categories again at the end of Home, as the prototype repeats them. */}
+        <section aria-labelledby="home-end-h">
+          <SecHead id="home-end-h" title={t('nav.categories')} />
+          <CategoryTiles label={t('nav.categories')} />
+        </section>
+      </div>
     </div>
   );
 }

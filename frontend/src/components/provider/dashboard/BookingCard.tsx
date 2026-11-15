@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { guideTripMessage, waLink } from '@/lib/tripMessages';
 import { useTranslation } from 'react-i18next';
-import { Phone, ChatCircle as MessageCircle, XCircle, CheckCircle, CircleNotch as Loader2 } from '@phosphor-icons/react';
+import { Phone, ChatCircle, WhatsappLogo, XCircle, CheckCircle, CircleNotch as Loader2 } from '@phosphor-icons/react';
+import { Box, Button, ButtonA, FieldError } from '@/components/ag';
 import { StatusPill } from './widgets';
 import { formatTripDates } from '@/lib/dates';
 
@@ -44,95 +45,76 @@ export default function BookingCard({ b, onCancel, onAccept, host }: {
     }
   };
 
+  const guideDetails = b.listing_type === 'guide' && (b.status === 'accepted' || b.status === 'confirmed') && host
+    ? waLink(b.customer?.phone, guideTripMessage({
+      guestName: b.customer?.name, hostName: host.name, businessName: host.business,
+      date: b.check_in, endDate: b.check_out, guests: b.guests,
+      // The services the guest asked for; every service when they did not pick.
+      services: (b.listing?.extras?.services || [])
+        .filter((s: any) => !b.services?.length || b.services.includes(s.name))
+        .map((s: any) => ({ name: s.name, price: Number(s.price) || 0, unit: s.unit })),
+      meetingPoint: b.listing?.location || host.location, phone: host.phone, notes: b.notes,
+    }))
+    : null;
+
   return (
-    <article
-      key={b.id}
-      data-testid={`booking-${b.id}`}
-      className="bg-white rounded-2xl border border-[var(--line)] p-4 md:p-5 flex gap-4"
-    >
-      <div className="w-16 h-16 md:w-20 md:h-20 rounded-xl overflow-hidden bg-mist flex-shrink-0">
-        {b.listing?.image && <img src={b.listing.image} alt="" className="w-full h-full object-cover" />}
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-start justify-between gap-2">
-          <div>
-            <div className="font-display font-bold text-ink text-base leading-tight line-clamp-1">{b.listing?.title || b.listing_title}</div>
-            <div className="text-xs text-ink-soft mt-0.5">{b.customer?.name || t('pd.guest_fallback')} · {b.customer?.phone}</div>
+    <Box as="article" data-testid={`booking-${b.id}`}>
+      <div className="flex items-start gap-3">
+        <div className="h-16 w-16 flex-none overflow-hidden rounded-2xl bg-[var(--creme2)]">
+          {b.listing?.image && <img src={b.listing.image} alt="" className="h-full w-full object-cover" />}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-2">
+            <h3 className="line-clamp-2">{b.listing?.title || b.listing_title}</h3>
+            <StatusPill status={b.awaiting_host ? 'awaiting_host' : b.status} />
           </div>
-          <StatusPill status={b.awaiting_host ? 'awaiting_host' : b.status} />
-        </div>
-        <div className="mt-2 text-xs text-ink-soft space-y-0.5">
-          {b.check_in && <div>{t('booking.checkin')}: <b className="text-ink">{formatTripDates(b.check_in, b.check_out, i18n.language)}</b></div>}
-          <div>{t('booking.guests')}: <b className="text-ink">{b.guests}</b> · {t('pd.placed')}: {new Date(b.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
-          {b.notes && <div className="italic">“{b.notes}”</div>}
-          {b.services?.length > 0 && <div data-testid={`booking-asked-${b.id}`}>{t('ui.bookingCard.asked_for')}: <b className="text-ink">{b.services.join(', ')}</b></div>}
-          {b.route_name && <div>{t('ui.bookingCard.route')}: <b className="text-ink">{b.route_name}</b></div>}
-        </div>
-        {b.awaiting_host && <p className="mt-2 text-xs font-semibold text-[#7a5d00]" data-testid={`booking-request-note-${b.id}`}>{t('approval.host_request_note')}</p>}
-        {b.status === 'accepted' && <p className="mt-2 text-xs font-semibold text-pine">{t('approval.host_accepted_note')}</p>}
-        {acceptErr && <p className="mt-2 text-xs font-semibold text-flag">{acceptErr}</p>}
-        <div className="mt-3 flex flex-wrap gap-2">
-          {b.awaiting_host && onAccept && (
-            <button onClick={doAccept} disabled={accepting} data-testid={`booking-accept-${b.id}`}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#1F6656] text-white font-bold text-xs btn-hover disabled:opacity-60">
-              {accepting ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle size={12} />} {t('approval.host_accept')}
-            </button>
-          )}
-          <a
-            href={`tel:${b.customer?.phone || ''}`}
-            data-testid={`booking-call-${b.id}`}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-pine text-white font-bold text-xs btn-hover"
-          >
-            <Phone size={12} /> {t('pd.call')}
-          </a>
-          <a
-            href={`https://wa.me/${(b.customer?.phone || '').replace(/\D/g, '')}?text=${encodeURIComponent(t('pd.wa_guest_message', { name: b.customer?.name || '', listing: b.listing?.title || '' }))}`}
-            target="_blank"
-            rel="noreferrer"
-            data-testid={`booking-wa-${b.id}`}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#25D366] text-white font-bold text-xs btn-hover"
-          >
-            <MessageCircle size={12} /> {t('contact.whatsapp')}
-          </a>
-          {/* Board, Guide: confirm, then one long WhatsApp message with all the details. */}
-          {b.listing_type === 'guide' && (b.status === 'accepted' || b.status === 'confirmed') && host && (
-            <a
-              href={waLink(b.customer?.phone, guideTripMessage({
-                guestName: b.customer?.name, hostName: host.name, businessName: host.business,
-                date: b.check_in, endDate: b.check_out, guests: b.guests,
-                // The services the guest asked for; every service when they did not pick.
-                services: (b.listing?.extras?.services || [])
-                  .filter((s: any) => !b.services?.length || b.services.includes(s.name))
-                  .map((s: any) => ({ name: s.name, price: Number(s.price) || 0, unit: s.unit })),
-                meetingPoint: b.listing?.location || host.location, phone: host.phone, notes: b.notes,
-              }))}
-              target="_blank"
-              rel="noreferrer"
-              data-testid={`booking-guide-details-${b.id}`}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[#25D366] text-[#128C4A] font-bold text-xs btn-hover"
-            >
-              <MessageCircle size={12} /> {t('ui.bookingCard.send_trip_details')}
-            </a>
-          )}
-          {onCancel && b.status !== 'cancelled' && (
-            confirming ? (
-              <span className="inline-flex items-center gap-2 text-xs pl-1">
-                <span className="text-ink-soft">{t('pd.cancel_booking_confirm')}</span>
-                <button onClick={doCancel} disabled={busy} data-testid={`booking-cancel-yes-${b.id}`}
-                  className="inline-flex items-center gap-1 font-bold text-flag disabled:opacity-50">
-                  {busy ? <Loader2 size={12} className="animate-spin" /> : null} {t('common.yes')}
-                </button>
-                <button onClick={() => setConfirming(false)} className="font-bold text-ink-soft">{t('common.no')}</button>
-              </span>
-            ) : (
-              <button onClick={() => setConfirming(true)} data-testid={`booking-cancel-${b.id}`}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-flag/40 text-flag font-bold text-xs btn-hover">
-                <XCircle size={12} /> {t('pd.decline')}
-              </button>
-            )
-          )}
+          <p className="ag-small">{b.customer?.name || t('pd.guest_fallback')} · {b.customer?.phone}</p>
         </div>
       </div>
-    </article>
+      <div className="grid gap-0.5 text-sm text-[var(--ink7)]">
+        {b.check_in && <p>{t('booking.checkin')}: <b className="font-medium text-[var(--ink-strong)]">{formatTripDates(b.check_in, b.check_out, i18n.language)}</b></p>}
+        <p>{t('booking.guests')}: <b className="font-medium text-[var(--ink-strong)]">{b.guests}</b> · {t('pd.placed')}: {new Date(b.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+        {b.notes && <p className="italic">“{b.notes}”</p>}
+        {b.services?.length > 0 && <p data-testid={`booking-asked-${b.id}`}>{t('ui.bookingCard.asked_for')}: <b className="font-medium text-[var(--ink-strong)]">{b.services.join(', ')}</b></p>}
+        {b.route_name && <p>{t('ui.bookingCard.route')}: <b className="font-medium text-[var(--ink-strong)]">{b.route_name}</b></p>}
+      </div>
+      {b.awaiting_host && <p className="text-sm text-[var(--pending)]" data-testid={`booking-request-note-${b.id}`}>{t('approval.host_request_note')}</p>}
+      {b.status === 'accepted' && <p className="text-sm text-[var(--r)]">{t('approval.host_accepted_note')}</p>}
+      <FieldError>{acceptErr}</FieldError>
+      <div className="ag-row">
+        {b.awaiting_host && onAccept && (
+          <Button variant="primary" size="sm" onClick={doAccept} disabled={accepting} data-testid={`booking-accept-${b.id}`}
+            icon={accepting ? <Loader2 className="animate-spin" /> : <CheckCircle />}>
+            {t('approval.host_accept')}
+          </Button>
+        )}
+        <ButtonA size="sm" href={`tel:${b.customer?.phone || ''}`} icon={<Phone />} data-testid={`booking-call-${b.id}`}>{t('pd.call')}</ButtonA>
+        <ButtonA size="sm" target="_blank" rel="noreferrer" icon={<WhatsappLogo />} data-testid={`booking-wa-${b.id}`}
+          href={`https://wa.me/${(b.customer?.phone || '').replace(/\D/g, '')}?text=${encodeURIComponent(t('pd.wa_guest_message', { name: b.customer?.name || '', listing: b.listing?.title || '' }))}`}>
+          {t('contact.whatsapp')}
+        </ButtonA>
+        {/* Board, Guide: confirm, then one long WhatsApp message with all the details. */}
+        {guideDetails && (
+          <ButtonA size="sm" href={guideDetails} target="_blank" rel="noreferrer" icon={<ChatCircle />} data-testid={`booking-guide-details-${b.id}`}>
+            {t('ui.bookingCard.send_trip_details')}
+          </ButtonA>
+        )}
+        {onCancel && b.status !== 'cancelled' && !confirming && (
+          <Button variant="stop" size="sm" onClick={() => setConfirming(true)} icon={<XCircle />} data-testid={`booking-cancel-${b.id}`}>
+            {t('pd.decline')}
+          </Button>
+        )}
+      </div>
+      {onCancel && b.status !== 'cancelled' && confirming && (
+        <div className="ag-row">
+          <span className="text-sm text-[var(--ink-strong)]">{t('pd.cancel_booking_confirm')}</span>
+          <Button variant="stop" size="sm" onClick={doCancel} disabled={busy} data-testid={`booking-cancel-yes-${b.id}`}
+            icon={busy ? <Loader2 className="animate-spin" /> : undefined}>
+            {t('common.yes')}
+          </Button>
+          <Button size="sm" onClick={() => setConfirming(false)}>{t('common.no')}</Button>
+        </div>
+      )}
+    </Box>
   );
 }

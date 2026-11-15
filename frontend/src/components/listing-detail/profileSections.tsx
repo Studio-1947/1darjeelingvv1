@@ -1,15 +1,12 @@
-import SmartImg from '@/components/SmartImg';
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   Translate as Languages, Medal, InstagramLogo, FacebookLogo, YoutubeLogo, Globe, PlayCircle,
-  Compass, Bed, ForkKnife, Car, ArrowRight, CalendarBlank, MoonStars, Storefront, Moped, UsersThree, Clock,
+  Compass, Bed, ForkKnife, CalendarBlank, MoonStars, Storefront, Moped, UsersThree, Clock, PauseCircle,
 } from '@phosphor-icons/react';
 import api from '@/lib/api';
-import { listingImage } from '@/lib/listingContent';
-import VerifiedBadge from '@/components/provider/VerifiedBadge';
-import { Screen, SectionHead, Avatar, ALIGN_TEXT, ALIGN_ROW, ALIGN_BLOCK } from './primitives';
+import { Box, ButtonA, SecHead } from '@/components/ag';
+import { Section, PriceRow, PersonCard, MiniCard } from './primitives';
 
 /**
  * Sections for what hosts fill in on their business profile (backend lib/hostProfile.ts): the
@@ -27,7 +24,16 @@ const SOCIAL = [
 /** An uploaded intro video (played here) rather than an older YouTube or Instagram link. */
 const isVideoFile = (url: string) => /\.(mp4|mov|webm)(\?|$)/i.test(url) || /\/videos\//.test(url);
 
-/** Languages, years of experience, an intro video and social links, as one block of facts. */
+/** A small line with a red icon (seasons, experience, delivery, hours). */
+function Line({ icon, children, testid }: { icon: React.ReactNode; children: React.ReactNode; testid?: string }) {
+  return (
+    <p className="m-0 flex items-center gap-2 text-[15px] leading-[22px] text-[var(--ink7)] [&>svg]:w-[18px] [&>svg]:h-[18px] [&>svg]:flex-none [&>svg]:text-[var(--r)]" data-testid={testid}>
+      {icon}<span className="min-w-0">{children}</span>
+    </p>
+  );
+}
+
+/** Languages (prototype "Speaks" chips), years of experience, an intro video and social links. */
 export function HostFacts({ extras }: { extras: any }) {
   const { t } = useTranslation();
   const languages: string[] = Array.isArray(extras?.languages) ? extras.languages : [];
@@ -37,32 +43,27 @@ export function HostFacts({ extras }: { extras: any }) {
   const video = typeof extras?.intro_video === 'string' && extras.intro_video ? extras.intro_video : '';
   if (!languages.length && !(years > 0) && !links.length && !video) return null;
   return (
-    <div className={`mt-6 space-y-3 ${ALIGN_TEXT}`} data-testid="host-facts">
+    <div className="flex flex-col gap-3" data-testid="host-facts">
       {languages.length > 0 && (
-        <p className={`text-ink-soft flex items-center ${ALIGN_ROW} gap-2`}>
-          <Languages size={18} className="text-pine flex-shrink-0" /> {t('detail.speaks')}: {languages.join(', ')}
-        </p>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="ag-eyebrow inline-flex items-center gap-1.5 mr-1"><Languages className="w-3.5 h-3.5" aria-hidden="true" />{t('detail.speaks')}</span>
+          {languages.map((l) => (
+            <span key={l} className="inline-flex items-center h-7 px-3 rounded-full bg-[var(--r-tint)] text-[var(--r)] text-[13px] font-medium">{l}</span>
+          ))}
+        </div>
       )}
-      {years > 0 && (
-        <p className={`text-ink-soft flex items-center ${ALIGN_ROW} gap-2`}>
-          <Medal size={18} className="text-pine flex-shrink-0" /> {t('profile.experience_years', { count: years })}
-        </p>
-      )}
+      {years > 0 && <Line icon={<Medal aria-hidden="true" />}>{t('profile.experience_years', { count: years })}</Line>}
       {video && isVideoFile(video) && (
-        <video src={video} controls playsInline preload="metadata" className="w-full max-w-xl rounded-2xl bg-ink aspect-video" data-testid="host-intro-video" />
+        <video src={video} controls playsInline preload="metadata" className="w-full rounded-[16px] bg-[var(--ink-strong)] aspect-video" data-testid="host-intro-video" />
       )}
       {((video && !isVideoFile(video)) || links.length > 0) && (
-        <div className={`flex flex-wrap items-center ${ALIGN_ROW} gap-2 pt-1`}>
+        <div className="ag-row">
           {video && !isVideoFile(video) && (
-            <a href={video} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[var(--line)] bg-white text-sm font-bold text-ink btn-hover">
-              {t('profile.watch_intro')} <PlayCircle size={16} className="text-pine" />
-            </a>
+            <ButtonA size="sm" href={video} target="_blank" rel="noreferrer" icon={<PlayCircle />}>{t('profile.watch_intro')}</ButtonA>
           )}
           {links.map(({ key, Icon, href }) => (
-            <a key={key} href={href(social[key])} target="_blank" rel="noreferrer" aria-label={t(`profile.social_${key}`)}
-              className="w-9 h-9 rounded-full border border-[var(--line)] bg-white grid place-items-center text-ink btn-hover">
-              <Icon size={18} />
-            </a>
+            <a key={key} href={href(social[key])} target="_blank" rel="noreferrer" aria-label={t(`profile.social_${key}`)} title={t(`profile.social_${key}`)}
+              className="ag-iconbtn"><Icon /></a>
           ))}
         </div>
       )}
@@ -74,7 +75,6 @@ export function HostFacts({ extras }: { extras: any }) {
 export function GuideSection({ item, photo }: { item: any; photo?: string }) {
   const { t } = useTranslation();
   const e = item.extras || {};
-  const name = e.host_name || item.title;
   const types: string[] = Array.isArray(e.guide_types) ? e.guide_types : [];
   const seasons: string[] = Array.isArray(e.seasons) ? e.seasons : [];
   const chips = [
@@ -83,98 +83,59 @@ export function GuideSection({ item, photo }: { item: any; photo?: string }) {
     ...(e.gender ? [t(`profile.gender_${e.gender}`, { defaultValue: e.gender })] : []),
   ];
   return (
-    <Screen tone="bg" testid="detail-guide">
-      <SectionHead label={t('detail.meet_guide')} title={t('detail.meet_guide')} />
-      <div className={`mt-10 ${ALIGN_TEXT} max-w-2xl ${ALIGN_BLOCK}`}>
-        <Avatar photo={photo} initial={(name || '?').trim().charAt(0).toUpperCase()} />
-        <div className={`mt-6 flex items-center ${ALIGN_ROW} gap-2 flex-wrap`}>
-          <span className="font-display font-extrabold text-2xl md:text-3xl text-ink">{name}</span>
-          {item.provider_verified && <VerifiedBadge size="sm" />}
-        </div>
-        {chips.length > 0 && (
-          <div className={`mt-3 flex items-center ${ALIGN_ROW} gap-2 flex-wrap`}>
-            {chips.map((c) => (
-              <span key={c} className="chip bg-white border border-[var(--line)] text-ink font-bold text-xs">{c}</span>
-            ))}
-          </div>
-        )}
-        {e.host_bio && <p className="mt-6 text-lg text-ink leading-relaxed whitespace-pre-line">{e.host_bio}</p>}
-        {seasons.length > 0 && (
-          <p className={`mt-4 text-ink-soft flex items-center ${ALIGN_ROW} gap-2`}>
-            <CalendarBlank size={18} className="text-pine flex-shrink-0" />
-            {t('profile.seasons_label')}: {seasons.map((s) => t(`profile.season_${s}`, { defaultValue: s })).join(', ')}
-          </p>
-        )}
-        <HostFacts extras={e} />
-      </div>
-    </Screen>
+    <PersonCard testid="detail-guide" title={t('detail.meet_guide')} name={e.host_name || item.title} photo={photo}
+      verified={!!item.provider_verified} place={item.location} chips={chips} bio={e.host_bio}>
+      {seasons.length > 0 && (
+        <Line icon={<CalendarBlank aria-hidden="true" />}>
+          {t('profile.seasons_label')}: {seasons.map((s) => t(`profile.season_${s}`, { defaultValue: s })).join(', ')}
+        </Line>
+      )}
+      <HostFacts extras={e} />
+    </PersonCard>
   );
 }
 
 type Priced = { name: string; price: number; unit?: string; photo?: string };
-
-function PriceRows({ rows, Icon, unitLabel }: { rows: Priced[]; Icon: any; unitLabel: (u?: string) => string }) {
-  return (
-    <div className="space-y-3">
-      {rows.map((r, i) => (
-        <div key={i} className="flex items-center gap-4 p-5 rounded-2xl border border-[var(--line)] bg-white text-left">
-          {r.photo
-            ? <img src={r.photo} alt="" className="w-16 h-16 rounded-xl object-cover flex-shrink-0 bg-mist" loading="lazy" />
-            : <Icon size={22} className="text-pine flex-shrink-0" />}
-          <span className="flex-1 text-ink font-semibold">{r.name}</span>
-          {r.price > 0 && (
-            <span className="flex-shrink-0 text-right">
-              <span className="font-display font-extrabold text-lg text-ink">₹{r.price.toLocaleString('en-IN')}</span>
-              <span className="block text-xs font-semibold text-ink-soft">{unitLabel(r.unit)}</span>
-            </span>
-          )}
-        </div>
-      ))}
-    </div>
-  );
-}
 
 /** A guide's services, each with its charge. */
 export function ServicesSection({ services }: { services: Priced[] }) {
   const { t } = useTranslation();
   if (!services.length) return null;
   return (
-    <Screen tone="mist" testid="detail-services">
-      <SectionHead label={t('detail.services_label')} title={t('detail.services_title')} note={t('detail.services_note')} />
-      <div className={`mt-10 max-w-2xl ${ALIGN_BLOCK}`}>
-        <PriceRows rows={services} Icon={Compass} unitLabel={(u) => t(`profile.unit_${u || 'day'}`)} />
+    <Section title={t('detail.services_title')} note={t('detail.services_note')} testid="detail-services">
+      <div className="flex flex-col">
+        {services.map((s, i) => (
+          <PriceRow key={i} icon={<Compass />} photo={s.photo} name={s.name} price={Number(s.price) || 0} unit={t(`profile.unit_${s.unit || 'day'}`)} />
+        ))}
       </div>
-    </Screen>
+    </Section>
   );
 }
 
-/** A homestay's rooms and food, each with its charge. */
+/** A homestay's rooms and food, each with its charge (prototype box "Rooms"). */
 export function RoomsFoodSection({ rooms, meals, homeDelivery }: { rooms: Priced[]; meals: Priced[]; homeDelivery?: boolean }) {
   const { t } = useTranslation();
   if (!rooms.length && !meals.length) return null;
   return (
-    <Screen tone="mist" testid="detail-rooms">
-      <SectionHead label={t('detail.rooms_label')} title={t('detail.rooms_title')} />
-      <div className={`mt-10 max-w-2xl ${ALIGN_BLOCK} space-y-8`}>
-        {rooms.length > 0 && (
-          <div>
-            <h3 className={`mb-3 text-xs font-bold uppercase tracking-widest text-ink-soft ${ALIGN_TEXT}`}>{t('profile.rooms')}</h3>
-            <PriceRows rows={rooms} Icon={Bed} unitLabel={(u) => t(`profile.unit_${u || 'night'}`)} />
-          </div>
-        )}
-        {meals.length > 0 && (
-          <div>
-            <h3 className={`mb-3 text-xs font-bold uppercase tracking-widest text-ink-soft ${ALIGN_TEXT}`}>{t('profile.meals')}</h3>
-            <PriceRows rows={meals} Icon={ForkKnife} unitLabel={(u) => t(`profile.unit_${u || 'meal'}`)} />
-          </div>
-        )}
-        {homeDelivery && (
-          <p className={`text-ink-soft flex items-center ${ALIGN_ROW} gap-2`}>
-            <MoonStars size={18} className="text-pine" /> {t('profile.home_delivery_on')}
-          </p>
-        )}
-      </div>
-    </Screen>
+    <Section title={t('detail.rooms_title')} testid="detail-rooms">
+      {rooms.length > 0 && (
+        <div className="flex flex-col">
+          <span className="ag-eyebrow">{t('profile.rooms')}</span>
+          {rooms.map((r, i) => (
+            <PriceRow key={i} icon={<Bed />} photo={r.photo} name={r.name} price={Number(r.price) || 0} unit={t(`profile.unit_${r.unit || 'night'}`)} />
+          ))}
+        </div>
+      )}
+      {meals.length > 0 && (
+        <div className="flex flex-col">
+          <span className="ag-eyebrow">{t('profile.meals')}</span>
+          {meals.map((m, i) => (
+            <PriceRow key={i} icon={<ForkKnife />} photo={m.photo} name={m.name} price={Number(m.price) || 0} unit={t(`profile.unit_${m.unit || 'meal'}`)} />
+          ))}
+        </div>
+      )}
+      {homeDelivery && <Line icon={<MoonStars aria-hidden="true" />}>{t('profile.home_delivery_on')}</Line>}
+    </Section>
   );
 }
 
@@ -183,31 +144,28 @@ export function PriceListSection({ kind, rows, homeDelivery, capacity = 0, shopK
   const { t } = useTranslation();
   if (!rows.length && !homeDelivery && !(capacity > 0) && !openingHours) return null;
   return (
-    <Screen tone="mist" testid={`detail-${kind}`}>
-      <SectionHead label={t(`detail.${kind}_label`)} title={t(`detail.${kind}_title`)} note={t(`detail.${kind}_note`)} />
-      <div className={`mt-10 max-w-2xl ${ALIGN_BLOCK} space-y-6`}>
-        {shopKind && <span className="chip bg-white border border-[var(--line)] text-ink font-bold text-xs" data-testid="detail-shop-kind">{shopKind}</span>}
-        {rows.length > 0 && (
-          <PriceRows rows={rows} Icon={kind === 'menu' ? ForkKnife : Storefront}
-            unitLabel={(u) => t(`profile.unit_${u || (kind === 'menu' ? 'plate' : 'item')}`)} />
-        )}
-        {homeDelivery && (
-          <p className={`text-ink-soft flex items-center ${ALIGN_ROW} gap-2`} data-testid="detail-home-delivery">
-            <Moped size={18} className="text-pine" /> {kind === 'menu' ? t('profile.home_delivery_on') : t('profile.home_delivery_shop')}
-          </p>
-        )}
-        {openingHours && (
-          <p className={`text-ink-soft flex items-center ${ALIGN_ROW} gap-2`} data-testid="detail-opening-hours">
-            <Clock size={18} className="text-pine" /> {t('profile.opening_hours', { hours: openingHours })}
-          </p>
-        )}
-        {capacity > 0 && (
-          <p className={`text-ink-soft flex items-center ${ALIGN_ROW} gap-2`} data-testid="detail-capacity">
-            <UsersThree size={18} className="text-pine" /> {t(kind === 'menu' ? 'profile.capacity_cafe' : 'profile.capacity_shop', { count: capacity })}
-          </p>
-        )}
-      </div>
-    </Screen>
+    <Section title={t(`detail.${kind}_title`)} note={t(`detail.${kind}_note`)} testid={`detail-${kind}`}>
+      {shopKind && <span className="ag-status info self-start" data-testid="detail-shop-kind">{shopKind}</span>}
+      {rows.length > 0 && (
+        <div className="flex flex-col">
+          {rows.map((r, i) => (
+            <PriceRow key={i} icon={kind === 'menu' ? <ForkKnife /> : <Storefront />} photo={r.photo} name={r.name}
+              price={Number(r.price) || 0} unit={t(`profile.unit_${r.unit || (kind === 'menu' ? 'plate' : 'item')}`)} />
+          ))}
+        </div>
+      )}
+      {homeDelivery && (
+        <Line icon={<Moped aria-hidden="true" />} testid="detail-home-delivery">
+          {kind === 'menu' ? t('profile.home_delivery_on') : t('profile.home_delivery_shop')}
+        </Line>
+      )}
+      {openingHours && <Line icon={<Clock aria-hidden="true" />} testid="detail-opening-hours">{t('profile.opening_hours', { hours: openingHours })}</Line>}
+      {capacity > 0 && (
+        <Line icon={<UsersThree aria-hidden="true" />} testid="detail-capacity">
+          {t(kind === 'menu' ? 'profile.capacity_cafe' : 'profile.capacity_shop', { count: capacity })}
+        </Line>
+      )}
+    </Section>
   );
 }
 
@@ -222,20 +180,10 @@ export function OwnerSection({ item, verified }: { item: any; verified: boolean 
   const hasAnything = name || e.host_bio || e.host_avatar || e.intro_video || (Array.isArray(e.languages) && e.languages.length) || Number(e.experience_years) > 0;
   if (!hasAnything) return null;
   return (
-    <Screen tone="bg" testid="detail-owner">
-      <SectionHead label={t('detail.owner_label')} title={t('detail.owner_title')} />
-      <div className={`mt-10 ${ALIGN_TEXT} max-w-2xl ${ALIGN_BLOCK}`}>
-        <Avatar photo={e.host_avatar || undefined} initial={(name || item.title || '?').trim().charAt(0).toUpperCase()} />
-        {name && (
-          <div className={`mt-6 flex items-center ${ALIGN_ROW} gap-2 flex-wrap`}>
-            <span className="font-display font-extrabold text-2xl md:text-3xl text-ink">{name}</span>
-            {verified && <VerifiedBadge size="sm" />}
-          </div>
-        )}
-        {e.host_bio && <p className="mt-6 text-lg text-ink leading-relaxed whitespace-pre-line">{e.host_bio}</p>}
-        <HostFacts extras={e} />
-      </div>
-    </Screen>
+    <PersonCard testid="detail-owner" title={t('detail.owner_title')} name={name || item.title} photo={e.host_avatar || undefined}
+      verified={verified && !!name} bio={e.host_bio}>
+      <HostFacts extras={e} />
+    </PersonCard>
   );
 }
 
@@ -251,33 +199,26 @@ export function RecommendedDriversSection({ ids }: { ids: string[] }) {
   }, [ids.join(',')]);
   if (!drivers.length) return null;
   return (
-    <Screen tone="white" testid="detail-recommended-drivers">
-      <SectionHead label={t('detail.recommended_label')} title={t('detail.recommended_title')} note={t('detail.recommended_note')} />
-      <div className="mt-10 grid sm:grid-cols-2 gap-4">
-        {drivers.map((d) => (
-          <Link key={d.id} to={`/listing/${d.id}`} className="flex items-center gap-4 p-4 rounded-2xl border border-[var(--line)] bg-white btn-hover text-left">
-            <SmartImg src={listingImage(d, 200, 200)} alt="" className="w-16 h-16 rounded-xl object-cover bg-mist flex-shrink-0" />
-            <span className="flex-1 min-w-0">
-              <span className="block font-bold text-ink truncate">{d.title}</span>
-              <span className="block text-sm text-ink-soft truncate">{d.location}</span>
-            </span>
-            <span className="inline-flex items-center gap-1 text-sm font-bold text-pine">
-              {t('common.view')} <ArrowRight size={14} />
-            </span>
-          </Link>
-        ))}
+    <section data-testid="detail-recommended-drivers">
+      <SecHead eyebrow={t('detail.recommended_label')} title={t('detail.recommended_title')} className="!mt-0" />
+      <p className="ag-small -mt-1 mb-2.5">{t('detail.recommended_note')}</p>
+      <div className="grid grid-cols-2 gap-2.5">
+        {drivers.map((d) => <MiniCard key={d.id} item={d} />)}
       </div>
-    </Screen>
+    </section>
   );
 }
 
-/** Shown in the reserve area when a host has switched availability off. */
+/** Shown in the booking box when a host has switched availability off. */
 export function UnavailableNotice() {
   const { t } = useTranslation();
   return (
-    <div className="rounded-2xl border border-[var(--line)] bg-white p-5 text-left" data-testid="host-unavailable">
-      <p className="font-bold text-ink flex items-center gap-2"><Car size={18} className="text-ink-soft" /> {t('detail.unavailable_title')}</p>
-      <p className="mt-1 text-sm text-ink-soft">{t('detail.unavailable_body')}</p>
-    </div>
+    <Box tone="blush" flat data-testid="host-unavailable" className="!flex-row !items-start">
+      <PauseCircle className="w-6 h-6 flex-none text-[var(--r)]" aria-hidden="true" />
+      <div className="flex flex-col gap-1">
+        <h3>{t('detail.unavailable_title')}</h3>
+        <p className="ag-small">{t('detail.unavailable_body')}</p>
+      </div>
+    </Box>
   );
 }

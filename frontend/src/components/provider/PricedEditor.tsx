@@ -2,10 +2,9 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Plus, Trash, Camera } from '@phosphor-icons/react';
 import { uploadImage } from '@/lib/uploadImage';
+import { Button, IconButton } from '@/components/ag';
 
 export type Priced = { name: string; price: number | ''; unit: string; photo?: string };
-
-const input = 'w-full px-3.5 py-2.5 rounded-xl border border-[var(--line)] bg-white outline-none text-sm text-ink';
 
 /** Rows of a name, a price and a unit: rooms, food, a guide's services. */
 export default function PricedEditor({ rows, onChange, units, unitLabel, namePlaceholder, addLabel, testid, max, fullNote }: {
@@ -17,43 +16,44 @@ export default function PricedEditor({ rows, onChange, units, unitLabel, namePla
   const { t } = useTranslation();
   const full = max !== undefined && rows.length >= max;
   const [busy, setBusy] = React.useState<number | null>(null);
+  const set = (i: number, patch: Partial<Priced>) => onChange(rows.map((r, j) => (j === i ? { ...r, ...patch } : r)));
   const pickPhoto = async (i: number, file?: File) => {
     if (!file) return;
     setBusy(i);
     try { set(i, { photo: await uploadImage(file) }); } catch { /* the row keeps its old photo */ } finally { setBusy(null); }
   };
-  const set = (i: number, patch: Partial<Priced>) => onChange(rows.map((r, j) => (j === i ? { ...r, ...patch } : r)));
   return (
-    <div className="space-y-2" data-testid={testid}>
+    <div className="grid gap-2.5" data-testid={testid}>
       {rows.map((r, i) => (
-        <div key={i} className="grid grid-cols-[2.5rem_1fr_8.5rem_auto] sm:grid-cols-[2.5rem_1fr_7rem_8.5rem_auto] gap-2 items-center">
-          <label className="w-10 h-10 rounded-xl border border-[var(--line)] bg-white overflow-hidden grid place-items-center cursor-pointer text-ink-soft row-span-2 sm:row-span-1"
-            title={t('ui.pricedEditor.add_photo')} aria-label={t('ui.pricedEditor.add_photo')}>
-            {busy === i ? <span className="text-[10px]">…</span> : r.photo ? <img src={r.photo} alt="" className="w-full h-full object-cover" /> : <Camera size={16} />}
-            <input type="file" accept="image/*" className="hidden" onChange={(e) => pickPhoto(i, e.target.files?.[0])} />
-          </label>
-          <input value={r.name} onChange={(e) => set(i, { name: e.target.value })} placeholder={namePlaceholder}
-            aria-label={namePlaceholder} className={`${input} col-span-3 sm:col-span-1`} />
-          <input type="number" min={0} value={r.price} onChange={(e) => set(i, { price: e.target.value === '' ? '' : Math.max(0, Number(e.target.value)) })}
-            placeholder="₹" aria-label={t('ui.pricedEditor.price')} className={`${input}`} />
-          <select value={r.unit} onChange={(e) => set(i, { unit: e.target.value })} aria-label={t('ui.pricedEditor.unit')} className={`${input}`}>
-            {units.map((u) => <option key={u} value={u}>{unitLabel(u)}</option>)}
-          </select>
-          <button type="button" onClick={() => onChange(rows.filter((_, j) => j !== i))} aria-label={t('ui.pricedEditor.remove')}
-            className="w-10 h-10 rounded-full grid place-items-center text-ink-soft hover:bg-white">
-            <Trash size={18} />
-          </button>
+        <div key={i} className="grid gap-2 rounded-[18px] border border-[var(--warmline)] bg-[var(--surface)] p-3">
+          <div className="flex items-center gap-2">
+            <label className="grid h-14 w-14 flex-none cursor-pointer place-items-center overflow-hidden rounded-2xl bg-[var(--r-tint)] text-[var(--r)]"
+              title={t('ui.pricedEditor.add_photo')} aria-label={t('ui.pricedEditor.add_photo')}>
+              {busy === i ? <span className="text-xs">…</span> : r.photo ? <img src={r.photo} alt="" className="h-full w-full object-cover" /> : <Camera size={20} />}
+              <input type="file" accept="image/*" className="sr-only" onChange={(e) => pickPhoto(i, e.target.files?.[0])} />
+            </label>
+            <input value={r.name} onChange={(e) => set(i, { name: e.target.value })} placeholder={namePlaceholder}
+              aria-label={namePlaceholder} className="ag-in min-w-0 flex-1" />
+            <IconButton label={t('ui.pricedEditor.remove')} onClick={() => onChange(rows.filter((_, j) => j !== i))}>
+              <Trash />
+            </IconButton>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <input type="number" min={0} value={r.price} onChange={(e) => set(i, { price: e.target.value === '' ? '' : Math.max(0, Number(e.target.value)) })}
+              placeholder="₹" aria-label={t('ui.pricedEditor.price')} className="ag-in" />
+            <select value={r.unit} onChange={(e) => set(i, { unit: e.target.value })} aria-label={t('ui.pricedEditor.unit')} className="ag-in">
+              {units.map((u) => <option key={u} value={u}>{unitLabel(u)}</option>)}
+            </select>
+          </div>
         </div>
       ))}
       {full ? (
-        <p className="text-xs text-ink-soft">{fullNote}</p>
+        <p className="ag-small">{fullNote}</p>
       ) : (
-        <button type="button" onClick={() => onChange([...rows, { name: '', price: '', unit: units[0] }])}
-          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-[var(--line)] bg-white text-sm font-bold text-ink btn-hover">
-          <Plus size={16} /> {addLabel}
-        </button>
+        <Button size="sm" icon={<Plus />} className="self-start" onClick={() => onChange([...rows, { name: '', price: '', unit: units[0] }])}>
+          {addLabel}
+        </Button>
       )}
     </div>
   );
 }
-

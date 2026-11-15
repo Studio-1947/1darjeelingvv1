@@ -1,16 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Heart, ShareNetwork as Share2, MapTrifold as Map, Check, Calendar, X, Copy, ArrowSquareOut as ExternalLink } from '@phosphor-icons/react';
+import { Heart, ShareNetwork as Share2, Path, Check, X, Copy, WhatsappLogo } from '@phosphor-icons/react';
 import { useAuth } from '@/context/AuthContext';
 import { fetchFavorites, SavedListing } from '@/lib/favorites';
 import api from '@/lib/api';
 import ListingCard from '@/components/ListingCard';
 import TripPlannerModal from '@/components/TripPlannerModal';
 import { useSeo } from '@/components/Seo';
+import { Box, Button, ButtonLink, IconButton, PageHead, TextField } from '@/components/ag';
 
 /**
- * Wishlist / Saved places with shareable Trip Plan itinerary feature.
+ * Saved (prototype V.saved): the places you kept, two to a row, with Plan a trip and a shareable
+ * trip plan link. /saved?plan=id,id shows a shared plan to anyone.
  */
 export default function Saved() {
   const { t } = useTranslation();
@@ -22,7 +24,7 @@ export default function Saved() {
   const [items, setItems] = useState<SavedListing[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Share modal state
+  // Share sheet state
   const [showPlanModal, setShowPlanModal] = useState(false);
   const [showItineraryModal, setShowItineraryModal] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -68,127 +70,82 @@ export default function Saved() {
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
   };
 
+  const head = (
+    <PageHead eyebrow={sharedPlanParam ? t('saved.shared_label') : t('ui.saved.eyebrow', 'Your favourites')}
+      title={sharedPlanParam ? t('saved.shared_title') : t('nav.saved')}
+      sub={items.length > 0 ? t('saved.count', { count: items.length }) : undefined} />
+  );
+
   if (authLoading || (user && loading && !sharedPlanParam)) {
-    return <div className="mx-auto max-w-6xl px-4 md:px-6 py-8 text-ink-soft">{t('common.loading')}</div>;
+    return <div className="ag-wrap"><div className="ag-main">{head}<p className="ag-small">{t('common.loading')}</p></div></div>;
   }
   if (!user && !sharedPlanParam) return null;
 
-  // Group items by category for trip plan view
+  // Group items by category for the share sheet
   const homestays = items.filter((i) => i.type === 'homestay');
   const drivers = items.filter((i) => i.type === 'driver');
   const spotsAndCafes = items.filter((i) => i.type !== 'homestay' && i.type !== 'driver');
 
   return (
-    <div className="mx-auto max-w-6xl px-4 md:px-6 py-6 md:py-8 pb-24 lg:pb-12">
-      <div className="flex flex-wrap items-end justify-between gap-4 mb-6">
-        <div>
-          <div className="text-[11px] font-bold uppercase tracking-widest text-flag flex items-center gap-1.5">
-            <Heart size={14} /> {sharedPlanParam ? t('saved.shared_label') : t('saved.label')}
-          </div>
-          <h1 className="font-display font-extrabold text-3xl sm:text-4xl md:text-5xl text-ink leading-tight">
-            {sharedPlanParam ? t('saved.shared_title') : t('saved.title')}
-          </h1>
-          <p className="mt-1 text-sm text-ink-soft">{t('saved.count', { count: items.length })}</p>
-        </div>
+    <div className="ag-wrap">
+      <div className="ag-main">
+        {head}
 
         {items.length > 0 && (
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowItineraryModal(true)}
-              data-testid="build-itinerary-cta"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-gold text-ink font-extrabold text-sm btn-hover shadow-sm"
-            >
-              <Calendar size={16} /> {t('ui.saved.plan_day_trip')}
-            </button>
-            <button
-              onClick={() => setShowPlanModal(true)}
-              data-testid="plan-trip-cta"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-pine text-white font-bold text-sm btn-hover shadow-sm"
-            >
-              <Share2 size={16} /> {t('saved.plan_cta')}
-            </button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="primary" go icon={<Path />} onClick={() => setShowItineraryModal(true)} data-testid="build-itinerary-cta">
+              {t('ui.saved.plan', 'Plan a trip')}
+            </Button>
+            <Button icon={<Share2 />} onClick={() => setShowPlanModal(true)} data-testid="plan-trip-cta">
+              {t('saved.plan_cta')}
+            </Button>
+          </div>
+        )}
+
+        {items.length === 0 ? (
+          <Box data-testid="saved-empty">
+            <span className="ag-micon"><Heart /></span>
+            <div>
+              <h2>{t('saved.empty')}</h2>
+              <p className="ag-small">{t('ui.saved.empty_hint', 'Tap the heart on any place, homestay or driver to keep it here.')}</p>
+            </div>
+            <ButtonLink to="/explore" go className="self-start">{t('ui.trips.find', 'Find a place')}</ButtonLink>
+          </Box>
+        ) : (
+          <div className="grid grid-cols-2 gap-2.5">
+            {items.map((it) => <ListingCard key={it.id} item={it} />)}
           </div>
         )}
       </div>
 
-      {items.length === 0 ? (
-        <div className="mist-panel p-8 md:p-10 text-center">
-          <Heart size={28} className="mx-auto text-ink-soft/50" />
-          <p className="mt-3 text-ink-soft">{t('saved.empty')}</p>
-        </div>
-      ) : (
-        <div className="space-y-8">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-            {items.map((it) => <ListingCard key={it.id} item={it} />)}
-          </div>
-        </div>
-      )}
-
-      {/* Shareable Trip Plan Modal */}
+      {/* Shareable trip plan sheet */}
       {showPlanModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm grid place-items-center p-4">
-          <div className="bg-white rounded-3xl border border-[var(--line)] max-w-lg w-full p-6 md:p-8 shadow-2xl relative animate-in fade-in zoom-in-95 duration-200">
-            <button
-              onClick={() => setShowPlanModal(false)}
-              className="absolute top-5 right-5 text-ink-soft hover:text-ink p-1 rounded-full hover:bg-mist transition-colors"
-            >
-              <X size={20} />
-            </button>
-
-            <div className="flex items-center gap-2 text-pine font-extrabold text-xs uppercase tracking-wider mb-1">
-              <Map size={16} /> {t('saved.modal_label')}
-            </div>
-            <h2 className="font-display font-extrabold text-2xl text-ink">{t('saved.modal_title')}</h2>
-            <p className="text-sm text-ink-soft mt-1">
-              {t('saved.modal_note')}
-            </p>
-
-            <div className="mt-5 space-y-4">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" role="dialog" aria-modal="true" aria-labelledby="share-plan-title">
+          <div className="absolute inset-0 bg-black/55" onClick={() => setShowPlanModal(false)} />
+          <div className="relative z-10 w-full max-w-[720px] sm:max-w-lg max-h-[90dvh] overflow-y-auto rounded-t-[22px] sm:rounded-[22px] bg-[var(--surface)] p-4 pb-6 flex flex-col gap-4">
+            <div className="flex items-start justify-between gap-3">
               <div>
-                <label className="block text-xs font-semibold text-ink-soft uppercase mb-1">{t('saved.trip_name')}</label>
-                <input
-                  type="text"
-                  value={tripTitle}
-                  onChange={(e) => setTripTitle(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--line)] bg-white text-sm font-semibold text-ink outline-none"
-                />
+                <span className="ag-eyebrow">{t('saved.modal_label')}</span>
+                <h2 id="share-plan-title" className="font-medium text-2xl text-[var(--ink7)]">{t('saved.modal_title')}</h2>
+                <p className="ag-small">{t('saved.modal_note')}</p>
               </div>
-
-              {/* Summary breakdown */}
-              <div className="mist-panel p-4 space-y-2 text-xs font-semibold text-ink">
-                {homestays.length > 0 && <div>🏡 {t('saved.stays')}: {homestays.map(h => h.title).join(', ')}</div>}
-                {drivers.length > 0 && <div>🚗 {t('saved.drivers')}: {drivers.map(d => d.title).join(', ')}</div>}
-                {spotsAndCafes.length > 0 && <div>📍 {t('saved.spots_cafes')}: {spotsAndCafes.map(s => s.title).join(', ')}</div>}
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-ink-soft uppercase mb-1">{t('saved.share_link')}</label>
-                <div className="flex items-center gap-2">
-                  <input
-                    readOnly
-                    type="text"
-                    value={getShareableUrl()}
-                    className="flex-1 px-3.5 py-2.5 rounded-xl border border-[var(--line)] bg-mist text-xs text-ink tabular-nums outline-none truncate"
-                  />
-                  <button
-                    onClick={handleCopyLink}
-                    className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-ink text-white font-bold text-xs btn-hover whitespace-nowrap"
-                  >
-                    {copied ? <Check size={14} className="text-pine" /> : <Copy size={14} />}
-                    {copied ? t('saved.copied') : t('saved.copy')}
-                  </button>
-                </div>
-              </div>
-
-              <div className="pt-2 flex gap-3">
-                <button
-                  onClick={handleWhatsAppShare}
-                  className="flex-1 py-3 rounded-full bg-[#25D366] text-white font-bold text-sm btn-hover inline-flex items-center justify-center gap-2 shadow-sm"
-                >
-                  <Share2 size={16} /> {t('saved.share_whatsapp')}
-                </button>
-              </div>
+              <IconButton label={t('common.close')} onClick={() => setShowPlanModal(false)}><X /></IconButton>
             </div>
+
+            <TextField label={t('saved.trip_name')} value={tripTitle} onChange={(e) => setTripTitle(e.target.value)} />
+
+            <Box flat className="!gap-1 text-sm text-[var(--ink7)]">
+              {homestays.length > 0 && <p><b className="font-medium text-[var(--ink-strong)]">{t('saved.stays')}:</b> {homestays.map((h) => h.title).join(', ')}</p>}
+              {drivers.length > 0 && <p><b className="font-medium text-[var(--ink-strong)]">{t('saved.drivers')}:</b> {drivers.map((d) => d.title).join(', ')}</p>}
+              {spotsAndCafes.length > 0 && <p><b className="font-medium text-[var(--ink-strong)]">{t('saved.spots_cafes')}:</b> {spotsAndCafes.map((s) => s.title).join(', ')}</p>}
+            </Box>
+
+            <div className="flex items-end gap-2">
+              <TextField label={t('saved.share_link')} readOnly value={getShareableUrl()} className="flex-1 min-w-0" />
+              <Button onClick={handleCopyLink} icon={copied ? <Check /> : <Copy />}>{copied ? t('saved.copied') : t('saved.copy')}</Button>
+            </div>
+
+            <Button variant="primary" block center icon={<WhatsappLogo />} onClick={handleWhatsAppShare}>{t('saved.share_whatsapp')}</Button>
           </div>
         </div>
       )}
