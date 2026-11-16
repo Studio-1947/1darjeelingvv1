@@ -1,6 +1,30 @@
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
+import type { Plugin } from 'vite';
+
+// A production build registers /service-worker.js, which serves the app cache-first. If that build
+// once ran on this address (e.g. the Docker frontend on :3000), the old worker keeps serving the old
+// app over the dev server: its chunks no longer exist, so the page stays white, and the browser can't
+// update the worker because the dev server answers /service-worker.js with index.html. In dev only,
+// answer it with a worker that clears its caches, unregisters itself and reloads the open tabs.
+const devServiceWorkerKillSwitch = (): Plugin => ({
+  name: 'dev-service-worker-kill-switch',
+  apply: 'serve',
+  configureServer(server) {
+    server.middlewares.use((req, res, next) => {
+      if (!req.url?.split('?')[0].endsWith('/service-worker.js')) return next();
+      res.setHeader('Content-Type', 'application/javascript');
+      res.setHeader('Cache-Control', 'no-store');
+      res.end(`self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', (e) => e.waitUntil((async () => {
+  for (const k of await caches.keys()) await caches.delete(k);
+  await self.registration.unregister();
+  for (const c of await self.clients.matchAll({ type: 'window' })) c.navigate(c.url);
+})()));`);
+    });
+  },
+});
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
@@ -14,7 +38,7 @@ export default defineConfig(({ mode }) => {
 
   return {
     base: env.VITE_BASE_PATH || process.env.VITE_BASE_PATH || '/',
-    plugins: [react()],
+    plugins: [react(), devServiceWorkerKillSwitch()],
     resolve: {
       alias: {
         '@': path.resolve(__dirname, './src'),

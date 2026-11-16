@@ -6,6 +6,7 @@ import 'leaflet/dist/leaflet.css';
 import '@/lib/leafletIconFix';
 import { MapPin, MagnifyingGlass as Search, CircleNotch as Loader2, Mountains as Mountain, NavigationArrow } from '@phosphor-icons/react';
 import api from '@/lib/api';
+import { Button } from '@/components/ag';
 import { LANDMARKS, nearestAreaLabel } from '@/lib/hostQuickFill';
 
 // Default centre: Darjeeling town (same anchor the read-only maps use).
@@ -130,17 +131,16 @@ export default function LocationPicker({ initialLat, initialLng, onLocationSelec
 
   return (
     <div className={className}>
-      <button type="button" onClick={useHere} disabled={locating} data-testid="location-here"
-        className="mb-2 w-full inline-flex items-center justify-center gap-2 rounded-full bg-pine text-white font-bold text-sm py-2.5 btn-hover disabled:opacity-60">
-        {locating ? <Loader2 size={16} className="animate-spin" /> : <NavigationArrow size={16} weight="fill" />}
+      <Button block center onClick={useHere} disabled={locating} data-testid="location-here" className="mb-2"
+        icon={locating ? <Loader2 className="animate-spin" /> : <NavigationArrow weight="fill" />}>
         {locating ? t('ob.quick.locating') : t('ob.quick.here_now')}
-      </button>
-      {hereMsg && <p className="mb-2 text-xs font-semibold text-flag" data-testid="location-here-msg">{hereMsg}</p>}
+      </Button>
+      {hereMsg && <p className="ag-err mb-2" role="alert" data-testid="location-here-msg">{hereMsg}</p>}
 
       {/* Address search (approximate - the pin is what gets saved) */}
       <div className="relative">
         <div className="relative">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-soft" />
+          <Search size={18} className="absolute left-5 top-1/2 -translate-y-1/2 text-[var(--ink-muted)]" aria-hidden="true" />
           <input
             value={query}
             onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
@@ -148,14 +148,15 @@ export default function LocationPicker({ initialLat, initialLng, onLocationSelec
             onBlur={() => setTimeout(() => setOpen(false), 150)}
             placeholder={t('locationPicker.search_placeholder')}
             data-testid="location-search"
-            className="w-full pl-9 pr-9 py-2.5 rounded-xl border border-[var(--line)] bg-white outline-none text-sm"
+            aria-label={t('locationPicker.search_placeholder')}
+            className="ag-in !pl-12 !pr-12"
           />
-          {searching && <Loader2 size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-soft animate-spin" />}
+          {searching && <Loader2 size={18} className="absolute right-5 top-1/2 -translate-y-1/2 text-[var(--ink-muted)] animate-spin" />}
         </div>
         {open && (landmarkMatches.length > 0 || results.length > 0) && (
-          <ul className="absolute z-30 mt-1 w-full max-h-64 overflow-y-auto rounded-xl border border-[var(--line)] bg-white shadow-lg">
+          <ul className="absolute z-30 mt-1 w-full max-h-64 overflow-y-auto rounded-[18px] border border-[var(--hairline)] bg-[var(--surface)] shadow-lg">
             {landmarkMatches.length > 0 && (
-              <li className="px-3 pt-2.5 pb-1 text-[10px] font-bold uppercase tracking-widest text-ink-soft">
+              <li className="ag-eyebrow px-4 pt-3 pb-1">
                 {t('locationPicker.popular')}
               </li>
             )}
@@ -164,14 +165,14 @@ export default function LocationPicker({ initialLat, initialLng, onLocationSelec
                 <button type="button" onMouseDown={(e) => e.preventDefault()} onTouchStart={(e) => e.preventDefault()}
                   onClick={() => pickResult({ display_name: l.name, lat: l.lat, lon: l.lon })}
                   data-testid={`location-landmark-${i}`}
-                  className="w-full flex items-start gap-2 px-3 py-2.5 text-left text-sm text-ink hover:bg-mist">
-                  <Mountain size={14} className="text-pine flex-shrink-0 mt-0.5" />
+                  className="w-full flex items-start gap-2 px-4 py-2.5 text-left text-sm text-[var(--ink-strong)] hover:bg-[var(--soft)]">
+                  <Mountain size={16} className="text-[var(--r)] flex-shrink-0 mt-0.5" />
                   <span className="line-clamp-2">{l.name}</span>
                 </button>
               </li>
             ))}
             {results.length > 0 && (
-              <li className="px-3 pt-2.5 pb-1 text-[10px] font-bold uppercase tracking-widest text-ink-soft border-t border-[var(--line)]">
+              <li className="ag-eyebrow px-4 pt-3 pb-1 border-t border-[var(--hairline)]">
                 {t('locationPicker.results')}
               </li>
             )}
@@ -179,19 +180,19 @@ export default function LocationPicker({ initialLat, initialLng, onLocationSelec
               <li key={`${r.lat},${r.lon},${i}`}>
                 <button type="button" onMouseDown={(e) => e.preventDefault()} onTouchStart={(e) => e.preventDefault()}
                   onClick={() => pickResult(r)} data-testid={`location-result-${i}`}
-                  className="w-full flex items-start gap-2 px-3 py-2.5 text-left text-sm text-ink hover:bg-mist">
-                  <MapPin size={14} className="text-pine flex-shrink-0 mt-0.5" />
+                  className="w-full flex items-start gap-2 px-4 py-2.5 text-left text-sm text-[var(--ink-strong)] hover:bg-[var(--soft)]">
+                  <MapPin size={16} className="text-[var(--r)] flex-shrink-0 mt-0.5" />
                   <span className="line-clamp-2">{r.display_name}</span>
                 </button>
               </li>
             ))}
           </ul>
         )}
-        {searchMsg && landmarkMatches.length === 0 && <p className="mt-1 text-xs text-ink-soft">{searchMsg}</p>}
+        {searchMsg && landmarkMatches.length === 0 && <p className="ag-small mt-1">{searchMsg}</p>}
       </div>
 
       {/* Map - z-0 stacking context so Leaflet's controls stay under the site header */}
-      <div className="relative z-0 mt-3 rounded-2xl border border-[var(--line)] overflow-hidden">
+      <div className="relative z-0 mt-3 rounded-[var(--r-card)] border border-[var(--warmline)] overflow-hidden">
         <MapContainer
           ref={mapRef}
           center={pos}
@@ -219,8 +220,8 @@ export default function LocationPicker({ initialLat, initialLng, onLocationSelec
       </div>
 
       <div className="mt-2 flex items-center justify-between gap-3 text-xs">
-        <span className="text-ink-soft">{t('locationPicker.hint')}</span>
-        <span data-testid="location-readout" className="flex-shrink-0 tabular-nums font-semibold text-pine">
+        <span className="text-[var(--ink-muted)]">{t('locationPicker.hint')}</span>
+        <span data-testid="location-readout" className="flex-shrink-0 tabular-nums font-medium text-[var(--r)]">
           {pos[0].toFixed(5)}, {pos[1].toFixed(5)}
         </span>
       </div>

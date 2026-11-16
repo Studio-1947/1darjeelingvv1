@@ -1,49 +1,45 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { X } from '@phosphor-icons/react';
+import { IconButton, Status } from '@/components/ag';
 
-/** Gradient stat tile for the dashboard header grid. */
-export function StatCard({ label, value, sub, icon: Icon, tone = 'pine' }: {
-  label: string;
-  value: any;
-  sub?: string;
-  icon: any;
-  tone?: string;
+/**
+ * A bottom sheet on phones and a centred dialog from 640px: title bar with a close button, the
+ * body scrolls. Used by the add-listing and edit-listing forms.
+ */
+export function Sheet({ title, onClose, closeTestId, children, testId }: {
+  title: React.ReactNode; onClose: () => void; closeTestId?: string; children: React.ReactNode; testId?: string;
 }) {
-  const tones = {
-    pine: 'from-pine to-pine-dark',
-    flag: 'from-flag to-[#8a1e1e]',
-    gold: 'from-gold to-[#c69108]',
-    ink: 'from-ink to-[#374a41]',
-  };
+  const { t } = useTranslation();
   return (
-    <div className={`rounded-2xl p-4 md:p-5 text-white bg-gradient-to-br ${tones[tone]}`}>
-      <div className="flex items-center gap-2 opacity-90"><Icon size={16} /> <span className="text-[11px] uppercase tracking-widest font-bold">{label}</span></div>
-      <div className="mt-1 font-display font-extrabold text-2xl md:text-3xl leading-none">{value}</div>
-      {sub && <div className="mt-1 text-xs text-white/85">{sub}</div>}
+    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/50 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="sheet-title" data-testid={testId}>
+      <div className="flex max-h-[92vh] w-full max-w-[720px] flex-col overflow-hidden rounded-t-[var(--r-card)] bg-[var(--page)] sm:rounded-[var(--r-card)]">
+        <div className="flex items-center gap-3 border-b border-[var(--hairline)] px-4 py-3">
+          <h2 id="sheet-title" className="m-0 flex-1 text-lg font-medium text-[var(--ink-strong)]">{title}</h2>
+          <IconButton label={t('common.close')} onClick={onClose} data-testid={closeTestId}><X /></IconButton>
+        </div>
+        <div className="overflow-y-auto">{children}</div>
+      </div>
     </div>
   );
 }
 
-/** Coloured pill for a booking status. */
-export function StatusPill({ status }) {
+const TONE: Record<string, 'ok' | 'no' | 'info' | 'pending'> = {
+  confirmed: 'ok',
+  accepted: 'info',
+  cancelled: 'no',
+  pending_payment: 'pending',
+  awaiting_host: 'pending',
+};
+
+/** A booking's status as a labelled pill. */
+export function StatusPill({ status }: { status: string }) {
   const { t } = useTranslation();
-  const map = {
-    confirmed: 'bg-pine/10 text-pine',
-    pending_payment: 'bg-gold/20 text-[#8a6b04]',
-    awaiting_host: 'bg-gold/25 text-[#7a5d00]',
-    accepted: 'bg-[#E6F2EA] text-[#1F6656]',
-    cancelled: 'bg-flag/10 text-flag',
-  };
-  if (status === 'awaiting_host') {
-    return (
-      <span className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${map.awaiting_host}`}>
-        {t('approval.host_new_request')}
-      </span>
-    );
-  }
   return (
-    <span className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${map[status] || 'bg-mist text-ink-soft'}`}>
-      {t(`booking.status.${status}`, { defaultValue: status?.replace('_', ' ') })}
-    </span>
+    <Status tone={TONE[status] || 'pending'} className="shrink-0">
+      {status === 'awaiting_host'
+        ? t('approval.host_new_request')
+        : t(`booking.status.${status}`, { defaultValue: status?.replace('_', ' ') })}
+    </Status>
   );
 }

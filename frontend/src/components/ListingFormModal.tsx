@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { X, CircleNotch as Loader2 } from '@phosphor-icons/react';
+import { CircleNotch as Loader2 } from '@phosphor-icons/react';
+import { Button, FieldError, SelectField, TextArea, TextField } from '@/components/ag';
+import { Sheet } from '@/components/provider/dashboard/widgets';
 
 // 'spot' is deliberately absent: tourist spots are curated content authored only in the admin
 // console, and the backend rejects a spot created by anyone but an admin (backend/src/lib/spots.ts).
@@ -93,82 +95,27 @@ export default function ListingFormModal({ open, onClose, initial, onSubmit }: L
   };
 
   return (
-    <div
-      className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4"
-      role="dialog" aria-modal="true" data-testid="listing-form-modal"
-    >
-      <div className="bg-white w-full sm:max-w-lg sm:rounded-3xl rounded-t-3xl overflow-hidden max-h-[90vh] flex flex-col">
-        <div className="flex items-center justify-between p-4 md:p-5 border-b border-[var(--line)]">
-          <div className="font-display font-bold text-lg text-ink">{isEdit ? t('lf.edit_title') : t('pd.add_listing')}</div>
-          <button onClick={onClose} data-testid="listing-form-close" className="p-1.5 rounded-full hover:bg-mist" aria-label={t('common.close')}>
-            <X size={18} />
-          </button>
+    <Sheet title={isEdit ? t('lf.edit_title') : t('pd.add_listing')} onClose={onClose} closeTestId="listing-form-close" testId="listing-form-modal">
+      <form onSubmit={handleSubmit} className="grid gap-4 p-4">
+        <TextField label={t('lf.title')} required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} data-testid="listing-form-title" />
+        {!isEdit && (
+          <SelectField label={t('lf.type')} value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} data-testid="listing-form-type">
+            {TYPES.map((ty) => <option key={ty} value={ty}>{t(`categories.${ty}`, { defaultValue: ty })}</option>)}
+          </SelectField>
+        )}
+        <TextArea label={t('pd.description')} required rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} data-testid="listing-form-description" />
+        <TextField label={t('lf.location')} required value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} data-testid="listing-form-location" />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <TextField label={t('lf.price')} type="number" min="0" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} data-testid="listing-form-price" />
+          <TextField label={t('lf.image_url')} value={form.image} onChange={(e) => setForm({ ...form, image: e.target.value })} data-testid="listing-form-image" />
         </div>
-
-        <form onSubmit={handleSubmit} className="p-5 md:p-6 space-y-4 overflow-y-auto">
-          <label className="block">
-            <span className="text-xs font-semibold text-ink-soft">{t('lf.title')}</span>
-            <input required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
-              data-testid="listing-form-title"
-              className="mt-1 w-full rounded-xl border border-[var(--line)] px-3.5 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 outline-none" />
-          </label>
-
-          {!isEdit && (
-            <label className="block">
-              <span className="text-xs font-semibold text-ink-soft">{t('lf.type')}</span>
-              <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}
-                data-testid="listing-form-type"
-                className="mt-1 w-full rounded-xl border border-[var(--line)] px-3.5 py-2.5 text-sm capitalize focus:ring-2 focus:ring-primary/20 outline-none">
-                {TYPES.map((ty) => <option key={ty} value={ty}>{t(`categories.${ty}`, { defaultValue: ty })}</option>)}
-              </select>
-            </label>
-          )}
-
-          <label className="block">
-            <span className="text-xs font-semibold text-ink-soft">{t('pd.description')}</span>
-            <textarea required value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })}
-              data-testid="listing-form-description" rows={3}
-              className="mt-1 w-full rounded-xl border border-[var(--line)] px-3.5 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 outline-none" />
-          </label>
-
-          <label className="block">
-            <span className="text-xs font-semibold text-ink-soft">{t('lf.location')}</span>
-            <input required value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })}
-              data-testid="listing-form-location"
-              className="mt-1 w-full rounded-xl border border-[var(--line)] px-3.5 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 outline-none" />
-          </label>
-
-          <div className="grid grid-cols-2 gap-4">
-            <label className="block">
-              <span className="text-xs font-semibold text-ink-soft">{t('lf.price')}</span>
-              <input type="number" min="0" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })}
-                data-testid="listing-form-price"
-                className="mt-1 w-full rounded-xl border border-[var(--line)] px-3.5 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 outline-none" />
-            </label>
-            <label className="block">
-              <span className="text-xs font-semibold text-ink-soft">{t('lf.image_url')}</span>
-              <input value={form.image} onChange={(e) => setForm({ ...form, image: e.target.value })}
-                data-testid="listing-form-image"
-                className="mt-1 w-full rounded-xl border border-[var(--line)] px-3.5 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 outline-none" />
-            </label>
-          </div>
-
-          <label className="block">
-            <span className="text-xs font-semibold text-ink-soft">{t('lf.tags')}</span>
-            <input value={form.tags} onChange={(e) => setForm({ ...form, tags: e.target.value })}
-              data-testid="listing-form-tags"
-              className="mt-1 w-full rounded-xl border border-[var(--line)] px-3.5 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 outline-none" />
-          </label>
-
-          {err && <p className="text-xs text-flag font-semibold">{err}</p>}
-
-          <button type="submit" disabled={busy} data-testid="listing-form-submit"
-            className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-pine text-white font-bold py-3 text-sm btn-hover disabled:opacity-60">
-            {busy && <Loader2 size={16} className="animate-spin" />}
-            {isEdit ? t('common.save_changes') : t('pd.add_listing')}
-          </button>
-        </form>
-      </div>
-    </div>
+        <TextField label={t('lf.tags')} value={form.tags} onChange={(e) => setForm({ ...form, tags: e.target.value })} data-testid="listing-form-tags" />
+        <FieldError>{err}</FieldError>
+        <Button type="submit" variant="primary" block center disabled={busy} data-testid="listing-form-submit"
+          icon={busy ? <Loader2 className="animate-spin" /> : undefined}>
+          {isEdit ? t('common.save_changes') : t('pd.add_listing')}
+        </Button>
+      </form>
+    </Sheet>
   );
 }

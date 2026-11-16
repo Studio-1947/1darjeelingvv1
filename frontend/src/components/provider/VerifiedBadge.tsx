@@ -1,17 +1,14 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { SealCheck as BadgeCheck } from '@phosphor-icons/react';
+import { SealCheck } from '@phosphor-icons/react';
+import { Status } from '@/components/ag';
 
 /** Shown when a provider's kyc_status is 'verified'. */
 export default function VerifiedBadge({ size = 'sm' }: { size?: 'sm' | 'md' }) {
   const { t } = useTranslation();
-  const px = size === 'md' ? 16 : 13;
   return (
-    <span
-      className="inline-flex items-center gap-1 rounded-full bg-pine/10 text-pine-dark font-bold px-2 py-0.5 text-[11px]"
-      title={t('kyc.verifiedTooltip')}
-    >
-      <BadgeCheck size={px} /> {t('kyc.verified')}
-    </span>
+    <Status tone="ok" title={t('kyc.verifiedTooltip')}>
+      <SealCheck size={size === 'md' ? 16 : 14} weight="fill" aria-hidden="true" /> {t('kyc.verified')}
+    </Status>
   );
 }

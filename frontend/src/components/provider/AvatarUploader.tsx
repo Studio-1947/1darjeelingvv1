@@ -3,42 +3,28 @@ import { useTranslation } from 'react-i18next';
 import { Upload } from '@phosphor-icons/react';
 
 /**
- * Round avatar (photo, or a branded initial while there is none) with an
- * upload button. Presentational - the caller owns the upload. Pass a flex
- * `className` to arrange the button beside (row) or under (column) the photo.
+ * Round avatar (photo, or the initial while there is none) with an upload button.
+ * Presentational - the caller owns the upload.
  */
-export default function AvatarUploader({
-  src,
-  initial,
-  uploading,
-  onFileSelected,
-  label,
-  size = 'lg',
-  className = 'flex items-center gap-4',
-}: {
+export default function AvatarUploader({ src, initial, uploading, onFileSelected, label }: {
   src?: string;
   initial: string;
   uploading: boolean;
   onFileSelected: (e: React.ChangeEvent<HTMLInputElement>) => void;
   label?: string;
-  size?: 'lg' | 'sm';
-  className?: string;
 }) {
   const { t } = useTranslation();
-  const sizeCls = size === 'lg' ? 'w-24 h-24 md:w-32 md:h-32 text-4xl md:text-5xl' : 'w-20 h-20 text-2xl';
   return (
-    <div className={className}>
-      <div className={`${sizeCls} rounded-full bg-gradient-to-br from-pine to-pine-dark text-white overflow-hidden shadow-md flex items-center justify-center font-display font-extrabold flex-shrink-0 relative`}>
-        {src ? (
-          <img src={src} alt="" className="w-full h-full object-cover" />
-        ) : (
-          (initial || 'H').charAt(0).toUpperCase()
-        )}
-        {uploading && <div className="absolute inset-0 bg-black/40 grid place-items-center text-[10px] text-white">...</div>}
+    <div className="flex items-center gap-4">
+      <div className="relative grid h-20 w-20 flex-none place-items-center overflow-hidden rounded-full bg-[var(--r-tint)] text-3xl font-medium text-[var(--r)]">
+        {src ? <img src={src} alt="" className="h-full w-full object-cover" /> : (initial || 'H').charAt(0).toUpperCase()}
+        {uploading && <div className="absolute inset-0 grid place-items-center bg-black/40 text-xs text-white">…</div>}
       </div>
-      <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-[var(--line)] text-ink font-bold text-xs btn-hover cursor-pointer shadow-sm">
-        <Upload size={12} /> {uploading ? t('common.uploading') : (label ?? t('widgets.upload_photo'))}
-        <input type="file" accept="image/*" onChange={onFileSelected} className="hidden" />
+      {/* A label styled as a small button, so the file picker opens from it. */}
+      <label className="ag-btn sm cursor-pointer">
+        <Upload />
+        <span>{uploading ? t('common.uploading') : (label ?? t('widgets.upload_photo'))}</span>
+        <input type="file" accept="image/*" onChange={onFileSelected} className="sr-only" />
       </label>
     </div>
   );

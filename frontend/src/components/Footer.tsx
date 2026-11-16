@@ -1,8 +1,9 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { FacebookLogo, InstagramLogo, EnvelopeSimple as Mail, Phone } from '@phosphor-icons/react';
 import Wordmark from '@/components/Wordmark';
+import { ButtonA } from '@/components/ag';
 
 /**
  * A minimal footer: the wordmark, one row of links, the social icons and the copyright line.
@@ -21,31 +22,36 @@ const LINKS: { to: string; key: string }[] = [
 
 export default function Footer() {
   const { t } = useTranslation();
-  const icon = 'inline-grid place-items-center w-11 h-11 text-ink-soft transition-colors hover:text-pine focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine rounded';
+  const { pathname } = useLocation();
+  // The prototype keeps Home clean: the footer shows on every other page.
+  // Home stays clean, and single-task screens (sign in, list your business) keep the eye on the task.
+  if (['/', '/login', '/provider/onboard'].includes(pathname)) return null;
   return (
-    <footer className="mt-16 md:mt-20 border-t border-[var(--line)] bg-white pb-[calc(var(--bottom-nav-h)+var(--page-cta-h)+1rem)] lg:pb-0" data-testid="site-footer">
-      <div className="mx-auto max-w-6xl px-4 md:px-8 py-8 flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+    <footer className="ag-foot" data-testid="site-footer">
+      <div className="ag-wrap flex flex-col gap-5">
         <div className="flex items-center gap-3">
-          <Wordmark className="h-6 w-auto text-ink" />
-          <span className="text-[11px] font-semibold text-ink-soft">{t('ui.footer.by_studio', { name: 'studio 1947' })}</span>
+          <Wordmark className="h-6 w-auto text-[var(--ink-strong)]" still />
+          <span className="ag-small">{t('ui.footer.by_studio', { name: 'studio 1947' })}</span>
+        </div>
+        <div className="ag-row">
+          <ButtonA size="sm" variant="primary" href="tel:+919093277919" data-testid="footer-phone" icon={<Phone aria-hidden="true" />}
+            aria-label={t('ui.footer.call_us', { phone: '+91 90932 77919' })}>{t('ui.footer.call')}</ButtonA>
+          <ButtonA size="sm" href="mailto:aanganerp@gmail.com" icon={<Mail aria-hidden="true" />}
+            aria-label={t('ui.footer.email_us', { email: 'aanganerp@gmail.com' })}>{t('ui.footer.email')}</ButtonA>
+          <a href="https://www.instagram.com/aanganerp?dlrf=MWRnZ2tneHBqM2JiaQ%3D%3D" target="_blank" rel="noreferrer"
+            aria-label={t('ui.footer.follow_instagram')} className="ag-iconbtn"><InstagramLogo aria-hidden="true" /></a>
+          <a href="https://www.facebook.com/profile.php?id=61594349938326" target="_blank" rel="noreferrer"
+            aria-label={t('ui.footer.follow_facebook')} className="ag-iconbtn"><FacebookLogo aria-hidden="true" /></a>
         </div>
         <nav aria-label={t('footer.links')}>
-          <ul className="flex flex-wrap gap-x-5 lg:gap-y-2 text-sm text-ink-soft">
+          <ul className="flex flex-wrap gap-x-5 gap-y-1">
             {LINKS.map(({ to, key }) => (
-              <li key={to}><Link to={to} className="inline-flex items-center min-h-11 lg:min-h-0 hover:text-pine transition-colors">{t(key)}</Link></li>
+              <li key={to}><Link to={to} className="ag-small inline-flex items-center min-h-11 hover:text-[var(--r)]">{t(key)}</Link></li>
             ))}
           </ul>
         </nav>
-        <div className="flex items-center gap-1 -mx-3">
-          <a href="https://www.instagram.com/aanganerp?dlrf=MWRnZ2tneHBqM2JiaQ%3D%3D" target="_blank" rel="noreferrer"
-            aria-label={t('ui.footer.follow_instagram')} className={icon}><InstagramLogo size={20} aria-hidden="true" /></a>
-          <a href="https://www.facebook.com/profile.php?id=61594349938326" target="_blank" rel="noreferrer"
-            aria-label={t('ui.footer.follow_facebook')} className={icon}><FacebookLogo size={20} aria-hidden="true" /></a>
-          <a href="mailto:aanganerp@gmail.com" aria-label={t('ui.footer.email_us', { email: 'aanganerp@gmail.com' })} className={icon}><Mail size={20} aria-hidden="true" /></a>
-          <a href="tel:+919093277919" aria-label={t('ui.footer.call_us', { phone: '+91 90932 77919' })} data-testid="footer-phone" className={icon}><Phone size={20} aria-hidden="true" /></a>
-        </div>
+        <p className="ag-small">© 2026 {t('brand')}. {t('footer.rights')}.</p>
       </div>
-      <div className="border-t border-[var(--line)] py-4 text-center text-xs text-ink-soft">© 2026 {t('brand')}. {t('footer.rights')}.</div>
     </footer>
   );
 }

@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Compass, House as Home, MagnifyingGlass as Search } from '@phosphor-icons/react';
 import Seo from '@/components/Seo';
 import { CATEGORIES } from '@/constants/categories';
+import { Box, ButtonLink, Chips, PageHead, SecHead } from '@/components/ag';
 
 /**
  * What an unknown URL renders.
@@ -21,36 +22,29 @@ export default function NotFound() {
   const { t } = useTranslation();
 
   return (
-    <div className="mx-auto max-w-3xl px-4 md:px-8 py-16 md:py-24 text-center" data-testid="not-found">
+    <div className="ag-wrap" data-testid="not-found">
       <Seo title={t('notfound.title')} description={t('notfound.body')} noindex />
+      <div className="ag-main">
+        <Box>
+          <span className="w-14 h-14 rounded-full bg-[var(--r-tint)] text-[var(--r)] grid place-items-center" aria-hidden="true">
+            <Compass size={28} />
+          </span>
+          <PageHead eyebrow={t('notfound.eyebrow')} title={t('notfound.title')} sub={t('notfound.body')} />
+          <div className="flex flex-col sm:flex-row gap-2">
+            <ButtonLink to="/" variant="primary" go icon={<Home />} data-testid="notfound-home">{t('notfound.go_home')}</ButtonLink>
+            <ButtonLink to="/search" go icon={<Search />} data-testid="notfound-search">{t('notfound.browse')}</ButtonLink>
+          </div>
+        </Box>
 
-      <div className="mx-auto w-16 h-16 rounded-full bg-mist grid place-items-center text-pine">
-        <Compass size={30} />
-      </div>
-      <p className="mt-6 text-xs font-bold uppercase tracking-widest text-flag">{t('notfound.eyebrow')}</p>
-      <h1 className="mt-2 font-display font-extrabold text-3xl sm:text-4xl md:text-5xl text-ink leading-tight">
-        {t('notfound.title')}
-      </h1>
-      <p className="mt-4 text-ink-soft leading-relaxed">{t('notfound.body')}</p>
-
-      <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-        <Link to="/" data-testid="notfound-home"
-          className="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-pine text-white font-bold btn-hover">
-          <Home size={16} /> {t('notfound.go_home')}
-        </Link>
-        <Link to="/search" data-testid="notfound-search"
-          className="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-white border border-[var(--line)] text-ink font-bold btn-hover">
-          <Search size={16} /> {t('notfound.browse')}
-        </Link>
-      </div>
-
-      {/* Somewhere to actually go, rather than a dead end with a home button. */}
-      <div className="mt-10 flex flex-wrap items-center justify-center gap-2">
-        {CATEGORIES.map(({ key, to }) => (
-          <Link key={key} to={to} className="chip bg-white border border-[var(--line)] text-ink hover:border-pine/40">
-            {t(`categories.${key}`)}
-          </Link>
-        ))}
+        {/* Somewhere to actually go, rather than a dead end with a home button. */}
+        <section>
+          <SecHead title={t('notfound.browse')} className="!mt-0" />
+          <Chips>
+            {CATEGORIES.map(({ key, to }) => (
+              <Link key={key} to={to} className="ag-chip">{t(`categories.${key}`)}</Link>
+            ))}
+          </Chips>
+        </section>
       </div>
     </div>
   );

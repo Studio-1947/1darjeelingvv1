@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { CircleNotch as Loader2, Prohibit } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import { BlockedPerson, listBlocked, unblockUser } from '@/lib/reviews';
+import { Box, Button, MenuIcon } from '@/components/ag';
 
 /**
  * The people this account has blocked, each with an Unblock button. Renders nothing until there
@@ -33,28 +34,25 @@ export default function BlockedPeople() {
   if (people.length === 0) return null;
 
   return (
-    <div className="mt-10" data-testid="blocked-people">
-      <h2 className="font-display font-extrabold text-xl md:text-2xl text-ink mb-2 flex items-center gap-2">
-        <Prohibit size={18} className="text-flag" /> {t('blocked.title')}
-      </h2>
-      <p className="text-sm text-ink-soft mb-4">{t('blocked.explain')}</p>
-      <ul className="space-y-2">
+    <Box data-testid="blocked-people" aria-labelledby="blocked-title">
+      <div className="flex items-center gap-3">
+        <MenuIcon><Prohibit /></MenuIcon>
+        <div className="min-w-0">
+          <h2 id="blocked-title">{t('blocked.title')}</h2>
+          <p className="ag-small">{t('blocked.explain')}</p>
+        </div>
+      </div>
+      <ul className="ag-menu">
         {people.map((p) => (
-          <li key={p.id} className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--line)] bg-white px-4 py-3">
-            <span className="font-bold text-ink text-sm truncate">{p.name}</span>
-            <button
-              type="button"
-              onClick={() => unblock(p)}
-              disabled={busyId !== null}
-              data-testid={`unblock-${p.id}`}
-              className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[var(--line)] text-ink font-bold text-sm hover:border-pine disabled:opacity-50"
-            >
-              {busyId === p.id && <Loader2 size={13} className="animate-spin" />}
+          <li key={p.id}>
+            <span className="flex-1 min-w-0 truncate">{p.name}</span>
+            <Button size="sm" onClick={() => unblock(p)} disabled={busyId !== null} data-testid={`unblock-${p.id}`}
+              icon={busyId === p.id ? <Loader2 className="animate-spin" /> : undefined}>
               {t('blocked.unblock')}
-            </button>
+            </Button>
           </li>
         ))}
       </ul>
-    </div>
+    </Box>
   );
 }

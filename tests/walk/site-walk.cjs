@@ -32,7 +32,7 @@ const MUST_REACH = {
     ['/dashboard', '[data-testid=account-switch-business]', 'Switch to Business / list a business'],
     ['/dashboard', '[data-testid=panel-feedback]', 'Feedback for aangan'],
     ['/', '[data-testid=bottom-nav-trips]', 'My Trips tab'],
-    ['/', '[data-testid=bottom-nav-explore]', 'Explore tab'],
+    ['/', '[data-testid=bottom-nav-saved]', 'Saved tab'],
     ['/', '[data-testid=bottom-nav-feed]', 'Feed tab'],
     ['/', '[data-testid=bottom-nav-account]', 'Account tab'],
   ],

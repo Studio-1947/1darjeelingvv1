@@ -1,7 +1,8 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { missingLabel } from '@/lib/serverText';
-import { ArrowRight, Phone } from '@phosphor-icons/react';
+import { Check, Phone } from '@phosphor-icons/react';
+import { Box, Button, ButtonA, StepBar } from '@/components/ag';
 import { verificationSteps, type Headline, type StepKey, type VerificationStatus } from '@/lib/verificationSteps';
 
 /**
@@ -55,33 +56,30 @@ export default function VerificationTracker({ verification, paid, freeStart = fa
   const body = profileFirst ? 'verify.body_profile' : headline === 'send' && freeStart ? 'verify.body_send_free' : bodyKey;
 
   return (
-    <div className="mt-8 rounded-2xl border border-gold bg-white p-5 md:p-6" data-testid="verification-tracker">
-      <h2 className="font-display font-extrabold text-lg text-ink">{t(profileFirst ? 'verify.title_profile' : titleKey)}</h2>
-      <p className="mt-1 text-sm text-ink-soft">{t(body)}</p>
+    <Box as="section" data-testid="verification-tracker">
+      <div>
+        <span className="ag-eyebrow">{t('verify.progress')} · {done}/{total}</span>
+        <h2>{t(profileFirst ? 'verify.title_profile' : titleKey)}</h2>
+        <p className="ag-small">{t(body)}</p>
+      </div>
       {profileFirst && (
-        <ul className="mt-2 text-sm font-semibold text-ink space-y-0.5" data-testid="verification-profile-missing">
+        <ul className="grid gap-1 text-sm text-[var(--ink-strong)]" data-testid="verification-profile-missing">
           {profileMissing.map((m) => <li key={m.key}>• {missingLabel(t, m, businessType)}</li>)}
         </ul>
       )}
 
-      <div className="mt-4 flex items-center justify-between text-[11px] font-bold uppercase tracking-widest">
-        <span className="text-pine">{t('verify.progress')}</span>
-        <span className="text-ink-soft">{done}/{total}</span>
-      </div>
-      <div className="mt-2 h-2 rounded-full bg-mist overflow-hidden">
-        <div className="h-full rounded-full bg-pine transition-all" style={{ width: `${(done / total) * 100}%` }} />
-      </div>
-
-      <ol className="mt-4 grid gap-2 sm:grid-cols-4">
+      <StepBar total={total} at={done - 1} label={t('verify.progress')} />
+      <ol className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         {steps.map((s, i) => (
           <li key={s.key} className="flex items-center gap-2" data-testid={`verification-step-${s.key}-${s.state}`}>
-            <span className={`w-6 h-6 rounded-full grid place-items-center text-[11px] font-bold flex-shrink-0 ${
-              s.state === 'done' ? 'bg-pine text-white'
-                : s.state === 'attention' ? 'bg-flag text-white'
-                : 'bg-mist text-ink-soft border border-[var(--line)]'}`}>
-              {s.state === 'done' ? '✓' : s.state === 'attention' ? '!' : i + 1}
+            <span className={`grid h-6 w-6 flex-none place-items-center rounded-full text-xs ${
+              s.state === 'done' ? 'bg-[var(--r)] text-[var(--on-r)]'
+                : s.state === 'attention' ? 'bg-[var(--fail)] text-[var(--on-r)]'
+                : s.state === 'current' ? 'border border-[var(--r)] text-[var(--r)]'
+                : 'border border-[var(--outline)] text-[var(--ink-muted)]'}`} aria-hidden="true">
+              {s.state === 'done' ? <Check size={13} weight="bold" /> : s.state === 'attention' ? '!' : i + 1}
             </span>
-            <span className={`text-sm ${s.state === 'attention' ? 'font-bold text-flag' : s.state === 'current' ? 'font-bold text-ink' : 'text-ink-soft'}`}>
+            <span className={`text-sm ${s.state === 'attention' ? 'text-[var(--fail)]' : s.state === 'todo' ? 'text-[var(--ink-muted)]' : 'text-[var(--ink-strong)] font-medium'}`}>
               {label(s.key)}
             </span>
           </li>
@@ -89,31 +87,28 @@ export default function VerificationTracker({ verification, paid, freeStart = fa
       </ol>
 
       {headline === 'changes' && (
-        <div className="mt-4 rounded-xl bg-[#FFF1EC] px-4 py-3" data-testid="verification-action">
-          <p className="text-[11px] font-bold uppercase tracking-widest text-flag">{t('verify.action_needed')}</p>
-          {verification?.action_document && <p className="mt-1 text-sm font-bold text-ink">{verification.action_document}</p>}
-          {verification?.action_message && <p className="mt-0.5 text-sm text-ink">{verification.action_message}</p>}
-        </div>
+        <Box tone="blush" flat data-testid="verification-action">
+          <span className="ag-eyebrow">{t('verify.action_needed')}</span>
+          {verification?.action_document && <b className="text-[var(--ink-strong)]">{verification.action_document}</b>}
+          {verification?.action_message && <p className="text-sm text-[var(--ink7)]">{verification.action_message}</p>}
+        </Box>
       )}
 
       {headline !== 'live' && headline !== 'pay' && (
-        <div className="mt-4 rounded-xl bg-pine/5 px-4 py-3">
-          <p className="text-[11px] font-bold uppercase tracking-widest text-pine">{t('verify.keep_phone_title')}</p>
-          <p className="mt-1 text-sm text-ink-soft">{t('verify.keep_phone_body', { phone: phone ? prettyPhone(phone) : t('verify.phone_missing') })}</p>
+        <div>
+          <span className="ag-eyebrow">{t('verify.keep_phone_title')}</span>
+          <p className="ag-small">{t('verify.keep_phone_body', { phone: phone ? prettyPhone(phone) : t('verify.phone_missing') })}</p>
         </div>
       )}
 
-      <div className="mt-4 flex flex-wrap items-center gap-3">
-        <button type="button" onClick={profileFirst ? onOpenProfile : onOpen} data-testid="verification-cta"
-          className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full bg-pine text-white font-bold text-sm btn-hover">
-          {profileFirst ? t('verify.cta_profile') : cta} <ArrowRight size={14} />
-        </button>
+      <div className="ag-row">
+        <Button variant="primary" go onClick={profileFirst ? onOpenProfile : onOpen} data-testid="verification-cta">
+          {profileFirst ? t('verify.cta_profile') : cta}
+        </Button>
         {verification?.support_phone && (
-          <a href={`tel:${verification.support_phone}`} className="inline-flex items-center gap-1.5 text-sm font-bold text-pine">
-            <Phone size={16} /> {t('verify.call_support')}
-          </a>
+          <ButtonA variant="text" href={`tel:${verification.support_phone}`} icon={<Phone />}>{t('verify.call_support')}</ButtonA>
         )}
       </div>
-    </div>
+    </Box>
   );
 }

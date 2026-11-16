@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ArrowRight, Ticket, X } from '@phosphor-icons/react';
+import { ArrowUpRight, Ticket, Receipt } from '@phosphor-icons/react';
 import api, { createPaymentOrder, completeMockPayment, payWithRazorpay } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import MockPaymentModal from '@/components/MockPaymentModal';
 import PriceBreakup from '@/components/PriceBreakup';
 import { rupees, usePrice, usePassPrice } from '@/lib/prices';
 import PassOffer from '@/components/PassOffer';
+import { FieldError } from '@/components/ag';
+import Sheet, { SheetHead } from './Sheet';
 
 type Flow = 'booking_commission' | 'platform_support';
 
@@ -79,44 +81,45 @@ export default function BookingFeeModal({ bookingId, onConfirmed, onClose }: {
   };
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4"
-      role="dialog" aria-modal="true" data-testid="booking-fee-modal">
-      <div className="bg-white w-full sm:max-w-md sm:rounded-3xl rounded-t-3xl p-5 md:p-6 animate-fade-up max-h-[90svh] overflow-y-auto">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <div className="text-[11px] font-bold uppercase tracking-widest text-pine">{t('fee.eyebrow')}</div>
-            <h2 className="mt-1 font-display font-extrabold text-2xl text-ink leading-tight">{t('fee.title')}</h2>
-          </div>
-          <button type="button" onClick={onClose} aria-label={t('common.close', 'Close')} className="p-1.5 rounded-full hover:bg-mist">
-            <X size={18} />
+    <>
+      <Sheet onClose={onClose} labelledBy="fee-title" testid="booking-fee-modal">
+        <SheetHead id="fee-title" eyebrow={t('fee.eyebrow')} title={t('fee.title')}>
+          <p className="ag-small">{t('fee.body')}</p>
+        </SheetHead>
+
+        <div className="ag-pick">
+          {/* Two ways to pay, each a tap that starts its payment (not a choice to confirm later). */}
+          <button type="button" className="ag-option !items-start !border-[var(--r)] !bg-[var(--r-tint)]" onClick={() => pay('platform_support')}
+            disabled={!!busy} data-testid="fee-take-pass">
+            <Ticket aria-hidden="true" />
+            <span className="min-w-0 flex-1">
+              <span className="flex items-center justify-between gap-3">
+                <b>{t('fee.pass_title')}</b>
+                <b className="text-[var(--r)] whitespace-nowrap">{rupees(pass.total)}</b>
+              </span>
+              {busy === 'platform_support'
+                ? <span className="ag-small">{t('common.loading')}</span>
+                : <PassOffer renewing={!!user?.supportExpiresAt} compact className="mt-1" />}
+            </span>
+          </button>
+
+          <button type="button" className="ag-option !items-start" onClick={() => pay('booking_commission')}
+            disabled={!!busy} data-testid="fee-pay-once">
+            <Receipt aria-hidden="true" />
+            <span className="min-w-0 flex-1">
+              <span className="flex items-center justify-between gap-3">
+                <b>{t('fee.fee_title')}</b>
+                <span className="inline-flex items-center gap-1 whitespace-nowrap font-medium">{rupees(fee.total)} <ArrowUpRight className="w-4 h-4 text-[var(--r)]" aria-hidden="true" /></span>
+              </span>
+              <span className="ag-small">{busy === 'booking_commission' ? t('common.loading') : t('fee.fee_body')}</span>
+              <PriceBreakup breakup={fee} label={t('price.booking_fee')} compact className="mt-2" />
+            </span>
           </button>
         </div>
-        <p className="mt-2 text-sm text-ink-soft">{t('fee.body')}</p>
 
-        <button type="button" onClick={() => pay('platform_support')} disabled={!!busy} data-testid="fee-take-pass"
-          className="mt-5 w-full text-left rounded-2xl border-2 border-pine bg-pine/5 p-4 btn-hover disabled:opacity-60">
-          <div className="flex items-center justify-between gap-3">
-            <span className="flex items-center gap-2 font-bold text-ink"><Ticket size={20} className="text-pine" /> {t('fee.pass_title')}</span>
-            <span className="font-display font-extrabold text-lg text-pine">{rupees(pass.total)}</span>
-          </div>
-          {busy === 'platform_support'
-            ? <p className="mt-1 text-sm text-ink-soft">{t('common.loading')}</p>
-            : <PassOffer renewing={!!user?.supportExpiresAt} compact className="mt-2" />}
-        </button>
-
-        <button type="button" onClick={() => pay('booking_commission')} disabled={!!busy} data-testid="fee-pay-once"
-          className="mt-3 w-full text-left rounded-2xl border border-[var(--line)] bg-white p-4 btn-hover disabled:opacity-60">
-          <div className="flex items-center justify-between gap-3">
-            <span className="font-bold text-ink">{t('fee.fee_title')}</span>
-            <span className="inline-flex items-center gap-1 font-display font-extrabold text-lg text-ink">{rupees(fee.total)} <ArrowRight size={16} /></span>
-          </div>
-          <p className="mt-1 text-sm text-ink-soft">{busy === 'booking_commission' ? t('common.loading') : t('fee.fee_body')}</p>
-          <PriceBreakup breakup={fee} label={t('price.booking_fee')} compact className="mt-3" />
-        </button>
-
-        {err && <p className="mt-3 text-sm font-semibold text-flag" data-testid="fee-error">{err}</p>}
-        <p className="mt-4 text-xs text-ink-soft">{t('fee.note')}</p>
-      </div>
+        <FieldError id="fee-error">{err}</FieldError>
+        <p className="ag-small !text-[13px]">{t('fee.note')}</p>
+      </Sheet>
 
       <MockPaymentModal
         open={!!mock}
@@ -127,6 +130,6 @@ export default function BookingFeeModal({ bookingId, onConfirmed, onClose }: {
         onPay={finishMock}
         prefill={{ upi: `${(user?.name || 'traveller').toLowerCase().replace(/\s+/g, '')}@ybl` }}
       />
-    </div>
+    </>
   );
 }

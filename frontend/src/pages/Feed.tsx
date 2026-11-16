@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { CircleNotch as Loader2, Newspaper } from '@phosphor-icons/react';
+import { CircleNotch as Loader2, Newspaper, SquaresFour, CloudSun } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
 import { useSeo } from '@/components/Seo';
@@ -10,11 +10,30 @@ import PostComposer from '@/components/feed/PostComposer';
 import ReportDialog, { ReportTarget } from '@/components/listing-detail/ReportDialog';
 import { CanPostReason, deletePost, fetchFeed, fetchMyPosts, HostPost } from '@/lib/posts';
 import api from '@/lib/api';
+import { HillWeather } from '@/components/WeatherForecast';
+import { Box, Button, ButtonLink, Chip, Chips, FieldError, PageHead, SecHead } from '@/components/ag';
+
+/** What "Show me" can narrow the feed to: the kinds the app has data for. */
+type Show = 'all' | 'weather' | 'posts';
+const SHOW: Array<{ k: Show; label: string; fallback: string; icon: React.ReactNode }> = [
+  { k: 'all', label: 'feed.kind_all', fallback: 'Everything', icon: <SquaresFour /> },
+  { k: 'weather', label: 'feed.kind_weather', fallback: 'Weather', icon: <CloudSun /> },
+  { k: 'posts', label: 'feed.kind_posts', fallback: 'Host posts', icon: <Newspaper /> },
+];
+const SHOW_KEY = 'aangan-feed-show';
+function savedShow(): Show {
+  try {
+    const v = localStorage.getItem(SHOW_KEY);
+    return v === 'weather' || v === 'posts' ? v : 'all';
+  } catch {
+    return 'all';
+  }
+}
 
 /**
- * The host feed: what hosts say about their own places, newest first, readable by anyone. A host
- * who can post sees the composer at the top and their own posts (including any an admin hid)
- * with Edit and Delete.
+ * The host feed: the hill weather and what hosts say about their own places, newest first,
+ * readable by anyone. "Show me" narrows it to one kind. A host who can post sees the composer at
+ * the top and their own posts (including any an admin hid) with Edit and Delete.
  */
 export default function Feed() {
   const { t } = useTranslation();
@@ -38,6 +57,12 @@ export default function Feed() {
   // A shared link (/feed?post=<id>) opens that post on arrival.
   const [sp] = useSearchParams();
   const sharedPostId = sp.get('post');
+  // A shared post always shows, whatever the reader last picked.
+  const [show, setShow] = useState<Show>(() => (sharedPostId ? 'all' : savedShow()));
+  const pick = (k: Show) => {
+    setShow(k);
+    try { localStorage.setItem(SHOW_KEY, k); } catch { /* private window: just this visit */ }
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -110,81 +135,96 @@ export default function Feed() {
   // My own posts that the public feed does not show (hidden by an admin), so I can see why.
   const myHidden = business ? mine.filter((p) => p.hidden) : [];
   const isMine = (p: HostPost) => !!user && p.author_user_id === user.id;
+  const showWeather = show !== 'posts';
+  const showPosts = show !== 'weather';
 
   return (
-    <div className="mx-auto max-w-2xl px-4 md:px-6 py-6 md:py-10">
-      <div className="mb-6">
-        <div className="text-[11px] font-bold uppercase tracking-widest text-flag flex items-center gap-1.5">
-          <Newspaper size={14} /> {t('feed.label')}
-        </div>
-        <h1 className="mt-2 font-display font-extrabold text-3xl md:text-4xl text-ink leading-tight">{t('feed.title')}</h1>
-        <p className="mt-2 text-ink-soft">{t('feed.subtitle')}</p>
-      </div>
+    <div className="ag-wrap">
+      <div className="ag-main">
+        <PageHead eyebrow={t('feed.label')} title={t('feed.title')} sub={t('feed.subtitle')} />
 
-      {user && business && canPost && (
-        <div className="mb-6">
+        {user && business && canPost && (
           <PostComposer editing={editing} onSaved={onSaved} onCancelEdit={() => setEditing(null)} />
-        </div>
-      )}
-      {user && business && !canPost && (reason === 'not_verified' || reason === 'plan_not_live') && (
-        <div className="mb-6 rounded-2xl bg-mist p-4 text-sm text-ink">
-          {reason === 'not_verified' ? t('feed.cannot_post_unverified') : t('feed.cannot_post_plan')}{' '}
-          <Link to="/provider/dashboard" className="font-bold text-pine underline">{t('nav.business_dashboard')}</Link>
-        </div>
-      )}
+        )}
+        {user && business && !canPost && (reason === 'not_verified' || reason === 'plan_not_live') && (
+          <Box>
+            <p className="ag-small m-0 !text-[var(--ink7)]">
+              {reason === 'not_verified' ? t('feed.cannot_post_unverified') : t('feed.cannot_post_plan')}
+            </p>
+            <ButtonLink to="/provider/dashboard" go size="sm" className="self-start">{t('nav.business_dashboard')}</ButtonLink>
+          </Box>
+        )}
 
-      {myHidden.length > 0 && (
-        <div className="mb-6 space-y-3">
-          {myHidden.map((p) => (
-            <PostCard key={p.id} post={p} isMine onEdit={setEditing} onDelete={remove} />
-          ))}
+        <div className="flex flex-col gap-2">
+          <span className="ag-eyebrow" id="feed-show-me">{t('feed.show_me', 'Show me')}</span>
+          <Chips scroll role="group" aria-labelledby="feed-show-me">
+            {SHOW.map((s) => (
+              <Chip key={s.k} on={show === s.k} onClick={() => pick(s.k)} data-testid={`feed-show-${s.k}`}>
+                {s.icon} {t(s.label, s.fallback)}
+              </Chip>
+            ))}
+          </Chips>
         </div>
-      )}
 
-      {loading ? (
-        <div className="flex justify-center py-16 text-ink-soft"><Loader2 size={24} className="animate-spin" /></div>
-      ) : error ? (
-        <div className="text-center py-12">
-          <p className="text-flag font-semibold">{error}</p>
-          <button type="button" onClick={load} className="mt-3 px-5 py-2 rounded-full border border-[var(--line)] font-bold text-ink">
-            {t('feed.retry')}
-          </button>
-        </div>
-      ) : posts.length === 0 ? (
-        <div data-testid="feed-empty" className="text-center py-16 text-ink-soft">{t('feed.empty')}</div>
-      ) : (
-        <div className="space-y-4" data-testid="feed-list">
-          {posts.map((p) => (
-            <PostCard
-              key={p.id}
-              post={p}
-              isMine={business && isMine(p)}
-              ownBusiness={!business && isMine(p)}
-              canReport={!!user && !isMine(p)}
-              onEdit={(post) => { setEditing(post); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-              onDelete={remove}
-              onReport={(post) => setReportTarget({ type: 'post', id: post.id, authorId: post.author_user_id, authorName: post.host.name })}
-              autoOpen={p.id === sharedPostId}
-            />
-          ))}
-          {nextBefore && (
-            <div className="flex justify-center pt-2">
-              <button type="button" onClick={more} disabled={loadingMore} data-testid="feed-more"
-                className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full border border-[var(--line)] font-bold text-ink hover:border-pine disabled:opacity-50">
-                {loadingMore && <Loader2 size={15} className="animate-spin" />}
-                {t('feed.load_more')}
-              </button>
-            </div>
-          )}
-        </div>
-      )}
+        {showWeather && <HillWeather />}
 
-      {!user && (
-        <p className="mt-8 text-center text-sm text-ink-soft">
-          {t('feed.host_cta')}{' '}
-          <Link to="/provider/onboard" className="font-bold text-pine underline">{t('nav.host_with_us', 'List your Stay / Taxi')}</Link>
-        </p>
-      )}
+        {showPosts && (
+          <section className="flex flex-col gap-3" aria-labelledby="feed-posts-h">
+            {showWeather && <SecHead id="feed-posts-h" title={t('feed.kind_posts', 'Host posts')} className="!mb-0" />}
+            {!showWeather && <h2 id="feed-posts-h" className="sr-only">{t('feed.kind_posts', 'Host posts')}</h2>}
+
+            {myHidden.map((p) => (
+              <PostCard key={p.id} post={p} isMine onEdit={setEditing} onDelete={remove} />
+            ))}
+
+            {loading ? (
+              <div className="flex justify-center py-16 text-[var(--ink-muted)]"><Loader2 size={24} className="animate-spin" /></div>
+            ) : error ? (
+              <Box>
+                <FieldError>{error}</FieldError>
+                <Button size="sm" className="self-start" onClick={load}>{t('feed.retry')}</Button>
+              </Box>
+            ) : posts.length === 0 ? (
+              <Box data-testid="feed-empty" className="items-start">
+                <Newspaper size={24} className="text-[var(--r)]" aria-hidden="true" />
+                <p className="m-0 text-[var(--ink7)]">{t('feed.empty')}</p>
+                {!business && (
+                  <ButtonLink to="/provider/onboard" go size="sm">{t('feed.list_cta', 'Add my homestay, car or shop')}</ButtonLink>
+                )}
+              </Box>
+            ) : (
+              <div className="flex flex-col gap-3" data-testid="feed-list">
+                {posts.map((p) => (
+                  <PostCard
+                    key={p.id}
+                    post={p}
+                    isMine={business && isMine(p)}
+                    ownBusiness={!business && isMine(p)}
+                    canReport={!!user && !isMine(p)}
+                    onEdit={(post) => { setEditing(post); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                    onDelete={remove}
+                    onReport={(post) => setReportTarget({ type: 'post', id: post.id, authorId: post.author_user_id, authorName: post.host.name })}
+                    autoOpen={p.id === sharedPostId}
+                  />
+                ))}
+                {nextBefore && (
+                  <Button onClick={more} disabled={loadingMore} data-testid="feed-more" center className="self-center"
+                    icon={loadingMore ? <Loader2 className="animate-spin" /> : undefined}>
+                    {t('feed.load_more')}
+                  </Button>
+                )}
+              </div>
+            )}
+          </section>
+        )}
+
+        {!user && (
+          <Box tone="blush">
+            <h2>{t('feed.host_cta')}</h2>
+            <ButtonLink to="/provider/onboard" go className="self-start">{t('nav.host_with_us', 'List your Stay / Taxi')}</ButtonLink>
+          </Box>
+        )}
+      </div>
 
       <ReportDialog target={reportTarget} onClose={() => setReportTarget(null)} onBlocked={load} />
     </div>

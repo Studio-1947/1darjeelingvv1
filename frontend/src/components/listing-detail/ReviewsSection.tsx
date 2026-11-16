@@ -1,31 +1,32 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Star, CircleNotch as Loader2, Trash as Trash2, Camera, Image as ImageIcon, X } from '@phosphor-icons/react';
+import { Star, CircleNotch as Loader2, Trash as Trash2, Camera, X, Flag } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
 import { fetchReviews, postReview, deleteReview, CanReview, Review, ReviewSummary } from '@/lib/reviews';
 import { uploadImages } from '@/lib/uploadImage';
 import { ReviewSkeleton, LoadingStatus, repeat } from '@/components/skeletons';
-import { ALIGN_TEXT, ALIGN_ROW, ALIGN_BLOCK, SCREEN_COL } from './primitives';
+import { Button, ButtonLink, FieldError, IconButton, TextArea } from '@/components/ag';
+import { Section } from './primitives';
 import ReportDialog, { ReportTarget } from './ReportDialog';
 
 // Matches MAX_REVIEW_PHOTOS in backend/src/routes/reviews.ts.
 const MAX_REVIEW_PHOTOS = 6;
 
-/** Read-only row of five stars for a given rating (supports halves via rounding). */
+/** Read-only star line for a rating (prototype `.starline`). */
 function Stars({ value, size = 16 }: { value: number; size?: number }) {
   const { t } = useTranslation();
   return (
-    <span className="inline-flex items-center gap-0.5" role="img" aria-label={t('reviews.out_of_5', { value })}>
+    <span className="inline-flex items-center gap-0.5 text-[var(--r)]" role="img" aria-label={t('reviews.out_of_5', { value })}>
       {[1, 2, 3, 4, 5].map((s) => (
-        <Star key={s} size={size} weight={s <= Math.round(value) ? 'fill' : 'regular'} className={s <= Math.round(value) ? 'text-gold' : 'text-ink-soft/40'} />
+        <Star key={s} size={size} weight={s <= Math.round(value) ? 'fill' : 'regular'} className={s <= Math.round(value) ? '' : 'opacity-30'} />
       ))}
     </span>
   );
 }
 
-/** Clickable 1–5 star picker for composing a review. */
+/** Five 44px stars to tap (prototype `.stars`). */
 function StarPicker({ value, onChange }: { value: number; onChange: (v: number) => void }) {
   const { t } = useTranslation();
   const [hover, setHover] = useState(0);
@@ -41,16 +42,19 @@ function StarPicker({ value, onChange }: { value: number; onChange: (v: number) 
           data-testid={`review-star-${s}`}
           onMouseEnter={() => setHover(s)}
           onClick={() => onChange(s)}
-          className="btn-hover"
+          className="w-11 h-11 grid place-items-center rounded-full text-[var(--r)] hover:bg-[var(--r-tint)]"
         >
-          <Star size={26} weight={s <= (hover || value) ? 'fill' : 'regular'} className={s <= (hover || value) ? 'text-gold' : 'text-ink-soft/40'} />
+          <Star size={30} weight={s <= (hover || value) ? 'fill' : 'regular'} />
         </button>
       ))}
     </div>
   );
 }
 
-/** Reviews + rating summary for a listing, with an add/edit form for the signed-in user. */
+/**
+ * The reviews box (prototype item page): what others said, then your own rating and review for
+ * the signed-in reader, then "Report a problem" under it.
+ */
 export default function ReviewsSection({ item }: { item: any }) {
   const { t } = useTranslation();
   const { user } = useAuth();
@@ -161,193 +165,134 @@ export default function ReviewsSection({ item }: { item: any }) {
     }
   };
 
+  const loginHref = `/login?next=${encodeURIComponent(loc.pathname + '#reviews')}`;
+
   return (
-    <section id="reviews" data-testid="detail-reviews" className="bg-white scroll-mt-20">
-      {/* Reviews builds its own wrapper rather than using Screen (it isn't a
-          full-height section), so it borrows the shared column to stay in line
-          with everything above it. */}
-      <div className={`${SCREEN_COL} py-16 md:py-24`}>
-        <div className={`${ALIGN_TEXT} max-w-3xl ${ALIGN_BLOCK}`}>
-          <div className="inline-flex items-center gap-3 text-xs font-bold uppercase tracking-widest text-ink-soft">{t('reviews.label')}</div>
-          <h2 className="mt-5 font-display font-extrabold text-3xl sm:text-4xl md:text-5xl text-ink leading-tight">
-            {t('reviews.title')}
-          </h2>
-          <div className={`mt-4 flex items-center ${ALIGN_ROW} gap-3`}>
-            <Stars value={summary.average} size={20} />
-            <span className="text-ink font-bold text-lg">
-              {summary.count > 0 ? summary.average.toFixed(1) : '-'}
-            </span>
-            <span className="text-ink-soft text-sm">
-              {t('reviews.count', { count: summary.count })}
-            </span>
+    <>
+      <Section id="reviews" testid="detail-reviews" title={t('reviews.label')}
+        action={summary.count > 0 ? (
+          <span className="inline-flex items-center gap-1.5 flex-none">
+            <Stars value={summary.average} />
+            <span className="font-medium text-[var(--ink-strong)]">{summary.average.toFixed(1)}</span>
+            <span className="ag-small">({summary.count})</span>
+          </span>
+        ) : undefined}>
+        {/* What others said first, then your own (prototype order). */}
+        {loading ? (
+          <div className="flex flex-col gap-3">
+            <LoadingStatus label={t('reviews.loading')} />
+            {repeat(2, (i) => <ReviewSkeleton key={i} />)}
           </div>
-        </div>
-
-        {/* Compose / edit (signed-in) or a sign-in prompt */}
-        <div className="mt-10 mist-panel p-6 md:p-8">
-          {user && !myReview && canReview?.code === 'stay_required' ? (
-            // Homestays, drivers and guides are reviewed by people who stayed or rode with them.
-            <p data-testid="review-stay-required" className="text-ink-soft text-sm leading-relaxed">
-              {t('reviews.stay_required')}
-            </p>
-          ) : user ? (
-            <div>
-              <div className="flex items-center justify-between gap-3 flex-wrap">
-                <h3 className="font-display font-bold text-lg text-ink">
-                  {myReview ? t('reviews.update_title') : t('reviews.write')}
-                </h3>
-                {myReview && (
-                  <button onClick={removeMine} disabled={submitting} data-testid="review-delete"
-                    className="inline-flex items-center gap-1.5 text-xs font-bold text-flag hover:text-[#8a1e1e] disabled:opacity-50">
-                    <Trash2 size={13} /> {t('reviews.remove')}
-                  </button>
-                )}
-              </div>
-              <div className="mt-3"><StarPicker value={rating} onChange={setRating} /></div>
-              <textarea
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                rows={3}
-                data-testid="review-comment"
-                placeholder={t('reviews.comment_placeholder')}
-                className="mt-3 w-full px-3 py-2.5 rounded-xl border border-[var(--line)] bg-white outline-none text-ink text-sm resize-none focus:ring-2 focus:ring-pine/20 transition-all"
-              />
-
-              {/* Photo Upload Section */}
-              <div className="mt-4">
-                <span className="text-xs font-semibold text-ink-soft uppercase block mb-2">{t('reviews.upload_photos')}</span>
-                <div className="flex flex-wrap items-center gap-3">
-                  {photos.map((p, idx) => (
-                    <div key={idx} className="relative w-16 h-16 rounded-xl overflow-hidden border border-[var(--line)] group">
-                      <img src={p} alt={t('reviews.attachment_alt')} className="w-full h-full object-cover" />
-                      <button
-                        type="button"
-                        onClick={() => setPhotos(photos.filter((_, i) => i !== idx))}
-                        className="absolute top-1 right-1 bg-black/60 text-white rounded-full p-0.5 hover:bg-flag transition-colors"
-                      >
-                        <X size={12} />
-                      </button>
-                    </div>
-                  ))}
-                  {photos.length < MAX_REVIEW_PHOTOS && (
-                    <label className="w-16 h-16 rounded-xl border-2 border-dashed border-[var(--line)] hover:border-pine grid place-items-center cursor-pointer bg-white text-ink-soft hover:text-pine transition-colors">
-                      {uploadingPhotos ? (
-                        <Loader2 size={18} className="animate-spin" />
-                      ) : (
-                        <div className="flex flex-col items-center gap-0.5">
-                          <Camera size={18} />
-                          <span className="text-[9px] font-bold">{t('reviews.add_photo')}</span>
-                        </div>
-                      )}
-                      <input
-                        type="file"
-                        accept="image/*"
-                        multiple
-                        onChange={handlePhotoUpload}
-                        disabled={uploadingPhotos || submitting}
-                        className="hidden"
-                      />
-                    </label>
+        ) : reviews.length === 0 ? (
+          <p className="ag-small">{t('reviews.empty')}</p>
+        ) : (
+          <div className="flex flex-col">
+            {reviews.map((r) => (
+              <article key={r.id} data-testid={`review-${r.id}`} className="flex flex-col gap-1.5 py-3 border-b border-[var(--warmline)] last:border-b-0 first:pt-0">
+                <div className="flex items-center justify-between gap-3">
+                  <Stars value={r.rating} />
+                  {user && r.user_id !== user.id && (
+                    <Button variant="text" size="sm" className="!text-[13px] !text-[var(--ink-muted)]"
+                      onClick={() => setReportTarget({ type: 'review', id: r.id, authorId: r.user_id, authorName: r.author_name || '?' })}
+                      data-testid={`review-report-${r.id}`}>
+                      {t('report.review_link')}
+                    </Button>
                   )}
                 </div>
-              </div>
-
-              {error && <p className="mt-2 text-sm text-flag font-semibold">{error}</p>}
-              <div className="mt-4 flex items-center gap-3 flex-wrap">
-                <button onClick={submit} disabled={submitting || uploadingPhotos} data-testid="review-submit"
-                  className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-pine text-white font-bold btn-hover disabled:opacity-60">
-                  {submitting ? <Loader2 size={15} className="animate-spin" /> : null}
-                  {myReview ? t('reviews.update_cta') : t('reviews.post')}
-                </button>
-                {myReview && (
-                  <span className="text-xs text-ink-soft">
-                    {t('reviews.single_review_hint', 'Editing your existing review')}
-                  </span>
-                )}
-              </div>
-            </div>
-          ) : (
-            <div className={`${ALIGN_TEXT}`}>
-              <p className="text-ink-soft">{t('reviews.signed_out')}</p>
-              <Link to={`/login?next=${encodeURIComponent(loc.pathname + '#reviews')}`}
-                className="mt-4 inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-pine text-white font-bold btn-hover">
-                {t('reviews.sign_in_cta')}
-              </Link>
-            </div>
-          )}
-        </div>
-
-        {/* Existing reviews */}
-        <div className="mt-8 space-y-4">
-          {loading ? (
-            <>
-              <LoadingStatus label={t('reviews.loading')} />
-              {repeat(3, (i) => <ReviewSkeleton key={i} />)}
-            </>
-          ) : reviews.length === 0 ? (
-            <p className={`text-ink-soft ${ALIGN_TEXT}`}>{t('reviews.empty')}</p>
-          ) : (
-            reviews.map((r) => (
-              <div key={r.id} data-testid={`review-${r.id}`} className="rounded-2xl border border-[var(--line)] p-4 md:p-5 bg-white">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-pine to-pine-dark text-white grid place-items-center font-bold flex-shrink-0">
-                      {(r.author_name || '?').trim().charAt(0).toUpperCase()}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="font-bold text-ink text-sm truncate">{r.author_name}</div>
-                      <div className="text-[11px] text-ink-soft">{new Date(r.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3 flex-shrink-0">
-                    <Stars value={r.rating} />
-                    {user && r.user_id !== user.id && (
-                      <button
-                        type="button"
-                        onClick={() => setReportTarget({ type: 'review', id: r.id, authorId: r.user_id, authorName: r.author_name || '?' })}
-                        data-testid={`review-report-${r.id}`}
-                        className="inline-flex items-center min-h-11 text-xs font-semibold text-ink-soft hover:text-flag"
-                      >
-                        {t('report.review_link')}
-                      </button>
-                    )}
-                  </div>
-                </div>
-                {r.comment && <p className="mt-3 text-ink leading-relaxed text-sm">{r.comment}</p>}
+                {r.comment && <p className="m-0 text-[15px] leading-[22px] text-[var(--ink7)]">{r.comment}</p>}
                 {r.photos && r.photos.length > 0 && (
-                  <div className="mt-3 flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-2">
                     {r.photos.map((p, idx) => (
-                      <a key={idx} href={p} target="_blank" rel="noopener noreferrer" className="block w-20 h-20 rounded-xl overflow-hidden border border-[var(--line)] hover:opacity-90 transition-opacity">
+                      <a key={idx} href={p} target="_blank" rel="noopener noreferrer" className="block w-20 h-20 rounded-[12px] overflow-hidden bg-[var(--creme2)]">
                         <img src={p} alt={t('reviews.attachment_alt')} className="w-full h-full object-cover" />
                       </a>
                     ))}
                   </div>
                 )}
-              </div>
-            ))
-          )}
-        </div>
+                <p className="ag-small !text-[13px]">
+                  {r.author_name}, {new Date(r.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                </p>
+              </article>
+            ))}
+          </div>
+        )}
 
-        {/* Signed-out readers are sent to sign in first: a report needs an account, so the team can
-            tell one person's repeated reports from many people's. */}
-        <div className={`mt-6 ${ALIGN_TEXT}`}>
-          {user ? (
-            <button
-              type="button"
-              onClick={() => setReportTarget({ type: 'listing', id: item.id })}
-              data-testid="listing-report"
-              className="inline-flex items-center min-h-11 text-xs font-semibold text-ink-soft underline hover:text-flag"
-            >
-              {t('report.listing_link')}
-            </button>
+        <div className="flex flex-col gap-3 border-t border-[var(--warmline)] pt-3">
+          {user && !myReview && canReview?.code === 'stay_required' ? (
+            // Homestays, drivers and guides are reviewed by people who stayed or rode with them.
+            <p data-testid="review-stay-required" className="ag-small">{t('reviews.stay_required')}</p>
+          ) : user ? (
+            <>
+              <div className="flex items-center justify-between gap-3">
+                <b className="font-medium text-[var(--ink-strong)]">{myReview ? t('reviews.update_title') : t('detail.rate_q', 'How was it? Tap the stars.')}</b>
+                {myReview && (
+                  <Button variant="stop" size="sm" onClick={removeMine} disabled={submitting} data-testid="review-delete" icon={<Trash2 />}>
+                    {t('reviews.remove')}
+                  </Button>
+                )}
+              </div>
+              <StarPicker value={rating} onChange={setRating} />
+              <TextArea value={comment} onChange={(e) => setComment(e.target.value)} rows={3} data-testid="review-comment"
+                placeholder={t('reviews.comment_placeholder')} aria-label={t('reviews.comment_placeholder')} className="[&_textarea]:!min-h-[96px]" />
+
+              <div className="flex flex-col gap-2">
+                <span className="ag-eyebrow">{t('reviews.upload_photos')}</span>
+                <div className="flex flex-wrap items-center gap-2">
+                  {photos.map((p, idx) => (
+                    <div key={idx} className="relative w-16 h-16 rounded-[12px] overflow-hidden bg-[var(--creme2)]">
+                      <img src={p} alt={t('reviews.attachment_alt')} className="w-full h-full object-cover" />
+                      <IconButton small label={t('reviews.remove')} onClick={() => setPhotos(photos.filter((_, i) => i !== idx))}
+                        className="absolute top-0.5 right-0.5 !w-6 !h-6 [&_svg]:!w-3.5 [&_svg]:!h-3.5">
+                        <X />
+                      </IconButton>
+                    </div>
+                  ))}
+                  {photos.length < MAX_REVIEW_PHOTOS && (
+                    <label className="w-16 h-16 rounded-[12px] border border-dashed border-[var(--outline)] grid place-items-center cursor-pointer text-[var(--r)] bg-[var(--surface)]">
+                      {uploadingPhotos ? (
+                        <Loader2 size={18} className="animate-spin" />
+                      ) : (
+                        <span className="flex flex-col items-center gap-0.5 text-[12px] leading-4">
+                          <Camera size={18} aria-hidden="true" />
+                          {t('reviews.add_photo')}
+                        </span>
+                      )}
+                      <input type="file" accept="image/*" multiple onChange={handlePhotoUpload} disabled={uploadingPhotos || submitting} className="sr-only" />
+                    </label>
+                  )}
+                </div>
+              </div>
+
+              <FieldError id="review-error">{error}</FieldError>
+              <div className="ag-row">
+                <Button onClick={submit} disabled={submitting || uploadingPhotos} data-testid="review-submit"
+                  icon={submitting ? <Loader2 className="animate-spin" /> : <Star />}>
+                  {myReview ? t('reviews.update_cta') : t('reviews.post')}
+                </Button>
+                {myReview && <span className="ag-small !text-[13px]">{t('reviews.single_review_hint', 'Editing your existing review')}</span>}
+              </div>
+            </>
           ) : (
-            <Link to={`/login?next=${encodeURIComponent(loc.pathname + '#reviews')}`} className="inline-flex items-center min-h-11 text-xs font-semibold text-ink-soft underline hover:text-flag">
-              {t('report.listing_link')}
-            </Link>
+            <>
+              <p className="ag-small">{t('reviews.signed_out')}</p>
+              <ButtonLink go size="sm" className="self-start" to={loginHref}>{t('reviews.sign_in_cta')}</ButtonLink>
+            </>
           )}
         </div>
-      </div>
+      </Section>
+
+      {/* Report a problem (prototype): a report needs an account, so the team can tell one
+          person's repeated reports from many people's; signed-out readers sign in first. */}
+      {user ? (
+        <Button className="self-start" icon={<Flag />} onClick={() => setReportTarget({ type: 'listing', id: item.id })} data-testid="listing-report">
+          {t('detail.report_problem', 'Report a problem')}
+        </Button>
+      ) : (
+        <ButtonLink className="self-start" icon={<Flag />} to={loginHref} data-testid="listing-report">
+          {t('detail.report_problem', 'Report a problem')}
+        </ButtonLink>
+      )}
       <ReportDialog target={reportTarget} onClose={() => setReportTarget(null)} onBlocked={load} />
-    </section>
+    </>
   );
 }

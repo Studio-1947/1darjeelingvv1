@@ -1,8 +1,8 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { missingLabel } from '@/lib/serverText';
-import { CheckCircle, WarningCircle, ArrowRight, MagnifyingGlass } from '@phosphor-icons/react';
+import { CheckCircle, WarningCircle, MagnifyingGlass, Eye, X, VideoCamera, Check } from '@phosphor-icons/react';
 import SignOutButton from '@/components/SignOutButton';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
@@ -15,8 +15,8 @@ import { HOMESTAY_AMENITIES, CAFE_AMENITIES } from '@/constants/listingOptions';
 import PricedEditor, { type Priced } from '@/components/provider/PricedEditor';
 import OwnersSection from '@/components/provider/OwnersSection';
 import HostMiniSite, { type MiniSiteData } from '@/components/provider/HostMiniSite';
-import { Eye, X, VideoCamera } from '@phosphor-icons/react';
 import { useSeo } from '@/components/Seo';
+import { Box, Button, ButtonLink, Chip, Chips, IconButton, PageHead, SelectField, TextArea, TextField } from '@/components/ag';
 
 /**
  * The host's business profile: everything Studio1947's lists ask of a driver, a homestay, a
@@ -35,59 +35,57 @@ const MENU_UNITS = ['plate', 'item', 'cup', 'head'];
 const GOODS_UNITS = ['item', 'piece', 'kg', 'gram', 'litre', 'pack', 'dozen'];
 const MAX_GOODS = 10;
 
-
-const input = 'mt-1 w-full px-3.5 py-2.5 rounded-xl border border-[var(--line)] bg-white outline-none text-sm text-ink';
-const labelCls = 'text-xs font-semibold text-ink-soft uppercase';
-
+/** One panel of the form: a Box with its h2 and an optional note. */
 function Section({ title, note, children, testid }: { title: string; note?: string; children: React.ReactNode; testid?: string }) {
   return (
-    <section className="mist-panel p-5 md:p-7" data-testid={testid}>
-      <h2 className="font-display font-extrabold text-xl md:text-2xl text-ink">{title}</h2>
-      {note && <p className="mt-1 text-sm text-ink-soft">{note}</p>}
-      <div className="mt-5 space-y-4">{children}</div>
-    </section>
+    <Box as="section" data-testid={testid}>
+      <div>
+        <h2>{title}</h2>
+        {note && <p className="ag-small">{note}</p>}
+      </div>
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-4">{children}</div>
+    </Box>
   );
 }
 
-function Field({ label, children, hint }: { label: string; children: React.ReactNode; hint?: string }) {
+/** A labelled group for controls that are not a single field (chips, priced rows, uploads). */
+function Group({ label, children, hint }: { label: string; children: React.ReactNode; hint?: string }) {
   return (
-    <label className="block">
-      <span className={labelCls}>{label}</span>
+    <div className="grid gap-2">
+      <span className="text-sm font-medium text-[var(--ink-strong)]">{label}</span>
       {children}
-      {hint && <span className="mt-1 block text-xs text-ink-soft">{hint}</span>}
-    </label>
+      {hint && <span className="text-xs text-[var(--ink-muted)]">{hint}</span>}
+    </div>
   );
 }
 
 function Toggle({ on, onChange, label, note, testid }: { on: boolean; onChange: (v: boolean) => void; label: string; note?: string; testid?: string }) {
   return (
     <button type="button" role="switch" aria-checked={on} onClick={() => onChange(!on)} data-testid={testid}
-      className="w-full flex items-center justify-between gap-4 text-left">
+      className="flex w-full items-center justify-between gap-4 text-left">
       <span>
-        <span className="block font-bold text-ink">{label}</span>
-        {note && <span className="block text-sm text-ink-soft">{note}</span>}
+        <b className="block font-medium text-[var(--ink-strong)]">{label}</b>
+        {note && <span className="ag-small block">{note}</span>}
       </span>
-      <span className={`relative inline-flex h-7 w-12 flex-shrink-0 rounded-full transition-colors ${on ? 'bg-[#1F6656]' : 'bg-[var(--line)]'}`}>
-        <span className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform ${on ? 'translate-x-5' : 'translate-x-0.5'}`} />
+      <span className={`relative inline-flex h-8 w-[52px] flex-none rounded-full transition-colors ${on ? 'bg-[var(--r)]' : 'bg-[var(--outline)]'}`}>
+        <span className={`absolute top-1 h-6 w-6 rounded-full bg-[var(--surface)] shadow transition-transform ${on ? 'translate-x-6' : 'translate-x-1'}`} />
       </span>
     </button>
   );
 }
 
-function Chips({ options, selected, onChange, label }: { options: string[]; selected: string[]; onChange: (v: string[]) => void; label: (o: string) => string }) {
+function MultiChips({ options, selected, onChange, label }: { options: string[]; selected: string[]; onChange: (v: string[]) => void; label: (o: string) => string }) {
   return (
-    <div className="flex flex-wrap gap-2">
+    <Chips>
       {options.map((o) => {
         const on = selected.includes(o);
         return (
-          <button key={o} type="button" aria-pressed={on}
-            onClick={() => onChange(on ? selected.filter((x) => x !== o) : [...selected, o])}
-            className={`px-3.5 py-2 rounded-full text-sm font-bold border transition-colors ${on ? 'bg-[rgba(31,102,86,0.12)] text-[#1F6656] border-[#1F6656]' : 'bg-white text-ink-soft border-[var(--line)]'}`}>
-            {label(o)}
-          </button>
+          <Chip key={o} on={on} onClick={() => onChange(on ? selected.filter((x) => x !== o) : [...selected, o])}>
+            {on && <Check weight="bold" aria-hidden="true" />}{label(o)}
+          </Chip>
         );
       })}
-    </div>
+    </Chips>
   );
 }
 
@@ -102,24 +100,22 @@ function DriverPicker({ selected, onChange }: { selected: string[]; onChange: (i
   const shown = drivers.filter((d) => !q || `${d.title} ${d.location}`.toLowerCase().includes(q.toLowerCase())).slice(0, 12);
   const toggle = (id: string) => onChange(selected.includes(id) ? selected.filter((x) => x !== id) : selected.length < 10 ? [...selected, id] : selected);
   return (
-    <div data-testid="recommended-drivers">
-      <div className="relative">
-        <MagnifyingGlass size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-soft" />
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('hostProfile.find_driver')} className={`${input} mt-0 pl-9`} />
-      </div>
-      <div className="mt-3 grid sm:grid-cols-2 gap-2">
+    <div className="grid gap-2.5" data-testid="recommended-drivers">
+      <label className="relative">
+        <MagnifyingGlass size={18} className="absolute left-5 top-1/2 -translate-y-1/2 text-[var(--ink-muted)]" aria-hidden="true" />
+        <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('hostProfile.find_driver')} aria-label={t('hostProfile.find_driver')} className="ag-in !pl-12" />
+      </label>
+      <Chips>
         {shown.map((d) => {
           const on = selected.includes(d.id);
           return (
-            <button key={d.id} type="button" onClick={() => toggle(d.id)} aria-pressed={on}
-              className={`text-left px-3.5 py-2.5 rounded-xl border text-sm transition-colors ${on ? 'border-[#1F6656] bg-[rgba(31,102,86,0.08)]' : 'border-[var(--line)] bg-white'}`}>
-              <span className="block font-bold text-ink truncate">{d.title}</span>
-              <span className="block text-ink-soft truncate">{d.location}</span>
-            </button>
+            <Chip key={d.id} on={on} onClick={() => toggle(d.id)} className="max-w-full">
+              {on && <Check weight="bold" aria-hidden="true" />}<span className="truncate">{d.title} · {d.location}</span>
+            </Chip>
           );
         })}
-      </div>
-      <p className="mt-2 text-xs text-ink-soft">{t('hostProfile.drivers_selected', { count: selected.length })}</p>
+      </Chips>
+      <p className="ag-small">{t('hostProfile.drivers_selected', { count: selected.length })}</p>
     </div>
   );
 }
@@ -305,7 +301,7 @@ export default function ProviderProfile() {
   const unitLabel = (u: string) => t(`profile.unit_${u}`);
 
   if (!form) {
-    return <div className="mx-auto max-w-3xl px-4 py-16 text-ink-soft">{t('common.loading')}</div>;
+    return <div className="ag-wrap"><div className="ag-main"><p className="ag-small">{t('common.loading')}</p></div></div>;
   }
 
   const previewItems = (): MiniSiteData['items'] => {
@@ -341,302 +337,248 @@ export default function ProviderProfile() {
   };
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8 md:py-12 lg:grid lg:grid-cols-[minmax(0,1fr)_400px] lg:gap-8 lg:items-start">
-    <div className="space-y-5 min-w-0" data-testid="provider-profile">
-      <div>
-        <span className="chip capitalize">{t(`categories.${type}`, { defaultValue: type })}</span>
-        <h1 className="mt-3 font-display font-extrabold text-3xl text-ink">{t('hostProfile.title')}</h1>
-        <p className="mt-1 text-ink-soft">{t('hostProfile.subtitle')}</p>
-      </div>
+    <div className="ag-wrap">
+      <div className="ag-main" data-testid="provider-profile">
+        <PageHead eyebrow={t(`categories.${type}`, { defaultValue: type })} title={t('hostProfile.title')} sub={t('hostProfile.subtitle')} />
 
-      {missing.length > 0 ? (
-        <div className="rounded-2xl border border-[#F0B90B] bg-[#FFF8E1] p-5" data-testid="profile-missing">
-          <p className="font-bold text-ink flex items-center gap-2"><WarningCircle size={20} className="text-[#B7791F]" /> {t('hostProfile.required_title')}</p>
-          <ul className="mt-2 space-y-1 text-sm text-ink">
-            {missing.map((m) => <li key={m.key}>• {missingLabel(t, m, p?.business_type)}</li>)}
-          </ul>
-          <p className="mt-2 text-xs text-ink-soft">{t('hostProfile.required_note')}</p>
-        </div>
-      ) : (
-        <div className="rounded-2xl border border-[var(--line)] bg-white p-4 flex items-center gap-2 text-sm font-semibold text-ink" data-testid="profile-complete">
-          <CheckCircle size={20} className="text-pine" /> {t('hostProfile.required_done')}
-        </div>
-      )}
+        {missing.length > 0 ? (
+          <Box tone="blush" data-testid="profile-missing">
+            <div className="flex items-center gap-2">
+              <WarningCircle size={22} className="flex-none text-[var(--r)]" aria-hidden="true" />
+              <h2>{t('hostProfile.required_title')}</h2>
+            </div>
+            <ul className="grid gap-0.5 text-sm text-[var(--ink-strong)]">
+              {missing.map((m) => <li key={m.key}>• {missingLabel(t, m, p?.business_type)}</li>)}
+            </ul>
+            <p className="ag-small">{t('hostProfile.required_note')}</p>
+          </Box>
+        ) : (
+          <Box flat className="!flex-row items-center !gap-2" data-testid="profile-complete">
+            <CheckCircle size={22} weight="fill" className="flex-none text-[var(--ok)]" aria-hidden="true" />
+            <span className="text-sm text-[var(--ink-strong)]">{t('hostProfile.required_done')}</span>
+          </Box>
+        )}
 
-      <section className="mist-panel p-5 md:p-7">
-        <Toggle on={form.available} onChange={(v) => set({ available: v })} testid="profile-available"
-          label={form.available ? t('hostProfile.available_on') : t('hostProfile.available_off')}
-          note={t('hostProfile.available_note')} />
-        {(type === 'homestay' || type === 'cafe' || type === 'shop') && (
-          <div className="mt-5 pt-5 border-t border-[var(--line)]">
-            <Toggle on={form.home_delivery} onChange={(v) => set({ home_delivery: v })} testid="profile-home-delivery"
-              label={type === 'shop' ? t('hostProfile.home_delivery_shop') : t('hostProfile.home_delivery')}
-              note={type === 'shop' ? t('hostProfile.home_delivery_shop_note') : type === 'cafe' ? t('hostProfile.home_delivery_cafe_note') : t('hostProfile.home_delivery_note')} />
+        <Box as="section">
+          <Toggle on={form.available} onChange={(v) => set({ available: v })} testid="profile-available"
+            label={form.available ? t('hostProfile.available_on') : t('hostProfile.available_off')}
+            note={t('hostProfile.available_note')} />
+          {(type === 'homestay' || type === 'cafe' || type === 'shop') && (
+            <div className="border-t border-[var(--warmline)] pt-3">
+              <Toggle on={form.home_delivery} onChange={(v) => set({ home_delivery: v })} testid="profile-home-delivery"
+                label={type === 'shop' ? t('hostProfile.home_delivery_shop') : t('hostProfile.home_delivery')}
+                note={type === 'shop' ? t('hostProfile.home_delivery_shop_note') : type === 'cafe' ? t('hostProfile.home_delivery_cafe_note') : t('hostProfile.home_delivery_note')} />
+            </div>
+          )}
+        </Box>
+
+        <Section title={t('hostProfile.about_you')}>
+          <AvatarUploader src={form.host_avatar} initial={(form.host_name || form.business_name || '?').charAt(0).toUpperCase()}
+            uploading={uploading === 'host_avatar'} onFileSelected={upload('host_avatar')}
+            label={type === 'homestay' ? t('hostProfile.owner_photo') : t('hostProfile.your_photo')} />
+          <TextField label={nameLabel} value={form.business_name} onChange={(e) => set({ business_name: e.target.value })} />
+          {type === 'shop' && (
+            <TextField label={t('hostProfile.shop_kind')} value={form.shop_kind} onChange={(e) => set({ shop_kind: e.target.value })}
+              placeholder={t('hostProfile.shop_kind_ph')} data-testid="profile-shop-kind" />
+          )}
+          {(type === 'homestay' || type === 'guide' || type === 'cafe' || type === 'shop') && (
+            <TextField label={type === 'homestay' ? `${t('hostProfile.host_name')} *` : type === 'guide' ? t('hostProfile.your_name') : `${t('hostProfile.owner_name')} *`}
+              value={form.host_name} onChange={(e) => set({ host_name: e.target.value })} data-testid="profile-host-name" />
+          )}
+          <div className="grid gap-4 sm:grid-cols-2">
+            <TextField label={t('hostProfile.phone')} value={form.contact_phone} onChange={(e) => set({ contact_phone: e.target.value })} inputMode="tel" />
+            <TextField label={t('hostProfile.whatsapp')} hint={t('hostProfile.whatsapp_hint')} value={form.whatsapp} onChange={(e) => set({ whatsapp: e.target.value })} inputMode="tel" />
           </div>
-        )}
-      </section>
-
-      <Section title={t('hostProfile.about_you')}>
-        <AvatarUploader src={form.host_avatar} initial={(form.host_name || form.business_name || '?').charAt(0).toUpperCase()}
-          uploading={uploading === 'host_avatar'} onFileSelected={upload('host_avatar')}
-          label={type === 'homestay' ? t('hostProfile.owner_photo') : t('hostProfile.your_photo')} size="sm" />
-        <Field label={nameLabel}>
-          <input value={form.business_name} onChange={(e) => set({ business_name: e.target.value })} className={input} />
-        </Field>
-        {type === 'shop' && (
-          <Field label={t('hostProfile.shop_kind')}>
-            <input value={form.shop_kind} onChange={(e) => set({ shop_kind: e.target.value })} placeholder={t('hostProfile.shop_kind_ph')} className={input} data-testid="profile-shop-kind" />
-          </Field>
-        )}
-        {(type === 'homestay' || type === 'guide' || type === 'cafe' || type === 'shop') && (
-          <Field label={type === 'homestay' ? `${t('hostProfile.host_name')} *` : type === 'guide' ? t('hostProfile.your_name') : `${t('hostProfile.owner_name')} *`}>
-            <input value={form.host_name} onChange={(e) => set({ host_name: e.target.value })} className={input} data-testid="profile-host-name" />
-          </Field>
-        )}
-        <div className="grid sm:grid-cols-2 gap-4">
-          <Field label={t('hostProfile.phone')}>
-            <input value={form.contact_phone} onChange={(e) => set({ contact_phone: e.target.value })} inputMode="tel" className={input} />
-          </Field>
-          <Field label={t('hostProfile.whatsapp')} hint={t('hostProfile.whatsapp_hint')}>
-            <input value={form.whatsapp} onChange={(e) => set({ whatsapp: e.target.value })} inputMode="tel" className={input} />
-          </Field>
-        </div>
-        <div className="grid sm:grid-cols-2 gap-4">
-          <Field label={t('hostProfile.languages')} hint={t('hostProfile.languages_hint')}>
-            <input value={form.languages} onChange={(e) => set({ languages: e.target.value })} className={input} />
-          </Field>
-          <Field label={t('hostProfile.experience')}>
-            <input type="number" min={0} max={80} value={form.experience_years} onChange={(e) => set({ experience_years: e.target.value })} className={input} />
-          </Field>
-        </div>
-        {type === 'guide' && (
-          <div className="grid sm:grid-cols-2 gap-4">
-            <Field label={t('hostProfile.age')}>
-              <input type="number" min={18} max={90} value={form.age} onChange={(e) => set({ age: e.target.value })} className={input} />
-            </Field>
-            <Field label={t('hostProfile.gender')}>
-              <select value={form.gender} onChange={(e) => set({ gender: e.target.value })} className={input}>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <TextField label={t('hostProfile.languages')} hint={t('hostProfile.languages_hint')} value={form.languages} onChange={(e) => set({ languages: e.target.value })} />
+            <TextField label={t('hostProfile.experience')} type="number" min={0} max={80} value={form.experience_years} onChange={(e) => set({ experience_years: e.target.value })} />
+          </div>
+          {type === 'guide' && (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <TextField label={t('hostProfile.age')} type="number" min={18} max={90} value={form.age} onChange={(e) => set({ age: e.target.value })} />
+              <SelectField label={t('hostProfile.gender')} value={form.gender} onChange={(e) => set({ gender: e.target.value })}>
                 <option value="">—</option>
                 {['male', 'female', 'other'].map((g) => <option key={g} value={g}>{t(`profile.gender_${g}`)}</option>)}
-              </select>
-            </Field>
+              </SelectField>
+            </div>
+          )}
+          <TextArea label={t('hostProfile.bio')} rows={4} value={form.host_bio} onChange={(e) => set({ host_bio: e.target.value })} />
+          <div data-testid="profile-video">
+            <Group label={t('hostProfile.video')} hint={t('hostProfile.video_hint')}>
+              {form.intro_video && /\.(mp4|mov|webm)(\?|$)|\/videos\//i.test(form.intro_video) ? (
+                <video src={form.intro_video} controls playsInline preload="metadata" className="aspect-video w-full max-w-sm rounded-[18px] bg-black" />
+              ) : form.intro_video ? (
+                <a href={form.intro_video} target="_blank" rel="noreferrer" className="ag-seeall self-start">{t('hostProfile.video_old_link')}</a>
+              ) : null}
+              <div className="ag-row">
+                {/* A label styled as a small button, so the file picker opens from it. */}
+                <label className="ag-btn sm cursor-pointer">
+                  <VideoCamera />
+                  <span>{uploading === 'video' ? t('hostProfile.video_uploading') : form.intro_video ? t('hostProfile.video_replace') : t('hostProfile.video_upload')}</span>
+                  <input type="file" accept="video/mp4,video/quicktime,video/webm" className="sr-only" onChange={uploadVideo} data-testid="profile-video-input" />
+                </label>
+                {form.intro_video && (
+                  <Button variant="stop" size="sm" onClick={() => set({ intro_video: '' })}>{t('hostProfile.video_remove')}</Button>
+                )}
+              </div>
+            </Group>
           </div>
-        )}
-        <Field label={t('hostProfile.bio')}>
-          <textarea rows={4} value={form.host_bio} onChange={(e) => set({ host_bio: e.target.value })} className={input} />
-        </Field>
-        <div data-testid="profile-video">
-          <span className={labelCls}>{t('hostProfile.video')}</span>
-          <div className="mt-2 flex flex-wrap items-center gap-3">
-            {form.intro_video && /\.(mp4|mov|webm)(\?|$)|\/videos\//i.test(form.intro_video) ? (
-              <video src={form.intro_video} controls playsInline preload="metadata" className="w-56 rounded-xl bg-ink aspect-video" />
-            ) : form.intro_video ? (
-              <a href={form.intro_video} target="_blank" rel="noreferrer" className="text-sm font-bold text-pine underline">{t('hostProfile.video_old_link')}</a>
-            ) : null}
-            <label className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-[var(--line)] bg-white text-sm font-bold text-ink cursor-pointer btn-hover">
-              <VideoCamera size={16} /> {uploading === 'video' ? t('hostProfile.video_uploading') : form.intro_video ? t('hostProfile.video_replace') : t('hostProfile.video_upload')}
-              <input type="file" accept="video/mp4,video/quicktime,video/webm" className="hidden" onChange={uploadVideo} data-testid="profile-video-input" />
-            </label>
-            {form.intro_video && (
-              <button type="button" onClick={() => set({ intro_video: '' })} className="text-xs font-bold text-ink-soft hover:text-flag">{t('hostProfile.video_remove')}</button>
-            )}
-          </div>
-          <span className="mt-1 block text-xs text-ink-soft">{t('hostProfile.video_hint')}</span>
-        </div>
-        <div className="grid sm:grid-cols-2 gap-4">
-          {SOCIAL.map((k) => (
-            <Field key={k} label={t(`profile.social_${k}`)}>
-              <input value={form.social[k] || ''} onChange={(e) => set({ social: { ...form.social, [k]: e.target.value } })}
-                placeholder={k === 'website' ? 'https://' : '@'} className={input} />
-            </Field>
-          ))}
-        </div>
-      </Section>
-
-      {type === 'driver' && (
-        <Section title={t('hostProfile.vehicle')} testid="profile-driver">
-          <div className="grid sm:grid-cols-3 gap-4">
-            <Field label={t('hostProfile.vehicle_number')}>
-              <input value={form.vehicle_number} onChange={(e) => set({ vehicle_number: e.target.value })} placeholder="WB 74 A 1234" className={input} />
-            </Field>
-            <Field label={t('hostProfile.license_number')}>
-              <input value={form.license_number} onChange={(e) => set({ license_number: e.target.value })} className={input} />
-            </Field>
-            <Field label={t('hostProfile.seats')}>
-              <input type="number" min={1} max={30} value={form.seats} onChange={(e) => set({ seats: e.target.value })} className={input} />
-            </Field>
-          </div>
-          <p className="text-xs text-ink-soft">{t('hostProfile.vehicle_docs_note')}</p>
-          <div>
-            <span className={labelCls}>{t('hostProfile.routes')}</span>
-            <div className="mt-2"><RouteFareTable routes={form.routes} onChange={(routes: any) => set({ routes })} compact emptyNote={t('hostProfile.routes_empty')} /></div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {SOCIAL.map((k) => (
+              <TextField key={k} label={t(`profile.social_${k}`)} value={form.social[k] || ''}
+                onChange={(e) => set({ social: { ...form.social, [k]: e.target.value } })} placeholder={k === 'website' ? 'https://' : '@'} />
+            ))}
           </div>
         </Section>
-      )}
 
-      {type === 'homestay' && (
-        <Section title={t('hostProfile.rooms_food')} note={t('hostProfile.rooms_food_note')} testid="profile-homestay">
-          <div>
-            <span className={labelCls}>{t('profile.rooms')}</span>
-            <div className="mt-2">
+        {type === 'driver' && (
+          <Section title={t('hostProfile.vehicle')} testid="profile-driver">
+            <div className="grid gap-4 sm:grid-cols-3">
+              <TextField label={t('hostProfile.vehicle_number')} value={form.vehicle_number} onChange={(e) => set({ vehicle_number: e.target.value })} placeholder="WB 74 A 1234" />
+              <TextField label={t('hostProfile.license_number')} value={form.license_number} onChange={(e) => set({ license_number: e.target.value })} />
+              <TextField label={t('hostProfile.seats')} type="number" min={1} max={30} value={form.seats} onChange={(e) => set({ seats: e.target.value })} />
+            </div>
+            <p className="ag-small">{t('hostProfile.vehicle_docs_note')}</p>
+            <Group label={t('hostProfile.routes')}>
+              <RouteFareTable routes={form.routes} onChange={(routes: any) => set({ routes })} emptyNote={t('hostProfile.routes_empty')} />
+            </Group>
+          </Section>
+        )}
+
+        {type === 'homestay' && (
+          <Section title={t('hostProfile.rooms_food')} note={t('hostProfile.rooms_food_note')} testid="profile-homestay">
+            <Group label={t('profile.rooms')}>
               <PricedEditor rows={form.rooms} onChange={(rooms) => set({ rooms })} units={['night', 'head']} unitLabel={unitLabel}
                 namePlaceholder={t('hostProfile.room_ph')} addLabel={t('hostProfile.add_room')} testid="profile-rooms" />
-            </div>
-          </div>
-          <div>
-            <span className={labelCls}>{t('profile.meals')}</span>
-            <div className="mt-2">
+            </Group>
+            <Group label={t('profile.meals')}>
               <PricedEditor rows={form.meals} onChange={(meals) => set({ meals })} units={['meal', 'day', 'head']} unitLabel={unitLabel}
                 namePlaceholder={t('hostProfile.meal_ph')} addLabel={t('hostProfile.add_meal')} testid="profile-meals" />
-            </div>
-          </div>
-          <Field label={t('hostProfile.capacity')}>
-            <input type="number" min={1} max={100} value={form.capacity} onChange={(e) => set({ capacity: e.target.value })} className={`${input} max-w-[10rem]`} />
-          </Field>
-          <div>
-            <span className={labelCls}>{t('hostProfile.amenities')}</span>
-            <div className="mt-2">
-              <AmenityPicker presets={HOMESTAY_AMENITIES} selected={form.amenities} onChange={(amenities: string[]) => set({ amenities })} compact />
-            </div>
-          </div>
-          <div>
-            <span className={labelCls}>{t('hostProfile.recommended_drivers')}</span>
-            <div className="mt-2"><DriverPicker selected={form.recommended_drivers} onChange={(recommended_drivers) => set({ recommended_drivers })} /></div>
-          </div>
-        </Section>
-      )}
+            </Group>
+            <TextField label={t('hostProfile.capacity')} type="number" min={1} max={100} value={form.capacity} onChange={(e) => set({ capacity: e.target.value })} className="sm:max-w-[12rem]" />
+            <Group label={t('hostProfile.amenities')}>
+              <AmenityPicker presets={HOMESTAY_AMENITIES} selected={form.amenities} onChange={(amenities: string[]) => set({ amenities })} />
+            </Group>
+            <Group label={t('hostProfile.recommended_drivers')}>
+              <DriverPicker selected={form.recommended_drivers} onChange={(recommended_drivers) => set({ recommended_drivers })} />
+            </Group>
+          </Section>
+        )}
 
-      {type === 'guide' && (
-        <Section title={t('hostProfile.guiding')} testid="profile-guide">
-          <div>
-            <span className={labelCls}>{t('hostProfile.guide_type')}</span>
-            <div className="mt-2"><Chips options={GUIDE_TYPES} selected={form.guide_types} onChange={(guide_types) => set({ guide_types })} label={(o) => t(`profile.guide_type_${o}`)} /></div>
-          </div>
-          <div>
-            <span className={labelCls}>{t('hostProfile.services')} *</span>
-            <div className="mt-2">
+        {type === 'guide' && (
+          <Section title={t('hostProfile.guiding')} testid="profile-guide">
+            <Group label={t('hostProfile.guide_type')}>
+              <MultiChips options={GUIDE_TYPES} selected={form.guide_types} onChange={(guide_types) => set({ guide_types })} label={(o) => t(`profile.guide_type_${o}`)} />
+            </Group>
+            <Group label={`${t('hostProfile.services')} *`}>
               <PricedEditor rows={form.services} onChange={(services) => set({ services })} units={['day', 'trip', 'hour', 'person']} unitLabel={unitLabel}
                 namePlaceholder={t('hostProfile.service_ph')} addLabel={t('hostProfile.add_service')} testid="profile-services" />
+            </Group>
+            <Group label={t('hostProfile.seasons')}>
+              <MultiChips options={SEASONS} selected={form.seasons} onChange={(seasons) => set({ seasons })} label={(o) => t(`profile.season_${o}`)} />
+            </Group>
+          </Section>
+        )}
+
+        {type === 'cafe' && (
+          <Section title={t('hostProfile.menu')} note={t('hostProfile.menu_note')} testid="profile-cafe">
+            <PricedEditor rows={form.menu} onChange={(menu) => set({ menu })} units={MENU_UNITS} unitLabel={unitLabel}
+              namePlaceholder={t('hostProfile.menu_ph')} addLabel={t('hostProfile.add_menu')} testid="profile-menu" />
+            <Group label={t('hostProfile.amenities')}>
+              <AmenityPicker presets={CAFE_AMENITIES} selected={form.amenities} onChange={(amenities: string[]) => set({ amenities })} />
+            </Group>
+            <TextField label={t('hostProfile.opening_hours')} value={form.opening_hours || ''} onChange={(e) => set({ opening_hours: e.target.value })} maxLength={120}
+              placeholder={t('hostProfile.opening_hours_ph')} data-testid="profile-opening-hours" />
+            <TextField label={t('hostProfile.capacity_cafe')} type="number" min={1} max={500} value={form.capacity} onChange={(e) => set({ capacity: e.target.value })}
+              className="sm:max-w-[12rem]" data-testid="profile-capacity" />
+            <Group label={t('hostProfile.recommended_drivers')}>
+              <DriverPicker selected={form.recommended_drivers} onChange={(recommended_drivers) => set({ recommended_drivers })} />
+            </Group>
+          </Section>
+        )}
+
+        {type === 'shop' && (
+          <Section title={t('hostProfile.goods')} note={t('hostProfile.goods_note')} testid="profile-shop">
+            <PricedEditor rows={form.goods} onChange={(goods) => set({ goods })} units={GOODS_UNITS} unitLabel={unitLabel}
+              namePlaceholder={t('hostProfile.goods_ph')} addLabel={t('hostProfile.add_goods')} testid="profile-goods"
+              max={MAX_GOODS} fullNote={t('hostProfile.goods_full')} />
+            <TextField label={t('hostProfile.opening_hours')} value={form.opening_hours || ''} onChange={(e) => set({ opening_hours: e.target.value })} maxLength={120}
+              placeholder={t('hostProfile.opening_hours_ph')} data-testid="profile-opening-hours" />
+            <TextField label={t('hostProfile.capacity_shop')} type="number" min={1} max={500} value={form.capacity} onChange={(e) => set({ capacity: e.target.value })}
+              className="sm:max-w-[12rem]" data-testid="profile-capacity" />
+            <Group label={t('hostProfile.recommended_drivers')}>
+              <DriverPicker selected={form.recommended_drivers} onChange={(recommended_drivers) => set({ recommended_drivers })} />
+            </Group>
+          </Section>
+        )}
+
+        <Section title={t('hostProfile.photos')} note={photoGoal ? t(photosNote, { count: photoGoal }) : t('hostProfile.photos_note')}>
+          <Group label={t('hostProfile.cover')}>
+            <div className="flex flex-wrap items-center gap-3">
+              {form.cover
+                ? <img src={form.cover} alt="" className="aspect-[16/9] w-44 rounded-[18px] border border-[var(--warmline)] object-cover" />
+                : <div className="aspect-[16/9] w-44 rounded-[18px] border-2 border-dashed border-[var(--outline)]" />}
+              <label className="ag-btn sm cursor-pointer">
+                <span>{uploading === 'cover' ? t('common.loading') : t('hostProfile.change_cover')}</span>
+                <input type="file" accept="image/*" className="sr-only" onChange={upload('cover')} />
+              </label>
             </div>
-          </div>
-          <div>
-            <span className={labelCls}>{t('hostProfile.seasons')}</span>
-            <div className="mt-2"><Chips options={SEASONS} selected={form.seasons} onChange={(seasons) => set({ seasons })} label={(o) => t(`profile.season_${o}`)} /></div>
-          </div>
-        </Section>
-      )}
-
-      {type === 'cafe' && (
-        <Section title={t('hostProfile.menu')} note={t('hostProfile.menu_note')} testid="profile-cafe">
-          <PricedEditor rows={form.menu} onChange={(menu) => set({ menu })} units={MENU_UNITS} unitLabel={unitLabel}
-            namePlaceholder={t('hostProfile.menu_ph')} addLabel={t('hostProfile.add_menu')} testid="profile-menu" />
-          <div>
-            <span className={labelCls}>{t('hostProfile.amenities')}</span>
-            <div className="mt-2">
-              <AmenityPicker presets={CAFE_AMENITIES} selected={form.amenities} onChange={(amenities: string[]) => set({ amenities })} compact />
-            </div>
-          </div>
-          <Field label={t('hostProfile.opening_hours')}>
-            <input value={form.opening_hours || ''} onChange={(e) => set({ opening_hours: e.target.value })} maxLength={120}
-              placeholder={t('hostProfile.opening_hours_ph')} className={input} data-testid="profile-opening-hours" />
-          </Field>
-          <Field label={t('hostProfile.capacity_cafe')}>
-            <input type="number" min={1} max={500} value={form.capacity} onChange={(e) => set({ capacity: e.target.value })} className={`${input} max-w-[10rem]`} data-testid="profile-capacity" />
-          </Field>
-          <div>
-            <span className={labelCls}>{t('hostProfile.recommended_drivers')}</span>
-            <div className="mt-2"><DriverPicker selected={form.recommended_drivers} onChange={(recommended_drivers) => set({ recommended_drivers })} /></div>
-          </div>
-        </Section>
-      )}
-
-      {type === 'shop' && (
-        <Section title={t('hostProfile.goods')} note={t('hostProfile.goods_note')} testid="profile-shop">
-          <PricedEditor rows={form.goods} onChange={(goods) => set({ goods })} units={GOODS_UNITS} unitLabel={unitLabel}
-            namePlaceholder={t('hostProfile.goods_ph')} addLabel={t('hostProfile.add_goods')} testid="profile-goods"
-            max={MAX_GOODS} fullNote={t('hostProfile.goods_full')} />
-          <Field label={t('hostProfile.opening_hours')}>
-            <input value={form.opening_hours || ''} onChange={(e) => set({ opening_hours: e.target.value })} maxLength={120}
-              placeholder={t('hostProfile.opening_hours_ph')} className={input} data-testid="profile-opening-hours" />
-          </Field>
-          <Field label={t('hostProfile.capacity_shop')}>
-            <input type="number" min={1} max={500} value={form.capacity} onChange={(e) => set({ capacity: e.target.value })} className={`${input} max-w-[10rem]`} data-testid="profile-capacity" />
-          </Field>
-          <div>
-            <span className={labelCls}>{t('hostProfile.recommended_drivers')}</span>
-            <div className="mt-2"><DriverPicker selected={form.recommended_drivers} onChange={(recommended_drivers) => set({ recommended_drivers })} /></div>
-          </div>
-        </Section>
-      )}
-
-      <Section title={t('hostProfile.photos')}
-        note={photoGoal ? t(photosNote, { count: photoGoal }) : t('hostProfile.photos_note')}>
-        <div>
-          <span className={labelCls}>{t('hostProfile.cover')}</span>
-          <div className="mt-2 flex items-center gap-4">
-            {form.cover ? <img src={form.cover} alt="" className="w-40 h-24 rounded-xl object-cover border border-[var(--line)]" /> : <div className="w-40 h-24 rounded-xl bg-white border border-dashed border-[var(--line)]" />}
-            <label className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-[var(--line)] bg-white text-sm font-bold text-ink cursor-pointer btn-hover">
-              {uploading === 'cover' ? t('common.loading') : t('hostProfile.change_cover')}
-              <input type="file" accept="image/*" className="hidden" onChange={upload('cover')} />
-            </label>
-          </div>
-        </div>
-        <div>
-          <span className={labelCls}>{t('hostProfile.gallery')}{photoGoal ? ` (${form.images.length}/${photoGoal})` : ''}</span>
-          <div className="mt-2">
+          </Group>
+          <Group label={`${t('hostProfile.gallery')}${photoGoal ? ` (${form.images.length}/${photoGoal})` : ''}`} hint={type === 'homestay' ? t('photoKind.hint') : undefined}>
             <GalleryUploader images={form.images} uploading={uploading === 'images'} onFilesSelected={uploadGallery}
-              onRemove={(i) => updateForm((f: any) => ({ ...f, images: f.images.filter((_: string, j: number) => j !== i) }))} compact
+              onRemove={(i) => updateForm((f: any) => ({ ...f, images: f.images.filter((_: string, j: number) => j !== i) }))}
               {...(type === 'homestay' ? {
                 kinds: form.photo_kinds,
                 onKind: (url: string, kind: string) => updateForm((f: any) => ({ ...f, photo_kinds: { ...f.photo_kinds, [url]: kind } })),
               } : {})} />
-            {type === 'homestay' && <p className="mt-1.5 text-xs text-ink-soft">{t('photoKind.hint')}</p>}
+          </Group>
+        </Section>
+
+        <OwnersSection onLeft={async () => { await refreshProvider(); nav('/'); }} />
+
+        {/* Sticky save bar: what changed, the live preview, and Save. */}
+        <div className="sticky bottom-[calc(var(--tabbar-h)+8px)] z-20">
+          {msg?.ok ? (
+            <Box className="!flex-row flex-wrap items-center !gap-3 !p-3" data-testid="profile-saved-actions">
+              <CheckCircle size={22} weight="fill" className="flex-none text-[var(--ok)]" aria-hidden="true" />
+              <p className="min-w-0 flex-1 text-sm text-[var(--ink-strong)]">{msg.text}</p>
+              <Button variant="text" onClick={() => setMsg(null)}>{t('ui.providerProfile.keep_editing')}</Button>
+              <ButtonLink to="/provider/dashboard" size="sm" go>{t('hostProfile.back_dashboard')}</ButtonLink>
+            </Box>
+          ) : (
+            <Box className="!flex-row items-center !gap-2 !p-3">
+              <p className={`min-w-0 flex-1 text-sm ${msg ? 'text-[var(--fail)]' : 'text-[var(--ink-muted)]'}`} role={msg ? 'alert' : undefined} data-testid="profile-msg">
+                {msg ? msg.text : <span className="max-sm:hidden">{t('hostProfile.save_hint')}</span>}
+              </p>
+              <Button size="sm" icon={<Eye />} onClick={() => setShowPreview(true)} data-testid="profile-preview-open">{t('miniSite.preview_open')}</Button>
+              <Button variant="primary" go onClick={save} disabled={busy} data-testid="profile-save">{busy ? t('common.loading') : t('hostProfile.save')}</Button>
+            </Box>
+          )}
+        </div>
+
+        <SignOutButton />
+      </div>
+
+      {/* Live preview of the host's mini website (the board's "profiles look like websites"), full screen. */}
+      {showPreview && (
+        <div className="fixed inset-0 z-[60] flex flex-col bg-[var(--page)]" role="dialog" aria-modal="true" aria-labelledby="profile-preview-title" data-testid="profile-preview">
+          <div className="border-b border-[var(--hairline)] bg-[var(--surface)]">
+            <div className="ag-wrap flex items-center gap-3 py-2">
+              <Eye size={20} className="text-[var(--r)]" aria-hidden="true" />
+              <b id="profile-preview-title" className="flex-1 font-medium text-[var(--ink-strong)]">{t('miniSite.preview_title')}</b>
+              <IconButton label={t('common.close')} onClick={() => setShowPreview(false)}><X /></IconButton>
+            </div>
+          </div>
+          <div className="flex-1 overflow-y-auto">
+            <div className="ag-wrap">
+              <div className="ag-main">
+                <p className="ag-small">{t('miniSite.preview_note')}</p>
+                <HostMiniSite data={preview} />
+              </div>
+            </div>
           </div>
         </div>
-      </Section>
-
-      <OwnersSection onLeft={async () => { await refreshProvider(); nav('/'); }} />
-
-      <div className="sticky bottom-[calc(var(--bottom-nav-h)+0.5rem)] lg:bottom-4 z-20">
-        {msg?.ok ? (
-          <div className="rounded-2xl border border-pine/20 bg-white p-3 shadow-lg flex items-center gap-3" data-testid="profile-saved-actions">
-            <CheckCircle size={22} weight="fill" className="text-pine shrink-0" />
-            <p className="flex-1 text-sm font-bold text-pine">{msg.text}</p>
-            <Link to="/provider/dashboard" className="inline-flex items-center gap-1.5 rounded-full bg-pine px-4 py-2.5 text-xs font-bold text-white btn-hover whitespace-nowrap">{t('hostProfile.back_dashboard')} <ArrowRight size={14} /></Link>
-            <button type="button" onClick={() => setMsg(null)} className="hidden sm:inline text-xs font-bold text-ink-soft hover:text-ink">{t('ui.providerProfile.keep_editing')}</button>
-          </div>
-        ) : <div className="mist-panel p-3 flex items-center gap-3 shadow-lg">
-          <p className={`flex-1 min-w-0 text-sm font-semibold ${msg ? 'text-flag' : 'text-ink-soft'}`} data-testid="profile-msg">{msg ? msg.text : <span className="max-sm:hidden">{t('hostProfile.save_hint')}</span>}</p>
-          {/* Phones and tablets: the same preview, opened from the save bar so it never covers a field. */}
-          <button type="button" onClick={() => setShowPreview(true)} data-testid="profile-preview-open"
-            className="lg:hidden inline-flex items-center gap-1.5 rounded-full bg-white border border-[var(--line)] px-4 py-2.5 text-sm font-bold text-ink whitespace-nowrap">
-            <Eye size={16} /> {t('miniSite.preview_open')}
-          </button>
-          <button type="button" onClick={save} disabled={busy} data-testid="profile-save" className="inline-flex items-center gap-2 px-6 rounded-full whitespace-nowrap bg-pine text-white font-bold btn-hover disabled:opacity-60">{busy ? t('common.loading') : t('hostProfile.save')} <ArrowRight size={16} /></button>
-        </div>}
-      </div>
-
-      <SignOutButton />
-    </div>
-
-    {/* Live preview of the host's mini website (the board's "profiles look like websites"). */}
-    <aside className="hidden lg:block sticky top-24" data-testid="profile-preview">
-      <p className="mb-2 text-[11px] font-bold uppercase tracking-widest text-ink-soft flex items-center gap-1.5"><Eye size={14} /> {t('miniSite.preview_title')}</p>
-      <div className="rounded-3xl border border-[var(--line)] shadow-xl overflow-hidden max-h-[calc(100vh-8rem)] overflow-y-auto">
-        <HostMiniSite data={preview} compact />
-      </div>
-      <p className="mt-2 text-xs text-ink-soft">{t('miniSite.preview_note')}</p>
-    </aside>
-
-    {showPreview && (
-      <div className="lg:hidden fixed inset-0 z-[60] bg-black/50 flex flex-col" role="dialog" aria-modal="true">
-        <div className="flex items-center justify-between bg-white px-4 py-3 border-b border-[var(--line)]">
-          <span className="font-bold text-ink">{t('miniSite.preview_title')}</span>
-          <button type="button" onClick={() => setShowPreview(false)} aria-label={t('common.close', { defaultValue: 'Close' })} className="w-9 h-9 grid place-items-center rounded-full hover:bg-mist"><X size={18} /></button>
-        </div>
-        <div className="flex-1 overflow-y-auto bg-white"><HostMiniSite data={preview} /></div>
-      </div>
-    )}
+      )}
     </div>
   );
 }

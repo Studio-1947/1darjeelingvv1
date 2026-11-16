@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { checklistLabel } from '@/lib/serverText';
 import { useAuth } from '@/context/AuthContext';
-import { Upload, CheckCircle as CheckCircle2, Clock, XCircle, Circle } from '@phosphor-icons/react';
+import { Upload, CheckCircle as CheckCircle2, Clock, XCircle, Circle, MapPin } from '@phosphor-icons/react';
+import { Box, Button, FieldError, Status, TextField } from '@/components/ag';
 import { getMyProfile, uploadKycDoc, uploadKycVideo, deleteKycDoc, KycApiError, KycProfile, ChecklistItem, verifyMapsLink, captureLiveLocation } from '@/lib/kyc';
 import ProfileCompletionBar from '../ProfileCompletionBar';
 
@@ -19,11 +20,11 @@ export default function KycSection({ onProfileChange }: { onProfileChange?: (p: 
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<{ status?: number; message: string } | null>(null);
 
-  const stateMeta: Record<ChecklistItem['state'], { icon: React.ReactNode; label: string; cls: string }> = {
-    done: { icon: <CheckCircle2 size={16} />, label: t('kyc.verified'), cls: 'text-pine' },
-    in_review: { icon: <Clock size={16} />, label: t('kyc.inReview'), cls: 'text-gold' },
-    rejected: { icon: <XCircle size={16} />, label: t('kyc.rejected'), cls: 'text-flag' },
-    missing: { icon: <Circle size={16} />, label: t('kyc.missing'), cls: 'text-ink-soft' },
+  const stateMeta: Record<ChecklistItem['state'], { icon: React.ReactNode; label: string; tone: 'ok' | 'pending' | 'no'; cls: string }> = {
+    done: { icon: <CheckCircle2 size={18} weight="fill" />, label: t('kyc.verified'), tone: 'ok', cls: 'text-[var(--ok)]' },
+    in_review: { icon: <Clock size={18} />, label: t('kyc.inReview'), tone: 'pending', cls: 'text-[var(--pending)]' },
+    rejected: { icon: <XCircle size={18} />, label: t('kyc.rejected'), tone: 'no', cls: 'text-[var(--fail)]' },
+    missing: { icon: <Circle size={18} />, label: t('kyc.missing'), tone: 'pending', cls: 'text-[var(--ink-muted)]' },
   };
 
   const load = async () => {
@@ -88,26 +89,20 @@ export default function KycSection({ onProfileChange }: { onProfileChange?: (p: 
     }
   };
 
-  if (loading) return <div className="text-sm text-ink-soft">{t('kyc.loading')}</div>;
+  if (loading) return <Box><p className="ag-small">{t('kyc.loading')}</p></Box>;
 
   if (loadError) {
     // A 404 here means "no active provider profile yet" - completely normal for a provider
-    // who onboarded but hasn't paid/activated yet. That's not a failure, so it gets a plain
+    // who onboarded but has not paid/activated yet. That is not a failure, so it gets a plain
     // explanatory message rather than the alarming error panel + retry button.
     if (loadError.status === 404) {
-      return (
-        <div className="mist-panel rounded-2xl border border-[var(--line)] p-4 text-sm text-ink-soft">
-          {t('kyc.notActiveYet')}
-        </div>
-      );
+      return <Box><p className="ag-small">{t('kyc.notActiveYet')}</p></Box>;
     }
     return (
-      <div className="mist-panel rounded-2xl border border-[var(--line)] p-4 space-y-3">
-        <div className="text-sm text-flag font-semibold">{loadError.message}</div>
-        <button type="button" className="text-xs font-bold text-pine" onClick={loadInitial}>
-          {t('kyc.tryAgain')}
-        </button>
-      </div>
+      <Box tone="blush">
+        <FieldError>{loadError.message}</FieldError>
+        <Button size="sm" className="self-start" onClick={loadInitial}>{t('kyc.tryAgain')}</Button>
+      </Box>
     );
   }
 
@@ -117,20 +112,19 @@ export default function KycSection({ onProfileChange }: { onProfileChange?: (p: 
   const profileItems = profile.checklist.filter(c => c.kind === 'profile');
 
   return (
-    <div className="space-y-6">
-      <ProfileCompletionBar percent={profile.completion_percent} />
-      {error && <div className="text-sm text-flag font-semibold">{error}</div>}
-
-      <div>
-        <h3 className="font-bold text-ink mb-2">{t('kyc.completeYourListing')}</h3>
-        <ul className="space-y-2">
+    <>
+      <Box as="section">
+        <ProfileCompletionBar percent={profile.completion_percent} />
+        <FieldError>{error}</FieldError>
+        <h2>{t('kyc.completeYourListing')}</h2>
+        <ul className="grid gap-2">
           {profileItems.map(item => {
             const m = stateMeta[item.state];
             return (
               <li key={item.key} className="text-sm">
                 <div className="flex items-center gap-2">
                   <span className={m.cls}>{m.icon}</span>
-                  <span className={item.state === 'done' ? 'text-ink-soft line-through' : 'text-ink'}>{checklistLabel(t, item, businessType)}</span>
+                  <span className={item.state === 'done' ? 'text-[var(--ink-muted)] line-through' : 'text-[var(--ink-strong)]'}>{checklistLabel(t, item, businessType)}</span>
                 </div>
                 {item.action && item.state !== 'done' && (
                   <LocationCheck action={item.action} onDone={async () => { await load().catch(() => {}); }} />
@@ -139,77 +133,79 @@ export default function KycSection({ onProfileChange }: { onProfileChange?: (p: 
             );
           })}
         </ul>
-      </div>
+      </Box>
 
-      <div>
-        <h3 className="font-bold text-ink mb-1">{t('kyc.verification')}</h3>
-        <p className="text-xs text-ink-soft mb-3">{t('kyc.verificationHelp')}</p>
-        <ul className="space-y-3">
+      <Box as="section">
+        <div>
+          <h2>{t('kyc.verification')}</h2>
+          <p className="ag-small">{t('kyc.verificationHelp')}</p>
+        </div>
+        <ul className="grid">
           {kycItems.map(item => {
             const m = stateMeta[item.state];
             const doc = profile.documents.find(d => d.doc_type === item.key);
             return (
-              <li key={item.key} className="rounded-2xl border border-[var(--line)] p-3">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <span className={m.cls}>{m.icon}</span>
-                    <div>
-                      <div className="text-sm font-semibold text-ink">
-                        {checklistLabel(t, item, businessType)}{!item.required && <span className="text-ink-soft font-normal"> ({t('kyc.optional')})</span>}
-                      </div>
-                      <div className={`text-xs ${m.cls}`}>{m.label}</div>
-                      {item.media === 'video' && item.state === 'missing' && (
-                        <div className="text-[11px] text-ink-soft">{t('kyc.videoHint')}</div>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <label className="inline-flex items-center gap-1 text-xs font-bold text-pine cursor-pointer">
-                      <Upload size={12} /> {busyKey === item.key ? t('kyc.uploading') : (item.state === 'missing' ? t('kyc.upload') : t('kyc.replace'))}
-                      <input
-                        type="file"
-                        accept={item.media === 'video' ? 'video/mp4,video/quicktime,video/webm' : 'image/jpeg,image/png,application/pdf'}
-                        className="sr-only"
-                        aria-label={
-                          busyKey === item.key
-                            ? t('kyc.uploadingAriaLabel', { label: item.label })
-                            : item.state === 'missing'
-                              ? t('kyc.uploadAriaLabel', { label: item.label })
-                              : t('kyc.replaceAriaLabel', { label: item.label })
-                        }
-                        disabled={busyKey === item.key}
-                        onChange={e => {
-                          const file = e.target.files?.[0];
-                          // Reset so re-picking the identical file still fires onChange -
-                          // otherwise retrying the same document after a failed upload does
-                          // nothing, silently.
-                          e.target.value = '';
-                          onPick(item.key, file, item.media === 'video');
-                        }}
-                      />
-                    </label>
-                    {doc && (
-                      <button className="text-xs text-flag font-semibold" onClick={() => onDelete(item.key)} disabled={busyKey === item.key}>
-                        {t('kyc.remove')}
-                      </button>
+              <li key={item.key} className="grid gap-2 border-t border-[var(--warmline)] py-3 first:border-t-0 first:pt-0 last:pb-0">
+                <div className="flex items-start gap-2">
+                  <span className={`mt-0.5 ${m.cls}`}>{m.icon}</span>
+                  <div className="min-w-0 flex-1">
+                    <b className="block text-sm font-medium text-[var(--ink-strong)]">
+                      {checklistLabel(t, item, businessType)}{!item.required && <span className="font-normal text-[var(--ink-muted)]"> ({t('kyc.optional')})</span>}
+                    </b>
+                    <Status tone={m.tone} className="mt-1">{m.label}</Status>
+                    {item.media === 'video' && item.state === 'missing' && (
+                      <p className="ag-small mt-1">{t('kyc.videoHint')}</p>
                     )}
                   </div>
                 </div>
+                <div className="ag-row pl-7">
+                  {/* A label styled as a small button, so the file picker opens from it. */}
+                  <label className="ag-btn sm cursor-pointer">
+                    <Upload />
+                    <span>{busyKey === item.key ? t('kyc.uploading') : (item.state === 'missing' ? t('kyc.upload') : t('kyc.replace'))}</span>
+                    <input
+                      type="file"
+                      accept={item.media === 'video' ? 'video/mp4,video/quicktime,video/webm' : 'image/jpeg,image/png,application/pdf'}
+                      className="sr-only"
+                      aria-label={
+                        busyKey === item.key
+                          ? t('kyc.uploadingAriaLabel', { label: item.label })
+                          : item.state === 'missing'
+                            ? t('kyc.uploadAriaLabel', { label: item.label })
+                            : t('kyc.replaceAriaLabel', { label: item.label })
+                      }
+                      disabled={busyKey === item.key}
+                      onChange={e => {
+                        const file = e.target.files?.[0];
+                        // Reset so re-picking the identical file still fires onChange -
+                        // otherwise retrying the same document after a failed upload does
+                        // nothing, silently.
+                        e.target.value = '';
+                        onPick(item.key, file, item.media === 'video');
+                      }}
+                    />
+                  </label>
+                  {doc && (
+                    <Button variant="stop" size="sm" onClick={() => onDelete(item.key)} disabled={busyKey === item.key}>
+                      {t('kyc.remove')}
+                    </Button>
+                  )}
+                </div>
                 {item.state === 'rejected' && doc?.rejection_reason && (
-                  <div className="mt-2 text-xs text-flag">{t('kyc.rejectionReason', { reason: doc.rejection_reason })}</div>
+                  <p className="pl-7 text-sm text-[var(--fail)]">{t('kyc.rejectionReason', { reason: doc.rejection_reason })}</p>
                 )}
               </li>
             );
           })}
         </ul>
-      </div>
-    </div>
+      </Box>
+    </>
   );
 }
 
 /**
  * The location check the board's verification needs (server: providers.ts /me/location/*).
- * A homestay pastes its Google Maps link; a café or shop taps once while standing there.
+ * A homestay pastes its Google Maps link; a cafe or shop taps once while standing there.
  */
 function LocationCheck({ action, onDone }: { action: 'maps_link' | 'live_capture'; onDone: () => Promise<void> }) {
   const { t } = useTranslation();
@@ -230,21 +226,17 @@ function LocationCheck({ action, onDone }: { action: 'maps_link' | 'live_capture
     }
   };
   return (
-    <div className="mt-2 ml-6 rounded-xl border border-[var(--line)] bg-white p-3 space-y-2" data-testid={`location-check-${action}`}>
+    <div className="mt-2 grid gap-2 rounded-[18px] border border-[var(--warmline)] bg-[var(--surface)] p-3" data-testid={`location-check-${action}`}>
       {action === 'maps_link' ? (
-        <>
-          <p className="text-xs text-ink-soft">{t('kyc.mapsLinkHelp')}</p>
-          <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://maps.app.goo.gl/..." inputMode="url"
-            className="w-full px-3 py-2 rounded-lg border border-[var(--line)] text-sm outline-none focus:border-pine" data-testid="location-maps-url" />
-        </>
+        <TextField hint={t('kyc.mapsLinkHelp')} value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://maps.app.goo.gl/..."
+          inputMode="url" aria-label={t('kyc.mapsLinkHelp')} data-testid="location-maps-url" />
       ) : (
-        <p className="text-xs text-ink-soft">{t('kyc.liveHelp')}</p>
+        <p className="ag-small">{t('kyc.liveHelp')}</p>
       )}
-      <button type="button" onClick={run} disabled={busy || (action === 'maps_link' && !url.trim())} data-testid="location-check-run"
-        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-pine text-white text-xs font-bold disabled:opacity-50">
+      <Button size="sm" className="self-start" icon={<MapPin />} onClick={run} disabled={busy || (action === 'maps_link' && !url.trim())} data-testid="location-check-run">
         {busy ? t('kyc.locationChecking') : action === 'maps_link' ? t('kyc.mapsLinkVerify') : t('kyc.liveCapture')}
-      </button>
-      {err && <p className="text-xs text-flag font-semibold" data-testid="location-check-error">{err}</p>}
+      </Button>
+      <FieldError id="location-check-error">{err}</FieldError>
     </div>
   );
 }

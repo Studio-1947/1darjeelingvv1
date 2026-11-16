@@ -1,237 +1,191 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import api from '@/lib/api';
+import {
+  ArrowUpRight, Globe, Heart, Info, Lifebuoy, Path, SealCheck, Storefront, Suitcase, User,
+} from '@phosphor-icons/react';
 import { useAuth } from '@/context/AuthContext';
-import { Heart, PencilSimple, SignOut as LogOut, Storefront as Store, Compass, Phone, ArrowRight, Ticket, Calendar, XCircle, CircleNotch as Loader2 } from '@phosphor-icons/react';
 import { useSeo } from '@/components/Seo';
+import { isSupportActive } from '@/lib/support';
+import { rupees, usePassPrice } from '@/lib/prices';
+import { Box, Button, ButtonLink, MenuIcon, PageHead, SecHead, Status } from '@/components/ag';
 import BlockedPeople from '@/components/BlockedPeople';
 import SignOutButton from '@/components/SignOutButton';
-import TripStats, { tripBuckets, type TripFilter } from '@/components/TripStats';
-import TripCard from '@/components/TripCard';
+import LanguageSwitcher from '@/components/LanguageSwitcher';
 import TravellerPanels from '@/components/TravellerPanels';
 
+/** The circled arrow at the end of a menu row. */
+const GoLink = () => <ArrowUpRight weight="bold" size={20} className="flex-none text-[var(--r)]" aria-hidden="true" />;
 
+function MenuLabel({ title, sub }: { title: React.ReactNode; sub?: React.ReactNode }) {
+  return (
+    <span className="ag-mlab">
+      {title}
+      {sub != null && <span className="ag-small">{sub}</span>}
+    </span>
+  );
+}
+
+/**
+ * The Account tab (prototype V.me): who you are, the business box, then the menu. Always
+ * reachable, so a signed-out visitor gets the guest version with a Log in button instead of a
+ * redirect. Trips live on the My trip tab.
+ */
 export default function TouristDashboard() {
-  const { t, i18n } = useTranslation();
-  useSeo({ title: t('nav.dashboard'), noindex: true });
-  const { user, loading: authLoading, logout, setMode } = useAuth();
+  const { t } = useTranslation();
+  useSeo({ title: t('nav.account'), noindex: true });
+  const { user, loading, setMode, provider } = useAuth();
   const nav = useNavigate();
-
-  // This is the traveller side's home, so being here means travelling. A host who books a stay
-  // or opens this page sees the traveller header and tabs with it.
-  // Opening this page no longer flips a host to the traveller side: Business and Traveller are
-  // kept apart, and the explicit switches (header menu, dashboard button) do the switching.
-  const [bookings, setBookings] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [confirmingId, setConfirmingId] = useState<string | null>(null); // booking awaiting cancel confirmation
-  const [busyId, setBusyId] = useState<string | null>(null);
-  const [filter, setFilter] = useState<TripFilter>('all');
   const [avatarError, setAvatarError] = useState(false);
+  const pass = usePassPrice(user);
 
-  const loadBookings = useCallback(() => api.get('/bookings/me').then((r) => setBookings(r.data.items || [])), []);
+  if (loading) return <div className="ag-wrap"><div className="ag-main"><p className="ag-small">{t('common.loading')}</p></div></div>;
 
-  useEffect(() => {
-    if (authLoading) return;
-    if (!user) { nav('/login?next=/dashboard'); return; }
-    loadBookings().finally(() => setLoading(false));
-  }, [user, authLoading, nav, loadBookings]);
-
-  const cancelBooking = async (id: string) => {
-    setBusyId(id);
-    try {
-      await api.patch(`/bookings/${id}/cancel`);
-      await loadBookings();
-      setConfirmingId(null);
-    } finally {
-      setBusyId(null);
-    }
-  };
-
-  if (authLoading || loading || !user) return <div className="p-10 text-center text-ink-soft">{t('common.loading')}</div>;
-
-  const shown = tripBuckets(bookings)[filter];
+  const passOn = !!user && isSupportActive(user);
+  const isHost = user?.role === 'provider';
+  const live = provider?.status === 'active';
+  const toPanels = () => document.getElementById('traveller-dashboard')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
   return (
-    <div className="mx-auto max-w-6xl px-4 md:px-6 py-6 md:py-10">
-      {/* Profile header: photo, name, phone, then the Traveller tag and the switch to the business side. */}
-      <div className="flex items-center gap-4 md:gap-5 mb-6">
-        <div className="w-16 h-16 md:w-20 md:h-20 rounded-full overflow-hidden bg-gradient-to-br from-pine to-pine-dark text-white grid place-items-center font-display font-extrabold text-3xl flex-shrink-0">
-          {user.avatar && !avatarError ? (
-            <img src={user.avatar} alt={user.name || ''} onError={() => setAvatarError(true)} data-testid="account-avatar" className="w-full h-full object-cover" />
-          ) : (user.name?.trim().charAt(0).toUpperCase() || 'T')}
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <h1 className="font-display font-extrabold text-2xl sm:text-3xl md:text-4xl text-ink leading-tight">{user.name || t('dashboard.traveller')}</h1>
-            <Link to="/profile/edit" data-testid="account-edit-profile"
-              className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-mist text-ink text-xs font-bold btn-hover">
-              <PencilSimple size={12} /> {t('nav.edit_profile')}
-            </Link>
-          </div>
-          <p className="text-sm text-ink-soft mt-0.5 flex items-center gap-1 whitespace-nowrap"><Phone size={12} /> {user.phone}</p>
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            <span data-testid="account-mode" className="inline-flex items-center px-2.5 py-1 rounded-full bg-[#DDF0F1] text-[#0E4A4F] text-[11px] font-bold uppercase tracking-wider">
-              {t('dashboard.traveller')}
+    <div className="ag-wrap">
+      <div className="ag-main">
+        <PageHead eyebrow={t('ui.account.eyebrow', 'Your account')} title={t('nav.account')} />
+
+        {/* Who you are */}
+        {user ? (
+          <Box className="!flex-row items-center !gap-4">
+            <span className="w-16 h-16 flex-none rounded-full overflow-hidden bg-[var(--r)] text-[var(--on-r)] grid place-items-center text-[27px] font-medium">
+              {user.avatar && !avatarError ? (
+                <img src={user.avatar} alt={user.name || ''} onError={() => setAvatarError(true)} data-testid="account-avatar" className="w-full h-full object-cover" />
+              ) : (user.name?.trim().charAt(0).toUpperCase() || <User size={28} aria-hidden="true" />)}
             </span>
-            {user.role === 'provider' ? (
-              <button type="button" onClick={() => { setMode('provider'); nav('/provider/dashboard'); }}
-                data-testid="account-switch-business"
-                className="inline-flex items-center gap-1 px-3 py-1 rounded-full border border-[#1F6656] text-[#1F6656] text-xs font-bold btn-hover">
-                <Store size={13} /> {t('nav.switch_business')} <ArrowRight size={12} />
-              </button>
+            <div className="min-w-0 flex-1">
+              <h2 className="truncate">{user.name || t('dashboard.traveller')}</h2>
+              <p className="ag-small whitespace-nowrap">{user.phone}</p>
+              <Status tone="info" className="mt-1" data-testid="account-mode">{t('dashboard.traveller')}</Status>
+            </div>
+          </Box>
+        ) : (
+          <Box data-testid="account-guest">
+            <div className="flex items-center gap-4">
+              <span className="w-16 h-16 flex-none rounded-full bg-[var(--r-tint)] text-[var(--r)] grid place-items-center"><User size={28} aria-hidden="true" /></span>
+              <div className="min-w-0">
+                <h2>{t('dashboard.traveller')}</h2>
+                <p className="ag-small">{t('ui.account.not_in', 'Not logged in')}</p>
+              </div>
+            </div>
+            <p className="ag-small">{t('ui.account.login_lead', 'Log in to see your trips, saved places, points and aangan pass.')}</p>
+            <ButtonLink to="/login?next=/dashboard" variant="primary" go block data-testid="account-login">{t('nav.login')}</ButtonLink>
+          </Box>
+        )}
+
+        {/* For businesses */}
+        <div className="flex flex-col gap-2">
+          <span className="ag-eyebrow">{t('ui.account.for_business', 'For businesses')}</span>
+          <Box tone="blush">
+            <div className="flex items-center gap-3">
+              <MenuIcon><Storefront /></MenuIcon>
+              {isHost ? (
+                <div className="min-w-0 flex-1">
+                  <b className="block font-medium text-[var(--ink-strong)] truncate">{provider?.business_name || t('nav.mode_business')}</b>
+                  {provider && (
+                    <Status tone={live ? 'ok' : 'pending'} className="mt-1" data-testid="account-business-status">
+                      {live ? t('verify.step_live') : t('provider.pending_review')}
+                    </Status>
+                  )}
+                </div>
+              ) : (
+                <div className="min-w-0 flex-1">
+                  <b className="block font-medium text-[var(--ink-strong)]">{t('ui.account.biz_start', 'Start your business on aangan')}</b>
+                  <span className="ag-small">{t('ui.account.biz_start_s', 'Homestay, driver, guide, cafe or shop. No booking commission.')}</span>
+                </div>
+              )}
+            </div>
+            {isHost ? (
+              <Button go className="self-start" onClick={() => { setMode('provider'); nav('/provider/dashboard'); }} data-testid="account-switch-business">
+                {t('ui.account.check_biz', 'Check your business')}
+              </Button>
             ) : (
-              <Link to="/provider/onboard" data-testid="account-switch-business"
-                className="inline-flex items-center gap-1 px-3 py-1 rounded-full border border-[#1F6656] text-[#1F6656] text-xs font-bold btn-hover">
-                <Store size={13} /> {t('nav.switch_business')} <ArrowRight size={12} />
+              <ButtonLink to="/provider/onboard" go className="self-start" data-testid="account-switch-business">
+                {t('ui.account.list_now', 'List now')}
+              </ButtonLink>
+            )}
+          </Box>
+        </div>
+
+        {/* Menu */}
+        <Box className="!gap-0 !py-1">
+          <nav className="ag-menu" aria-label={t('nav.account')}>
+            {user && (
+              <Link to="/profile/edit" data-testid="account-edit-profile">
+                <MenuIcon><User /></MenuIcon>
+                <MenuLabel title={t('nav.profile')} sub={t('nav.edit_profile')} />
+                <GoLink />
               </Link>
             )}
-          </div>
-        </div>
-        <button onClick={() => { logout(); nav('/'); }} data-testid="tourist-logout"
-          className="hidden lg:inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[var(--line)] text-ink font-semibold text-sm btn-hover">
-          <LogOut size={14} /> {t('nav.logout')}
-        </button>
-      </div>
-
-      {/* Board: aangan pass, Aangan Points, Aangan Awards, total travel, feedback, referrals. */}
-      <TravellerPanels />
-
-      <div className="mb-8">
-        <TripStats bookings={bookings} filter={filter} onFilter={setFilter} />
-      </div>
-
-      {/* Bookings list */}
-      <div>
-        <h2 className="font-display font-extrabold text-xl md:text-2xl text-ink mb-4 flex items-center gap-2">
-          <Calendar size={18} className="text-pine" /> {t('dashboard.my_bookings')}
-        </h2>
-        {shown.length === 0 && bookings.length > 0 ? (
-          <div className="mist-panel p-6 text-center text-sm text-ink-soft" data-testid="trip-filter-empty">{t('trips.none_in_filter')}</div>
-        ) : bookings.length === 0 ? (
-          <div className="mist-panel p-8 md:p-10 text-center">
-            <p className="text-ink-soft">{t('dashboard.no_bookings')}</p>
-            <div className="mt-4 flex flex-wrap gap-2 justify-center">
-              <Link to="/homestays" data-testid="empty-book-stay" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-pine text-white font-bold text-sm btn-hover">
-                {t('dashboard.book_homestay')} <ArrowRight size={14} />
-              </Link>
-              <Link to="/drivers" data-testid="empty-book-driver" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-pine text-white font-bold text-sm btn-hover">
-                {t('dashboard.find_driver')} <ArrowRight size={14} />
-              </Link>
+            <div className="!flex-wrap !gap-y-2 cursor-default">
+              <MenuIcon><Globe /></MenuIcon>
+              <MenuLabel title={t('lang.choose', 'Language')} />
+              <LanguageSwitcher className="basis-full" />
             </div>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {shown.map((b) => (
-              <TripCard key={b.id} booking={b} testId={`my-booking-${b.id}`}
-                confirming={confirmingId === b.id} busy={busyId === b.id}
-                onReviewed={() => loadBookings()} onAskCancel={() => setConfirmingId(b.id)} onCancel={() => cancelBooking(b.id)} onKeep={() => setConfirmingId(null)} />
+            {user && (
+              <button type="button" onClick={toPanels} data-testid="account-traveller-dashboard">
+                <MenuIcon><Path /></MenuIcon>
+                <MenuLabel title={t('ui.account.tdash', 'Traveller dashboard')} />
+                <GoLink />
+              </button>
+            )}
+            {user && (
+              <Link to="/my-trips" data-testid="dashboard-my-trips">
+                <MenuIcon><Suitcase /></MenuIcon>
+                <MenuLabel title={t('nav.my_trips')} />
+                <GoLink />
+              </Link>
+            )}
+            {user && (
+              <Link to="/saved" data-testid="dashboard-saved">
+                <MenuIcon><Heart /></MenuIcon>
+                <MenuLabel title={t('nav.saved')} />
+                <GoLink />
+              </Link>
+            )}
+            {user && (passOn ? (
+              <div className="cursor-default" data-testid="account-pass">
+                <MenuIcon><SealCheck /></MenuIcon>
+                <MenuLabel title={t('ui.travellerPanels.pass_title')} />
+                <Status tone="ok">{t('ui.travellerPanels.pass_active')}</Status>
+              </div>
+            ) : (
+              <Link to="/support" data-testid="account-pass">
+                <MenuIcon><SealCheck /></MenuIcon>
+                <MenuLabel title={t('ui.travellerPanels.pass_title')} sub={t('ui.travellerPanels.get_pass', { price: rupees(pass.total) })} />
+                <GoLink />
+              </Link>
             ))}
-          </div>
+            <Link to="/about" data-testid="account-about">
+              <MenuIcon><Info /></MenuIcon>
+              <MenuLabel title={t('footer.about_aangan')} />
+              <GoLink />
+            </Link>
+            <Link to="/contact" data-testid="account-help">
+              <MenuIcon><Lifebuoy /></MenuIcon>
+              <MenuLabel title={t('ui.account.help', 'Help and contact')} />
+              <GoLink />
+            </Link>
+          </nav>
+        </Box>
+
+        {user && (
+          <section id="traveller-dashboard" className="scroll-mt-20 flex flex-col" aria-labelledby="tdash-title">
+            <SecHead id="tdash-title" eyebrow={t('ui.account.eyebrow', 'Your account')} title={t('ui.account.tdash', 'Traveller dashboard')} className="!mt-0" />
+            <TravellerPanels />
+          </section>
         )}
+
+        {user && <BlockedPeople />}
+
+        {user && <SignOutButton className="mt-2" />}
       </div>
-
-      {/* Notifications / Activity feed — mirrors mobile activity tab */}
-      {(() => {
-        const needsAction = bookings.filter((b) => b.status === 'pending_payment');
-        const recentConfirmed = bookings.filter((b) => b.status === 'confirmed').slice(0, 3);
-        const hasActivity = needsAction.length > 0 || recentConfirmed.length > 0;
-        if (!hasActivity) return null;
-        return (
-          <div className="mt-10">
-            <h2 className="font-display font-extrabold text-xl md:text-2xl text-ink mb-4 flex items-center gap-2">
-              <Ticket size={18} className="text-flag" /> {t('ui.touristDashboard.activity')}
-            </h2>
-            <div className="space-y-3">
-              {needsAction.map((b) => (
-                <div key={b.id} data-testid={`activity-pending-${b.id}`}
-                  className="flex items-center gap-3 p-4 rounded-2xl bg-gold/10 border border-gold/30">
-                  <div className="w-9 h-9 rounded-full bg-gold/20 text-[#8a6b04] grid place-items-center flex-shrink-0">
-                    <Calendar size={16} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-bold text-sm text-ink line-clamp-1">
-                      {t('ui.touristDashboard.awaiting_confirmation')}
-                    </div>
-                    <div className="text-xs text-ink-soft mt-0.5 line-clamp-1">
-                      {t('ui.touristDashboard.waiting_for_host', { title: b.listing?.title || b.listing_title || '' })}
-                    </div>
-                  </div>
-                  <Link to="/my-trips"
-                    className="text-xs font-bold text-pine hover:underline flex-shrink-0 flex items-center gap-1">
-                    {t('common.view')} <ArrowRight size={11} />
-                  </Link>
-                </div>
-              ))}
-              {recentConfirmed.map((b) => (
-                <div key={b.id} data-testid={`activity-confirmed-${b.id}`}
-                  className="flex items-center gap-3 p-4 rounded-2xl bg-pine/5 border border-pine/20">
-                  <div className="w-9 h-9 rounded-full bg-pine/10 text-pine grid place-items-center flex-shrink-0">
-                    <Ticket size={16} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-bold text-sm text-ink line-clamp-1">
-                      {t('ui.touristDashboard.booking_confirmed')}
-                    </div>
-                    <div className="text-xs text-ink-soft mt-0.5 line-clamp-1">
-                      {b.listing?.title || b.listing_title}
-                      {b.check_in ? t('ui.touristDashboard.check_in', { date: b.check_in }) : ''}
-                    </div>
-                  </div>
-                  <Link to="/my-trips"
-                    className="text-xs font-bold text-pine hover:underline flex-shrink-0 flex items-center gap-1">
-                    {t('common.view')} <ArrowRight size={11} />
-                  </Link>
-                </div>
-              ))}
-            </div>
-          </div>
-        );
-      })()}
-
-      
-      <div className="mt-10">
-        <h2 className="font-display font-extrabold text-xl md:text-2xl text-ink mb-4 flex items-center gap-2">
-          <Compass size={20} className="text-pine" /> {t('dashboard.quick_actions')}
-        </h2>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-          {/* Saved places: on phones the top bar's heart and menu are hidden, so this is the way in. */}
-          <Link to="/saved" data-testid="dashboard-saved" className="rounded-2xl p-4 bg-white border border-[var(--line)] btn-hover">
-            <div className="w-10 h-10 rounded-full bg-mist text-flag grid place-items-center mb-2"><Heart size={18} /></div>
-            <div className="font-display font-bold text-ink">{t('nav.saved')}</div>
-          </Link>
-          <Link to="/homestays" className="rounded-2xl p-4 bg-white border border-[var(--line)] btn-hover">
-            <div className="w-10 h-10 rounded-full bg-mist text-pine grid place-items-center mb-2"><Compass size={18} /></div>
-            <div className="font-display font-bold text-ink">{t('dashboard.browse_stays')}</div>
-          </Link>
-          <Link to="/drivers" className="rounded-2xl p-4 bg-white border border-[var(--line)] btn-hover">
-            <div className="w-10 h-10 rounded-full bg-mist text-pine grid place-items-center mb-2"><Phone size={18} /></div>
-            <div className="font-display font-bold text-ink">{t('dashboard.find_driver')}</div>
-          </Link>
-          <Link to="/events" className="rounded-2xl p-4 bg-white border border-[var(--line)] btn-hover">
-            <div className="w-10 h-10 rounded-full bg-mist text-pine grid place-items-center mb-2"><Ticket size={18} /></div>
-            <div className="font-display font-bold text-ink">{t('dashboard.cultural_events')}</div>
-          </Link>
-          {user.role === 'provider' ? (
-            // A host already has "Switch to Business" next to their name above, so this tile
-            // offers their trips instead of the same switch twice.
-            <Link to="/my-trips" data-testid="dashboard-my-trips"
-              className="rounded-2xl p-4 bg-white border border-[var(--line)] btn-hover">
-              <div className="w-10 h-10 rounded-full bg-mist text-pine grid place-items-center mb-2"><Calendar size={18} /></div>
-              <div className="font-display font-bold text-ink">{t('nav.my_trips')}</div>
-            </Link>
-          ) : (
-            <Link to="/provider/onboard" className="rounded-2xl p-4 bg-gradient-to-br from-pine to-pine-dark text-white btn-hover">
-              <div className="w-10 h-10 rounded-full bg-white/15 text-white grid place-items-center mb-2"><Store size={18} /></div>
-              <div className="font-display font-bold">{t('provider.onboard_title')}</div>
-            </Link>
-          )}
-        </div>
-      </div>
-
-      <BlockedPeople />
-
-      <SignOutButton />
     </div>
   );
 }

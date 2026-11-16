@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation, Navigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { HandHeart as HeartHandshake, Check } from '@phosphor-icons/react';
+import { Check } from '@phosphor-icons/react';
+import { Box, Button, PageHead } from '@/components/ag';
 import { useAuth } from '@/context/AuthContext';
 import { createPaymentOrder, completeMockPayment, payWithRazorpay } from '@/lib/api';
 import { needsSupport } from '@/lib/support';
@@ -132,59 +133,33 @@ export default function Support() {
   };
 
   return (
-    <div className="mx-auto max-w-md px-4 md:px-8 py-8 md:py-14">
-      <div className="mist-panel p-6 md:p-8" data-testid="support-screen">
-        <div className="text-center">
-          <div className="mx-auto w-14 h-14 rounded-2xl bg-pine text-white grid place-items-center">
-            <HeartHandshake size={26} />
-          </div>
-          {t('support.eyebrow') && (
-            <div className="mt-4 text-xs font-bold uppercase tracking-widest text-pine">
-              {t('support.eyebrow')}
-            </div>
-          )}
-          <h1 className="mt-1 font-display font-extrabold text-2xl md:text-3xl text-ink leading-tight">
-            {t('support.title')}
-          </h1>
+    <div className="ag-wrap">
+      <div className="ag-main" data-testid="support-screen">
+        <PageHead eyebrow={t('support.eyebrow') || t('ui.account.eyebrow', 'Your account')} title={t('support.title')} />
+
+        <Box>
+          <PassOffer renewing={!!user?.supportExpiresAt} />
+        </Box>
+        <p className="ag-small">{t('support.body')}</p>
+        <PriceBreakup breakup={pass} label={user?.supportExpiresAt ? t('price.pass') : t('price.pass_first_year')} />
+
+        <div className="flex flex-col gap-2">
+          <Button variant="primary" go block onClick={startPayment} disabled={busy} data-testid="support-pay">
+            {busy ? t('common.loading') : t('support.cta', { total: rupees(pass.total) })}
+          </Button>
+          <p className="ag-small !text-xs flex items-center justify-center gap-1">
+            <Check size={14} aria-hidden="true" /> {t('support.reassurance')}
+          </p>
         </div>
 
-        <PassOffer renewing={!!user?.supportExpiresAt} className="mt-5 rounded-2xl bg-white border border-[var(--line)] p-5" />
-        <p className="mt-4 text-xs text-ink-soft">{t('support.body')}</p>
-        <PriceBreakup breakup={pass} label={user?.supportExpiresAt ? t('price.pass') : t('price.pass_first_year')} className="mt-3" />
+        {err && <p data-testid="support-error" role="alert" className="ag-err !text-sm text-center">{err}</p>}
 
-        <button
-          onClick={startPayment}
-          disabled={busy}
-          data-testid="support-pay"
-          className="mt-7 w-full py-3 rounded-full bg-pine text-white font-extrabold btn-hover disabled:opacity-60"
-        >
-          {busy ? t('common.loading') : t('support.cta', { total: rupees(pass.total) })}
-        </button>
+        <Button variant="text" className="self-center" onClick={browseAnonymously} data-testid="support-skip">{t('support.skip')}</Button>
 
-        <p className="mt-3 text-[11px] text-center text-ink-soft flex items-center justify-center gap-1">
-          <Check size={11} /> {t('support.reassurance')}
-        </p>
-
-        {err && (
-          <p data-testid="support-error" className="mt-4 text-sm text-flag font-semibold text-center">
-            {err}
-          </p>
-        )}
-
-        <button
-          type="button"
-          onClick={browseAnonymously}
-          data-testid="support-skip"
-          className="mt-6 w-full text-xs text-ink-soft underline"
-        >
-          {t('support.skip')}
-        </button>
-
-        <p className="mt-6 text-xs text-center text-ink-soft">
+        <p className="ag-small !text-xs text-center">
           <Link to="/privacy" className="underline">{t('support.privacy_link')}</Link>
         </p>
       </div>
-
       <MockPaymentModal
         open={!!payModal}
         onClose={() => setPayModal(null)}

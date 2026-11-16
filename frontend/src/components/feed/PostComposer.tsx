@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import api from '@/lib/api';
 import { uploadImage } from '@/lib/uploadImage';
 import { createPost, HostPost, MAX_POST_LEN, MAX_POST_PHOTOS, updatePost } from '@/lib/posts';
+import { Box, Button, FieldError, IconButton, SelectField, TextArea } from '@/components/ag';
 
 type MyListing = { id: string; title: string };
 
@@ -84,88 +85,64 @@ export default function PostComposer({
   };
 
   return (
-    <div data-testid="post-composer" className="rounded-3xl border border-[var(--line)] bg-white p-4 md:p-5">
-      <div className="font-display font-bold text-ink">{editing ? t('feed.edit_title') : t('feed.compose_title')}</div>
-      <textarea
+    <Box data-testid="post-composer">
+      <h2>{editing ? t('feed.edit_title') : t('feed.compose_title')}</h2>
+      <TextArea
         value={body}
         onChange={(e) => setBody(e.target.value.slice(0, MAX_POST_LEN))}
         rows={4}
         data-testid="post-body"
         placeholder={t('feed.compose_placeholder')}
         aria-label={t('feed.compose_title')}
-        className="mt-3 w-full px-3 py-2.5 rounded-xl border border-[var(--line)] bg-white outline-none text-ink text-sm resize-y focus:ring-2 focus:ring-pine/20"
+        hint={<span className="block text-right tabular-nums">{body.length}/{MAX_POST_LEN}</span>}
       />
-      <div className="text-right text-[11px] text-ink-soft">
-        {body.length}/{MAX_POST_LEN}
-      </div>
 
-      <div className="mt-2 flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {photos.map((p, i) => (
-          <div key={p + i} className="relative w-16 h-16 rounded-xl overflow-hidden border border-[var(--line)]">
+          <div key={p + i} className="relative w-20 h-20 rounded-[18px] overflow-hidden border border-[var(--warmline)]">
             <img src={p} alt="" className="w-full h-full object-cover" />
-            <button
-              type="button"
-              aria-label={t('feed.remove_photo')}
-              onClick={() => setPhotos(photos.filter((_, j) => j !== i))}
-              className="absolute top-1 right-1 bg-black/60 text-white rounded-full p-0.5 hover:bg-flag"
-            >
-              <X size={12} />
-            </button>
+            <IconButton small label={t('feed.remove_photo')} onClick={() => setPhotos(photos.filter((_, j) => j !== i))}
+              className="absolute top-1 right-1">
+              <X />
+            </IconButton>
           </div>
         ))}
         {photos.length < MAX_POST_PHOTOS && (
-          <label className="w-16 h-16 rounded-xl border-2 border-dashed border-[var(--line)] hover:border-pine grid place-items-center cursor-pointer text-ink-soft hover:text-pine">
-            {uploading ? (
-              <Loader2 size={18} className="animate-spin" />
-            ) : (
-              <span className="flex flex-col items-center gap-0.5">
-                <Camera size={18} />
-                <span className="text-[9px] font-bold">{t('feed.add_photo')}</span>
-              </span>
-            )}
-            <input type="file" accept="image/*" multiple className="hidden" onChange={addPhotos} disabled={uploading || saving} data-testid="post-photo-input" />
+          <label className="ag-btn sm cursor-pointer" aria-disabled={uploading || saving}>
+            {uploading ? <Loader2 className="animate-spin" /> : <Camera />}
+            <span>{t('feed.add_photo')}</span>
+            <input type="file" accept="image/*" multiple className="sr-only" onChange={addPhotos} disabled={uploading || saving} data-testid="post-photo-input" />
           </label>
         )}
       </div>
 
       {listings.length > 0 && (
-        <label className="mt-3 block">
-          <span className="text-xs font-semibold text-ink-soft uppercase">{t('feed.about_which')}</span>
-          <select
-            value={listingId}
-            onChange={(e) => setListingId(e.target.value)}
-            data-testid="post-listing"
-            className="mt-1 w-full px-3 py-2 rounded-xl border border-[var(--line)] bg-white text-ink text-sm"
-          >
-            <option value="">{t('feed.about_none')}</option>
-            {listings.map((l) => (
-              <option key={l.id} value={l.id}>
-                {l.title}
-              </option>
-            ))}
-          </select>
-        </label>
+        <SelectField label={t('feed.about_which')} value={listingId} onChange={(e) => setListingId(e.target.value)} data-testid="post-listing">
+          <option value="">{t('feed.about_none')}</option>
+          {listings.map((l) => (
+            <option key={l.id} value={l.id}>
+              {l.title}
+            </option>
+          ))}
+        </SelectField>
       )}
 
-      {error && <p className="mt-2 text-sm text-flag font-semibold">{error}</p>}
+      <FieldError id="post-error">{error}</FieldError>
 
-      <div className="mt-4 flex items-center gap-2 justify-end">
+      <div className="flex flex-wrap items-center gap-2 justify-end">
         {editing && (
-          <button type="button" onClick={onCancelEdit} className="px-5 py-2.5 rounded-full border border-[var(--line)] text-ink font-bold">
-            {t('report.cancel')}
-          </button>
+          <Button variant="stop" onClick={onCancelEdit}>{t('report.cancel')}</Button>
         )}
-        <button
-          type="button"
+        <Button
+          variant="primary"
           onClick={submit}
           disabled={!body.trim() || saving || uploading}
           data-testid="post-submit"
-          className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-pine text-white font-bold btn-hover disabled:opacity-50"
+          icon={saving ? <Loader2 className="animate-spin" /> : undefined}
         >
-          {saving && <Loader2 size={15} className="animate-spin" />}
           {editing ? t('feed.save') : t('feed.post')}
-        </button>
+        </Button>
       </div>
-    </div>
+    </Box>
   );
 }
