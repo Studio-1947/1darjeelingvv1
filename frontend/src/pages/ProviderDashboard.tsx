@@ -94,7 +94,7 @@ function ProviderDashboardPage() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user) { nav('/login'); return; }
+    if (!user) { nav('/login?next=/provider/dashboard'); return; }
     (async () => {
       try {
         await loadDashboard();

@@ -60,13 +60,16 @@ const j = async (m, p, body, token) => { const r = await fetch(API + p, { method
 
     try {
       // 1. Sign in as a host.
-      await p.goto(WEB + '/login', { waitUntil: 'networkidle' });
-      await p.click('[data-testid="role-provider"]');
+      // One sign-in, as the prototype: the name, Continue with WhatsApp, the number, the code. Coming
+      // from List your business (next=/provider/onboard) is what makes it a business sign-in.
+      await p.goto(WEB + '/login?next=' + encodeURIComponent('/provider/onboard'), { waitUntil: 'networkidle' });
+      await p.locator('[data-testid="login-name"]').waitFor({ timeout: 20000 });
+      await p.fill('[data-testid="login-name"]', `Owner ${digits.slice(-4)}`);
+      await p.click('[data-testid="login-wa"]');
       await p.fill('[data-testid="login-phone"]', digits);
       const sent = p.waitForResponse((r) => r.url().includes('/auth/otp/send'));
       await p.click('[data-testid="login-send-otp"]');
       await p.fill('[data-testid="login-otp"]', (await (await sent).json()).mock_otp);
-      if (await p.locator('[data-testid="login-name"]').count()) await p.fill('[data-testid="login-name"]', `Owner ${digits.slice(-4)}`);
       await p.click('[data-testid="login-verify"]');
       await p.waitForTimeout(2000);
       if (!p.url().includes('/provider/onboard')) await p.goto(WEB + '/provider/onboard', { waitUntil: 'networkidle' });
@@ -136,7 +139,11 @@ const j = async (m, p, body, token) => { const r = await fetch(API + p, { method
         await p.waitForTimeout(500);
         await snap('profile');
         for (const input of await p.locator('input[type="file"][multiple]').all()) await input.setInputFiles(IMG.slice(0, 8)).catch(() => {});
-        await p.waitForTimeout(4000);
+        // The gallery picker is disabled while its photos upload one by one; wait for it to come back
+        // rather than a fixed time (eight photos can take longer than a few seconds).
+        await p.waitForTimeout(800);
+        await p.waitForFunction(() => [...document.querySelectorAll('input[type="file"][multiple]')].every((i) => !i.disabled), null, { timeout: 60000 }).catch(() => {});
+        await p.waitForTimeout(500);
         const hn = p.locator('[data-testid="profile-host-name"]');
         if ((await hn.count()) && !(await hn.inputValue())) await hn.fill(`Owner ${digits.slice(-4)}`);
         await p.click('[data-testid="profile-save"]').catch(() => {});
