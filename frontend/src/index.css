@@ -1,5 +1,12 @@
-@import url('https://fonts.googleapis.com/css2?family=Google+Sans+Flex:wght@400..700&family=Noto+Sans:wght@400;500;600&family=Noto+Sans+Bengali:wght@400;500;600&family=Noto+Sans+Devanagari:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&family=Noto+Sans+Bengali:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap');
 @import './styles/aangan.css';
+@import './styles/screens/onboard.css';
+@import './styles/screens/home.css';
+@import './styles/screens/category.css';
+@import './styles/screens/feed.css';
+@import './styles/screens/account.css';
+@import './styles/screens/listing.css';
+@import './styles/screens/host.css';
 
 @tailwind base;
 @tailwind components;
@@ -73,8 +80,11 @@ body {
   margin: 0;
   background: transparent;
   color: var(--ink7);
-  /* Google Sans Flex with Noto Sans for Devanagari and Bengali (the --font token). */
+  /* Noto Sans, with its Devanagari and Bengali siblings (the --font token), as the prototype renders. */
   font-family: var(--font);
+  font-size: 16px;
+  line-height: 24px;
+  letter-spacing: .5px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }

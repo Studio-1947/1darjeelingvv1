@@ -137,10 +137,13 @@ export function FieldError({ id, children }: { id?: string; children?: ReactNode
 /* ---------- headings ---------- */
 
 /** Every page: a small red eyebrow over a 34px title. */
+// The red label above the title is per page in /7 (data.js eye_<page>): Account "Your account",
+// Saved "Your favourites", Notifications "Updates"...; My trip and Feed have none. Pass it only
+// where the prototype shows one.
 export function PageHead({ eyebrow, title, sub, children, className }: { eyebrow?: ReactNode; title: ReactNode; sub?: ReactNode; children?: ReactNode; className?: string }) {
   return (
     <div className={cx('ag-pagehead', className)}>
-      {eyebrow != null && <span className="ag-eyebrow">{eyebrow}</span>}
+      {eyebrow != null && eyebrow !== '' && <span className="ag-eyebrow">{eyebrow}</span>}
       <h1>{title}</h1>
       {sub != null && <p className="ag-small mt-1">{sub}</p>}
       {children}

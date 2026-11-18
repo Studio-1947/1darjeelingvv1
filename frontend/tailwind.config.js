@@ -33,14 +33,14 @@ module.exports = {
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',
-        // Legacy names on the red /7 palette (styles/aangan.css). pine = the brand red.
-        pine: { DEFAULT: 'rgb(230 0 0 / <alpha-value>)', dark: 'rgb(184 0 0 / <alpha-value>)', light: 'rgb(253 240 240 / <alpha-value>)' },
+        // Legacy names on the theme palette (styles/aangan.css; re-tinted by lib/theme.ts). pine = the brand colour.
+        pine: { DEFAULT: 'rgb(var(--r-rgb) / <alpha-value>)', dark: 'rgb(var(--r-press-rgb) / <alpha-value>)', light: 'rgb(var(--r-tint-rgb) / <alpha-value>)' },
         flag: 'rgb(217 45 32 / <alpha-value>)',
         gold: 'rgb(245 180 0 / <alpha-value>)',
-        mist: 'rgb(251 239 221 / <alpha-value>)',
+        mist: 'rgb(var(--creme2-rgb) / <alpha-value>)',
         ink: { DEFAULT: 'rgb(17 17 17 / <alpha-value>)', soft: 'rgb(107 107 107 / <alpha-value>)' },
-        creme: 'rgb(255 248 239 / <alpha-value>)',
-        blush: 'rgb(253 236 234 / <alpha-value>)',
+        creme: 'rgb(var(--creme-rgb) / <alpha-value>)',
+        blush: 'rgb(var(--blush-rgb) / <alpha-value>)',
       },
       keyframes: {
         'fade-up': { from: { opacity: 0, transform: 'translateY(16px)' }, to: { opacity: 1, transform: 'translateY(0)' } },

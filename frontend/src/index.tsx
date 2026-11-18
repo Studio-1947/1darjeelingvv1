@@ -8,7 +8,12 @@ import "@/index.css";
 // The Leaflet marker fix is imported by LocationPicker, the only Leaflet map, so the map library
 // (about 170 KB) loads with that page instead of before every page.
 import App from "@/App";
+import { applyTheme, storedTheme } from "@/lib/theme";
+
 import * as serviceWorkerRegistration from "@/serviceWorkerRegistration";
+
+// Paint the chosen theme colour before the first render, so there is no flash of the default red.
+applyTheme(storedTheme());
 
 const queryClient = new QueryClient({
   defaultOptions: {

@@ -315,7 +315,7 @@ export default function BookingWidget() {
   return (
     <form ref={containerRef} onSubmit={submit} data-testid="booking-widget" className="flex w-full flex-col gap-3">
       {/* The search row: a 56px pill, and the filter button that opens Stays / Drivers, dates and guests. */}
-      <div className="flex items-center gap-2" data-testid="booking-widget-pill">
+      <div className="flex items-center gap-2" data-testid="booking-widget-pill" data-home-search>
         <div className="flex h-14 min-w-0 flex-1 items-center gap-1 rounded-full border border-[var(--outline)] bg-white pl-1.5 pr-3 focus-within:border-[var(--r)] focus-within:outline focus-within:outline-2 focus-within:outline-[var(--r-tint)]">
           <button
             type="submit"
