@@ -3,7 +3,7 @@ import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import api, { createPaymentOrder, completeMockPayment, payWithRazorpay } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
-import { uploadImages } from '@/lib/uploadImage';
+import { imageProblem, uploadImage } from '@/lib/uploadImage';
 import { readHostLink } from '@/lib/hostQuickFill';
 import { isValidPhone, MAX_PRICE, MIN_PRICE } from '@/lib/hostFormChecks';
 
@@ -14,6 +14,10 @@ import { isValidPhone, MAX_PRICE, MIN_PRICE } from '@/lib/hostFormChecks';
  * The step lives in the URL (?step=n) so the header Back steps back one question. Answers are
  * kept in sessionStorage so a refresh does not lose them. Submitting uses the same backend calls
  * as before: POST /providers/onboard, then /providers/me/start-free or the registration payment.
+ *
+ * As in the prototype, the wizard opens without signing in. Sign-in is asked once, at "Put it live"
+ * (Log in, then straight back to the review step). Photos picked before that stay in the page as
+ * blob: URLs and are uploaded when the listing goes up.
  */
 
 export const HOST_TYPES = ['homestay', 'driver', 'guide', 'cafe', 'shop'] as const;
@@ -82,13 +86,34 @@ type Draft = {
 const DRAFT_KEY = 'ag-host-draft';
 const last10 = (p?: string | null) => (p || '').replace(/\D/g, '').slice(-10);
 
+/** Photos picked while signed out, by their blob: URL. Module level, so they outlive the trip to /login. */
+const pendingPhotos = new Map<string, File>();
+const isLocal = (u?: string) => !!u && u.startsWith('blob:');
+/** A photo that can still be shown: hosted, or picked in this page and not yet uploaded. */
+const usable = (u?: string) => !!u && (!isLocal(u) || pendingPhotos.has(u));
+async function hosted(u: string): Promise<string> {
+  if (!isLocal(u)) return u;
+  const f = pendingPhotos.get(u);
+  if (!f) return '';
+  const url = await uploadImage(f);
+  pendingPhotos.delete(u);
+  URL.revokeObjectURL(u);
+  return url;
+}
+
 function loadDraft(): Partial<Draft> {
-  try { return JSON.parse(sessionStorage.getItem(DRAFT_KEY) || '{}'); } catch { return {}; }
+  try {
+    const saved: Partial<Draft> = JSON.parse(sessionStorage.getItem(DRAFT_KEY) || '{}');
+    // After a reload the in-page photos are gone; drop their dead links.
+    if (saved.photos) saved.photos = saved.photos.filter(usable);
+    if (saved.menu) saved.menu = saved.menu.map((m) => (m.photo && !usable(m.photo) ? { ...m, photo: '' } : m));
+    return saved;
+  } catch { return {}; }
 }
 
 export function useHostWizard() {
   const { t } = useTranslation();
-  const { user, loading: authLoading, refresh } = useAuth();
+  const { user, refresh } = useAuth();
   const nav = useNavigate();
   const location = useLocation();
   const [params, setParams] = useSearchParams();
@@ -115,12 +140,14 @@ export function useHostWizard() {
 
   useEffect(() => { try { sessionStorage.setItem(DRAFT_KEY, JSON.stringify(d)); } catch { /* private mode */ } }, [d]);
 
-  // Signed out: sign in first, then come straight back here (with any invite ref).
-  useEffect(() => {
-    if (authLoading || user) return;
-    const next = encodeURIComponent(`${location.pathname}${location.search}`);
-    nav(`/login?next=${next}${link.ref ? `&ref=${encodeURIComponent(link.ref)}` : ''}&role=provider`, { replace: true });
-  }, [authLoading, user, nav, location.pathname, location.search, link.ref]);
+  // Signed out: the questions are open to anyone (prototype). Putting the listing live asks to log in
+  // once, then comes straight back to this step (with any invite ref).
+  const askToSignIn = useCallback((step: number) => {
+    const back = new URLSearchParams(location.search);
+    back.set('step', String(step));
+    const next = encodeURIComponent(`${location.pathname}?${back}`);
+    nav(`/login?next=${next}${link.ref ? `&ref=${encodeURIComponent(link.ref)}` : ''}&role=provider`);
+  }, [nav, location.pathname, location.search, link.ref]);
 
   // Prefill from the account once it has loaded.
   useEffect(() => {
@@ -198,6 +225,16 @@ export function useHostWizard() {
   };
   const back = () => (i > 0 ? goTo(i - 1) : nav(-1));
 
+  /** A picked photo's URL: uploaded when signed in, kept in the page until "Put it live" when not. */
+  const photoUrl = useCallback(async (f: File): Promise<string> => {
+    if (user) return uploadImage(f);
+    const problem = imageProblem(f);
+    if (problem) throw problem;
+    const u = URL.createObjectURL(f);
+    pendingPhotos.set(u, f);
+    return u;
+  }, [user]);
+
   const addPhotos = async (files: FileList | null) => {
     if (!files?.length) return;
     const room = MAX_PHOTOS - d.photos.length;
@@ -205,7 +242,8 @@ export function useHostWizard() {
     setUploading(true);
     setErr('');
     try {
-      const urls = await uploadImages(Array.from(files).slice(0, room));
+      const urls: string[] = [];
+      for (const f of Array.from(files).slice(0, room)) urls.push(await photoUrl(f));
       setD((prev) => ({ ...prev, photos: [...prev.photos, ...urls].slice(0, MAX_PHOTOS) }));
     } catch (e) {
       setErr(typeof e === 'string' ? e : t('kyc.uploadFailed'));
@@ -236,7 +274,7 @@ export function useHostWizard() {
     return `${what} · ${d.place?.name || ''}${offers.length ? `. ${offers.join(', ')}.` : ''}`;
   };
 
-  const extrasFor = (): Record<string, unknown> => {
+  const extrasFor = (d: Draft): Record<string, unknown> => {
     const phone = d.phone;
     const images = d.photos;
     const host = user?.name || d.name;
@@ -281,10 +319,16 @@ export function useHostWizard() {
 
   /** "Put my listing up": onboard, then go live free (pay later) or pay the first year now. */
   const submit = async () => {
-    if (!user || !d.type || !d.place) return;
+    if (!d.type || !d.place) return;
+    if (!user) { askToSignIn(i); return; }
     setBusy(true);
     setErr('');
     try {
+      // Photos picked before signing in go up now.
+      const photos = (await Promise.all(d.photos.map(hosted))).filter(Boolean);
+      const menu = await Promise.all(d.menu.map(async (m) => (m.photo && isLocal(m.photo) ? { ...m, photo: await hosted(m.photo) } : m)));
+      const sent: Draft = { ...d, photos, menu };
+      setD(sent);
       const { data } = await api.post('/providers/onboard', {
         business_name: d.name.trim(),
         business_type: d.type,
@@ -294,8 +338,8 @@ export function useHostWizard() {
         longitude: d.place.lng,
         contact_phone: d.phone,
         price_from: startingPrice(),
-        images: d.photos.slice(0, 1),
-        extras: extrasFor(),
+        images: photos.slice(0, 1),
+        extras: extrasFor(sent),
       });
       const providerId = data.provider.id;
       if (d.payWhen === 'later') {
@@ -333,7 +377,7 @@ export function useHostWizard() {
 
   return {
     t, user, nav, d, set, pickType, steps, i, step, err, setErr, busy, uploading, next, back, goTo,
-    addPhotos, startingPrice, offerLabels, submit, payModal, setPayModal, finishMockPayment,
+    addPhotos, photoUrl, startingPrice, offerLabels, submit, payModal, setPayModal, finishMockPayment,
   };
 }
 
