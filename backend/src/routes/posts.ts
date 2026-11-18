@@ -56,6 +56,18 @@ function parsePhotos(value: unknown): { photos: string[] } | { error: string } {
   return { photos };
 }
 
+/** What a post is (prototype feed.js): news from the place, a deal, something happening, or a view. */
+export const POST_KINDS = ['update', 'offer', 'event', 'photo'] as const;
+type PostKind = (typeof POST_KINDS)[number];
+
+function parseKind(value: unknown): { kind: PostKind } | { error: string } {
+  if (value === undefined || value === null || value === '') return { kind: 'update' };
+  if (typeof value !== 'string' || !(POST_KINDS as readonly string[]).includes(value)) {
+    return { error: `kind must be one of: ${POST_KINDS.join(', ')}` };
+  }
+  return { kind: value as PostKind };
+}
+
 function parseBody(value: unknown): { body: string } | { error: string } {
   if (typeof value !== 'string' || !value.trim()) return { error: 'Write something to post' };
   const body = value.trim();
@@ -90,6 +102,7 @@ function postOut(r: Row, opts: { includeModeration?: boolean } = {}) {
   return {
     id: r.post.id,
     body: r.post.body,
+    kind: (POST_KINDS as readonly string[]).includes(r.post.kind) ? r.post.kind : 'update',
     photos: r.post.photos || [],
     created_at: r.post.createdAt,
     updated_at: r.post.updatedAt,
@@ -226,6 +239,7 @@ function selectRows() {
  *               body: { type: string, maxLength: 1000 }
  *               photos: { type: array, items: { type: string }, maxItems: 4, description: "URLs from POST /listings/upload" }
  *               listing_id: { type: string, description: "One of the host's own listings" }
+ *               kind: { type: string, enum: [update, offer, event, photo], default: update, description: "What the post is: news, a deal, an event or a view" }
  */
 router.get('/', async (req: Request, res: Response) => {
   const limit = Math.min(Math.max(parseInt(String(req.query.limit ?? PAGE_DEFAULT), 10) || PAGE_DEFAULT, 1), PAGE_MAX);
@@ -340,6 +354,8 @@ router.post('/', authenticateToken, rateLimiter(20, 60 * 60 * 1000, 'post_create
 
   const body = parseBody(req.body?.body);
   if ('error' in body) return res.status(400).json({ detail: body.error });
+  const kind = parseKind(req.body?.kind);
+  if ('error' in kind) return res.status(400).json({ detail: kind.error });
   const photos = parsePhotos(req.body?.photos);
   if ('error' in photos) return res.status(400).json({ detail: photos.error });
   const listing = await ownListing(req.body?.listing_id, provider);
@@ -360,6 +376,7 @@ router.post('/', authenticateToken, rateLimiter(20, 60 * 60 * 1000, 'post_create
     providerId: provider.id,
     userId: req.user!.id,
     body: body.body,
+    kind: kind.kind,
     photos: photos.photos,
     listingId: listing.id,
     createdAt: new Date().toISOString(),
@@ -375,7 +392,7 @@ router.post('/', authenticateToken, rateLimiter(20, 60 * 60 * 1000, 'post_create
  *     summary: One post, if it is public
  *     tags: [Feed]
  *   patch:
- *     summary: Edit your own post
+ *     summary: Edit your own post (body, photos, listing_id, kind)
  *     tags: [Feed]
  *     security: [{ bearerAuth: [] }]
  *   delete:
@@ -518,6 +535,11 @@ router.patch('/:id', authenticateToken, async (req: Request, res: Response) => {
     const body = parseBody(req.body.body);
     if ('error' in body) return res.status(400).json({ detail: body.error });
     set.body = body.body;
+  }
+  if (req.body?.kind !== undefined) {
+    const kind = parseKind(req.body.kind);
+    if ('error' in kind) return res.status(400).json({ detail: kind.error });
+    set.kind = kind.kind;
   }
   if (req.body?.photos !== undefined) {
     const photos = parsePhotos(req.body.photos);

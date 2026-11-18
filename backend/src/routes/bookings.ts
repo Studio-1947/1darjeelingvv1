@@ -21,7 +21,11 @@ import { settleBookingConfirmation } from '../lib/bookingConfirmation';
 import { addHostNotification, addInAppNotification } from '../lib/inApp';
 import { releaseVoucherForBooking } from '../lib/vouchers';
 import { requireTravellerMode } from '../middleware/mode';
-import { bookingGrossAmount } from '../lib/bookingAmount';
+import { amountOfBooking } from '../lib/bookingAmount';
+import {
+  CANCEL_REASON_TEXT, checkCancelReason, checkDriverTrip, isLateCancel, pickRoom, roomsOf,
+  type CancelSide, type ChosenRoom, type DriverTrip,
+} from '../lib/bookingDetails';
 import { ownListingIds } from '../lib/hostAccess';
 import { approvalRequired, AWAITING_HOST_DETAIL, isAwaitingHost, realHostIds } from '../lib/bookingApproval';
 
@@ -29,6 +33,42 @@ import { approvalRequired, AWAITING_HOST_DETAIL, isAwaitingHost, realHostIds } f
 const CONTACT_ONLY_TYPES = new Set(['cafe', 'shop']);
 
 const router = Router();
+
+type BookingRow = typeof schema.bookings.$inferSelect;
+
+/**
+ * The room, the driver trip and the cancelling details of a booking, as both booking lists and
+ * every booking answer return them. A guest's open cancel request is `cancel_request`; once the
+ * host keeps the booking the request's time is cleared but its reason stays, which is what
+ * `cancel_request_kept` reads.
+ */
+function detailFields(b: BookingRow) {
+  const open = b.status !== 'cancelled' && !!b.cancelRequestedAt;
+  return {
+    room_name: b.roomName,
+    room_price: b.roomPrice,
+    pickup_place: b.pickupPlace,
+    drop_place: b.dropPlace,
+    pickup_time: b.pickupTime,
+    days: b.days,
+    quoted_fare: b.quotedFare,
+    cancel_reason: b.cancelReason,
+    cancel_note: b.cancelNote,
+    cancelled_by: b.cancelledBy,
+    cancelled_at: b.cancelledAt,
+    cancel_late: b.cancelLate,
+    declined: b.declined,
+    cancel_request: open
+      ? {
+        reason: b.cancelRequestReason,
+        note: b.cancelRequestNote,
+        requested_at: b.cancelRequestedAt,
+        late: isLateCancel(b, new Date(b.cancelRequestedAt as string)),
+      }
+      : null,
+    cancel_request_kept: b.status !== 'cancelled' && !b.cancelRequestedAt && !!b.cancelRequestReason,
+  };
+}
 
 // ============ BOOKINGS ============
 
@@ -52,8 +92,15 @@ const router = Router();
  *               listing_type: { type: string, description: "Ignored. The listing's own stored type decides every rule." }
  *               check_in: { type: string, description: "YYYY-MM-DD, today (India time) or later, up to 365 days ahead. Required for a homestay." }
  *               check_out: { type: string, description: "YYYY-MM-DD. Homestay: required, 1 to 30 nights after check_in." }
- *               guests: { type: integer, default: 1, description: "1 to the listing's max_guests" }
+ *               guests: { type: integer, default: 1, description: "1 to the listing's max_guests, and to the room's `occ` when a room is chosen" }
  *               notes: { type: string, maxLength: 1000 }
+ *               room: { type: string, description: "Homestay: the name of one of the host's rooms. Its price sets the amount (by the night, or per head x people)." }
+ *               route_name: { type: string, description: "Driver: one of the driver's routes" }
+ *               pickup_place: { type: string, maxLength: 120, description: Driver }
+ *               drop_place: { type: string, maxLength: 120, description: Driver }
+ *               pickup_time: { type: string, description: "Driver: HH:MM" }
+ *               days: { type: integer, minimum: 1, maximum: 30, description: "Driver, day-rate route: how many days (sets check_out). The server works out quoted_fare." }
+ *               services: { type: array, items: { type: string }, description: "Guide: names of the guide's services" }
  *     responses:
  *       200:
  *         description: Created booking
@@ -66,7 +113,8 @@ const router = Router();
  *       400:
  *         description: >
  *           Missing/invalid fields, with a `code`: dates_required, bad_date, date_in_past,
- *           too_far_ahead, dates_order, stay_too_long, bad_guests, bad_notes.
+ *           too_far_ahead, dates_order, stay_too_long, bad_guests, bad_notes, bad_room,
+ *           room_too_small, bad_place, bad_time, bad_days.
  *         content:
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
@@ -122,7 +170,31 @@ router.post('/', authenticateToken, requireTravellerMode, async (req: Request, r
   // Dates, guests and notes, judged against the stored listing (lib/bookingRules.ts).
   const checked = checkBookingRequest(listing, req.body || {});
   if (!checked.ok) return res.status(400).json({ detail: checked.detail, code: checked.code });
-  const { checkIn: check_in, checkOut: check_out, guests, notes } = checked.value;
+  const { checkIn: check_in, guests, notes } = checked.value;
+  let check_out = checked.value.checkOut;
+
+  // A homestay request may name one of the host's rooms; its price and size then apply.
+  let room: ChosenRoom | null = null;
+  if (listing.type === 'homestay') {
+    let rooms = roomsOf(listing.extras as Record<string, any>);
+    if (!rooms.length && req.body?.room) {
+      const [prov] = await db.select({ extras: schema.providers.extras }).from(schema.providers)
+        .where(eq(schema.providers.id, listing.providerId)).limit(1);
+      rooms = roomsOf(null, prov?.extras as Record<string, any>);
+    }
+    const picked = pickRoom(rooms, req.body?.room, guests);
+    if (!picked.ok) return res.status(400).json({ detail: picked.detail, code: picked.code });
+    room = picked.room;
+  }
+  // A driver request may say where and when to pick up, where to drop, and how many days on a
+  // day-rate route. The fare is worked out here from the driver's own prices.
+  let trip: DriverTrip | null = null;
+  if (listing.type === 'driver') {
+    const t = checkDriverTrip(listing, routeName, req.body || {}, { checkIn: check_in, checkOut: check_out });
+    if (!t.ok) return res.status(400).json({ detail: t.detail, code: t.code });
+    trip = t.value;
+    check_out = t.value.checkOut;
+  }
 
   // A host who switched availability off takes no bookings until they switch it back on.
   if (!isAvailable(listing.extras as Record<string, any>)) {
@@ -174,6 +246,13 @@ router.post('/', authenticateToken, requireTravellerMode, async (req: Request, r
     notes,
     routeName,
     services: chosenServices,
+    roomName: room?.name ?? null,
+    roomPrice: room ? room.nightly : null,
+    pickupPlace: trip?.pickupPlace ?? null,
+    dropPlace: trip?.dropPlace ?? null,
+    pickupTime: trip?.pickupTime ?? null,
+    days: trip?.days ?? null,
+    quotedFare: trip?.quotedFare ?? null,
     status: 'pending_payment',
     createdAt: new Date().toISOString(),
     confirmedAt: null,
@@ -299,6 +378,17 @@ router.post('/', authenticateToken, requireTravellerMode, async (req: Request, r
     created_at: booking.createdAt,
     voucher_id: booking.voucherId,
     applied_discount: booking.appliedDiscount,
+    route_name: booking.routeName,
+    services: booking.services,
+    room_name: booking.roomName,
+    room_price: booking.roomPrice,
+    pickup_place: booking.pickupPlace,
+    drop_place: booking.dropPlace,
+    pickup_time: booking.pickupTime,
+    days: booking.days,
+    quoted_fare: booking.quotedFare,
+    // What this request comes to (room x nights, the route's fare, or the listing's rate).
+    amount: amountOfBooking(booking, listing.price),
     // True when the host must accept before the guest can confirm (drivers, homestays, guides).
     awaiting_host: awaitingHost,
   };
@@ -404,6 +494,7 @@ router.get('/me', authenticateToken, async (req: Request, res: Response) => {
       applied_discount: b.appliedDiscount,
       route_name: b.routeName,
       services: b.services ?? [],
+      ...detailFields(b),
       // Board: "After completion -> Reviews + Suggestion for aangan, share your trip story".
       completed: isCompleted(b),
       reviewed: reviewedListings.has(b.listingId),
@@ -411,10 +502,11 @@ router.get('/me', authenticateToken, async (req: Request, res: Response) => {
       awaiting_host: b.status === 'pending_payment' && !!listing && approvalRequired(listing.type, listing.providerId, hosts),
       listing: listingReturn,
       host_contact: hostContactFor(b, listing),
-      // A homestay's total is a fixed rule (rate x guests x nights), paid to the host directly.
-      // Drivers and guides settle their fare with the guest, so no figure is claimed for them.
-      amount_due: listing && b.status === 'confirmed' && b.listingType === 'homestay'
-        ? bookingGrossAmount({ listingType: b.listingType, price: listing.price, guests: b.guests, checkIn: b.checkIn, checkOut: b.checkOut })
+      // A homestay's total is a fixed rule (room x nights, or rate x guests x nights), paid to the
+      // host directly. A driver booking with a quoted fare owes that fare. Other drivers and guides
+      // settle their fare with the guest, so no figure is claimed for them.
+      amount_due: listing && b.status === 'confirmed' && (b.listingType === 'homestay' || (b.listingType === 'driver' && !!b.quotedFare))
+        ? amountOfBooking(b, listing.price)
         : null,
     });
   }
@@ -522,10 +614,12 @@ router.get('/provider', authenticateToken, async (req: Request, res: Response) =
       applied_discount: b.appliedDiscount,
       route_name: b.routeName,
       services: b.services ?? [],
+      ...detailFields(b),
       completed: isCompleted(b),
-      // What this booking is worth to the host (rate x guests x nights for a homestay), the same
-      // rule as stats.revenue, so a dashboard scoped to one listing adds up the same way.
-      amount: listingMatch ? bookingGrossAmount({ listingType: b.listingType, price: listingMatch.price, guests: b.guests, checkIn: b.checkIn, checkOut: b.checkOut }) : 0,
+      // What this booking is worth to the host (room x nights or rate x guests x nights for a
+      // homestay, the quoted fare for a driver), the same rule as stats.revenue, so a dashboard
+      // scoped to one listing adds up the same way.
+      amount: listingMatch ? amountOfBooking(b, listingMatch.price) : 0,
       // A request this host has to accept or decline.
       awaiting_host: b.status === 'pending_payment' && !!listingMatch && approvalRequired(listingMatch.type, listingMatch.provider_id, hosts),
       customer: customer ? { name: customer.name, phone: customer.phone } : null,
@@ -538,13 +632,7 @@ router.get('/provider', authenticateToken, async (req: Request, res: Response) =
   for (const b of confirmedBookings) {
     const listing = listingsMap.find(l => l.id === b.listingId);
     if (listing) {
-      revenue += bookingGrossAmount({
-        listingType: b.listingType,
-        price: listing.price,
-        guests: b.guests,
-        checkIn: b.checkIn,
-        checkOut: b.checkOut,
-      });
+      revenue += amountOfBooking(b, listing.price);
     }
   }
 
@@ -570,6 +658,11 @@ router.get('/provider', authenticateToken, async (req: Request, res: Response) =
  * /bookings/{id}/cancel:
  *   patch:
  *     summary: Cancel a booking (by the traveller who made it, the provider who owns the listing, or an admin)
+ *     description: >
+ *       Cancels at once and refunds the ₹1 fee if it was paid. Records who cancelled, the reason and
+ *       note, whether it was late (a guest, under 24 h before the trip, on a booking the host had
+ *       accepted) and whether it was a host declining a request. The web asks a guest with a
+ *       confirmed booking to use POST /bookings/{id}/cancel-request instead.
  *     tags: [Bookings]
  *     security: [{ bearerAuth: [] }]
  *     parameters:
@@ -577,11 +670,25 @@ router.get('/provider', authenticateToken, async (req: Request, res: Response) =
  *         name: id
  *         required: true
  *         schema: { type: string }
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               reason:
+ *                 type: string
+ *                 description: >
+ *                   Optional (older apps send none). Guest: plans_changed, found_other, price_details,
+ *                   host_not_responding, weather_road, other. Host: fully_booked, not_available,
+ *                   family_health, weather_road, other. Admin: any of these.
+ *               note: { type: string, maxLength: 200 }
  *     responses:
  *       200:
  *         description: >
  *           The cancelled booking (idempotent if already cancelled), plus `refunded` saying
  *           whether a settled payment for it was returned.
+ *       400: { description: "Unknown reason (`bad_reason`) or a bad note" }
  *       403: { description: Caller may not cancel this booking }
  *       404: { description: Booking not found }
  */
@@ -619,6 +726,8 @@ const bookingShape = (b: typeof schema.bookings.$inferSelect) => ({
   created_at: b.createdAt,
   confirmed_at: b.confirmedAt,
   accepted_at: b.acceptedAt,
+  route_name: b.routeName,
+  ...detailFields(b),
 });
 
 /**
@@ -695,7 +804,8 @@ router.patch('/:id/confirm', authenticateToken, async (req: Request, res: Respon
     let declined: typeof schema.bookings.$inferSelect[] = [];
     if (isDateExclusive(booking.listingType) && booking.checkIn && booking.checkOut) {
       declined = await tx.update(schema.bookings)
-        .set({ status: 'cancelled' })
+        // The host's yes to one guest is a no to these: a decline, because the dates are taken.
+        .set({ status: 'cancelled', cancelledBy: 'host', cancelledAt: new Date().toISOString(), declined: true, cancelReason: 'fully_booked' })
         .where(and(
           eq(schema.bookings.listingId, booking.listingId),
           eq(schema.bookings.status, 'pending_payment'),
@@ -817,11 +927,15 @@ router.patch('/:id/cancel', authenticateToken, async (req: Request, res: Respons
   const [booking] = await db.select().from(schema.bookings).where(eq(schema.bookings.id, routeParam(req, 'id'))).limit(1);
   if (!booking) return res.status(404).json({ detail: 'Booking not found' });
 
-  const allowed =
-    booking.userId === req.user.id ||
-    req.user.role === 'admin' ||
-    (await ownsListingFor(booking, req.user));
+  const isGuest = booking.userId === req.user.id;
+  const allowed = isGuest || req.user.role === 'admin' || (await ownsListingFor(booking, req.user));
   if (!allowed) return res.status(403).json({ detail: 'You do not have permission to cancel this booking' });
+  const side: CancelSide = isGuest ? 'guest' : req.user.role === 'admin' ? 'admin' : 'host';
+
+  // Why (prototype cancel.js): a reason from the side's own list and an optional note. Optional
+  // here only because older app versions cancel without one; when given it must be a known code.
+  const why = checkCancelReason(side, req.body || {}, false);
+  if (!why.ok) return res.status(400).json({ detail: why.detail, code: why.code });
 
   const shape = bookingShape;
 
@@ -832,8 +946,22 @@ router.patch('/:id/cancel', authenticateToken, async (req: Request, res: Respons
     if (!now) return null;
     // Idempotent: cancelling an already-cancelled booking just echoes it back.
     if (now.status === 'cancelled') return { was: now.status, updated: now, unchanged: true };
+    const at = new Date();
     const [updated] = await tx.update(schema.bookings)
-      .set({ status: 'cancelled' })
+      .set({
+        status: 'cancelled',
+        cancelReason: why.reason,
+        cancelNote: why.note,
+        cancelledBy: side,
+        cancelledAt: at.toISOString(),
+        // A guest dropping a booking the host had already said yes to, under 24 h before the
+        // trip, is a late cancellation (it shows on the traveller's profile).
+        cancelLate: side === 'guest' && (now.status === 'accepted' || now.status === 'confirmed') && isLateCancel(now, at),
+        // A host refusing a request they never accepted is a decline, not a cancelled booking.
+        declined: side === 'host' && now.status === 'pending_payment',
+        // Any open cancel request is answered by the cancel itself.
+        cancelRequestedAt: null,
+      })
       .where(eq(schema.bookings.id, booking.id))
       .returning();
     return { was: now.status, updated, unchanged: false };
@@ -850,31 +978,38 @@ router.patch('/:id/cancel', authenticateToken, async (req: Request, res: Respons
   // Give back whatever was paid for this booking. Before this, cancelling flipped the status and
   // kept the money with no record that anything was owed  refundPaymentsFor is idempotent and a
   // no-op for a booking that never got past pending_payment, so this is safe on every path.
-  const outcomes = await refundPaymentsFor(
-    'booking_commission',
-    booking.id,
-    `booking cancelled by ${req.user.role === 'admin' ? 'admin' : booking.userId === req.user.id ? 'guest' : 'host'}`
-  );
+  const outcomes = await refundPaymentsFor('booking_commission', booking.id, `booking cancelled by ${side}`);
   const refunded = outcomes.some(o => o.refunded);
 
+  const reasonLine = why.reason ? ` Reason: ${CANCEL_REASON_TEXT[why.reason] ?? why.reason}${why.note ? ` (${why.note})` : ''}.` : '';
   // The feed, unlike WhatsApp, is cheap and silent, so whoever did not press the button hears
   // about it whatever state the booking was in.
-  if (booking.userId !== req.user.id) {
-    await addInAppNotification(booking.userId, {
-      kind: 'booking_cancelled',
-      title: 'Booking cancelled',
-      body: `Your booking for ${booking.listingTitle} was cancelled by ${req.user.role === 'admin' ? 'the aangan team' : 'the host'}.`,
-      msg: { key: req.user.role === 'admin' ? 'cancelled_by_team' : 'cancelled_by_host', params: { place: booking.listingTitle } },
-      refId: booking.id,
-    });
+  if (!isGuest) {
+    if (updated.declined) {
+      await addInAppNotification(booking.userId, {
+        kind: 'booking_declined',
+        title: 'Request declined',
+        body: `The host of ${booking.listingTitle} declined your request. Nothing was charged; you can book somewhere else.${reasonLine}`,
+        msg: { key: 'request_declined', params: { place: booking.listingTitle, reason: why.reason ?? '' } },
+        refId: booking.id,
+      });
+    } else {
+      await addInAppNotification(booking.userId, {
+        kind: 'booking_cancelled',
+        title: 'Booking cancelled',
+        body: `Your booking for ${booking.listingTitle} was cancelled by ${side === 'admin' ? 'the aangan team' : 'the host'}.${reasonLine}`,
+        msg: { key: side === 'admin' ? 'cancelled_by_team' : 'cancelled_by_host', params: { place: booking.listingTitle, reason: why.reason ?? '' } },
+        refId: booking.id,
+      });
+    }
   } else if (wasStatus === 'confirmed' || wasStatus === 'accepted') {
     const [listing] = await db.select({ providerId: schema.listings.providerId })
       .from(schema.listings).where(eq(schema.listings.id, booking.listingId)).limit(1);
     await addHostNotification(listing?.providerId, {
       kind: 'booking_cancelled',
       title: 'Booking cancelled',
-      body: `A guest cancelled their booking for ${booking.listingTitle}.`,
-      msg: { key: 'cancelled_by_guest', params: { place: booking.listingTitle } },
+      body: `A guest cancelled their booking for ${booking.listingTitle}.${reasonLine}`,
+      msg: { key: 'cancelled_by_guest', params: { place: booking.listingTitle, reason: why.reason ?? '' } },
       refId: booking.id,
     });
   }
@@ -887,6 +1022,269 @@ router.patch('/:id/cancel', authenticateToken, async (req: Request, res: Respons
   }
 
   res.json({ booking: shape(updated), refunded });
+});
+
+// ============ CANCEL REQUESTS ============
+// Prototype cancel.js: once a booking is confirmed the host has kept it for the guest, so the
+// guest asks to cancel and the host accepts (the booking is cancelled) or keeps it. The guest can
+// take the request back while it is open.
+
+/** The booking a cancel-request route acts on, or the error answer already sent. */
+async function bookingFor(req: Request, res: Response): Promise<BookingRow | null> {
+  const [booking] = await db.select().from(schema.bookings).where(eq(schema.bookings.id, routeParam(req, 'id'))).limit(1);
+  if (!booking) {
+    res.status(404).json({ detail: 'Booking not found' });
+    return null;
+  }
+  return booking;
+}
+
+async function listingProviderId(booking: BookingRow): Promise<string | null> {
+  const [listing] = await db.select({ providerId: schema.listings.providerId })
+    .from(schema.listings).where(eq(schema.listings.id, booking.listingId)).limit(1);
+  return listing?.providerId ?? null;
+}
+
+/**
+ * @openapi
+ * /bookings/{id}/cancel-request:
+ *   post:
+ *     summary: Ask the host to cancel a confirmed booking (the guest who made it)
+ *     description: >
+ *       A confirmed booking is not cancelled at once: the host is asked to accept the cancellation
+ *       or keep the booking. Asking again while a request is open updates its reason and note.
+ *       Under 24 hours before the trip the request is marked late.
+ *     tags: [Bookings]
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [reason]
+ *             properties:
+ *               reason: { type: string, enum: [plans_changed, found_other, price_details, host_not_responding, weather_road, other] }
+ *               note: { type: string, maxLength: 200 }
+ *     responses:
+ *       200: { description: "The booking, with `cancel_request` set" }
+ *       400: { description: "Missing or unknown reason (`reason_required`, `bad_reason`), or a bad note" }
+ *       403: { description: Not the guest who made this booking }
+ *       404: { description: Booking not found }
+ *       409: { description: "The booking is not confirmed (`not_confirmed`) or the trip is over (`trip_over`)" }
+ *   delete:
+ *     summary: Take back a cancel request (the guest who made it)
+ *     tags: [Bookings]
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: "The booking, with no open request (idempotent)" }
+ *       403: { description: Not the guest who made this booking }
+ *       404: { description: Booking not found }
+ */
+router.post('/:id/cancel-request', authenticateToken, async (req: Request, res: Response) => {
+  const booking = await bookingFor(req, res);
+  if (!booking) return;
+  if (booking.userId !== req.user.id) return res.status(403).json({ detail: 'Only the guest who made this booking can ask to cancel it' });
+  const why = checkCancelReason('guest', req.body || {}, true);
+  if (!why.ok) return res.status(400).json({ detail: why.detail, code: why.code });
+
+  const outcome = await db.transaction(async (tx) => {
+    const now = await lockBookingForChange(tx, booking.id);
+    if (!now) return null;
+    if (now.status !== 'confirmed') return { bad: 'not_confirmed' as const };
+    if (isCompleted(now)) return { bad: 'trip_over' as const };
+    const fresh = !now.cancelRequestedAt;
+    const [updated] = await tx.update(schema.bookings)
+      .set({
+        cancelRequestedAt: now.cancelRequestedAt ?? new Date().toISOString(),
+        cancelRequestReason: why.reason,
+        cancelRequestNote: why.note,
+      })
+      .where(eq(schema.bookings.id, booking.id))
+      .returning();
+    return { updated, fresh };
+  });
+  if (!outcome) return res.status(404).json({ detail: 'Booking not found' });
+  if ('bad' in outcome) {
+    return outcome.bad === 'trip_over'
+      ? res.status(409).json({ detail: 'This trip is over and can no longer be cancelled', code: 'trip_over' })
+      : res.status(409).json({
+        detail: 'Only a confirmed booking needs the host to agree. Cancel this one directly.',
+        code: 'not_confirmed',
+      });
+  }
+
+  if (outcome.fresh) {
+    const late = isLateCancel(outcome.updated, new Date(outcome.updated.cancelRequestedAt as string));
+    await addHostNotification(await listingProviderId(booking), {
+      kind: 'cancel_request',
+      title: 'Guest asked to cancel',
+      body: `${req.user.name || 'A guest'} asked to cancel their booking for ${booking.listingTitle}${late ? ' (late, under 24 hours before the trip)' : ''}. Reason: ${CANCEL_REASON_TEXT[why.reason as string]}${why.note ? ` (${why.note})` : ''}. Accept the cancellation or keep the booking on your dashboard.`,
+      msg: { key: 'cancel_request_host', params: { guest: req.user.name || '', place: booking.listingTitle, reason: why.reason as string } },
+      refId: booking.id,
+    });
+  }
+  res.json({ booking: bookingShape(outcome.updated) });
+});
+
+router.delete('/:id/cancel-request', authenticateToken, async (req: Request, res: Response) => {
+  const booking = await bookingFor(req, res);
+  if (!booking) return;
+  if (booking.userId !== req.user.id) return res.status(403).json({ detail: 'Only the guest who made this booking can take the request back' });
+
+  const outcome = await db.transaction(async (tx) => {
+    const now = await lockBookingForChange(tx, booking.id);
+    if (!now) return null;
+    if (!now.cancelRequestedAt || now.status === 'cancelled') return { updated: now, was: false };
+    const [updated] = await tx.update(schema.bookings)
+      .set({ cancelRequestedAt: null, cancelRequestReason: null, cancelRequestNote: null })
+      .where(eq(schema.bookings.id, booking.id))
+      .returning();
+    return { updated, was: true };
+  });
+  if (!outcome) return res.status(404).json({ detail: 'Booking not found' });
+
+  if (outcome.was) {
+    await addHostNotification(await listingProviderId(booking), {
+      kind: 'cancel_request_withdrawn',
+      title: 'Guest is keeping the booking',
+      body: `${req.user.name || 'A guest'} took back their request to cancel ${booking.listingTitle}. The booking stands.`,
+      msg: { key: 'cancel_request_withdrawn', params: { guest: req.user.name || '', place: booking.listingTitle } },
+      refId: booking.id,
+    });
+  }
+  res.json({ booking: bookingShape(outcome.updated) });
+});
+
+/**
+ * @openapi
+ * /bookings/{id}/cancel-request/accept:
+ *   post:
+ *     summary: Accept a guest's cancel request (host or admin)
+ *     description: >
+ *       Cancels the booking as the guest's cancellation, with the request's reason and note; it is
+ *       late when the request came under 24 hours before the trip. The ₹1 fee, if paid, is refunded
+ *       as on any cancel.
+ *     tags: [Bookings]
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: "The cancelled booking, plus `refunded`" }
+ *       403: { description: Not the host of this listing }
+ *       404: { description: Booking not found }
+ *       409: { description: "No open cancel request (`no_request`)" }
+ */
+router.post('/:id/cancel-request/accept', authenticateToken, async (req: Request, res: Response) => {
+  const booking = await bookingFor(req, res);
+  if (!booking) return;
+  const allowed = req.user.role === 'admin' || (await ownsListingFor(booking, req.user));
+  if (!allowed) return res.status(403).json({ detail: 'Only the host of this listing can answer a cancel request' });
+
+  const outcome = await db.transaction(async (tx) => {
+    const now = await lockBookingForChange(tx, booking.id);
+    if (!now) return null;
+    if (now.status === 'cancelled') return { updated: now, changed: false };
+    if (!now.cancelRequestedAt || now.status !== 'confirmed') return { none: true as const };
+    const [updated] = await tx.update(schema.bookings)
+      .set({
+        status: 'cancelled',
+        cancelReason: now.cancelRequestReason,
+        cancelNote: now.cancelRequestNote,
+        cancelledBy: 'guest',
+        cancelledAt: new Date().toISOString(),
+        // Late is judged on when the guest asked, not on when the host got round to answering.
+        cancelLate: isLateCancel(now, new Date(now.cancelRequestedAt)),
+        declined: false,
+        cancelRequestedAt: null,
+      })
+      .where(eq(schema.bookings.id, booking.id))
+      .returning();
+    return { updated, changed: true };
+  });
+  if (!outcome) return res.status(404).json({ detail: 'Booking not found' });
+  if ('none' in outcome) return res.status(409).json({ detail: 'The guest has not asked to cancel this booking', code: 'no_request' });
+  if (!outcome.changed) return res.json({ booking: bookingShape(outcome.updated), refunded: false });
+  const { updated } = outcome;
+
+  // As on any cancel of a confirmed booking: the discount stays spent, the ₹1 fee goes back.
+  const outcomes = await refundPaymentsFor('booking_commission', booking.id, 'cancel request accepted by host');
+  const refunded = outcomes.some((o) => o.refunded);
+
+  await addInAppNotification(booking.userId, {
+    kind: 'booking_cancelled',
+    title: 'Cancellation accepted',
+    body: `The host of ${booking.listingTitle} accepted your cancellation. Your booking is cancelled.`,
+    msg: { key: 'cancel_request_accepted', params: { place: booking.listingTitle } },
+    refId: booking.id,
+  });
+  const [guest] = await db.select().from(schema.users).where(eq(schema.users.id, booking.userId)).limit(1);
+  await notifyBookingCancelled(updated, guest?.phone || '', guest?.name || 'Guest', refunded, guest?.email);
+
+  res.json({ booking: bookingShape(updated), refunded });
+});
+
+/**
+ * @openapi
+ * /bookings/{id}/cancel-request/keep:
+ *   post:
+ *     summary: Keep a booking the guest asked to cancel (host or admin)
+ *     description: >
+ *       Closes the request and the booking stands. The request's reason stays on the booking, so
+ *       the guest's trip card can say the host asked to keep it (`cancel_request_kept`).
+ *     tags: [Bookings]
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: "The booking, with `cancel_request_kept` true" }
+ *       403: { description: Not the host of this listing }
+ *       404: { description: Booking not found }
+ *       409: { description: "No open cancel request (`no_request`)" }
+ */
+router.post('/:id/cancel-request/keep', authenticateToken, async (req: Request, res: Response) => {
+  const booking = await bookingFor(req, res);
+  if (!booking) return;
+  const allowed = req.user.role === 'admin' || (await ownsListingFor(booking, req.user));
+  if (!allowed) return res.status(403).json({ detail: 'Only the host of this listing can answer a cancel request' });
+
+  const outcome = await db.transaction(async (tx) => {
+    const now = await lockBookingForChange(tx, booking.id);
+    if (!now) return null;
+    if (!now.cancelRequestedAt || now.status !== 'confirmed') return { none: true as const };
+    const [updated] = await tx.update(schema.bookings)
+      .set({ cancelRequestedAt: null })
+      .where(eq(schema.bookings.id, booking.id))
+      .returning();
+    return { updated };
+  });
+  if (!outcome) return res.status(404).json({ detail: 'Booking not found' });
+  if ('none' in outcome) return res.status(409).json({ detail: 'The guest has not asked to cancel this booking', code: 'no_request' });
+
+  await addInAppNotification(booking.userId, {
+    kind: 'cancel_request_kept',
+    title: 'The host wants to keep your booking',
+    body: `The host of ${booking.listingTitle} asked to keep this booking. Call them to talk it through.`,
+    msg: { key: 'cancel_request_kept', params: { place: booking.listingTitle } },
+    refId: booking.id,
+  });
+  res.json({ booking: bookingShape(outcome.updated) });
 });
 
 export default router;

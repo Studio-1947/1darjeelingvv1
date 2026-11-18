@@ -42,7 +42,7 @@ export type ReportReason = 'spam' | 'fake' | 'offensive' | 'unsafe' | 'other';
 
 /** Flags a listing or a review for the aangan team. Reporting the same thing twice is harmless. */
 export async function reportContent(input: {
-  target_type: 'listing' | 'review' | 'post';
+  target_type: 'listing' | 'review' | 'post' | 'plan';
   target_id: string;
   reason: ReportReason;
   details?: string;

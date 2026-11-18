@@ -3,7 +3,7 @@
 /* ---------- search row: the pill, then the filter | mic pill beside it ---------- */
 .ag-category-filter { display: flex; flex-direction: column; gap: 8px; }
 .ag-category-searchrow { display: flex; align-items: center; gap: 8px; }
-.ag-category-search { flex: 1; min-width: 0; height: 56px; display: flex; align-items: center; gap: 16px; padding: 0 12px 0 16px; border: 1px solid var(--outline); border-radius: var(--pill); background: #fff; color: var(--ink-strong); cursor: text; }
+.ag-category-search { flex: 1; min-width: 0; height: 56px; display: flex; align-items: center; gap: 16px; padding: 0 12px 0 16px; border: 1px solid var(--outline); border-radius: var(--pill); background: var(--surface); color: var(--ink-strong); cursor: text; }
 .ag-category-search:focus-within { border-color: var(--r); outline: 2px solid var(--r-tint); }
 .ag-category-search > svg.i { color: var(--r); }
 .ag-category-search .qbox { position: relative; flex: 1; min-width: 0; display: flex; align-items: center; height: 48px; }
@@ -14,9 +14,9 @@
 .ag-category-search .clear { width: 36px; height: 36px; flex: none; display: grid; place-items: center; border: 0; border-radius: 50%; background: transparent; color: var(--ink-muted); cursor: pointer; }
 .ag-category-search .clear svg.i { width: 18px; height: 18px; }
 
-.ag-category-sact { flex: none; display: flex; align-items: center; gap: 2px; height: 56px; padding: 0 6px; border-radius: 28px; background: rgb(255 255 255 / .62); border: 1px solid rgb(228 228 228 / .7); }
+.ag-category-sact { flex: none; display: flex; align-items: center; gap: 2px; height: 56px; padding: 0 6px; border-radius: 28px; background: rgb(var(--surface-rgb) / .62); border: 1px solid rgb(228 228 228 / .7); }
 .ag-category-sact button { position: relative; width: 40px; height: 40px; display: grid; place-items: center; padding: 0; cursor: pointer; }
-.ag-category-sact .fbtn { border: 1px solid var(--outline); border-radius: 14px; background: #fff; color: var(--ink-strong); }
+.ag-category-sact .fbtn { border: 1px solid var(--outline); border-radius: 14px; background: var(--surface); color: var(--ink-strong); }
 .ag-category-sact .fbtn svg.i { width: 24px; height: 24px; }
 .ag-category-sact .fdot { position: absolute; top: 6px; right: 6px; width: 8px; height: 8px; border-radius: 50%; background: var(--r); }
 .ag-category-sact .vsep { display: block; width: 1.5px; height: 22px; margin: 0 1px; border-radius: 1px; background: rgb(var(--r-rgb) / .55); }
@@ -34,7 +34,7 @@
 .ag-category-myloc.on svg.i { color: var(--on-r); }
 .ag-category-myloc:disabled { opacity: .6; cursor: default; }
 .ag-category-sel { appearance: none; width: 100%; height: 40px; padding: 0 40px 0 14px; border: 1px solid var(--outline); border-radius: var(--pill); color: var(--ink-strong); font: 500 14px/20px var(--font); letter-spacing: .5px;
-  background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23111' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 14px center / 16px; }
+  background: var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23111' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 14px center / 16px; }
 .ag-category-sel:focus { border-color: var(--r); outline: 2px solid var(--r-tint); }
 .ag-category-frow { display: flex; flex-direction: column; gap: 6px; font: 500 14px/20px var(--font); letter-spacing: .1px; color: var(--ink7); }
 .ag-category-frow b { font-weight: 500; color: var(--ink7); }
@@ -50,7 +50,7 @@
 .ag-category-pills::-webkit-scrollbar { display: none; }
 .ag-category-svpill { flex: none; height: 36px; display: inline-flex; align-items: center; gap: 6px; padding: 0 14px; border: 0; border-radius: var(--pill); background: var(--creme2); color: var(--ink-strong); font: 500 13px/18px var(--font); white-space: nowrap; cursor: pointer; }
 .ag-category-svpill svg.i { width: 18px; height: 18px; color: var(--r); }
-.ag-category-svpill .svn { min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; display: inline-grid; place-items: center; background: rgb(255 255 255 / .6); font-size: 11px; }
+.ag-category-svpill .svn { min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; display: inline-grid; place-items: center; background: rgb(var(--surface-rgb) / .6); font-size: 11px; }
 .ag-category-svpill[aria-pressed="true"] { background: var(--r); color: var(--on-r); }
 .ag-category-svpill[aria-pressed="true"] svg.i { color: var(--on-r); }
 .ag-category-svpill[aria-pressed="true"] .svn { background: rgb(255 255 255 / .25); }
@@ -98,7 +98,7 @@
 .ag-category-reserve:active { background: var(--r-press); border-color: var(--r-press); }
 .ag-category-reserve .go { width: 28px; height: 28px; flex: none; display: grid; place-items: center; border-radius: 50%; background: #fff; color: var(--r); }
 .ag-category-reserve .go svg.i { width: 13px; height: 13px; }
-.ag-category-heart { width: 40px; height: 40px; flex: none; display: grid; place-items: center; padding: 0; border: 1px solid var(--hairline); border-radius: 50%; background: #fff; color: var(--ink-strong); cursor: pointer; }
+.ag-category-heart { width: 40px; height: 40px; flex: none; display: grid; place-items: center; padding: 0; border: 1px solid var(--hairline); border-radius: 50%; background: var(--surface); color: var(--ink-strong); cursor: pointer; }
 .ag-category-heart svg.i { width: 18px; height: 18px; color: var(--r); }
 .ag-category-heart.on svg.i { fill: currentColor; }
 
@@ -126,7 +126,7 @@
 
 /* ---------- Find a ride ---------- */
 .ag-category-rsbox h2 { font: 500 18px/24px var(--font) !important; letter-spacing: -.01em; }
-.ag-category-rsbox .ag-in { background: #fff; }
+.ag-category-rsbox .ag-in { background: var(--surface); }
 .ag-category-locin { position: relative; display: block; }
 .ag-category-locin > svg.i { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; color: var(--r); pointer-events: none; }
 .ag-category-locin .ag-in { padding-left: 42px; }

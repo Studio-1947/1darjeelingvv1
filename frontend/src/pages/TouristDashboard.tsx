@@ -6,7 +6,7 @@ import { useSeo } from '@/components/Seo';
 import { isSupportActive } from '@/lib/support';
 import { rupees, usePassPrice } from '@/lib/prices';
 import { LANGUAGES, setLanguage, type LangCode } from '@/i18n';
-import { PALETTES, accentOf, mix, useTheme } from '@/lib/theme';
+import { PALETTES, accentOf, mix, useTheme, useMode } from '@/lib/theme';
 import { Box, Button, ButtonA, ButtonLink, PageHead, Status } from '@/components/ag';
 import { Icon, type IconName } from '@/components/ag/Icon';
 import Wordmark from '@/components/Wordmark';
@@ -112,6 +112,7 @@ export default function TouristDashboard() {
   const [sp] = useSearchParams();
   const pass = usePassPrice(user);
   const [theme] = useTheme();
+  const [colourMode, setColourMode] = useMode();
 
   if (sp.get('s') === 'language') return <LanguageScreen />;
   if (loading) return <div className="ag-wrap"><div className="ag-main"><p className="ag-small">{t('common.loading')}</p></div></div>;
@@ -165,6 +166,10 @@ export default function TouristDashboard() {
                 </span>
               )} />
           </Link>
+          <button type="button" role="switch" aria-checked={colourMode === 'dark'} onClick={() => setColourMode(colourMode === 'dark' ? 'light' : 'dark')} data-testid="account-dark-mode">
+            <Row icon="moon" title={t('theme.dark', 'Dark mode')} sub={colourMode === 'dark' ? t('theme.on', 'On') : t('theme.off', 'Off')}
+              end={<span className={`ag-account-tog${colourMode === 'dark' ? ' on' : ''}`} aria-hidden="true"><i /></span>} />
+          </button>
           <Link to="/dashboard?s=language" data-testid="account-language">
             <Row icon="globe" title={t('lang.choose', 'Language')} sub={langName(i18n.language)} />
           </Link>

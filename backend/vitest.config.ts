@@ -8,7 +8,9 @@ export default defineConfig({
     hookTimeout: 15000,
     fileParallelism: false,
     env: {
-      DATABASE_URL: 'postgres://postgres:postgres@localhost:5432/one_darjeeling_test',
+      // Overridable so several suites can run side by side on their own databases (TEST_DATABASE_URL,
+      // the same variable scripts/setup-test-db.ts reads). The default is unchanged.
+      DATABASE_URL: process.env.TEST_DATABASE_URL || 'postgres://postgres:postgres@localhost:5432/one_darjeeling_test',
       PORT: '8001',
       JWT_SECRET: 'test_jwt_secret_do_not_use_in_prod',
       MOCK_PAYMENTS: 'true',

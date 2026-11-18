@@ -233,15 +233,15 @@ export default function RouteEstimator() {
       </SelectField>
 
       <dl className="m-0 grid grid-cols-2 gap-2">
-        <div className="rounded-2xl border border-[var(--warmline)] bg-white p-3">
+        <div className="rounded-2xl border border-[var(--warmline)] bg-[var(--surface)] p-3">
           <dt className="ag-small">{t('ui.routeEstimator.distance')}</dt>
           <dd className="ag-price m-0">{info.distanceKm} <span className="unit">{t('ui.routeEstimator.unit_km')}</span></dd>
         </div>
-        <div className="rounded-2xl border border-[var(--warmline)] bg-white p-3">
+        <div className="rounded-2xl border border-[var(--warmline)] bg-[var(--surface)] p-3">
           <dt className="ag-small flex items-center gap-1"><Clock size={14} className="text-[var(--r)]" aria-hidden="true" /> {t('ui.routeEstimator.travel_time')}</dt>
           <dd className="ag-price m-0">{info.durationHours} <span className="unit">{t('ui.routeEstimator.unit_hrs')}</span></dd>
         </div>
-        <div className="col-span-2 rounded-2xl border border-[var(--warmline)] bg-white p-3">
+        <div className="col-span-2 rounded-2xl border border-[var(--warmline)] bg-[var(--surface)] p-3">
           <dt className="ag-small flex flex-wrap items-center justify-between gap-x-3">
             <span className="flex items-center gap-1"><ShieldCheck size={14} className="text-[var(--r)]" aria-hidden="true" /> {t('ui.routeEstimator.fare_range')}</span>
             <span className="flex items-center gap-1"><Mountain size={14} aria-hidden="true" /> {TERRAIN_KEYS[info.terrainDifficulty] ? t(TERRAIN_KEYS[info.terrainDifficulty]) : info.terrainDifficulty}</span>

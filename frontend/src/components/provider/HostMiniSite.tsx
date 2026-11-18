@@ -2,6 +2,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Phone, WhatsappLogo, NavigationArrow, SealCheck, Star, PlayCircle, Globe, CrownSimple } from '@phosphor-icons/react';
 import { Box, ButtonA, SecHead, Status, cx } from '@/components/ag';
+import { themeVars, useMode } from '@/lib/theme';
 
 /**
  * A host's mini website, laid out like the board's mock-up (Aangan Blue Print, "Profile: all
@@ -40,6 +41,8 @@ export type MiniSiteData = {
   gallery: string[];
   available: boolean;
   homeDelivery?: boolean;
+  /** The business theme colour (palette key or "#RRGGBB", profile.theme); none keeps the viewer's own. */
+  theme?: string | null;
 };
 
 /** The address a host's page will have: aanganerp.in/<type>/<business-name>. */
@@ -59,6 +62,8 @@ export type MiniSiteActions = {
 };
 
 export default function HostMiniSite({ data, actions }: { data: MiniSiteData; actions?: MiniSiteActions }) {
+  // Re-render when dark mode is switched, so the business colour follows it.
+  const [colourMode] = useMode();
   const { t } = useTranslation();
   const initial = (data.hostName || data.name || '?').trim().charAt(0).toUpperCase();
   const joined = data.joinedAt ? new Date(data.joinedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) : null;
@@ -74,7 +79,7 @@ export default function HostMiniSite({ data, actions }: { data: MiniSiteData; ac
   ] as const;
 
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)] gap-4" data-testid="host-mini-site">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-4" style={themeVars(data.theme, colourMode)} data-testid="host-mini-site">
       <p className="ag-small flex items-center gap-1.5 truncate">
         <Globe size={14} className="flex-none text-[var(--r)]" aria-hidden="true" />
         <span className="truncate" data-testid="mini-site-address">aanganerp.in/{data.type}/{data.slug || miniSiteSlug(data.name)}</span>

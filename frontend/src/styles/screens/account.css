@@ -148,3 +148,34 @@ a.ag-account-stat:hover { border-color: var(--r); }
 .ag-account-palprev b { font: 600 18px/18px var(--font); letter-spacing: -.01em; }
 .ag-account-paln { display: flex; flex-direction: column; gap: 1px; font: 600 16px/20px var(--font); letter-spacing: -.01em; color: var(--ink-strong); }
 .ag-account-paln span { font: 400 12px/16px var(--font); letter-spacing: .24px; color: var(--ink-muted); }
+.ag-account-palfor { margin: 4px 0 14px; }
+
+/* on/off switch in a menu row (prototype .tog), e.g. Dark mode */
+.ag-account-tog { position: relative; flex: none; width: 44px; height: 26px; border-radius: var(--pill); background: var(--outline); transition: background .15s; }
+.ag-account-tog i { position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgb(0 0 0 / .25); transition: transform .15s; }
+.ag-account-tog.on { background: var(--r); }
+.ag-account-tog.on i { transform: translateX(18px); }
+@media (prefers-reduced-motion: reduce) { .ag-account-tog, .ag-account-tog i { transition: none; } }
+
+/* Cancelling (prototype cancel.js): the reason sheet, and the banners on trip and booking cards. */
+.ag-cx-reasons { gap: 6px !important; }
+.ag-cx-reasons .ag-option { min-height: 48px; padding: 8px 14px; }
+.ag-cx-info { display: flex; align-items: flex-start; gap: 8px; margin: 0; padding: 10px 12px; border-radius: 14px; background: var(--soft); color: var(--ink7); font: 400 14px/20px var(--font); }
+.ag-cx-info svg.i { width: 18px; height: 18px; flex: none; margin-top: 1px; color: var(--ok); }
+.ag-cx-info.warn { background: var(--pending-bg); color: var(--pending); }
+.ag-cx-info.warn svg.i { color: var(--pending); }
+.ag-cx-info b { font-weight: 500; }
+.ag-cx-btns { display: flex; flex-wrap: wrap; gap: 8px; }
+.ag-cxban { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px 10px; padding: 10px 12px; border-radius: 14px; background: var(--soft); color: var(--ink7); font: 400 14px/20px var(--font); }
+.ag-cxban > svg.i { width: 18px; height: 18px; flex: none; margin-top: 1px; color: var(--ink-muted); }
+.ag-cxban > span { flex: 1 1 180px; min-width: 0; }
+.ag-cxban b { font-weight: 500; color: var(--ink-strong); }
+.ag-cxban .ag-small { color: inherit; }
+.ag-cxban.warn { background: var(--pending-bg); color: var(--pending); }
+.ag-cxban.warn > svg.i, .ag-cxban.warn b { color: var(--pending); }
+.ag-cxban.no { background: var(--fail-bg); color: var(--ink7); border: 1px solid var(--fail-line); }
+.ag-cxban.no > svg.i { color: var(--fail); }
+.ag-cxban .ag-err { flex-basis: 100%; }
+.ag-account-tripmore { display: flex; flex-direction: column; gap: 2px; }
+.ag-account-tripmore span { display: inline-flex; align-items: flex-start; gap: 6px; min-width: 0; }
+.ag-account-tripmore svg.i { width: 14px; height: 14px; flex: none; margin-top: 3px; color: var(--r); }

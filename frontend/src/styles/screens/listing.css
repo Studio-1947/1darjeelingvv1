@@ -44,7 +44,7 @@
 .ag-listing-acts > .ag-listing-rowic { order: 2; }
 .ag-listing-acts > .ag-listing-rowic + .ag-listing-rowic { order: 3; }
 .ag-listing-acts > .ag-listing-dir { order: 1; }
-.ag-listing-rowic { width: 44px; height: 44px; flex: none; display: grid; place-items: center; border-radius: 50%; border: 1px solid var(--outline); background: #fff; color: var(--r); cursor: pointer; }
+.ag-listing-rowic { width: 44px; height: 44px; flex: none; display: grid; place-items: center; border-radius: 50%; border: 1px solid var(--outline); background: var(--surface); color: var(--r); cursor: pointer; }
 .ag-listing-rowic svg.i { width: 18px; height: 18px; }
 .ag-listing-rowic.on svg.i { fill: currentColor; }
 
@@ -124,3 +124,9 @@
 .ag-listing-done h1 { margin: 0; font: 500 24px/32px var(--font); color: var(--ink7); }
 .ag-listing-done .dot { width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; background: var(--r-tint); color: var(--r); border: 2px solid var(--r); }
 .ag-listing-done .dot svg.i { width: 28px; height: 28px; }
+
+/* Ride booking (prototype drivebook.js): From over To, then date and pickup time side by side. */
+.ag-listing-locpair { display: grid; gap: 12px; }
+.ag-listing-dtrow { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; align-items: start; }
+.ag-listing-locpair .ag-in, .ag-listing-dtrow .ag-in { min-width: 0; padding: 0 10px 0 12px; }
+.ag-listing-dtrow .ag-in::-webkit-calendar-picker-indicator { margin: 0; padding: 0; width: 18px; }

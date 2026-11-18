@@ -38,7 +38,7 @@ module.exports = {
         flag: 'rgb(217 45 32 / <alpha-value>)',
         gold: 'rgb(245 180 0 / <alpha-value>)',
         mist: 'rgb(var(--creme2-rgb) / <alpha-value>)',
-        ink: { DEFAULT: 'rgb(17 17 17 / <alpha-value>)', soft: 'rgb(107 107 107 / <alpha-value>)' },
+        ink: { DEFAULT: 'rgb(var(--ink-strong-rgb) / <alpha-value>)', soft: 'rgb(var(--ink-muted-rgb) / <alpha-value>)' },
         creme: 'rgb(var(--creme-rgb) / <alpha-value>)',
         blush: 'rgb(var(--blush-rgb) / <alpha-value>)',
       },

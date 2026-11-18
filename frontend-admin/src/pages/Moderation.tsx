@@ -13,7 +13,7 @@ import api from '@/lib/api';
  * Feed posts: every post, hidden ones included, with Hide/Unhide and Delete.
  */
 
-type TargetType = 'listing' | 'review' | 'post';
+type TargetType = 'listing' | 'review' | 'post' | 'plan';
 
 type Report = {
   id: string;
@@ -61,7 +61,7 @@ const REASON_LABEL: Record<string, string> = {
   other: 'Something else',
 };
 
-const TYPE_LABEL: Record<TargetType, string> = { listing: 'Listing', review: 'Review', post: 'Feed post' };
+const TYPE_LABEL: Record<TargetType, string> = { listing: 'Listing', review: 'Review', post: 'Feed post', plan: 'Trip plan' };
 
 /** The public site sits on the same origin as the admin panel (/admin). */
 const siteUrl = (path: string) => `${window.location.origin}${path}`;
@@ -148,15 +148,20 @@ function ReportsPanel() {
   };
 
   const resolveOnly = (r: Report) => act(r, 'resolve', async () => {}, 'Marked as dealt with.');
+  // Host posts and travellers' trip plans are moderated the same way: hide, unhide or delete.
   const hidePost = (r: Report) => {
+    if (r.target_type === 'plan') return act(r, 'hide', () => api.post(`/plans/${r.target_id}/hide`), 'Trip plan hidden from the feed.');
     const reason = window.prompt('Reason shown to the host (optional)', REASON_LABEL[r.reason] || '');
     if (reason === null) return;
     return act(r, 'hide', () => api.post(`/posts/${r.target_id}/hide`, { reason }), 'Post hidden from the feed.');
   };
-  const unhidePost = (r: Report) => act(r, 'unhide', () => api.post(`/posts/${r.target_id}/unhide`), 'Post is back in the feed.');
+  const unhidePost = (r: Report) => r.target_type === 'plan'
+    ? act(r, 'unhide', () => api.post(`/plans/${r.target_id}/unhide`), 'Trip plan is back in the feed.')
+    : act(r, 'unhide', () => api.post(`/posts/${r.target_id}/unhide`), 'Post is back in the feed.');
   const deletePost = (r: Report) => {
-    if (!window.confirm('Delete this post for good? The host will not be able to get it back.')) return;
-    return act(r, 'delete', () => api.delete(`/posts/${r.target_id}`), 'Post deleted.');
+    const plan = r.target_type === 'plan';
+    if (!window.confirm(plan ? 'Delete this trip plan for good? Everyone who asked to join is told.' : 'Delete this post for good? The host will not be able to get it back.')) return;
+    return act(r, 'delete', () => api.delete(`/${plan ? 'plans' : 'posts'}/${r.target_id}`), plan ? 'Trip plan deleted.' : 'Post deleted.');
   };
   const deleteReview = (r: Report) => {
     if (!window.confirm('Delete this review for good?')) return;
@@ -237,6 +242,7 @@ function ReportsPanel() {
                       {r.target.author_name}
                       {r.target.hidden && <span className="ml-2 font-bold text-flag">Hidden</span>}
                     </div>
+                    {r.target_type === 'plan' && r.target.title && <div className="mt-1 font-bold text-ink">{r.target.title}</div>}
                     <p className="mt-1 text-ink whitespace-pre-line">{r.target.text}</p>
                     {r.target.photos && r.target.photos.length > 0 && (
                       <div className="mt-2 flex gap-2">
@@ -264,24 +270,30 @@ function ReportsPanel() {
                     <ExternalLink size={12} /> Open listing
                   </a>
                 )}
+                {r.target_type === 'plan' && r.target && (
+                  <a href={siteUrl(`/plan/${r.target_id}`)} target="_blank" rel="noopener noreferrer"
+                    className={`${btn} border-[var(--line)] text-ink hover:border-ink`}>
+                    <ExternalLink size={12} /> Open plan
+                  </a>
+                )}
                 {r.target_type === 'review' && r.target && (
                   <button onClick={() => deleteReview(r)} disabled={busy !== null} className={`${btn} border-flag/40 text-flag hover:bg-flag/10`}>
                     {isBusy(r, 'delete') ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />} Delete review
                   </button>
                 )}
-                {r.target_type === 'post' && r.target && !r.target.hidden && (
+                {(r.target_type === 'post' || r.target_type === 'plan') && r.target && !r.target.hidden && (
                   <button onClick={() => hidePost(r)} disabled={busy !== null} className={`${btn} border-[var(--line)] text-ink hover:border-ink`}>
-                    {isBusy(r, 'hide') ? <Loader2 size={12} className="animate-spin" /> : <EyeOff size={12} />} Hide post
+                    {isBusy(r, 'hide') ? <Loader2 size={12} className="animate-spin" /> : <EyeOff size={12} />} {r.target_type === 'plan' ? 'Hide plan' : 'Hide post'}
                   </button>
                 )}
-                {r.target_type === 'post' && r.target?.hidden && (
+                {(r.target_type === 'post' || r.target_type === 'plan') && r.target?.hidden && (
                   <button onClick={() => unhidePost(r)} disabled={busy !== null} className={`${btn} border-[var(--line)] text-ink hover:border-ink`}>
-                    {isBusy(r, 'unhide') ? <Loader2 size={12} className="animate-spin" /> : <Eye size={12} />} Unhide post
+                    {isBusy(r, 'unhide') ? <Loader2 size={12} className="animate-spin" /> : <Eye size={12} />} {r.target_type === 'plan' ? 'Unhide plan' : 'Unhide post'}
                   </button>
                 )}
-                {r.target_type === 'post' && r.target && (
+                {(r.target_type === 'post' || r.target_type === 'plan') && r.target && (
                   <button onClick={() => deletePost(r)} disabled={busy !== null} className={`${btn} border-flag/40 text-flag hover:bg-flag/10`}>
-                    {isBusy(r, 'delete') ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />} Delete post
+                    {isBusy(r, 'delete') ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />} {r.target_type === 'plan' ? 'Delete plan' : 'Delete post'}
                   </button>
                 )}
                 {r.status === 'open' && (

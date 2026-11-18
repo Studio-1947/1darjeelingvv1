@@ -1,0 +1,102 @@
+/* Trip plans: the Feed card, the planner (/plan) and the plan page (/plan/:id). Prototype plans.js,
+   red /7 colours. Classes are prefixed ag-plan-. Colours come only from theme variables, neutrals
+   included, so /theme and dark mode re-tint them. Imported by the components that use it. */
+
+/* ---------- the card ---------- */
+.ag-plan { gap: 10px; padding-top: 0; overflow: hidden; }
+.ag-plan-band { display: flex; align-items: center; gap: 8px; margin: 0 -16px; padding: 10px 16px; background: var(--blush2); color: var(--r-press); font: 600 12px/16px var(--font); letter-spacing: .5px; text-transform: uppercase; }
+.ag-plan-band svg.i { width: 16px; height: 16px; }
+.ag-plan-band span { margin-left: auto; text-transform: none; letter-spacing: 0; font-weight: 500; }
+.ag-plan-head { display: flex; align-items: center; gap: 10px; padding: 10px 12px; margin-top: 4px; border: 1px solid var(--hairline); border-radius: 14px; background: var(--surface); color: var(--ink7); text-decoration: none; }
+.ag-plan-head b { font: 500 16px/22px var(--font); color: var(--ink-strong); }
+.ag-plan-head:hover b { text-decoration: underline; }
+.ag-plan-av { flex: none; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: var(--r-tint); color: var(--r); font: 500 16px/1 var(--font); object-fit: cover; }
+.ag-plan-av.sm { width: 32px; height: 32px; font-size: 13px; }
+.ag-plan-cover { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 14px; background: var(--creme2); }
+.ag-plan-title { margin: 2px 0 0 !important; font: 500 18px/24px var(--font) !important; letter-spacing: -.01em; color: var(--ink-strong); overflow-wrap: anywhere; }
+.ag-plan-route { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin: 0; font: 500 14px/20px var(--font); color: var(--r); }
+.ag-plan-route svg.i { width: 12px; height: 12px; transform: rotate(45deg); color: var(--ink-muted); }
+.ag-plan-rows { display: flex; flex-direction: column; gap: 6px; }
+.ag-plan-row { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 8px 12px; border: 1px solid var(--hairline); border-radius: 12px; background: var(--surface); color: var(--ink-strong); font: 500 14px/20px var(--font); text-decoration: none; }
+a.ag-plan-row:hover { border-color: var(--r); }
+.ag-plan-row svg.i { flex: none; width: 18px; height: 18px; color: var(--r); }
+.ag-plan-row.none { color: var(--ink-muted); }
+.ag-plan-cost { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.ag-plan-price { font: 500 18px/24px var(--font); color: var(--ink-strong); }
+.ag-plan-joiners { display: flex; align-items: center; padding-left: 6px; }
+.ag-plan-joiners i { width: 26px; height: 26px; margin-left: -6px; border-radius: 50%; display: grid; place-items: center; background: var(--r-tint); color: var(--r); border: 2px solid var(--surface); font: 600 11px/1 var(--font); font-style: normal; }
+.ag-plan-joiners .ag-small { margin-left: 8px; }
+.ag-plan-act { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.ag-plan-act .ag-btn { height: 44px; min-height: 44px; }
+.ag-plan-ics { display: flex; gap: 8px; margin-left: auto; }
+.ag-plan-ics .ag-iconbtn { width: 44px; height: 44px; border: 1.5px solid var(--outline); color: var(--r); }
+.ag-plan-ics .ag-iconbtn svg { width: 18px; height: 18px; }
+.ag-plan-save.on { background: var(--r-tint); border-color: var(--r); }
+.ag-plan-save.on svg { fill: currentColor; }
+.ag-plan-stat { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 14px; border-radius: 22px; background: var(--pending-bg); color: var(--pending); font: 600 13px/18px var(--font); text-decoration: none; }
+.ag-plan-stat svg.i { width: 16px; height: 16px; flex: none; }
+.ag-plan-stat.ok { background: var(--ok-bg); color: var(--ok); }
+.ag-plan-stat.no { background: var(--fail-bg); color: var(--fail); }
+
+/* "Request sent" */
+.ag-plan-pop { position: fixed; inset: 0; z-index: 90; display: grid; place-items: end center; padding: 16px 16px calc(var(--tabbar-h, 72px) + 24px); background: rgb(0 0 0 / .55); }
+.ag-plan-popbox { width: 100%; max-width: 420px; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 20px; border-radius: 24px; background: var(--surface); color: var(--ink-strong); box-shadow: var(--shadow-lg); }
+.ag-plan-popbox h2 { margin: 0; font: 500 22px/28px var(--font); }
+.ag-plan-popdot { width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; background: var(--ok-bg); color: var(--ok); }
+.ag-plan-popdot svg.i { width: 24px; height: 24px; }
+.ag-plan-popact { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+
+/* ---------- the planner ---------- */
+.ag-plan-steptxt { margin: 8px 0 0; }
+.ag-plan-two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.ag-plan-coverbtn { align-self: flex-start; }
+.ag-plan-coverwrap { display: flex; flex-direction: column; gap: 8px; }
+.ag-plan-days { list-style: none; margin: 8px 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
+.ag-plan-day { position: relative; display: grid; grid-template-columns: 28px 1fr; gap: 12px; }
+.ag-plan-day:not(:last-child)::before { content: ""; position: absolute; left: 13px; top: 30px; bottom: -14px; border-left: 2px dotted var(--r); }
+.ag-plan-daydot { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--r); color: var(--on-r); font: 600 13px/1 var(--font); }
+.ag-plan-daybody { min-width: 0; display: flex; flex-direction: column; gap: 10px; padding: 12px; border: 1px solid var(--hairline); border-radius: 18px; background: var(--surface); }
+.ag-plan-dayh { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; color: var(--ink-strong); font: 500 16px/22px var(--font); }
+.ag-plan-loc { display: flex; align-items: center; gap: 10px; width: 100%; height: 56px; padding: 0 16px; border: 1px solid var(--outline); border-radius: 28px; background: var(--surface); color: var(--ink-muted); font: 500 15px/20px var(--font); text-align: left; cursor: pointer; }
+.ag-plan-loc svg.i { flex: none; width: 18px; height: 18px; color: var(--r); }
+.ag-plan-loc .grow { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ag-plan-loc.set { color: var(--ink-strong); border-color: var(--r); }
+.ag-plan-pick { display: flex; flex-direction: column; gap: 8px; padding: 8px; border-radius: 14px; background: var(--creme2); }
+.ag-plan-search { display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 16px; border: 1px solid var(--outline); border-radius: 26px; background: var(--surface); }
+.ag-plan-search:focus-within { border-color: var(--r); }
+.ag-plan-search svg.i { flex: none; width: 18px; height: 18px; color: var(--r); }
+.ag-plan-search input { flex: 1; min-width: 0; height: 100%; border: 0; outline: 0; background: transparent; color: var(--ink-strong); font: 400 15px/22px var(--font); }
+.ag-plan-list { display: flex; flex-direction: column; gap: 6px; max-height: 300px; overflow-y: auto; }
+.ag-plan-opt { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border: 1px solid var(--hairline); border-radius: 12px; background: var(--surface); color: var(--ink-strong); text-align: left; font: 400 14px/20px var(--font); cursor: pointer; }
+.ag-plan-opt:hover { border-color: var(--r); }
+.ag-plan-opt svg.i { flex: none; width: 16px; height: 16px; color: var(--r); }
+.ag-plan-opt b { font-weight: 500; }
+.ag-plan-opt .grow { flex: 1; min-width: 0; }
+.ag-plan-note textarea { min-height: 72px !important; }
+.ag-plan-chosen { display: flex; align-items: center; gap: 10px; padding: 8px 8px 8px 12px; border: 1px solid var(--r); border-radius: 14px; background: var(--surface); color: var(--ink-strong); }
+.ag-plan-chosen svg.i { flex: none; width: 18px; height: 18px; color: var(--r); }
+.ag-plan-chosen .grow { flex: 1; min-width: 0; }
+.ag-plan-stepper { display: flex; align-items: center; justify-content: space-between; }
+.ag-plan-round { width: 40px; height: 40px; border-radius: 50%; border: 0; background: var(--r-tint); color: var(--r); font: 500 22px/1 var(--font); cursor: pointer; }
+.ag-plan-round:disabled { opacity: .4; cursor: default; }
+.ag-plan-n { font: 400 28px/34px var(--font); color: var(--ink-strong); }
+.ag-plan-crow { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--hairline); color: var(--ink-strong); font: 500 14px/20px var(--font); }
+.ag-plan-crow .grow { flex: 1; min-width: 0; }
+.ag-plan-cin { display: flex; align-items: center; gap: 6px; color: var(--ink-muted); }
+.ag-plan-cin input { width: 96px; height: 38px; padding: 0 10px; border: 1px solid var(--hairline); border-radius: 10px; background: var(--surface); color: var(--ink-strong); text-align: right; font: 600 15px/20px var(--font); }
+.ag-plan-cin input:focus { outline: 2px solid var(--r); border-color: var(--r); }
+.ag-plan-cname { width: 100%; height: 38px; padding: 0 10px; border: 1px solid var(--hairline); border-radius: 10px; background: var(--surface); color: var(--ink-strong); font: 400 14px/20px var(--font); }
+.ag-plan-total { display: flex; justify-content: space-between; align-items: baseline; padding-top: 6px; color: var(--ink-strong); font: 500 16px/22px var(--font); }
+.ag-plan-total b:last-child { font-size: 20px; }
+.ag-plan-done { align-items: flex-start; }
+
+/* ---------- the plan page ---------- */
+.ag-plan-sec { display: flex; flex-direction: column; gap: 8px; }
+.ag-plan-dayline { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.ag-plan-dayline li { display: grid; grid-template-columns: auto 1fr; gap: 10px; color: var(--ink7); font: 400 15px/22px var(--font); }
+.ag-plan-dayline b { color: var(--ink-strong); font-weight: 500; white-space: nowrap; }
+.ag-plan-notes { margin: 0; color: var(--ink7); font: 400 15px/22px var(--font); white-space: pre-line; overflow-wrap: anywhere; }
+.ag-plan-req { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 0; border-top: 1px solid var(--hairline); }
+.ag-plan-req > span { display: flex; align-items: center; gap: 8px; min-width: 0; color: var(--ink-strong); }
+.ag-plan-reqbtns { display: flex; gap: 6px; flex: none; }
+.ag-plan-reqbtns .ag-btn { height: 38px; min-height: 38px; padding: 0 12px; font-size: 13px; }

@@ -55,18 +55,26 @@
 .ag-home-redbtn:hover { background: var(--r-press); border-color: var(--r-press); }
 .ag-home-redbtn:disabled { opacity: .5; cursor: default; }
 .ag-home-softbtn { align-self: flex-start; height: 52px; gap: 14px; font-size: 15px; background: var(--blush); border-color: var(--blush2); color: var(--ink-strong); }
-.ag-home-softbtn .go { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 50%; background: #fff; color: var(--r); }
+.ag-home-softbtn .go { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 50%; background: var(--surface); color: var(--r); }
 .ag-home-softbtn .go svg.i { width: 15px; height: 15px; }
 
 /* ---------- List your Business ---------- */
 .ag-home-join { display: flex; flex-direction: column; overflow: hidden; border-radius: 22px; border: 1px solid var(--blush2); background: linear-gradient(180deg, var(--blush-hi), var(--blush)); box-shadow: var(--warmshadow); margin-top: 12px; }
-.ag-home-join .joinimg { display: block; aspect-ratio: 11 / 4; background: #fff center / cover no-repeat; }
+.ag-home-join .joinimg { display: block; aspect-ratio: 11 / 4; background: var(--surface) center / cover no-repeat; }
 .ag-home-join.end .joinimg { background-position: 50% 60%; }
 .ag-home-join .joinbody { display: flex; flex-direction: column; gap: 10px; padding: 16px; }
 .ag-home-join h2 { margin: 0; font: 500 18px/24px var(--font); letter-spacing: -.01em; color: var(--ink-strong); }
 .ag-home-join p { margin: 0; font: 400 14px/20px var(--font); letter-spacing: .25px; color: var(--ink-muted); }
 .ag-home-join .joinrow { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .ag-home-join .joined { font: 400 13px/18px var(--font); letter-spacing: .3px; color: var(--ink-muted); text-align: right; }
+/* "N are in" with host faces (prototype .joined/.faces), the free start under it */
+.ag-home-join .joined { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; min-width: 0; }
+.ag-home-join .arein { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.ag-home-join .arein b { font-weight: 600; color: var(--ink-strong); }
+.ag-home-join .faces { display: flex; }
+.ag-home-join .faces span { width: 24px; height: 24px; margin-left: -8px; border-radius: 50%; border: 2px solid var(--surface); background: var(--r-tint) center / cover no-repeat; }
+.ag-home-join .faces span:first-child { margin-left: 0; }
+@media (max-width: 340px) { .ag-home-join .faces { display: none; } }
 
 /* ---------- sections: wavy rule, eyebrow, big title ---------- */
 .ag-home-sec, .ag-home-end { position: relative; padding-top: 22px; margin-top: 10px; }
@@ -135,7 +143,7 @@
 .ag-home-reserve .go { flex: none; width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; background: #fff; color: var(--r); }
 .ag-home-reserve .go svg.i { width: 14px; height: 14px; }
 .ag-home-reserve:hover { background: var(--r-press); }
-.ag-home-heart { flex: none; width: 40px; height: 40px; display: grid; place-items: center; border-radius: 50%; border: 1px solid var(--outline); background: #fff; color: var(--ink-strong); cursor: pointer; }
+.ag-home-heart { flex: none; width: 40px; height: 40px; display: grid; place-items: center; border-radius: 50%; border: 1px solid var(--outline); background: var(--surface); color: var(--ink-strong); cursor: pointer; }
 .ag-home-heart svg.i { width: 20px; height: 20px; }
 .ag-home-heart.on { color: var(--r); border-color: var(--r); }
 .ag-home-heart.on svg.i { fill: currentColor; }
@@ -177,7 +185,23 @@
 .ag-home-sugg .grow { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .ag-home-sugg .grow b { font: 500 16px/24px var(--font); letter-spacing: -.01em; color: var(--ink-strong); }
 .ag-home-sugg .grow .small { font: 400 14px/20px var(--font); letter-spacing: .25px; color: var(--ink-muted); }
-.ag-home-sugg .ag-in { background: #fff; }
+.ag-home-sugg .ag-in { background: var(--surface); }
+/* Suggest a place form and My suggestions (prototype spots.js) */
+.ag-home-suggeye { margin: 4px 0 0; font: 500 12px/16px var(--font); letter-spacing: .5px; text-transform: uppercase; color: var(--r); }
+.ag-home-suggtwo { display: flex; flex-wrap: wrap; gap: 8px; }
+.ag-home-sugg label.ag-home-ftonal { cursor: pointer; }
+.ag-home-sugggal { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.ag-home-sugggal .pic { position: relative; aspect-ratio: 1; border-radius: 12px; background: var(--creme2) center / cover no-repeat; }
+.ag-home-sugggal .pic button { position: absolute; top: 4px; right: 4px; width: 28px; height: 28px; display: grid; place-items: center; border: 0; border-radius: 50%; background: var(--surface); color: var(--ink-strong); cursor: pointer; }
+.ag-home-sugggal .pic button svg.i { width: 14px; height: 14px; }
+.ag-home-suggmine { display: flex; flex-direction: column; gap: 10px; }
+.ag-home-suggh { margin: 4px 0 0; font: 500 16px/24px var(--font); letter-spacing: -.01em; color: var(--ink-strong); }
+.ag-home-suggcard { display: flex; flex-direction: column; gap: 8px; }
+.ag-home-suggcard .head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 6px 8px; }
+.ag-home-suggcard h3 { flex: 1 1 55%; margin: 0; min-width: 0; font: 500 16px/22px var(--font); color: var(--ink-strong); overflow-wrap: break-word; }
+.ag-home-suggcard .ag-status { flex: none; }
+.ag-home-suggcard .strip { display: flex; gap: 6px; overflow-x: auto; }
+.ag-home-suggcard .strip span { flex: none; width: 72px; height: 54px; border-radius: 10px; background: var(--creme2) center / cover no-repeat; }
 
 @media (prefers-reduced-motion: reduce) {
   .ag-home-qph .qtype::after { animation: none; }

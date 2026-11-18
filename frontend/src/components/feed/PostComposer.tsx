@@ -4,13 +4,23 @@ import { Camera, CircleNotch as Loader2, X } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import api from '@/lib/api';
 import { uploadImage } from '@/lib/uploadImage';
-import { createPost, HostPost, MAX_POST_LEN, MAX_POST_PHOTOS, updatePost } from '@/lib/posts';
-import { Box, Button, FieldError, IconButton, SelectField, TextArea } from '@/components/ag';
+import { createPost, HostPost, MAX_POST_LEN, MAX_POST_PHOTOS, POST_KINDS, type PostKind, updatePost } from '@/lib/posts';
+import { Box, Button, FieldError, IconButton, Option, SelectField, TextArea } from '@/components/ag';
+import { Icon } from '@/components/ag/Icon';
 
 type MyListing = { id: string; title: string };
 
+/** English names and lines of the post kinds (prototype feed.js k_*), the t() fallbacks. */
+const KIND_EN: Record<PostKind, [string, string]> = {
+  update: ['Update', 'News from your place'],
+  offer: ['Offer', 'A deal or free room'],
+  event: ['Event', 'Something happening'],
+  photo: ['Photo', 'A view worth sharing'],
+};
+
 /**
- * Write or edit a post: the words, up to four photos (uploaded as soon as they are picked, the
+ * Write or edit a post: what kind of post it is (prototype feed.js: an update, an offer, an event or
+ * a photo; the card shows it as a tag), the words, up to four photos (uploaded as soon as they are picked, the
  * same way listing photos are), and optionally which of the host's own listings it is about.
  */
 export default function PostComposer({
@@ -23,6 +33,7 @@ export default function PostComposer({
   onCancelEdit?: () => void;
 }) {
   const { t } = useTranslation();
+  const [kind, setKind] = useState<PostKind>('update');
   const [body, setBody] = useState('');
   const [photos, setPhotos] = useState<string[]>([]);
   const [listingId, setListingId] = useState('');
@@ -39,6 +50,7 @@ export default function PostComposer({
   }, []);
 
   useEffect(() => {
+    setKind(editing?.kind ?? 'update');
     setBody(editing?.body ?? '');
     setPhotos(editing?.photos ?? []);
     setListingId(editing?.listing?.id ?? '');
@@ -68,10 +80,11 @@ export default function PostComposer({
     setSaving(true);
     setError('');
     try {
-      const input = { body: body.trim(), photos, listing_id: listingId || null };
+      const input = { body: body.trim(), photos, listing_id: listingId || null, kind };
       const saved = editing ? await updatePost(editing.id, input) : await createPost(input);
       toast.success(editing ? t('feed.updated') : t('feed.posted'));
       if (!editing) {
+        setKind('update');
         setBody('');
         setPhotos([]);
         setListingId('');
@@ -87,6 +100,13 @@ export default function PostComposer({
   return (
     <Box data-testid="post-composer">
       <h2>{editing ? t('feed.edit_title') : t('feed.compose_title')}</h2>
+      <fieldset className="ag-feed-kinds" data-testid="post-kinds">
+        <legend className="ag-small">{t('feed.kind_q', 'What do you want to share?')}</legend>
+        {POST_KINDS.map(({ key, icon }) => (
+          <Option key={key} on={kind === key} onClick={() => setKind(key)} icon={<Icon name={icon} />}
+            title={t(`feed.kind_${key}`, KIND_EN[key][0])} sub={t(`feed.kind_${key}_s`, KIND_EN[key][1])} data-testid={`post-kind-${key}`} />
+        ))}
+      </fieldset>
       <TextArea
         value={body}
         onChange={(e) => setBody(e.target.value.slice(0, MAX_POST_LEN))}

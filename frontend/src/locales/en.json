@@ -80,7 +80,8 @@
     "total_bookings": "Total bookings",
     "upcoming": "Upcoming",
     "completed": "Completed",
-    "none_in_filter": "No bookings here yet."
+    "none_in_filter": "No bookings here yet.",
+    "pickup_at": "Pickup {{time}}"
   },
   "explore": {
     "region": "Darjeeling",
@@ -857,7 +858,8 @@
     "delivers": "Home delivery",
     "banners": "Highlights",
     "slide_n": "Slide {{n}}",
-    "eyebrow_deals": "Offers"
+    "eyebrow_deals": "Offers",
+    "are_in": "are in"
   },
   "widget": {
     "destination": "Destination",
@@ -1015,7 +1017,8 @@
     "rs_all": "All drivers",
     "rs_clear": "Clear",
     "find_place": "Search a place",
-    "journey_date": "Journey date"
+    "journey_date": "Journey date",
+    "rs_free_on": "Drivers free on {{date}}"
   },
   "notes": {
     "title": "Notifications",
@@ -1107,7 +1110,17 @@
     "create_post": "Create a post",
     "sites_title": "Business websites",
     "sites_sub": "Pages made by hosts, drivers, guides and cafes. Tap to open, share with friends.",
-    "tt_failed": "Could not play the track."
+    "tt_failed": "Could not play the track.",
+    "kind_q": "What do you want to share?",
+    "kind_update": "Update",
+    "kind_offer": "Offer",
+    "kind_event": "Event",
+    "kind_photo": "Photo",
+    "kind_update_s": "News from your place",
+    "kind_offer_s": "A deal or free room",
+    "kind_event_s": "Something happening",
+    "kind_photo_s": "A view worth sharing",
+    "kind_plans": "Trip plans"
   },
   "contact": {
     "event_note": "Reach the organizer directly, add it to your calendar, or get directions.",
@@ -2150,7 +2163,8 @@
     "cancel": "Cancel",
     "sent": "Thanks. Our team will look into it.",
     "failed": "Could not send that. Please try again.",
-    "post_title": "Report this post"
+    "post_title": "Report this post",
+    "plan_title": "Report this trip plan"
   },
   "blocked": {
     "title": "Blocked people",
@@ -2834,7 +2848,8 @@
     "bookingCard": {
       "asked_for": "Asked for",
       "route": "Route",
-      "send_trip_details": "Send trip details"
+      "send_trip_details": "Send trip details",
+      "ride": "Ride"
     },
     "hostExtras": {
       "link_copied": "Link copied",
@@ -3271,6 +3286,58 @@
       "kyc_changes_reason": {
         "title": "A document needs changing",
         "body": "Please upload \"{{document}}\" again. Reason: {{reason}}"
+      },
+      "request_declined": {
+        "title": "Request declined",
+        "body": "The host of {{place}} declined your request. Nothing was charged; you can book somewhere else."
+      },
+      "cancel_request_host": {
+        "title": "Guest asked to cancel",
+        "body": "{{guest}} asked to cancel their booking for {{place}}. Accept the cancellation or keep the booking on your dashboard."
+      },
+      "cancel_request_withdrawn": {
+        "title": "Guest is keeping the booking",
+        "body": "{{guest}} took back their request to cancel {{place}}. The booking stands."
+      },
+      "cancel_request_accepted": {
+        "title": "Cancellation accepted",
+        "body": "The host of {{place}} accepted your cancellation. Your booking is cancelled."
+      },
+      "cancel_request_kept": {
+        "title": "The host wants to keep your booking",
+        "body": "The host of {{place}} asked to keep this booking. Call them to talk it through."
+      },
+      "place_suggestion_approved": {
+        "title": "Your place suggestion was accepted",
+        "body": "Thank you. The aangan team accepted {{place}} and will publish it on Offbeat Places once it is ready."
+      },
+      "place_suggestion_rejected": {
+        "title": "About your place suggestion",
+        "body": "The aangan team could not add {{place}}."
+      },
+      "place_suggestion_rejected_note": {
+        "title": "About your place suggestion",
+        "body": "The aangan team could not add {{place}}. {{note}}"
+      },
+      "plan_join_request": {
+        "title": "Someone wants to join your trip",
+        "body": "{{guest}} asked to join \"{{plan}}\". Confirm or decline it on the plan."
+      },
+      "plan_join_accepted": {
+        "title": "You are in",
+        "body": "{{guest}} confirmed you for \"{{plan}}\"."
+      },
+      "plan_join_declined": {
+        "title": "Not confirmed for a trip",
+        "body": "{{guest}} could not confirm you for \"{{plan}}\"."
+      },
+      "plan_member_left": {
+        "title": "Someone left your trip",
+        "body": "{{guest}} left \"{{plan}}\". Their seat is free again."
+      },
+      "plan_cancelled": {
+        "title": "A trip plan was cancelled",
+        "body": "{{guest}} cancelled the trip \"{{plan}}\"."
       }
     },
     "missing": {
@@ -3438,13 +3505,204 @@
     "stay_near": "Stay nearby",
     "ride_near": "Drivers nearby",
     "ppl_one": "1 person",
-    "ppl_many": "{{count}} people"
+    "ppl_many": "{{count}} people",
+    "sb_room": "Room",
+    "db_fromL": "From",
+    "db_toL": "To",
+    "db_find": "Search a place",
+    "db_fare": "Fare",
+    "db_time": "Pickup time",
+    "db_ndays": "How many days",
+    "db_day_minus": "One day less",
+    "db_day_plus": "One more day",
+    "db_day1": "1 day",
+    "db_ndays_n": "{{n}} days"
   },
   "theme": {
     "title": "Theme colour",
     "sub": "Pick your colours. Change any time.",
     "own": "Your own colour",
     "own_sub": "Pick one colour. The whole app follows it.",
-    "default": "Studio 1947 red · default"
+    "default": "Studio 1947 red · default",
+    "for_me": "For me",
+    "for_biz": "For my business",
+    "biz_sub": "Your business dashboard and website use this.",
+    "biz_saving": "Saving…",
+    "biz_saved": "Saved. Your dashboard and website now use this colour.",
+    "biz_error": "That did not save. Please try again.",
+    "dark": "Dark mode",
+    "on": "On",
+    "off": "Off"
+  },
+  "cancel": {
+    "r": {
+      "plans_changed": "My plans changed",
+      "found_other": "Found another place or ride",
+      "price_details": "Price or details not right",
+      "host_not_responding": "Host is not responding",
+      "weather_road": "Weather or road problem",
+      "other": "Something else",
+      "fully_booked": "Fully booked for these dates",
+      "not_available": "Car or home not available",
+      "family_health": "Family or health reason"
+    },
+    "reason": "Reason",
+    "h_guest": "Why are you cancelling?",
+    "h_host": "Why are you cancelling this booking?",
+    "h_decline": "Why are you declining?",
+    "i_decline": "The traveller will see your reason and can book someone else.",
+    "i_host": "The traveller will be told your reason. Any fee they paid goes back to them.",
+    "i_pre": "The host has not said yes yet, so your request is simply withdrawn. Nothing is charged.",
+    "i_accepted": "Nothing is paid yet, so this cancels at once at no charge. The host will be told.",
+    "i_post": "The host has already kept this for you. They will be asked to accept the cancellation. Talk to them first if you can. If you paid the ₹1 fee, it comes back when they accept.",
+    "do_decline": "Decline request",
+    "do_send": "Send cancellation request",
+    "pick": "Please choose a reason.",
+    "failed": "That did not work. Try again.",
+    "note": "Add a note (optional)",
+    "late": "This is within 24 hours of the date, so it counts as a late cancellation. Hosts can see it.",
+    "late_tag": "Late cancellation",
+    "declined": "Declined by the host",
+    "by_host": "Cancelled by the host",
+    "by_team": "Cancelled by the aangan team",
+    "by_you": "Cancelled by you",
+    "by_guest": "Cancelled by the guest",
+    "you_declined": "You declined this request",
+    "you_cancelled": "You cancelled this booking",
+    "req": "Cancellation requested",
+    "wait": "Waiting for the host to accept. You can still call them.",
+    "undo": "Keep my booking",
+    "kept": "The host asked to keep this booking. Call them to talk it through.",
+    "ask": "Ask to cancel",
+    "hreq": "Guest asked to cancel",
+    "accept": "Accept cancellation",
+    "kept_host": "The guest asked to cancel; you kept the booking."
+  },
+  "sugg": {
+    "place": "Place",
+    "area": "Area or landmark",
+    "details": "Details",
+    "entry": "Entry",
+    "free": "Free entry",
+    "ticket": "Ticket",
+    "ticket_amt": "Ticket price per person (₹)",
+    "ticket_n": "₹{{n}} ticket",
+    "photos": "Photos (up to 4)",
+    "add_photos": "Add photos",
+    "uploading": "Uploading…",
+    "remove_photo": "Remove photo",
+    "upload_error": "That photo did not upload. Please try again.",
+    "send": "Send to the aangan team",
+    "wait": "We check every suggestion and publish it on Offbeat Places. We will tell you here when it is live.",
+    "need_name": "Please write the name of the place.",
+    "need_details": "Add a few lines about the place (20+ characters).",
+    "need_price": "Write the ticket price in rupees, or pick Free entry.",
+    "mine": "My suggestions",
+    "pending": "Waiting for the aangan team",
+    "accepted": "Accepted",
+    "accepted_s": "The aangan team will publish it on Offbeat Places once it is ready.",
+    "rejected": "Not added",
+    "show_all": "Show all ({{n}})"
+  },
+  "plans": {
+    "plan_trip": "Plan a trip",
+    "trip_plan": "Trip plan",
+    "your_plan": "Your plan",
+    "nights_n": "nights",
+    "none_yet": "Not chosen yet",
+    "cost": "Cost per person",
+    "seats_left": "seats left",
+    "request_1": "request",
+    "requests_n": "requests",
+    "confirmed": "Confirmed",
+    "waiting": "Waiting for confirmation",
+    "changed": "Plans changed",
+    "declined": "Not confirmed",
+    "full": "Full",
+    "ask_join": "Ask to join",
+    "share": "Share",
+    "save": "Save",
+    "share_msg": "Join my trip on aangan:",
+    "per_person": "per person",
+    "hidden_notice": "Hidden by the aangan team",
+    "join_failed": "Could not send your request. Try again.",
+    "save_failed": "Could not save this plan.",
+    "sent_h": "Request sent",
+    "sent_s": "The organiser will confirm your seat. You will get a notification, and the plan shows where you stand.",
+    "sent_open": "Open the plan",
+    "sent_later": "Later",
+    "route": "Your route",
+    "name_trip": "Name your trip",
+    "name_ph": "e.g. Kalimpong and Lava in 3 days",
+    "cover": "Cover photo (optional)",
+    "cover_s": "A photo that shows the feel of the trip.",
+    "start": "Start date",
+    "nights": "Nights",
+    "people": "How many people?",
+    "people_s": "Including you. Others can join until the seats are full.",
+    "check": "Check your plan",
+    "post": "Post the plan",
+    "done": "Your plan is in the Feed",
+    "done_s": "Travellers can see it and join. You will see who joins.",
+    "see_feed": "See it in the Feed",
+    "open_plan": "Open the plan",
+    "short": "Give the trip a name and pick at least 2 places.",
+    "too_many": "A route can have at most 12 places.",
+    "upload_failed": "Could not upload the photo.",
+    "post_failed": "Could not post the plan. Try again.",
+    "step_of": "Step {{n}} / {{total}}",
+    "back": "Back",
+    "next": "Next",
+    "days_s": "Plan each day: where you are and what you will do. Then pick where you stay and who drives.",
+    "day": "Day",
+    "where": "Where are you this day?",
+    "day_ph": "What you will do: a drive, places to see, a guide…",
+    "stay_q": "Where will you stay?",
+    "stay_s": "Homestays on your route. You can skip.",
+    "drv_q": "Who will drive?",
+    "drv_s": "Drivers from your route. You can skip.",
+    "add_stay": "Stay",
+    "add_drive": "Drive",
+    "remove": "Remove",
+    "search": "Search",
+    "search_loc": "Search a town, village or spot…",
+    "places_n": "places",
+    "town": "Town",
+    "use_typed": "Use this name",
+    "no_match": "No match. Try another name or place.",
+    "found": "found, on your route first",
+    "fewer": "Fewer",
+    "more": "More",
+    "edit_hint": "Tap a number to change it",
+    "cost_stay": "Stay",
+    "cost_car": "Car, shared",
+    "cost_guide": "Guide, shared",
+    "cost_spots": "Entry tickets",
+    "reset": "Reset",
+    "extra_ph": "e.g. Permits, bonfire, food",
+    "add_cost": "Add a cost",
+    "estimate": "Estimate from listed prices. Hosts confirm the final price.",
+    "extra_costs": "Other costs",
+    "notes": "Anything else travellers should know (optional)",
+    "traveller": "Traveller",
+    "empty": "No trip plans yet. Plan one, and other travellers can ask to join.",
+    "answer_failed": "Could not update this request.",
+    "delete_confirm": "Delete this trip plan? Everyone who asked to join is told.",
+    "deleted": "Plan deleted",
+    "delete_failed": "Could not delete the plan.",
+    "delete": "Delete plan",
+    "missing": "This trip plan is gone, or only its organiser can see it.",
+    "load_failed": "Could not load the plan.",
+    "private": "Only you can see this plan",
+    "requests_h": "Join requests",
+    "no_requests": "No one is waiting. Share the plan so others can ask to join.",
+    "accept": "Confirm",
+    "decline": "Decline",
+    "full_note": "The trip is full. Decline, or add seats, to confirm more people.",
+    "in_trip": "In the trip",
+    "day_plan": "Day by day",
+    "notes_h": "From the organiser",
+    "accepted_s": "You are in. The organiser sees you on the trip, and any change to the plan shows here.",
+    "report": "Report this plan"
   }
 }

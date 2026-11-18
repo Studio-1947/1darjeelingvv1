@@ -119,3 +119,11 @@
 .ag-feed-empty { align-items: flex-start; }
 .ag-feed-empty > svg.i { color: var(--r); }
 .ag-feed-empty p { color: var(--ink7); }
+
+/* Post kinds (prototype feed.js .npkinds and the kind label on a post) */
+.ag-feed-kinds { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 0; padding: 0; border: 0; min-width: 0; }
+.ag-feed-kinds legend { grid-column: 1 / -1; margin-bottom: 4px; padding: 0; }
+.ag-feed-kinds .ag-option { flex-direction: column; align-items: flex-start; gap: 6px; min-width: 0; min-height: 112px; padding: 16px 40px 16px 16px; }
+.ag-feed-kinds .ag-option > svg { width: 26px; height: 26px; }
+.ag-feed-kinds .ag-option .dot { position: absolute; top: 12px; right: 12px; margin: 0; }
+.ag-feed-kind { display: inline-block; margin-right: 6px; padding: 0 8px; border-radius: 8px; background: var(--r-tint); color: var(--r); font: 500 12px/18px var(--font); letter-spacing: .3px; }

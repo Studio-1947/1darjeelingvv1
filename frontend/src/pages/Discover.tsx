@@ -4,10 +4,10 @@ import { useTranslation } from 'react-i18next';
 import { useHostSignupInfo } from '@/components/provider/onboard/QuickFill';
 import api from '@/lib/api';
 import { sizedImage } from '@/lib/listingContent';
-import { useAuth } from '@/context/AuthContext';
 import Seo from '@/components/Seo';
 import BookingWidget from '@/components/BookingWidget';
 import RouteEstimator from '@/components/RouteEstimator';
+import SuggestPlace from '@/components/spots/SuggestPlace';
 import { Icon, type IconName } from '@/components/ag/Icon';
 import { cx } from '@/components/ag';
 import { GuideCard, ShopCard, SpotCard, StayCard } from '@/components/home/cards';
@@ -142,12 +142,29 @@ function HomeTiles({ testIdPrefix }: { testIdPrefix?: string }) {
 
 /* ---------- List your Business ---------- */
 
-// Hosts start free (server lib/hostGrace.ts): said in the card's footer row, where the prototype
-// counts businesses (no such count exists on the server, so it is not shown).
+/**
+ * The card's footer row, as the prototype draws it: a few host faces and "N are in" (GET
+ * /app/host-signup: active hosts, and up to three public hosts who set a photo), with the free start
+ * (server lib/hostGrace.ts) under it. Before any host is live only the free start shows.
+ */
 function HostFreeNote({ testId }: { testId?: string }) {
   const { t } = useTranslation();
-  const { grace_bookings } = useHostSignupInfo();
-  return <span className="joined" data-testid={testId}>{t('ob.free.chip', { count: grace_bookings })}</span>;
+  const { grace_bookings, live_hosts = 0, recent_hosts = [] } = useHostSignupInfo();
+  return (
+    <span className="joined">
+      {live_hosts > 0 && (
+        <span className="arein" data-testid={testId ? 'host-count' : undefined}>
+          {recent_hosts.length > 0 && (
+            <span className="faces" aria-hidden="true">
+              {recent_hosts.slice(0, 3).map((h) => <span key={h.avatar} style={{ backgroundImage: `url(${sizedImage(h.avatar, 96)})` }} />)}
+            </span>
+          )}
+          <span><b>{live_hosts}</b> {t('home.are_in', 'are in')}</span>
+        </span>
+      )}
+      <span className="free" data-testid={testId}>{t('ob.free.chip', { count: grace_bookings })}</span>
+    </span>
+  );
 }
 
 function JoinCard({ img, end }: { img: string; end?: boolean }) {
@@ -196,98 +213,6 @@ function Section({ id, eyebrow, title, action, tone, testId, children }: {
       </div>
       {children}
     </section>
-  );
-}
-
-/** The explorer drawing on the Suggest a place box (the prototype's media/explorer.svg). */
-function Explorer() {
-  return (
-    <svg className="explorer" viewBox="0 0 120 120" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M4 96 L26 70 L40 84 L58 60 L76 82 L92 66 L116 96" opacity=".45" />
-      <path d="M4 104 H116" opacity=".45" />
-      <path d="M38 40 Q60 30 82 40" />
-      <path d="M46 40 Q48 24 60 22 Q72 24 74 40" />
-      <path d="M46 40 Q44 56 50 62 Q60 70 70 62 Q76 56 74 40" />
-      <rect x="40" y="44" width="16" height="14" rx="4" />
-      <rect x="64" y="44" width="16" height="14" rx="4" />
-      <path d="M56 50 H64" />
-      <path d="M44 44 V40 M76 44 V40" />
-      <path d="M38 52 Q32 54 30 62 M82 52 Q88 54 90 62" />
-      <path d="M30 62 Q34 76 40 84 Q60 90 80 84 Q86 76 90 62" />
-      <path d="M40 84 L38 110 M80 84 L82 110" />
-      <path d="M52 68 Q60 74 68 68" />
-      <path d="M86 46 L100 38 M86 54 L102 54" opacity=".6" />
-    </svg>
-  );
-}
-
-/**
- * Suggest a place: sent to the aangan team as feedback (POST /api/feedback/aangan, signed in),
- * the same inbox the admin console reads. A guest is asked to log in first.
- */
-function SuggestBox() {
-  const { t } = useTranslation();
-  const { user } = useAuth() as { user: unknown };
-  const [open, setOpen] = useState(false);
-  const [name, setName] = useState('');
-  const [details, setDetails] = useState('');
-  const [state, setState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
-  const nameOk = name.trim().length >= 2;
-
-  const send = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!nameOk || state === 'sending') return;
-    setState('sending');
-    try {
-      const message = [`${t('home.suggest', 'Suggest a place')}: ${name.trim()}`, details.trim()].filter(Boolean).join('\n');
-      await api.post('/feedback/aangan', { message: message.slice(0, 2000) });
-      setState('sent');
-    } catch {
-      setState('error');
-    }
-  };
-
-  return (
-    <div className="ag-home-sugg" data-testid="home-suggest">
-      <div className="row">
-        <Explorer />
-        <div className="grow">
-          <b>{state === 'sent' ? t('home.sugg_sent', 'Thank you. Sent to the aangan team.') : t('home.suggest', 'Suggest a place')}</b>
-          <span className="small">
-            {state === 'sent'
-              ? t('home.sugg_wait', 'We check every suggestion and publish it on Offbeat Places.')
-              : t('home.suggest_sub', 'Know a spot we are missing? Tell us. The aangan team checks it and publishes it for everyone.')}
-          </span>
-        </div>
-      </div>
-      {state !== 'sent' && !open && (
-        user ? (
-          <button type="button" className="ag-home-softbtn" onClick={() => setOpen(true)} data-testid="home-suggest-open">
-            {t('home.suggest', 'Suggest a place')}<span className="go" aria-hidden="true"><Icon name="arrowne" /></span>
-          </button>
-        ) : (
-          <Link to={`/login?next=${encodeURIComponent('/')}`} className="ag-home-softbtn" data-testid="home-suggest-login">
-            {t('home.suggest', 'Suggest a place')}<span className="go" aria-hidden="true"><Icon name="arrowne" /></span>
-          </Link>
-        )
-      )}
-      {state !== 'sent' && open && (
-        <form onSubmit={send} className="flex flex-col gap-3">
-          <label className="ag-field">
-            <span>{t('home.spot_name', 'Name of the place')}</span>
-            <input className="ag-in" value={name} onChange={(e) => setName(e.target.value)} maxLength={120} data-testid="home-suggest-name" autoFocus />
-          </label>
-          <label className="ag-field">
-            <span>{t('home.spot_details', 'What is special about it? How to reach, best time, what to carry.')}</span>
-            <textarea className="ag-in" value={details} onChange={(e) => setDetails(e.target.value)} maxLength={1800} rows={3} data-testid="home-suggest-details" />
-          </label>
-          {state === 'error' && <p className="ag-err m-0" role="alert">{t('home.sugg_error', 'That did not go through. Please try again.')}</p>}
-          <button type="submit" className="ag-home-redbtn self-start" disabled={!nameOk || state === 'sending'} data-testid="home-suggest-send">
-            {t('home.sugg_send', 'Send')}<span className="go" aria-hidden="true"><Icon name="arrowne" /></span>
-          </button>
-        </form>
-      )}
-    </div>
   );
 }
 
@@ -372,7 +297,7 @@ export default function Discover() {
               {loading && repeat(4, (i) => <SpotTileSkeleton key={i} />)}
               {spots.map((s) => <SpotCard key={s.id} it={s} href={`/listing/${s.id}`} testId={`spot-tile-${s.id}`} />)}
             </div>
-            <SuggestBox />
+            <SuggestPlace />
           </Section>
         )}
 

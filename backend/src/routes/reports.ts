@@ -16,13 +16,13 @@ const router = Router();
 // a block hides the blocked person's reviews from the blocker.
 
 export const REPORT_REASONS = ['spam', 'fake', 'offensive', 'unsafe', 'other'] as const;
-const TARGET_TYPES = ['listing', 'review', 'post'] as const;
+const TARGET_TYPES = ['listing', 'review', 'post', 'plan'] as const;
 const MAX_DETAILS_LEN = 1000;
 
 type TargetType = (typeof TARGET_TYPES)[number];
 
 async function targetExists(type: TargetType, id: string): Promise<boolean> {
-  const table = type === 'listing' ? schema.listings : type === 'review' ? schema.reviews : schema.hostPosts;
+  const table = type === 'listing' ? schema.listings : type === 'review' ? schema.reviews : type === 'plan' ? schema.tripPlans : schema.hostPosts;
   const [row] = await db.select({ id: table.id }).from(table).where(eq(table.id, id)).limit(1);
   return Boolean(row);
 }
@@ -31,7 +31,7 @@ async function targetExists(type: TargetType, id: string): Promise<boolean> {
  * @openapi
  * /reports:
  *   post:
- *     summary: Report a listing or a review
+ *     summary: Report a listing, a review, a host post or a trip plan
  *     tags: [Reports]
  *     security: [{ bearerAuth: [] }]
  *     requestBody:
@@ -42,7 +42,7 @@ async function targetExists(type: TargetType, id: string): Promise<boolean> {
  *             type: object
  *             required: [target_type, target_id, reason]
  *             properties:
- *               target_type: { type: string, enum: [listing, review, post] }
+ *               target_type: { type: string, enum: [listing, review, post, plan] }
  *               target_id: { type: string }
  *               reason: { type: string, enum: [spam, fake, offensive, unsafe, other] }
  *               details: { type: string, maxLength: 1000 }
@@ -55,7 +55,7 @@ async function targetExists(type: TargetType, id: string): Promise<boolean> {
 router.post('/reports', authenticateToken, async (req: Request, res: Response) => {
   const { target_type, target_id, reason, details = '' } = req.body ?? {};
   if (!TARGET_TYPES.includes(target_type)) {
-    return res.status(400).json({ detail: 'target_type must be listing, review or post' });
+    return res.status(400).json({ detail: 'target_type must be listing, review, post or plan' });
   }
   if (typeof target_id !== 'string' || !target_id.trim()) {
     return res.status(400).json({ detail: 'target_id is required' });
@@ -239,6 +239,34 @@ async function targetSummaries(rows: { targetType: string; targetId: string }[])
       });
     }
   }
+
+  const planIds = ids('plan');
+  if (planIds.length) {
+    const ps = await db
+      .select({
+        id: schema.tripPlans.id,
+        title: schema.tripPlans.title,
+        stops: schema.tripPlans.stops,
+        notes: schema.tripPlans.notes,
+        cover: schema.tripPlans.cover,
+        hiddenAt: schema.tripPlans.hiddenAt,
+        authorId: schema.tripPlans.userId,
+        authorName: schema.users.name,
+      })
+      .from(schema.tripPlans)
+      .innerJoin(schema.users, eq(schema.users.id, schema.tripPlans.userId))
+      .where(inArray(schema.tripPlans.id, planIds));
+    for (const p of ps) {
+      out.set('plan:' + p.id, {
+        title: p.title,
+        text: [(p.stops || []).map((s) => s.place).join(' → '), p.notes].filter(Boolean).join('. '),
+        photos: p.cover ? [p.cover] : [],
+        hidden: Boolean(p.hiddenAt),
+        author_name: p.authorName,
+        author_id: p.authorId,
+      });
+    }
+  }
   return out;
 }
 
@@ -248,7 +276,7 @@ async function targetSummaries(rows: { targetType: string; targetId: string }[])
  *   get:
  *     summary: Reports for an admin to review, newest first, with what each one points at
  *     description: >
- *       Each report carries `target` (a short preview of the listing, review or post, or null if it
+ *       Each report carries `target` (a short preview of the listing, review, post or trip plan, or null if it
  *       was deleted since), `reporter_name`, and `open_reports_on_target` so repeat reports of one
  *       thing stand out.
  *     tags: [Reports]
