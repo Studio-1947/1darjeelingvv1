@@ -1,14 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Heart, ShareNetwork as Share2, Path, Check, X, Copy, WhatsappLogo } from '@phosphor-icons/react';
+import { Check, X, Copy, WhatsappLogo } from '@phosphor-icons/react';
+import { Icon } from '@/components/ag/Icon';
 import { useAuth } from '@/context/AuthContext';
 import { fetchFavorites, SavedListing } from '@/lib/favorites';
 import api from '@/lib/api';
 import ListingCard from '@/components/ListingCard';
 import TripPlannerModal from '@/components/TripPlannerModal';
 import { useSeo } from '@/components/Seo';
-import { Box, Button, ButtonLink, IconButton, PageHead, TextField } from '@/components/ag';
+import { Box, Button, ButtonLink, Chip, Chips, IconButton, PageHead, TextField } from '@/components/ag';
+
+/** Prototype order of the saved groups: places to see, stays, rides, guides, food, shops, events. */
+const TYPE_ORDER = ['spot', 'biodiversity', 'homestay', 'driver', 'guide', 'cafe', 'shop', 'event'];
 
 /**
  * Saved (prototype V.saved): the places you kept, two to a row, with Plan a trip and a shareable
@@ -18,10 +22,11 @@ export default function Saved() {
   const { t } = useTranslation();
   useSeo({ title: t('saved.title'), noindex: true });
   const { user, loading: authLoading } = useAuth();
-  const nav = useNavigate();
   const [searchParams] = useSearchParams();
 
   const [items, setItems] = useState<SavedListing[]>([]);
+  const [kind, setKind] = useState('');
+  const typeLabel = (k: string) => t(`nav.${({ spot: 'spots', homestay: 'homestays', driver: 'drivers', guide: 'guides', cafe: 'cafes', shop: 'shops', event: 'events', biodiversity: 'biodiversity' } as Record<string, string>)[k] || k}`, k);
   const [loading, setLoading] = useState(true);
 
   // Share sheet state
@@ -44,13 +49,10 @@ export default function Saved() {
     }
 
     if (authLoading) return;
-    if (!user) {
-      nav('/login?next=/saved', { replace: true });
-      return;
-    }
+    if (!user) { setLoading(false); return; }
     setLoading(true);
     fetchFavorites().then(setItems).finally(() => setLoading(false));
-  }, [user, authLoading, nav, sharedPlanParam]);
+  }, [user, authLoading, sharedPlanParam]);
 
   const getShareableUrl = () => {
     const ids = items.map((i) => i.id).join(',');
@@ -72,14 +74,34 @@ export default function Saved() {
 
   const head = (
     <PageHead eyebrow={sharedPlanParam ? t('saved.shared_label') : t('ui.saved.eyebrow', 'Your favourites')}
-      title={sharedPlanParam ? t('saved.shared_title') : t('nav.saved')}
-      sub={items.length > 0 ? t('saved.count', { count: items.length }) : undefined} />
+      title={sharedPlanParam ? t('saved.shared_title') : t('nav.saved')} />
   );
 
   if (authLoading || (user && loading && !sharedPlanParam)) {
     return <div className="ag-wrap"><div className="ag-main">{head}<p className="ag-small">{t('common.loading')}</p></div></div>;
   }
-  if (!user && !sharedPlanParam) return null;
+  // Signed out: the prototype's empty box, asking them to log in.
+  if (!user && !sharedPlanParam) {
+    return (
+      <div className="ag-wrap">
+        <div className="ag-main">
+          {head}
+          <Box className="ag-account-empty" data-testid="saved-guest">
+            <Icon name="heart" />
+            <p>{t('ui.saved.guest', 'Log in to keep the places you like here.')}</p>
+            <p className="ag-small">{t('ui.saved.empty_hint', 'Tap the heart on any place, homestay or driver to keep it here.')}</p>
+            <ButtonLink to="/login?next=/saved" go data-testid="saved-login">{t('nav.login')}</ButtonLink>
+          </Box>
+        </div>
+      </div>
+    );
+  }
+
+  // Category pills (prototype svpills): Everything, then each kind of place you saved.
+  const kinds = TYPE_ORDER.filter((k) => items.some((i) => i.type === k))
+    .concat([...new Set(items.map((i) => i.type))].filter((k) => !TYPE_ORDER.includes(k)));
+  const pick = kinds.includes(kind) ? kind : '';
+  const groups = kinds.filter((k) => !pick || k === pick);
 
   // Group items by category for the share sheet
   const homestays = items.filter((i) => i.type === 'homestay');
@@ -91,30 +113,47 @@ export default function Saved() {
       <div className="ag-main">
         {head}
 
+        {items.length > 0 && kinds.length > 1 && (
+          <Chips scroll className="ag-account-pills" role="group" aria-label={t('ui.saved.filter', 'Show saved')} data-testid="saved-pills">
+            <Chip on={!pick} onClick={() => setKind('')}>{t('ui.trips.all', 'Everything')} <span className="n">{items.length}</span></Chip>
+            {kinds.map((k) => (
+              <Chip key={k} on={pick === k} onClick={() => setKind(k)} data-testid={`saved-pill-${k}`}>
+                {typeLabel(k)} <span className="n">{items.filter((i) => i.type === k).length}</span>
+              </Chip>
+            ))}
+          </Chips>
+        )}
+
         {items.length > 0 && (
           <div className="flex flex-wrap gap-2">
-            <Button variant="primary" go icon={<Path />} onClick={() => setShowItineraryModal(true)} data-testid="build-itinerary-cta">
+            <Button go size="sm" icon={<Icon name="t_trip" />} onClick={() => setShowItineraryModal(true)} data-testid="build-itinerary-cta">
               {t('ui.saved.plan', 'Plan a trip')}
             </Button>
-            <Button icon={<Share2 />} onClick={() => setShowPlanModal(true)} data-testid="plan-trip-cta">
+            <Button size="sm" icon={<Icon name="share" />} onClick={() => setShowPlanModal(true)} data-testid="plan-trip-cta">
               {t('saved.plan_cta')}
             </Button>
           </div>
         )}
 
         {items.length === 0 ? (
-          <Box data-testid="saved-empty">
-            <span className="ag-micon"><Heart /></span>
-            <div>
-              <h2>{t('saved.empty')}</h2>
-              <p className="ag-small">{t('ui.saved.empty_hint', 'Tap the heart on any place, homestay or driver to keep it here.')}</p>
-            </div>
-            <ButtonLink to="/explore" go className="self-start">{t('ui.trips.find', 'Find a place')}</ButtonLink>
+          <Box className="ag-account-empty" data-testid="saved-empty">
+            <Icon name="heart" />
+            <p>{t('saved.empty')}</p>
+            <p className="ag-small">{t('ui.saved.empty_hint', 'Tap the heart on any place, homestay or driver to keep it here.')}</p>
+            <ButtonLink to="/explore" go>{t('ui.trips.find', 'Find a place')}</ButtonLink>
           </Box>
         ) : (
-          <div className="grid grid-cols-2 gap-2.5">
-            {items.map((it) => <ListingCard key={it.id} item={it} />)}
-          </div>
+          groups.map((k) => {
+            const list = items.filter((i) => i.type === k);
+            return (
+              <section key={k} className="ag-account-savesec" data-testid={`saved-group-${k}`}>
+                {!pick && kinds.length > 1 && <h2>{typeLabel(k)} <span className="ag-small">{list.length}</span></h2>}
+                <div className="grid grid-cols-2 gap-2.5">
+                  {list.map((it) => <ListingCard key={it.id} item={it} />)}
+                </div>
+              </section>
+            );
+          })
         )}
       </div>
 

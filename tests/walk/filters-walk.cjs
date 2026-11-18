@@ -21,10 +21,14 @@ const ok = (c, m, x = '') => { console.log(`${c ? 'OK  ' : 'FAIL'} ${m}${x ? ' |
     for (const [path, type] of [['/drivers', 'driver'], ['/homestays', 'homestay'], ['/cafes', 'cafe'], ['/shops', 'shop'], ['/guides', 'guide']]) {
       console.log(`\n[${width}] ${path}`);
       await p.goto(WEB + path, { waitUntil: 'networkidle' });
-      await p.waitForTimeout(1200);
+      // The loading splash holds the page back a moment on a fresh visit: wait for the first card.
+      await p.locator('[data-testid^="grid-tile-"]').first().waitFor({ timeout: 15000 }).catch(() => {});
+      await p.waitForTimeout(800);
       const all = await count();
       const api = ((await (await fetch(`${API}/listings?type=${type}&limit=60`)).json()).items || []).length;
       ok(all > 0 && all <= api, `${path}: shows the listings`, `${all} shown, ${api} on the server`);
+      // The filters sit in the panel the filter button opens (prototype); it stays open for the steps below.
+      await p.click('[data-testid="category-filter-open"]');
       // Near me.
       await p.click('[data-testid="near-me-toggle"]');
       await p.waitForTimeout(1200);

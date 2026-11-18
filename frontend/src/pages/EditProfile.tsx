@@ -1,7 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Phone, Upload } from '@phosphor-icons/react';
+import { Phone } from '@phosphor-icons/react';
+import { Icon } from '@/components/ag/Icon';
+import SignOutButton from '@/components/SignOutButton';
+import { Avatar } from '@/components/TravellerPanels';
 import { Box, Button, Chip, Chips, FieldError, PageHead, TextField } from '@/components/ag';
 import { toast } from 'sonner';
 import api from '@/lib/api';
@@ -126,20 +129,22 @@ export default function EditProfile() {
     <div className="ag-wrap">
       <form onSubmit={save} className="ag-main" data-testid="edit-profile" noValidate>
         <PageHead eyebrow={setup ? t('ui.editProfile.step_2_of_2') : t('ui.editProfile.your_account')}
-          title={setup ? t('ui.editProfile.setup_title') : t('nav.edit_profile')}
-          sub={setup ? t('ui.editProfile.setup_lead') : t('ui.editProfile.edit_lead')} />
+          title={setup ? t('ui.editProfile.setup_title') : t('nav.profile')}
+          sub={setup ? t('ui.editProfile.setup_lead') : undefined} />
 
         {/* Who you are */}
         <Box as="section">
-          <div className="flex items-center gap-4">
-            <span className="w-[72px] h-[72px] flex-none rounded-full overflow-hidden bg-[var(--r)] text-[var(--on-r)] grid place-items-center text-3xl font-medium">
-              {form.avatar ? <img src={form.avatar} alt="" className="w-full h-full object-cover" /> : (form.name.trim().charAt(0).toUpperCase() || 'T')}
-            </span>
-            <label className="ag-btn sm cursor-pointer" data-testid="edit-photo">
-              <Upload aria-hidden="true" /> {uploading ? t('common.uploading') : form.avatar ? t('ui.editProfile.change_photo') : t('ui.editProfile.add_photo')}
-              <input type="file" accept={SUPPORTED_IMAGE_ACCEPT} onChange={pickPhoto} className="hidden" />
-            </label>
+          <div className="flex items-center gap-3 min-w-0">
+            <Avatar name={form.name} src={form.avatar} size={72} />
+            <div className="min-w-0 flex flex-col gap-0.5">
+              <h2 className="truncate !text-[18px]">{form.name.trim() || t('dashboard.traveller')}</h2>
+              <label className="ag-account-photo" data-testid="edit-photo">
+                <Icon name="download" /> {uploading ? t('common.uploading') : form.avatar ? t('ui.editProfile.change_photo') : t('ui.editProfile.add_photo')}
+                <input type="file" accept={SUPPORTED_IMAGE_ACCEPT} onChange={pickPhoto} className="hidden" />
+              </label>
+            </div>
           </div>
+          <h2>{t('ui.account.yourdetails', 'Your details')}</h2>
 
           <TextField label={t('ui.editProfile.name')} value={form.name} onChange={(e) => set({ name: e.target.value })} maxLength={100} autoComplete="name"
             data-testid="edit-name" error={nameBad ? t('ui.editProfile.name_error') : undefined} errorId="edit-name-error" />
@@ -202,14 +207,16 @@ export default function EditProfile() {
 
         <FieldError id="edit-error">{err}</FieldError>
 
-        <div className="ag-flowbar flex-col">
-          <Button type="submit" variant="primary" go block disabled={busy || uploading} data-testid="edit-save">
+        <div className="flex flex-wrap gap-2">
+          <Button type="submit" go disabled={busy || uploading} data-testid="edit-save">
             {busy ? t('common.saving') : t('ui.editProfile.save')}
           </Button>
           {setup && (
-            <Button block onClick={() => nav(next)} data-testid="edit-skip">{t('ui.editProfile.skip')}</Button>
+            <Button variant="text" onClick={() => nav(next)} data-testid="edit-skip">{t('ui.editProfile.skip')}</Button>
           )}
         </div>
+
+        {!setup && <SignOutButton className="mt-2" />}
       </form>
     </div>
   );

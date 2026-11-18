@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, Navigate, useLocation, useParams } from 'react-router-dom';
-import { ArrowUpRight, ShareNetwork, Star, Lock, WhatsappLogo } from '@phosphor-icons/react';
+import { Lock } from '@phosphor-icons/react';
+import { Icon } from '@/components/ag/Icon';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import api from '@/lib/api';
@@ -8,7 +9,7 @@ import Seo from '@/components/Seo';
 import HostMiniSite from '@/components/provider/HostMiniSite';
 import DeliveryRequestButton from '@/components/DeliveryRequestButton';
 import { waLink, waShare } from '@/lib/tripMessages';
-import { Box, Button, ButtonA, ButtonLink, PageHead, SecHead } from '@/components/ag';
+import { Box, Button, ButtonA, ButtonLink, PageHead } from '@/components/ag';
 
 /**
  * A host's public page, aanganerp.in/<type>/<business-name> (board: "Profile - all profiles should
@@ -63,7 +64,7 @@ export default function HostPage() {
   };
 
   return (
-    <div className="ag-wrap">
+    <div className="ag-wrap ag-listing">
       <div className="ag-main" data-testid="host-page">
         <Seo title={page.name} description={(page.about || '').slice(0, 155)} />
         {data.not_live && (
@@ -83,55 +84,64 @@ export default function HostPage() {
           }}
         />
 
-        <div className="ag-row">
+        {/* The prototype's action row (site.js): Ask to book, home delivery, share. */}
+        <div className="ag-listing-acts">
+          {listings[0] && (
+            <ButtonLink variant="primary" go size="sm" to={`/listing/${listings[0].id}`} data-testid="host-page-book">
+              {t('listing.book', 'Ask to book')}
+            </ButtonLink>
+          )}
           {page.homeDelivery && listings[0] && <DeliveryRequestButton listing={{ ...listings[0], extras: { ...listings[0].extras, home_delivery: true } }} />}
-          <Button size="sm" icon={<ShareNetwork />} onClick={share} data-testid="host-page-share">{t('ui.hostPage.share')}</Button>
-          <ButtonA size="sm" icon={<WhatsappLogo />} href={waShare(t('ui.hostPage.share_text', { name: page.name, url }))} target="_blank" rel="noreferrer">
-            {t('ui.hostPage.share_whatsapp')}
-          </ButtonA>
+          <button type="button" className="ag-listing-rowic" onClick={share} data-testid="host-page-share"
+            aria-label={t('ui.hostPage.share')} title={t('ui.hostPage.share')}>
+            <Icon name="share" />
+          </button>
         </div>
 
         {listings.length > 0 && (
-          <section>
-            <SecHead title={t('ui.hostPage.book_with', { name: page.name })} className="!mt-0" />
+          <section className="flex flex-col gap-2.5">
+            <h2 className="m-0 text-[18px] leading-6 font-medium text-[var(--ink-strong)]">{t('ui.hostPage.book_with', { name: page.name })}</h2>
             <div className="grid grid-cols-2 gap-2.5">
               {listings.map((l: any) => (
-                <Link key={l.id} to={`/listing/${l.id}`} data-testid={`host-page-listing-${l.id}`} className="ag-card">
-                  {l.image ? <img src={l.image} alt="" className="img" /> : <div className="img" />}
-                  <div className="body">
-                    <span className="name line-clamp-2">{l.title}</span>
-                    <span className="meta">{l.location}{l.price ? t('ui.hostPage.from_price', { price: Number(l.price).toLocaleString('en-IN') }) : ''}</span>
-                    <span className="mt-1 inline-flex items-center gap-1 text-sm font-medium text-[var(--r)]">{t('ui.hostPage.view_and_book')} <ArrowUpRight size={14} aria-hidden="true" /></span>
-                  </div>
+                <Link key={l.id} to={`/listing/${l.id}`} data-testid={`host-page-listing-${l.id}`}
+                  className="relative block aspect-square rounded-[16px] overflow-hidden bg-[var(--creme2)] no-underline">
+                  {l.image && <img src={l.image} alt="" className="absolute inset-0 w-full h-full object-cover" />}
+                  <span className="absolute inset-x-0 bottom-0 p-2.5 flex flex-col text-white bg-gradient-to-t from-black/70 to-transparent">
+                    <span className="text-[13px] leading-4 font-medium line-clamp-2">{l.title}</span>
+                    {Number(l.price) > 0 && <b className="text-[13px] leading-5 font-semibold">₹{Number(l.price).toLocaleString('en-IN')}</b>}
+                    <span className="mt-0.5 inline-flex items-center gap-1 text-[12px] leading-4">{t('ui.hostPage.view_and_book')} <Icon name="arrowne" size={12} /></span>
+                  </span>
                 </Link>
               ))}
             </div>
           </section>
         )}
 
-        <section data-testid="host-page-reviews">
-          <SecHead title={t('ui.hostPage.reviews')} className="!mt-0" />
+        <Box data-testid="host-page-reviews">
+          <h2>{t('listing.reviews', 'Reviews')}</h2>
           {reviews.length === 0 ? (
-            <p className="ag-small">{t('ui.hostPage.no_reviews')}</p>
-          ) : (
-            <ul className="grid gap-2.5">
-              {reviews.map((r: any) => (
-                <li key={r.id}>
-                  <Box flat className="!gap-1.5">
-                    <div className="flex flex-wrap items-center gap-1.5 text-sm">
-                      <span className="inline-flex gap-0.5" aria-label={`${r.rating} / 5`}>
-                        {[1, 2, 3, 4, 5].map((n) => <Star key={n} size={14} weight={n <= r.rating ? 'fill' : 'regular'} className={n <= r.rating ? 'text-[var(--star)]' : 'text-[var(--outline)]'} aria-hidden="true" />)}
-                      </span>
-                      <b className="font-medium text-[var(--ink-strong)]">{r.author}</b>
-                      <span className="ag-small">· {new Date(r.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-                    </div>
-                    {r.comment && <p className="text-sm text-[var(--ink7)]">{r.comment}</p>}
-                  </Box>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+            <p className="m-0 text-[var(--ink-muted)]">{t('listing.norev', 'No reviews yet.')}</p>
+          ) : reviews.map((r: any) => (
+            <div key={r.id} className="ag-listing-rev">
+              <span className="ag-listing-starline"><Icon name="star" />{r.rating}</span>
+              {r.comment && <p className="text-[16px] leading-6 text-[var(--ink7)]">{r.comment}</p>}
+              <p className="ag-small">{r.author}, {new Date(r.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+            </div>
+          ))}
+        </Box>
+
+        {/* The prototype's website box: the address, Copy link and share (WhatsApp as well). */}
+        <Box tone="blush" data-testid="host-page-website">
+          <span className="ag-eyebrow">{t('listing.pf_site', 'Website')}</span>
+          <p className="m-0 text-[16px] leading-6 text-[var(--ink7)] break-all">{url.replace(/^https?:\/\//, '')}</p>
+          <div className="ag-row">
+            <Button size="sm" onClick={() => { navigator.clipboard?.writeText(url).then(() => toast.success(t('ui.hostPage.link_copied'))).catch(() => {}); }}
+              data-testid="host-page-copy">{t('listing.copylink', 'Copy link')}</Button>
+            <ButtonA size="sm" href={waShare(t('ui.hostPage.share_text', { name: page.name, url }))} target="_blank" rel="noreferrer" icon={<Icon name="wa" />}>
+              {t('ui.hostPage.share_whatsapp')}
+            </ButtonA>
+          </div>
+        </Box>
       </div>
     </div>
   );

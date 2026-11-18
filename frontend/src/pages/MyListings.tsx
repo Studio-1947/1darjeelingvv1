@@ -3,13 +3,15 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
-import { Storefront, Plus, Trash, Pencil, CheckCircle, Clock, ListBullets, CircleNotch as Loader2, MapPin } from '@phosphor-icons/react';
+import { CircleNotch as Loader2 } from '@phosphor-icons/react';
+import { Icon } from '@/components/ag/Icon';
+import ListingJourney from '@/components/provider/dashboard/ListingJourney';
+import InviteHostLink from '@/components/provider/InviteHostLink';
 import ListingFormModal from '@/components/ListingFormModal';
 import EditListingModal from '@/components/provider/dashboard/EditListingModal';
 import HostPlanCard from '@/components/provider/dashboard/HostPlanCard';
 import { useSeo } from '@/components/Seo';
-import { Insight } from '@/components/provider/dashboard/Insight';
-import { Box, Button, ButtonLink, MenuIcon, PageHead, Status } from '@/components/ag';
+import { Box, Button, ButtonLink, PageHead, Status } from '@/components/ag';
 
 export default function MyListings() {
   const { t } = useTranslation();
@@ -116,66 +118,46 @@ export default function MyListings() {
     );
   }
 
-  const activeCount = provider.status === 'active' ? listings.length : 0;
-  const isBusinessActive = provider.status === 'active';
+  const isDriver = provider.business_type === 'driver';
+  const live = provider.status === 'active' && !provider.approval_pending;
 
+  // The prototype's Listings screen (provider.js): two actions, the journey, one box per listing,
+  // then the membership card and the invite link that used to sit on the dashboard.
   return (
     <div className="ag-wrap">
       <div className="ag-main">
-        <PageHead eyebrow={provider.business_name} title={t('ui.myListings.title')} sub={t('ui.myListings.subtitle')}>
-          <div className="ag-row mt-2">
-            <Status tone={isBusinessActive ? 'ok' : 'pending'}>
-              {isBusinessActive ? <CheckCircle size={14} weight="fill" aria-hidden="true" /> : <Clock size={14} aria-hidden="true" />}
-              {isBusinessActive ? t('provider.active') : t('provider.pending')}
-            </Status>
-          </div>
-        </PageHead>
-
-        <Button variant="primary" icon={<Plus />} go className="self-start" onClick={() => setListingModal({ open: true, editing: null })} data-testid="add-listing-cta">
-          {t('ui.myListings.add_new')}
-        </Button>
-
-        <HostPlanCard provider={provider} user={user} onRenewed={refreshProviderAccess} />
-
-        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
-          <Insight icon={ListBullets} label={t('ui.myListings.total')} value={listings.length} />
-          <Insight icon={CheckCircle} label={t('ui.myListings.live')} value={activeCount} />
-          <Insight icon={Storefront} label={t('ui.myListings.business_type')} value={t(`categories.${provider.business_type}`, { defaultValue: provider.business_type })} />
+        <h1 className="ag-host-tabh">{t('host.your_listings', 'Your listings')}</h1>
+        <div className="ag-host-two">
+          <ButtonLink to="/feed" go data-testid="post-update-cta">{t('pd.post_update')}</ButtonLink>
+          <Button icon={<Icon name={isDriver ? 'car' : 'home'} />} onClick={() => setListingModal({ open: true, editing: null })} data-testid="add-listing-cta">
+            {isDriver ? t('host.add_vehicle', 'Add a vehicle') : t('host.add_property', 'Add a property')}
+          </Button>
         </div>
 
-        {listings.length === 0 ? (
-          <Box>
-            <MenuIcon><ListBullets /></MenuIcon>
-            <div>
-              <h2>{t('ui.myListings.empty_title')}</h2>
-              <p className="ag-small">{t('ui.myListings.empty_body')}</p>
+        <ListingJourney count={listings.length} />
+
+        {listings.map((l) => (
+          <Box key={l.id} as="article" className="ag-host-lbox" data-testid={`my-listing-card-${l.id}`}>
+            <div className="top">
+              <h2 className="line-clamp-2">{l.title}</h2>
+              {l.price > 0 && <span className="ag-price">₹{Number(l.price).toLocaleString('en-IN')}</span>}
             </div>
-            <Button icon={<Plus />} className="self-start" onClick={() => setListingModal({ open: true, editing: null })}>{t('ui.myListings.add_first')}</Button>
+            <p className="ag-small m-0">{t(`ob.wz.t_${l.type}`, { defaultValue: l.type })} · {l.location}</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <Status tone={live && l.extras?.available !== false ? 'ok' : 'pending'}>
+                {!live ? t('provider.pending') : l.extras?.available === false ? t('host.paused', 'Not taking bookings') : t('host.live', 'Live on aangan')}
+              </Status>
+            </div>
+            <div className="acts">
+              <ButtonLink to={`/listing/${l.id}`} variant="text" data-testid={`view-listing-${l.id}`}>{t('common.view')}</ButtonLink>
+              <Button variant="text" onClick={() => setSelectedListing(l)} data-testid={`edit-listing-${l.id}`}>{t('common.edit')}</Button>
+              <Button variant="text" className="ag-host-del" onClick={() => handleDeleteListing(l.id)} data-testid={`delete-listing-${l.id}`}>{t('common.delete')}</Button>
+            </div>
           </Box>
-        ) : (
-          <div className="grid gap-2.5 sm:grid-cols-2">
-            {listings.map((l) => (
-              <article key={l.id} data-testid={`my-listing-card-${l.id}`} className="ag-card">
-                <div className="relative">
-                  {l.image ? <img src={l.image} alt="" className="img" /> : <div className="img !grid place-items-center text-[var(--r)]"><Storefront size={32} aria-hidden="true" /></div>}
-                  <Status tone="info" className="absolute left-2.5 top-2.5 !bg-[var(--surface)]">{t(`categories.${l.type}`, { defaultValue: l.type })}</Status>
-                </div>
-                <div className="body">
-                  <span className="name line-clamp-1">{l.title}</span>
-                  <span className="meta flex items-center gap-1"><MapPin size={14} className="flex-none text-[var(--r)]" aria-hidden="true" /><span className="truncate">{l.location}</span></span>
-                  {l.price > 0 && (
-                    <span className="ag-price">₹{l.price.toLocaleString('en-IN')} <span className="unit">{t('ui.myListings.starting')}</span></span>
-                  )}
-                  <div className="ag-row mt-2">
-                    <ButtonLink to={`/listing/${l.id}`} size="sm" data-testid={`view-listing-${l.id}`}>{t('common.view')}</ButtonLink>
-                    <Button size="sm" icon={<Pencil />} onClick={() => setSelectedListing(l)} data-testid={`edit-listing-${l.id}`}>{t('common.edit')}</Button>
-                    <Button size="sm" variant="stop" icon={<Trash />} onClick={() => handleDeleteListing(l.id)} data-testid={`delete-listing-${l.id}`}>{t('common.delete')}</Button>
-                  </div>
-                </div>
-              </article>
-            ))}
-          </div>
-        )}
+        ))}
+
+        <HostPlanCard provider={provider} user={user} onRenewed={refreshProviderAccess} />
+        <InviteHostLink />
       </div>
 
       {selectedListing && (

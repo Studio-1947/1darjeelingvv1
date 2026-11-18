@@ -111,24 +111,28 @@ export function ReviewSkeleton() {
  * shift when the real content arrives.
  */
 export function ListingDetailSkeleton() {
-  // The listing page's shape: one 720px column, a 16:10 photo, the title block, then text.
+  // The listing page's shape (prototype item view): the 16:10 photo, the strip of 150px photos,
+  // then the name, place and tags, the price, the button row and the About box.
   return (
     <SkeletonBlock testid="listing-detail-skeleton" className="ag-wrap">
       <div className="ag-main">
-        <Bar className="w-full aspect-[16/10] rounded-[var(--r-card)]" />
+        <Bar className="w-full aspect-[16/10] rounded-[20px]" />
+        <div className="flex gap-2 overflow-hidden">
+          {repeat(3, (i) => <Bar key={i} className="w-[150px] aspect-[4/3] flex-none rounded-[12px]" />)}
+        </div>
         <div className="space-y-2">
-          <Bar className="h-3 w-24" />
-          <Bar className="h-9 w-3/4" />
-          <Bar className="h-4 w-1/2" />
+          <Bar className="h-8 w-3/4" />
+          <Bar className="h-5 w-1/2" />
+          <Bar className="h-6 w-28" />
         </div>
+        <Bar className="h-6 w-2/5" />
         <div className="flex gap-2">
-          {repeat(3, (i) => <Bar key={i} className="h-[150px] w-[200px] flex-none rounded-[var(--r-card)]" />)}
+          <Bar className="h-11 w-24 rounded-full" />
+          <Bar className="h-11 w-28 rounded-full" />
+          <Bar className="h-11 w-11 rounded-full" />
+          <Bar className="h-11 w-11 rounded-full" />
         </div>
-        <div className="space-y-3">
-          <Bar className="h-4 w-full" />
-          <Bar className="h-4 w-full" />
-          <Bar className="h-4 w-2/3" />
-        </div>
+        <Bar className="h-40 w-full rounded-[var(--r-card)]" />
       </div>
     </SkeletonBlock>
   );

@@ -2,7 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { missingLabel } from '@/lib/serverText';
-import { CheckCircle, WarningCircle, MagnifyingGlass, Eye, X, VideoCamera, Check } from '@phosphor-icons/react';
+import { MagnifyingGlass, Eye, X, VideoCamera, Check } from '@phosphor-icons/react';
+import { Icon } from '@/components/ag/Icon';
+import EditListingModal from '@/components/provider/dashboard/EditListingModal';
+import ListingFormModal from '@/components/ListingFormModal';
 import SignOutButton from '@/components/SignOutButton';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
@@ -16,7 +19,7 @@ import PricedEditor, { type Priced } from '@/components/provider/PricedEditor';
 import OwnersSection from '@/components/provider/OwnersSection';
 import HostMiniSite, { type MiniSiteData } from '@/components/provider/HostMiniSite';
 import { useSeo } from '@/components/Seo';
-import { Box, Button, ButtonLink, Chip, Chips, IconButton, PageHead, SelectField, TextArea, TextField } from '@/components/ag';
+import { Box, Button, ButtonLink, Chip, Chips, IconButton, SelectField, TextArea, TextField } from '@/components/ag';
 
 /**
  * The host's business profile: everything Studio1947's lists ask of a driver, a homestay, a
@@ -60,17 +63,15 @@ function Group({ label, children, hint }: { label: string; children: React.React
 }
 
 function Toggle({ on, onChange, label, note, testid }: { on: boolean; onChange: (v: boolean) => void; label: string; note?: string; testid?: string }) {
+  // The prototype's label.switch: title and note on the left, a 52x32 switch on the right.
   return (
-    <button type="button" role="switch" aria-checked={on} onClick={() => onChange(!on)} data-testid={testid}
-      className="flex w-full items-center justify-between gap-4 text-left">
+    <label className="ag-host-switch">
       <span>
-        <b className="block font-medium text-[var(--ink-strong)]">{label}</b>
-        {note && <span className="ag-small block">{note}</span>}
+        <b>{label}</b>
+        {note && <span className="ag-small">{note}</span>}
       </span>
-      <span className={`relative inline-flex h-8 w-[52px] flex-none rounded-full transition-colors ${on ? 'bg-[var(--r)]' : 'bg-[var(--outline)]'}`}>
-        <span className={`absolute top-1 h-6 w-6 rounded-full bg-[var(--surface)] shadow transition-transform ${on ? 'translate-x-6' : 'translate-x-1'}`} />
-      </span>
-    </button>
+      <input type="checkbox" role="switch" checked={on} onChange={(e) => onChange(e.target.checked)} data-testid={testid} />
+    </label>
   );
 }
 
@@ -133,6 +134,11 @@ export default function ProviderProfile() {
   const [uploading, setUploading] = useState<string | null>(null);
   const [stats, setStats] = useState<{ review_count?: number; average_rating?: number } | null>(null);
   const [showPreview, setShowPreview] = useState(false);
+  const [myListings, setMyListings] = useState<any[]>([]);
+  const [editListing, setEditListing] = useState<any>(null);
+  const [addListing, setAddListing] = useState(false);
+  const loadListings = () => api.get('/bookings/provider').then((r) => setMyListings(r.data.listings || [])).catch(() => setMyListings([]));
+  useEffect(() => { loadListings(); }, []);
   useEffect(() => { api.get('/providers/me/stats').then((r) => setStats(r.data)).catch(() => setStats(null)); }, []);
 
   useEffect(() => {
@@ -339,32 +345,33 @@ export default function ProviderProfile() {
   return (
     <div className="ag-wrap">
       <div className="ag-main" data-testid="provider-profile">
-        <PageHead eyebrow={t(`categories.${type}`, { defaultValue: type })} title={t('hostProfile.title')} sub={t('hostProfile.subtitle')} />
+        <div>
+          <p className="ag-host-typeline">{t(`ob.wz.t_${type}`, { defaultValue: type })}</p>
+          <h1 className="ag-host-tabh">{t('hostProfile.title')}</h1>
+          <p className="ag-small mt-3">{t('hostProfile.subtitle')}</p>
+        </div>
 
         {missing.length > 0 ? (
-          <Box tone="blush" data-testid="profile-missing">
-            <div className="flex items-center gap-2">
-              <WarningCircle size={22} className="flex-none text-[var(--r)]" aria-hidden="true" />
-              <h2>{t('hostProfile.required_title')}</h2>
-            </div>
-            <ul className="grid gap-0.5 text-sm text-[var(--ink-strong)]">
-              {missing.map((m) => <li key={m.key}>• {missingLabel(t, m, p?.business_type)}</li>)}
+          <Box tone="blush" className="ag-host-need" data-testid="profile-missing">
+            <h2>{t('hostProfile.required_title')}</h2>
+            <ul>
+              {missing.map((m) => <li key={m.key}><span className="d" aria-hidden="true">•</span>{missingLabel(t, m, p?.business_type)}</li>)}
             </ul>
             <p className="ag-small">{t('hostProfile.required_note')}</p>
           </Box>
         ) : (
           <Box flat className="!flex-row items-center !gap-2" data-testid="profile-complete">
-            <CheckCircle size={22} weight="fill" className="flex-none text-[var(--ok)]" aria-hidden="true" />
+            <Icon name="check" className="flex-none text-[var(--ok)]" />
             <span className="text-sm text-[var(--ink-strong)]">{t('hostProfile.required_done')}</span>
           </Box>
         )}
 
-        <Box as="section">
+        <Box as="section" className="ag-host-switches">
           <Toggle on={form.available} onChange={(v) => set({ available: v })} testid="profile-available"
-            label={form.available ? t('hostProfile.available_on') : t('hostProfile.available_off')}
+            label={t('hostProfile.available_on')}
             note={t('hostProfile.available_note')} />
           {(type === 'homestay' || type === 'cafe' || type === 'shop') && (
-            <div className="border-t border-[var(--warmline)] pt-3">
+            <div>
               <Toggle on={form.home_delivery} onChange={(v) => set({ home_delivery: v })} testid="profile-home-delivery"
                 label={type === 'shop' ? t('hostProfile.home_delivery_shop') : t('hostProfile.home_delivery')}
                 note={type === 'shop' ? t('hostProfile.home_delivery_shop_note') : type === 'cafe' ? t('hostProfile.home_delivery_cafe_note') : t('hostProfile.home_delivery_note')} />
@@ -430,6 +437,23 @@ export default function ProviderProfile() {
             ))}
           </div>
         </Section>
+
+        {/* provider.js "Your properties" / "Your vehicles": each listing with Edit, and Add. */}
+        <Box as="section" className="ag-host-props" data-testid="profile-properties">
+          <h2>{type === 'driver' ? t('host.your_vehicles', 'Your vehicles') : t('host.your_properties', 'Your properties')}</h2>
+          {myListings.map((l) => (
+            <div key={l.id} className="row">
+              <span className="min-w-0">
+                <b>{l.title}</b>
+                <span className="ag-small">{l.location}{Number(l.price) > 0 ? ` · ${t('host.from', 'From')} ₹${Number(l.price).toLocaleString('en-IN')}` : ''}</span>
+              </span>
+              <Button variant="text" onClick={() => setEditListing(l)}>{t('common.edit')}</Button>
+            </div>
+          ))}
+          <Button className="self-start" icon={<Icon name={type === 'driver' ? 'car' : 'home'} />} onClick={() => setAddListing(true)}>
+            {type === 'driver' ? t('host.add_vehicle', 'Add a vehicle') : t('host.add_property', 'Add a property')}
+          </Button>
+        </Box>
 
         {type === 'driver' && (
           <Section title={t('hostProfile.vehicle')} testid="profile-driver">
@@ -536,28 +560,40 @@ export default function ProviderProfile() {
 
         <OwnersSection onLeft={async () => { await refreshProvider(); nav('/'); }} />
 
-        {/* Sticky save bar: what changed, the live preview, and Save. */}
-        <div className="sticky bottom-[calc(var(--tabbar-h)+8px)] z-20">
+        {/* Save, as the prototype's "Save profile" button, with what happened next to it. */}
+        <div className="ag-host-saverow">
           {msg?.ok ? (
-            <Box className="!flex-row flex-wrap items-center !gap-3 !p-3" data-testid="profile-saved-actions">
-              <CheckCircle size={22} weight="fill" className="flex-none text-[var(--ok)]" aria-hidden="true" />
-              <p className="min-w-0 flex-1 text-sm text-[var(--ink-strong)]">{msg.text}</p>
+            <div className="ag-host-saverow" data-testid="profile-saved-actions">
+              <p className="msg text-[var(--ok)]">{msg.text}</p>
               <Button variant="text" onClick={() => setMsg(null)}>{t('ui.providerProfile.keep_editing')}</Button>
-              <ButtonLink to="/provider/dashboard" size="sm" go>{t('hostProfile.back_dashboard')}</ButtonLink>
-            </Box>
+              <ButtonLink to="/provider/dashboard" go>{t('hostProfile.back_dashboard')}</ButtonLink>
+            </div>
           ) : (
-            <Box className="!flex-row items-center !gap-2 !p-3">
-              <p className={`min-w-0 flex-1 text-sm ${msg ? 'text-[var(--fail)]' : 'text-[var(--ink-muted)]'}`} role={msg ? 'alert' : undefined} data-testid="profile-msg">
-                {msg ? msg.text : <span className="max-sm:hidden">{t('hostProfile.save_hint')}</span>}
+            <>
+              <Button onClick={save} disabled={busy} data-testid="profile-save">{busy ? t('common.loading') : t('hostProfile.save')}</Button>
+              <p className={`msg ${msg ? 'text-[var(--fail)]' : 'text-[var(--ink-muted)]'}`} role={msg ? 'alert' : undefined} data-testid="profile-msg">
+                {msg ? msg.text : t('hostProfile.save_hint')}
               </p>
-              <Button size="sm" icon={<Eye />} onClick={() => setShowPreview(true)} data-testid="profile-preview-open">{t('miniSite.preview_open')}</Button>
-              <Button variant="primary" go onClick={save} disabled={busy} data-testid="profile-save">{busy ? t('common.loading') : t('hostProfile.save')}</Button>
-            </Box>
+            </>
           )}
         </div>
 
+        {/* The prototype's "Live preview" card; tapping it opens the full page preview. */}
+        <button type="button" className="ag-box ag-host-preview" onClick={() => setShowPreview(true)} data-testid="profile-preview-open">
+          <span className="ag-eyebrow">{t('miniSite.preview_title')}</span>
+          {p?.page_path && <span className="url">{`${window.location.host}${p.page_path}`}</span>}
+          <h2>{form.business_name}</h2>
+          <span className="ag-small">{t(`ob.wz.t_${type}`, { defaultValue: type })} · {p?.location}</span>
+          {p?.created_at && <span className="ag-small">{t('host.joined', 'Joined aangan {{date}}', { date: new Date(p.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) })}</span>}
+          <span className={`ag-host-tag${p?.badges?.verified ? ' ok' : ''}`}>{p?.badges?.verified ? t('host.verified', 'Verified') : t('host.new_on', 'New on aangan')}</span>
+        </button>
+
         <SignOutButton />
       </div>
+
+      {editListing && <EditListingModal listing={editListing} onClose={() => setEditListing(null)} onSave={loadListings} />}
+      <ListingFormModal open={addListing} onClose={() => setAddListing(false)}
+        onSubmit={async (values: any) => { await api.post('/listings', values); await loadListings(); }} />
 
       {/* Live preview of the host's mini website (the board's "profiles look like websites"), full screen. */}
       {showPreview && (

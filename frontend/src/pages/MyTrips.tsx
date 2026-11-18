@@ -1,15 +1,15 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Suitcase, Storefront } from '@phosphor-icons/react';
 import { MyDeliveries } from '@/components/AfterTrip';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { useSeo } from '@/components/Seo';
-import TripStats, { tripBuckets, type TripFilter } from '@/components/TripStats';
+import TripStats, { tileBuckets, tileLabel, type TripFilter } from '@/components/TripStats';
 import TripCard from '@/components/TripCard';
-import { Box, ButtonLink, PageHead } from '@/components/ag';
+import { Box, Button, ButtonLink, PageHead } from '@/components/ag';
+import { Icon } from '@/components/ag/Icon';
 
-/** The My trip tab (prototype V.trips): filter chips, then one card per booking, newest first. */
+/** The My trip tab (prototype V.trips): four tiles that filter, a summary line, then one card per booking, newest first. */
 export default function MyTrips() {
   const { t } = useTranslation();
   useSeo({ title: t('nav.my_trips'), noindex: true });
@@ -46,29 +46,31 @@ export default function MyTrips() {
     }
   };
 
-  const head = <PageHead eyebrow={t('ui.trips.eyebrow', 'Your journey')} title={t('nav.my_trips')} />;
+  const head = <PageHead title={t('nav.trips', 'My trip')} />;
 
   if (authLoading || loading) {
     return <div className="ag-wrap"><div className="ag-main">{head}<p className="ag-small">{t('common.loading')}</p></div></div>;
   }
 
-  // Logged-out state
+  // Signed out: the prototype's empty box, asking them to log in.
   if (!user) {
     return (
       <div className="ag-wrap">
         <div className="ag-main">
           {head}
-          <Box>
-            <span className="ag-micon"><Suitcase /></span>
-            <p className="text-[var(--ink7)]">{t('ui.myTrips.logged_out_body')}</p>
-            <ButtonLink to="/login?next=/my-trips" variant="primary" go block>{t('ui.myTrips.log_in_cta')}</ButtonLink>
+          <Box className="ag-account-empty" data-testid="trips-guest">
+            <Icon name="bag" />
+            <p>{t('ui.trips.guest', 'Log in to see your trips.')}</p>
+            <ButtonLink to="/login?next=/my-trips" go data-testid="trips-login">{t('nav.login')}</ButtonLink>
           </Box>
         </div>
       </div>
     );
   }
 
-  const shown = tripBuckets(bookings)[filter];
+  const tiles = tileBuckets(bookings);
+  const shown = tiles[filter];
+  const places = new Set(tiles.completed.map((b) => b.listing?.location).filter(Boolean)).size;
 
   return (
     <div className="ag-wrap">
@@ -78,32 +80,36 @@ export default function MyTrips() {
         {/* A host on the business side: their guests' bookings are on the dashboard. */}
         {isHostMode && (
           <Box tone="blush" className="!flex-row items-center flex-wrap">
-            <span className="ag-micon"><Storefront /></span>
+            <span className="ag-micon"><Icon name="bag" /></span>
             <span className="flex-1 min-w-[180px] text-sm text-[var(--ink-strong)]">{t('ui.myTrips.host_banner')}</span>
             <ButtonLink to="/my-listings" size="sm" go>{t('ui.myTrips.go_to_listings')}</ButtonLink>
           </Box>
         )}
 
         {bookings.length === 0 ? (
-          <Box data-testid="trips-empty">
-            <span className="ag-micon"><Suitcase /></span>
-            <div>
-              <h2>{t('ui.trips.none', 'You have no trips yet.')}</h2>
-              <p className="ag-small">{t('ui.myTrips.empty_all')}</p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <ButtonLink to="/explore" go data-testid="trips-find-place">{t('ui.trips.find', 'Find a place')}</ButtonLink>
-              <ButtonLink to="/homestays" size="sm" data-testid="empty-book-stay">{t('dashboard.book_homestay')}</ButtonLink>
-              <ButtonLink to="/drivers" size="sm" data-testid="empty-book-driver">{t('dashboard.find_driver')}</ButtonLink>
-            </div>
+          <Box className="ag-account-empty" data-testid="trips-empty">
+            <Icon name="bag" />
+            <p>{t('ui.trips.none', 'You have no trips yet.')}</p>
+            <ButtonLink to="/explore" go data-testid="trips-find-place">{t('ui.trips.find', 'Find a place')}</ButtonLink>
           </Box>
         ) : (
           <>
             <TripStats bookings={bookings} filter={filter} onFilter={setFilter} />
+            <div className="ag-account-tdsum" data-testid="trip-summary">
+              <span><Icon name="bag" /> {t('ui.trips.total', 'Trips')} <b>{String(bookings.length).padStart(2, '0')}</b></span>
+              <span><Icon name="pin" /> {t('ui.trips.places', 'Places visited')} <b>{String(places).padStart(2, '0')}</b></span>
+            </div>
+            {filter !== 'all' && (
+              <p className="ag-small">
+                {t(tileLabel(filter)[0], tileLabel(filter)[1])} ·{' '}
+                <Button variant="text" className="!inline-flex !p-0 align-baseline" onClick={() => setFilter('all')}>{t('ui.trips.all', 'Everything')}</Button>
+              </p>
+            )}
             {shown.length === 0 ? (
-              <Box data-testid="trip-filter-empty">
-                <p className="ag-small">{filter === 'all' ? t('ui.myTrips.empty_all') : t(`ui.myTrips.empty_filtered.${filter}`)}</p>
-                <ButtonLink to="/explore" go className="self-start">{t('ui.trips.find', 'Find a place')}</ButtonLink>
+              <Box className="ag-account-empty" data-testid="trip-filter-empty">
+                <Icon name="bag" />
+                <p>{filter === 'waiting' ? t('ui.trips.none_waiting', 'Nothing is waiting right now.') : t(`ui.myTrips.empty_filtered.${filter}`)}</p>
+                <ButtonLink to="/explore" go>{t('ui.trips.find', 'Find a place')}</ButtonLink>
               </Box>
             ) : (
               shown.map((b) => (

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ArrowUpRight, Ticket, Receipt } from '@phosphor-icons/react';
+import { Icon } from '@/components/ag/Icon';
 import api, { createPaymentOrder, completeMockPayment, payWithRazorpay } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import MockPaymentModal from '@/components/MockPaymentModal';
@@ -91,7 +91,7 @@ export default function BookingFeeModal({ bookingId, onConfirmed, onClose }: {
           {/* Two ways to pay, each a tap that starts its payment (not a choice to confirm later). */}
           <button type="button" className="ag-option !items-start !border-[var(--r)] !bg-[var(--r-tint)]" onClick={() => pay('platform_support')}
             disabled={!!busy} data-testid="fee-take-pass">
-            <Ticket aria-hidden="true" />
+            <Icon name="badge" />
             <span className="min-w-0 flex-1">
               <span className="flex items-center justify-between gap-3">
                 <b>{t('fee.pass_title')}</b>
@@ -105,11 +105,11 @@ export default function BookingFeeModal({ bookingId, onConfirmed, onClose }: {
 
           <button type="button" className="ag-option !items-start" onClick={() => pay('booking_commission')}
             disabled={!!busy} data-testid="fee-pay-once">
-            <Receipt aria-hidden="true" />
+            <Icon name="t_trip" />
             <span className="min-w-0 flex-1">
               <span className="flex items-center justify-between gap-3">
                 <b>{t('fee.fee_title')}</b>
-                <span className="inline-flex items-center gap-1 whitespace-nowrap font-medium">{rupees(fee.total)} <ArrowUpRight className="w-4 h-4 text-[var(--r)]" aria-hidden="true" /></span>
+                <span className="inline-flex items-center gap-1 whitespace-nowrap font-medium">{rupees(fee.total)} <Icon name="arrowne" size={16} className="text-[var(--r)]" /></span>
               </span>
               <span className="ag-small">{busy === 'booking_commission' ? t('common.loading') : t('fee.fee_body')}</span>
               <PriceBreakup breakup={fee} label={t('price.booking_fee')} compact className="mt-2" />

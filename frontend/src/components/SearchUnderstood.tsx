@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { MagicWand } from '@phosphor-icons/react';
+import { Icon } from '@/components/ag/Icon';
 import { describeSearch, type SearchInterpretation } from '@/lib/searchText';
 import { Button, Status } from '@/components/ag';
 
@@ -19,10 +19,10 @@ export default function SearchUnderstood({ search, fixedType, onUse }: {
   const parts = describeSearch(search, fixedType, t);
   if (!parts.length && !search.corrected) return null;
   return (
-    <div className="ag-row mt-2" data-testid="search-understood">
+    <div className="ag-row" data-testid="search-understood">
       {parts.length > 0 && (
         <Status tone="info">
-          <MagicWand size={14} weight="bold" aria-hidden="true" /> {parts.join(' · ')}
+          <Icon name="search" className="!h-3.5 !w-3.5" /> {parts.join(' · ')}
         </Status>
       )}
       {search.corrected && (

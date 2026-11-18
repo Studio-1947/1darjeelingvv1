@@ -1,44 +1,119 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import {
-  ArrowUpRight, Globe, Heart, Info, Lifebuoy, Path, SealCheck, Storefront, Suitcase, User,
-} from '@phosphor-icons/react';
 import { useAuth } from '@/context/AuthContext';
 import { useSeo } from '@/components/Seo';
 import { isSupportActive } from '@/lib/support';
 import { rupees, usePassPrice } from '@/lib/prices';
-import { Box, Button, ButtonLink, MenuIcon, PageHead, SecHead, Status } from '@/components/ag';
+import { LANGUAGES, setLanguage, type LangCode } from '@/i18n';
+import { PALETTES, accentOf, mix, useTheme } from '@/lib/theme';
+import { Box, Button, ButtonA, ButtonLink, PageHead, Status } from '@/components/ag';
+import { Icon, type IconName } from '@/components/ag/Icon';
+import Wordmark from '@/components/Wordmark';
 import BlockedPeople from '@/components/BlockedPeople';
 import SignOutButton from '@/components/SignOutButton';
-import LanguageSwitcher from '@/components/LanguageSwitcher';
-import TravellerPanels from '@/components/TravellerPanels';
+import TravellerPanels, { Avatar } from '@/components/TravellerPanels';
 
-/** The circled arrow at the end of a menu row. */
-const GoLink = () => <ArrowUpRight weight="bold" size={20} className="flex-none text-[var(--r)]" aria-hidden="true" />;
+/** Prototype language order and labels (V.language). */
+const LANG_ORDER: LangCode[] = ['en', 'hi', 'ne', 'bn'];
+const langName = (code: string) => LANGUAGES.find((l) => l.code === code)?.label || 'English';
 
-function MenuLabel({ title, sub }: { title: React.ReactNode; sub?: React.ReactNode }) {
+const GoLink = () => <span className="ag-account-golink" aria-hidden="true"><Icon name="arrowne" /></span>;
+
+/** One row of the menu card: icon circle, label with a small line under it, then the grey arrow. */
+function Row({ icon, title, sub, end }: { icon: IconName; title: React.ReactNode; sub?: React.ReactNode; end?: React.ReactNode }) {
   return (
-    <span className="ag-mlab">
-      {title}
-      {sub != null && <span className="ag-small">{sub}</span>}
-    </span>
+    <>
+      <span className="ag-micon" aria-hidden="true"><Icon name={icon} /></span>
+      <span className="ag-mlab">
+        {title}
+        {sub != null && sub !== '' && <span className="ag-small">{sub}</span>}
+      </span>
+      {end ?? <GoLink />}
+    </>
+  );
+}
+
+/** The help card that closes the Account tab (prototype footer({hours:true})). */
+function AccountFoot() {
+  const { t } = useTranslation();
+  const links: Array<{ to: string; label: string; ext?: boolean; testId?: string }> = [
+    { to: '/about', label: t('footer.about_aangan'), testId: 'account-about' },
+    { to: 'https://www.1947.io', label: t('about.know_studio', 'Know Studio 1947'), ext: true },
+    { to: '/responsible', label: t('ui.account.travel_resp', 'Travel responsibly') },
+    { to: '/policies', label: t('ui.account.policies', 'Terms, Privacy & Refund Policy') },
+  ];
+  return (
+    <footer className="ag-account-foot" data-testid="account-foot">
+      <div className="brand">
+        <Wordmark className="h-[18px] w-auto text-[var(--ink-strong)]" still />
+        <span className="ag-small">{t('ui.account.by_studio', 'A Product by Studio 1947')}</span>
+      </div>
+      <nav className="ag-account-footlinks" aria-label={t('footer.links')}>
+        {links.map((l) => l.ext ? (
+          <a key={l.to} href={l.to} target="_blank" rel="noopener noreferrer">{l.label}<GoLink /></a>
+        ) : (
+          <Link key={l.to} to={l.to} data-testid={l.testId}>{l.label}<GoLink /></Link>
+        ))}
+      </nav>
+      <p className="ag-account-help">
+        {t('ui.account.help1', 'Need help? Call us on')} <b>+91 90932 77919</b><br />
+        <span className="hrs"><Icon name="bell" /> {t('ui.account.callhrs', 'Calls: Monday to Friday, 9 am to 6 pm')}</span><br />
+        {t('ui.account.help2', 'or email')} <b>aanganerp@gmail.com</b>
+      </p>
+      <div className="ag-account-contact">
+        <ButtonA href="tel:+919093277919" icon={<Icon name="phone" />} data-testid="account-help"
+          aria-label={t('ui.footer.call_us', { phone: '+91 90932 77919' })}>{t('ui.footer.call')}</ButtonA>
+        <ButtonA href="mailto:aanganerp@gmail.com" icon={<Icon name="mail" />}
+          aria-label={t('ui.footer.email_us', { email: 'aanganerp@gmail.com' })}>{t('ui.footer.email')}</ButtonA>
+        <a className="ag-iconbtn" href="https://www.instagram.com/aanganerp?dlrf=MWRnZ2tneHBqM2JiaQ%3D%3D" target="_blank" rel="noreferrer"
+          aria-label={t('ui.footer.follow_instagram')}><Icon name="insta" /></a>
+        <a className="ag-iconbtn" href="https://www.facebook.com/profile.php?id=61594349938326" target="_blank" rel="noreferrer"
+          aria-label={t('ui.footer.follow_facebook')}><Icon name="fb" /></a>
+      </div>
+    </footer>
+  );
+}
+
+/** Account → Language (prototype V.language): one pill per language, the current one filled. */
+function LanguageScreen() {
+  const { t, i18n } = useTranslation();
+  return (
+    <div className="ag-wrap">
+      <div className="ag-main">
+        <PageHead eyebrow={t('ui.account.eyebrow', 'Your account')} title={t('lang.choose', 'Language')} />
+        <div className="ag-account-langs" role="group" aria-label={t('lang.choose', 'Language')} data-testid="language-switcher">
+          {LANG_ORDER.map((code) => {
+            const on = i18n.language === code;
+            return (
+              <button key={code} type="button" lang={code} aria-pressed={on} data-testid={`lang-option-${code}`} onClick={() => setLanguage(code)}>
+                <span className="dot" aria-hidden="true">{on && <Icon name="check" />}</span>
+                {langName(code)}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
   );
 }
 
 /**
- * The Account tab (prototype V.me): who you are, the business box, then the menu. Always
- * reachable, so a signed-out visitor gets the guest version with a Log in button instead of a
- * redirect. Trips live on the My trip tab.
+ * The Account tab (prototype V.me): who you are, the menu (profile, theme colour, language, traveller
+ * dashboard, membership), the business card, then the help card. Always reachable, so a signed-out
+ * visitor gets the guest version with a Log in button. The traveller dashboard sits on this page
+ * (the menu row scrolls to it); Language opens as its own screen at /dashboard?s=language.
  */
 export default function TouristDashboard() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   useSeo({ title: t('nav.account'), noindex: true });
   const { user, loading, setMode, provider } = useAuth();
   const nav = useNavigate();
-  const [avatarError, setAvatarError] = useState(false);
+  const [sp] = useSearchParams();
   const pass = usePassPrice(user);
+  const [theme] = useTheme();
 
+  if (sp.get('s') === 'language') return <LanguageScreen />;
   if (loading) return <div className="ag-wrap"><div className="ag-main"><p className="ag-small">{t('common.loading')}</p></div></div>;
 
   const passOn = !!user && isSupportActive(user);
@@ -46,138 +121,105 @@ export default function TouristDashboard() {
   const live = provider?.status === 'active';
   const toPanels = () => document.getElementById('traveller-dashboard')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
+  const pal = PALETTES.find((p) => p.key === theme);
+  const accent = accentOf(theme);
+  const themeName = pal ? `${pal.name} · ${pal.en}` : accent;
+
   return (
     <div className="ag-wrap">
       <div className="ag-main">
         <PageHead eyebrow={t('ui.account.eyebrow', 'Your account')} title={t('nav.account')} />
 
         {/* Who you are */}
-        {user ? (
-          <Box className="!flex-row items-center !gap-4">
-            <span className="w-16 h-16 flex-none rounded-full overflow-hidden bg-[var(--r)] text-[var(--on-r)] grid place-items-center text-[27px] font-medium">
-              {user.avatar && !avatarError ? (
-                <img src={user.avatar} alt={user.name || ''} onError={() => setAvatarError(true)} data-testid="account-avatar" className="w-full h-full object-cover" />
-              ) : (user.name?.trim().charAt(0).toUpperCase() || <User size={28} aria-hidden="true" />)}
-            </span>
+        <Box className="ag-account-head" data-testid={user ? 'account-me' : 'account-guest'}>
+          <div className="row">
+            <Avatar name={user?.name} src={user?.avatar} size={64} />
             <div className="min-w-0 flex-1">
-              <h2 className="truncate">{user.name || t('dashboard.traveller')}</h2>
-              <p className="ag-small whitespace-nowrap">{user.phone}</p>
-              <Status tone="info" className="mt-1" data-testid="account-mode">{t('dashboard.traveller')}</Status>
-            </div>
-          </Box>
-        ) : (
-          <Box data-testid="account-guest">
-            <div className="flex items-center gap-4">
-              <span className="w-16 h-16 flex-none rounded-full bg-[var(--r-tint)] text-[var(--r)] grid place-items-center"><User size={28} aria-hidden="true" /></span>
-              <div className="min-w-0">
-                <h2>{t('dashboard.traveller')}</h2>
-                <p className="ag-small">{t('ui.account.not_in', 'Not logged in')}</p>
-              </div>
-            </div>
-            <p className="ag-small">{t('ui.account.login_lead', 'Log in to see your trips, saved places, points and aangan pass.')}</p>
-            <ButtonLink to="/login?next=/dashboard" variant="primary" go block data-testid="account-login">{t('nav.login')}</ButtonLink>
-          </Box>
-        )}
-
-        {/* For businesses */}
-        <div className="flex flex-col gap-2">
-          <span className="ag-eyebrow">{t('ui.account.for_business', 'For businesses')}</span>
-          <Box tone="blush">
-            <div className="flex items-center gap-3">
-              <MenuIcon><Storefront /></MenuIcon>
-              {isHost ? (
-                <div className="min-w-0 flex-1">
-                  <b className="block font-medium text-[var(--ink-strong)] truncate">{provider?.business_name || t('nav.mode_business')}</b>
-                  {provider && (
-                    <Status tone={live ? 'ok' : 'pending'} className="mt-1" data-testid="account-business-status">
-                      {live ? t('verify.step_live') : t('provider.pending_review')}
-                    </Status>
-                  )}
-                </div>
+              <h2>{user?.name || t('dashboard.traveller')}</h2>
+              {user ? (
+                passOn ? (
+                  <Status tone="ok" className="mt-1" data-testid="account-mode"><Icon name="check" size={14} /> {t('ui.travellerPanels.pass_title')}</Status>
+                ) : (
+                  <p className="ag-small" data-testid="account-mode">{t('dashboard.traveller')}</p>
+                )
               ) : (
-                <div className="min-w-0 flex-1">
-                  <b className="block font-medium text-[var(--ink-strong)]">{t('ui.account.biz_start', 'Start your business on aangan')}</b>
-                  <span className="ag-small">{t('ui.account.biz_start_s', 'Homestay, driver, guide, cafe or shop. No booking commission.')}</span>
-                </div>
+                <p className="ag-small">{t('ui.account.not_in', 'Not logged in')}</p>
               )}
             </div>
-            {isHost ? (
-              <Button go className="self-start" onClick={() => { setMode('provider'); nav('/provider/dashboard'); }} data-testid="account-switch-business">
-                {t('ui.account.check_biz', 'Check your business')}
-              </Button>
-            ) : (
-              <ButtonLink to="/provider/onboard" go className="self-start" data-testid="account-switch-business">
-                {t('ui.account.list_now', 'List now')}
-              </ButtonLink>
-            )}
-          </Box>
-        </div>
-
-        {/* Menu */}
-        <Box className="!gap-0 !py-1">
-          <nav className="ag-menu" aria-label={t('nav.account')}>
-            {user && (
-              <Link to="/profile/edit" data-testid="account-edit-profile">
-                <MenuIcon><User /></MenuIcon>
-                <MenuLabel title={t('nav.profile')} sub={t('nav.edit_profile')} />
-                <GoLink />
-              </Link>
-            )}
-            <div className="!flex-wrap !gap-y-2 cursor-default">
-              <MenuIcon><Globe /></MenuIcon>
-              <MenuLabel title={t('lang.choose', 'Language')} />
-              <LanguageSwitcher className="basis-full" />
-            </div>
-            {user && (
-              <button type="button" onClick={toPanels} data-testid="account-traveller-dashboard">
-                <MenuIcon><Path /></MenuIcon>
-                <MenuLabel title={t('ui.account.tdash', 'Traveller dashboard')} />
-                <GoLink />
-              </button>
-            )}
-            {user && (
-              <Link to="/my-trips" data-testid="dashboard-my-trips">
-                <MenuIcon><Suitcase /></MenuIcon>
-                <MenuLabel title={t('nav.my_trips')} />
-                <GoLink />
-              </Link>
-            )}
-            {user && (
-              <Link to="/saved" data-testid="dashboard-saved">
-                <MenuIcon><Heart /></MenuIcon>
-                <MenuLabel title={t('nav.saved')} />
-                <GoLink />
-              </Link>
-            )}
-            {user && (passOn ? (
-              <div className="cursor-default" data-testid="account-pass">
-                <MenuIcon><SealCheck /></MenuIcon>
-                <MenuLabel title={t('ui.travellerPanels.pass_title')} />
-                <Status tone="ok">{t('ui.travellerPanels.pass_active')}</Status>
-              </div>
-            ) : (
-              <Link to="/support" data-testid="account-pass">
-                <MenuIcon><SealCheck /></MenuIcon>
-                <MenuLabel title={t('ui.travellerPanels.pass_title')} sub={t('ui.travellerPanels.get_pass', { price: rupees(pass.total) })} />
-                <GoLink />
-              </Link>
-            ))}
-            <Link to="/about" data-testid="account-about">
-              <MenuIcon><Info /></MenuIcon>
-              <MenuLabel title={t('footer.about_aangan')} />
-              <GoLink />
-            </Link>
-            <Link to="/contact" data-testid="account-help">
-              <MenuIcon><Lifebuoy /></MenuIcon>
-              <MenuLabel title={t('ui.account.help', 'Help and contact')} />
-              <GoLink />
-            </Link>
-          </nav>
+          </div>
+          {!user && (
+            <ButtonLink to="/login?next=/dashboard" go className="self-start" data-testid="account-login">{t('nav.login')}</ButtonLink>
+          )}
         </Box>
 
+        {/* Menu */}
+        <nav className="ag-box ag-account-menu" aria-label={t('nav.account')}>
+          <Link to={user ? '/profile/edit' : '/login?next=/profile/edit'} data-testid="account-edit-profile">
+            <Row icon="person" title={t('nav.profile')} sub={user?.phone || ''} />
+          </Link>
+          <Link to="/theme" data-testid="account-theme">
+            <Row icon="sun" title={t('theme.title', 'Theme colour')} sub={themeName}
+              end={(
+                <span className="ag-account-palmini" aria-hidden="true">
+                  {[accent, mix(accent, '#0B0A08', 0.68), mix(accent, '#FFFFFF', 0.86)].map((c, i) => <i key={i} style={{ background: c }} />)}
+                </span>
+              )} />
+          </Link>
+          <Link to="/dashboard?s=language" data-testid="account-language">
+            <Row icon="globe" title={t('lang.choose', 'Language')} sub={langName(i18n.language)} />
+          </Link>
+          {user ? (
+            <button type="button" onClick={toPanels} data-testid="account-traveller-dashboard">
+              <Row icon="t_trip" title={t('ui.account.tdash', 'Traveller dashboard')} />
+            </button>
+          ) : (
+            <Link to="/login?next=/dashboard" data-testid="account-traveller-dashboard">
+              <Row icon="t_trip" title={t('ui.account.tdash', 'Traveller dashboard')} />
+            </Link>
+          )}
+          <Link to="/support" data-testid="account-pass">
+            <Row icon="badge" title={t('ui.account.member', 'Membership')}
+              sub={passOn ? `${t('ui.travellerPanels.pass_title')} · ${t('ui.travellerPanels.pass_active')}` : t('ui.travellerPanels.get_pass', { price: rupees(pass.total) })} />
+          </Link>
+        </nav>
+
+        {/* For businesses */}
+        <span className="ag-eyebrow ag-account-bizeye">{t('ui.account.for_business', 'For businesses')}</span>
+        <section className="ag-account-biz" aria-label={t('ui.account.for_business', 'For businesses')}>
+          <div className="row">
+            <span className="ag-micon" aria-hidden="true"><Icon name="bag" /></span>
+            <div className="min-w-0 flex-1">
+              {isHost ? (
+                <>
+                  <b className="truncate">{provider?.business_name || t('nav.mode_business')}</b>
+                  <span className="ag-small">{t('nav.business_dashboard')}</span>
+                </>
+              ) : (
+                <>
+                  <b>{t('ui.account.biz_start', 'Start your business on aangan')}</b>
+                  <span className="ag-small">{t('ui.account.biz_box_s', 'Homestay, driver, guide, cafe or shop. Free to list, no booking commission.')}</span>
+                </>
+              )}
+            </div>
+            {isHost && provider && (
+              <Status tone={live ? 'ok' : 'pending'} data-testid="account-business-status">
+                {live ? t('verify.step_live') : t('provider.pending_review')}
+              </Status>
+            )}
+          </div>
+          {isHost ? (
+            <Button go onClick={() => { setMode('provider'); nav('/provider/dashboard'); }} data-testid="account-switch-business">
+              {t('ui.account.check_biz', 'Check your business')}
+            </Button>
+          ) : (
+            <ButtonLink to="/provider/onboard" go data-testid="account-switch-business">
+              {t('ui.account.list_now', 'List now')}
+            </ButtonLink>
+          )}
+        </section>
+
         {user && (
-          <section id="traveller-dashboard" className="scroll-mt-20 flex flex-col" aria-labelledby="tdash-title">
-            <SecHead id="tdash-title" eyebrow={t('ui.account.eyebrow', 'Your account')} title={t('ui.account.tdash', 'Traveller dashboard')} className="!mt-0" />
+          <section id="traveller-dashboard" className="scroll-mt-20 flex flex-col gap-4" aria-label={t('ui.account.tdash', 'Traveller dashboard')}>
             <TravellerPanels />
           </section>
         )}
@@ -185,7 +227,10 @@ export default function TouristDashboard() {
         {user && <BlockedPeople />}
 
         {user && <SignOutButton className="mt-2" />}
+
+        <AccountFoot />
       </div>
     </div>
   );
 }
+

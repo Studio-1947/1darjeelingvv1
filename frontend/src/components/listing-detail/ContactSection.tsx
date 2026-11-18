@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Phone, WhatsappLogo, NavigationArrow as Navigation, CalendarPlus } from '@phosphor-icons/react';
+import { Icon } from '@/components/ag/Icon';
 import { Button, ButtonA } from '@/components/ag';
 import { Section } from './primitives';
 
@@ -42,29 +42,28 @@ export default function ContactSection({ item, onOpenMaps }: { item: any; onOpen
 
   return (
     <Section title={title} note={note} testid="detail-contact">
-      {phone ? (
-        <div className="ag-stack">
-          <ButtonA variant="primary" block href={`tel:${phone}`} data-testid="contact-call" icon={<Phone />}>
-            {isEvent ? t('contact.call_organizer') : t('cta.call_now')}
+      {!phone && <p className="ag-small">{t('contact.no_contact')}</p>}
+      {/* The prototype's contact row (trip card .sitebtns): Call, WhatsApp, Direction as tonal pills. */}
+      <div className="ag-listing-acts">
+        {phone && (
+          <ButtonA variant="tonal" href={`tel:${phone}`} data-testid="contact-call" icon={<Icon name="phone" />}>
+            {isEvent ? t('contact.call_organizer') : t('listing.call', 'Call')}
           </ButtonA>
-          {/* WhatsApp keeps its own green. */}
-          <ButtonA block href={`https://wa.me/${waNumber}?text=${waText}`} target="_blank" rel="noreferrer" data-testid="contact-whatsapp"
-            icon={<WhatsappLogo weight="fill" className="!text-[#25D366]" />}>
-            {t('contact.whatsapp')}
+        )}
+        {phone && (
+          <ButtonA variant="tonal" href={`https://wa.me/${waNumber}?text=${waText}`} target="_blank" rel="noreferrer" data-testid="contact-whatsapp"
+            icon={<Icon name="wa" />}>
+            WhatsApp
           </ButtonA>
-        </div>
-      ) : (
-        <p className="ag-small">{t('contact.no_contact')}</p>
-      )}
-      <div className="ag-row">
+        )}
+        <Button variant="tonal" onClick={onOpenMaps} data-testid="contact-directions" icon={<Icon name="pin" />}>
+          {t('listing.direction', 'Direction')}
+        </Button>
         {calUrl && (
-          <ButtonA size="sm" href={calUrl} target="_blank" rel="noreferrer" data-testid="contact-calendar" icon={<CalendarPlus />}>
+          <ButtonA variant="tonal" href={calUrl} target="_blank" rel="noreferrer" data-testid="contact-calendar" icon={<Icon name="t_trip" />}>
             {t('contact.add_to_calendar')}
           </ButtonA>
         )}
-        <Button size="sm" onClick={onOpenMaps} data-testid="contact-directions" icon={<Navigation />}>
-          {t('cta.get_directions')}
-        </Button>
       </div>
     </Section>
   );

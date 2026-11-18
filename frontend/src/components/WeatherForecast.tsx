@@ -1,21 +1,9 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  Sun,
-  CloudSun,
-  Cloud,
-  CloudFog,
-  CloudRain,
-  CloudSnow,
-  CloudLightning,
-  Drop,
-  MapPin,
-  Crosshair,
-  CircleNotch as Loader2,
-} from '@phosphor-icons/react';
+import { CircleNotch as Loader2 } from '@phosphor-icons/react';
 import { parseDate } from '@/lib/dates';
 import api from '@/lib/api';
-import { Box, Button, Chip, Chips } from '@/components/ag';
+import { Icon, type IconName } from '@/components/ag/Icon';
 
 interface DayForecast {
   date: string;
@@ -37,24 +25,20 @@ const DAYS = 5;
 /** Minimum query length: matches /api/geocode/search's own floor. */
 const MIN_QUERY_LEN = 3;
 
-/**
- * The sky behind the forecast: the one gradient surface in the app, built from the theme's warm
- * tokens (dawn over the hills) rather than its own colours.
- */
-const SKY: React.CSSProperties = {
-  background: 'linear-gradient(165deg, var(--blush2) 0%, var(--blush) 30%, var(--creme2) 65%, var(--creme) 100%)',
-  borderColor: 'var(--blush2)',
-};
+type Kind = 'clear' | 'partly' | 'cloud' | 'fog' | 'rain' | 'snow' | 'storm';
+const ICON: Record<Kind, IconName> = { clear: 'sun', partly: 'pcloud', cloud: 'cloud', fog: 'fog', rain: 'rain', snow: 'snow', storm: 'storm' };
+/** The condition's key under weather.conditions. */
+const CONDITION: Record<Kind, string> = { clear: 'clear', partly: 'partly_cloudy', cloud: 'cloudy', fog: 'fog', rain: 'rain', snow: 'snow', storm: 'storm' };
 
-/** Maps a WMO weather code to an icon and a condition key under weather.conditions. */
-function weatherInfo(code: number) {
-  if (code === 0) return { Icon: Sun, condition: 'clear' };
-  if (code <= 2) return { Icon: CloudSun, condition: 'partly_cloudy' };
-  if (code === 45 || code === 48) return { Icon: CloudFog, condition: 'fog' };
-  if ((code >= 71 && code <= 77) || code === 85 || code === 86) return { Icon: CloudSnow, condition: 'snow' };
-  if (code >= 95) return { Icon: CloudLightning, condition: 'storm' };
-  if (code >= 51) return { Icon: CloudRain, condition: 'rain' };
-  return { Icon: Cloud, condition: 'cloudy' };
+/** WMO weather code to the sky it shows (the same buckets as the prototype's wxKind). */
+function kindOf(code: number): Kind {
+  if (code === 0) return 'clear';
+  if (code <= 2) return 'partly';
+  if (code === 3) return 'cloud';
+  if (code <= 48) return 'fog';
+  if ((code >= 71 && code <= 77) || code === 85 || code === 86) return 'snow';
+  if (code >= 95) return 'storm';
+  return 'rain';
 }
 
 /** One forecast per point, in the order asked. Open-Meteo answers several points in one call. */
@@ -80,47 +64,55 @@ async function fetchForecasts(points: Array<{ lat: number; lng: number }>): Prom
   });
 }
 
-/** Today large, then the next days in a strip: the weather box in the Feed and under the home search. */
-function ForecastView({ place, days }: { place: string; days: DayForecast[] }) {
+/** The sky card with only a line in it: loading, failed, not found. */
+function SkyMessage({ title, children, testId }: { title: React.ReactNode; children: React.ReactNode; testId?: string }) {
+  return (
+    <div className="ag-feed-wx wx-cloud" data-testid={testId}>
+      <div className="ag-feed-wxtop"><span className="ag-feed-wxeye">{title}</span></div>
+      {children}
+    </div>
+  );
+}
+
+/** Today large over the sky's colour, then five days in a frosted strip. */
+function ForecastView({ place, days, testId }: { place: string; days: DayForecast[]; testId?: string }) {
   const { t, i18n } = useTranslation();
   const today = days[0];
-  const { Icon: TodayIcon, condition } = weatherInfo(today.code);
+  const k0 = kindOf(today.code);
   return (
-    <>
-      <div className="flex items-center justify-between gap-3">
-        <span className="ag-eyebrow inline-flex items-center gap-1.5 min-w-0">
-          <MapPin size={14} weight="fill" className="flex-none" /> <span className="truncate">{place}</span>
-        </span>
-        <span className="ag-eyebrow">{t('weather.today')}</span>
+    <div className={`ag-feed-wx wx-${k0}`} data-testid={testId}>
+      <div className="ag-feed-wxtop">
+        <span className="ag-feed-wxeye min-w-0"><Icon name="pin" /> <span className="truncate">{place}</span></span>
+        <span className="ag-feed-wxeye">{t('weather.today')}</span>
       </div>
-      <div className="flex items-center justify-between gap-3">
+      <div className="ag-feed-wxnow">
         <div className="min-w-0">
-          <b className="block text-[56px] leading-[60px] tracking-[-0.03em] text-[var(--ink-strong)] tabular-nums">{today.tempMax}°</b>
-          <p className="ag-lead m-0">{t(`weather.conditions.${condition}`)}</p>
-          <p className="ag-small m-0 inline-flex items-center gap-1 !text-[var(--ink7)]">
-            {t('weather.high')} {today.tempMax}° · {t('weather.low')} {today.tempMin}°
-            {today.rain != null && (<> · <Drop size={13} weight="fill" className="text-[var(--r)]" aria-hidden="true" /> {today.rain}%</>)}
+          <b className="ag-feed-wxtemp tabular-nums">{today.tempMax}°</b>
+          <p className="ag-feed-wxcond">{t(`weather.conditions.${CONDITION[k0]}`)}</p>
+          <p className="ag-feed-wxhl">
+            H {today.tempMax}° · L {today.tempMin}°
+            {today.rain != null && (<> · <Icon name="rain" /> {today.rain}%</>)}
           </p>
         </div>
-        <TodayIcon size={80} weight="duotone" className="flex-none text-[var(--r)]" aria-hidden="true" />
+        <span className="ag-feed-wxbig" aria-hidden="true"><Icon name={ICON[k0]} /></span>
       </div>
-      <div className="grid grid-cols-5 gap-1 rounded-[18px] bg-white/60 p-1.5">
+      <div className="ag-feed-wxstrip">
         {days.map((d, i) => {
-          const { Icon, condition: c } = weatherInfo(d.code);
+          const k = kindOf(d.code);
           const dt = parseDate(d.date);
           const label = i === 0 ? t('weather.today') : dt ? dt.toLocaleDateString(i18n.language || 'en', { weekday: 'short' }) : d.date;
           return (
-            <div key={d.date} data-testid={`weather-forecast-day-${d.date}`} title={t(`weather.conditions.${c}`)}
-              className={`flex flex-col items-center gap-1 rounded-xl py-1.5 text-xs text-[var(--ink-muted)] ${i === 0 ? 'bg-white' : ''}`}>
-              <span className="font-medium text-[var(--ink-strong)] truncate max-w-full">{label}</span>
-              <Icon size={22} weight="duotone" className="text-[var(--r)]" aria-label={t(`weather.conditions.${c}`)} />
-              <b className="text-[15px] leading-[18px] font-medium text-[var(--ink-strong)] tabular-nums">{d.tempMax}°</b>
-              <span className="tabular-nums">{d.tempMin}°</span>
+            <div key={d.date} data-testid={`weather-forecast-day-${d.date}`} title={t(`weather.conditions.${CONDITION[k]}`)}
+              className={`ag-feed-wxcol${i === 0 ? ' on' : ''}`}>
+              <span className="truncate max-w-full">{label}</span>
+              <Icon name={ICON[k]} title={t(`weather.conditions.${CONDITION[k]}`)} />
+              <b className="tabular-nums">{d.tempMax}°</b>
+              <i className="tabular-nums">{d.tempMin}°</i>
             </div>
           );
         })}
       </div>
-    </>
+    </div>
   );
 }
 
@@ -188,22 +180,23 @@ export default function WeatherForecast({ query }: { query: string }) {
 
   if (query.trim().length < MIN_QUERY_LEN) return null;
 
-  return (
-    <Box data-testid="weather-forecast" style={SKY}>
-      {loading ? (
-        <p className="ag-small m-0 inline-flex items-center gap-2"><Loader2 size={16} className="animate-spin" /> {t('weather.loading')}</p>
-      ) : notFound || days.length === 0 ? (
-        <p className="ag-small m-0" data-testid="weather-forecast-not-found">{t('weather.not_found')}</p>
-      ) : (
-        <ForecastView place={placeName} days={days} />
-      )}
-    </Box>
-  );
+  if (loading || notFound || days.length === 0) {
+    return (
+      <SkyMessage title={t('feed.kind_weather', 'Weather')} testId="weather-forecast">
+        {loading ? (
+          <p className="ag-feed-wxmsg inline-flex items-center gap-2"><Loader2 size={16} className="animate-spin" /> {t('weather.loading')}</p>
+        ) : (
+          <p className="ag-feed-wxmsg" data-testid="weather-forecast-not-found">{t('weather.not_found')}</p>
+        )}
+      </SkyMessage>
+    );
+  }
+  return <ForecastView place={placeName} days={days} testId="weather-forecast" />;
 }
 
 /* ---------- the Feed's weather box: the hill towns, one tap each ---------- */
 
-type Town = { name: string; lat: number; lng: number; mine?: boolean };
+type Town = { name: string; lat: number; lng: number; custom?: boolean };
 const TOWNS: Town[] = [
   { name: 'Darjeeling', lat: 27.041, lng: 88.2663 },
   { name: 'Ghum', lat: 27.0087, lng: 88.253 },
@@ -219,15 +212,27 @@ const TOWNS: Town[] = [
 let townCache: { at: number; data: DayForecast[][] } | null = null;
 const CACHE_MS = 3 * 60 * 60 * 1000;
 
-/** Five days for each hill town, in one Open-Meteo call; "My location" adds the reader's own spot. */
+type Hit = { name: string; lat: number; lng: number; sub?: string };
+
+/**
+ * Five days for each hill town, in one Open-Meteo call. "Search location" finds any place through
+ * the backend's geocoder and "My location" uses the phone's position; either adds a chip up front.
+ */
 export function HillWeather() {
   const { t } = useTranslation();
   const [towns, setTowns] = useState<Town[]>(TOWNS);
   const [data, setData] = useState<DayForecast[][] | null>(townCache && Date.now() - townCache.at < CACHE_MS ? townCache.data : null);
   const [failed, setFailed] = useState(false);
   const [sel, setSel] = useState(0);
-  const [locating, setLocating] = useState(false);
+  const [busy, setBusy] = useState<'' | 'me' | string>('');
+  const [oneFailed, setOneFailed] = useState(false);
   const [locFailed, setLocFailed] = useState(false);
+  const [finding, setFinding] = useState(false);
+  const [q, setQ] = useState('');
+  const [hits, setHits] = useState<Hit[]>([]);
+  const [searching, setSearching] = useState(false);
+  const qRef = useRef<HTMLInputElement>(null);
+  const myName = t('ob.wz.myloc', 'My location');
 
   const load = useCallback(async () => {
     setFailed(false);
@@ -242,67 +247,151 @@ export function HillWeather() {
 
   useEffect(() => { if (!data) load(); }, [data, load]);
 
+  // Typed place names go to the backend geocoder (same floor and debounce as the home search).
+  useEffect(() => {
+    if (!finding) return;
+    const needle = q.trim();
+    if (needle.length < MIN_QUERY_LEN) { setHits([]); setSearching(false); return; }
+    let cancelled = false;
+    setSearching(true);
+    const timer = setTimeout(async () => {
+      try {
+        const { data: res } = await api.get('/geocode/search', { params: { q: needle } });
+        if (cancelled) return;
+        setHits((res?.results || []).slice(0, 6).map((r: any) => {
+          const parts = String(r.display_name || '').split(',').map((s: string) => s.trim()).filter(Boolean);
+          return { name: parts[0] || needle, sub: parts.slice(1, 3).join(', '), lat: Number(r.lat), lng: Number(r.lon) };
+        }).filter((h: Hit) => Number.isFinite(h.lat) && Number.isFinite(h.lng)));
+      } catch {
+        if (!cancelled) setHits([]);
+      } finally {
+        if (!cancelled) setSearching(false);
+      }
+    }, 450);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [q, finding]);
+
+  /** Forecast one more place and put its chip first, selected. */
+  const addPlace = async (place: Town, key: string) => {
+    const at = towns.findIndex((x) => x.name.toLowerCase() === place.name.toLowerCase());
+    if (at >= 0 && data?.[at]?.length) { setSel(at); setFinding(false); return; }
+    setBusy(key);
+    setOneFailed(false);
+    try {
+      const [fc] = await fetchForecasts([place]);
+      if (!fc?.length) throw new Error('empty');
+      const keep = towns.map((x, i) => [x, data?.[i] || []] as const).filter(([x]) => x.name.toLowerCase() !== place.name.toLowerCase());
+      setTowns([{ ...place, custom: true }, ...keep.map(([x]) => x)]);
+      setData([fc, ...keep.map(([, d]) => d)]);
+      setSel(0);
+      setFinding(false);
+      setQ('');
+    } catch {
+      setOneFailed(true);
+    } finally {
+      setBusy('');
+    }
+  };
+
   const myLocation = () => {
-    const at = towns.findIndex((x) => x.mine);
+    const at = towns.findIndex((x) => x.custom && x.name === myName);
     if (at >= 0) { setSel(at); return; }
     if (!navigator.geolocation) { setLocFailed(true); return; }
-    setLocating(true);
+    setBusy('me');
     setLocFailed(false);
-    navigator.geolocation.getCurrentPosition(async (pos) => {
-      try {
-        const here = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        const [fc] = await fetchForecasts([here]);
-        setTowns((list) => [{ name: t('ob.wz.myloc', 'My location'), ...here, mine: true }, ...list]);
-        setData((d) => [fc, ...(d || [])]);
-        setSel(0);
-      } catch {
-        setLocFailed(true);
-      } finally {
-        setLocating(false);
-      }
-    }, () => { setLocating(false); setLocFailed(true); }, { timeout: 8000 });
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setBusy('');
+        addPlace({ name: myName, lat: +pos.coords.latitude.toFixed(3), lng: +pos.coords.longitude.toFixed(3) }, 'me');
+      },
+      () => { setBusy(''); setLocFailed(true); },
+      { timeout: 8000 },
+    );
+  };
+
+  const toggleFind = () => {
+    setFinding((v) => !v);
+    setQ('');
+    setHits([]);
+    setTimeout(() => qRef.current?.focus(), 0);
   };
 
   const days = data?.[sel] || [];
+  const needle = q.trim().toLowerCase();
+  const townHits = TOWNS.filter((x) => !needle || x.name.toLowerCase().includes(needle));
   return (
-    <section className="flex flex-col gap-2.5" data-testid="feed-weather" aria-label={t('feed.kind_weather', 'Weather')}>
-      <Box style={SKY} data-testid="weather-forecast">
-        {days.length > 0 ? (
-          <ForecastView place={towns[sel].name} days={days} />
-        ) : (
-          <>
-            <span className="ag-eyebrow">{t('feed.kind_weather', 'Weather')}</span>
-            {failed ? (
-              <>
-                <p className="ag-small m-0 !text-[var(--ink7)]">{t('weather.failed', 'Could not load the forecast. Check your internet.')}</p>
-                <Button size="sm" className="self-start" onClick={load} data-testid="weather-retry">{t('feed.retry')}</Button>
-              </>
-            ) : (
-              <p className="ag-small m-0 inline-flex items-center gap-2"><Loader2 size={16} className="animate-spin" /> {t('weather.loading')}</p>
-            )}
-          </>
-        )}
-      </Box>
-      {data && (
-        <Chips scroll aria-label={t('weather.places', 'Places')}>
-          {!towns.some((x) => x.mine) && (
-            <Chip onClick={myLocation} disabled={locating} data-testid="weather-my-location">
-              {locating ? <Loader2 className="animate-spin" /> : <Crosshair />} {t('ob.wz.myloc', 'My location')}
-            </Chip>
+    <section className="flex flex-col" data-testid="feed-weather" aria-label={t('feed.kind_weather', 'Weather')}>
+      {days.length > 0 ? (
+        <ForecastView place={towns[sel].name} days={days} testId="weather-forecast" />
+      ) : (
+        <SkyMessage title={t('feed.kind_weather', 'Weather')} testId="weather-forecast">
+          {failed ? (
+            <>
+              <p className="ag-feed-wxmsg">{t('weather.failed', 'Could not load the forecast. Check your internet.')}</p>
+              <button type="button" className="ag-btn sm ag-feed-wxretry" onClick={load} data-testid="weather-retry">{t('feed.retry')}</button>
+            </>
+          ) : (
+            <p className="ag-feed-wxmsg inline-flex items-center gap-2"><Loader2 size={16} className="animate-spin" /> {t('weather.loading')}</p>
           )}
-          {towns.map((town, i) => {
-            const first = data[i]?.[0];
-            const Icon = first ? weatherInfo(first.code).Icon : Cloud;
-            return (
-              <Chip key={town.name} on={sel === i} onClick={() => setSel(i)} data-testid={`weather-place-${i}`}>
-                <Icon /> {town.name}{first && <b className="font-medium">{first.tempMax}°</b>}
-              </Chip>
-            );
-          })}
-        </Chips>
+        </SkyMessage>
       )}
-      {locFailed && <p className="ag-small m-0">{t('ob.wz.noloc')}</p>}
-      <p className="ag-small m-0 !text-xs">{t('weather.source', 'Forecast data: Open-Meteo')}</p>
+
+      <div className="ag-feed-wxpills" role="group" aria-label={t('weather.places', 'Places')}>
+        <button type="button" className="ag-feed-wxpill act" onClick={toggleFind} aria-pressed={finding} aria-expanded={finding}
+          data-testid="weather-search">
+          <Icon name="search" /><span>{t('weather.search', 'Search location')}</span>
+        </button>
+        <button type="button" className="ag-feed-wxpill act" onClick={myLocation} disabled={busy === 'me'} data-testid="weather-my-location">
+          {busy === 'me' ? <Loader2 className="animate-spin" /> : <Icon name="locate" />}<span>{busy === 'me' ? t('weather.loading') : myName}</span>
+        </button>
+        {data && towns.map((town, i) => {
+          const first = data[i]?.[0];
+          return (
+            <button type="button" key={town.name} className="ag-feed-wxpill" aria-pressed={sel === i} onClick={() => setSel(i)}
+              disabled={!first} data-testid={`weather-place-${i}`}>
+              <Icon name={first ? ICON[kindOf(first.code)] : 'cloud'} /><span>{town.name}</span>{first && <b>{first.tempMax}°</b>}
+            </button>
+          );
+        })}
+      </div>
+
+      {finding && (
+        <div className="ag-feed-wxfind" data-testid="weather-find">
+          <label className="ag-feed-wxq">
+            <Icon name="search" />
+            <input ref={qRef} type="search" value={q} onChange={(e) => setQ(e.target.value)} autoComplete="off"
+              placeholder={t('weather.search_ph', 'Search a town, village or spot…')} aria-label={t('weather.search', 'Search location')}
+              data-testid="weather-search-input" />
+            {searching && <Loader2 className="animate-spin" />}
+          </label>
+          <div className="ag-feed-wxlist">
+            {townHits.map((x) => (
+              <button type="button" key={`t-${x.name}`} className="ag-feed-wxopt" onClick={() => addPlace(x, x.name)} disabled={!!busy}>
+                <Icon name="pin" /><span className="grow"><b>{x.name}</b></span>
+                {busy === x.name ? <Loader2 className="animate-spin" /> : <Icon name="arrowne" />}
+              </button>
+            ))}
+            {hits.filter((h) => !townHits.some((x) => x.name.toLowerCase() === h.name.toLowerCase())).map((h, i) => {
+              const key = `${h.name}|${i}`;
+              return (
+                <button type="button" key={key} className="ag-feed-wxopt" onClick={() => addPlace(h, key)} disabled={!!busy}
+                  data-testid={`weather-hit-${i}`}>
+                  <Icon name="pin" />
+                  <span className="grow"><b>{h.name}</b>{h.sub && <span className="ag-small block truncate">{h.sub}</span>}</span>
+                  {busy === key ? <Loader2 className="animate-spin" /> : <Icon name="arrowne" />}
+                </button>
+              );
+            })}
+            {!searching && townHits.length === 0 && hits.length === 0 && needle.length >= MIN_QUERY_LEN && (
+              <p className="ag-small m-0">{t('weather.search_none', 'No match. Try another name or place.')}</p>
+            )}
+          </div>
+        </div>
+      )}
+      {(oneFailed || locFailed) && (
+        <p className="ag-small m-0 mt-2">{locFailed ? t('ob.wz.noloc') : t('weather.failed', 'Could not load the forecast. Check your internet.')}</p>
+      )}
+      <p className="ag-feed-wxsrc">{t('weather.source', 'Forecast data: Open-Meteo')}</p>
     </section>
   );
 }

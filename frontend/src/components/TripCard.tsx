@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { Icon as AgIcon } from '@/components/ag/Icon';
 import { RateTripButton, ShareStoryButton } from '@/components/AfterTrip';
 import api from '@/lib/api';
 import { formatTripDates } from '@/lib/dates';
 import BookingFeeModal from '@/components/listing-detail/BookingFeeModal';
 import { useTranslation } from 'react-i18next';
-import {
-  Bell, Car, Check, CircleNotch as Loader2, Coffee, Compass, House, MapPin, NavigationArrow, Phone, PersonSimpleHike,
-  ShoppingBag, WhatsappLogo, X,
-} from '@phosphor-icons/react';
-import { Button, ButtonA, ButtonLink, Status, TextArea } from '@/components/ag';
+import { Bell, Check, CircleNotch as Loader2, MapPin, X } from '@phosphor-icons/react';
+import { Button, ButtonA, Status, TextArea } from '@/components/ag';
+
+const IconCheck = () => <AgIcon name="check" />;
 
 const digits = (p: string) => p.replace(/\D/g, '');
 /** wa.me needs the country code; numbers saved as 10 digits are Indian. */
@@ -18,7 +19,7 @@ const mapsUrl = (c: { latitude: number | null; longitude: number | null; address
     ? `https://www.google.com/maps/dir/?api=1&destination=${c.latitude},${c.longitude}`
     : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(c.address || '')}`;
 
-const BAND_ICON: Record<string, React.ElementType> = { homestay: House, driver: Car, guide: PersonSimpleHike, cafe: Coffee, shop: ShoppingBag };
+const BAND_ICON: Record<string, 'home' | 'car' | 'trek' | 'cup' | 'bag'> = { homestay: 'home', driver: 'car', guide: 'trek', cafe: 'cup', shop: 'bag' };
 
 function StatusPill({ status, isPast, awaitingHost }: { status: string; isPast: boolean; awaitingHost?: boolean }) {
   const { t } = useTranslation();
@@ -30,7 +31,8 @@ function StatusPill({ status, isPast, awaitingHost }: { status: string; isPast: 
 
 /**
  * One booking on My trip (prototype tripcard): a band naming the service, the place and its status,
- * the details, then what the traveller can do now (call, WhatsApp, directions, confirm, rate, cancel).
+ * one line of details, the request journey, then what the traveller can do now (call, WhatsApp,
+ * directions, confirm, rate, report a problem, cancel).
  */
 export default function TripCard({ booking: b, confirming, busy, onAskCancel, onCancel, onKeep, testId, onReviewed }: {
   booking: any;
@@ -82,62 +84,55 @@ export default function TripCard({ booking: b, confirming, busy, onAskCancel, on
   const isPast = b.completed ?? Boolean(b.check_in && new Date(b.check_in) < now);
   const cancelled = b.status === 'cancelled';
   const title = b.listing?.title || b.listing_title;
-  const Icon = BAND_ICON[b.listing_type] || Compass;
+  const bandIcon = BAND_ICON[b.listing_type] || 'pin';
+  const Icon = (p: { size?: number; 'aria-hidden'?: boolean | 'true' }) => <AgIcon name={bandIcon} {...p} />;
   const typeLabel = t(`ui.inviteHostLink.type.${b.listing_type}`, { defaultValue: String(b.listing_type || '').replace(/^./, (c: string) => c.toUpperCase()) });
   const canCancel = !cancelled && !isPast;
   const contact = b.status === 'confirmed' && !isPast && (b.host_contact || b.amount_due);
-  const row = 'flex items-center gap-2';
+
+  // Prototype journey: Request sent, then Host confirmed, then Completed once the trip is over.
+  const stage = b.status === 'confirmed' ? (isPast ? 2 : 1) : 0;
+  const steps: [string, string][] = [['ui.trips.j_sent', 'Request sent'], ['ui.trips.j_conf', 'Host confirmed']];
+  if (stage === 2) steps.push(['trips.completed', 'Completed']);
 
   return (
-    <article data-testid={testId} className="ag-box !gap-3 overflow-hidden">
-      {/* Band: which service, and when */}
-      <div className={`-mx-4 -mt-4 px-4 py-2.5 flex items-center gap-2 border-b border-[var(--warmline)] ${cancelled ? 'bg-[var(--soft)] text-[var(--ink-muted)]' : 'bg-[var(--r-tint)] text-[var(--r)]'}`}>
-        <Icon size={18} aria-hidden="true" />
-        <b className="font-medium text-sm">{t('ui.trips.band', '{{type}} booking', { type: typeLabel })}</b>
-        {b.check_in && <span className="ml-auto text-xs text-[var(--ink-muted)] whitespace-nowrap">{formatTripDates(b.check_in, b.check_out, i18n.language)}</span>}
+    <article data-testid={testId} className="ag-box ag-account-trip">
+      {/* Band: which service */}
+      <div className={`ag-account-band ${cancelled ? 'off' : ''}`}>
+        <Icon size={16} aria-hidden="true" />
+        <span>{t('ui.trips.band', '{{type}} booking', { type: typeLabel })}</span>
       </div>
 
-      <div className="flex gap-3">
-        <div className="w-16 h-16 rounded-[14px] overflow-hidden bg-[var(--creme2)] flex-shrink-0">
-          {b.listing?.image ? (
-            <img src={b.listing.image} alt="" className="w-full h-full object-cover" />
-          ) : (
-            <div className="w-full h-full grid place-items-center text-[var(--r)]"><Icon size={24} aria-hidden="true" /></div>
-          )}
-        </div>
-        <div className="flex-1 min-w-0 flex flex-col gap-1">
-          <div className="flex items-start justify-between gap-2">
-            <h2 className="line-clamp-2">{title}</h2>
-            <span className="flex-none whitespace-nowrap"><StatusPill status={b.status} isPast={isPast} awaitingHost={!!b.awaiting_host} /></span>
-          </div>
-          {b.listing?.location && (
-            <p className="ag-small flex items-center gap-1 min-w-0"><MapPin size={14} className="text-[var(--r)] flex-shrink-0" aria-hidden="true" /><span className="truncate">{b.listing.location}</span></p>
-          )}
-        </div>
+      <div className="flex items-start justify-between gap-2">
+        <h2 className="line-clamp-2 min-w-0"><Link to={`/listing/${b.listing_id}`}>{title}</Link></h2>
+        <span className="flex-none whitespace-nowrap"><StatusPill status={b.status} isPast={isPast} awaitingHost={!!b.awaiting_host} /></span>
       </div>
+      {b.listing?.location && (
+        <p className="ag-small flex items-center gap-1 min-w-0 -mt-1"><MapPin size={14} className="text-[var(--r)] flex-shrink-0" aria-hidden="true" /><span className="truncate">{b.listing.location}</span></p>
+      )}
 
-      <dl className="flex flex-col gap-1 text-sm" data-testid="trip-details">
-        {b.check_in && (
-          <div className={row}>
-            <dt className="text-[var(--ink-muted)]">{b.listing_type === 'homestay' ? t('booking.checkin') : t('trips.date')}</dt>
-            <dd className="ml-auto text-right text-[var(--ink-strong)]">{formatTripDates(b.check_in, b.check_out, i18n.language)}</dd>
-          </div>
-        )}
-        <div className={row}>
-          <dt className="text-[var(--ink-muted)]">{b.listing_type === 'driver' ? t('trips.passengers') : b.listing_type === 'homestay' ? t('booking.guests') : t('trips.people')}</dt>
-          <dd className="ml-auto text-[var(--ink-strong)]">{b.guests}</dd>
-        </div>
-        <div className={row}>
-          <dt className="text-[var(--ink-muted)]">{t('dashboard.booked_on')}</dt>
-          <dd className="ml-auto text-[var(--ink-strong)]">{new Date(b.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</dd>
-        </div>
+      <p className="line" data-testid="trip-details">
+        {[b.check_in ? formatTripDates(b.check_in, b.check_out, i18n.language) : null, b.guests ? (Number(b.guests) === 1 ? t('ui.trips.one_person', '1 person') : t('ui.trips.n_people', '{{n}} people', { n: b.guests })) : null].filter(Boolean).join(', ')}.
         {contact && b.amount_due ? (
-          <div className={row} data-testid={`trip-amount-${b.id}`}>
-            <dt className="text-[var(--ink-muted)]">{t('trips.amount_due')}</dt>
-            <dd className="ml-auto ag-price">₹{Number(b.amount_due).toLocaleString('en-IN')}</dd>
-          </div>
+          <> <b className="ag-price" data-testid={`trip-amount-${b.id}`}>₹{Number(b.amount_due).toLocaleString('en-IN')}</b></>
         ) : null}
-      </dl>
+      </p>
+      <p className="ag-small -mt-2">{t('dashboard.booked_on')} {new Date(b.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+
+      {!cancelled && (
+        <ol className="ag-account-journey" aria-label={t('ui.trips.status', 'Status')}>
+          {steps.map(([k, fb], j) => {
+            const cls = j < stage ? 'past' : j === stage ? 'here' : '';
+            const tick = j === stage || (j < stage && j === steps.length - 1);
+            return (
+              <li key={k} className={cls}>
+                <span className="jdot" aria-hidden="true">{(tick || j < stage) && <IconCheck />}</span>
+                <span>{t(k, fb)}</span>
+              </li>
+            );
+          })}
+        </ol>
+      )}
 
       {/* Confirmed and still ahead: the host's contact, which the confirmation promised. */}
       {contact && (
@@ -150,17 +145,17 @@ export default function TripCard({ booking: b, confirming, busy, onAskCancel, on
             <p className="text-sm text-[var(--ink7)] flex items-start gap-1.5"><MapPin size={16} className="text-[var(--r)] flex-shrink-0 mt-0.5" aria-hidden="true" /> {b.host_contact.address}</p>
           )}
           {b.host_contact && (
-            <div className="flex flex-wrap gap-2">
+            <div className="ag-account-tripbtns">
               {b.host_contact.phone && (
-                <ButtonA href={`tel:${b.host_contact.phone}`} variant="tonal" size="sm" icon={<Phone />} data-testid={`trip-call-${b.id}`}>{t('trips.call')}</ButtonA>
+                <ButtonA href={`tel:${b.host_contact.phone}`} variant="tonal" size="sm" icon={<AgIcon name="phone" />} data-testid={`trip-call-${b.id}`}>{t('trips.call')}</ButtonA>
               )}
               {b.host_contact.whatsapp && (
                 <ButtonA href={`https://wa.me/${waNumber(b.host_contact.whatsapp)}`} target="_blank" rel="noopener noreferrer" variant="tonal" size="sm"
-                  icon={<WhatsappLogo />} data-testid={`trip-whatsapp-${b.id}`}>{t('trips.whatsapp')}</ButtonA>
+                  icon={<AgIcon name="wa" />} data-testid={`trip-whatsapp-${b.id}`}>{t('trips.whatsapp')}</ButtonA>
               )}
               {(b.host_contact.address || b.host_contact.latitude != null) && (
                 <ButtonA href={mapsUrl(b.host_contact)} target="_blank" rel="noopener noreferrer" variant="tonal" size="sm"
-                  icon={<NavigationArrow />} data-testid={`trip-directions-${b.id}`}>{t('trips.directions')}</ButtonA>
+                  icon={<AgIcon name="pin" />} data-testid={`trip-directions-${b.id}`}>{t('trips.directions')}</ButtonA>
               )}
             </div>
           )}
@@ -227,12 +222,9 @@ export default function TripCard({ booking: b, confirming, busy, onAskCancel, on
         )
       )}
 
-      <div className="flex items-center justify-between gap-2 flex-wrap">
-        <ButtonLink to={`/listing/${b.listing_id}`} size="sm" go>{t('dashboard.view_listing')}</ButtonLink>
-        {canCancel && !confirming && (
-          <Button variant="stop" size="sm" icon={<X />} onClick={onAskCancel} data-testid={`cancel-booking-${b.id}`}>{t('common.cancel')}</Button>
-        )}
-      </div>
+      {canCancel && !confirming && (
+        <Button variant="stop" size="sm" icon={<X />} className="self-start" onClick={onAskCancel} data-testid={`cancel-booking-${b.id}`}>{t('common.cancel')}</Button>
+      )}
     </article>
   );
 }

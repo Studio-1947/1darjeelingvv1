@@ -41,7 +41,7 @@ function useHomeSearchScrolledAway(active: boolean) {
 export default function Header() {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const { pathname } = useLocation();
+  const { pathname, search: query } = useLocation();
   const navigate = useNavigate();
   const goBack = useGoBack();
   const [appSoon, setAppSoon] = React.useState(false);
@@ -63,7 +63,8 @@ export default function Header() {
     return () => { live = false; window.removeEventListener('aangan:notifications', read); };
   }, [user, pathname]);
 
-  const isRoot = ROOTS.includes(pathname);
+  // A sub-screen inside a tab root (e.g. /dashboard?s=language) gets Back, as in the prototype.
+  const isRoot = ROOTS.includes(pathname) && !new URLSearchParams(query).get('s');
   const onHome = pathname === '/';
   const homeSearchAway = useHomeSearchScrolledAway(onHome);
   const showSearch = !onHome || homeSearchAway;

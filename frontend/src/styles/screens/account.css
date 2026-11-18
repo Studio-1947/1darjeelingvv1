@@ -1,1 +1,150 @@
-/* account screens (red /7). Classes here are prefixed ag-account-. */
+/* account screens (Vercel prototype layout, red Studio 1947 colours). Classes here are prefixed ag-account-.
+   Colours come only from the theme variables, so /theme re-tints these screens too. */
+
+/* ---- Account: who you are (prototype .mehead) ---- */
+.ag-account-head { gap: 12px; }
+.ag-account-head .row { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.ag-account-head h2 { margin: 0; font: 500 18px/24px var(--font) !important; letter-spacing: -.01em; color: var(--ink-strong); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ag-account-avatar { flex: none; border-radius: 50%; overflow: hidden; display: grid; place-items: center; background: var(--blush2); color: var(--r); font-weight: 500; }
+.ag-account-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.ag-account-avatar svg.i { width: 24px; height: 24px; }
+
+/* ---- the menu card (prototype nav.box.menu) ---- */
+.ag-account-menu { padding: 0 !important; gap: 0 !important; overflow: hidden; }
+.ag-account-menu > a, .ag-account-menu > button { display: flex; align-items: center; gap: 14px; width: 100%; min-height: 60px; padding: 8px 12px; border: 0; border-bottom: 1px solid var(--warmline); background: transparent; color: var(--ink-strong); font: 500 16px/22px var(--font); text-align: left; text-decoration: none; cursor: pointer; }
+.ag-account-menu > *:last-child { border-bottom: 0; }
+.ag-account-menu .ag-micon { background: var(--blush2); }
+.ag-account-menu .ag-micon svg.i { width: 20px; height: 20px; }
+.ag-account-golink { width: 22px; height: 22px; flex: none; display: grid; place-items: center; color: var(--r); }
+.ag-account-golink svg.i { width: 13px; height: 13px; stroke-width: 2.4; }
+.ag-account-palmini { display: flex; flex: none; margin-right: 8px; padding-left: 4px; }
+.ag-account-palmini i { width: 14px; height: 14px; margin-left: -4px; border-radius: 50%; border: 2px solid var(--creme); }
+
+/* ---- For businesses (prototype .bizbox: a solid brand card) ---- */
+.ag-account-bizeye { margin: 22px 0 -4px; letter-spacing: .14em; }
+.ag-account-biz { display: flex; flex-direction: column; gap: 12px; padding: 16px; border-radius: var(--r-card); background: var(--r); color: var(--on-r); box-shadow: 0 8px 22px rgb(var(--r-press-rgb) / .25); }
+.ag-account-biz .row { display: flex; align-items: center; gap: 8px; }
+.ag-account-biz .ag-micon { background: rgb(255 255 255 / .18); color: var(--on-r); }
+.ag-account-biz .ag-micon svg.i { width: 20px; height: 20px; }
+.ag-account-biz b { display: block; font: 500 16px/22px var(--font); letter-spacing: -.01em; }
+.ag-account-biz .ag-small { display: block; color: var(--on-r); }
+.ag-account-biz .ag-status { flex: none; align-self: flex-start; }
+.ag-account-biz .ag-btn { align-self: flex-start; height: 44px; min-height: 44px; padding: 0 5px 0 16px; gap: 10px; border: 0; background: var(--blush); color: var(--ink-strong); font: 500 14px/20px var(--font); }
+.ag-account-biz .ag-btn .ag-go { width: 32px; height: 32px; background: var(--r); border-color: var(--r); color: var(--on-r); }
+
+/* ---- Traveller dashboard (prototype travDash + sharerow) ---- */
+.ag-account-pts { display: flex; flex-direction: column; gap: 4px; padding: 14px; border-radius: 12px; background: var(--r); color: var(--on-r); }
+.ag-account-pts .ag-small { color: rgb(255 255 255 / .85); }
+.ag-account-pts b { display: flex; align-items: center; gap: 6px; font: 500 24px/32px var(--font); letter-spacing: -.01em; }
+.ag-account-pts b svg.i { width: 22px; height: 22px; fill: currentColor; }
+.ag-account-pts details summary { color: var(--on-r) !important; }
+.ag-account-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.ag-account-stat { display: flex; flex-direction: column; gap: 2px; padding: 14px; border-radius: 12px; border: 1px solid var(--hairline); background: var(--surface); color: var(--ink-strong); text-decoration: none; }
+.ag-account-stat .ag-small { display: flex; align-items: center; gap: 6px; }
+.ag-account-stat .ag-small svg.i { width: 16px; height: 16px; color: var(--r); }
+.ag-account-stat b { font: 500 24px/32px var(--font); letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
+a.ag-account-stat:hover { border-color: var(--r); }
+.ag-account-share { align-items: center; text-align: left; }
+.ag-account-share > p { align-self: stretch; margin: 0; color: var(--ink7); }
+
+/* ---- the footer card (prototype .sitefoot) ---- */
+.ag-account-foot { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border-radius: var(--r-card); border: 1px solid var(--blush2); background: linear-gradient(180deg, var(--blush-hi), var(--blush)); box-shadow: var(--warmshadow); }
+.ag-account-foot .brand { display: flex; align-items: flex-end; gap: 14px; padding-bottom: 6px; border-bottom: 1px solid var(--blush2); }
+.ag-account-foot .brand .ag-small { font-size: 12px; line-height: 16px; }
+.ag-account-footlinks { display: flex; flex-direction: column; }
+.ag-account-footlinks > a { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 34px; padding: 0 2px; border-bottom: 1px solid var(--blush2); color: var(--ink-muted); font: 400 13px/18px var(--font); text-decoration: none; }
+.ag-account-footlinks > a:hover { color: var(--r); }
+.ag-account-footlinks .ag-account-golink { width: 20px; height: 20px; border-radius: 50%; border: 1px solid rgb(228 228 228 / .8); }
+.ag-account-footlinks .ag-account-golink svg.i { width: 11px; height: 11px; }
+.ag-account-help { margin: 8px 0 0; font: 400 12px/16px var(--font); letter-spacing: .5px; color: var(--ink-muted); }
+.ag-account-help b { font-weight: 400; color: var(--ink-strong); }
+.ag-account-help .hrs { display: inline-flex; align-items: center; gap: 4px; color: var(--r); }
+.ag-account-help .hrs svg.i { width: 12px; height: 12px; }
+.ag-account-contact { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 16px; }
+.ag-account-contact .ag-btn { height: 48px; min-height: 48px; padding: 0 18px 0 16px; gap: 8px; background: var(--r); border-color: var(--r); color: var(--on-r); font: 500 12px/16px var(--font); }
+.ag-account-contact .ag-btn > svg { color: var(--on-r); width: 16px; height: 16px; }
+.ag-account-contact .ag-iconbtn { width: 48px; height: 48px; background: var(--blush2); border-color: var(--blush2); color: var(--r); }
+.ag-account-contact .ag-iconbtn svg.i { width: 20px; height: 20px; }
+
+/* ---- Language screen (prototype .pick .small-pick) ---- */
+.ag-account-langs { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+.ag-account-langs button { display: flex; align-items: center; gap: 10px; min-height: 56px; padding: 8px 18px 8px 16px; border-radius: var(--pill); border: 1px solid var(--outline); background: var(--surface); color: var(--ink-strong); font: 500 16px/24px var(--font); cursor: pointer; }
+.ag-account-langs .dot { width: 24px; height: 24px; flex: none; display: grid; place-items: center; border-radius: 50%; border: 2px solid var(--hairline); background: var(--blush2); color: var(--r); }
+.ag-account-langs .dot svg.i { width: 14px; height: 14px; stroke-width: 3; }
+.ag-account-langs button[aria-pressed="true"] { background: var(--r); border-color: var(--r); color: var(--on-r); }
+.ag-account-langs button[aria-pressed="true"] .dot { border-color: var(--on-r); background: var(--on-r); }
+
+/* ---- empty states (prototype .box.empty) ---- */
+.ag-account-empty { align-items: center; text-align: center; padding: 28px 12px !important; }
+.ag-account-empty > svg.i { width: 24px; height: 24px; color: var(--ink7); }
+.ag-account-empty > p { margin: 0; color: var(--ink7); }
+.ag-account-empty > p.ag-small { color: var(--ink-muted); }
+
+/* ---- My trip: four tiles and the summary line (prototype .tdash / .tdsum) ---- */
+.ag-account-tdash { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.ag-account-tdtile { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 10px; border-radius: 14px; border: 1px solid var(--hairline); background: var(--surface); color: var(--ink-strong); text-align: left; cursor: pointer; }
+.ag-account-tdtile > svg.i { width: 16px; height: 16px; color: var(--r-press); }
+.ag-account-tdtile .go { position: absolute; top: 9px; right: 9px; width: 20px; height: 20px; display: grid; place-items: center; border-radius: 50%; background: var(--blush2); color: var(--r-press); }
+.ag-account-tdtile .go svg.i { width: 12px; height: 12px; }
+.ag-account-tdtile b { font: 500 22px/26px var(--font); letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
+.ag-account-tdtile span:last-child { font: 500 11px/14px var(--font); color: var(--ink-muted); }
+.ag-account-tdtile[aria-pressed="true"] { border-color: var(--r); background: var(--r-tint); }
+.ag-account-tdsum { display: flex; flex-wrap: wrap; gap: 16px; font: 400 13px/18px var(--font); letter-spacing: .5px; color: var(--ink-muted); }
+.ag-account-tdsum span { display: inline-flex; align-items: center; gap: 6px; }
+.ag-account-tdsum svg.i { width: 14px; height: 14px; color: var(--r); }
+.ag-account-tdsum b { font-weight: 500; color: var(--ink-strong); }
+
+/* ---- trip card (prototype .tripcard) ---- */
+.ag-account-trip { padding: 0 16px 16px !important; overflow: hidden; }
+.ag-account-band { display: flex; align-items: center; gap: 8px; margin: 0 -16px 4px; padding: 10px 16px; background: var(--blush2); color: var(--r); font: 600 12px/16px var(--font); letter-spacing: .05em; text-transform: uppercase; }
+.ag-account-band svg.i { width: 16px; height: 16px; }
+.ag-account-band .when { margin-left: auto; font-weight: 500; text-transform: none; letter-spacing: .3px; color: var(--ink-muted); white-space: nowrap; }
+.ag-account-band.off { background: var(--soft); color: var(--ink-muted); }
+.ag-account-trip h2 { margin: 0; font: 500 18px/24px var(--font) !important; letter-spacing: -.01em; color: var(--ink-strong); }
+.ag-account-trip h2 a { color: inherit; text-decoration: none; }
+.ag-account-trip h2 a:hover { color: var(--r); }
+.ag-account-trip .line { margin: 0; color: var(--ink7); }
+.ag-account-trip .line .ag-price { font-weight: 500; color: var(--ink-strong); }
+.ag-account-journey { list-style: none; margin: 4px 0; padding: 0; display: flex; flex-direction: column; }
+.ag-account-journey li { position: relative; display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 4px 0; font: 500 14px/20px var(--font); color: var(--ink-strong); }
+.ag-account-journey .jdot { position: relative; z-index: 1; width: 26px; height: 26px; flex: none; display: grid; place-items: center; border-radius: 50%; border: 2px solid var(--hairline); background: var(--surface); color: var(--on-r); }
+.ag-account-journey .jdot svg.i { width: 14px; height: 14px; stroke-width: 3; }
+.ag-account-journey li.past .jdot, .ag-account-journey li.here .jdot { background: var(--r); border-color: var(--r); }
+.ag-account-journey li + li::before { content: ""; position: absolute; left: 12px; top: -13px; height: 26px; border-left: 2px dotted var(--hairline); z-index: 0; }
+.ag-account-journey li.past + li::before, .ag-account-journey li.past + li.here::before { border-left-color: var(--r); }
+.ag-account-journey li:not(.past):not(.here) { color: var(--ink-muted); }
+.ag-account-tripbtns { display: flex; flex-wrap: wrap; gap: 8px; }
+.ag-account-tripbtns .ag-btn.tonal { background: var(--blush2); border-color: var(--blush2); }
+
+/* ---- Saved: category pills (prototype .svpills) ---- */
+.ag-account-pills .ag-chip .n { margin-left: 2px; font-size: 12px; color: var(--ink-muted); }
+.ag-account-pills .ag-chip[aria-pressed="true"] .n { color: inherit; opacity: .85; }
+.ag-account-savesec { display: flex; flex-direction: column; gap: 10px; }
+.ag-account-savesec h2 { margin: 6px 0 0; font: 500 18px/24px var(--font); color: var(--ink-strong); }
+.ag-account-savesec h2 .ag-small { margin-left: 4px; }
+
+/* ---- Login (prototype login: smaller title) ---- */
+.ag-account-login h1 { font: 500 24px/32px var(--font) !important; letter-spacing: -.02em !important; }
+
+/* ---- Profile (prototype profile) ---- */
+.ag-account-photo { display: inline-flex; align-items: center; gap: 6px; padding: 0; border: 0; background: transparent; color: var(--r); font: 500 14px/20px var(--font); cursor: pointer; }
+.ag-account-photo svg.i { width: 16px; height: 16px; }
+
+/* ---- Theme colour (prototype palette.js) ---- */
+.ag-account-palown { position: relative; display: flex; align-items: center; gap: 14px; padding: 14px 48px 14px 14px; border-radius: 18px; border: 1px dashed var(--blush2); background: var(--creme-hi); cursor: pointer; }
+.ag-account-palown b { font: 500 16px/24px var(--font); color: var(--ink-strong); }
+.ag-account-palownsw { position: relative; width: 52px; height: 52px; flex: none; border-radius: 50%; box-shadow: inset 0 0 0 3px rgb(255 255 255 / .6); }
+.ag-account-palownsw input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.ag-account-palradio { position: absolute; top: 12px; right: 12px; width: 22px; height: 22px; border-radius: 50%; border: 2px solid rgb(var(--r-rgb) / .6); background: var(--surface); }
+.ag-account-palown .ag-account-palradio { top: 50%; transform: translateY(-50%); }
+.ag-account-palradio.on { border-color: #2E9E5B; background: #2E9E5B url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center/14px no-repeat; }
+.ag-account-palgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.ag-account-palcard { position: relative; display: flex; flex-direction: column; align-items: stretch; gap: 10px; padding: 44px 12px 12px; border-radius: 18px; border: 1.5px solid var(--blush2); background: var(--creme-hi); text-align: left; cursor: pointer; font: inherit; color: inherit; }
+.ag-account-palcard.on { border-color: #2E9E5B; box-shadow: 0 0 0 3px rgb(46 158 91 / .16); }
+.ag-account-palsw { position: absolute; top: 12px; left: 12px; width: calc(100% - 52px); height: 22px; display: flex; border-radius: 10px; overflow: hidden; }
+.ag-account-palsw i { flex: 1; }
+.ag-account-palprev { display: flex; align-items: center; justify-content: space-between; height: 44px; padding: 0 10px; border-radius: 12px; border: 1px solid; }
+.ag-account-palprev span { width: 64px; height: 22px; border-radius: var(--pill); }
+.ag-account-palprev b { font: 600 18px/18px var(--font); letter-spacing: -.01em; }
+.ag-account-paln { display: flex; flex-direction: column; gap: 1px; font: 600 16px/20px var(--font); letter-spacing: -.01em; color: var(--ink-strong); }
+.ag-account-paln span { font: 400 12px/16px var(--font); letter-spacing: .24px; color: var(--ink-muted); }

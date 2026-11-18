@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { WhatsappLogo } from '@phosphor-icons/react';
+import { Icon } from '@/components/ag/Icon';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import {
@@ -100,10 +100,9 @@ export function HelpWhatsApp({ type, className = '' }: { type?: string; classNam
   });
   if (!link) return null;
   return (
-    <a href={link} target="_blank" rel="noopener noreferrer" data-testid="host-help-whatsapp"
-      className={`inline-flex items-center justify-center gap-2 rounded-full border border-[#25D366] text-[#128C4A] bg-white font-bold text-sm px-4 py-2.5 btn-hover ${className}`}>
-      <WhatsappLogo size={18} weight="fill" className="text-[#25D366]" />
-      {t('ob.quick.help')}
+    <a href={link} target="_blank" rel="noopener noreferrer" data-testid="host-help-whatsapp" className={`ag-btn ag-onboard-help ${className}`}>
+      <Icon name="wa" />
+      <span>{t('ob.quick.help')}</span>
     </a>
   );
 }

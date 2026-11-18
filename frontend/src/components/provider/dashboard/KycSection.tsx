@@ -2,10 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { checklistLabel } from '@/lib/serverText';
 import { useAuth } from '@/context/AuthContext';
-import { Upload, CheckCircle as CheckCircle2, Clock, XCircle, Circle, MapPin } from '@phosphor-icons/react';
+import { CheckCircle as CheckCircle2, Clock, XCircle, Circle, MapPin } from '@phosphor-icons/react';
+import { Icon } from '@/components/ag/Icon';
 import { Box, Button, FieldError, Status, TextField } from '@/components/ag';
 import { getMyProfile, uploadKycDoc, uploadKycVideo, deleteKycDoc, KycApiError, KycProfile, ChecklistItem, verifyMapsLink, captureLiveLocation } from '@/lib/kyc';
-import ProfileCompletionBar from '../ProfileCompletionBar';
 
 export default function KycSection({ onProfileChange }: { onProfileChange?: (p: KycProfile) => void }) {
   const { t } = useTranslation();
@@ -110,89 +110,93 @@ export default function KycSection({ onProfileChange }: { onProfileChange?: (p: 
 
   const kycItems = profile.checklist.filter(c => c.kind === 'kyc');
   const profileItems = profile.checklist.filter(c => c.kind === 'profile');
+  const pct = Math.max(0, Math.min(100, Math.round(profile.completion_percent || 0)));
 
   return (
     <>
-      <Box as="section">
-        <ProfileCompletionBar percent={profile.completion_percent} />
+      {/* provider.js documents screen: "Profile completion" with the bar and what is left. */}
+      <Box as="section" data-testid="kyc-completion">
+        <h2>{t('kyc.profileCompletion')}</h2>
+        <div className="ag-host-pct">
+          <span className="ag-host-bar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} aria-label={t('kyc.profileCompletion')}><i style={{ width: `${pct}%` }} /></span>
+          <b>{pct}%</b>
+        </div>
         <FieldError>{error}</FieldError>
-        <h2>{t('kyc.completeYourListing')}</h2>
-        <ul className="grid gap-2">
-          {profileItems.map(item => {
-            const m = stateMeta[item.state];
-            return (
-              <li key={item.key} className="text-sm">
-                <div className="flex items-center gap-2">
-                  <span className={m.cls}>{m.icon}</span>
-                  <span className={item.state === 'done' ? 'text-[var(--ink-muted)] line-through' : 'text-[var(--ink-strong)]'}>{checklistLabel(t, item, businessType)}</span>
-                </div>
-                {item.action && item.state !== 'done' && (
-                  <LocationCheck action={item.action} onDone={async () => { await load().catch(() => {}); }} />
-                )}
-              </li>
-            );
-          })}
-        </ul>
+        {profileItems.length > 0 && (
+          <>
+            <span className="ag-small">{t('kyc.completeYourListing')}</span>
+            <ul className="ag-host-dots">
+              {profileItems.map(item => (
+                <li key={item.key} className={item.state === 'done' ? 'done' : undefined}>
+                  <span className="d" aria-hidden="true">{item.state === 'done' ? <Icon name="check" /> : '•'}</span>
+                  <div className="min-w-0 flex-1">
+                    <span>{checklistLabel(t, item, businessType)}</span>
+                    {item.action && item.state !== 'done' && (
+                      <LocationCheck action={item.action} onDone={async () => { await load().catch(() => {}); }} />
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
       </Box>
 
       <Box as="section">
         <div>
           <h2>{t('kyc.verification')}</h2>
-          <p className="ag-small">{t('kyc.verificationHelp')}</p>
+          <p className="ag-small mt-2">{t('kyc.verificationHelp')}</p>
         </div>
         <ul className="grid">
           {kycItems.map(item => {
             const m = stateMeta[item.state];
             const doc = profile.documents.find(d => d.doc_type === item.key);
             return (
-              <li key={item.key} className="grid gap-2 border-t border-[var(--warmline)] py-3 first:border-t-0 first:pt-0 last:pb-0">
-                <div className="flex items-start gap-2">
-                  <span className={`mt-0.5 ${m.cls}`}>{m.icon}</span>
-                  <div className="min-w-0 flex-1">
-                    <b className="block text-sm font-medium text-[var(--ink-strong)]">
-                      {checklistLabel(t, item, businessType)}{!item.required && <span className="font-normal text-[var(--ink-muted)]"> ({t('kyc.optional')})</span>}
-                    </b>
-                    <Status tone={m.tone} className="mt-1">{m.label}</Status>
+              <li key={item.key} className="ag-host-docrow">
+                <div className="top">
+                  <div className="min-w-0">
+                    <b>{checklistLabel(t, item, businessType)}{!item.required && <span className="font-normal text-[var(--ink-muted)]"> ({t('kyc.optional')})</span>}</b>
+                    <Status tone={m.tone}>{m.label}</Status>
                     {item.media === 'video' && item.state === 'missing' && (
                       <p className="ag-small mt-1">{t('kyc.videoHint')}</p>
                     )}
                   </div>
-                </div>
-                <div className="ag-row pl-7">
-                  {/* A label styled as a small button, so the file picker opens from it. */}
-                  <label className="ag-btn sm cursor-pointer">
-                    <Upload />
-                    <span>{busyKey === item.key ? t('kyc.uploading') : (item.state === 'missing' ? t('kyc.upload') : t('kyc.replace'))}</span>
-                    <input
-                      type="file"
-                      accept={item.media === 'video' ? 'video/mp4,video/quicktime,video/webm' : 'image/jpeg,image/png,application/pdf'}
-                      className="sr-only"
-                      aria-label={
-                        busyKey === item.key
-                          ? t('kyc.uploadingAriaLabel', { label: item.label })
-                          : item.state === 'missing'
-                            ? t('kyc.uploadAriaLabel', { label: item.label })
-                            : t('kyc.replaceAriaLabel', { label: item.label })
-                      }
-                      disabled={busyKey === item.key}
-                      onChange={e => {
-                        const file = e.target.files?.[0];
-                        // Reset so re-picking the identical file still fires onChange -
-                        // otherwise retrying the same document after a failed upload does
-                        // nothing, silently.
-                        e.target.value = '';
-                        onPick(item.key, file, item.media === 'video');
-                      }}
-                    />
-                  </label>
-                  {doc && (
-                    <Button variant="stop" size="sm" onClick={() => onDelete(item.key)} disabled={busyKey === item.key}>
-                      {t('kyc.remove')}
-                    </Button>
-                  )}
+                  <div className="acts">
+                    {/* A label styled as a button, so the file picker opens from it. */}
+                    <label className="ag-btn ag-host-upl cursor-pointer">
+                      <Icon name="download" />
+                      <span>{busyKey === item.key ? t('kyc.uploading') : (item.state === 'missing' ? t('kyc.upload') : t('kyc.replace'))}</span>
+                      <input
+                        type="file"
+                        accept={item.media === 'video' ? 'video/mp4,video/quicktime,video/webm' : 'image/jpeg,image/png,application/pdf'}
+                        className="sr-only"
+                        aria-label={
+                          busyKey === item.key
+                            ? t('kyc.uploadingAriaLabel', { label: item.label })
+                            : item.state === 'missing'
+                              ? t('kyc.uploadAriaLabel', { label: item.label })
+                              : t('kyc.replaceAriaLabel', { label: item.label })
+                        }
+                        disabled={busyKey === item.key}
+                        onChange={e => {
+                          const file = e.target.files?.[0];
+                          // Reset so re-picking the identical file still fires onChange -
+                          // otherwise retrying the same document after a failed upload does
+                          // nothing, silently.
+                          e.target.value = '';
+                          onPick(item.key, file, item.media === 'video');
+                        }}
+                      />
+                    </label>
+                    {doc && (
+                      <Button variant="text" className="!text-[var(--fail)]" onClick={() => onDelete(item.key)} disabled={busyKey === item.key}>
+                        {t('kyc.remove')}
+                      </Button>
+                    )}
+                  </div>
                 </div>
                 {item.state === 'rejected' && doc?.rejection_reason && (
-                  <p className="pl-7 text-sm text-[var(--fail)]">{t('kyc.rejectionReason', { reason: doc.rejection_reason })}</p>
+                  <p className="text-sm text-[var(--fail)]">{t('kyc.rejectionReason', { reason: doc.rejection_reason })}</p>
                 )}
               </li>
             );

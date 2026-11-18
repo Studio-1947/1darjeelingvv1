@@ -1,22 +1,26 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { MagnifyingGlass as Search, SlidersHorizontal, House as HomeIcon, Car, CircleNotch as Loader2, Minus, Plus, X } from '@phosphor-icons/react';
+import { MagnifyingGlass as Search, House as HomeIcon, Car, CircleNotch as Loader2, Minus, Plus, X } from '@phosphor-icons/react';
 import api from '@/lib/api';
 import { todayStr, addDays, isBadRange, formatDay, formatRange } from '@/lib/dates';
 import { writeTrip } from '@/lib/tripParams';
 import WeatherForecast from '@/components/WeatherForecast';
-import { Box, Button, Chip, Chips, IconButton, Seg, TextField } from '@/components/ag';
+import { Box, Button, Chip, Chips, IconButton, Seg, TextField, cx } from '@/components/ag';
+import { Icon } from '@/components/ag/Icon';
 
 /**
  * The search field's resting placeholder: "Search homestays", then cafes, drivers, viewpoints,
  * typed and deleted letter by letter as the prototype does. Held on the first word for people
  * who ask for reduced motion.
  */
+const SEARCH_WORDS = ['Homestays', 'Drivers', 'Offbeat Places', 'Tour Guides', 'Cafes & Restaurants', 'Local Shops'];
+
 function TypewriterHint() {
   const { t } = useTranslation();
-  const words = t('widget.search_words', { returnObjects: true }) as unknown;
-  const list = Array.isArray(words) && words.length ? (words as string[]) : ['homestays', 'cafes'];
+  // The prototype's word list (v7.js "sw"): the six kinds of listing, typed one after another.
+  const words = t('home.search_words', { returnObjects: true }) as unknown;
+  const list = Array.isArray(words) && words.length ? (words as string[]) : SEARCH_WORDS;
   const key = list.join('|');
   const [shown, setShown] = useState(list[0]);
   useEffect(() => {
@@ -45,9 +49,8 @@ function TypewriterHint() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
   return (
-    <span className="pointer-events-none absolute inset-y-0 left-0 right-0 flex items-center gap-1 overflow-hidden whitespace-nowrap text-base text-[var(--ink-muted)]" aria-hidden="true" data-testid="search-hint">
-      <span>{t('widget.search_prefix')}</span>
-      <span className="text-[var(--r)]">{shown}</span>
+    <span className="ag-home-qph" aria-hidden="true" data-testid="search-hint">
+      <span className="qtype">{shown}</span>
     </span>
   );
 }
@@ -126,6 +129,14 @@ export default function BookingWidget() {
   const [activeField, setActiveField] = useState<'q' | 'from' | 'to'>('q');
 
   const containerRef = useRef<HTMLFormElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Voice search: the browser's own speech recognition, only where it exists (Chrome, Edge,
+  // Safari). Elsewhere the mic is not drawn at all.
+  const recRef = useRef<any>(null);
+  const [listening, setListening] = useState(false);
+  const canListen = typeof window !== 'undefined' && !!((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition);
+  useEffect(() => () => { try { recRef.current?.stop(); } catch { /* already stopped */ } }, []);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -224,6 +235,26 @@ export default function BookingWidget() {
     guestsTouched && guestCount > 1 ? t('widget.guest_count', { count: guestCount }) : '',
   ].filter(Boolean).join('  ·  ');
 
+  const listen = () => {
+    if (recRef.current) { try { recRef.current.stop(); } catch { /* already stopped */ } return; }
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) return;
+    const rec = new SR();
+    const lang = (i18n.language || 'en').slice(0, 2);
+    rec.lang = ({ hi: 'hi-IN', ne: 'ne-NP', bn: 'bn-IN' } as Record<string, string>)[lang] || 'en-IN';
+    rec.interimResults = true;
+    rec.maxAlternatives = 1;
+    rec.onresult = (ev: any) => {
+      const heard = Array.from(ev.results as ArrayLike<any>).map((r: any) => r[0]?.transcript || '').join(' ').trim();
+      if (heard) setMain(heard);
+    };
+    rec.onend = () => { recRef.current = null; setListening(false); inputRef.current?.focus(); };
+    rec.onerror = rec.onend;
+    recRef.current = rec;
+    setListening(true);
+    try { rec.start(); } catch { rec.onend(); }
+  };
+
   const submit = (e?: React.FormEvent) => {
     if (e?.preventDefault) e.preventDefault();
     setPanelOpen(false);
@@ -314,19 +345,17 @@ export default function BookingWidget() {
 
   return (
     <form ref={containerRef} onSubmit={submit} data-testid="booking-widget" className="flex w-full flex-col gap-3">
-      {/* The search row: a 56px pill, and the filter button that opens Stays / Drivers, dates and guests. */}
-      <div className="flex items-center gap-2" data-testid="booking-widget-pill" data-home-search>
-        <div className="flex h-14 min-w-0 flex-1 items-center gap-1 rounded-full border border-[var(--outline)] bg-white pl-1.5 pr-3 focus-within:border-[var(--r)] focus-within:outline focus-within:outline-2 focus-within:outline-[var(--r-tint)]">
-          <button
-            type="submit"
-            data-testid="booking-widget-search-compact"
-            aria-label={t('widget.search')}
-            className="grid h-11 w-11 flex-none place-items-center rounded-full text-[var(--r)]"
-          >
-            <Search size={22} weight="bold" />
+      {/* The search row (prototype v7 home): a red 56px pill with the typed hint, then a round mic
+          (only where the browser can listen) and the round filter button that opens Stays / Drivers,
+          dates and guests. */}
+      <div className="ag-home-searchrow" data-testid="booking-widget-pill" data-home-search>
+        <div className="ag-home-search">
+          <button type="submit" data-testid="booking-widget-search-compact" aria-label={t('widget.search')} className="qbtn">
+            <Icon name="search" />
           </button>
-          <span className="relative flex h-full min-w-0 flex-1 items-center">
+          <span className="qbox">
             <input
+              ref={inputRef}
               value={mainValue}
               onChange={(e) => setMain(e.target.value)}
               onFocus={() => {
@@ -343,32 +372,39 @@ export default function BookingWidget() {
               aria-expanded={showSuggest}
               aria-controls="booking-widget-pill-suggest"
               data-testid={tab === 'driver' ? 'booking-widget-pill-to' : 'booking-widget-pill-where'}
-              className="h-full w-full min-w-0 bg-transparent text-base text-[var(--ink-strong)] outline-none placeholder:text-[var(--ink-faint)] [&::-webkit-search-cancel-button]:hidden"
             />
             {!mainValue && !focused && <TypewriterHint />}
           </span>
           {mainValue && (
-            <button
-              type="button"
-              onClick={() => setMain('')}
-              aria-label={t('ui.categoryFilterBar.clear_search')}
-              className="grid h-9 w-9 flex-none place-items-center rounded-full text-[var(--ink-muted)]"
-            >
-              <X size={16} />
+            <button type="button" onClick={() => setMain('')} aria-label={t('ui.categoryFilterBar.clear_search')} className="qclear">
+              <Icon name="x" />
             </button>
           )}
         </div>
-        <IconButton
-          label={t('filter.filters', 'Filters')}
+        {canListen && (
+          <button
+            type="button"
+            className={cx('ag-home-round', listening && 'on')}
+            aria-label={t('home.voice', 'Voice search')}
+            aria-pressed={listening}
+            onClick={listen}
+            data-testid="booking-widget-voice"
+          >
+            <Icon name="mic" />
+          </button>
+        )}
+        <button
+          type="button"
+          className={cx('ag-home-round', panelOpen && 'on')}
+          aria-label={t('filter.filters', 'Filters')}
+          title={t('filter.filters', 'Filters')}
           onClick={togglePanel}
           aria-expanded={panelOpen}
           aria-controls="booking-widget-panel"
           data-testid="booking-widget-pill-open"
-          tint={panelOpen}
-          className="!h-14 !w-14"
         >
-          <SlidersHorizontal />
-        </IconButton>
+          <Icon name="filter" />
+        </button>
       </div>
 
       {activeField !== 'from' && suggestions}

@@ -26,8 +26,8 @@ export const PALETTES: Palette[] = [
   { key: 'turmeric', name: 'Poilo', en: 'Turmeric Gold', accent: '#B98A22' },
   { key: 'sandstone', name: 'Gundruk', en: 'Fermented Greens', accent: '#7A7340' },
   { key: 'indigo', name: 'Nil', en: 'Indigo Dye', accent: '#3F5A8A' },
-  { key: 'monsoon', name: 'Monsoon', en: 'Monsoon Slate', accent: '#5B6B78' },
-  { key: 'charcoal', name: 'Charcoal', en: 'Charcoal & Cream', accent: '#5A524A' },
+  { key: 'monsoon', name: 'Badal', en: 'Monsoon Slate', accent: '#5B6B78' },
+  { key: 'charcoal', name: 'Koila', en: 'Charcoal & Cream', accent: '#5A524A' },
 ];
 
 const STORAGE_KEY = 'aangan-theme';

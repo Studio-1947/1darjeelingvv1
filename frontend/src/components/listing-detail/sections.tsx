@@ -1,84 +1,115 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import MapEmbed from '@/components/MapEmbed';
-import SmartImg from '@/components/SmartImg';
 import api from '@/lib/api';
 import { optionLabel } from '@/lib/optionLabel';
 import { RouteFare } from '@/lib/routeFares';
-import { distanceTo, kmLabel } from '@/lib/places';
+import { distanceTo } from '@/lib/places';
 import { mapPinFor } from '@/lib/listingContent';
-import {
-  NavigationArrow, CalendarStar, Path as Route, Crosshair, Clock, Ticket, Mountains as Mountain, Check, Compass, MapPin,
-  PersonSimpleHike,
-} from '@phosphor-icons/react';
 import { Button, ButtonLink, SecHead, SeeAll } from '@/components/ag';
-import { Section, PriceRow, Fact, PersonCard, MiniCard } from './primitives';
-import { HostFacts } from './profileSections';
+import { Icon, type IconName } from '@/components/ag/Icon';
+import { StayCard } from '@/components/home/cards';
+import { Section, PriceRow } from './primitives';
 
-// The blocks of the listing page, top to bottom as the page lays them out. The page decides which
-// blocks a listing type gets; each block only renders it.
+// The blocks of the listing page, top to bottom as the prototype's item view lays them out. The
+// page decides which blocks a listing type gets; each block only renders it.
 
-/** "About this": the description and the listing's tags (prototype: box "About this"). */
-export function AboutSection({ item, about, label }: { item: any; about?: string; label?: string }) {
-  const { t } = useTranslation();
-  if (!about && !(item.tags?.length > 0)) return null;
+/** The prototype's facility icons (app.js FACI): the first pattern that matches the label wins. */
+const FACI: [RegExp, IconName][] = [
+  [/meal|food|kitchen|thali|momo|breakfast|dinner|cook|menu|coffee|tea\b|bakery/i, 'cup'],
+  [/wi-?fi|internet|language|speaks|lingual/i, 'globe'],
+  [/hot water|heat|geyser|fire|bonfire|heater|cosy|cozy/i, 'sun'],
+  [/park/i, 'car'],
+  [/garden|forest|tea|organic|farm|pine|nature|habitat|flora/i, 'leaf'],
+  [/pet|dog|cat|wildlife/i, 'heart'],
+  [/view|mountain|kanchenjunga|sunrise|photo/i, 'mountain'],
+  [/family|group|kid|child|walk-in|visitor/i, 'person'],
+  [/airport|pickup|drop|ride|vehicle|driver|fuel|luggage|transfer|hire/i, 'car'],
+  [/balcony|room|bed|home/i, 'home'],
+  [/upi|card|cash|pay|gift|made|owned|goods/i, 'bag'],
+  [/first aid|medic/i, 'plus'],
+  [/route|trek|walk|guide|sightseeing/i, 'trek'],
+];
+const facIcon = (label: string): IconName => (FACI.find(([r]) => r.test(label)) || [0, 'check' as IconName])[1];
+
+/** "About this": the description, the languages spoken and when it joined aangan. */
+export function AboutSection({ item, about, label, languages }: { item: any; about?: string; label?: string; languages?: string[] }) {
+  const { t, i18n } = useTranslation();
+  const joined = item.created_at ? new Date(item.created_at) : null;
+  const joinedText = joined && !isNaN(joined.getTime())
+    ? joined.toLocaleDateString(i18n.language === 'en' ? 'en-IN' : i18n.language, { day: 'numeric', month: 'long', year: 'numeric' })
+    : '';
+  if (!about && !languages?.length) return null;
   return (
-    <Section title={label || t('detail.about')} testid="detail-about">
-      {/* whitespace-pre-line so an `about` written as multiple paragraphs keeps its breaks. */}
-      {about && <p className="m-0 text-[16px] leading-6 text-[var(--ink7)] whitespace-pre-line">{about}</p>}
-      {item.tags?.length > 0 && (
-        <div className="ag-chips">
-          {item.tags.map((tg: string) => <span key={tg} className="ag-chip !h-8 !px-3 !text-[13px] cursor-default">{optionLabel(t, tg)}</span>)}
+    <Section title={label || t('listing.about', 'About this')} testid="detail-about">
+      {about && <p className="text-[16px] leading-6 text-[var(--ink7)] whitespace-pre-line">{about}</p>}
+      {languages && languages.length > 0 && (
+        <div className="ag-listing-langrow">
+          <span className="ag-listing-langlab"><Icon name="globe" /> {t('listing.speaks', 'Speaks')}</span>
+          {languages.map((l) => <span key={l} className="ag-listing-langchip">{l}</span>)}
         </div>
       )}
-    </Section>
-  );
-}
-
-/** "Why go" bullets for a tourist spot, written by an admin in the console (extras.highlights). */
-export function HighlightsSection({ highlights }: { highlights: string[] }) {
-  const { t } = useTranslation();
-  return (
-    <Section title={t('detail.highlights')} note={t('detail.highlights_note')} testid="detail-highlights">
-      <ul className="grid gap-2.5">
-        {/* Keyed by position, not by text: nothing stops an admin entering the same bullet twice. */}
-        {highlights.map((h, i) => (
-          <li key={i} className="flex items-start gap-2.5 text-[15px] leading-[22px] text-[var(--ink-strong)]">
-            <Check weight="bold" className="mt-1 w-4 h-4 flex-none text-[var(--r)]" aria-hidden="true" />
-            <span>{h}</span>
-          </li>
-        ))}
-      </ul>
+      {joinedText && (
+        <p className="ag-small ag-listing-joined"><Icon name="check" /> {t('listing.joinedA', 'On aangan since')} {joinedText}</p>
+      )}
     </Section>
   );
 }
 
 /**
- * The facts list under the title: practical visitor information for a tourist spot (each fact
- * only when the admin filled it in), or the season of a festival.
+ * The facts box for a tourist spot (each fact only when the admin filled it in): timings, best
+ * season, altitude and the way there, or the season of a festival.
  */
 export function VisitInfoSection({ facts, howToReach }: {
-  facts: { timings?: string; entryFee?: string; bestTime?: string; altitude?: string };
+  facts: { timings?: string; bestTime?: string; altitude?: string };
   howToReach?: string;
 }) {
   const { t } = useTranslation();
   const rows = [
-    { key: 'timings', icon: <Clock />, label: t('detail.timings'), value: facts.timings },
-    { key: 'entry_fee', icon: <Ticket />, label: t('detail.entry_fee'), value: facts.entryFee },
-    { key: 'best_time', icon: <CalendarStar />, label: t('detail.best_time'), value: facts.bestTime },
-    { key: 'altitude', icon: <Mountain />, label: t('detail.altitude'), value: facts.altitude },
+    { key: 'timings', icon: 'hourglass' as IconName, label: t('detail.timings'), value: facts.timings },
+    { key: 'best_time', icon: 'sun' as IconName, label: t('detail.best_time'), value: facts.bestTime },
+    { key: 'altitude', icon: 'mountain' as IconName, label: t('detail.altitude'), value: facts.altitude },
+    { key: 'how_to_reach', icon: 'pin' as IconName, label: t('detail.how_to_reach'), value: howToReach },
   ].filter((r) => !!r.value);
+  if (!rows.length) return null;
   return (
     <Section title={t('detail.plan_visit')} testid="detail-visit-info">
-      <ul className="grid gap-3">
-        {rows.map((r) => <Fact key={r.key} icon={r.icon} label={r.label} value={r.value} testid={`detail-fact-${r.key}`} />)}
-        {howToReach && <Fact icon={<Compass />} label={t('detail.how_to_reach')} value={howToReach} testid="detail-how-to-reach" />}
+      <ul className="grid gap-3 m-0 p-0 list-none">
+        {rows.map((r) => (
+          <li key={r.key} className="flex items-start gap-3" data-testid={r.key === 'how_to_reach' ? 'detail-how-to-reach' : `detail-fact-${r.key}`}>
+            <span className="ag-listing-ic40"><Icon name={r.icon} /></span>
+            <span className="min-w-0 flex flex-col">
+              <span className="ag-small">{r.label}</span>
+              <span className="text-[15px] leading-[22px] text-[var(--ink-strong)] whitespace-pre-line">{r.value}</span>
+            </span>
+          </li>
+        ))}
       </ul>
-      {rows.length > 0 && (
-        <p className="ag-small !text-[12px] !leading-4">
-          * {t('detail.ticket_disclaimer', 'Note: Entry fees, ticket charges, and timings are set by local administration and subject to seasonal revision. We strive to keep details updated.')}
-        </p>
-      )}
+      <p className="ag-small !text-[12px] !leading-4">
+        * {t('detail.ticket_disclaimer', 'Note: Entry fees, ticket charges, and timings are set by local administration and subject to seasonal revision. We strive to keep details updated.')}
+      </p>
+    </Section>
+  );
+}
+
+/** The entry ticket box of a place to visit (prototype .tktbox). */
+export function TicketBox({ price, entryFee }: { price: number; entryFee?: string }) {
+  const { t } = useTranslation();
+  const paid = price > 0 || !!entryFee;
+  return (
+    <Section className="ag-listing-tkt" testid="detail-fact-entry_fee">
+      <div className="flex items-center gap-3">
+        <span className="ag-listing-ic40"><Icon name="t_trip" /></span>
+        <div className="min-w-0">
+          <b>
+            {price > 0
+              ? `${t('listing.ticket2', 'Entry ticket')} ₹${price.toLocaleString('en-IN')} ${t('listing.perperson', 'per person')}`
+              : entryFee ? `${t('listing.ticket2', 'Entry ticket')}: ${entryFee}` : t('listing.freeentry', 'Free entry')}
+          </b>
+          <p className="ag-small m-0">{paid ? t('listing.tktgate', 'Buy the ticket at the gate on the day.') : t('listing.tktfree', 'No ticket needed. Just go.')}</p>
+        </div>
+      </div>
+      <p className="ag-small">{t('listing.nobookspot', 'Tickets for places cannot be booked on aangan yet. You can book a stay or a driver nearby below.')}</p>
     </Section>
   );
 }
@@ -88,82 +119,39 @@ export function BestTimeSection({ bestTime }: { bestTime: string }) {
   const { t } = useTranslation();
   return (
     <Section testid="detail-besttime">
-      <ul className="grid"><Fact icon={<CalendarStar />} label={t('detail.best_time')} value={bestTime} /></ul>
-    </Section>
-  );
-}
-
-/**
- * The swipeable strip of photos under the title (prototype `.strip`): 150px tiles, 4:3, each
- * labelled with what it shows when the host said (front, outside, room).
- */
-export function PhotoStrip({ item, photos, label, testid = 'detail-photos' }: {
-  item: any;
-  photos: { src: string; tag?: string; groupTestid?: string }[];
-  label?: string;
-  testid?: string;
-}) {
-  const { t } = useTranslation();
-  if (!photos.length) return null;
-  return (
-    <div role="list" aria-label={label || t('detail.photos')} data-testid={testid}
-      className="-mx-4 px-4 flex gap-2 overflow-x-auto snap-x snap-mandatory pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-      {photos.map((p, i) => (
-        <div key={p.src + i} role="listitem" data-testid={p.groupTestid}
-          className="relative flex-none w-[150px] aspect-[4/3] rounded-[12px] overflow-hidden bg-[var(--creme2)] snap-start">
-          <SmartImg src={p.src} alt={t('detail.gallery_alt', { index: i + 1 }) + (item?.title ? ` · ${item.title}` : '')} className="w-full h-full object-cover" />
-          {p.tag && <span className="absolute left-1.5 bottom-1.5 ag-status !bg-[var(--surface)] !text-[var(--ink-strong)]">{p.tag}</span>}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-/** "Facilities" (prototype `.facgrid`): three across, a red icon over each label. */
-export function OffersSection({ amenities, title }: { amenities: { Icon: any; label: string; labelKey?: string }[]; title?: string }) {
-  const { t } = useTranslation();
-  return (
-    <Section title={title || t('detail.offers')} testid="detail-offers">
-      <div className="grid grid-cols-3 gap-2">
-        {amenities.map(({ Icon, label, labelKey }) => (
-          <div key={label} className="flex flex-col items-center justify-center gap-1.5 min-h-[96px] p-2 rounded-[16px] border border-[var(--blush2)] bg-[var(--blush)] text-center">
-            <span className="ag-micon !w-9 !h-9 !bg-[var(--surface)]"><Icon aria-hidden="true" /></span>
-            {/* Amenities are stored in English; only the display is localised. */}
-            <span className="text-[12px] leading-4 text-[var(--ink-strong)] line-clamp-2">{labelKey ? t(labelKey) : optionLabel(t, label)}</span>
-          </div>
-        ))}
+      <div className="flex items-center gap-3">
+        <span className="ag-listing-ic40"><Icon name="hourglass" /></span>
+        <span className="flex flex-col"><span className="ag-small">{t('detail.best_time')}</span><b className="font-medium text-[var(--ink-strong)]">{bestTime}</b></span>
       </div>
     </Section>
   );
 }
 
-/** "Meet your host" (homestays). */
-export function HostSection({ item, host, personSrc }: { item: any; host: any; personSrc?: string }) {
+/**
+ * "Facilities": three square cards a row with the prototype's icons; for a place to visit, a
+ * two-column list with checks.
+ */
+export function OffersSection({ amenities, list }: { amenities: { label: string; labelKey?: string }[]; list?: boolean }) {
   const { t } = useTranslation();
-  const ownLanguages = Array.isArray(item.extras?.languages) && item.extras.languages.length > 0;
+  const label = (a: { label: string; labelKey?: string }) => (a.labelKey ? t(a.labelKey) : optionLabel(t, a.label));
   return (
-    <PersonCard testid="detail-host" title={t('detail.host')} name={host.name} photo={personSrc} verified={host.verified}
-      place={item.location} bio={host.bio}>
-      <HostFacts extras={ownLanguages ? item.extras : { ...item.extras, languages: host.languages }} />
-    </PersonCard>
-  );
-}
-
-/** "Meet your driver" (drivers): the car and seats as chips. */
-export function DriverSection({ item, about, personSrc }: { item: any; about?: string; personSrc?: string }) {
-  const { t } = useTranslation();
-  const e = item.extras || {};
-  const chips = [
-    e.car_model,
-    e.vehicle_type,
-    Number(e.seats) > 0 ? t('profile.seats_count', { count: Number(e.seats) }) : '',
-    e.gender ? t(`profile.gender_${e.gender}`, { defaultValue: e.gender }) : '',
-  ].filter(Boolean) as string[];
-  return (
-    <PersonCard testid="detail-driver" title={t('detail.meet_driver')} name={item.title} photo={personSrc} verified={!!item.provider_verified}
-      place={item.location} chips={chips} bio={about}>
-      <HostFacts extras={e} />
-    </PersonCard>
+    <Section title={t('listing.facil', 'Facilities')} testid="detail-offers">
+      {list ? (
+        <ul className="ag-listing-facts">
+          {amenities.map((a) => <li key={a.label}><Icon name="check" />{label(a)}</li>)}
+        </ul>
+      ) : (
+        <div className="ag-listing-facgrid">
+          {/* Amenities are stored in English; only the display is localised. */}
+          {amenities.map((a) => (
+            <div key={a.label} className="ag-listing-facard">
+              <span className="ag-listing-ic40"><Icon name={facIcon(a.label)} /></span>
+              <span>{label(a)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </Section>
   );
 }
 
@@ -171,11 +159,11 @@ export function DriverSection({ item, about, personSrc }: { item: any; about?: s
 export function RoutesSection({ routes }: { routes: RouteFare[] }) {
   const { t } = useTranslation();
   return (
-    <Section title={t('detail.routes_title')} note={t('detail.routes_note')} testid="detail-routes">
+    <Section title={t('listing.fares', 'Trips and fares')} testid="detail-routes">
       <div className="flex flex-col">
         {/* Editorial routes carry no quote, so the fare is simply omitted rather than shown as ₹0. */}
         {routes.map((r, i) => (
-          <PriceRow key={i} icon={<Route />} name={optionLabel(t, r.route)} price={r.price} unit={t(`widgets.per_${r.unit}`)} />
+          <PriceRow key={i} name={optionLabel(t, r.route)} price={r.price} unit={t(`listing.per_${r.unit}`, r.unit === 'day' ? 'per day' : 'per trip')} />
         ))}
       </div>
     </Section>
@@ -195,13 +183,11 @@ export function LocationSection({ item, coords, spotted, onOpenMaps }: {
     <Section title={isBio ? t('detail.spotted') : t('detail.location')} note={isBio ? t('detail.spotted_note') : undefined}
       testid={isBio ? 'detail-spotted' : 'detail-location'}>
       <div className="rounded-[16px] overflow-hidden border border-[var(--warmline)]">
-        <MapEmbed coords={coords!} title={item.location} className="w-full h-[220px]" />
+        <MapEmbed coords={coords!} title={item.location} className="w-full h-[200px]" />
       </div>
       {isBio && spotted && spotted.length > 0 ? (
-        <div className="ag-chips">
-          {spotted.map((s) => (
-            <span key={s} className="ag-chip !h-8 !px-3 !text-[13px] cursor-default"><Crosshair aria-hidden="true" className="text-[var(--r)]" /> {s}</span>
-          ))}
+        <div className="ag-listing-langrow">
+          {spotted.map((s) => <span key={s} className="ag-listing-langchip">{s}</span>)}
         </div>
       ) : (
         <div className="flex flex-col">
@@ -209,8 +195,8 @@ export function LocationSection({ item, coords, spotted, onOpenMaps }: {
           {item.extras?.address && <span className="ag-small">{item.extras.address}</span>}
         </div>
       )}
-      <Button size="sm" className="self-start" onClick={onOpenMaps} data-testid="detail-open-maps" icon={<NavigationArrow />}>
-        {t('cta.get_directions')}
+      <Button variant="tonal" size="sm" className="self-start" onClick={onOpenMaps} data-testid="detail-open-maps" icon={<Icon name="pin" />}>
+        {t('listing.direction', 'Direction')}
       </Button>
     </Section>
   );
@@ -246,13 +232,12 @@ function NearRow({ type, eyebrow, title, seeAll, from }: { type: string; eyebrow
   const { t } = useTranslation();
   const rows = useNearby(type, from);
   if (rows === null) return null;
-  const badge = (r: { km: number; approx: boolean }) => (r.km < 1 && !r.approx ? t('detail.under_1km', 'under 1 km') : kmLabel(r));
   return (
     <section data-testid={`detail-near-${type}`}>
-      <SecHead eyebrow={eyebrow} title={title} action={<SeeAll to={seeAll}>{t('detail.see_all', 'See all')}</SeeAll>} className="!mt-0" />
+      <SecHead eyebrow={eyebrow} title={title} action={<SeeAll to={seeAll}>{t('listing.seeall', 'See all')}</SeeAll>} className="!mt-0" />
       {rows.length ? (
         <div className="grid grid-cols-2 gap-2.5">
-          {rows.map((r) => <MiniCard key={r.item.id} item={r.item} badge={badge(r)} />)}
+          {rows.map((r) => <StayCard key={r.item.id} it={r.item} href={`/listing/${r.item.id}`} km={{ km: r.km, approx: r.approx }} />)}
         </div>
       ) : (
         <p className="ag-small">{t('detail.nothing_near', 'Nothing within 40 km yet.')}</p>
@@ -263,7 +248,7 @@ function NearRow({ type, eyebrow, title, seeAll, from }: { type: string; eyebrow
 
 /**
  * A place to visit leads on to the rest of the trip: stays and drivers within 40 km of its pin
- * (the same public listings the category pages read), and the guides.
+ * (prototype nearbyFor: "Stay nearby", "Drivers nearby"), and the guides.
  */
 export function NearbySection({ item }: { item: any }) {
   const { t } = useTranslation();
@@ -271,11 +256,11 @@ export function NearbySection({ item }: { item: any }) {
   const place = encodeURIComponent(item.location || item.title);
   return (
     <div className="flex flex-col gap-4" data-testid="detail-getting-there">
-      {pin && <NearRow type="homestay" eyebrow={t('detail.stay_near', 'Stay nearby')} title={t('categories.homestay')} seeAll="/homestays" from={pin} />}
-      {pin && <NearRow type="driver" eyebrow={t('detail.ride_near', 'Drivers nearby')} title={t('categories.driver')} seeAll={`/drivers?to=${place}`} from={pin} />}
+      {pin && <NearRow type="homestay" eyebrow={t('listing.stay_near', 'Stay nearby')} title={t('listing.stays', 'Homestay')} seeAll="/homestays" from={pin} />}
+      {pin && <NearRow type="driver" eyebrow={t('listing.ride_near', 'Drivers nearby')} title={t('listing.cars', 'Car & Driver')} seeAll={`/drivers?to=${place}`} from={pin} />}
       <div className="ag-row">
         <ButtonLink go to={`/drivers?to=${place}`} data-testid="getting-there-drivers">{t('detail.find_driver_here')}</ButtonLink>
-        <ButtonLink go to="/guides" icon={<PersonSimpleHike />} data-testid="getting-there-guides">{t('detail.find_guide')}</ButtonLink>
+        <ButtonLink go to="/guides" icon={<Icon name="trek" />} data-testid="getting-there-guides">{t('detail.find_guide')}</ButtonLink>
       </div>
     </div>
   );

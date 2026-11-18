@@ -1,20 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Trans, useTranslation } from 'react-i18next';
-import {
-  ArrowUpRight, Check, Coffee, Copy, House, Medal, ShareNetwork, Sparkle, Star, Storefront, Ticket, Path, ChatCircleText, UserCircle,
-} from '@phosphor-icons/react';
+import { Copy, Medal, Star } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import InviteHostLink from '@/components/provider/InviteHostLink';
 import api from '@/lib/api';
-import { rupees, usePassPrice } from '@/lib/prices';
-import { useAuth } from '@/context/AuthContext';
+import { fetchFavorites } from '@/lib/favorites';
 import PointsRules, { travellerPointsRows } from '@/components/PointsRules';
-import { Box, Button, ButtonLink, IconButton, MenuIcon, Status, TextArea } from '@/components/ag';
+import { Box, Button, ButtonLink, IconButton, TextArea } from '@/components/ag';
+import { Icon, type IconName } from '@/components/ag/Icon';
 
 /**
- * The traveller dashboard from the board: aangan pass, Aangan Points, Aangan Awards, total travel
- * (cafes visited, trips taken, local shops, homestays), feedback for aangan and referrals.
+ * The traveller dashboard (prototype travDash + the share row of V.tdash): Aangan Points, the six
+ * figures, See my trips; then inviting a friend, Aangan Awards and feedback for aangan.
  * Numbers come from GET /users/me/dashboard; the app shows the same panels (app/profile.tsx).
  */
 type Dashboard = {
@@ -42,19 +40,31 @@ export const AWARD_TEXT: Record<string, { title: string; how: string }> = {
   profile_complete: award('profile_complete'),
 };
 
+/** The person's avatar: their photo, else their initial, else the person icon (prototype avatar()). */
+export function Avatar({ name, src, size }: { name?: string | null; src?: string | null; size: number }) {
+  const [broken, setBroken] = useState(false);
+  const initial = (name || '').trim().charAt(0).toUpperCase();
+  return (
+    <span className="ag-account-avatar" style={{ width: size, height: size, fontSize: Math.round(size * 0.42) }}>
+      {src && !broken ? <img src={src} alt={name || ''} onError={() => setBroken(true)} data-testid="account-avatar" />
+        : initial || <Icon name="person" />}
+    </span>
+  );
+}
+
 export default function TravellerPanels() {
   const { t } = useTranslation();
-  const { user } = useAuth();
   const [data, setData] = useState<Dashboard | null>(null);
   const [code, setCode] = useState<string | null>(null);
+  const [saved, setSaved] = useState<number | null>(null);
   const [fb, setFb] = useState({ rating: 0, message: '' });
   const [sending, setSending] = useState(false);
-  const pass = usePassPrice(user);
 
   useEffect(() => {
     let live = true;
     api.get('/users/me/dashboard').then(({ data }) => live && setData(data)).catch(() => {});
     api.get('/users/me/referrals').then(({ data }) => live && setCode(data.code)).catch(() => {});
+    fetchFavorites().then((l) => live && setSaved(l.length)).catch(() => live && setSaved(null));
     return () => { live = false; };
   }, []);
 
@@ -87,85 +97,57 @@ export default function TravellerPanels() {
   if (!data) return <div className="h-40 rounded-[22px] bg-[var(--creme2)] animate-pulse" data-testid="traveller-panels-loading" />;
 
   const earned = data.awards.filter((a) => a.earned).length;
-  const totals = [
-    { label: t('ui.travellerPanels.totals.trips'), value: data.totals.trips, Icon: Path },
-    { label: t('ui.travellerPanels.totals.homestays'), value: data.totals.homestays, Icon: House },
-    { label: t('ui.travellerPanels.totals.cafes'), value: data.totals.cafes, Icon: Coffee },
-    { label: t('ui.travellerPanels.totals.shops'), value: data.totals.shops, Icon: Storefront },
-  ];
-  const big = 'font-medium text-[28px] leading-[34px] text-[var(--ink-strong)] tabular-nums';
+  const stat = (icon: IconName, label: string, value: React.ReactNode) => (
+    <><span className="ag-small"><Icon name={icon} />{label}</span><b>{value}</b></>
+  );
 
   return (
     <div className="flex flex-col gap-4" data-testid="traveller-panels">
       {!data.profile.complete && (
         <Link to="/profile/edit" data-testid="panel-finish-profile" className="ag-box blush !flex-row items-center !gap-3 no-underline">
-          <MenuIcon><UserCircle /></MenuIcon>
+          <span className="ag-micon" aria-hidden="true"><Icon name="person" /></span>
           <span className="flex-1 min-w-0 text-[var(--ink-strong)]"><Trans i18nKey="ui.travellerPanels.finish_profile" values={{ left: data.profile.missing.length }} components={{ b: <b className="font-medium" /> }} /></span>
-          <ArrowUpRight weight="bold" size={20} className="flex-none text-[var(--r)]" aria-hidden="true" />
+          <span className="ag-account-golink" aria-hidden="true"><Icon name="arrowne" /></span>
         </Link>
       )}
 
-      {/* aangan pass */}
-      <Box data-testid="panel-pass">
-        <span className="ag-eyebrow inline-flex items-center gap-1.5"><Ticket size={16} aria-hidden="true" /> {t('ui.travellerPanels.pass_title')}</span>
-        {data.pass.active ? (
-          <div className="flex flex-col gap-1">
-            <Status tone="ok" className="self-start"><Check weight="bold" aria-hidden="true" /> {t('ui.travellerPanels.pass_active')}</Status>
-            <p className="ag-small">{data.pass.expires_at && !data.pass.expires_at.startsWith('9999')
-              ? t('ui.travellerPanels.pass_free_until', { date: new Date(data.pass.expires_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) })
-              : t('ui.travellerPanels.pass_free')}</p>
-          </div>
-        ) : (
-          <>
-            <div>
-              <h3>{t('ui.travellerPanels.pass_inactive')}</h3>
-              <p className="ag-small">{t('ui.travellerPanels.pass_pitch')}</p>
-            </div>
-            <ButtonLink to="/support" go className="self-start" data-testid="panel-get-pass">
-              {t('ui.travellerPanels.get_pass', { price: rupees(pass.total) })}
-            </ButtonLink>
-          </>
-        )}
-      </Box>
-
-      {/* Aangan Points */}
-      <Box tone="blush" data-testid="panel-points">
-        <span className="ag-eyebrow inline-flex items-center gap-1.5"><Sparkle size={16} aria-hidden="true" /> {t('ui.travellerPanels.points_title')}</span>
-        <div className={big}>{data.points.toLocaleString('en-IN')}</div>
-        <div className="text-[var(--ink7)] -mt-3">
-          <PointsRules rows={travellerPointsRows(data.points_rules, data.points_breakdown)} testId="panel-points-rules" />
+      {/* Traveller dashboard: points, the figures, See my trips */}
+      <Box>
+        <span className="ag-eyebrow">{t('ui.account.tdash', 'Traveller dashboard')}</span>
+        <div className="ag-account-pts" data-testid="panel-points">
+          <span className="ag-small">{t('ui.travellerPanels.points_title')}</span>
+          <b><Icon name="star" /> {data.points.toLocaleString('en-IN')}</b>
+          <PointsRules rows={travellerPointsRows(data.points_rules, data.points_breakdown)} tone="dark" testId="panel-points-rules" />
         </div>
+        <div className="ag-account-stats" data-testid="panel-totals">
+          <div className="ag-account-stat">{stat('bag', t('ui.travellerPanels.totals.trips'), data.totals.trips)}</div>
+          <div className="ag-account-stat">{stat('home', t('ui.travellerPanels.totals.homestays'), data.totals.homestays)}</div>
+          <div className="ag-account-stat">{stat('cup', t('ui.travellerPanels.totals.cafes'), data.totals.cafes)}</div>
+          <div className="ag-account-stat">{stat('pin', t('ui.travellerPanels.totals.shops'), data.totals.shops)}</div>
+          <Link to="/saved" className="ag-account-stat" data-testid="dashboard-saved">{stat('heart', t('nav.saved'), saved ?? '–')}</Link>
+          <div className="ag-account-stat">{stat('person', t('ui.account.friends', 'Friends joined'), data.referrals.joined)}</div>
+        </div>
+        <ButtonLink to="/my-trips" go className="self-start" data-testid="dashboard-my-trips">{t('ui.account.seetrips', 'See my trips')}</ButtonLink>
       </Box>
 
-      {/* Referrals */}
-      <Box data-testid="panel-referrals">
-        <span className="ag-eyebrow inline-flex items-center gap-1.5"><ShareNetwork size={16} aria-hidden="true" /> {t('ui.travellerPanels.refer_title')}</span>
-        <h3>{t('ui.travellerPanels.joined', { n: data.referrals.joined })}</h3>
+      {/* Invite a friend (prototype share row), with the referral code */}
+      <Box className="ag-account-share" data-testid="panel-referrals">
+        <p>{t('ui.account.sharefriend', 'Share with a friend who runs a homestay, a coffee shop, is a tourist guide, or loves to explore locally')}</p>
         {code && (
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap self-stretch">
             <code className="px-3 py-1.5 rounded-lg bg-[var(--creme2)] font-medium text-[var(--ink-strong)]">{code}</code>
-            <IconButton label={t('ui.travellerPanels.copy_code')} small onClick={() => { navigator.clipboard?.writeText(code); toast.success(t('ui.travellerPanels.code_copied')); }}>
+            <span className="ag-small">{t('ui.travellerPanels.joined', { n: data.referrals.joined })}</span>
+            <IconButton label={t('ui.travellerPanels.copy_code')} small className="ml-auto" onClick={() => { navigator.clipboard?.writeText(code); toast.success(t('ui.travellerPanels.code_copied')); }}>
               <Copy />
             </IconButton>
-            <Button size="sm" icon={<ShareNetwork />} onClick={share} className="ml-auto" data-testid="panel-share-invite">
-              {t('ui.travellerPanels.invite')}
-            </Button>
           </div>
         )}
+        <IconButton label={t('ui.travellerPanels.invite')} onClick={share} disabled={!code} className="!text-[var(--r)]" data-testid="panel-share-invite">
+          <Icon name="share" />
+        </IconButton>
       </Box>
 
       <InviteHostLink />
-
-      {/* Total travel */}
-      <div className="grid grid-cols-2 gap-2.5" data-testid="panel-totals">
-        {totals.map(({ label, value, Icon }) => (
-          <Box key={label} className="!gap-1">
-            <Icon size={20} className="text-[var(--r)]" aria-hidden="true" />
-            <div className={big}>{value}</div>
-            <div className="ag-small">{label}</div>
-          </Box>
-        ))}
-      </div>
 
       {/* Aangan Awards */}
       <Box as="section" data-testid="panel-awards" aria-labelledby="awards-title">
@@ -179,7 +161,7 @@ export default function TravellerPanels() {
             const text = keys ? { title: t(keys.title), how: t(keys.how) } : { title: a.id, how: '' };
             return (
               <div key={a.id} data-testid={`award-${a.id}`}
-                className={`rounded-[18px] p-3 border flex flex-col gap-1 ${a.earned ? 'border-[var(--r)] bg-[var(--r-tint)]' : 'border-[var(--warmline)] bg-[var(--surface)]'}`}>
+                className={`rounded-[12px] p-3 border flex flex-col gap-1 ${a.earned ? 'border-[var(--r)] bg-[var(--r-tint)]' : 'border-[var(--hairline)] bg-[var(--surface)]'}`}>
                 <Medal size={22} weight={a.earned ? 'fill' : 'regular'} className={a.earned ? 'text-[var(--r)]' : 'text-[var(--ink-faint)]'} aria-hidden="true" />
                 <div className="text-sm font-medium text-[var(--ink-strong)]">{text.title}</div>
                 <div className="text-xs leading-4 text-[var(--ink-muted)]">{text.how}</div>
@@ -202,7 +184,7 @@ export default function TravellerPanels() {
       <Box as="section" data-testid="panel-feedback" aria-labelledby="feedback-title">
         <form onSubmit={sendFeedback} className="flex flex-col gap-3">
           <div>
-            <h2 id="feedback-title" className="inline-flex items-center gap-2"><ChatCircleText size={20} className="text-[var(--r)]" aria-hidden="true" /> {t('ui.travellerPanels.feedback_title')}</h2>
+            <h2 id="feedback-title">{t('ui.travellerPanels.feedback_title')}</h2>
             <p className="ag-small">{t('ui.travellerPanels.feedback_lead')}</p>
           </div>
           <div className="flex items-center gap-1" role="radiogroup" aria-label={t('ui.travellerPanels.rating')}>
@@ -215,7 +197,7 @@ export default function TravellerPanels() {
           </div>
           <TextArea value={fb.message} onChange={(e) => setFb((f) => ({ ...f, message: e.target.value }))} rows={3} maxLength={2000}
             aria-label={t('ui.travellerPanels.feedback_title')} placeholder={t('ui.travellerPanels.feedback_placeholder')} data-testid="feedback-message" />
-          <Button type="submit" disabled={sending} className="self-start" data-testid="feedback-send">
+          <Button type="submit" go disabled={sending} className="self-start" data-testid="feedback-send">
             {sending ? t('ui.travellerPanels.sending') : t('ui.travellerPanels.send_feedback')}
           </Button>
         </form>

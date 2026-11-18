@@ -63,8 +63,11 @@ async function signedInPage(browser, token, mode, width) {
       const g = await signedInPage(browser, guestToken, 'tourist', 390);
       const snapG = (name) => g.page.screenshot({ path: path.join(OUT, `${type}-${String(++n).padStart(2, '0')}-guest-${name}.png`), fullPage: false });
       await g.page.goto(`${WEB}/listing/${listing.id}`, { waitUntil: 'networkidle' });
-      await g.page.locator('[data-testid="booking-submit"]').first().waitFor({ timeout: 15000 });
-      await g.page.waitForTimeout(1500);
+      // Book now opens the booking screen (prototype: separate steps, ending in Send).
+      await g.page.locator('[data-testid="mobile-sticky-cta"]').waitFor({ timeout: 15000 });
+      await g.page.click('[data-testid="mobile-sticky-cta"]');
+      await g.page.locator('[data-testid="booking-next"]').first().waitFor({ timeout: 15000 });
+      await g.page.waitForTimeout(500);
       // Fill the dates, and again if the page re-rendered and cleared them (it loads in stages).
       const offset = 20 + Math.floor(Math.random() * 300);
       for (let attempt = 0; attempt < 3; attempt++) {
@@ -83,8 +86,13 @@ async function signedInPage(browser, token, mode, width) {
         const opts = await route.locator('option').evaluateAll((o) => o.map((x) => x.value).filter(Boolean));
         if (opts[0]) await route.selectOption(opts[0]);
       }
-      const svc = g.page.locator('[data-testid^="booking-service-"]');
-      if (await svc.count()) await svc.first().click();
+      // Step through the booking screens; a guide's services are on step 2.
+      for (let s = 0; s < 3 && (await g.page.locator('[data-testid="booking-next"]').count()); s++) {
+        await g.page.locator('[data-testid="booking-next"]').first().click();
+        await g.page.waitForTimeout(600);
+        const svc = g.page.locator('[data-testid^="booking-service-"]');
+        if (await svc.count()) await svc.first().click();
+      }
       await g.page.locator('[data-testid="booking-submit"]').first().click();
       await g.page.waitForTimeout(1500);
       const sent = await g.page.locator('[data-testid="booking-request-sent"]').count();

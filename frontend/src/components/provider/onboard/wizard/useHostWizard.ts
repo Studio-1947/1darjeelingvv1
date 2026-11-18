@@ -20,7 +20,7 @@ export const HOST_TYPES = ['homestay', 'driver', 'guide', 'cafe', 'shop'] as con
 export type HostType = (typeof HOST_TYPES)[number];
 export type StepKey = 'type' | 'place' | 'name' | 'price' | 'menu' | 'extras' | 'review';
 export type Place = { name: string; lat: number; lng: number };
-export type Room = { name: string; price: string };
+export type Room = { name: string; price: string; /** guests the room sleeps */ occ?: string };
 export type Dish = { name: string; price: string; photo?: string };
 
 /** Default place chips, in the prototype's order; coordinates inside the backend service box. */
@@ -248,9 +248,15 @@ export function useHostWizard() {
           images,
           amenities: offers,
           contact_phone: phone,
-          ...(d.roomsMode
-            ? { rooms: d.rooms.filter((r) => r.name.trim() && Number(r.price) > 0).map((r) => ({ name: r.name.trim(), price: Number(r.price), unit: 'night' })) }
-            : {}),
+          ...(d.roomsMode ? (() => {
+            const ok = d.rooms.filter((r) => r.name.trim() && Number(r.price) > 0);
+            // How many guests the home sleeps: the rooms added up (the board's "guest occupancy").
+            const guests = ok.reduce((n, r) => n + (Math.floor(Number(r.occ)) || 0), 0);
+            return {
+              rooms: ok.map((r) => ({ name: r.name.trim(), price: Number(r.price), unit: 'night' })),
+              ...(guests > 0 ? { capacity: Math.min(100, guests) } : {}),
+            };
+          })() : {}),
         };
       case 'driver':
         return { images, tags: offers, contact_phone: phone, routes: [{ route: t('ob.wz.day_route'), price: Number(d.price) || 0, unit: 'day' }] };
