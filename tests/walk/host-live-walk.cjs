@@ -200,12 +200,15 @@ const j = async (m, p, body, token) => { const r = await fetch(API + p, { method
       const guest = await (await b.newContext({ viewport: { width: 390, height: 844 } })).newPage();
       if (listing) {
         await guest.goto(`${WEB}/listing/${listing.id}`, { waitUntil: 'networkidle' });
-        await guest.waitForTimeout(1500);
+        // A fresh guest browser shows the loading splash first: wait for it to go, then for the title.
+        await guest.waitForFunction(() => !document.getElementById('app-splash'), null, { timeout: 20000 }).catch(() => {});
+        await guest.locator(`text=${listing.title}`).first().waitFor({ timeout: 15000 }).catch(() => {});
         const ok = (await guest.locator(`text=${listing.title}`).count()) > 0 && (await guest.locator('text=/page not found|something went wrong/i').count()) === 0;
         line(type, ok, 'listing page opens for a guest', guest.url().replace(WEB, ''));
       }
       await guest.goto(WEB + me.page_path, { waitUntil: 'networkidle' });
-      await guest.waitForTimeout(1200);
+      await guest.waitForFunction(() => !document.getElementById('app-splash'), null, { timeout: 20000 }).catch(() => {});
+      await guest.locator('[data-testid="badge-verified"]').first().waitFor({ timeout: 15000 }).catch(() => {});
       line(type, (await guest.locator('[data-testid="badge-verified"]').count()) > 0 && (await guest.locator('[data-testid="badge-member"]').count()) > 0, 'host page shows the blue tick and Member badge', me.page_path);
       await guest.screenshot({ path: path.join(OUT, `${type}-zz-host-page.png`) });
       await guest.context().close();

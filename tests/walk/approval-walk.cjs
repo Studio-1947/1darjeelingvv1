@@ -139,7 +139,9 @@ async function signedInPage(browser, token, mode, width) {
 
       // 3. Guest confirms; without the pass that is the ₹1 fee.
       await g.page.goto(`${WEB}/my-trips`, { waitUntil: 'networkidle' });
-      await g.page.waitForTimeout(1500);
+      // Wait for the trip card itself rather than a fixed time (splash, first compile).
+      await g.page.waitForFunction(() => !document.getElementById('app-splash'), null, { timeout: 20000 }).catch(() => {});
+      await g.page.locator(`[data-testid="trip-confirm-${booking.id}"]`).waitFor({ timeout: 15000 }).catch(() => {});
       const confirmBtn = g.page.locator(`[data-testid="trip-confirm-${booking.id}"]`);
       line(type, (await confirmBtn.count()) > 0, 'guest sees "Confirm booking" after the host accepts');
       await snapG('my-trips-accepted');
