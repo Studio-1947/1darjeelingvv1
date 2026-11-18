@@ -257,6 +257,31 @@ export const bookings = pgTable('bookings', {
   voucherId: text('voucher_id'),
   // Discount percentage applied (e.g. 10 for 10%) so the host knows they need to collect 10% less.
   appliedDiscount: integer('applied_discount'),
+
+  // Homestay: the room asked for (one of the host's profile rooms) and its nightly price at booking time.
+  roomName: text('room_name'),
+  roomPrice: integer('room_price'),
+  // Driver: where and when to pick up, where to drop, how many days on a day-rate route, and the
+  // fare quoted to the traveller when they asked (route price, or day rate x days).
+  pickupPlace: text('pickup_place'),
+  dropPlace: text('drop_place'),
+  pickupTime: text('pickup_time'),
+  days: integer('days'),
+  quotedFare: integer('quoted_fare'),
+
+  // Cancelling (prototype cancel.js): who cancelled ('guest' | 'host' | 'admin'), the reason code and
+  // an optional note, when, whether it was late (under 24 h before the trip), and whether it was a
+  // host declining a request rather than cancelling a booking.
+  cancelReason: text('cancel_reason'),
+  cancelNote: text('cancel_note'),
+  cancelledBy: text('cancelled_by'),
+  cancelledAt: text('cancelled_at'),
+  cancelLate: boolean('cancel_late').default(false).notNull(),
+  declined: boolean('declined').default(false).notNull(),
+  // A guest asking to cancel a confirmed booking; the host accepts (cancels) or keeps it.
+  cancelRequestedAt: text('cancel_requested_at'),
+  cancelRequestReason: text('cancel_request_reason'),
+  cancelRequestNote: text('cancel_request_note'),
 });
 
 export const favorites = pgTable('favorites', {
@@ -460,6 +485,8 @@ export const hostPosts = pgTable('host_posts', {
   photos: jsonb('photos').$type<string[]>().default([]).notNull(),
   // Optional: the listing the post is about. Kept when the listing goes, as plain text without it.
   listingId: text('listing_id').references(() => listings.id, { onDelete: 'set null' }),
+  // 'update' | 'offer' | 'event' | 'photo' (prototype feed.js post kinds).
+  kind: text('kind').default('update').notNull(),
   hiddenAt: text('hidden_at'),
   hiddenReason: text('hidden_reason'),
   createdAt: text('created_at').notNull(),
@@ -511,4 +538,79 @@ export const providerMembers = pgTable('provider_members', {
   providerPhoneUnique: uniqueIndex('provider_members_provider_phone_unique').on(t.providerId, t.phoneKey),
   phoneIdx: index('provider_members_phone_key_idx').on(t.phoneKey),
   userIdx: index('provider_members_user_id_idx').on(t.userId),
+}));
+
+/**
+ * Shared trip plans (prototype plans.js): a traveller plans stops over some days, optionally with a
+ * homestay and a driver from aangan, posts it to the Feed, and others ask to join or save it.
+ * The organiser's phone is never stored on the plan; contact goes through the app.
+ */
+export const tripPlans = pgTable('trip_plans', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  title: text('title').notNull(),
+  cover: text('cover'),
+  // Stops in travel order, and per-day notes.
+  stops: jsonb('stops').$type<{ place: string; note?: string }[]>().default([]).notNull(),
+  days: jsonb('days').$type<{ day: number; text: string }[]>().default([]).notNull(),
+  startDate: text('start_date'),
+  nights: integer('nights').default(1).notNull(),
+  stayListingId: text('stay_listing_id').references(() => listings.id, { onDelete: 'set null' }),
+  driverListingId: text('driver_listing_id').references(() => listings.id, { onDelete: 'set null' }),
+  // How many people the plan is for, including the organiser.
+  seats: integer('seats').default(2).notNull(),
+  // Cost per person in rupees, as the organiser worked it out.
+  costPerPerson: integer('cost_per_person'),
+  notes: text('notes').default('').notNull(),
+  // 'public' (in the Feed) or 'private' (only the organiser).
+  visibility: text('visibility').default('public').notNull(),
+  hiddenAt: text('hidden_at'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at'),
+}, (t) => ({
+  createdIdx: index('trip_plans_created_at_idx').on(t.createdAt),
+  userIdx: index('trip_plans_user_id_idx').on(t.userId),
+}));
+
+/** People who asked to join a plan: 'pending' until the organiser accepts ('accepted') or declines ('declined'). */
+export const tripPlanMembers = pgTable('trip_plan_members', {
+  planId: text('plan_id').references(() => tripPlans.id, { onDelete: 'cascade' }).notNull(),
+  userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  status: text('status').default('pending').notNull(),
+  createdAt: text('created_at').notNull(),
+}, (t) => ({
+  pk: primaryKey({ columns: [t.planId, t.userId] }),
+}));
+
+/** Plans a traveller saved for later. */
+export const tripPlanSaves = pgTable('trip_plan_saves', {
+  planId: text('plan_id').references(() => tripPlans.id, { onDelete: 'cascade' }).notNull(),
+  userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  createdAt: text('created_at').notNull(),
+}, (t) => ({
+  pk: primaryKey({ columns: [t.planId, t.userId] }),
+}));
+
+/**
+ * A traveller suggesting a place to see (prototype spots.js, Suggest a place). The team reviews it;
+ * approving creates an unpublished spot listing the team can finish and publish.
+ */
+export const placeSuggestions = pgTable('place_suggestions', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  name: text('name').notNull(),
+  place: text('place').notNull(),
+  details: text('details').default('').notNull(),
+  entryPrice: integer('entry_price'),
+  photos: jsonb('photos').$type<string[]>().default([]).notNull(),
+  // 'pending' | 'approved' | 'rejected'
+  status: text('status').default('pending').notNull(),
+  reviewNote: text('review_note'),
+  listingId: text('listing_id').references(() => listings.id, { onDelete: 'set null' }),
+  createdAt: text('created_at').notNull(),
+  reviewedAt: text('reviewed_at'),
+  reviewedBy: text('reviewed_by'),
+}, (t) => ({
+  statusIdx: index('place_suggestions_status_idx').on(t.status, t.createdAt),
+  userIdx: index('place_suggestions_user_id_idx').on(t.userId),
 }));
