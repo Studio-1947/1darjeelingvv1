@@ -117,7 +117,9 @@ async function signedInPage(browser, token, mode, width) {
       const hostToken = await signIn(host.phone, host.name || 'Host', 'provider');
       const h = await signedInPage(browser, hostToken, 'provider', 1280);
       await h.page.goto(`${WEB}/provider/dashboard`, { waitUntil: 'networkidle' });
-      await h.page.waitForTimeout(1500);
+      // Wait for the dashboard itself, not a fixed time: the loading splash holds a fresh page a moment.
+      await h.page.locator('[data-testid="host-figures"]').first().waitFor({ timeout: 20000 }).catch(() => {});
+      await h.page.waitForTimeout(500);
       const tab = h.page.getByRole('button', { name: /bookings/i }).first();
       if (await tab.count()) await tab.click().catch(() => {});
       await h.page.waitForTimeout(800);

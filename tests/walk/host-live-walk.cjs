@@ -131,7 +131,9 @@ const j = async (m, p, body, token) => { const r = await fetch(API + p, { method
       line(type, true, 'profile items still needed after sign-up', missing.join(', ') || 'none');
       if (missing.length) {
         await p.goto(WEB + '/provider/profile', { waitUntil: 'networkidle' });
-        await p.waitForTimeout(1500);
+        // Wait for the form itself, not a fixed time: the loading splash holds a fresh page a moment.
+        await p.locator('[data-testid="profile-save"]').first().waitFor({ timeout: 20000 }).catch(() => {});
+        await p.waitForTimeout(500);
         await snap('profile');
         for (const input of await p.locator('input[type="file"][multiple]').all()) await input.setInputFiles(IMG.slice(0, 8)).catch(() => {});
         await p.waitForTimeout(4000);
@@ -147,7 +149,8 @@ const j = async (m, p, body, token) => { const r = await fetch(API + p, { method
 
       // 6. Documents from the dashboard.
       await p.goto(WEB + '/provider/dashboard', { waitUntil: 'networkidle' });
-      await p.waitForTimeout(1200);
+      await p.locator('[data-testid="host-figures"]').first().waitFor({ timeout: 20000 }).catch(() => {});
+      await p.waitForTimeout(500);
       const up = p.getByRole('button', { name: /upload documents/i }).first();
       if (await up.count()) await up.click();
       await p.waitForTimeout(1200);

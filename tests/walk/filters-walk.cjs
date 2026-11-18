@@ -93,7 +93,8 @@ const ok = (c, m, x = '') => { console.log(`${c ? 'OK  ' : 'FAIL'} ${m}${x ? ' |
     }
     // A driver trip search from the home widget.
     await p.goto(`${WEB}/drivers?from=NJP&to=Darjeeling`, { waitUntil: 'networkidle' });
-    await p.waitForTimeout(1200);
+    await p.locator('[data-testid^="grid-tile-"]').first().waitFor({ timeout: 15000 }).catch(() => {});
+    await p.waitForTimeout(800);
     ok((await count()) >= 1, `[${width}] driver trip search finds drivers on that route`, `${await count()} drivers for NJP → Darjeeling`);
     
     if (errs.length) ok(false, `[${width}] page errors`, errs.join(' / ').slice(0, 200));

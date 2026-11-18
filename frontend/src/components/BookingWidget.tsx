@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import HomeFilterPanel from '@/components/home/HomeFilterPanel';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { MagnifyingGlass as Search, House as HomeIcon, Car, CircleNotch as Loader2, Minus, Plus, X } from '@phosphor-icons/react';
@@ -413,105 +414,7 @@ export default function BookingWidget() {
         <p className="ag-small m-0" data-testid="booking-widget-summary">{activeTab.label}  ·  {summary}</p>
       )}
 
-      {panelOpen && (
-        <Box id="booking-widget-panel" data-testid="booking-widget-pill-panel">
-          <div className="flex items-center gap-2">
-            <Seg
-              label={t('widget.change_category')}
-              value={tab}
-              onChange={(key) => { setTab(key); setShowSuggest(false); }}
-              options={tabs.map(({ key, label, Icon }) => ({ value: key, label, icon: <Icon size={16} />, testId: `booking-widget-tab-${key}-menu` }))}
-              className="flex-1"
-            />
-            <IconButton label={t('ui.bookingWidget.close_search')} onClick={() => setPanelOpen(false)}>
-              <X />
-            </IconButton>
-          </div>
-
-          {tab === 'driver' ? (
-            <>
-              <TextField
-                label={t('widget.from')}
-                value={from}
-                onChange={(e) => { setFrom(e.target.value); setActiveField('from'); setShowSuggest(true); }}
-                onFocus={() => { setActiveField('from'); setShowSuggest(true); }}
-                placeholder={t('widget.from_placeholder')}
-                data-testid="booking-widget-pill-from"
-                autoComplete="off"
-              />
-              {activeField === 'from' && suggestions}
-              <TextField
-                label={t('widget.date')}
-                type="date"
-                value={checkIn}
-                min={today}
-                onChange={(e) => pickCheckIn(e.target.value)}
-                data-testid="booking-widget-date"
-              />
-            </>
-          ) : (
-            <div className="grid grid-cols-2 gap-2">
-              <TextField
-                label={t('booking.checkin')}
-                type="date"
-                value={checkIn}
-                min={today}
-                onChange={(e) => pickCheckIn(e.target.value)}
-                data-testid="booking-widget-checkin"
-                className="min-w-0"
-              />
-              <TextField
-                label={t('booking.checkout')}
-                type="date"
-                value={checkOut}
-                min={checkIn ? addDays(checkIn, 1) : today}
-                onChange={(e) => setCheckOut(e.target.value)}
-                data-testid="booking-widget-checkout"
-                className="min-w-0"
-              />
-            </div>
-          )}
-
-          <div className="ag-stepper">
-            <span className="ag-field">{t('widget.number_of_guests')}</span>
-            <span className="flex items-center gap-2">
-              <IconButton
-                label={t('widget.guests_less')}
-                onClick={() => changeGuests(String(Math.max(1, guestCount - 1)))}
-                disabled={guestCount <= 1}
-                data-testid="booking-widget-guests-minus"
-                className="disabled:opacity-40"
-              >
-                <Minus />
-              </IconButton>
-              <input
-                type="text"
-                inputMode="numeric"
-                maxLength={String(MAX_GUESTS).length}
-                aria-label={t('widget.number_of_guests')}
-                value={guests}
-                onChange={(e) => changeGuests(typedGuests(e.target.value))}
-                onBlur={() => setGuests(String(guestCount))}
-                data-testid="booking-widget-guests"
-                className="n w-12 bg-transparent outline-none"
-              />
-              <IconButton
-                label={t('widget.guests_more')}
-                onClick={() => changeGuests(String(Math.min(MAX_GUESTS, guestCount + 1)))}
-                disabled={guestCount >= MAX_GUESTS}
-                data-testid="booking-widget-guests-plus"
-                className="disabled:opacity-40"
-              >
-                <Plus />
-              </IconButton>
-            </span>
-          </div>
-
-          <Button variant="primary" go block onClick={() => submit()} data-testid="booking-widget-panel-search" icon={<Search />}>
-            {t('widget.search')}
-          </Button>
-        </Box>
-      )}
+      {panelOpen && <HomeFilterPanel query={q} onDone={() => setPanelOpen(false)} />}
 
       {destinationQuery.trim().length >= 3 && <WeatherForecast query={destinationQuery} />}
     </form>

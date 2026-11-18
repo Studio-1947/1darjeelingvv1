@@ -15,6 +15,7 @@ import { Box, Button, ButtonLink, Chip, Chips, PageHead, SecHead, Status, cx } f
 import { Icon } from '@/components/ag/Icon';
 import { ListRow } from '@/components/home/cards';
 import { CatSpotCard, CatStayCard } from '@/components/ListingCard';
+import { typeMatches } from '@/components/home/HomeFilterPanel';
 
 const TYPE_MAP = {
   spots: 'spot',
@@ -87,6 +88,9 @@ export default function Category({ typeOverride }) {
   const from = sp.get('from') || '';
   const to = sp.get('to') || '';
   const type = typeOverride ? typeOverride : (urlType || TYPE_MAP[paramType]);
+  // The home filter's Foods & Shops ('food') is cafes and shops together: fetch all, keep those two.
+  const apiType = type === 'food' ? undefined : type;
+  const keepType = (list: any[]) => (type === 'food' ? list.filter((it) => typeMatches('food', it.type)) : list);
   const trip = useMemo(() => readTrip(sp), [sp]);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -120,6 +124,17 @@ export default function Category({ typeOverride }) {
   useEffect(() => {
     setSearchQuery(q);
   }, [q]);
+  // Filters handed over by the home filter panel: ?near=me|<place>&within=<km>&sort=price_asc.
+  const nearParam = sp.get('near') || '';
+  const withinParam = Number(sp.get('within')) || 0;
+  const sortParam = sp.get('sort') || '';
+  useEffect(() => {
+    if (nearParam === 'me') locate();
+    else if (nearParam) { const at = placeFor(nearParam); if (at) setNear(at); }
+    if (nearParam && withinParam > 0) setRadius(withinParam);
+    if (sortParam === 'price_asc' || sortParam === 'price_desc' || sortParam === 'name_asc') setSortOrder(sortParam);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nearParam, withinParam, sortParam]);
   useEffect(() => { setKind(''); setDelivers(false); }, [type]);
 
   // Smart search (server lib/search.ts): reads intent, budget, local spellings and typos and ranks
@@ -130,8 +145,8 @@ export default function Category({ typeOverride }) {
     if (!term) { setSmart(null); return; }
     let cancelled = false;
     const timer = setTimeout(() => {
-      api.get('/listings', { params: { q: term, type, limit: 60 } })
-        .then((r) => { if (!cancelled) setSmart({ q: term, items: r.data.items || [], search: r.data.search || null }); })
+      api.get('/listings', { params: { q: term, type: apiType, limit: 60 } })
+        .then((r) => { if (!cancelled) setSmart({ q: term, items: keepType(r.data.items || []), search: r.data.search || null }); })
         .catch(() => { if (!cancelled) setSmart(null); });
     }, 250);
     return () => { cancelled = true; clearTimeout(timer); };
@@ -141,8 +156,8 @@ export default function Category({ typeOverride }) {
     let cancelled = false;
     setLoading(true);
     setElsewhere([]);
-    api.get('/listings', { params: { type, limit: 60 } })
-      .then((r) => { if (!cancelled) setItems(r.data.items || []); })
+    api.get('/listings', { params: { type: apiType, limit: 60 } })
+      .then((r) => { if (!cancelled) setItems(keepType(r.data.items || [])); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [type]);
