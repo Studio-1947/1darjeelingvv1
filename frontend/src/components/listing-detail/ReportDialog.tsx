@@ -10,7 +10,7 @@ const REASONS: ReportReason[] = ['fake', 'offensive', 'unsafe', 'spam', 'other']
 
 export type ReportTarget =
   | { type: 'listing'; id: string }
-  | { type: 'review' | 'post'; id: string; authorId: string; authorName: string };
+  | { type: 'review' | 'post' | 'plan'; id: string; authorId: string; authorName: string };
 
 /**
  * Report a listing or a review, and for a review, block its author. The same choices as the
@@ -56,7 +56,7 @@ export default function ReportDialog({
   };
 
   const block = async () => {
-    if (target?.type !== 'review' && target?.type !== 'post') return;
+    if (target?.type !== 'review' && target?.type !== 'post' && target?.type !== 'plan') return;
     setBusy('block');
     setError('');
     try {
@@ -76,7 +76,7 @@ export default function ReportDialog({
   return (
     <Sheet onClose={close} labelledBy="report-title" testid="report-dialog">
       <SheetHead id="report-title"
-        title={target.type === 'review' ? t('report.review_title') : target.type === 'post' ? t('report.post_title') : t('report.listing_title')}>
+        title={target.type === 'review' ? t('report.review_title') : target.type === 'post' ? t('report.post_title') : target.type === 'plan' ? t('report.plan_title', 'Report this trip plan') : t('report.listing_title')}>
         <p className="ag-small">{t('report.intro')}</p>
       </SheetHead>
 
@@ -92,7 +92,7 @@ export default function ReportDialog({
       <TextArea value={details} onChange={(e) => setDetails(e.target.value.slice(0, 1000))} rows={3} className="[&_textarea]:!min-h-[96px]"
         placeholder={t('report.details_placeholder')} aria-label={t('report.details_placeholder')} />
 
-      {(target.type === 'review' || target.type === 'post') && (
+      {(target.type === 'review' || target.type === 'post' || target.type === 'plan') && (
         <div className="flex flex-col items-start gap-2 border-t border-[var(--warmline)] pt-3">
           <p className="ag-small">{t('report.block_explain', { name: target.authorName })}</p>
           <Button variant="stop" size="sm" onClick={block} disabled={busy !== null} data-testid="report-block"

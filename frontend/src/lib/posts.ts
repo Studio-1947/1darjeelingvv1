@@ -4,9 +4,20 @@ import api from '@/lib/api';
 export const MAX_POST_LEN = 1000;
 export const MAX_POST_PHOTOS = 4;
 
+/** What a post is (prototype feed.js NPK; POST_KINDS in backend/src/routes/posts.ts), with its icon. */
+export const POST_KINDS = [
+  { key: 'update', icon: 'news' },
+  { key: 'offer', icon: 'bag' },
+  { key: 'event', icon: 'flag' },
+  { key: 'photo', icon: 'mountain' },
+] as const;
+export type PostKind = (typeof POST_KINDS)[number]['key'];
+
 export interface HostPost {
   id: string;
   body: string;
+  /** update (the default), offer, event or photo. */
+  kind?: PostKind;
   photos: string[];
   created_at: string;
   updated_at: string | null;
@@ -48,12 +59,12 @@ export async function fetchMyPosts(): Promise<{ canPost: boolean; reason: CanPos
   return { canPost: !!data.can_post, reason: data.reason ?? null, posts: data.posts || [] };
 }
 
-export async function createPost(input: { body: string; photos: string[]; listing_id?: string | null }): Promise<HostPost> {
+export async function createPost(input: { body: string; photos: string[]; listing_id?: string | null; kind?: PostKind }): Promise<HostPost> {
   const { data } = await api.post('/posts', input);
   return data.post;
 }
 
-export async function updatePost(id: string, input: { body?: string; photos?: string[]; listing_id?: string | null }): Promise<HostPost> {
+export async function updatePost(id: string, input: { body?: string; photos?: string[]; listing_id?: string | null; kind?: PostKind }): Promise<HostPost> {
   const { data } = await api.patch(`/posts/${id}`, input);
   return data.post;
 }

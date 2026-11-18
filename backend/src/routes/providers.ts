@@ -4,7 +4,7 @@ import { assignSlug, pagePath, PAGE_TYPES } from '../lib/providerSlug';
 import { buildHostPage, hostBadges, hostIsPublic } from '../lib/hostPage';
 import { hostStats } from '../lib/hostStats';
 import { optionalUser } from '../middleware/auth';
-import { missingMandatory, profileKeysFor, profilePatchFrom, startingPriceFor } from '../lib/hostProfile';
+import { missingMandatory, profileKeysFor, profilePatchFrom, startingPriceFor, themeOf } from '../lib/hostProfile';
 import { isHostApprovalPending, isHostPlanLive } from '../lib/hostPlan';
 import { graceStateFor, publishFirstListing } from '../lib/hostGrace';
 import { hostPlanBreakup } from '../lib/pricing';
@@ -317,6 +317,8 @@ router.get('/me', authenticateToken, async (req: Request, res: Response) => {
     price_from: provider.priceFrom,
     images: provider.images,
     extras: provider.extras,
+    // The business theme colour (palette key or "#RRGGBB"; null is aangan's own), from profile.theme.
+    theme: themeOf((provider.extras as Record<string, unknown> | null)?.theme) ?? null,
     status: provider.status,
     created_at: provider.createdAt,
     activated_at: provider.activatedAt,
@@ -769,6 +771,7 @@ router.patch('/me', authenticateToken, async (req: Request, res: Response) => {
       price_from: updated.priceFrom,
       images: updated.images,
       extras: updated.extras,
+      theme: themeOf((updated.extras as Record<string, unknown> | null)?.theme) ?? null,
       status: updated.status,
       created_at: updated.createdAt,
       activated_at: updated.activatedAt,

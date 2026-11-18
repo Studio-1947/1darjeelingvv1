@@ -3,6 +3,7 @@ import { db, schema } from '../db';
 import { canSeeProviderPhone, listExtras } from './listingContact';
 import { isHostApprovalPending, isHostPlanLive } from './hostPlan';
 import { pagePath } from './providerSlug';
+import { themeOf } from './hostProfile';
 
 type Provider = typeof schema.providers.$inferSelect;
 type Viewer = { id: string; role: string } | null;
@@ -87,6 +88,8 @@ export async function buildHostPage(provider: Provider, viewer: Viewer) {
       available: e.available !== false,
       homeDelivery: e.home_delivery === true,
       social: e.social && typeof e.social === 'object' ? e.social : {},
+      // The business theme colour (a palette key or "#RRGGBB"); absent means aangan's own.
+      theme: themeOf(e.theme),
     },
     contact: phoneOk
       ? { phone: provider.contactPhone, whatsapp: e.whatsapp || provider.contactPhone, locked: false }

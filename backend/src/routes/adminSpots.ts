@@ -34,7 +34,7 @@ const MAX_TAG_LEN = 40;
 const MAX_PRICE = 1_000_000;
 
 /** Shapes a spot row into the JSON the admin console consumes. */
-function toAdminSpot(row: typeof schema.listings.$inferSelect, reviewCount = 0) {
+export function toAdminSpot(row: typeof schema.listings.$inferSelect, reviewCount = 0) {
   const extras = (row.extras || {}) as Record<string, any>;
   return {
     id: row.id,
@@ -237,16 +237,24 @@ router.post('/admin/spots/upload', authenticateToken, requireAdmin, async (req: 
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
  */
-router.post('/admin/spots', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
-  const body = req.body || {};
+/**
+ * Creates a spot from an admin payload (the POST /admin/spots body). Shared with the place
+ * suggestions review (routes/placeSuggestions.ts), which turns an approved suggestion into an
+ * unpublished spot through exactly these checks. Returns the created row, or the status and
+ * message to answer with.
+ */
+export async function createSpot(body: any): Promise<
+  { row: typeof schema.listings.$inferSelect } | { status: 400 | 409; detail: string }
+> {
+  body = body || {};
   const coreError = validateCore(body, { partial: false });
-  if (coreError) return res.status(400).json({ detail: coreError });
+  if (coreError) return { status: 400, detail: coreError };
 
   let extras;
   try {
     extras = parseSpotExtras(body.extras);
   } catch (err) {
-    if (err instanceof SpotValidationError) return res.status(400).json({ detail: err.message });
+    if (err instanceof SpotValidationError) return { status: 400, detail: err.message };
     throw err;
   }
 
@@ -258,7 +266,7 @@ router.post('/admin/spots', authenticateToken, requireAdmin, async (req: Request
     .where(and(eq(schema.listings.type, SPOT_TYPE), eq(schema.listings.title, title)))
     .limit(1);
   if (duplicate) {
-    return res.status(409).json({ detail: `A tourist spot titled "${title}" already exists` });
+    return { status: 409, detail: `A tourist spot titled "${title}" already exists` };
   }
 
   const row = {
@@ -278,7 +286,13 @@ router.post('/admin/spots', authenticateToken, requireAdmin, async (req: Request
   };
 
   await db.insert(schema.listings).values(row);
-  res.json({ item: toAdminSpot(row as typeof schema.listings.$inferSelect) });
+  return { row: row as typeof schema.listings.$inferSelect };
+}
+
+router.post('/admin/spots', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
+  const out = await createSpot(req.body);
+  if ('detail' in out) return res.status(out.status).json({ detail: out.detail });
+  res.json({ item: toAdminSpot(out.row) });
 });
 
 /** Loads a spot by id, or answers 404  a non-spot listing id is not addressable here. */

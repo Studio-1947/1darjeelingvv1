@@ -14,6 +14,13 @@ export interface BookingForm {
   route?: string;
   /** A guide booking: which of the guide's services (board: "Asking for given items"). */
   services?: string[];
+  /** A homestay booking: which of the host's rooms (prototype staybook.js). Its price sets the total. */
+  room?: string;
+  /** A driver booking (prototype drivebook.js): where from, where to, pickup time, and days on a day-rate route. */
+  pickup_place?: string;
+  drop_place?: string;
+  pickup_time?: string;
+  days?: number;
   /** A referral voucher to take off the host's price (GET /users/me/vouchers), as in the app. */
   voucher_id?: string;
   /** Its discount, for the price breakdown. */
@@ -27,6 +34,57 @@ export interface BookingErrors {
 }
 
 const draftKey = (id: string) => `booking_draft_${id}`;
+
+/** The host's rooms, each with a name (listing extras, as the profile writes them). */
+export function roomsOf(item: any): { name: string; price: number; unit: string; occ?: number; photo?: string }[] {
+  const rooms = Array.isArray(item?.extras?.rooms) ? item.extras.rooms : [];
+  return rooms.filter((r: any) => r && String(r.name || '').trim());
+}
+
+/** The driver's routes in one shape; a bare string is a one-way route with no price of its own. */
+export function routesOf(item: any): { name: string; price: number; unit: 'trip' | 'day' }[] {
+  const routes = Array.isArray(item?.extras?.routes) ? item.extras.routes : [];
+  return routes.map((r: any) => (typeof r === 'string'
+    ? { name: r.trim(), price: 0, unit: 'trip' as const }
+    : { name: String(r?.route || r?.name || '').trim(), price: Number(r?.price) || 0, unit: r?.unit === 'day' ? 'day' as const : 'trip' as const }))
+    .filter((r: { name: string }) => r.name);
+}
+
+/** The chosen route, when it is one of the driver's. */
+export function chosenRoute(item: any, name?: string) {
+  const want = String(name || '').trim().toLowerCase();
+  return want ? routesOf(item).find((r) => r.name.toLowerCase() === want) || null : null;
+}
+
+/** The chosen room, when it is one of the host's. */
+export function chosenRoom(item: any, name?: string) {
+  const want = String(name || '').trim().toLowerCase();
+  return want ? roomsOf(item).find((r) => r.name.trim().toLowerCase() === want) || null : null;
+}
+
+/**
+ * What the request comes to, by the server's rule (lib/bookingAmount.ts + lib/bookingDetails.ts):
+ * a room is its price a night (x people when priced per head); otherwise a homestay is the rate x
+ * people x nights. A driver is the route's price per trip, or its day rate x days, else the listing
+ * rate. A guide is the listing rate.
+ */
+export function bookingTotal(item: any, form: BookingForm): number {
+  const rate = Number(item?.price) || 0;
+  const guests = Math.max(1, Number(form.guests) || 1);
+  if (item?.type === 'homestay') {
+    const nights = form.check_in && form.check_out
+      ? Math.max(0, Math.round((Date.parse(form.check_out) - Date.parse(form.check_in)) / 86_400_000)) : 0;
+    const room = chosenRoom(item, form.room);
+    if (room && Number(room.price) > 0) return Number(room.price) * (room.unit === 'head' ? guests : 1) * nights;
+    return rate * guests * nights;
+  }
+  if (item?.type === 'driver') {
+    const route = chosenRoute(item, form.route);
+    if (route?.unit === 'day') return (route.price || rate) * Math.max(1, Number(form.days) || 1);
+    return route?.price || rate;
+  }
+  return rate;
+}
 
 /**
  * sessionStorage rather than localStorage: a half-filled booking is context for
@@ -129,7 +187,9 @@ export function useBookingFlow(item: any, id: string) {
     if ((item?.type === 'driver' || item?.type === 'guide') && !form.check_in) {
       next.check_in = t('booking.date_required');
     }
-    const maxGuests = item?.type === 'driver' ? (item?.extras?.seats || 6) : (item?.guests || item?.extras?.capacity || 10);
+    const roomOcc = item?.type === 'homestay' ? Number(chosenRoom(item, form.room)?.occ) || 0 : 0;
+    const baseMax = item?.type === 'driver' ? (item?.extras?.seats || 6) : (item?.guests || item?.extras?.capacity || 10);
+    const maxGuests = roomOcc > 0 ? Math.min(baseMax, roomOcc) : baseMax;
     if (!(Number(form.guests) >= 1)) {
       next.guests = t('booking.guests_required');
     } else if (Number(form.guests) > maxGuests) {
@@ -174,6 +234,12 @@ export function useBookingFlow(item: any, id: string) {
         notes: form.notes,
         route_name: item.type === 'driver' && form.route ? form.route : undefined,
         services: item.type === 'guide' && form.services?.length ? form.services : undefined,
+        room: item.type === 'homestay' && chosenRoom(item, form.room) ? form.room : undefined,
+        // The fare itself is worked out by the server from the driver's prices.
+        pickup_place: item.type === 'driver' && form.pickup_place?.trim() ? form.pickup_place.trim() : undefined,
+        drop_place: item.type === 'driver' && form.drop_place?.trim() ? form.drop_place.trim() : undefined,
+        pickup_time: item.type === 'driver' && form.pickup_time ? form.pickup_time : undefined,
+        days: item.type === 'driver' && chosenRoute(item, form.route)?.unit === 'day' ? Math.max(1, Number(form.days) || 1) : undefined,
         voucher_id: form.voucher_id || undefined,
       });
       // Board: drivers, homestays and guides wait for the host to accept. Nothing is confirmed or

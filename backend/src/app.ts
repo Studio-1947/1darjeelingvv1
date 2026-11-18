@@ -15,6 +15,7 @@ import bookingsRouter from './routes/bookings';
 import paymentsRouter from './routes/payments';
 import adminRouter from './routes/admin';
 import adminSpotsRouter from './routes/adminSpots';
+import placeSuggestionsRouter from './routes/placeSuggestions';
 import adminMaintenanceRouter from './routes/adminMaintenance';
 import adminBroadcastsRouter from './routes/adminBroadcasts';
 import geocodeRouter from './routes/geocode';
@@ -23,6 +24,7 @@ import kycRouter from './routes/kyc';
 import favoritesRouter from './routes/favorites';
 import reviewsRouter from './routes/reviews';
 import postsRouter from './routes/posts';
+import plansRouter from './routes/plans';
 import routeEstimatorRouter from './routes/routeEstimator';
 import weatherRouter from './routes/weather';
 import notificationsRouter from './routes/notifications';
@@ -252,6 +254,7 @@ app.use('/api/deliveries', deliveriesRouter);
 app.use('/api/favorites', favoritesRouter);
 app.use('/api/reviews', reviewsRouter);
 app.use('/api/posts', postsRouter);
+app.use('/api/plans', plansRouter); // Trip plans in the Feed
 app.use('/api/payments', paymentsRouter);
 app.use('/api/webhooks/interakt', interaktWebhookRouter);
 app.use('/api/geocode', geocodeRouter);
@@ -261,6 +264,7 @@ app.use('/api/weather', weatherRouter);
 app.use('/api/notifications', notificationsRouter);
 app.use('/api/promotions', promotionsRouter);
 app.use('/api', feedbackRouter);
+app.use('/api', placeSuggestionsRouter); // Suggest a place: /api/spots/suggestions, /api/admin/spots/suggestions
 app.use('/api/app', appVersionRouter);
 app.use('/api', reportsRouter); // /api/reports, /api/users/me/blocks, /api/admin/reports
 app.use('/api', adminRouter); // Mount admin routes directly under /api (e.g. /api/admin/seed, /api/admin/stats)

@@ -2,6 +2,7 @@ import React, { Fragment, useEffect, useMemo, useState } from 'react';
 import { distanceTo, placeFor } from '@/lib/places';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import SuggestPlace from '@/components/spots/SuggestPlace';
 import api from '@/lib/api';
 import Seo from '@/components/Seo';
 import { GridTileSkeleton, ListRowSkeleton, repeat } from '@/components/skeletons';
@@ -92,6 +93,10 @@ export default function Category({ typeOverride }) {
   const apiType = type === 'food' ? undefined : type;
   const keepType = (list: any[]) => (type === 'food' ? list.filter((it) => typeMatches('food', it.type)) : list);
   const trip = useMemo(() => readTrip(sp), [sp]);
+  // Find a ride's day: only the drivers free that day (server: not switched off, no accepted or
+  // confirmed booking on it).
+  const availableOn = type === 'driver' && trip.checkIn ? trip.checkIn : '';
+  const dayParam = availableOn ? { available_on: availableOn } : {};
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   // Everything matching the query in *other* categories. Only fetched when the
@@ -145,22 +150,22 @@ export default function Category({ typeOverride }) {
     if (!term) { setSmart(null); return; }
     let cancelled = false;
     const timer = setTimeout(() => {
-      api.get('/listings', { params: { q: term, type: apiType, limit: 60 } })
+      api.get('/listings', { params: { q: term, type: apiType, limit: 60, ...dayParam } })
         .then((r) => { if (!cancelled) setSmart({ q: term, items: keepType(r.data.items || []), search: r.data.search || null }); })
         .catch(() => { if (!cancelled) setSmart(null); });
     }, 250);
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [searchQuery, type]);
+  }, [searchQuery, type, availableOn]);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setElsewhere([]);
-    api.get('/listings', { params: { type: apiType, limit: 60 } })
+    api.get('/listings', { params: { type: apiType, limit: 60, ...dayParam } })
       .then((r) => { if (!cancelled) setItems(keepType(r.data.items || [])); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [type]);
+  }, [type, availableOn]);
 
   // Narrowed here rather than in the query: a driver's routes live in
   // `extras.routes` or - for the seeded drivers - only in the editorial map, so
@@ -379,6 +384,11 @@ export default function Category({ typeOverride }) {
               return next;
             })} onClear={() => setSp((prev) => { const next = new URLSearchParams(prev); next.delete('from'); next.delete('to'); return next; })} />
             <h2 className="ag-category-h2">{routeTrip ? t('category.rs_all', 'All drivers') : t('nav.drivers', 'Drivers')}</h2>
+            {availableOn && (
+              <p className="ag-small m-0" data-testid="ride-free-on">
+                {t('category.rs_free_on', 'Drivers free on {{date}}', { date: formatDay(availableOn, locale) })}
+              </p>
+            )}
           </>
         )}
 
@@ -508,6 +518,7 @@ export default function Category({ typeOverride }) {
         ) : (
           resultsOf(results)
         )}
+        {type === 'spot' && <SuggestPlace />}
       </div>
     </div>
   );

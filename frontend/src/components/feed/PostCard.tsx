@@ -12,7 +12,8 @@ import { timeAgo } from '@/lib/timeAgo';
 export { timeAgo };
 
 /**
- * One post: who wrote it (the host's business, with a verified badge), when, the words, up to four
+ * One post: who wrote it (the host's business, with a verified badge), its kind as a tag (update,
+ * offer, event, photo: prototype feed.js), when, the words, up to four
  * photos, the listing it is about, then the reaction chips. Readers get Report; the author gets
  * Edit and Delete.
  */
@@ -76,6 +77,7 @@ export default function PostCard({
               )}
             </span>
             <span className="ag-small block truncate">
+              {post.kind && <span className="ag-feed-kind" data-testid={`post-kind-${post.id}`}>{t(`feed.kind_${post.kind}`, post.kind.charAt(0).toUpperCase() + post.kind.slice(1))}</span>}
               {t(`feed.type_${post.host.type}`, post.host.type)} · {post.host.location} · {timeAgo(post.created_at, i18n.language, t)}
             </span>
           </span>

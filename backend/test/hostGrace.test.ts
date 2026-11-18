@@ -349,6 +349,7 @@ describe('admin and help number', () => {
   it('tells the sign-up screens the help number (null when unset) and the free bookings', async () => {
     const res = await request(app).get('/api/app/host-signup');
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({ support_phone: null, grace_bookings: 2 });
+    // live_hosts / recent_hosts (the home card's "N are in") are covered in businessTheme.test.ts.
+    expect(res.body).toMatchObject({ support_phone: null, grace_bookings: 2 });
   });
 });

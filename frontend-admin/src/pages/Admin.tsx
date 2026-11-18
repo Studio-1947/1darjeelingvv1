@@ -20,6 +20,7 @@ import OverviewTab from '@/components/admin/OverviewTab';
 import UsersTab from '@/components/admin/UsersTab';
 import ListingsTab from '@/components/admin/ListingsTab';
 import SpotsTab, { type AdminSpot } from '@/components/admin/SpotsTab';
+import PlaceSuggestionsTab from '@/components/admin/PlaceSuggestionsTab';
 import SpotFormModal, { type SpotFormPayload } from '@/components/admin/SpotFormModal';
 import BookingsTab from '@/components/admin/BookingsTab';
 import PaymentsTab from '@/components/admin/PaymentsTab';
@@ -293,6 +294,7 @@ export default function Admin() {
           { id: 'users', label: 'Users & Businesses' },
           { id: 'listings', label: 'Services (Listings)' },
           { id: 'spots', label: 'Tourist Spots' },
+          { id: 'suggestions', label: 'Place suggestions' },
           { id: 'bookings', label: 'Bookings' },
           { id: 'payments', label: 'Payments' },
           { id: 'cleanup', label: 'Clean-up' }
@@ -327,6 +329,7 @@ export default function Admin() {
           onToggleFeatured={handleToggleSpotFeatured}
         />
       )}
+      {activeTab === 'suggestions' && <PlaceSuggestionsTab onApproved={() => loadAdminData({ background: true })} />}
       {activeTab === 'cleanup' && <MaintenanceTab onChanged={() => loadAdminData({ background: true })} />}
       {activeTab === 'bookings' && <BookingsTab bookings={bookingsList} onChanged={() => loadAdminData({ background: true })} />}
       {/* Background refetch after a refund: the blocking path would unmount the dashboard and

@@ -8,6 +8,7 @@ import api from '@/lib/api';
 import { APP_DOWNLOAD_URL } from '@/constants/app';
 import AppComingSoon from '@/components/AppComingSoon';
 import { Icon } from '@/components/ag/Icon';
+import { useMode } from '@/lib/theme';
 
 /** When the bell last asked for the unread count (shared across page changes). */
 let lastUnreadCheck = 0;
@@ -44,6 +45,7 @@ export default function Header() {
   const { pathname, search: query } = useLocation();
   const navigate = useNavigate();
   const goBack = useGoBack();
+  const [mode, setMode] = useMode();
   const [appSoon, setAppSoon] = React.useState(false);
   const closeAppSoon = React.useCallback(() => setAppSoon(false), []);
 
@@ -115,6 +117,17 @@ export default function Header() {
               <Icon name="search" />
             </button>
           )}
+          <button
+            type="button"
+            className="ag-iconbtn"
+            role="switch"
+            aria-checked={mode === 'dark'}
+            onClick={() => setMode(mode === 'dark' ? 'light' : 'dark')}
+            aria-label={t('theme.dark', 'Dark mode')}
+            data-testid="header-mode"
+          >
+            <Icon name={mode === 'dark' ? 'sun' : 'moon'} />
+          </button>
           <Link
             to={user ? '/notifications' : `/login?next=${encodeURIComponent('/notifications')}`}
             className="ag-iconbtn"

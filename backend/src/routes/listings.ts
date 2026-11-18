@@ -3,7 +3,7 @@ import { hostPlanVisibility, isListingHostLapsed } from '../lib/hostPlan';
 import { isGracePaused } from '../lib/hostGrace';
 import { v4 as uuidv4 } from 'uuid';
 import { db, schema } from '../db';
-import { eq, and, inArray } from 'drizzle-orm';
+import { eq, and, inArray, sql } from 'drizzle-orm';
 import { authenticateToken, optionalUser } from '../middleware/auth';
 import { canSeeProviderPhone, listExtras, publicExtras } from '../lib/listingContact';
 import { rateLimiter } from '../middleware/rateLimiter';
@@ -15,7 +15,7 @@ import { blockedRanges, isDateExclusive } from '../lib/bookingAvailability';
 import { myActiveProvider, myProvider } from '../lib/hostAccess';
 import { HOST_APPROVAL_TYPES } from '../lib/bookingApproval';
 import { rank, type Interpretation } from '../lib/search';
-import { maxGuestsFor } from '../lib/bookingRules';
+import { isIsoDate, maxGuestsFor } from '../lib/bookingRules';
 import { checkNameLike } from '../lib/contentRules';
 import { listingCover } from '../lib/listingCover';
 import {
@@ -147,6 +147,12 @@ const router = Router();
  *       - in: query
  *         name: limit
  *         schema: { type: integer, default: 60 }
+ *       - in: query
+ *         name: available_on
+ *         schema: { type: string, format: date }
+ *         description: >
+ *           Drivers only (with type=driver): YYYY-MM-DD. Leaves out drivers who switched
+ *           availability off and drivers with an accepted or confirmed booking on that day.
  *     responses:
  *       200:
  *         description: Matching listings
@@ -241,6 +247,25 @@ router.get('/', async (req: Request, res: Response) => {
   const conditions = [publicSpotVisibility(), hostPlanVisibility()];
   if (type) {
     conditions.push(eq(schema.listings.type, type));
+  }
+  // Find a ride: only the drivers free on the day asked for. A driver who switched availability
+  // off is out, and so is one already holding an accepted or confirmed booking that covers the day
+  // (a booking with no end date covers its start day only).
+  const availableOn = req.query.available_on;
+  if (availableOn !== undefined && availableOn !== '') {
+    if (!isIsoDate(availableOn)) {
+      return res.status(400).json({ detail: 'available_on must be a date like 2026-12-31', code: 'bad_date' });
+    }
+    if (type === 'driver') {
+      conditions.push(sql`coalesce(${schema.listings.extras}->>'available', 'true') <> 'false'`);
+      conditions.push(sql`not exists (
+        select 1 from ${schema.bookings}
+        where ${schema.bookings.listingId} = ${schema.listings.id}
+          and ${schema.bookings.status} in ('accepted', 'confirmed')
+          and ${schema.bookings.checkIn} <= ${availableOn}
+          and coalesce(${schema.bookings.checkOut}, ${schema.bookings.checkIn}) >= ${availableOn}
+      )`);
+    }
   }
   // A search reads the words (lib/search.ts): kind of place, budget, each word on its own, local
   // spellings and typos, best match first. It ranks every visible listing of the type, then pages.

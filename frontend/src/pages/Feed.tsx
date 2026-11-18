@@ -9,17 +9,20 @@ import PostCard from '@/components/feed/PostCard';
 import PostComposer from '@/components/feed/PostComposer';
 import TitleTrack from '@/components/feed/TitleTrack';
 import HostSites from '@/components/feed/HostSites';
+import PlanCard from '@/components/feed/PlanCard';
 import ReportDialog, { ReportTarget } from '@/components/listing-detail/ReportDialog';
+import { fetchPlans, TripPlan } from '@/lib/plans';
 import { CanPostReason, deletePost, fetchFeed, fetchMyPosts, HostPost } from '@/lib/posts';
 import api from '@/lib/api';
 import { HillWeather } from '@/components/WeatherForecast';
 import { Box, Button, ButtonLink, FieldError, IconButton } from '@/components/ag';
 import { Icon } from '@/components/ag/Icon';
 
-/** What "Show me" can include: the kinds the app has data for (the prototype's trip plans and local news have no backend). */
-type Kind = 'weather' | 'sites' | 'posts';
+/** What "Show me" can include: the kinds the app has data for (the prototype's local news has no backend). */
+type Kind = 'weather' | 'plans' | 'sites' | 'posts';
 const KINDS: Array<{ k: Kind; label: string; fallback: string }> = [
   { k: 'weather', label: 'feed.kind_weather', fallback: 'Weather' },
+  { k: 'plans', label: 'feed.kind_plans', fallback: 'Trip plans' },
   { k: 'sites', label: 'feed.kind_sites', fallback: 'Websites' },
   { k: 'posts', label: 'feed.kind_posts', fallback: 'Host posts' },
 ];
@@ -30,6 +33,8 @@ function savedShow(): Kind[] {
     const v = localStorage.getItem(SHOW_KEY);
     if (v === 'weather' || v === 'posts') return [v]; // the old single choice
     const list = JSON.parse(v || 'null');
+    // A list saved before trip plans existed with everything ticked still means everything.
+    if (Array.isArray(list) && !list.includes('plans') && ['weather', 'sites', 'posts'].every((k) => list.includes(k))) return ALL;
     if (Array.isArray(list)) return ALL.filter((k) => list.includes(k));
   } catch { /* private window or old value */ }
   return ALL;
@@ -72,6 +77,34 @@ export default function Feed() {
   const all = show.length === ALL.length;
   const [filterOpen, setFilterOpen] = useState(false);
   const [composing, setComposing] = useState(false);
+
+  // Trip plans travellers posted (prototype plans.js), newest first, in their own section.
+  const [plans, setPlans] = useState<TripPlan[] | null>(null);
+  const [plansNext, setPlansNext] = useState<string | null>(null);
+  const [plansMore, setPlansMore] = useState(false);
+  const loadPlans = useCallback(async () => {
+    try {
+      const page = await fetchPlans({ limit: 10 });
+      setPlans(page.plans);
+      setPlansNext(page.nextBefore);
+    } catch {
+      setPlans([]);
+    }
+  }, []);
+  useEffect(() => { loadPlans(); }, [loadPlans, user?.id]);
+  const morePlans = async () => {
+    if (!plansNext || plansMore) return;
+    setPlansMore(true);
+    try {
+      const page = await fetchPlans({ before: plansNext, limit: 10 });
+      setPlans((p) => [...(p || []), ...page.plans]);
+      setPlansNext(page.nextBefore);
+    } catch {
+      toast.error(t('feed.load_failed'));
+    } finally {
+      setPlansMore(false);
+    }
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -146,6 +179,7 @@ export default function Feed() {
   const myHidden = business ? mine.filter((p) => p.hidden) : [];
   const isMine = (p: HostPost) => !!user && p.author_user_id === user.id;
   const showWeather = show.includes('weather');
+  const showPlans = show.includes('plans');
   const showSites = show.includes('sites');
   const showPosts = show.includes('posts');
   const startEdit = (post: HostPost) => { setEditing(post); setComposing(true); window.scrollTo({ top: 0, behavior: 'smooth' }); };
@@ -168,6 +202,11 @@ export default function Feed() {
                 onClick={() => { if (composing) setEditing(null); setComposing((v) => !v); }} data-testid="feed-create-post">
                 {t('feed.create_post', 'Create a post')}
               </Button>
+            )}
+            {!business && (
+              <ButtonLink to="/plan" size="sm" go className="ag-feed-barbtn" icon={<Icon name="t_trip" />} data-testid="feed-plan-trip">
+                {t('plans.plan_trip', 'Plan a trip')}
+              </ButtonLink>
             )}
           </div>
           {filterOpen && (
@@ -210,6 +249,33 @@ export default function Feed() {
         )}
 
         {showWeather && <HillWeather />}
+
+        {showPlans && (
+          <section className="flex flex-col gap-3" aria-labelledby="feed-plans-h" data-testid="feed-plans">
+            <h2 id="feed-plans-h" className={show.length > 1 ? 'ag-feed-h' : 'sr-only'}>{t('feed.kind_plans', 'Trip plans')}</h2>
+            {plans === null ? (
+              <div className="flex justify-center py-8 text-[var(--ink-muted)]"><Loader2 size={24} className="animate-spin" /></div>
+            ) : plans.length === 0 ? (
+              <Box className="ag-feed-empty" data-testid="feed-plans-empty">
+                <Icon name="t_trip" />
+                <p className="m-0">{t('plans.empty', 'No trip plans yet. Plan one, and other travellers can ask to join.')}</p>
+                {!business && <ButtonLink to="/plan" go size="sm">{t('plans.plan_trip', 'Plan a trip')}</ButtonLink>}
+              </Box>
+            ) : (
+              <>
+                {plans.map((p) => (
+                  <PlanCard key={p.id} plan={p} onChange={(np) => setPlans((list) => (list || []).map((x) => (x.id === np.id ? np : x)))} />
+                ))}
+                {plansNext && (
+                  <Button onClick={morePlans} disabled={plansMore} data-testid="feed-plans-more" center className="self-center"
+                    icon={plansMore ? <Loader2 className="animate-spin" /> : undefined}>
+                    {t('feed.load_more')}
+                  </Button>
+                )}
+              </>
+            )}
+          </section>
+        )}
 
         {showSites && !loading && <HostSites posts={posts} />}
 

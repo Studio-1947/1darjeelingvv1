@@ -50,6 +50,7 @@ export default function Notifications() {
     else if (target?.kind === 'external') window.open(target.href, '_blank', 'noopener,noreferrer');
     else if (n.kind?.startsWith('booking_')) nav(isHostMode ? '/provider/dashboard' : '/my-trips');
     else if (n.kind?.startsWith('delivery')) nav(isHostMode ? '/provider/dashboard' : '/my-trips');
+    else if (n.kind?.startsWith('plan_')) nav(n.kind === 'plan_cancelled' || !n.ref_id ? '/feed' : `/plan/${n.ref_id}`);
   };
 
   const unread = !!items && items.some((n) => n.unread);

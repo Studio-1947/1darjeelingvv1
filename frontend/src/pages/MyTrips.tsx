@@ -17,8 +17,6 @@ export default function MyTrips() {
   const [bookings, setBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<TripFilter>('all');
-  const [confirmingId, setConfirmingId] = useState<string | null>(null);
-  const [busyId, setBusyId] = useState<string | null>(null);
 
   const loadBookings = useCallback(() => {
     return api.get('/bookings/me')
@@ -34,17 +32,6 @@ export default function MyTrips() {
     }
     loadBookings().finally(() => setLoading(false));
   }, [user, authLoading, loadBookings]);
-
-  const cancelBooking = async (id: string) => {
-    setBusyId(id);
-    try {
-      await api.patch(`/bookings/${id}/cancel`);
-      await loadBookings();
-      setConfirmingId(null);
-    } finally {
-      setBusyId(null);
-    }
-  };
 
   const head = <PageHead title={t('nav.trips', 'My trip')} />;
 
@@ -113,9 +100,8 @@ export default function MyTrips() {
               </Box>
             ) : (
               shown.map((b) => (
-                <TripCard key={b.id} booking={b} testId={`my-trip-card-${b.id}`}
-                  confirming={confirmingId === b.id} busy={busyId === b.id}
-                  onReviewed={() => loadBookings()} onAskCancel={() => setConfirmingId(b.id)} onCancel={() => cancelBooking(b.id)} onKeep={() => setConfirmingId(null)} />
+                // Cancelling (with a reason, or a request to the host) happens in the card; it reloads after.
+                <TripCard key={b.id} booking={b} testId={`my-trip-card-${b.id}`} onReviewed={() => loadBookings()} />
               ))
             )}
           </>

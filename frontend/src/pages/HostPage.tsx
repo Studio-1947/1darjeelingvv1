@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import api from '@/lib/api';
 import Seo from '@/components/Seo';
 import HostMiniSite from '@/components/provider/HostMiniSite';
+import { themeVars, useMode } from '@/lib/theme';
 import DeliveryRequestButton from '@/components/DeliveryRequestButton';
 import { waLink, waShare } from '@/lib/tripMessages';
 import { Box, Button, ButtonA, ButtonLink, PageHead } from '@/components/ag';
@@ -17,6 +18,8 @@ import { Box, Button, ButtonA, ButtonLink, PageHead } from '@/components/ag';
  * editing, now with working Call / WhatsApp / Direction, their listings to book, and reviews.
  */
 export default function HostPage() {
+  // Re-render when dark mode is switched, so the business colour follows it.
+  const [colourMode] = useMode();
   const { t } = useTranslation();
   const { slug = '' } = useParams();
   const { pathname } = useLocation();
@@ -64,7 +67,8 @@ export default function HostPage() {
   };
 
   return (
-    <div className="ag-wrap ag-listing">
+    // The whole page in the business's own colour (profile.theme), when the host picked one.
+    <div className="ag-wrap ag-listing" style={themeVars(page.theme, colourMode)}>
       <div className="ag-main" data-testid="host-page">
         <Seo title={page.name} description={(page.about || '').slice(0, 155)} />
         {data.not_live && (

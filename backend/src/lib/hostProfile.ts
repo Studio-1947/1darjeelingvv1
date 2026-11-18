@@ -36,7 +36,26 @@ export const MENU_UNITS = ['plate', 'item', 'cup', 'head'] as const;
 export const GOODS_UNITS = ['item', 'piece', 'kg', 'gram', 'litre', 'pack', 'dozen'] as const;
 /** The board caps a shop's goods list at ten items. */
 export const MAX_GOODS = 10;
+/** Most people one homestay room can sleep (a room's optional `occ`). */
+export const MAX_ROOM_OCC = 50;
 export const SOCIAL_KEYS = ['instagram', 'facebook', 'youtube', 'website'] as const;
+/**
+ * The business theme colour (prototype palette.js, "For my business"): the palette keys the website
+ * and app offer (frontend/src/lib/theme.ts PALETTES), or a "#RRGGBB" colour of the host's own.
+ * The host's dashboard and public page are painted in it.
+ */
+export const THEME_KEYS = [
+  'studio1947', 'mitti', 'rhodo', 'terracotta', 'saipatri', 'dhendo', 'maya',
+  'tea', 'turmeric', 'sandstone', 'indigo', 'monsoon', 'charcoal',
+] as const;
+const HEX_COLOUR = /^#[0-9a-f]{6}$/i;
+
+/** A valid stored theme, or undefined for none / anything unexpected. */
+export function themeOf(v: unknown): string | undefined {
+  if (typeof v !== 'string') return undefined;
+  if (HEX_COLOUR.test(v)) return v.toUpperCase();
+  return (THEME_KEYS as readonly string[]).includes(v) ? v : undefined;
+}
 
 /** Photos a host must have before approval, by type. */
 export const MIN_CAR_PHOTOS = 6;
@@ -123,6 +142,8 @@ const COMMON: Record<string, (v: unknown) => unknown | ProfileError> = {
     return out;
   },
   images: (v) => list(v, 30, 'Photos', (x) => (isUrl(x) ? (x as string).trim() : { error: 'Each photo must be an uploaded image' })),
+  // '' clears it, so the business follows aangan's own colours again.
+  theme: (v) => (v === '' ? '' : themeOf(v) ?? { error: 'Theme must be one of the palettes or a colour like #947C47' }),
 };
 
 /** The green-list fields a homestay, a cafe and a local business share. */
@@ -156,7 +177,16 @@ const BY_TYPE: Record<string, Record<string, (v: unknown) => unknown | ProfileEr
   },
   homestay: {
     host_name: (v) => text(v, 80, 'Host name'),
-    rooms: (v) => list(v, 20, 'Rooms', priced(ROOM_UNITS, 'room', 'night')),
+    // Each room may say how many people it sleeps (`occ`, optional): a booking for that room
+    // cannot be for more people than that (prototype staybook.js rooms[{name,price,occ}]).
+    rooms: (v) => list(v, 20, 'Rooms', (x) => {
+      const r = priced(ROOM_UNITS, 'room', 'night')(x);
+      if ('error' in r) return r;
+      const occRaw = (x as Record<string, unknown>).occ;
+      if (occRaw === undefined || occRaw === null || occRaw === '') return r;
+      const occ = int(occRaw, 1, MAX_ROOM_OCC, 'People per room');
+      return typeof occ === 'number' ? { ...r, occ } : occ;
+    }),
     meals: (v) => list(v, 20, 'Food', priced(['meal', 'day', 'head'], 'meal', 'meal')),
     ...PREMISES,
     capacity: (v) => int(v, 1, 100, 'Guest occupancy'),

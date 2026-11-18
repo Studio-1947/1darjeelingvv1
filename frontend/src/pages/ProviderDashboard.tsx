@@ -20,6 +20,7 @@ import { useSeo } from '@/components/Seo';
 import PointsRules, { hostPointsRows } from '@/components/PointsRules';
 import { Box, Button, ButtonA, ButtonLink, Chip, Chips, MenuIcon, PageHead, SecHead, SeeAll, Status, TextArea } from '@/components/ag';
 import { Icon } from '@/components/ag/Icon';
+import { themeVars, useMode } from '@/lib/theme';
 
 type View = 'main' | 'bookings' | 'documents';
 
@@ -33,7 +34,7 @@ const HELP_WA = '919093277919';
  * Taking bookings switch, the next step, WhatsApp help, then share and Switch to Traveller.
  * Bookings and Documents open as their own screens with "Back to overview" (S.bz.full).
  */
-export default function ProviderDashboard() {
+function ProviderDashboardPage() {
   const { t } = useTranslation();
   useSeo({ title: t('provider.dashboard_title'), noindex: true });
   const { user, loading: authLoading, setMode, refresh } = useAuth();
@@ -143,8 +144,15 @@ export default function ProviderDashboard() {
     await loadDashboard();
   };
 
-  const handleCancelBooking = async (bookingId: string) => {
-    await api.patch(`/bookings/${bookingId}/cancel`);
+  // Declining a request or cancelling a booking carries the host's reason (prototype cancel.js).
+  const handleCancelBooking = async (bookingId: string, reason: string, note: string) => {
+    await api.patch(`/bookings/${bookingId}/cancel`, { reason, note });
+    await loadDashboard();
+  };
+
+  // A guest asked to cancel a confirmed booking: accept (it is cancelled) or keep it.
+  const handleCancelRequest = async (bookingId: string, answer: 'accept' | 'keep') => {
+    await api.post(`/bookings/${bookingId}/cancel-request/${answer}`);
     await loadDashboard();
   };
 
@@ -297,7 +305,7 @@ export default function ProviderDashboard() {
               {provider.page_path && <ButtonLink to={provider.page_path} go>{t('host.my_site', 'My website')}</ButtonLink>}
             </Box>
           ) : (
-            scoped.map((b) => <BookingCard key={b.id} b={b} onCancel={handleCancelBooking} onAccept={handleAcceptBooking} host={hostInfo} />)
+            scoped.map((b) => <BookingCard key={b.id} b={b} onCancel={handleCancelBooking} onAccept={handleAcceptBooking} onCancelRequest={handleCancelRequest} host={hostInfo} />)
           )}
 
           {/* The board's per-type figures and points, for this listing or all of them. */}
@@ -528,6 +536,7 @@ export default function ProviderDashboard() {
               </span>
             </div>
           )}
+          <ButtonLink to="/theme?for=business" icon={<Icon name="sun" />} data-testid="host-theme-link">{t('theme.title', 'Theme colour')}</ButtonLink>
           <Button go onClick={toTraveller}>{t('pd.switch_traveller')}</Button>
         </div>
       </div>
@@ -547,6 +556,22 @@ export default function ProviderDashboard() {
       {editModal}
 
       <ListingFormModal open={addOpen} onClose={() => setAddOpen(false)} onSubmit={handleAddListing} />
+    </div>
+  );
+}
+
+/**
+ * The dashboard in the business's own colour (prototype palette.js "For my business": the host picks
+ * it on Theme colour, it is saved as profile.theme). `display: contents` keeps the layout as it was;
+ * the theme variables still reach every screen of the dashboard through it.
+ */
+export default function ProviderDashboard() {
+  // Re-render when dark mode is switched, so the business colour follows it.
+  const [colourMode] = useMode();
+  const { provider } = useAuth() as any;
+  return (
+    <div style={{ display: 'contents', ...themeVars(provider?.theme, colourMode) }} data-testid="host-dashboard-theme">
+      <ProviderDashboardPage />
     </div>
   );
 }

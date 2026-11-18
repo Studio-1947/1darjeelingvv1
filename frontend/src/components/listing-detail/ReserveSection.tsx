@@ -3,10 +3,11 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Box, Button, Chip, Chips, FieldError, Option, SelectField, StepBar, TextField } from '@/components/ag';
 import { Icon } from '@/components/ag/Icon';
-import { BookingFlow } from './useBookingFlow';
+import { BookingFlow, bookingTotal, chosenRoom, chosenRoute, roomsOf, routesOf } from './useBookingFlow';
 import { todayStr, addDays, isBadRange, parseDate } from '@/lib/dates';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
+import { niceTime } from '@/lib/tripTime';
 
 /** Listing types whose bookings are requests the host accepts first (server: HOST_APPROVAL_TYPES). */
 const HOST_ASKED = new Set(['homestay', 'driver', 'guide']);
@@ -23,6 +24,32 @@ function niceDay(iso: string, lang: string) {
 }
 
 const rs = (n: number) => `₹${Math.round(n).toLocaleString('en-IN')}`;
+
+/** Places offered as you type a pickup or drop; anything else can be typed too (as Find a ride). */
+const RIDE_PLACES = ['Darjeeling', 'Ghum', 'Tiger Hill', 'Kurseong', 'Mirik', 'Kalimpong', 'Siliguri', 'NJP Station', 'Bagdogra Airport', 'Gangtok', 'Sittong', 'Lamahatta', 'Takdah', 'Lepchajagat', 'Sukhia Pokhri', 'Pelling', 'Namchi', 'Ravangla'];
+
+/** "NJP to Darjeeling" / "NJP → Darjeeling" / "NJP - Darjeeling": the two ends, when a route names them. */
+function routeEnds(name: string): [string, string] | null {
+  const parts = name.split(/\s*(?:→|->|–|—|\bto\b|\s-\s)\s*/i).map((p) => p.trim()).filter(Boolean);
+  return parts.length === 2 ? [parts[0], parts[1]] : null;
+}
+
+/** A small − n + stepper row (prototype `.box.sbrow`), for days on a day-rate ride. */
+function StepRow({ icon, label, value, min, max, testid, minusLabel, plusLabel, onChange }: {
+  icon: 'person' | 't_trip'; label: string; value: number; min: number; max: number; testid: string;
+  minusLabel: string; plusLabel: string; onChange: (n: number) => void;
+}) {
+  return (
+    <Box role="group" aria-label={label} data-testid={testid} className="ag-listing-sbrow">
+      <span className="ag-listing-sblab"><Icon name={icon} /> {label}</span>
+      <span className="ag-listing-mstep">
+        <button type="button" aria-label={minusLabel} disabled={value <= min} onClick={() => onChange(value - 1)}>−</button>
+        <span className="n" aria-live="polite">{value}</span>
+        <button type="button" aria-label={plusLabel} disabled={value >= max} onClick={() => onChange(value + 1)}>+</button>
+      </span>
+    </Box>
+  );
+}
 
 /** The people row (prototype `.box.sbrow` with a small stepper). */
 function PeopleRow({ value, max, error, onChange }: { value: number; max: number; error?: string; onChange: (n: number) => void }) {
@@ -49,7 +76,8 @@ function PeopleRow({ value, max, error, onChange }: { value: number; max: number
  * The booking screen behind "Book now" (prototype V.book with staybook.js and drivebook.js): a step
  * bar, the listing's name, then one step per screen. Stay: your stay (dates, people, total), then
  * send. Ride: your ride (trip, date, people, total), then send. Guide: which day, then services and
- * people, then send. Only what the server stores is asked (no room, pickup place or time).
+ * people, then send. A stay picks one of the host's rooms (its price makes the total); a ride says
+ * where from, where to, the pickup time and, on a day-rate trip, how many days.
  */
 export function BookingScreen({ item, unit, step, booking, onNext }: {
   item: any;
@@ -70,7 +98,12 @@ export function BookingScreen({ item, unit, step, booking, onNext }: {
   const isDriver = item.type === 'driver';
   const isGuide = item.type === 'guide';
   const services: any[] = isGuide && Array.isArray(item.extras?.services) ? item.extras.services.filter((s: any) => String(s?.name || '').trim()) : [];
-  const routes: any[] = isDriver && Array.isArray(item.extras?.routes) ? item.extras.routes : [];
+  const routes = isDriver ? routesOf(item) : [];
+  const rooms = isStay ? roomsOf(item) : [];
+  const room = isStay ? chosenRoom(item, form.room) : null;
+  const route = isDriver ? chosenRoute(item, form.route) : null;
+  const perDay = isDriver && route?.unit === 'day';
+  const days = Math.max(1, Number(form.days) || 1);
 
   // Referral vouchers the traveller can use on this booking (the app's "Apply voucher").
   const { user } = useAuth();
@@ -82,9 +115,19 @@ export function BookingScreen({ item, unit, step, booking, onNext }: {
 
   // The prototype opens on tomorrow (and one night for a stay), so the total is never empty.
   React.useEffect(() => {
-    if (form.check_in) return;
-    const d = addDays(today, 1);
-    updateForm(isStay ? { check_in: d, check_out: form.check_out && form.check_out > d ? form.check_out : addDays(d, 1) } : { check_in: d });
+    const patch: Partial<typeof form> = {};
+    if (!form.check_in) {
+      const d = addDays(today, 1);
+      Object.assign(patch, isStay ? { check_in: d, check_out: form.check_out && form.check_out > d ? form.check_out : addDays(d, 1) } : { check_in: d });
+    }
+    // A stay opens on the first room (prototype), and a draft's room the host no longer lists is dropped.
+    if (isStay && rooms.length && !chosenRoom(item, form.room)) {
+      patch.room = rooms[0].name;
+      const occ = Number(rooms[0].occ) || 0;
+      if (occ > 0 && Number(form.guests) > occ) patch.guests = occ;
+    }
+    if (isDriver && !form.pickup_time) patch.pickup_time = '09:00';
+    if (Object.keys(patch).length) updateForm(patch);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -96,11 +139,28 @@ export function BookingScreen({ item, unit, step, booking, onNext }: {
     : 0;
   const guests = Math.max(1, Number(form.guests) || 1);
   const rate = Number(item.price) || 0;
-  // A homestay is priced per person per night; a driver or guide by the day (backend lib/bookingAmount.ts).
-  const gross = isStay ? rate * guests * Math.max(nights, 0) : rate;
+  // The server's rule (lib/bookingAmount.ts): a room's price a night, else rate x people x nights for
+  // a stay; a ride's route fare (per trip, or day rate x days), else the day rate; a guide by the day.
+  const gross = bookingTotal(item, form);
   const pct = form.voucher_pct || 0;
   const off = Math.round((gross * pct) / 100);
-  const maxGuests = item.max_guests || (isDriver ? (item.extras?.seats || 6) : (item.extras?.capacity || 10));
+  const baseMax = item.max_guests || (isDriver ? (item.extras?.seats || 6) : (item.extras?.capacity || 10));
+  const maxGuests = room?.occ && Number(room.occ) > 0 ? Math.min(baseMax, Number(room.occ)) : baseMax;
+
+  const pickRoom = (name: string) => {
+    const r = chosenRoom(item, name);
+    const occ = Number(r?.occ) || 0;
+    updateForm({ room: name, ...(occ > 0 && guests > occ ? { guests: occ } : {}) });
+  };
+  const pickRoute = (name: string) => {
+    const ends = routeEnds(name);
+    updateForm({
+      route: name,
+      // The route's own ends fill an empty From / To, so a plain route pick still says where.
+      ...(ends && !form.pickup_place?.trim() ? { pickup_place: ends[0] } : {}),
+      ...(ends && !form.drop_place?.trim() ? { drop_place: ends[1] } : {}),
+    });
+  };
 
   const next = () => {
     if (step === 1 && !validate()) return;
@@ -155,33 +215,69 @@ export function BookingScreen({ item, unit, step, booking, onNext }: {
               {niceDay(form.check_in, lang)} → {niceDay(form.check_out, lang)} · {t('booking.nights', { count: nights })}
             </p>
           )}
+          {rooms.length > 0 && (
+            <SelectField label={t('listing.sb_room', 'Room')} value={room?.name || ''} onChange={(e) => pickRoom(e.target.value)} data-testid="booking-room">
+              {rooms.map((r, i) => (
+                <option key={i} value={r.name}>
+                  {/* Short, as the prototype writes it, so it fits a phone: name · price · people. */}
+                  {r.name}{Number(r.price) > 0 ? ` · ${rs(Number(r.price))}${r.unit === 'head' ? ` ${t('profile.unit_head')}` : ''}` : ''}
+                  {Number(r.occ) > 0 ? ` · ${t('listing.ppl_many', '{{count}} people', { count: Number(r.occ) })}` : ''}
+                </option>
+              ))}
+            </SelectField>
+          )}
           {people}
           {totalBox}
           {nextBtn}
         </>
       )}
 
-      {/* ---------- ride: trip, date, people, total ---------- */}
+      {/* ---------- ride: trip, from and to, date and pickup time, days, people, total ---------- */}
       {isDriver && step === 1 && (
         <>
           <h1>{t('listing.db_h', 'Your ride')}</h1>
           {routes.length > 0 && (
-            <SelectField label={t('listing.db_trip', 'Trip')} value={form.route || ''} onChange={(e) => updateForm({ route: e.target.value })} data-testid="booking-route">
+            <SelectField label={t('listing.db_trip', 'Trip')} value={form.route || ''} onChange={(e) => pickRoute(e.target.value)} data-testid="booking-route">
               <option value="">{t('booking.route_pick')}</option>
-              {routes.map((r: any, i: number) => {
-                const name = typeof r === 'string' ? r : (r.route || r.name || '');
-                return name ? <option key={i} value={name}>{name}{r.price ? ` · ${rs(Number(r.price))}` : ''}</option> : null;
-              })}
+              {routes.map((r, i) => (
+                <option key={i} value={r.name}>{r.name}{r.price ? ` · ${rs(r.price)} ${t(`profile.unit_${r.unit}`)}` : ''}</option>
+              ))}
             </SelectField>
           )}
-          {rate > 0 && (
-            <p className="ag-small ag-listing-rate m-0 inline-flex items-center gap-1.5">
-              <Icon name="car" size={16} className="text-[var(--r)]" /> {t('listing.db_dayrate', 'Day rate')} · {rs(rate)} {unit}
+          <datalist id="booking-places">{RIDE_PLACES.map((p) => <option key={p} value={p} />)}</datalist>
+          <div className="ag-listing-locpair">
+            <TextField label={t('listing.db_fromL', 'From')} type="search" list="booking-places" autoComplete="off" maxLength={120}
+              placeholder={t('listing.db_find', 'Search a place')} value={form.pickup_place || ''}
+              onChange={(e) => updateForm({ pickup_place: e.target.value })} data-testid="booking-from" />
+            <TextField label={t('listing.db_toL', 'To')} type="search" list="booking-places" autoComplete="off" maxLength={120}
+              placeholder={t('listing.db_find', 'Search a place')} value={form.drop_place || ''}
+              onChange={(e) => updateForm({ drop_place: e.target.value })} data-testid="booking-to" />
+          </div>
+          {(route?.price || rate) > 0 && (
+            <p className="ag-small ag-listing-rate m-0 inline-flex items-center gap-1.5" data-testid="booking-rate">
+              <Icon name="car" size={16} className="text-[var(--r)]" />
+              {route
+                ? `${route.unit === 'day' ? t('listing.db_dayrate', 'Day rate') : t('listing.db_fare', 'Fare')} · ${rs(route.price || rate)} ${t(`profile.unit_${route.unit}`)}`
+                : `${t('listing.db_dayrate', 'Day rate')} · ${rs(rate)} ${unit}`}
             </p>
           )}
-          <TextField label={t('listing.db_when', 'Journey date')} type="date" required value={form.check_in} min={today}
-            onChange={(e) => updateForm({ check_in: e.target.value })} data-testid="booking-date"
-            error={errors.check_in} errorId="booking-error-date" />
+          <div className="ag-listing-dtrow">
+            <TextField label={t('listing.db_when', 'Journey date')} type="date" required value={form.check_in} min={today}
+              onChange={(e) => updateForm({ check_in: e.target.value })} data-testid="booking-date"
+              error={errors.check_in} errorId="booking-error-date" />
+            <TextField label={t('listing.db_time', 'Pickup time')} type="time" step={900} value={form.pickup_time || ''}
+              onChange={(e) => updateForm({ pickup_time: e.target.value })} data-testid="booking-time" />
+          </div>
+          {perDay && (
+            <>
+              <StepRow icon="t_trip" label={t('listing.db_ndays', 'How many days')} value={days} min={1} max={30} testid="booking-days"
+                minusLabel={t('listing.db_day_minus', 'One day less')} plusLabel={t('listing.db_day_plus', 'One more day')}
+                onChange={(n) => updateForm({ days: n })} />
+              {form.check_in && days > 1 && (
+                <p className="ag-small ag-listing-nightline">{niceDay(form.check_in, lang)} → {niceDay(addDays(form.check_in, days - 1), lang)}</p>
+              )}
+            </>
+          )}
           {people}
           {totalBox}
           {nextBtn}
@@ -245,11 +341,18 @@ export function BookingScreen({ item, unit, step, booking, onNext }: {
                 {isStay && form.check_in && form.check_out
                   ? `${niceDay(form.check_in, lang)} → ${niceDay(form.check_out, lang)}`
                   : form.check_in ? niceDay(form.check_in, lang) : ''}
+                {isDriver && form.pickup_time ? ` · ${niceTime(form.pickup_time, lang)}` : ''}
                 {isDriver && form.route ? `, ${form.route}` : ''}
+                {isDriver && (form.pickup_place?.trim() || form.drop_place?.trim())
+                  ? <span className="sub">{[form.pickup_place?.trim(), form.drop_place?.trim()].map((x) => x || '…').join(' → ')}</span>
+                  : null}
+                {isStay && room ? <span className="sub">{room.name}</span> : null}
                 {isGuide && form.services?.length ? `, ${form.services.join(', ')}` : ''}
               </span>
               <span>
-                {isStay && nights > 0 ? `${t('booking.nights', { count: nights })}, ` : ''}{guests === 1 ? t('listing.ppl_one', '1 person') : t('listing.ppl_many', '{{count}} people', { count: guests })}
+                {isStay && nights > 0 ? `${t('booking.nights', { count: nights })}, ` : ''}
+                {perDay ? `${days === 1 ? t('listing.db_day1', '1 day') : t('listing.db_ndays_n', '{{n}} days', { n: days })}, ` : ''}
+                {guests === 1 ? t('listing.ppl_one', '1 person') : t('listing.ppl_many', '{{count}} people', { count: guests })}
               </span>
               {pct > 0 && gross > 0 && (
                 <>

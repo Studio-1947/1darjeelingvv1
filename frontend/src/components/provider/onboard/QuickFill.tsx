@@ -20,7 +20,7 @@ import {
 
 const chipClass = (on: boolean) =>
   `px-3 py-1.5 rounded-full text-xs font-bold border transition-colors ${
-    on ? 'bg-pine text-white border-pine' : 'bg-white text-ink-soft border-[var(--line)]'
+    on ? 'bg-pine text-white border-pine' : 'bg-[var(--surface)] text-ink-soft border-[var(--line)]'
   }`;
 
 /** Phrases that write the description for the host. Typed words are kept. */
@@ -71,11 +71,19 @@ export function PriceChips({ type, value, onPick }: { type: string; value?: stri
   );
 }
 
-let signupInfo: Promise<{ support_phone: string | null; grace_bookings: number }> | null = null;
+/** live_hosts / recent_hosts: the home card's "N are in" (active hosts, and a few faces). */
+export type HostSignupInfo = {
+  support_phone: string | null;
+  grace_bookings: number;
+  live_hosts?: number;
+  recent_hosts?: { name: string; avatar: string }[];
+};
+
+let signupInfo: Promise<HostSignupInfo> | null = null;
 
 /** The help number and the free bookings, read once per page load (GET /app/host-signup). */
 export function useHostSignupInfo() {
-  const [info, setInfo] = useState<{ support_phone: string | null; grace_bookings: number }>({ support_phone: null, grace_bookings: 2 });
+  const [info, setInfo] = useState<HostSignupInfo>({ support_phone: null, grace_bookings: 2 });
   useEffect(() => {
     let live = true;
     signupInfo ??= api.get('/app/host-signup').then((r) => r.data).catch(() => {

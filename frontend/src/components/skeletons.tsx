@@ -88,7 +88,7 @@ export function StayTileSkeleton() {
 /** Matches a posted review row. */
 export function ReviewSkeleton() {
   return (
-    <SkeletonBlock testid="review-skeleton" className="rounded-2xl border border-[var(--line)] p-4 md:p-5 bg-white">
+    <SkeletonBlock testid="review-skeleton" className="rounded-2xl border border-[var(--line)] p-4 md:p-5 bg-[var(--surface)]">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <Bar className="w-9 h-9 rounded-full" />

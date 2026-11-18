@@ -23,12 +23,16 @@
   /* ink */
   --ink7: #454545;         /* body and display type */
   --ink-strong: #111111;   /* names, prices, section titles */
+  --ink-strong-rgb: 17 17 17;
   --ink-muted: #6B6B6B;    /* secondary text */
+  --ink-muted-rgb: 107 107 107;
   --ink-faint: #9A9AA2;    /* inactive tabs, quiet links */
 
   /* surfaces and lines */
   --page: #FFFFFF;
+  --page-rgb: 255 255 255;
   --surface: #FFFFFF;
+  --surface-rgb: 255 255 255;
   --soft: #F5F5F5;
   --creme-hi: #FFFBF6;     /* top of the creme card gradient */
   --creme: #FFF8EF;
@@ -64,6 +68,32 @@
 
 html[lang="hi"], html[lang="ne"] { --font: "Noto Sans", "Noto Sans Devanagari", system-ui, sans-serif; }
 html[lang="bn"] { --font: "Noto Sans", "Noto Sans Bengali", system-ui, sans-serif; }
+
+/* Dark mode (prototype theme7.css html.v7[data-theme=dark]): near-black page, charcoal cards, light ink.
+   Set by lib/theme.ts as <html data-mode="dark">; a custom theme colour re-tints the warm surfaces on top. */
+html[data-mode="dark"] {
+  --page: #131313;      --page-rgb: 19 19 19;
+  --surface: #1B1A19;   --surface-rgb: 27 26 25;
+  --soft: #24221D;
+  --ink7: #D6D6D6;
+  --ink-strong: #EDEDED;   --ink-strong-rgb: 237 237 237;
+  --ink-muted: #A8A8A8;    --ink-muted-rgb: 168 168 168;
+  --ink-faint: #8A8A8A;
+  --hairline: #2F2D2A;
+  --outline: #3A3734;
+  --warmline: #33302C;
+  --r-tint: #2A1B1B;        --r-tint-rgb: 42 27 27;
+  --creme-hi: #1F1D1B;
+  --creme: #1A1817;         --creme-rgb: 26 24 23;
+  --creme2: #26221D;        --creme2-rgb: 38 34 29;
+  --blush-hi: #2A1D1C;
+  --blush: #221817;         --blush-rgb: 34 24 23;
+  --blush2: #3D2524;
+  --warmshadow: 0 1px 2px rgb(0 0 0 / .3), 0 8px 22px rgb(0 0 0 / .35);
+  --shadow-lg: 0 12px 32px rgb(0 0 0 / .5);
+  --ok-bg: #12301F; --pending-bg: #33270F; --fail-bg: #3A1614;
+  color-scheme: dark;
+}
 
 /* page: plain white, as /7 renders */
 html { background: var(--page); }
@@ -180,7 +210,7 @@ svg.i { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-widt
   .ag-tile > svg { width: 24px; height: 24px; margin-bottom: 2px; color: var(--r); }
   .ag-tile b { font: 500 16px/24px var(--font); letter-spacing: .15px; }
   .ag-tile span { font: 400 12px/16px var(--font); letter-spacing: .4px; color: var(--ink-muted); }
-  .ag-tile .ag-go { position: absolute; right: 12px; bottom: 12px; width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--r); background: #fff; color: var(--r); display: grid; place-items: center; }
+  .ag-tile .ag-go { position: absolute; right: 12px; bottom: 12px; width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--r); background: var(--surface); color: var(--r); display: grid; place-items: center; }
   .ag-tile .ag-go svg { width: 16px; height: 16px; }
 
   /* menu rows (account) */
@@ -194,7 +224,7 @@ svg.i { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-widt
   /* segmented toggle (Business / Tourist, tabs inside a page) */
   .ag-seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; padding: 4px; border-radius: var(--pill); background: var(--soft); }
   .ag-seg > button { height: 40px; border: 0; border-radius: var(--pill); background: transparent; color: var(--ink-strong); font: 500 14px/20px var(--font); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
-  .ag-seg > button[aria-selected="true"] { background: #fff; color: var(--r); box-shadow: 0 2px 8px rgb(23 23 37 / .08); }
+  .ag-seg > button[aria-selected="true"] { background: var(--surface); color: var(--r); box-shadow: 0 2px 8px rgb(23 23 37 / .08); }
 
   /* status and tags */
   .ag-status { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 8px; font: 500 12px/16px var(--font); letter-spacing: .5px; background: var(--pending-bg); color: var(--pending); }
@@ -233,19 +263,20 @@ svg.i { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-widt
   .ag-bookbar .ag-btn { margin-left: auto; min-width: 170px; height: 52px; min-height: 52px; }
 
   /* ---------- shell ---------- */
-  .ag-header { position: sticky; top: 0; z-index: 40; background: rgb(255 255 255 / .92); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+  .ag-header { position: sticky; top: 0; z-index: 40; background: rgb(var(--page-rgb) / .92); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
   .ag-header .ag-wrap { display: flex; align-items: center; gap: 8px; min-height: 64px; padding-block: 8px; }
   .ag-brand { position: relative; display: flex; align-items: center; flex: 1; min-width: 0; height: 32px; color: var(--ink-strong); text-decoration: none; }
   .ag-brand .word { height: 26px; width: 108px; }
   .ag-topact { display: flex; align-items: center; gap: 6px; flex: none; }
-  .ag-getapp { height: 40px; display: inline-flex; align-items: center; gap: 6px; padding: 0 16px 0 12px; border-radius: var(--pill); border: 1px solid var(--outline); background: #fff; color: var(--ink-strong); font: 500 14px/20px var(--font); white-space: nowrap; cursor: pointer; }
-  /* Vercel prototype: App is always the round download icon; its label stays for screen readers via aria-label */
-  .ag-getapp { width: 40px; padding: 0; justify-content: center; }
+  .ag-getapp { height: 40px; display: inline-flex; align-items: center; gap: 6px; padding: 0 16px 0 12px; border-radius: var(--pill); border: 1px solid var(--outline); background: var(--surface); color: var(--ink-strong); font: 500 14px/20px var(--font); white-space: nowrap; cursor: pointer; }
+  /* App shows its label, except on very narrow phones and while the Search button is showing (prototype) */
   .ag-getapp svg { width: 18px; height: 18px; }
-  .ag-getapp span { display: none; }
+  .ag-getapp.compact { width: 40px; padding: 0; justify-content: center; }
+  .ag-getapp.compact span { display: none; }
+  @media (max-width: 380px) { .ag-getapp { width: 40px; padding: 0; justify-content: center; } .ag-getapp span { display: none; } }
   .ag-loginbtn svg { width: 18px; height: 18px; }
   .ag-loginbtn { height: 40px; display: inline-flex; align-items: center; gap: 4px; padding: 0 12px 0 16px; border-radius: var(--pill); border: 0; background: var(--r); color: var(--on-r); font: 500 14px/20px var(--font); white-space: nowrap; text-decoration: none; cursor: pointer; }
-  .ag-tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; background: rgb(255 255 255 / .95); border-top: 1px solid var(--hairline); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); padding: 0 8px env(safe-area-inset-bottom, 0px); }
+  .ag-tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; background: rgb(var(--page-rgb) / .95); border-top: 1px solid var(--hairline); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); padding: 0 8px env(safe-area-inset-bottom, 0px); }
   .ag-tabbar .ag-wrap { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; padding-inline: 0; }
   .ag-tab { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; height: 60px; padding: 6px 2px; border: 0; background: transparent; color: var(--ink-faint); font: 500 12px/16px var(--font); letter-spacing: .5px; text-decoration: none; }
   .ag-tab .ind { position: relative; width: 48px; height: 28px; display: grid; place-items: center; }
@@ -256,7 +287,7 @@ svg.i { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-widt
   .ag-foot { margin-top: 24px; padding: 24px 0 calc(var(--tabbar-h) + 24px); background: linear-gradient(180deg, var(--creme), var(--blush)); border-top: 1px solid var(--warmline); }
 
   /* splash: wordmark rises, tagline follows, then the screen lifts (about 2.5s) */
-  .ag-splash { position: fixed; inset: 0; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; background: #fff; color: var(--r); animation: ag-splash-out .5s ease-in 2.1s forwards; }
+  .ag-splash { position: fixed; inset: 0; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; background: var(--page); color: var(--r); animation: ag-splash-out .5s ease-in 2.1s forwards; }
   .ag-splash .logo { height: 52px; width: auto; opacity: 0; transform: translateY(12px) scale(.92); animation: ag-splash-logo .7s cubic-bezier(.2, .8, .2, 1) .15s forwards; }
   .ag-splash .tagline { margin: 0; font: 400 16px/24px var(--font); letter-spacing: 1.5px; color: var(--ink7); opacity: 0; transform: translateY(8px); animation: ag-splash-tag .6s ease-out .75s forwards; }
   @keyframes ag-splash-logo { to { opacity: 1; transform: none; } }
@@ -273,3 +304,6 @@ svg.i { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-widt
 
 /* Shown while a page's code loads (App.tsx Suspense fallback): a quiet line in the column. */
 .page-loading { max-width: var(--wmax); margin: 0 auto; padding: 48px 16px; text-align: center; font: 400 14px/20px var(--font); color: var(--ink-muted); }
+
+/* dark mode: dropdown arrows drawn light (the light one is a fixed dark stroke) */
+html[data-mode="dark"] select.ag-in, html[data-mode="dark"] .ag-category-sel { background-image: url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%23EDEDED%27 stroke-width=%272%27 stroke-linecap=%27round%27%3E%3Cpath d=%27M6 9l6 6 6-6%27/%3E%3C/svg%3E"); }
