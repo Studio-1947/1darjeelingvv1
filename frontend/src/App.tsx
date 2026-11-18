@@ -15,6 +15,7 @@ import Policies from '@/pages/Policies';
 const Support = lazy(() => import('@/pages/Support'));
 const Donate = lazy(() => import('@/pages/Donate'));
 const Notifications = lazy(() => import('@/pages/Notifications'));
+const ThemeColour = lazy(() => import('@/pages/ThemeColour'));
 const Discover = lazy(() => import('@/pages/Discover'));
 const Explore = lazy(() => import('@/pages/Explore'));
 const EditProfile = lazy(() => import('@/pages/EditProfile'));
@@ -106,6 +107,7 @@ export default function App() {
                     <Route path="/support" element={<TravellerOnly><Support /></TravellerOnly>} />
                     <Route path="/donate" element={<Donate />} />
                     <Route path="/notifications" element={<Notifications />} />
+                    <Route path="/theme" element={<ThemeColour />} />
                     <Route path="/provider/onboard" element={<ProviderOnboard />} />
                     <Route path="/provider/dashboard" element={<ProviderDashboard />} />
                     <Route path="/provider/profile" element={<ProviderProfile />} />

@@ -233,6 +233,7 @@ export function useBookingFlow(item: any, id: string) {
     feeFor, setFeeFor,
     requested, setRequested,
     doBook,
+    validate,
   };
 }
 

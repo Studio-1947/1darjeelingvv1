@@ -1,18 +1,20 @@
 /*
  * Listing cards and category tiles for Home, the category lists and Explore (Aangan 2.0 red /7).
  * Three card shapes, as the prototype uses them:
- *   StayCard - photo on top, name, place, price, one button and a heart (stays, drivers, guides, food)
- *   SpotCard - a tall photo with the name over it (spots, nature, festivals)
+ *   StayCard  - photo on top, name, place, guests and rating, price, a red button and a heart
+ *   SpotCard  - a tall photo with a round entry sticker and the name over it (spots, nature, festivals)
+ *   GuideCard / ShopCard - the small three-across cards Home uses for guides, cafes and shops
  *   ListRow  - a 104px square photo beside the text (search across every category, list view)
  */
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
-import { ArrowUpRight, Heart, MapPin, SealCheck, House, Car, Mountains, ForkKnife, PersonSimpleHike, Confetti } from '@phosphor-icons/react';
+import { ArrowUpRight, MapPin, SealCheck, House, Car, Mountains, ForkKnife, PersonSimpleHike, Confetti } from '@phosphor-icons/react';
+import { Icon } from '@/components/ag/Icon';
 import SmartImg from '@/components/SmartImg';
-import { ButtonLink, IconButton, cx } from '@/components/ag';
-import { listingImage } from '@/lib/listingContent';
+import { cx } from '@/components/ag';
+import { listingImage, sizedImage } from '@/lib/listingContent';
 import { kmLabel } from '@/lib/places';
 import { cardCtaKey } from '@/lib/cardCta';
 import { useFavorites } from '@/context/FavoritesContext';
@@ -67,67 +69,169 @@ function SaveHeart({ id, testId, className }: { id: string; testId?: string; cla
   const { requireAuth } = useLoginGate();
   const saved = isFavorite(id);
   return (
-    <IconButton
-      label={t('common.save')}
-      on={saved}
+    <button
+      type="button"
+      aria-label={t('common.save')}
       aria-pressed={saved}
       data-testid={testId}
-      className={className}
+      className={cx('ag-home-heart', saved && 'on', className)}
       onClick={() => { if (requireAuth('save')) toggle(id).catch(() => {}); }}
     >
-      <Heart weight={saved ? 'fill' : 'regular'} />
-    </IconButton>
+      <Icon name="heart" />
+    </button>
   );
 }
 
-/** Stays, drivers, guides, cafes and shops: photo, name, place, price, button and heart. */
-export function StayCard({ it, href, km, testId, ctaTestId, saveTestId, ctaLabel }: {
-  it: any; href: string; km?: Km; testId?: string; ctaTestId?: string; saveTestId?: string; ctaLabel?: string;
+const BIKE = 'M5.5 18a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM18.5 18a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM5.5 15.5h5l3-6h3l2 6M13.5 9.5L12 6H9';
+const firstText = (v: unknown): string => (Array.isArray(v) ? v.find((x) => typeof x === 'string' && x.trim()) || '' : '');
+
+/**
+ * Stays, drivers, guides, cafes and shops (the prototype's staycard): photo with the distance on it,
+ * name, place, guests and rating, price, then a red button and a round heart.
+ * `wide` lays the first card of a Home section across both columns, photo beside the text.
+ * `selfie` puts the driver's face (or initial) over the photo's corner.
+ */
+export function StayCard({ it, href, km, testId, ctaTestId, saveTestId, ctaLabel, wide, selfie }: {
+  it: any; href: string; km?: Km; testId?: string; ctaTestId?: string; saveTestId?: string; ctaLabel?: string; wide?: boolean; selfie?: boolean;
 }) {
   const { t } = useTranslation();
+  const ex = it.extras || {};
+  const isCar = it.type === 'driver';
+  const seats = Number(ex.seats) || Number(it.max_guests) || 0;
+  const feat = isCar ? '' : firstText(ex.amenities) || firstText(ex.highlights);
+  const rating = Number(it.rating) > 0 ? Number(it.rating).toFixed(1) : '';
+  const avatar = typeof ex.host_avatar === 'string' && ex.host_avatar ? ex.host_avatar : '';
   return (
-    <div className="ag-card flex flex-col" data-testid={testId}>
-      <div className="relative">
-        <Link to={href} tabIndex={-1} aria-hidden="true" className="block">
-          <SmartImg src={listingImage(it, 600, 450)} alt="" className="img !flex" />
-        </Link>
-        <SaveHeart id={it.id} testId={saveTestId} className="!absolute right-2 top-2" />
-      </div>
-      <div className="body flex-1">
-        <Link to={href} className="name line-clamp-2 no-underline">
-          {it.title}
+    <div className={cx('ag-home-stay', wide && 'wide')} data-testid={testId}>
+      <Link to={href} tabIndex={-1} aria-hidden="true" className="ag-home-stayimg">
+        <SmartImg src={listingImage(it, wide ? 700 : 500, wide ? 700 : 380)} alt="" className="ag-home-photo" />
+        {km && <span className="ag-home-distb"><Icon name="pin" />{kmLabel(km)}</span>}
+        {selfie && (
+          <span className="ag-home-selfie">
+            {avatar ? <img src={sizedImage(avatar, 120)} alt="" loading="lazy" /> : <b>{String(it.title || '?').trim().charAt(0).toUpperCase()}</b>}
+          </span>
+        )}
+      </Link>
+      <div className="ag-home-staybody">
+        <Link to={href} className="name">
+          <span className="truncate">{it.title}</span>
           {it.provider_verified && (
-            <SealCheck size={16} weight="fill" className="ml-1 inline-block align-[-2px] text-[var(--r)]" aria-label={t('kyc.verified')} />
+            <span className="ag-home-vb" role="img" aria-label={t('kyc.verified')}><Icon name="check" /></span>
           )}
         </Link>
-        <Where it={it} km={km} />
+        <span className="meta"><Icon name="pin" /><span className="truncate">{it.location}</span></span>
+        {['homestay', 'driver', 'guide'].includes(it.type) && (
+          <span className="metarow">
+            {seats > 0 && (
+              <span className="meta"><Icon name="person" />
+                {isCar ? `${seats} ${t('home.seats', 'seats')}` : `${t('home.upto', 'Up to')} ${seats}`}
+              </span>
+            )}
+            {isCar && ex.vehicle_type ? (
+              <span className="meta car"><Icon name="car" />{String(ex.vehicle_type)}</span>
+            ) : (
+              <span className={cx('meta star', rating && 'on')}><Icon name="star" />{rating || t('home.new', 'New')}</span>
+            )}
+          </span>
+        )}
+        {feat && <span className="meta feat"><Icon name="leaf" /><span className="truncate">{feat}</span></span>}
         <Price it={it} />
-        <ButtonLink to={href} size="sm" block center className="mt-auto" data-testid={ctaTestId}>
-          {ctaLabel || t(cardCtaKey(it.type))}
-        </ButtonLink>
+        <div className="stayact">
+          <Link to={href} className="ag-home-reserve" data-testid={ctaTestId}>
+            <span className="truncate">{ctaLabel || t(cardCtaKey(it.type))}</span>
+            <span className="go" aria-hidden="true"><Icon name="arrowne" /></span>
+          </Link>
+          <SaveHeart id={it.id} testId={saveTestId} />
+        </div>
       </div>
     </div>
   );
 }
 
-/** Spots, nature and festivals: a tall photo, the place in small caps, the name over it. */
+/** The prototype's sticker outline: a 16-point scalloped disc. */
+const STICK = (() => {
+  const n = 16; const R = 46; const r = 40; const c = 50; let d = '';
+  for (let i = 0; i < n; i += 1) {
+    const a0 = (i / n) * Math.PI * 2; const a1 = ((i + 0.5) / n) * Math.PI * 2; const a2 = ((i + 1) / n) * Math.PI * 2;
+    const p0 = [c + r * Math.cos(a0), c + r * Math.sin(a0)];
+    const p1 = [c + (R + 4) * Math.cos(a1), c + (R + 4) * Math.sin(a1)];
+    const p2 = [c + r * Math.cos(a2), c + r * Math.sin(a2)];
+    d += (i ? '' : `M${p0[0].toFixed(1)} ${p0[1].toFixed(1)}`) + `Q${p1[0].toFixed(1)} ${p1[1].toFixed(1)} ${p2[0].toFixed(1)} ${p2[1].toFixed(1)}`;
+  }
+  return `${d}Z`;
+})();
+
+/** The round entry sticker on a place's photo: "₹150 entry ticket", the host's own fee text, or "Entry varies". */
+function Sticker({ it }: { it: any }) {
+  const { t } = useTranslation();
+  const paid = Number(it.price) > 0;
+  const fee = typeof it.extras?.entry_fee === 'string' ? it.extras.entry_fee.trim() : '';
+  // A price of 0 means nobody has set one, not that the place is free, so it never says "Free".
+  const [big, small] = paid
+    ? [`₹${Number(it.price).toLocaleString('en-IN')}`, t('home.stick_ticket', 'Entry ticket')]
+    : fee ? [fee, t('home.stick_entry', 'entry')] : [t('home.stick_entry_big', 'Entry'), t('home.stick_varies', 'varies')];
+  return (
+    <span className={cx('ag-home-stick', paid && 'paid')} aria-hidden="true">
+      <svg viewBox="0 0 100 100"><path d={STICK} /><circle cx="50" cy="50" r="33" fill="none" stroke="currentColor" strokeWidth="1.5" strokeDasharray="3 3" /></svg>
+      <span className="stxt"><b>{big}</b><i>{small}</i></span>
+    </span>
+  );
+}
+
+/** Spots, nature and festivals: a tall photo, a round entry sticker, the place in small caps, the name over it. */
 export function SpotCard({ it, href, km, testId, className }: { it: any; href: string; km?: Km; testId?: string; className?: string }) {
   const { t } = useTranslation();
-  const p = priceParts(it, t);
-  const tag = p.amount ? `${p.lead ? `${p.lead} ` : ''}${p.amount}` : p.text;
+  const ex = it.extras || {};
+  const when = it.type === 'event' ? (ex.month || ex.event_date || ex.date) : ex.best_time;
   return (
-    <Link to={href} data-testid={testId}
-      className={cx('relative block aspect-[3/4] overflow-hidden rounded-[var(--r-card)] border border-[var(--warmline)] bg-[var(--creme2)] text-white no-underline shadow-[var(--warmshadow)]', className)}>
-      <SmartImg src={listingImage(it, 600, 800)} alt={it.title} className="absolute inset-0 h-full w-full object-cover" />
-      <span className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" aria-hidden="true" />
-      {tag && <span className="ag-status absolute right-2 top-2 max-w-[80%] truncate">{tag}</span>}
-      <span className="absolute inset-x-0 bottom-0 flex flex-col gap-0.5 p-3">
-        <span className="flex items-center gap-1 text-xs font-medium uppercase tracking-wider">
-          <MapPin size={12} weight="fill" aria-hidden="true" />
-          <span className="truncate">{km ? `${kmLabel(km)} · ` : ''}{it.location}</span>
-        </span>
-        <b className="line-clamp-2 text-base font-medium leading-snug">{it.title}</b>
+    <Link to={href} data-testid={testId} aria-label={it.title} className={cx('ag-home-spot', className)}>
+      <SmartImg src={listingImage(it, 600, 800)} alt="" className="ag-home-photo" />
+      {it.type !== 'event' && <Sticker it={it} />}
+      <span className="info">
+        <span className="loc"><Icon name="pin" /><span className="truncate">{km ? `${kmLabel(km)} · ` : ''}{it.location}</span></span>
+        <b>{it.title}</b>
+        {when && (
+          <span className="best"><Icon name={it.type === 'event' ? 'party' : 'hourglass'} />
+            <span className="truncate">{it.type === 'event' ? String(when) : `${t('home.best_time', 'Best time')}: ${String(when)}`}</span>
+          </span>
+        )}
       </span>
+    </Link>
+  );
+}
+
+/** Tour guides on Home (the prototype's gcard): square photo, first name, what they offer, place, price a day. */
+export function GuideCard({ it, href, testId }: { it: any; href: string; testId?: string }) {
+  const { t } = useTranslation();
+  const service = Array.isArray(it.extras?.services) ? it.extras.services.find((x: any) => x && x.name) : null;
+  return (
+    <Link to={href} className="ag-home-gcard" data-testid={testId}>
+      <SmartImg src={listingImage(it, 300, 300)} alt="" className="gimg" />
+      <b>{String(it.title || '').split(' ')[0]}</b>
+      {service && <span className="gtag"><Icon name="trek" /><span className="truncate">{service.name}</span></span>}
+      <span className="small">{it.location}</span>
+      {Number(it.price) > 0 && (
+        <span className="gprice">₹{Number(it.price).toLocaleString('en-IN')}<span className="small"> {t('home.per_day', 'per day')}</span></span>
+      )}
+    </Link>
+  );
+}
+
+/** Cafes and shops on Home: square photo, name, kind, place and whether they deliver. */
+export function ShopCard({ it, href, testId }: { it: any; href: string; testId?: string }) {
+  const { t } = useTranslation();
+  const ex = it.extras || {};
+  const cafe = it.type === 'cafe';
+  const kind = cafe ? t('home.sk_food', 'Food') : (typeof ex.shop_kind === 'string' && ex.shop_kind.trim()) || t('home.sk_shop', 'Shop');
+  return (
+    <Link to={href} className="ag-home-gcard shop" data-testid={testId}>
+      <SmartImg src={listingImage(it, 300, 300)} alt="" className="gimg" />
+      <b>{it.title}</b>
+      <span className="gtag"><Icon name={cafe ? 'cup' : 'bag'} /><span className="truncate">{kind}</span></span>
+      <span className="small"><Icon name="pin" /><span className="truncate">{it.location}</span></span>
+      {ex.home_delivery && (
+        <span className="small gdl"><svg className="i" viewBox="0 0 24 24" aria-hidden="true"><path d={BIKE} /></svg>{t('home.delivers', 'Home delivery')}</span>
+      )}
     </Link>
   );
 }

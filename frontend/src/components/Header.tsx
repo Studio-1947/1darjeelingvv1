@@ -1,14 +1,13 @@
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Bell, DownloadSimple } from '@phosphor-icons/react';
 import { useAuth } from '@/context/AuthContext';
 import Wordmark from '@/components/Wordmark';
 import useGoBack from '@/hooks/useGoBack';
 import api from '@/lib/api';
 import { APP_DOWNLOAD_URL } from '@/constants/app';
 import AppComingSoon from '@/components/AppComingSoon';
-import { IconButton } from '@/components/ag';
+import { Icon } from '@/components/ag/Icon';
 
 /** When the bell last asked for the unread count (shared across page changes). */
 let lastUnreadCheck = 0;
@@ -17,29 +16,34 @@ let lastUnreadCount = 0;
 /** Roots of the tab bar: nothing to go back to from these. */
 const ROOTS = ['/', '/feed', '/my-trips', '/saved', '/dashboard', '/provider/dashboard', '/my-listings', '/provider/profile'];
 
-/** The brand shows the full wordmark on landing, then hands over to the mark once per session. */
-function useBrandSettled() {
-  const [settled] = React.useState(() => {
-    try { return sessionStorage.getItem('ag-brand') === '1'; } catch { return false; }
-  });
+/** On Home the search button appears once the page's own search box has scrolled under the bar. */
+function useHomeSearchScrolledAway(active: boolean) {
+  const [away, setAway] = React.useState(false);
   React.useEffect(() => {
-    if (settled) return undefined;
-    const id = window.setTimeout(() => { try { sessionStorage.setItem('ag-brand', '1'); } catch { /* private mode */ } }, 4500);
-    return () => window.clearTimeout(id);
-  }, [settled]);
-  return settled;
+    if (!active) { setAway(false); return undefined; }
+    const check = () => {
+      const box = document.querySelector('[data-home-search]');
+      setAway(!!box && box.getBoundingClientRect().bottom < 70);
+    };
+    check();
+    window.addEventListener('scroll', check, { passive: true });
+    return () => window.removeEventListener('scroll', check);
+  }, [active]);
+  return away;
 }
 
 /**
- * Top bar (red /7): Back or the brand on the left; App, the bell and Log in on the right.
- * Language, account and the Business / Traveller switch live on the Account tab.
+ * Top bar, as the red /7 prototype draws it (app.js render()):
+ * Back on every screen except the tab roots; the full wordmark always; then App (tab roots only,
+ * shrinking to its icon when Search is showing), Search (everywhere but Home, where it appears
+ * once the home search has scrolled away), the bell (always), and Log in (tab roots, signed out).
  */
 export default function Header() {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const { pathname } = useLocation();
+  const { pathname, search: query } = useLocation();
+  const navigate = useNavigate();
   const goBack = useGoBack();
-  const settled = useBrandSettled();
   const [appSoon, setAppSoon] = React.useState(false);
   const closeAppSoon = React.useCallback(() => setAppSoon(false), []);
 
@@ -59,45 +63,71 @@ export default function Header() {
     return () => { live = false; window.removeEventListener('aangan:notifications', read); };
   }, [user, pathname]);
 
-  const showBack = !ROOTS.includes(pathname);
+  // A sub-screen inside a tab root (e.g. /dashboard?s=language) gets Back, as in the prototype.
+  const isRoot = ROOTS.includes(pathname) && !new URLSearchParams(query).get('s');
+  const onHome = pathname === '/';
+  const homeSearchAway = useHomeSearchScrolledAway(onHome);
+  const showSearch = !onHome || homeSearchAway;
 
   const getApp = () => {
     if (APP_DOWNLOAD_URL) window.open(APP_DOWNLOAD_URL, '_blank', 'noopener');
     else setAppSoon(true);
   };
 
+  const search = () => {
+    const box = document.querySelector<HTMLElement>('[data-home-search]');
+    if (onHome && box) {
+      box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      window.setTimeout(() => box.querySelector<HTMLInputElement>('input')?.focus(), 350);
+    } else {
+      navigate('/search');
+    }
+  };
+
   return (
     <header className="ag-header" data-testid="site-header">
       <div className="ag-wrap">
-        {showBack && (
-          <IconButton label={t('common.back')} onClick={goBack} data-testid="header-back">
-            <ArrowLeft />
-          </IconButton>
+        {!isRoot && (
+          <button type="button" className="ag-iconbtn" onClick={goBack} aria-label={t('common.back')} data-testid="header-back">
+            <Icon name="back" />
+          </button>
         )}
 
-        <Link to="/" className={`ag-brand${settled || showBack ? ' settled' : ''}`} data-testid="brand-link" aria-label={t('brand', 'aangan')}>
-          {!showBack && <Wordmark className="word" still />}
-          <span
-            className="mark"
-            aria-hidden="true"
-            style={{ background: 'currentColor', WebkitMask: 'url(/ag/mark.svg) center/contain no-repeat', mask: 'url(/ag/mark.svg) center/contain no-repeat' }}
-          />
+        <Link to="/" className="ag-brand" data-testid="brand-link" aria-label={t('brand', 'aangan')}>
+          <Wordmark className="word" still />
         </Link>
 
         <div className="ag-topact">
-          <button type="button" className="ag-getapp" onClick={getApp} data-testid="header-download-app" aria-label={t('nav.download_app')}>
-            <DownloadSimple aria-hidden="true" />
-            <span className="max-[360px]:hidden">{t('ui.header.app')}</span>
-          </button>
-          {user && (
-            <Link to="/notifications" className="ag-iconbtn" data-testid="header-notifications" aria-label={t('notes.title')}>
-              <Bell />
-              {unread > 0 && <span className="ag-badge" data-testid="header-unread">{unread > 9 ? '9+' : unread}</span>}
-            </Link>
+          {isRoot && (
+            <button
+              type="button"
+              className={`ag-getapp${showSearch && !user ? ' compact' : ''}`}
+              onClick={getApp}
+              data-testid="header-download-app"
+              aria-label={t('nav.download_app')}
+            >
+              <Icon name="download" />
+              <span>{t('ui.header.app')}</span>
+            </button>
           )}
-          {!user && (
+          {showSearch && (
+            <button type="button" className="ag-iconbtn" onClick={search} aria-label={t('widget.search')} data-testid="header-search">
+              <Icon name="search" />
+            </button>
+          )}
+          <Link
+            to={user ? '/notifications' : `/login?next=${encodeURIComponent('/notifications')}`}
+            className="ag-iconbtn"
+            data-testid="header-notifications"
+            aria-label={t('notes.title')}
+          >
+            <Icon name="bell" />
+            {unread > 0 && <span className="ag-badge" data-testid="header-unread">{unread > 9 ? '9+' : unread}</span>}
+          </Link>
+          {isRoot && !user && (
             <Link to={`/login?next=${encodeURIComponent(pathname)}`} className="ag-loginbtn" data-testid="header-login">
-              {t('nav.login')}
+              <span>{t('nav.login')}</span>
+              <Icon name="arrowne" />
             </Link>
           )}
         </div>

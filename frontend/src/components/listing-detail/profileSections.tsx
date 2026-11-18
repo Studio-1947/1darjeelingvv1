@@ -1,9 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  Translate as Languages, Medal, InstagramLogo, FacebookLogo, YoutubeLogo, Globe, PlayCircle,
-  Compass, Bed, ForkKnife, CalendarBlank, MoonStars, Storefront, Moped, UsersThree, Clock, PauseCircle,
-} from '@phosphor-icons/react';
+import { InstagramLogo, FacebookLogo, YoutubeLogo, Globe, PlayCircle } from '@phosphor-icons/react';
+import { Icon, type IconName } from '@/components/ag/Icon';
 import api from '@/lib/api';
 import { Box, ButtonA, SecHead } from '@/components/ag';
 import { Section, PriceRow, PersonCard, MiniCard } from './primitives';
@@ -25,18 +23,18 @@ const SOCIAL = [
 const isVideoFile = (url: string) => /\.(mp4|mov|webm)(\?|$)/i.test(url) || /\/videos\//.test(url);
 
 /** A small line with a red icon (seasons, experience, delivery, hours). */
-function Line({ icon, children, testid }: { icon: React.ReactNode; children: React.ReactNode; testid?: string }) {
+function Line({ icon, children, testid }: { icon: IconName; children: React.ReactNode; testid?: string }) {
   return (
-    <p className="m-0 flex items-center gap-2 text-[15px] leading-[22px] text-[var(--ink7)] [&>svg]:w-[18px] [&>svg]:h-[18px] [&>svg]:flex-none [&>svg]:text-[var(--r)]" data-testid={testid}>
-      {icon}<span className="min-w-0">{children}</span>
+    <p className="m-0 flex items-center gap-2 text-[15px] leading-[22px] text-[var(--ink7)]" data-testid={testid}>
+      <Icon name={icon} size={18} className="text-[var(--r)]" /><span className="min-w-0">{children}</span>
     </p>
   );
 }
 
 /** Languages (prototype "Speaks" chips), years of experience, an intro video and social links. */
-export function HostFacts({ extras }: { extras: any }) {
+export function HostFacts({ extras, noLanguages }: { extras: any; noLanguages?: boolean }) {
   const { t } = useTranslation();
-  const languages: string[] = Array.isArray(extras?.languages) ? extras.languages : [];
+  const languages: string[] = !noLanguages && Array.isArray(extras?.languages) ? extras.languages : [];
   const years = Number(extras?.experience_years);
   const social = extras?.social && typeof extras.social === 'object' ? extras.social : {};
   const links = SOCIAL.filter((s) => typeof social[s.key] === 'string' && social[s.key]);
@@ -46,13 +44,11 @@ export function HostFacts({ extras }: { extras: any }) {
     <div className="flex flex-col gap-3" data-testid="host-facts">
       {languages.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="ag-eyebrow inline-flex items-center gap-1.5 mr-1"><Languages className="w-3.5 h-3.5" aria-hidden="true" />{t('detail.speaks')}</span>
-          {languages.map((l) => (
-            <span key={l} className="inline-flex items-center h-7 px-3 rounded-full bg-[var(--r-tint)] text-[var(--r)] text-[13px] font-medium">{l}</span>
-          ))}
+          <span className="ag-listing-langlab"><Icon name="globe" />{t('listing.speaks', 'Speaks')}</span>
+          {languages.map((l) => <span key={l} className="ag-listing-langchip">{l}</span>)}
         </div>
       )}
-      {years > 0 && <Line icon={<Medal aria-hidden="true" />}>{t('profile.experience_years', { count: years })}</Line>}
+      {years > 0 && <Line icon="badge">{t('profile.experience_years', { count: years })}</Line>}
       {video && isVideoFile(video) && (
         <video src={video} controls playsInline preload="metadata" className="w-full rounded-[16px] bg-[var(--ink-strong)] aspect-video" data-testid="host-intro-video" />
       )}
@@ -86,11 +82,11 @@ export function GuideSection({ item, photo }: { item: any; photo?: string }) {
     <PersonCard testid="detail-guide" title={t('detail.meet_guide')} name={e.host_name || item.title} photo={photo}
       verified={!!item.provider_verified} place={item.location} chips={chips} bio={e.host_bio}>
       {seasons.length > 0 && (
-        <Line icon={<CalendarBlank aria-hidden="true" />}>
+        <Line icon="hourglass">
           {t('profile.seasons_label')}: {seasons.map((s) => t(`profile.season_${s}`, { defaultValue: s })).join(', ')}
         </Line>
       )}
-      <HostFacts extras={e} />
+      <HostFacts extras={e} noLanguages />
     </PersonCard>
   );
 }
@@ -102,10 +98,10 @@ export function ServicesSection({ services }: { services: Priced[] }) {
   const { t } = useTranslation();
   if (!services.length) return null;
   return (
-    <Section title={t('detail.services_title')} note={t('detail.services_note')} testid="detail-services">
+    <Section title={t('detail.services_title')} testid="detail-services">
       <div className="flex flex-col">
         {services.map((s, i) => (
-          <PriceRow key={i} icon={<Compass />} photo={s.photo} name={s.name} price={Number(s.price) || 0} unit={t(`profile.unit_${s.unit || 'day'}`)} />
+          <PriceRow key={i} photo={s.photo} name={s.name} price={Number(s.price) || 0} unit={t(`profile.unit_${s.unit || 'day'}`)} />
         ))}
       </div>
     </Section>
@@ -117,24 +113,23 @@ export function RoomsFoodSection({ rooms, meals, homeDelivery }: { rooms: Priced
   const { t } = useTranslation();
   if (!rooms.length && !meals.length) return null;
   return (
-    <Section title={t('detail.rooms_title')} testid="detail-rooms">
+    <Section title={meals.length && !rooms.length ? t('profile.meals') : t('listing.rooms', 'Rooms')} testid="detail-rooms">
       {rooms.length > 0 && (
         <div className="flex flex-col">
-          <span className="ag-eyebrow">{t('profile.rooms')}</span>
           {rooms.map((r, i) => (
-            <PriceRow key={i} icon={<Bed />} photo={r.photo} name={r.name} price={Number(r.price) || 0} unit={t(`profile.unit_${r.unit || 'night'}`)} />
+            <PriceRow key={i} photo={r.photo} name={r.name} sub={Number((r as any).occ || (r as any).capacity) > 0 ? `${Number((r as any).occ || (r as any).capacity)} ${t('listing.ppl', 'people')}` : undefined} price={Number(r.price) || 0} unit={t(`profile.unit_${r.unit || 'night'}`)} />
           ))}
         </div>
       )}
       {meals.length > 0 && (
         <div className="flex flex-col">
-          <span className="ag-eyebrow">{t('profile.meals')}</span>
+          {rooms.length > 0 && <span className="ag-eyebrow mt-2">{t('profile.meals')}</span>}
           {meals.map((m, i) => (
-            <PriceRow key={i} icon={<ForkKnife />} photo={m.photo} name={m.name} price={Number(m.price) || 0} unit={t(`profile.unit_${m.unit || 'meal'}`)} />
+            <PriceRow key={i} photo={m.photo} name={m.name} price={Number(m.price) || 0} unit={t(`profile.unit_${m.unit || 'meal'}`)} />
           ))}
         </div>
       )}
-      {homeDelivery && <Line icon={<MoonStars aria-hidden="true" />}>{t('profile.home_delivery_on')}</Line>}
+      {homeDelivery && <Line icon="bag">{t('profile.home_delivery_on')}</Line>}
     </Section>
   );
 }
@@ -144,24 +139,24 @@ export function PriceListSection({ kind, rows, homeDelivery, capacity = 0, shopK
   const { t } = useTranslation();
   if (!rows.length && !homeDelivery && !(capacity > 0) && !openingHours) return null;
   return (
-    <Section title={t(`detail.${kind}_title`)} note={t(`detail.${kind}_note`)} testid={`detail-${kind}`}>
-      {shopKind && <span className="ag-status info self-start" data-testid="detail-shop-kind">{shopKind}</span>}
+    <Section title={t(`detail.${kind}_title`)} testid={`detail-${kind}`}>
+      {shopKind && <span className="ag-listing-dlvtag self-start" data-testid="detail-shop-kind">{shopKind}</span>}
       {rows.length > 0 && (
         <div className="flex flex-col">
           {rows.map((r, i) => (
-            <PriceRow key={i} icon={kind === 'menu' ? <ForkKnife /> : <Storefront />} photo={r.photo} name={r.name}
+            <PriceRow key={i} photo={r.photo} name={r.name}
               price={Number(r.price) || 0} unit={t(`profile.unit_${r.unit || (kind === 'menu' ? 'plate' : 'item')}`)} />
           ))}
         </div>
       )}
       {homeDelivery && (
-        <Line icon={<Moped aria-hidden="true" />} testid="detail-home-delivery">
+        <Line icon="bag" testid="detail-home-delivery">
           {kind === 'menu' ? t('profile.home_delivery_on') : t('profile.home_delivery_shop')}
         </Line>
       )}
-      {openingHours && <Line icon={<Clock aria-hidden="true" />} testid="detail-opening-hours">{t('profile.opening_hours', { hours: openingHours })}</Line>}
+      {openingHours && <Line icon="hourglass" testid="detail-opening-hours">{t('profile.opening_hours', { hours: openingHours })}</Line>}
       {capacity > 0 && (
-        <Line icon={<UsersThree aria-hidden="true" />} testid="detail-capacity">
+        <Line icon="person" testid="detail-capacity">
           {t(kind === 'menu' ? 'profile.capacity_cafe' : 'profile.capacity_shop', { count: capacity })}
         </Line>
       )}
@@ -182,7 +177,7 @@ export function OwnerSection({ item, verified }: { item: any; verified: boolean 
   return (
     <PersonCard testid="detail-owner" title={t('detail.owner_title')} name={name || item.title} photo={e.host_avatar || undefined}
       verified={verified && !!name} bio={e.host_bio}>
-      <HostFacts extras={e} />
+      <HostFacts extras={e} noLanguages />
     </PersonCard>
   );
 }
@@ -214,11 +209,40 @@ export function UnavailableNotice() {
   const { t } = useTranslation();
   return (
     <Box tone="blush" flat data-testid="host-unavailable" className="!flex-row !items-start">
-      <PauseCircle className="w-6 h-6 flex-none text-[var(--r)]" aria-hidden="true" />
+      <span className="ag-listing-ic40"><Icon name="hourglass" /></span>
       <div className="flex flex-col gap-1">
         <h3>{t('detail.unavailable_title')}</h3>
         <p className="ag-small">{t('detail.unavailable_body')}</p>
       </div>
     </Box>
+  );
+}
+
+/** "Meet your host" (homestays): the languages are in About, so they are not repeated here. */
+export function HostSection({ item, host, personSrc }: { item: any; host: any; personSrc?: string }) {
+  const { t } = useTranslation();
+  return (
+    <PersonCard testid="detail-host" title={t('detail.host')} name={host.name} photo={personSrc} verified={host.verified}
+      place={item.location} bio={item.extras?.host_bio || undefined}>
+      <HostFacts extras={item.extras} noLanguages />
+    </PersonCard>
+  );
+}
+
+/** "Meet your driver" (drivers): the car and seats as chips. */
+export function DriverSection({ item, personSrc }: { item: any; personSrc?: string }) {
+  const { t } = useTranslation();
+  const e = item.extras || {};
+  const chips = [
+    e.car_model,
+    e.vehicle_type,
+    Number(e.seats) > 0 ? t('profile.seats_count', { count: Number(e.seats) }) : '',
+    e.gender ? t(`profile.gender_${e.gender}`, { defaultValue: e.gender }) : '',
+  ].filter(Boolean) as string[];
+  return (
+    <PersonCard testid="detail-driver" title={t('detail.meet_driver')} name={item.title} photo={personSrc} verified={!!item.provider_verified}
+      place={item.location} chips={chips} bio={e.host_bio || undefined}>
+      <HostFacts extras={e} noLanguages />
+    </PersonCard>
   );
 }

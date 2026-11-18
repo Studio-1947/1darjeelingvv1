@@ -1,11 +1,12 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Minus, Package, Plus, CircleNotch as Loader2, Check } from '@phosphor-icons/react';
+import { Minus, Plus, CircleNotch as Loader2, Check } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { Button, IconButton, TextArea, TextField } from '@/components/ag';
+import { Icon } from '@/components/ag/Icon';
 import Sheet, { SheetHead } from '@/components/listing-detail/Sheet';
 
 /**
@@ -59,7 +60,7 @@ export default function DeliveryRequestButton({ listing }: { listing: any }) {
 
   return (
     <>
-      <Button size="sm" onClick={start} data-testid="delivery-request-open" icon={<Package />}>
+      <Button size="sm" go onClick={start} data-testid="delivery-request-open" icon={<Icon name="bag" />}>
         {t('ui.deliveryRequestButton.open_cta')}
       </Button>
       {open && (

@@ -20,12 +20,14 @@ const LINKS: { to: string; key: string }[] = [
   { to: '/contact', key: 'nav.contact' },
 ];
 
+/** Pages that end with the footer: the about, help and legal pages. */
+const FOOTER_PAGES = ['/about', '/responsible', '/privacy', '/terms', '/refunds', '/contact', '/policies', '/support', '/donate', '/delete-account'];
+
 export default function Footer() {
   const { t } = useTranslation();
   const { pathname } = useLocation();
-  // The prototype keeps Home clean: the footer shows on every other page.
-  // Home stays clean, and single-task screens (sign in, list your business) keep the eye on the task.
-  if (['/', '/login', '/provider/onboard'].includes(pathname)) return null;
+  // The /7 app screens have no footer; it belongs to the about, help and legal pages only.
+  if (!FOOTER_PAGES.includes(pathname)) return null;
   return (
     <footer className="ag-foot" data-testid="site-footer">
       <div className="ag-wrap flex flex-col gap-5">

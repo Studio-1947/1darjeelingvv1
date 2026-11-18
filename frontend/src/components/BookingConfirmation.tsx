@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { CheckCircle as CheckCircle2, MapPin, Calendar, Users, Phone, ChatCircle as MessageCircle, Copy, Car } from '@phosphor-icons/react';
+import { Icon } from '@/components/ag/Icon';
 import { Box, Button, ButtonA, ButtonLink } from '@/components/ag';
 import Sheet from '@/components/listing-detail/Sheet';
 
@@ -25,7 +25,7 @@ export default function BookingConfirmation({ open, onClose, mode = 'booking', d
   return (
     <Sheet onClose={onClose} labelledBy="confirm-title" testid="booking-confirmation-modal" closeTestid="confirm-close">
       <div className="ag-done !py-2">
-        <span className="big"><CheckCircle2 aria-hidden="true" /></span>
+        <span className="big"><Icon name="check" /></span>
         <div className="flex flex-col gap-1">
           <span className="ag-eyebrow">{isBooking ? t('bc.booking_confirmed') : t('bc.youre_live')}</span>
           <h2 id="confirm-title" className="!text-[22px] !leading-7">{isBooking ? t('bc.trip_locked') : t('bc.welcome')}</h2>
@@ -49,13 +49,13 @@ export default function BookingConfirmation({ open, onClose, mode = 'booking', d
             </div>
             <div className="flex-1 min-w-0 flex flex-col gap-0.5">
               <span className="ag-lead truncate">{listing.title}</span>
-              <span className="ag-small !text-[13px] inline-flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-[var(--r)]" aria-hidden="true" /> {listing.location}</span>
+              <span className="ag-small !text-[13px] inline-flex items-center gap-1"><Icon name="pin" size={14} className="text-[var(--r)]" /> {listing.location}</span>
               {booking.check_in && (
                 <span className="ag-small !text-[13px] inline-flex items-center gap-1">
-                  <Calendar className="w-3.5 h-3.5 text-[var(--r)]" aria-hidden="true" /> {booking.check_in}{booking.check_out ? ` → ${booking.check_out}` : ''}
+                  <Icon name="t_trip" size={14} className="text-[var(--r)]" /> {booking.check_in}{booking.check_out ? ` → ${booking.check_out}` : ''}
                 </span>
               )}
-              <span className="ag-small !text-[13px] inline-flex items-center gap-1"><Users className="w-3.5 h-3.5 text-[var(--r)]" aria-hidden="true" /> {t('bc.guests', { count: booking.guests || 1 })}</span>
+              <span className="ag-small !text-[13px] inline-flex items-center gap-1"><Icon name="person" size={14} className="text-[var(--r)]" /> {t('bc.guests', { count: booking.guests || 1 })}</span>
             </div>
           </div>
 
@@ -65,7 +65,7 @@ export default function BookingConfirmation({ open, onClose, mode = 'booking', d
               <span className="ag-eyebrow block">{t('bc.booking_id')}</span>
               <span className="tabular-nums text-[13px] text-[var(--ink-strong)]">{(booking.id || '').slice(0, 12)}…</span>
             </div>
-            <Button variant="text" onClick={copyId} data-testid="copy-booking-id" icon={<Copy />}>{t('saved.copy')}</Button>
+            <Button variant="text" onClick={copyId} data-testid="copy-booking-id">{t('saved.copy')}</Button>
           </Box>
 
           {/* Provider contact */}
@@ -78,10 +78,10 @@ export default function BookingConfirmation({ open, onClose, mode = 'booking', d
               </div>
               {providerPhone && (
                 <div className="ag-row">
-                  <ButtonA size="sm" href={`tel:${providerPhone}`} data-testid="confirm-call" icon={<Phone />}>{t('bc.call_host')}</ButtonA>
+                  <ButtonA size="sm" href={`tel:${providerPhone}`} data-testid="confirm-call" icon={<Icon name="phone" />}>{t('bc.call_host')}</ButtonA>
                   {/* WhatsApp keeps its own green. */}
                   <ButtonA size="sm" href={`https://wa.me/${providerPhone.replace(/\D/g, '')}?text=${encodeURIComponent(t('bc.wa_message', { title: listing.title || '', id: booking.id }))}`}
-                    target="_blank" rel="noreferrer" data-testid="confirm-wa" icon={<MessageCircle className="!text-[#25D366]" weight="fill" />}>
+                    target="_blank" rel="noreferrer" data-testid="confirm-wa" icon={<Icon name="wa" />}>
                     {t('contact.whatsapp')}
                   </ButtonA>
                 </div>
@@ -111,10 +111,10 @@ export default function BookingConfirmation({ open, onClose, mode = 'booking', d
         )}
         {isBooking && (
           <div className="grid grid-cols-2 gap-2">
-            <ButtonLink size="sm" go to="/spots" onClick={onClose} data-testid="confirm-explore-spots" icon={<MapPin />}>
+            <ButtonLink size="sm" go to="/spots" onClick={onClose} data-testid="confirm-explore-spots" icon={<Icon name="mountain" />}>
               {t('ui.bookingConfirmation.explore_spots')}
             </ButtonLink>
-            <ButtonLink size="sm" go to="/drivers" onClick={onClose} data-testid="confirm-find-drivers" icon={<Car />}>
+            <ButtonLink size="sm" go to="/drivers" onClick={onClose} data-testid="confirm-find-drivers" icon={<Icon name="car" />}>
               {t('ui.bookingConfirmation.find_drivers')}
             </ButtonLink>
           </div>

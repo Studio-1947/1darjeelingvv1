@@ -2,7 +2,8 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { noteText } from '@/lib/serverText';
-import { Bell, Checks, CircleNotch as Loader2, Megaphone } from '@phosphor-icons/react';
+import { Checks, CircleNotch as Loader2 } from '@phosphor-icons/react';
+import { Icon } from '@/components/ag/Icon';
 import { Box, Button, MenuIcon, PageHead } from '@/components/ag';
 import { webLinkTarget } from '@/lib/notificationLink';
 import api from '@/lib/api';
@@ -63,20 +64,20 @@ export default function Notifications() {
         {items === null ? (
           <p className="ag-small inline-flex items-center gap-2"><Loader2 size={18} className="animate-spin text-[var(--r)]" aria-hidden="true" /> {t('common.loading')}</p>
         ) : items.length === 0 ? (
-          <Box data-testid="notes-empty">
-            <span className="ag-micon"><Bell /></span>
-            <p className="text-[var(--ink7)]">{t('notes.empty')}</p>
+          <Box className="ag-account-empty" data-testid="notes-empty">
+            <Icon name="bell" />
+            <p>{t('notes.empty')}</p>
           </Box>
         ) : (
-          <Box className="!gap-0 !py-1">
+          <Box className="ag-account-menu">
             <ul className="ag-menu" data-testid="notes-list">
               {items.map((n) => {
                 const text = noteText(t, n);
                 return (
                   <li key={n.id} className="!p-0">
                     <button type="button" onClick={() => open(n)} data-testid={`note-${n.id}`}
-                      className="w-full flex items-start gap-3.5 py-3 px-1 text-left bg-transparent border-0 cursor-pointer">
-                      <MenuIcon>{n.kind === 'announcement' ? <Megaphone /> : <Bell />}</MenuIcon>
+                      className="w-full flex items-start gap-3.5 py-3 px-3 text-left bg-transparent border-0 cursor-pointer">
+                      <MenuIcon><Icon name={n.kind === 'announcement' ? 'news' : n.kind?.startsWith('booking_') ? 't_trip' : 'bell'} /></MenuIcon>
                       <span className="ag-mlab">
                         <span className={`text-[var(--ink-strong)] ${n.unread ? 'font-medium' : 'font-normal'}`}>{text.title}</span>
                         {text.body && <span className="ag-small whitespace-pre-line">{text.body}</span>}

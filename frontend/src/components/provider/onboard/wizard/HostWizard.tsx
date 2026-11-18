@@ -1,77 +1,108 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  House, Car, PersonSimpleHike, Coffee, ShoppingBag, MagnifyingGlass, Crosshair, MapPin, Check, Plus, X,
-  Minus, Confetti, Storefront, CircleNotch,
-} from '@phosphor-icons/react';
+import { useTranslation } from 'react-i18next';
 import api from '@/lib/api';
 import { rupees, useHostPlanPrice } from '@/lib/prices';
 import { SUPPORTED_IMAGE_ACCEPT, uploadImage } from '@/lib/uploadImage';
 import { distanceTo } from '@/lib/places';
 import { isValidPhone } from '@/lib/hostFormChecks';
-import { Box, Button, ButtonLink, Chip, Chips, FieldError, IconButton, Option, StepBar, TextField } from '@/components/ag';
+import { Box, Button, ButtonLink, FieldError, IconButton, StepBar, TextField } from '@/components/ag';
+import { Icon, type IconName } from '@/components/ag/Icon';
 import { HelpWhatsApp, useHostSignupInfo } from '@/components/provider/onboard/QuickFill';
 import { HOST_TYPES, HUBS, MAX_PHOTOS, OFFERS, PRESETS, QUICK_DISHES, type HostType, type HostWizard, type Place } from './useHostWizard';
 
-const TYPE_ICON: Record<HostType, React.ElementType> = { homestay: House, driver: Car, guide: PersonSimpleHike, cafe: Coffee, shop: ShoppingBag };
+/*
+ * The host sign-up wizard, laid out as the Aangan 2.0 prototype's V.biz / V.bizsetup
+ * (provider.js, menu.js): business-type tiles with the charges box, then one question per screen.
+ * Colours come from the theme variables only (styles/screens/onboard.css).
+ */
 
-/** Question, step bar and "Step n / total" over every step except done. */
+const TYPE_ICON: Record<HostType, IconName> = { homestay: 'home', driver: 'car', guide: 'trek', cafe: 'cup', shop: 'bag' };
+
+/** Prototype "Next": an auto-width red pill with the circled arrow. */
+function NextButton({ onClick, children, ...rest }: { onClick: () => void; children: React.ReactNode } & React.ButtonHTMLAttributes<HTMLButtonElement>) {
+  return <Button variant="primary" go className="ag-onboard-next" onClick={onClick} {...rest}>{children}</Button>;
+}
+
+/** Step bar, "Step n / total" and the question over every step except done. */
 function Frame({ w, title, sub, children, cta }: { w: HostWizard; title: React.ReactNode; sub?: React.ReactNode; children: React.ReactNode; cta?: React.ReactNode }) {
   const { t, i, steps, err, next } = w;
+  const label = t('ob.wz.step', { n: i + 1, total: steps.length });
   return (
-    <section className="ag-main" aria-labelledby="wz-q" data-testid={`wz-step-${steps[i]}`}>
-      <StepBar total={steps.length} at={i} label={t('ob.wz.step', { n: i + 1, total: steps.length })} />
-      <div className="ag-q">
-        <p className="ag-small">{t('ob.wz.step', { n: i + 1, total: steps.length })}</p>
-        <h1 id="wz-q">{title}</h1>
-        {sub != null && <p className="ag-small">{sub}</p>}
-      </div>
+    <section className="ag-main ag-onboard" aria-labelledby="wz-q" data-testid={`wz-step-${steps[i]}`}>
+      <StepBar total={steps.length} at={i} label={label} />
+      <p className="ag-small">{label}</p>
+      <h1 id="wz-q" className="ag-onboard-h1" tabIndex={-1}>{title}</h1>
+      {sub != null && <p className="ag-small ag-onboard-sub">{sub}</p>}
       {children}
       <FieldError id="wz-err">{err}</FieldError>
-      <div className="ag-flowbar">
-        {cta ?? <Button variant="primary" go block onClick={next} data-testid="wz-next">{t('ob.wz.next')}</Button>}
-      </div>
+      {cta ?? <NextButton onClick={next} data-testid="wz-next">{t('ob.wz.next')}</NextButton>}
     </section>
+  );
+}
+
+/** The fee lines, with real prices from the server. `plain` = dotted list inside the charges box. */
+function FeeList({ plain }: { plain?: boolean }) {
+  const { t } = useTranslation();
+  const full = useHostPlanPrice('homestay');
+  const small = useHostPlanPrice('cafe');
+  const { grace_bookings } = useHostSignupInfo();
+  const lines = [
+    t('ob.wz.fee_full', { price: rupees(full.base) }),
+    t('ob.wz.fee_small', { price: rupees(small.base) }),
+    t('ob.wz.fp_4', { count: grace_bookings, defaultValue: 'Pay now, or after your first {{count}} bookings' }),
+  ];
+  const tick = plain ? null : <Icon name="check" />;
+  return (
+    <ul className={`ag-onboard-fees${plain ? ' plain' : ''}`}>
+      {lines.map((l) => <li key={l}>{tick}<span>{l}</span></li>)}
+      <li className="hl">{tick}<span>{t('ob.wz.fp_5')}</span></li>
+    </ul>
   );
 }
 
 /* ---------- 1. What do you want to list? ---------- */
 function TypeStep({ w }: { w: HostWizard }) {
   const { t, d, set, pickType } = w;
-  const full = useHostPlanPrice('homestay');
-  const small = useHostPlanPrice('cafe');
   const { grace_bookings } = useHostSignupInfo();
-  const plan = useHostPlanPrice(d.type || 'homestay');
-  const price = rupees(plan.base);
+  const pay: Array<{ k: 'now' | 'later'; icon: IconName; title: string; sub: string }> = [
+    { k: 'now', icon: 'bag', title: t('ob.wz.ch_now', 'Pay when listing'), sub: t('ob.wz.ch_nowS', 'Pay the yearly charge now and go live today.') },
+    {
+      k: 'later', icon: 't_trip',
+      title: t('ob.wz.ch_later', { count: grace_bookings, defaultValue: 'Pay after {{count}} bookings' }),
+      sub: t('ob.wz.ch_laterS', { count: grace_bookings, defaultValue: 'List free now, pay after your first {{count}} bookings.' }),
+    },
+  ];
   return (
     <Frame w={w} title={t('ob.wz.what')} sub={t('ob.wz.onelist')}>
-      <div className="ag-pick" role="radiogroup" aria-label={t('ob.wz.what')}>
-        {HOST_TYPES.map((ty) => {
-          const Icon = TYPE_ICON[ty];
-          return (
-            <Option key={ty} role="radio" aria-checked={d.type === ty} on={d.type === ty} onClick={() => pickType(ty)} data-testid={`wz-type-${ty}`}
-              icon={<Icon />} title={t(`ob.wz.t_${ty}`)} sub={t(`ob.wz.t_${ty}_s`)} />
-          );
-        })}
+      <div className="ag-onboard-tiles" role="radiogroup" aria-label={t('ob.wz.what')}>
+        {HOST_TYPES.map((ty) => (
+          <button key={ty} type="button" role="radio" aria-checked={d.type === ty} className="ag-onboard-tile"
+            onClick={() => pickType(ty)} data-testid={`wz-type-${ty}`}>
+            <span className="ic"><Icon name={TYPE_ICON[ty]} /></span>
+            <span className="radio" aria-hidden="true" />
+            <b>{t(`ob.wz.t_${ty}`)}</b>
+            <span className="ag-small">{t(`ob.wz.t_${ty}_s`)}</span>
+          </button>
+        ))}
       </div>
 
-      <Box>
+      <Box tone="blush" className="ag-onboard-charge">
         <span className="ag-eyebrow" data-testid="onboard-free-chip">{t('ob.wz.ch_eye')}</span>
-        <ul className="grid gap-1.5 ag-small !text-[var(--ink7)]">
-          <li>{t('ob.wz.fee_full', { price: rupees(full.base) })}</li>
-          <li>{t('ob.wz.fee_small', { price: rupees(small.base) })}</li>
-          <li>{t('ob.free.chip', { count: grace_bookings })}</li>
-          <li className="font-medium text-[var(--ink-strong)]">{t('ob.wz.fp_5')}</li>
-        </ul>
+        <FeeList plain />
         <span className="ag-eyebrow">{t('ob.wz.ch_when')}</span>
-        <div className="ag-pick" role="radiogroup" aria-label={t('ob.wz.ch_when')}>
-          <Option role="radio" aria-checked={d.payWhen === 'later'} on={d.payWhen === 'later'} onClick={() => set({ payWhen: 'later' })} data-testid="plan-later"
-            title={t('plan_card.later_title')} sub={t('plan_card.later_body', { price, count: grace_bookings })} />
-          <Option role="radio" aria-checked={d.payWhen === 'now'} on={d.payWhen === 'now'} onClick={() => set({ payWhen: 'now' })} data-testid="plan-now"
-            title={t('plan_card.now_title')} sub={t('plan_card.now_body', { price })} />
+        <div className="ag-onboard-chopts" role="radiogroup" aria-label={t('ob.wz.ch_when')}>
+          {pay.map((o) => (
+            <button key={o.k} type="button" role="radio" aria-checked={d.payWhen === o.k} className="ag-onboard-chopt"
+              onClick={() => set({ payWhen: o.k })} data-testid={`plan-${o.k}`}>
+              <span className="top"><Icon name={o.icon} /><span className="rdot" aria-hidden="true" /></span>
+              <b>{o.title}</b>
+              <span className="ag-small">{o.sub}</span>
+            </button>
+          ))}
         </div>
         <p className="ag-small">{t('ob.wz.gst_note')}</p>
       </Box>
-      <HelpWhatsApp type={d.type || undefined} className="self-start" />
+      <HelpWhatsApp type={d.type || undefined} />
     </Frame>
   );
 }
@@ -123,26 +154,27 @@ function PlaceStep({ w }: { w: HostWizard }) {
 
   return (
     <Frame w={w} title={t('ob.wz.where')}>
-      <div className="flex flex-col gap-2 sm:flex-row">
-        <label className="relative flex-1">
-          <MagnifyingGlass className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--ink-muted)]" aria-hidden="true" />
-          <input type="search" className="ag-in !pl-12" placeholder={t('ob.wz.wz_find')} value={q} onChange={(e) => setQ(e.target.value)}
+      <div className="ag-onboard-loc">
+        <label className="ag-onboard-search">
+          <Icon name="search" />
+          <input type="search" placeholder={t('ob.wz.wz_find')} value={q} onChange={(e) => setQ(e.target.value)}
             autoComplete="off" aria-label={t('ob.wz.wz_find')} data-testid="wz-place-search" />
         </label>
-        <Button onClick={myLocation} disabled={locating} icon={locating ? <CircleNotch className="animate-spin" /> : <Crosshair />} data-testid="wz-myloc">
-          {t('ob.wz.myloc')}
+        <Button onClick={myLocation} disabled={locating} className="ag-onboard-myloc" icon={<Icon name="locate" />} data-testid="wz-myloc">
+          {locating ? t('common.loading') : t('ob.wz.myloc')}
         </Button>
       </div>
-      <Chips role="list">
+      <div className="ag-onboard-pchips" role="list">
         {chips.map((p) => (
-          <Chip key={`${p.name}${p.lat}`} on={d.place?.name === p.name} onClick={() => set({ place: p })} data-testid={`wz-place-${p.name}`}>
-            <MapPin aria-hidden="true" />{p.name}
-          </Chip>
+          <button key={`${p.name}${p.lat}`} type="button" className="ag-onboard-pchip" aria-pressed={d.place?.name === p.name}
+            onClick={() => set({ place: p })} data-testid={`wz-place-${p.name}`}>
+            <Icon name="pin" />{p.name}
+          </button>
         ))}
-      </Chips>
+      </div>
       {looking && <p className="ag-small">{t('common.loading')}</p>}
       {!looking && q.trim().length >= 3 && chips.length === 0 && <p className="ag-small">{t('ob.wz.tp_none')}</p>}
-      {d.place && <p className="ag-small inline-flex items-center gap-1.5 !text-[var(--ok)]"><Check weight="bold" aria-hidden="true" />{d.place.name}</p>}
+      {d.place && <p className="ag-small ag-onboard-picked"><Icon name="check" />{d.place.name}</p>}
     </Frame>
   );
 }
@@ -171,49 +203,57 @@ function PriceStep({ w }: { w: HostWizard }) {
   const bump = (by: number) => set({ price: String(Math.max(0, n + by)) });
   const stay = d.type === 'homestay';
   const rooms = stay && d.roomsMode;
-  const setRoom = (k: number, patch: Partial<{ name: string; price: string }>) => set({ rooms: d.rooms.map((r, j) => (j === k ? { ...r, ...patch } : r)) });
+  const setRoom = (k: number, patch: Partial<{ name: string; price: string; occ: string }>) => set({ rooms: d.rooms.map((r, j) => (j === k ? { ...r, ...patch } : r)) });
   return (
     <Frame w={w} title={stay ? t('ob.wz.prStay') : t('ob.wz.prDay')}>
       {stay && (
-        <Chips>
-          <Chip on={!rooms} onClick={() => set({ roomsMode: false })} data-testid="wz-price-one">{t('ob.wz.prOne')}</Chip>
-          <Chip on={rooms} onClick={() => set({ roomsMode: true, rooms: d.rooms.length ? d.rooms : [{ name: t('ob.wz.rStd'), price: String(n || 1000) }] })} data-testid="wz-price-rooms">
+        <div className="ag-onboard-chips">
+          <button type="button" className="ag-onboard-chip" aria-pressed={!rooms} onClick={() => set({ roomsMode: false })} data-testid="wz-price-one">{t('ob.wz.prOne')}</button>
+          <button type="button" className="ag-onboard-chip" aria-pressed={rooms}
+            onClick={() => set({ roomsMode: true, rooms: d.rooms.length ? d.rooms : [{ name: t('ob.wz.rStd'), price: String(n || 1000), occ: '2' }] })} data-testid="wz-price-rooms">
             {t('ob.wz.prRooms')}
-          </Chip>
-        </Chips>
+          </button>
+        </div>
       )}
       {!rooms ? (
         <>
           <Box>
-            <div className="ag-stepper">
-              <IconButton label={t('ob.wz.minus')} tint onClick={() => bump(-100)}><Minus /></IconButton>
-              <label className="flex items-baseline gap-1 n">
+            <div className="ag-onboard-stepper">
+              <button type="button" className="round" aria-label={t('ob.wz.minus')} onClick={() => bump(-100)}>−</button>
+              <label className="ag-onboard-priceedit">
                 <span aria-hidden="true">₹</span>
                 <input type="number" inputMode="numeric" min={0} step={50} value={d.price} aria-label={t('ob.wz.price')}
-                  onChange={(e) => set({ price: e.target.value.replace(/[^\d]/g, '') })} data-testid="onboard-price"
-                  className="w-[6ch] bg-transparent text-center outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none" />
+                  onChange={(e) => set({ price: e.target.value.replace(/[^\d]/g, '') })} data-testid="onboard-price" />
               </label>
-              <IconButton label={t('ob.wz.plus')} tint onClick={() => bump(100)}><Plus /></IconButton>
+              <button type="button" className="round" aria-label={t('ob.wz.plus')} onClick={() => bump(100)}>+</button>
             </div>
             <p className="ag-small text-center">{t('ob.wz.prEditS')}</p>
           </Box>
-          <Chips>
-            {presets.map((v) => <Chip key={v} on={n === v} onClick={() => set({ price: String(v) })}>₹{v.toLocaleString('en-IN')}</Chip>)}
-          </Chips>
+          <div className="ag-onboard-chips">
+            {presets.map((v) => (
+              <button key={v} type="button" className="ag-onboard-chip" aria-pressed={n === v} onClick={() => set({ price: String(v) })}>₹{v.toLocaleString('en-IN')}</button>
+            ))}
+          </div>
         </>
       ) : (
         <Box>
           <p className="ag-small">{t('ob.wz.roomsS2')}</p>
           {d.rooms.map((r, k) => (
-            <div key={k} className="flex items-center gap-2">
-              <input className="ag-in flex-1 min-w-0" value={r.name} placeholder={t('ob.wz.rnShort')} aria-label={t('ob.wz.rnShort')}
+            <div key={k} className="ag-onboard-roomrow">
+              <input className="ag-in" value={r.name} placeholder={t('ob.wz.rnShort')} aria-label={t('ob.wz.rnShort')}
                 onChange={(e) => setRoom(k, { name: e.target.value })} data-testid={`wz-room-name-${k}`} />
-              <input className="ag-in !w-32" type="number" inputMode="numeric" min={0} value={r.price} placeholder="₹" aria-label={t('ob.wz.price')}
-                onChange={(e) => setRoom(k, { price: e.target.value.replace(/[^\d]/g, '') })} data-testid={`wz-room-price-${k}`} />
-              <IconButton label={t('ob.wz.remove')} small onClick={() => set({ rooms: d.rooms.filter((_, j) => j !== k) })}><X /></IconButton>
+              <label className="ag-onboard-roomin">₹
+                <input type="number" inputMode="numeric" min={0} value={r.price} placeholder="0" aria-label={t('ob.wz.price')}
+                  onChange={(e) => setRoom(k, { price: e.target.value.replace(/[^\d]/g, '') })} data-testid={`wz-room-price-${k}`} />
+              </label>
+              <label className="ag-onboard-roomin"><Icon name="person" />
+                <input type="number" inputMode="numeric" min={1} max={20} value={r.occ ?? '2'} aria-label={t('ob.wz.guests', 'Guests')}
+                  onChange={(e) => setRoom(k, { occ: e.target.value.replace(/[^\d]/g, '').slice(0, 2) })} data-testid={`wz-room-occ-${k}`} />
+              </label>
+              <IconButton label={t('ob.wz.remove')} className="ag-onboard-x" onClick={() => set({ rooms: d.rooms.filter((_, j) => j !== k) })}><Icon name="close" /></IconButton>
             </div>
           ))}
-          <Button size="sm" icon={<Plus />} onClick={() => set({ rooms: [...d.rooms, { name: '', price: '' }] })} data-testid="wz-add-room">{t('ob.wz.addroom')}</Button>
+          <Button className="self-start" icon={<Icon name="plus" />} onClick={() => set({ rooms: [...d.rooms, { name: '', price: '', occ: '2' }] })} data-testid="wz-add-room">{t('ob.wz.addroom')}</Button>
         </Box>
       )}
     </Frame>
@@ -236,28 +276,33 @@ function MenuStep({ w }: { w: HostWizard }) {
       {quick.length > 0 && (
         <>
           <span className="ag-eyebrow">{t('ob.wz.mn_quick')}</span>
-          <Chips>
-            {quick.map((q) => <Chip key={q} onClick={() => set({ menu: [...d.menu, { name: q, price: '' }] })}><Plus aria-hidden="true" />{q}</Chip>)}
-          </Chips>
+          <div className="ag-onboard-pchips">
+            {quick.map((q) => (
+              <button key={q} type="button" className="ag-onboard-pchip" onClick={() => set({ menu: [...d.menu, { name: q, price: '' }] })}>
+                <Icon name="plus" />{q}
+              </button>
+            ))}
+          </div>
         </>
       )}
       <Box>
         {d.menu.length === 0 && <p className="ag-small">{t('ob.wz.mn_need')}</p>}
         {d.menu.map((m, k) => (
-          <div key={k} className="flex items-center gap-2">
-            <label className="relative w-14 h-14 flex-none rounded-2xl overflow-hidden grid place-items-center cursor-pointer bg-[var(--creme2)] text-[var(--r)] bg-cover bg-center"
-              style={m.photo ? { backgroundImage: `url(${m.photo})` } : undefined} title={t('ob.wz.photo')}>
-              {upAt === k ? <CircleNotch className="animate-spin" /> : !m.photo && <Plus aria-hidden="true" />}
+          <div key={k} className="ag-onboard-mnrow">
+            <label className={`ag-onboard-mnph${m.photo ? ' has' : ''}`} style={m.photo ? { backgroundImage: `url(${m.photo})` } : undefined} title={t('ob.wz.photo')}>
+              {upAt === k ? <span className="ag-small">…</span> : !m.photo && <Icon name="plus" />}
               <input type="file" accept={SUPPORTED_IMAGE_ACCEPT} className="sr-only" onChange={(e) => photo(k, e.target.files?.[0])} aria-label={t('ob.wz.photo')} />
             </label>
-            <input className="ag-in flex-1 min-w-0" value={m.name} maxLength={40} placeholder={t('ob.wz.mn_dish')} aria-label={t('ob.wz.mn_dish')}
-              onChange={(e) => setDish(k, { name: e.target.value })} data-testid={`wz-dish-name-${k}`} />
-            <input className="ag-in !w-28" type="number" inputMode="numeric" min={0} value={m.price} placeholder={t('ob.wz.mn_price')} aria-label={t('ob.wz.mn_price')}
-              onChange={(e) => setDish(k, { price: e.target.value.replace(/[^\d]/g, '') })} data-testid={`wz-dish-price-${k}`} />
-            <IconButton label={t('ob.wz.remove')} small onClick={() => set({ menu: d.menu.filter((_, j) => j !== k) })}><X /></IconButton>
+            <div className="fields">
+              <input className="ag-in" value={m.name} maxLength={40} placeholder={t('ob.wz.mn_dish')} aria-label={t('ob.wz.mn_dish')}
+                onChange={(e) => setDish(k, { name: e.target.value })} data-testid={`wz-dish-name-${k}`} />
+              <input className="ag-in" type="number" inputMode="numeric" min={0} value={m.price} placeholder={t('ob.wz.mn_price')} aria-label={t('ob.wz.mn_price')}
+                onChange={(e) => setDish(k, { price: e.target.value.replace(/[^\d]/g, '') })} data-testid={`wz-dish-price-${k}`} />
+            </div>
+            <IconButton label={t('ob.wz.remove')} className="ag-onboard-x" onClick={() => set({ menu: d.menu.filter((_, j) => j !== k) })}><Icon name="close" /></IconButton>
           </div>
         ))}
-        <Button size="sm" onClick={() => set({ menu: [...d.menu, { name: '', price: '' }] })} data-testid="wz-add-dish">{t('ob.wz.mn_add')}</Button>
+        <Button className="self-start" onClick={() => set({ menu: [...d.menu, { name: '', price: '' }] })} data-testid="wz-add-dish">{t('ob.wz.mn_add')}</Button>
       </Box>
     </Frame>
   );
@@ -271,35 +316,31 @@ function ExtrasStep({ w }: { w: HostWizard }) {
   const count = d.photos.length;
   return (
     <Frame w={w} title={t('ob.wz.offers')}>
-      <Chips>
+      <div className="ag-onboard-pchips">
         {keys.map((k) => (
-          <Chip key={k} on={d.offers.includes(k)} onClick={() => toggle(k)} data-testid={`wz-offer-${k}`}>
-            {d.offers.includes(k) ? <Check weight="bold" aria-hidden="true" /> : <Plus aria-hidden="true" />}{t(`ob.wz.fo.${k}`)}
-          </Chip>
+          <button key={k} type="button" className="ag-onboard-pchip" aria-pressed={d.offers.includes(k)} onClick={() => toggle(k)} data-testid={`wz-offer-${k}`}>
+            <Icon name={d.offers.includes(k) ? 'check' : 'plus'} />{t(`ob.wz.fo.${k}`)}
+          </button>
         ))}
-      </Chips>
-      <Box>
-        <div className="ag-row justify-between">
-          <h2>{t('ob.wz.wzph')}</h2>
-          <span className={`ag-status${count ? ' ok' : ''}`}>
-            {count ? <><Check weight="bold" aria-hidden="true" />{t('ob.wz.photos_added', { count })}</> : t('ob.wz.wzph0')}
+      </div>
+      <Box className="ag-onboard-photos">
+        <div className="head">
+          <b>{t('ob.wz.wzph')}</b>
+          <span className={`stat${count ? ' ok' : ''}`}>
+            {count ? <><Icon name="check" />{t('ob.wz.photos_added', { count })}</> : t('ob.wz.wzph0')}
           </span>
         </div>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid3">
           {d.photos.map((src, k) => (
-            <div key={src} className="relative aspect-[4/3] rounded-2xl overflow-hidden bg-[var(--creme2)]">
-              <img src={src} alt="" className="w-full h-full object-cover" />
-              {k === 0 && <span className="absolute left-1.5 bottom-1.5 ag-status info">{t('ob.wz.cover')}</span>}
-              <button type="button" className="absolute right-1.5 top-1.5 ag-iconbtn sm" aria-label={t('ob.wz.remove')}
-                onClick={() => set({ photos: d.photos.filter((_, j) => j !== k) })}><X /></button>
-            </div>
+            <span key={src} className="cell" style={{ backgroundImage: `url(${src})` }}>
+              {k === 0 && <span className="cover">{t('ob.wz.cover')}</span>}
+              <button type="button" className="x" aria-label={t('ob.wz.remove')} onClick={() => set({ photos: d.photos.filter((_, j) => j !== k) })}><Icon name="close" /></button>
+            </span>
           ))}
           {count < MAX_PHOTOS && (
-            <label className="aspect-[4/3] rounded-2xl border border-dashed border-[var(--outline)] grid place-items-center text-center cursor-pointer text-[var(--r)] ag-small">
-              <span className="flex flex-col items-center gap-1">
-                {uploading ? <CircleNotch className="w-6 h-6 animate-spin" /> : <Plus className="w-6 h-6" aria-hidden="true" />}
-                {count ? t('ob.wz.addmore') : t('ob.wz.addphotos')}
-              </span>
+            <label className="add">
+              <Icon name="plus" />
+              <span>{uploading ? t('common.loading') : count ? t('ob.wz.addmore') : t('ob.wz.addphotos')}</span>
               <input type="file" accept={SUPPORTED_IMAGE_ACCEPT} multiple className="sr-only" disabled={uploading}
                 onChange={(e) => { addPhotos(e.target.files); e.target.value = ''; }} data-testid="wz-photos" />
             </label>
@@ -314,40 +355,36 @@ function ExtrasStep({ w }: { w: HostWizard }) {
 /* ---------- 6. Travellers will see this ---------- */
 function ReviewStep({ w }: { w: HostWizard }) {
   const { t, d, busy, submit, startingPrice, offerLabels } = w;
-  const Icon = d.type ? TYPE_ICON[d.type] : Storefront;
   const from = startingPrice();
   const unit = d.type === 'homestay' ? t('ob.wz.night') : (d.type === 'driver' || d.type === 'guide') ? t('ob.wz.day') : '';
   const plan = useHostPlanPrice(d.type || 'homestay');
-  const { grace_bookings } = useHostSignupInfo();
+  const icon = d.type ? TYPE_ICON[d.type] : 'home';
   return (
     <Frame w={w} title={t('ob.wz.review')}
       cta={(
-        <Button variant="primary" go block onClick={submit} disabled={busy} data-testid="onboard-submit">
-          {busy ? t('common.loading') : d.payWhen === 'now' ? t('ob.wz.put_pay', { price: rupees(plan.base) }) : t('ob.wz.put')}
-        </Button>
+        <>
+          <NextButton onClick={submit} disabled={busy} data-testid="onboard-submit">
+            {busy ? t('common.loading') : d.payWhen === 'now' ? t('ob.wz.put_pay', { price: rupees(plan.base) }) : t('ob.wz.put')}
+          </NextButton>
+          <FeeList />
+        </>
       )}>
-      <article className="ag-card">
-        {d.photos[0]
-          ? <img src={d.photos[0]} alt="" className="img" />
-          : <div className="img grid place-items-center text-[var(--r)]"><Icon className="w-10 h-10" aria-hidden="true" /></div>}
-        <div className="body">
+      <article className="ag-onboard-card">
+        <span className="pic" style={d.photos[0] ? { backgroundImage: `url(${d.photos[0]})` } : undefined}>
+          {d.photos[0] ? <span className="tag"><Icon name={icon} /></span> : <Icon name={icon} />}
+        </span>
+        <span className="body">
           <span className="name">{d.name}</span>
-          <span className="meta">{d.place?.name}</span>
-          {from > 0 && <span className="ag-price">₹{from.toLocaleString('en-IN')} {unit && <span className="unit">{unit}</span>}</span>}
-        </div>
+          <span className="ag-small">{d.place?.name}</span>
+          {from > 0 && <span><b className="price">₹{from.toLocaleString('en-IN')}</b> {unit && <span className="ag-small">{unit}</span>}</span>}
+        </span>
       </article>
       {offerLabels().length > 0 && (
-        <ul className="grid gap-1.5">
-          {offerLabels().map((l) => <li key={l} className="inline-flex items-center gap-2"><Check weight="bold" className="text-[var(--ok)]" aria-hidden="true" />{l}</li>)}
+        <ul className="ag-onboard-facts">
+          {offerLabels().map((l) => <li key={l}><Icon name="check" />{l}</li>)}
         </ul>
       )}
-      <p className="ag-small">+91 {d.phone}</p>
-      <Box tone="blush" flat>
-        <p className="ag-small !text-[var(--ink7)]">
-          {d.payWhen === 'now' ? t('plan_card.now_body', { price: rupees(plan.base) }) : t('plan_card.later_body', { price: rupees(plan.base), count: grace_bookings })}
-        </p>
-        <p className="ag-small">{t('ob.wz.fp_5')}</p>
-      </Box>
+      <p className="ag-onboard-muted">+91 {d.phone}</p>
     </Frame>
   );
 }
@@ -356,16 +393,14 @@ function ReviewStep({ w }: { w: HostWizard }) {
 function DoneStep({ w }: { w: HostWizard }) {
   const { t, d } = w;
   return (
-    <section className="ag-main" data-testid="wz-done">
-      <div className="ag-done">
-        <span className="big"><Confetti aria-hidden="true" /></span>
-        <div className="ag-q"><h1>{t('ob.wz.in_title')}</h1></div>
-        <p className="ag-lead !font-normal !text-[var(--ink7)]">{t('ob.wz.in_body')}</p>
-        <div className="ag-stack w-full">
-          <ButtonLink variant="primary" go to="/provider/dashboard" data-testid="wz-dashboard">{t('ob.wz.biz')}</ButtonLink>
-          <ButtonLink go to="/my-listings" icon={<Plus />} data-testid="wz-another">{d.type === 'driver' ? t('ob.wz.addveh') : t('ob.wz.addprop')}</ButtonLink>
-        </div>
-      </div>
+    <section className="ag-main ag-onboard" data-testid="wz-done">
+      <Box tone="blush" className="ag-onboard-done">
+        <span className="big"><Icon name="party" /></span>
+        <h1 tabIndex={-1}>{t('ob.wz.in_title')}</h1>
+        <p>{t('ob.wz.in_body')}</p>
+        <ButtonLink go to="/provider/dashboard" data-testid="wz-dashboard">{t('ob.wz.biz')}</ButtonLink>
+        <ButtonLink go to="/my-listings" icon={<Icon name="plus" />} data-testid="wz-another">{d.type === 'driver' ? t('ob.wz.addveh') : t('ob.wz.addprop')}</ButtonLink>
+      </Box>
     </section>
   );
 }
@@ -374,7 +409,7 @@ function DoneStep({ w }: { w: HostWizard }) {
 export default function HostWizardScreens({ w }: { w: HostWizard }) {
   const screen = useMemo(() => w.step, [w.step]);
   const top = useRef<HTMLDivElement>(null);
-  useEffect(() => { top.current?.querySelector<HTMLElement>('h1')?.focus?.(); }, [screen]);
+  useEffect(() => { top.current?.querySelector<HTMLElement>('h1')?.focus?.({ preventScroll: true }); }, [screen]);
   return (
     <div className="ag-wrap" ref={top}>
       {screen === 'type' && <TypeStep w={w} />}

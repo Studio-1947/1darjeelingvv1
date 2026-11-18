@@ -1,0 +1,126 @@
+/* listing screens (layout of the Vercel prototype's item + book views, in our red Studio 1947 tokens).
+   Classes here are prefixed ag-listing-. Colours come only from theme variables (src/lib/theme.ts). */
+
+.ag-listing .ag-main { gap: 16px; padding-bottom: 96px; }
+.ag-listing .ag-box h2 { margin: 0; font: 500 18px/24px var(--font); letter-spacing: -.01em; color: var(--ink-strong); }
+.ag-listing .ag-box > p { margin: 0; }
+
+/* ---------- item: photo, strip, title ---------- */
+.ag-listing-hero { position: relative; display: block; width: 100%; aspect-ratio: 16 / 10; min-height: 200px; border-radius: 20px; overflow: hidden; background: var(--creme2); }
+.ag-listing-hero > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.ag-listing-strip { display: flex; gap: 8px; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 4px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.ag-listing-strip::-webkit-scrollbar { display: none; }
+.ag-listing-strip:empty { display: none; }
+.ag-listing-strip > * { position: relative; flex: none; width: 150px; aspect-ratio: 4 / 3; border-radius: 12px; overflow: hidden; scroll-snap-align: start; background: var(--creme2); }
+.ag-listing-strip img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.ag-listing-strip .ag-listing-tag { position: absolute; left: 6px; bottom: 6px; }
+.ag-listing-tag { display: inline-block; padding: 4px 8px; border-radius: 8px; font: 500 12px/16px var(--font); letter-spacing: .5px; background: var(--creme2); color: var(--ink-strong); }
+.ag-listing-tag.ok { background: var(--ok-bg); color: var(--ok); }
+
+.ag-listing-stack { display: flex; flex-direction: column; gap: 8px; }
+.ag-listing-stack > p { margin: 0; }
+.ag-listing-stack h1 { margin: 0; font: 500 24px/32px var(--font); letter-spacing: -.02em; color: var(--ink7); overflow-wrap: anywhere; }
+.ag-listing-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0; }
+.ag-listing-place { display: flex; align-items: center; gap: 8px; margin: 0; font: 400 16px/24px var(--font); letter-spacing: .5px; color: var(--ink-muted); }
+.ag-listing-place svg.i { width: 20px; height: 20px; }
+.ag-listing-starline { display: inline-flex; align-items: center; gap: 6px; font: 600 16px/24px var(--font); color: var(--star); text-decoration: none; }
+.ag-listing-starline svg.i { width: 18px; height: 18px; fill: currentColor; }
+.ag-listing-plink { display: inline-flex; align-items: center; gap: 4px; color: var(--r); text-decoration: none; }
+.ag-listing-plink b { font-weight: 500; }
+.ag-listing-plink svg.i { width: 12px; height: 12px; }
+.ag-listing-gtag { align-self: flex-start; display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 999px; font: 600 12px/14px var(--font); letter-spacing: .2px; background: var(--r-tint); color: var(--r); }
+.ag-listing-gtag svg.i { width: 12px; height: 12px; }
+
+.ag-listing-lead { margin: 0; font: 500 16px/24px var(--font); letter-spacing: .5px; color: var(--ink7); }
+.ag-listing-lead .price { color: var(--ink-strong); font-weight: 500; font-variant-numeric: tabular-nums; }
+.ag-listing-lead .ag-small { font-weight: 400; }
+.ag-listing-center { text-align: center; }
+
+/* Website / Listen / Direction: 52px and 44px pills, 15px and 14px type */
+.ag-listing .ag-btn.ag-listing-web { padding-left: 16px; padding-right: 6px; }
+.ag-listing-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 4px 0; }
+.ag-listing-acts .ag-btn { height: 44px; min-height: 44px; padding: 0 16px; font: 500 14px/20px var(--font); }
+.ag-listing-acts .ag-btn.tonal > svg, .ag-listing-acts .ag-btn.tonal svg.i { width: 18px; height: 18px; color: var(--r); }
+.ag-listing-acts > .ag-listing-rowic { order: 2; }
+.ag-listing-acts > .ag-listing-rowic + .ag-listing-rowic { order: 3; }
+.ag-listing-acts > .ag-listing-dir { order: 1; }
+.ag-listing-rowic { width: 44px; height: 44px; flex: none; display: grid; place-items: center; border-radius: 50%; border: 1px solid var(--outline); background: #fff; color: var(--r); cursor: pointer; }
+.ag-listing-rowic svg.i { width: 18px; height: 18px; }
+.ag-listing-rowic.on svg.i { fill: currentColor; }
+
+/* home delivery band (cafe, shop, homestay) */
+.ag-listing-dlv { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 12px; border-radius: 16px; background: var(--blush); border: 1px solid var(--blush2); }
+.ag-listing-dlvtag { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font: 600 12px/16px var(--font); letter-spacing: .5px; background: var(--r-tint); color: var(--r); }
+.ag-listing-dlvtag svg.i { width: 14px; height: 14px; }
+
+/* spots: the entry ticket box */
+.ag-listing-tkt { gap: 8px !important; }
+.ag-listing-tkt b { font: 500 16px/24px var(--font); color: var(--ink7); }
+.ag-listing-ic40 { width: 40px; height: 40px; flex: none; display: grid; place-items: center; border-radius: 12px; background: var(--r-tint); color: var(--r); }
+.ag-listing-ic40 svg.i { width: 22px; height: 22px; }
+
+/* About: Speaks chips and the joined line */
+.ag-listing-langrow { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.ag-listing-langlab { display: inline-flex; align-items: center; gap: 6px; margin-right: 4px; font: 600 12px/16px var(--font); letter-spacing: .6px; text-transform: uppercase; color: var(--r); }
+.ag-listing-langlab svg.i { width: 14px; height: 14px; }
+.ag-listing-langchip { padding: 4px 12px; border-radius: 999px; background: var(--r-tint); color: var(--r); font: 600 13px/18px var(--font); letter-spacing: .5px; }
+.ag-listing-joined { display: flex; align-items: center; gap: 6px; margin: 0; }
+.ag-listing-joined svg.i { width: 14px; height: 14px; color: var(--r); }
+
+/* Facilities: three square cards a row */
+.ag-listing-facgrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.ag-listing-facard { aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 8px; border: 1px solid var(--hairline); border-radius: 16px; background: var(--blush); text-align: center; font: 500 11.5px/15px var(--font); letter-spacing: .5px; color: var(--ink7); }
+.ag-listing-facard > span:last-child { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.ag-listing-facard .ag-listing-ic40 svg.i { width: 20px; height: 20px; }
+.ag-listing-facts { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; font: 400 14px/24px var(--font); letter-spacing: .5px; color: var(--ink7); }
+.ag-listing-facts li { display: flex; align-items: center; gap: 8px; }
+.ag-listing-facts svg.i { width: 18px; height: 18px; color: var(--r); }
+
+/* price lists (rooms, fares, menu): the prototype's .sum grid */
+.ag-listing-sum { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 12px; font-variant-numeric: tabular-nums; color: var(--ink7); }
+.ag-listing-sum > span { min-width: 0; }
+.ag-listing-sum .price { color: var(--ink-strong); font-weight: 500; }
+.ag-listing-sum .t { font: 500 17px/24px var(--font); color: var(--ink7); border-top: 1px solid var(--hairline); padding-top: 8px; }
+.ag-listing-sum .t.price { color: var(--ink-strong); }
+.ag-listing-sum .sub { display: block; }
+
+/* person (host / driver / guide / owner) */
+.ag-listing-person { display: flex; align-items: center; gap: 12px; }
+.ag-listing-person img, .ag-listing-person .ini { width: 56px; height: 56px; flex: none; border-radius: 50%; object-fit: cover; background: var(--r-tint); color: var(--r); display: grid; place-items: center; font: 500 22px/1 var(--font); }
+
+/* reviews */
+.ag-listing-rev { display: flex; flex-direction: column; gap: 2px; }
+.ag-listing-rev p { margin: 0; }
+.ag-listing-stars { display: flex; gap: 4px; }
+.ag-listing-star { width: 44px; height: 44px; border: 0; background: transparent; color: var(--r); display: grid; place-items: center; border-radius: 50%; cursor: pointer; }
+.ag-listing-star svg.i { width: 30px; height: 30px; }
+.ag-listing-star.on svg.i { fill: currentColor; }
+.ag-listing-star:disabled { cursor: default; }
+
+/* ---------- booking steps (V.book, staybook, drivebook) ---------- */
+.ag-listing-book h1 { margin: 0; font: 500 24px/32px var(--font); letter-spacing: -.02em; color: var(--ink7); }
+.ag-listing-daterange { display: grid; grid-template-columns: minmax(0, 1fr) 24px minmax(0, 1fr); gap: 8px; align-items: end; }
+.ag-listing-daterange .ag-in { min-width: 0; padding: 0 8px 0 12px; }
+.ag-listing-daterange .ag-in::-webkit-calendar-picker-indicator { margin: 0; padding: 0; width: 18px; }
+.ag-listing-daterange .arrow { display: flex; align-items: center; justify-content: center; height: 56px; color: var(--r); align-self: start; margin-top: 26px; }
+.ag-listing-daterange .arrow svg.i { width: 18px; height: 18px; }
+.ag-listing-dtrow { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 10px; }
+.ag-listing-nightline { margin: -4px 0 4px !important; }
+.ag-listing-sbrow { flex-direction: row !important; align-items: center; justify-content: space-between; padding: 10px 14px !important; }
+.ag-listing-sblab { display: inline-flex; align-items: center; gap: 8px; font: 500 15px/20px var(--font); letter-spacing: .5px; color: var(--ink7); }
+.ag-listing-sblab svg.i { width: 18px; height: 18px; color: var(--r); }
+.ag-listing-sblab .ag-small { display: block; font-size: 12px; line-height: 16px; }
+.ag-listing-mstep { display: flex; align-items: center; gap: 6px; }
+.ag-listing-mstep button { width: 32px; height: 32px; border: 0; border-radius: 50%; background: var(--r-tint); color: var(--r); font: 400 22px/22px var(--font); display: grid; place-items: center; cursor: pointer; }
+.ag-listing-mstep button:disabled { opacity: .4; cursor: default; }
+.ag-listing-mstep .n { min-width: 20px; text-align: center; font: 500 15px/24px var(--font); color: var(--ink7); font-variant-numeric: tabular-nums; }
+.ag-listing .ag-btn.ag-listing-next { min-width: 180px; padding-left: 28px; padding-right: 6px; align-self: flex-start; }
+.ag-listing .ag-btn.ag-listing-send { align-self: flex-start; padding: 0 24px; }
+.ag-listing-feeline { display: flex; align-items: flex-start; justify-content: center; gap: 8px; margin: 0; color: var(--r); font: 500 14px/20px var(--font); }
+.ag-listing-feeline svg.i { width: 18px; height: 18px; flex: none; margin-top: 1px; }
+
+/* request sent (V.done 'sent') */
+.ag-listing-done { align-items: center; text-align: center; padding: 28px 12px !important; }
+.ag-listing-done h1 { margin: 0; font: 500 24px/32px var(--font); color: var(--ink7); }
+.ag-listing-done .dot { width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; background: var(--r-tint); color: var(--r); border: 2px solid var(--r); }
+.ag-listing-done .dot svg.i { width: 28px; height: 28px; }

@@ -1,9 +1,9 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { missingLabel } from '@/lib/serverText';
-import { Check, Phone } from '@phosphor-icons/react';
-import { Box, Button, ButtonA, StepBar } from '@/components/ag';
-import { verificationSteps, type Headline, type StepKey, type VerificationStatus } from '@/lib/verificationSteps';
+import { Box, Button, ButtonA } from '@/components/ag';
+import { Icon } from '@/components/ag/Icon';
+import { verificationSteps, type Headline, type VerificationStatus } from '@/lib/verificationSteps';
 
 /**
  * Where a host is on the way to going live: plan paid, documents sent, team reviewing, live
@@ -46,67 +46,47 @@ export default function VerificationTracker({ verification, paid, freeStart = fa
   const { t } = useTranslation();
   // Never claim a human review started until the server says so.
   const status = verification?.status ?? 'submitted';
-  const { steps, done, total, headline } = verificationSteps(status, paid);
+  const { done, total, headline } = verificationSteps(status, paid);
   const [titleKey, bodyKey] = HEADLINES[headline];
   const cta = headline === 'send' ? t('verify.cta_send') : headline === 'changes' ? t('verify.cta_changes') : t('verify.cta_view');
-  const label = (k: StepKey) => t(k === 'paid' && freeStart ? 'verify.step_free' : `verify.step_${k}`);
   // Documents are refused until the profile is complete (server 409 profile_incomplete), so that
   // comes first rather than a "Upload documents" button that cannot work yet (persona test 2026-11-09).
   const profileFirst = headline === 'send' && profileMissing.length > 0 && !!onOpenProfile;
   const body = profileFirst ? 'verify.body_profile' : headline === 'send' && freeStart ? 'verify.body_send_free' : bodyKey;
 
+  // The prototype's "Next step · n/4" box (dash.js sdnext): eyebrow, what to do, the bar, one button.
   return (
-    <Box as="section" data-testid="verification-tracker">
-      <div>
-        <span className="ag-eyebrow">{t('verify.progress')} · {done}/{total}</span>
-        <h2>{t(profileFirst ? 'verify.title_profile' : titleKey)}</h2>
-        <p className="ag-small">{t(body)}</p>
-      </div>
-      {profileFirst && (
-        <ul className="grid gap-1 text-sm text-[var(--ink-strong)]" data-testid="verification-profile-missing">
-          {profileMissing.map((m) => <li key={m.key}>• {missingLabel(t, m, businessType)}</li>)}
+    <Box as="section" className="ag-host-next" data-testid="verification-tracker">
+      <span className="ag-eyebrow">{t('host.next', 'Next step')} · {done}/{total}</span>
+      <b>{profileFirst ? t('host.finish', 'Finish your profile') : t(titleKey)}</b>
+      {profileFirst ? (
+        <ul className="ag-host-facts" data-testid="verification-profile-missing">
+          {profileMissing.map((m) => <li key={m.key}><Icon name="plus" />{missingLabel(t, m, businessType)}</li>)}
         </ul>
+      ) : (
+        <p className="ag-small">{t(body)}</p>
       )}
-
-      <StepBar total={total} at={done - 1} label={t('verify.progress')} />
-      <ol className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        {steps.map((s, i) => (
-          <li key={s.key} className="flex items-center gap-2" data-testid={`verification-step-${s.key}-${s.state}`}>
-            <span className={`grid h-6 w-6 flex-none place-items-center rounded-full text-xs ${
-              s.state === 'done' ? 'bg-[var(--r)] text-[var(--on-r)]'
-                : s.state === 'attention' ? 'bg-[var(--fail)] text-[var(--on-r)]'
-                : s.state === 'current' ? 'border border-[var(--r)] text-[var(--r)]'
-                : 'border border-[var(--outline)] text-[var(--ink-muted)]'}`} aria-hidden="true">
-              {s.state === 'done' ? <Check size={13} weight="bold" /> : s.state === 'attention' ? '!' : i + 1}
-            </span>
-            <span className={`text-sm ${s.state === 'attention' ? 'text-[var(--fail)]' : s.state === 'todo' ? 'text-[var(--ink-muted)]' : 'text-[var(--ink-strong)] font-medium'}`}>
-              {label(s.key)}
-            </span>
-          </li>
-        ))}
-      </ol>
-
       {headline === 'changes' && (
-        <Box tone="blush" flat data-testid="verification-action">
+        <Box tone="blush" flat className="w-full" data-testid="verification-action">
           <span className="ag-eyebrow">{t('verify.action_needed')}</span>
           {verification?.action_document && <b className="text-[var(--ink-strong)]">{verification.action_document}</b>}
           {verification?.action_message && <p className="text-sm text-[var(--ink7)]">{verification.action_message}</p>}
         </Box>
       )}
-
-      {headline !== 'live' && headline !== 'pay' && (
-        <div>
-          <span className="ag-eyebrow">{t('verify.keep_phone_title')}</span>
-          <p className="ag-small">{t('verify.keep_phone_body', { phone: phone ? prettyPhone(phone) : t('verify.phone_missing') })}</p>
-        </div>
+      {!profileFirst && headline !== 'live' && headline !== 'pay' && (
+        <p className="ag-small">{t('verify.keep_phone_body', { phone: phone ? prettyPhone(phone) : t('verify.phone_missing') })}</p>
       )}
-
-      <div className="ag-row">
-        <Button variant="primary" go onClick={profileFirst ? onOpenProfile : onOpen} data-testid="verification-cta">
-          {profileFirst ? t('verify.cta_profile') : cta}
-        </Button>
+      <span className="ag-host-bar" role="progressbar" aria-valuemin={0} aria-valuemax={total} aria-valuenow={done} aria-label={t('verify.progress')}>
+        <i style={{ width: `${(done / total) * 100}%` }} />
+      </span>
+      <div className="ag-host-two">
+        {(profileFirst || headline !== 'pay') && (
+          <Button go onClick={profileFirst ? onOpenProfile : onOpen} data-testid="verification-cta">
+            {profileFirst ? t('host.finish', 'Finish your profile') : cta}
+          </Button>
+        )}
         {verification?.support_phone && (
-          <ButtonA variant="text" href={`tel:${verification.support_phone}`} icon={<Phone />}>{t('verify.call_support')}</ButtonA>
+          <ButtonA variant="text" href={`tel:${verification.support_phone}`} icon={<Icon name="phone" />}>{t('verify.call_support')}</ButtonA>
         )}
       </div>
     </Box>

@@ -48,7 +48,8 @@ const MUST_REACH = {
   guest: [
     ['/', 'a[data-testid=header-login]', 'Log in'],
     ['/', '[data-testid=header-download-app]', 'Get the app'],
-    ['/homestays', '[data-testid=near-me-toggle]', 'Near me filter'],
+    // Near me sits in the filter panel (prototype); its button is what a phone must reach.
+    ['/homestays', '[data-testid=category-filter-open]', 'Filter button (Near me inside)'],
   ],
 };
 

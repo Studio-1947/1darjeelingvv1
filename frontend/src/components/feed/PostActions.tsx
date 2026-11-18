@@ -2,7 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Heart, ChatCircle, ShareNetwork, X, PaperPlaneRight, Trash, SealCheck, MapPin, Smiley, Flag, ArrowUpRight, CircleNotch as Loader2 } from '@phosphor-icons/react';
+import { X, PaperPlaneRight, Trash, SealCheck, MapPin, ArrowUpRight, CircleNotch as Loader2 } from '@phosphor-icons/react';
+import { Icon } from '@/components/ag/Icon';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
 import {
@@ -10,9 +11,12 @@ import {
   type Engagement, type HostPost, type PostComment, type ReactionKind,
 } from '@/lib/posts';
 import { timeAgo } from '@/lib/timeAgo';
-import { Button, Chip, Chips, IconButton } from '@/components/ag';
+import { Button, IconButton } from '@/components/ag';
 
-/** Like (four reactions), comment, share and report under a post, as chips. Liking and commenting need a sign-in. */
+/** A line-art smiley in the prototype's icon style (its set has none): opens the reaction picker. */
+const SMILEY = 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM8.5 14.5s1.3 2 3.5 2 3.5-2 3.5-2M9 9.5h.01M15 9.5h.01';
+
+/** Like (four reactions), comment, share and report under a post, as the prototype's red text buttons. Liking and commenting need a sign-in. */
 export function PostActionBar({ post, engagement, onEngagement, onComment, onReport }: {
   post: HostPost;
   engagement: Engagement;
@@ -63,18 +67,22 @@ export function PostActionBar({ post, engagement, onEngagement, onComment, onRep
     }
   };
 
+  const likes = engagement.like_count;
   return (
-    <Chips className="relative [&>.ag-chip]:!px-3" data-testid={`post-actions-${post.id}`}>
-      <Chip on={!!mine} onClick={toggleLike} disabled={busy} aria-label={t('feed.like')} data-testid={`post-like-${post.id}`}>
-        {mine && mine !== 'heart' ? <span className="text-base leading-none">{mineEmoji}</span>
-          : <Heart weight={mine ? 'fill' : 'regular'} />}
-        {top.length > 1 && <span className="text-sm leading-none" aria-hidden="true">{top.join('')}</span>}
-        {engagement.like_count > 0 && <span className="tabular-nums">{engagement.like_count}</span>}
-      </Chip>
-      <Chip onClick={() => (user ? setPicking((v) => !v) : react('heart'))} disabled={busy}
-        aria-label={t('feed.react')} aria-expanded={picking} data-testid={`post-react-${post.id}`}>
-        <Smiley />
-      </Chip>
+    <div className="ag-feed-pact" data-testid={`post-actions-${post.id}`}>
+      <button type="button" className={`ag-btn text${mine ? ' on' : ''}`} onClick={toggleLike} disabled={busy}
+        aria-pressed={!!mine} aria-label={t('feed.like')} data-testid={`post-like-${post.id}`}>
+        {mine && mine !== 'heart' ? <span className="text-base leading-none" aria-hidden="true">{mineEmoji}</span> : <Icon name="heart" />}
+        <span>
+          {t('feed.like')}
+          {top.length > 1 && <span className="ml-1" aria-hidden="true">{top.join('')}</span>}
+          {likes > 0 && <span className="tabular-nums"> · {likes}</span>}
+        </span>
+      </button>
+      <button type="button" className="ag-btn text icon" onClick={() => (user ? setPicking((v) => !v) : react('heart'))} disabled={busy}
+        aria-label={t('feed.react')} title={t('feed.react')} aria-expanded={picking} data-testid={`post-react-${post.id}`}>
+        <svg className="i" viewBox="0 0 24 24" aria-hidden="true"><path d={SMILEY} /></svg>
+      </button>
       {picking && (
         <div role="menu" data-testid={`post-reactions-${post.id}`}
           className="absolute bottom-full left-0 mb-2 z-10 flex gap-1 rounded-full bg-[var(--surface)] border border-[var(--warmline)] shadow-[var(--shadow-lg)] p-1">
@@ -88,19 +96,19 @@ export function PostActionBar({ post, engagement, onEngagement, onComment, onRep
           ))}
         </div>
       )}
-      <Chip onClick={onComment} aria-label={t('feed.comment')} data-testid={`post-comment-${post.id}`}>
-        <ChatCircle />
-        {engagement.comment_count > 0 && <span className="tabular-nums">{engagement.comment_count}</span>}
-      </Chip>
-      <Chip onClick={share} aria-label={t('feed.share')} data-testid={`post-share-${post.id}`}>
-        <ShareNetwork /> <span className="hidden sm:inline">{t('feed.share')}</span>
-      </Chip>
+      <button type="button" className="ag-btn text" onClick={onComment} aria-label={t('feed.comment')} data-testid={`post-comment-${post.id}`}>
+        <Icon name="news" />
+        <span>{t('feed.comment')}{engagement.comment_count > 0 && <span className="tabular-nums"> · {engagement.comment_count}</span>}</span>
+      </button>
+      <button type="button" className="ag-btn text icon" onClick={share} aria-label={t('feed.share')} title={t('feed.share')} data-testid={`post-share-${post.id}`}>
+        <Icon name="share" />
+      </button>
       {onReport && (
-        <Chip onClick={onReport} aria-label={t('report.review_link')} data-testid={`post-report-${post.id}`}>
-          <Flag /> <span className="hidden sm:inline">{t('report.review_link')}</span>
-        </Chip>
+        <button type="button" className="ag-btn text icon" title={t('report.review_link')} onClick={onReport} aria-label={t('report.review_link')} data-testid={`post-report-${post.id}`}>
+          <Icon name="flag" />
+        </button>
       )}
-    </Chips>
+    </div>
   );
 }
 
@@ -244,9 +252,9 @@ export function PostViewer({ post, engagement, onEngagement, onClose, focusComme
 /** The host's photo, or the first letter of the business on a red tint. */
 export function HostAvatar({ post }: { post: HostPost }) {
   return post.host.image ? (
-    <img src={post.host.image} alt="" className="w-11 h-11 rounded-full object-cover flex-none" />
+    <img src={post.host.image} alt="" className="w-10 h-10 rounded-full object-cover flex-none" />
   ) : (
-    <span className="w-11 h-11 rounded-full bg-[var(--r-tint)] text-[var(--r)] grid place-items-center font-medium text-lg flex-none" aria-hidden="true">
+    <span className="w-10 h-10 rounded-full bg-[var(--r-tint)] text-[var(--r)] grid place-items-center font-medium text-base flex-none" aria-hidden="true">
       {(post.host.name || '?').trim().charAt(0).toUpperCase()}
     </span>
   );

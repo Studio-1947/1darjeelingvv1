@@ -1,49 +1,38 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { missingLabel } from '@/lib/serverText';
-import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
-import { MapPin, CheckCircle, Clock, Wallet, CalendarCheck, Users, Plus, Trash, Pencil, Star, Car, PaperPlaneTilt, Storefront, Briefcase, User } from '@phosphor-icons/react';
-import ListingFormModal from '@/components/ListingFormModal';
-import ListingJourney from '@/components/provider/dashboard/ListingJourney';
-import { Insight } from '@/components/provider/dashboard/Insight';
-import BookingCard from '@/components/provider/dashboard/BookingCard';
+import BookingCard, { BAND_ICON } from '@/components/provider/dashboard/BookingCard';
 import EditListingModal from '@/components/provider/dashboard/EditListingModal';
 import KycSection from '@/components/provider/dashboard/KycSection';
 import VerificationTracker from '@/components/provider/dashboard/VerificationTracker';
-import HostPlanCard from '@/components/provider/dashboard/HostPlanCard';
-import InviteHostLink from '@/components/provider/InviteHostLink';
-import { DeliveryRequestsPanel, HostPageCard, HostReviewsCard } from '@/components/provider/dashboard/HostExtras';
-import { isFinished, isOngoing, isUpcoming, sumGuests } from '@/lib/tripMessages';
+import { HostPassLine } from '@/components/provider/dashboard/HostPlanCard';
+import ListingFormModal from '@/components/ListingFormModal';
+import { DeliveryRequestsPanel, HostReviewsCard } from '@/components/provider/dashboard/HostExtras';
+import { isFinished, isOngoing, isUpcoming, sumGuests, waShare } from '@/lib/tripMessages';
 import VerifiedBadge from '@/components/provider/VerifiedBadge';
-import ProfileCompletionBar from '@/components/provider/ProfileCompletionBar';
 import { getMyProfile } from '@/lib/kyc';
 import type { KycProfile } from '@/lib/kyc';
 import { useSeo } from '@/components/Seo';
 import PointsRules, { hostPointsRows } from '@/components/PointsRules';
-import { Box, Button, ButtonLink, Chip, Chips, PageHead, Seg, Status, TextArea, cx } from '@/components/ag';
+import { Box, Button, ButtonA, ButtonLink, Chip, Chips, MenuIcon, PageHead, SecHead, SeeAll, Status, TextArea } from '@/components/ag';
+import { Icon } from '@/components/ag/Icon';
 
-type Tab = 'bookings' | 'listings' | 'profile';
+type View = 'main' | 'bookings' | 'documents';
+
+const TGSEEN = 'ag-host-tgseen';
+const HELP_WA = '919093277919';
 
 /**
- * The page tabs, drawn as the /7 segmented control. Plain buttons (not ARIA tabs) with
- * aria-pressed, so "Bookings" stays reachable as a button by name.
+ * The business dashboard, as the prototype's simple dashboard (dash.js): who and where, the status,
+ * "Your listings" cards (photo, type, price, the yearly pass, Website / Edit / Bookings /
+ * Verification and a Taking bookings switch), "Business overview" figures, the business-wide
+ * Taking bookings switch, the next step, WhatsApp help, then share and Switch to Traveller.
+ * Bookings and Documents open as their own screens with "Back to overview" (S.bz.full).
  */
-function PageTabs({ value, onChange, options, label }: { value: Tab; onChange: (v: Tab) => void; options: Array<{ value: Tab; label: string }>; label: string }) {
-  return (
-    <div className="ag-seg" role="group" aria-label={label}>
-      {options.map((o) => (
-        <button key={o.value} type="button" aria-pressed={value === o.value} data-testid={`tab-${o.value}`} onClick={() => onChange(o.value)}
-          className={cx(value === o.value && '!bg-[var(--surface)] !text-[var(--r)] shadow-sm')}>
-          {o.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-/** Provider home: booking stats, the bookings list, and business profile. */
 export default function ProviderDashboard() {
   const { t } = useTranslation();
   useSeo({ title: t('provider.dashboard_title'), noindex: true });
@@ -59,16 +48,23 @@ export default function ProviderDashboard() {
   const [stats, setStats] = useState<any>({ total: 0, confirmed: 0, pending: 0, accepted: 0, revenue: 0 });
   const [bookings, setBookings] = useState<any[]>([]);
   const [listings, setListings] = useState<any[]>([]);
-  const [tab, setTab] = useState<Tab>('bookings');
+  // The Bookings and Documents screens live in the URL (?s=bookings), so the Bookings tab, Back and reloads land on them.
+  const [params, setParams] = useSearchParams();
+  const sParam = params.get('s');
+  const view: View = sParam === 'bookings' || sParam === 'documents' ? sParam : 'main';
+  const setView = (v: View) => setParams(v === 'main' ? {} : { s: v });
   const [selectedListing, setSelectedListing] = useState<any>(null);
   const [activeListingId, setActiveListingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [listingModal, setListingModal] = useState<{ open: boolean; editing: any | null }>({ open: false, editing: null });
+  const [addOpen, setAddOpen] = useState(false);
   const [kycProfile, setKycProfile] = useState<KycProfile | null>(null);
   const [hostStats, setHostStats] = useState<any>(null);
   const [feedback, setFeedback] = useState<any[]>([]);
   const [feedbackMessage, setFeedbackMessage] = useState('');
   const [sendingFeedback, setSendingFeedback] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [tgPop, setTgPop] = useState(false);
+  const [switching, setSwitching] = useState<string | null>(null);
 
   const loadDashboard = React.useCallback(async () => {
     try {
@@ -78,8 +74,7 @@ export default function ProviderDashboard() {
       const [b, kyc, summary, feedbackResult] = await Promise.all([
         api.get('/bookings/provider'),
         // The provider may not have an active profile yet (or the request may simply fail) -
-        // that must never take down the rest of the dashboard, so it's caught independently
-        // and just leaves the "Complete your profile" card and header badge unrendered.
+        // that must never take down the rest of the dashboard.
         getMyProfile().catch(() => null),
         api.get('/providers/me/stats').catch(() => ({ data: null })),
         api.get('/host-feedback').catch(() => ({ data: { items: [] } })),
@@ -109,26 +104,21 @@ export default function ProviderDashboard() {
   }, [user, authLoading, nav, loadDashboard]);
 
   // Tracks whether the component is still mounted, so a KYC refresh that resolves after
-  // unmount (e.g. the user navigated away while it was in flight) never calls setState.
+  // unmount never calls setState.
   const mountedRef = useRef(true);
   useEffect(() => () => { mountedRef.current = false; }, []);
 
-  // A lightweight, independent refresh of just the KYC profile - used to catch up the header
-  // badge and completion card when something changed outside this tab (an admin approving a
-  // document elsewhere) without re-fetching bookings/listings. Must never break the rest of
-  // the dashboard if it fails, so failures are swallowed silently.
+  // A lightweight refresh of just the KYC profile (an admin approving a document elsewhere).
+  // Best effort: failures are swallowed.
   const refreshKycProfile = useCallback(async () => {
     try {
       const kyc = await getMyProfile();
       if (mountedRef.current) setKycProfile(kyc);
     } catch {
-      // Best-effort only - the badge simply stays as it was.
+      // The badge simply stays as it was.
     }
   }, []);
 
-  // Re-check on: the tab/window regaining focus or becoming visible again (covers an admin
-  // approving a document while this page was open in the background), and on switching into
-  // the Documents tab (the one place the KYC status is actually shown in detail).
   useEffect(() => {
     if (!provider) return;
     const onFocus = () => { refreshKycProfile(); };
@@ -142,21 +132,14 @@ export default function ProviderDashboard() {
   }, [provider, refreshKycProfile]);
 
   useEffect(() => {
-    if (tab === 'profile') refreshKycProfile();
-  }, [tab, refreshKycProfile]);
+    if (view === 'documents') refreshKycProfile();
+  }, [view, refreshKycProfile]);
 
-  const handleSaveListing = async (values: any) => {
-    if (listingModal.editing) {
-      await api.patch(`/listings/${listingModal.editing.id}`, values);
-    } else {
-      await api.post('/listings', values);
-    }
-    await loadDashboard();
-  };
+  // A detail screen opens at its top, as the prototype's toTop().
+  const open = (v: View) => { setView(v); window.scrollTo({ top: 0 }); };
 
-  const handleDeleteListing = async (listingId: string) => {
-    if (!window.confirm(t('pd.delete_confirm'))) return;
-    await api.delete(`/listings/${listingId}`);
+  const handleAddListing = async (values: any) => {
+    await api.post('/listings', values);
     await loadDashboard();
   };
 
@@ -171,7 +154,30 @@ export default function ProviderDashboard() {
     await loadDashboard();
   };
 
-  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  // "Taking bookings" for the whole business: the profile's `available`, which the server copies
+  // onto every listing and checks on each new request.
+  const setBusinessTaking = async (on: boolean) => {
+    setSwitching('business');
+    try {
+      await api.patch('/providers/me', { profile: { available: on } });
+      await loadDashboard();
+    } catch (e: any) {
+      toast.error(e?.response?.data?.detail || t('ui.providerProfile.could_not_save'));
+    } finally { setSwitching(null); }
+  };
+
+  // The same switch for one listing (its own extras.available). The first time, explain it.
+  const setListingTaking = async (l: any, on: boolean) => {
+    try { if (!localStorage.getItem(TGSEEN)) { setTgPop(true); localStorage.setItem(TGSEEN, '1'); } } catch { /* ignore */ }
+    setSwitching(l.id);
+    try {
+      await api.patch(`/listings/${l.id}`, { extras: { ...(l.extras || {}), available: on } });
+      await loadDashboard();
+    } catch (e: any) {
+      toast.error(e?.response?.data?.detail || t('ui.providerProfile.could_not_save'));
+    } finally { setSwitching(null); }
+  };
+
   const sendFeedback = async (event: React.FormEvent) => {
     event.preventDefault();
     if (feedbackMessage.trim().length < 10) return;
@@ -207,250 +213,340 @@ export default function ProviderDashboard() {
   }
 
   const active = provider.status === 'active';
-  const type = provider.business_type;
+  const type: string = provider.business_type;
+  const typeLabel = (ty: string) => t(`ob.wz.t_${ty}`, { defaultValue: t(`categories.${ty}`, { defaultValue: ty }) });
   const isDriver = type === 'driver';
   const isGuide = type === 'guide';
-  const accent = isGuide ? 'blue' : isDriver ? 'rose' : 'green';
-  const activeListing = listings.find((listing: any) => listing.id === activeListingId) || null;
-  const scopedBookings = activeListing ? bookings.filter((booking: any) => booking.listing_id === activeListing.id) : bookings;
-  const scopedConfirmed = scopedBookings.filter((booking: any) => booking.status === 'confirmed');
-  // Per booking from the server (rate x guests x nights for a homestay), as stats.revenue counts it.
-  const scopedRevenue = scopedConfirmed.reduce((sum: number, booking: any) => sum + (Number(booking.amount) || 0), 0);
-  // Board, per host type: finished, ongoing (happening today), upcoming, and the guests in each.
-  const finishedList = scopedBookings.filter((b: any) => isFinished(b));
-  const ongoingList = scopedBookings.filter((b: any) => isOngoing(b));
-  const upcomingList = scopedBookings.filter((b: any) => isUpcoming(b));
-  const completed = finishedList.length;
-  // Host Aangan Points come from the server (lib/hostStats.ts).
-  const points = hostStats?.points ?? 0;
   const live = active && !provider.approval_pending;
   const missing: { key: string; label: string; min?: number; have?: number }[] = provider.profile_missing || [];
+  const taking = provider.extras?.available !== false;
+  const pageUrl = provider.page_path ? `${window.location.origin}${provider.page_path}` : '';
+  const hostInfo = { name: provider.extras?.host_name || user?.name || provider.business_name, business: provider.business_name, phone: provider.contact_phone, location: provider.location };
+
+  // Overview, as the prototype counts it: new requests, upcoming, completed, earned.
+  const nNew = bookings.filter((b) => b.status === 'pending_payment').length;
+  const nUp = bookings.filter((b) => (b.status === 'accepted' || b.status === 'confirmed') && !b.completed).length;
+  const doneList = bookings.filter((b) => b.completed && b.status !== 'cancelled');
+  const earned = doneList.reduce((sum, b) => sum + (Number(b.amount) || 0), 0);
+  const nAsk = bookings.filter((b) => b.awaiting_host).length;
+
+  // Documents the team still needs (a missing or bounced document gets the "!" on the cards).
+  const kycItems = kycProfile?.checklist.filter((c) => c.kind === 'kyc') || [];
+  const docsDue = kycItems.some((c) => c.required && (c.state === 'missing' || c.state === 'rejected'));
+  const docsLabel = t('host.docs_n', 'Verification: {{count}} things', { count: kycItems.filter((c) => c.required).length || 2 });
+
+  const backBtn = (
+    <Button className="ag-host-back" icon={<Icon name="back" />} onClick={() => open('main')} data-testid="host-back">
+      {t('host.back', 'Back to overview')}
+    </Button>
+  );
+
+  // Feedback for the aangan team (board: host dashboard "Feedback"), closed until asked for.
+  const feedbackBlock = (
+    <div data-testid="host-feedback">
+      {feedbackOpen ? (
+        <form className="ag-box" onSubmit={sendFeedback}>
+          <h2>{t('pd.feedback_title')}</h2>
+          <TextArea value={feedbackMessage} onChange={(event) => setFeedbackMessage(event.target.value)} minLength={10} maxLength={2000} required
+            placeholder={t('pd.feedback_ph')} aria-label={t('pd.feedback_title')} />
+          <div className="ag-row">
+            <Button type="submit" size="sm" disabled={sendingFeedback}>
+              {sendingFeedback ? t('pd.feedback_sending') : t('pd.feedback_send')}
+            </Button>
+            <Button variant="text" onClick={() => setFeedbackOpen(false)}>{t('owners.cancel')}</Button>
+          </div>
+          {feedback[0] && <p className="ag-small">{t('pd.feedback_latest', { status: feedback[0].status })}</p>}
+        </form>
+      ) : (
+        <Button variant="text" onClick={() => setFeedbackOpen(true)} data-testid="host-feedback-open">{t('pd.feedback_open')}</Button>
+      )}
+    </div>
+  );
+
+  const editModal = selectedListing && (
+    <EditListingModal listing={selectedListing} onClose={() => setSelectedListing(null)} onSave={loadDashboard} />
+  );
+
+  /* ---------- Bookings screen ---------- */
+  if (view === 'bookings') {
+    const activeListing = listings.find((l) => l.id === activeListingId) || null;
+    const scoped = activeListing ? bookings.filter((b) => b.listing_id === activeListing.id) : bookings;
+    const finishedList = scoped.filter((b) => isFinished(b));
+    const ongoingList = scoped.filter((b) => isOngoing(b));
+    const upcomingList = scoped.filter((b) => isUpcoming(b));
+    const scopedRevenue = scoped.filter((b) => b.status === 'confirmed').reduce((sum, b) => sum + (Number(b.amount) || 0), 0);
+    const fig = (label: string, value: React.ReactNode) => <div className="ag-host-stat"><b>{value}</b><span>{label}</span></div>;
+    return (
+      <div className="ag-wrap">
+        <div className="ag-main">
+          {backBtn}
+          <h1 className="ag-host-tabh">{t('host.bookings', 'Bookings')}</h1>
+          <p className="ag-small">{t('host.bookings_s', 'Requests from travellers for your listings. Answer within 48 hours.')}</p>
+          {listings.length > 1 && (
+            <Chips scroll aria-label={t('ui.providerDashboard.choose_listing')}>
+              <Chip on={!activeListingId} onClick={() => setActiveListingId(null)}>{t('ui.providerDashboard.all_listings')}</Chip>
+              {listings.map((l) => (
+                <Chip key={l.id} on={activeListingId === l.id} onClick={() => setActiveListingId(l.id)}>{l.title}</Chip>
+              ))}
+            </Chips>
+          )}
+          {scoped.length === 0 ? (
+            <Box className="ag-host-empty">
+              <Icon name="t_trip" />
+              <p className="ag-small">{t('host.no_bookings', 'No bookings yet. Travellers who find your page can ask to book.')}</p>
+              {provider.page_path && <ButtonLink to={provider.page_path} go>{t('host.my_site', 'My website')}</ButtonLink>}
+            </Box>
+          ) : (
+            scoped.map((b) => <BookingCard key={b.id} b={b} onCancel={handleCancelBooking} onAccept={handleAcceptBooking} host={hostInfo} />)
+          )}
+
+          {/* The board's per-type figures and points, for this listing or all of them. */}
+          <section className="ag-host-sec">
+            <SecHead title={isDriver ? t('ui.providerDashboard.driver_operations') : isGuide ? t('ui.providerDashboard.guide_activity') : t('ui.providerDashboard.business_overview')} />
+            <div className="ag-host-figs">
+              {fig(isDriver ? t('ui.providerDashboard.completed_rides') : isGuide ? t('ui.providerDashboard.covered_trips') : t('ui.providerDashboard.completed_stays'), finishedList.length)}
+              {isGuide ? (
+                <>
+                  {fig(t('ui.providerDashboard.covered_guests'), sumGuests(finishedList))}
+                  {fig(t('ui.providerDashboard.upcoming_guests'), sumGuests(upcomingList))}
+                  {fig(t('ui.providerDashboard.ongoing_guests'), sumGuests(ongoingList))}
+                </>
+              ) : (
+                <>
+                  {fig(t('ui.providerDashboard.ongoing'), ongoingList.length)}
+                  {fig(isDriver ? t('ui.providerDashboard.passengers_covered') : t('ui.providerDashboard.guests_served'), sumGuests(finishedList))}
+                </>
+              )}
+              {isDriver && fig(t('ui.providerDashboard.km_covered'), activeListing ? '–' : (hostStats?.km_covered ?? 0).toLocaleString('en-IN'))}
+              {isDriver && fig(t('ui.providerDashboard.locations_covered'), activeListing ? '–' : (hostStats?.locations_covered?.length ?? 0))}
+              {fig(isGuide ? t('ui.providerDashboard.confirmed_value') : t('ui.providerDashboard.confirmed_booking_value'), `₹${(activeListing ? scopedRevenue : stats.revenue || 0).toLocaleString('en-IN')}`)}
+              {fig(t('ui.providerDashboard.aangan_points'), hostStats?.points ?? 0)}
+            </div>
+            {isDriver && !activeListing && hostStats?.locations_covered?.length > 0 && (
+              <p className="ag-small mt-2" data-testid="host-locations">{t('ui.providerDashboard.places_covered', { places: hostStats.locations_covered.join(', ') })}</p>
+            )}
+            {isDriver && !activeListing && hostStats?.unknown_route_trips > 0 && (
+              <p className="ag-small mt-2">{t('ui.providerDashboard.unknown_route_trips', { count: hostStats.unknown_route_trips })}</p>
+            )}
+            <PointsRules rows={hostPointsRows(hostStats?.points_rules, hostStats?.points_breakdown)} testId="host-points-rules" />
+          </section>
+          {feedbackBlock}
+        </div>
+      </div>
+    );
+  }
+
+  /* ---------- Documents screen ---------- */
+  if (view === 'documents') {
+    return (
+      <div className="ag-wrap">
+        <div className="ag-main">
+          {backBtn}
+          <h1 className="ag-host-tabh">{docsLabel}</h1>
+          <KycSection onProfileChange={setKycProfile} />
+          <Box as="section" className="ag-host-kv">
+            <span className="ag-eyebrow">{t('pd.business')}</span>
+            <h2>{provider.business_name}</h2>
+            <p className="ag-small">{typeLabel(type)} · {provider.location}</p>
+            <span className="ag-eyebrow">{t('pd.contact')}</span>
+            <p>{provider.contact_phone}</p>
+            <span className="ag-eyebrow">{t('pd.description')}</span>
+            <p>{provider.description || '—'}</p>
+          </Box>
+          {feedbackBlock}
+        </div>
+      </div>
+    );
+  }
+
+  /* ---------- Overview ---------- */
+  const share = async () => {
+    if (!pageUrl) return;
+    const text = t('ui.hostExtras.share_message', { name: provider.business_name, url: pageUrl });
+    try {
+      if (navigator.share) { await navigator.share({ title: provider.business_name, text, url: pageUrl }); return; }
+    } catch { return; }
+    window.open(waShare(text), '_blank', 'noopener');
+  };
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(pageUrl); toast.success(t('ui.hostExtras.link_copied')); } catch { /* ignore */ }
+  };
+
+  // The next step: live, the live host whose profile still has gaps, or the verification steps.
+  let nextStep: React.ReactNode = null;
+  if (provider.approval_pending && kycProfile) {
+    nextStep = (
+      <VerificationTracker verification={kycProfile.verification} paid={active} freeStart={active && !!provider.grace} profileMissing={missing} businessType={type}
+        onOpenProfile={() => nav('/provider/profile')} phone={user?.phone} onOpen={() => open('documents')} />
+    );
+  } else if (missing.length) {
+    nextStep = (
+      <Box as="section" className="ag-host-next" data-testid="dashboard-profile-card">
+        <span className="ag-eyebrow">{t('host.next', 'Next step')}</span>
+        <b>{t('host.finish', 'Finish your profile')}</b>
+        <ul className="ag-host-facts">
+          {missing.map((m) => <li key={m.key}><Icon name="plus" />{missingLabel(t, m, type)}</li>)}
+        </ul>
+        <div className="ag-host-two"><ButtonLink to="/provider/profile" go>{t('host.finish', 'Finish your profile')}</ButtonLink></div>
+      </Box>
+    );
+  } else if (kycProfile && kycProfile.completion_percent < 100) {
+    // Hosts who were live before approval was required: what is left, or that it is with the team.
+    const actionable = kycProfile.checklist.filter((c) => c.state === 'missing' || c.state === 'rejected').length;
+    nextStep = (
+      <Box as="section" className="ag-host-next" data-testid="kyc-progress-card">
+        <span className="ag-eyebrow">{t('host.next', 'Next step')}</span>
+        <b>{actionable ? t('kyc.completeYourProfile') : t('kyc.underReviewTitle')}</b>
+        <p className="ag-small">{actionable ? t('kyc.remainingItems', { count: actionable }) : t('kyc.underReviewMessage')}</p>
+        <span className="ag-host-bar"><i style={{ width: `${kycProfile.completion_percent}%` }} /></span>
+        <div className="ag-host-two">
+          <Button go onClick={() => open('documents')} data-testid="kyc-complete-profile-cta">{actionable ? t('kyc.completeProfileCta') : t('kyc.viewStatusCta')}</Button>
+        </div>
+      </Box>
+    );
+  } else if (live) {
+    nextStep = <Box className="ag-host-next ok"><Icon name="check" /><span>{t('host.live_note', 'You are live. Travellers can find and book you.')}</span></Box>;
+  }
 
   return (
     <div className="ag-wrap">
       <div className="ag-main">
-        <PageHead eyebrow={t('provider.dashboard_title')} title={provider.business_name}
-          sub={`${t(`categories.${type}`, { defaultValue: type })} · ${provider.location}`}>
-          <div className="ag-row mt-2">
-            {/* Paid but not yet approved reads "Pending review", as in the app; listings are still private. */}
-            <Status tone={live ? 'ok' : 'pending'} data-testid="provider-status">
-              {live ? <CheckCircle size={14} weight="fill" aria-hidden="true" /> : <Clock size={14} aria-hidden="true" />}
-              {!active ? t('provider.pending') : provider.approval_pending ? t('provider.pending_review') : t('provider.active')}
-            </Status>
-            {kycProfile?.kyc_status === 'verified' && <VerifiedBadge size="md" />}
-          </div>
-        </PageHead>
+        <PageHead eyebrow={`${typeLabel(type)} · ${provider.location || ''}`} title={provider.extras?.host_name || provider.business_name} />
+        <p className="ag-host-status flex flex-wrap items-center gap-2">
+          {/* Paid but not yet approved reads "Pending review"; listings are still private. */}
+          <Status tone={live ? 'ok' : 'pending'} data-testid="provider-status">
+            {live ? t('host.live', 'Live on aangan') : !active ? t('provider.pending') : t('provider.pending_review')}
+          </Status>
+          {kycProfile?.kyc_status === 'verified' && <VerifiedBadge size="md" />}
+        </p>
 
-        <Seg label={t('pd.mode', 'Mode')} value="business" onChange={(v) => { if (v === 'tourist') toTraveller(); }}
-          options={[
-            { value: 'business', label: t('nav.mode_business'), icon: <Briefcase size={18} aria-hidden="true" /> },
-            { value: 'tourist', label: t('pd.mode_tourist', 'Tourist'), icon: <User size={18} aria-hidden="true" /> },
-          ]} />
-
-        {/* Verification tracker first: for a host waiting on approval it is the one thing to act on.
-            Plan paid, documents sent, team reviewing, live. Same as the app. */}
-        {provider.approval_pending && kycProfile && (
-          <VerificationTracker verification={kycProfile.verification} paid={active} freeStart={active && !!provider.grace} profileMissing={missing} businessType={type} onOpenProfile={() => nav('/provider/profile')} phone={user?.phone}
-            onOpen={() => setTab('profile')} />
-        )}
-
-        {/* The board's dashboard figures for each host type. */}
-        <Box as="section" data-testid={`dashboard-${accent}`}>
-          <div>
-            <span className="ag-eyebrow">{isDriver ? t('ui.providerDashboard.driver_operations') : isGuide ? t('ui.providerDashboard.guide_activity') : t('ui.providerDashboard.business_overview')}</span>
-            <h2>{activeListing ? activeListing.title : isDriver ? t('ui.providerDashboard.driver_heading') : isGuide ? t('ui.providerDashboard.guide_heading') : t('ui.providerDashboard.business_heading')}</h2>
-          </div>
-          {listings.length > 1 && (
-            <Chips scroll aria-label={t('ui.providerDashboard.choose_listing')}>
-              <Chip on={!activeListingId} onClick={() => setActiveListingId(null)}>{t('ui.providerDashboard.all_listings')}</Chip>
-              {listings.map((listing: any) => (
-                <Chip key={listing.id} on={activeListingId === listing.id} onClick={() => setActiveListingId(listing.id)}>{listing.title}</Chip>
-              ))}
-            </Chips>
-          )}
-          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3" data-testid="host-figures">
-            <Insight icon={isDriver ? Car : CalendarCheck} label={isDriver ? t('ui.providerDashboard.completed_rides') : isGuide ? t('ui.providerDashboard.covered_trips') : t('ui.providerDashboard.completed_stays')} value={completed} />
-            {isGuide ? (
-              <>
-                <Insight icon={Users} label={t('ui.providerDashboard.covered_guests')} value={sumGuests(finishedList)} />
-                <Insight icon={Clock} label={t('ui.providerDashboard.upcoming_guests')} value={sumGuests(upcomingList)} />
-                <Insight icon={Clock} label={t('ui.providerDashboard.ongoing_guests')} value={sumGuests(ongoingList)} />
-              </>
-            ) : (
-              <>
-                <Insight icon={Clock} label={t('ui.providerDashboard.ongoing')} value={ongoingList.length} />
-                <Insight icon={Users} label={isDriver ? t('ui.providerDashboard.passengers_covered') : t('ui.providerDashboard.guests_served')} value={sumGuests(finishedList)} />
-              </>
-            )}
-            {isDriver && (
-              <>
-                <Insight icon={MapPin} label={t('ui.providerDashboard.km_covered')} value={activeListing ? '–' : (hostStats?.km_covered ?? 0).toLocaleString('en-IN')} />
-                <Insight icon={MapPin} label={t('ui.providerDashboard.locations_covered')} value={activeListing ? '–' : (hostStats?.locations_covered?.length ?? 0)} />
-              </>
-            )}
-            <Insight icon={Wallet} label={isGuide ? t('ui.providerDashboard.confirmed_value') : t('ui.providerDashboard.confirmed_booking_value')} value={`₹${(activeListing ? scopedRevenue : stats.revenue || 0).toLocaleString('en-IN')}`} />
-            <Insight icon={Star} label={t('ui.providerDashboard.aangan_points')} value={points} />
-          </div>
-          {isDriver && !activeListing && hostStats?.locations_covered?.length > 0 && (
-            <p className="ag-small" data-testid="host-locations">{t('ui.providerDashboard.places_covered', { places: hostStats.locations_covered.join(', ') })}</p>
-          )}
-          {isDriver && !activeListing && hostStats?.unknown_route_trips > 0 && (
-            <p className="ag-small">{t('ui.providerDashboard.unknown_route_trips', { count: hostStats.unknown_route_trips })}</p>
-          )}
-          <PointsRules rows={hostPointsRows(hostStats?.points_rules, hostStats?.points_breakdown)} testId="host-points-rules" />
-        </Box>
-
-        {/* The membership card: the yearly host plan, with reviews. One card, not two. */}
-        <HostPlanCard provider={provider} user={user} reviews={{ count: hostStats?.review_count || 0, average: hostStats?.average_rating || null }}
-          onRenewed={async () => { await refresh(); await loadDashboard(); }} />
-
-        <HostPageCard provider={provider} />
-        <HostReviewsCard stats={hostStats} />
-        <DeliveryRequestsPanel visible={['cafe', 'shop', 'homestay'].includes(type)} />
-        <InviteHostLink />
-
-        {/* The business profile (pages/ProviderProfile.tsx), with what is still needed for approval. */}
-        <Box as="section" tone={missing.length ? 'blush' : undefined} data-testid="dashboard-profile-card">
-          <div>
-            <h2>{missing.length ? t('hostProfile.complete_title') : t('hostProfile.title')}</h2>
-            {missing.length ? (
-              <ul className="mt-1 grid gap-0.5 text-sm text-[var(--ink-strong)]">
-                {missing.map((m) => <li key={m.key}>• {missingLabel(t, m, type)}</li>)}
-              </ul>
-            ) : (
-              <p className="ag-small">{t('hostProfile.subtitle')}</p>
-            )}
-          </div>
-          <ButtonLink to="/provider/profile" go size="sm" className="self-start">{t('hostProfile.complete_cta')}</ButtonLink>
-        </Box>
-
-        {/* Complete your profile (hosts who were live before approval was required) */}
-        {!provider.approval_pending && kycProfile && kycProfile.completion_percent < 100 && (() => {
-          // Items the provider can still act on (never uploaded, or bounced back). A document
-          // sitting in `in_review` is neither of these - it contributes nothing to
-          // completion_percent yet, but there's nothing left for the provider to do either, so
-          // it must never be counted as "remaining".
-          const actionableCount = kycProfile.checklist.filter(c => c.state === 'missing' || c.state === 'rejected').length;
-          const hasActionable = actionableCount > 0;
-          return (
-            <Box as="section" data-testid="kyc-progress-card">
-              <div>
-                <h2>{hasActionable ? t('kyc.completeYourProfile') : t('kyc.underReviewTitle')}</h2>
-                <p className="ag-small">{hasActionable ? t('kyc.remainingItems', { count: actionableCount }) : t('kyc.underReviewMessage')}</p>
-              </div>
-              <ProfileCompletionBar percent={kycProfile.completion_percent} />
-              <Button size="sm" go className="self-start" onClick={() => setTab('profile')} data-testid="kyc-complete-profile-cta">
-                {hasActionable ? t('kyc.completeProfileCta') : t('kyc.viewStatusCta')}
-              </Button>
-            </Box>
-          );
-        })()}
-
-        <PageTabs value={tab} onChange={setTab} label={t('provider.dashboard_title')}
-          options={[
-            { value: 'bookings', label: t('pd.tab_bookings') },
-            { value: 'listings', label: t('pd.tab_listings') },
-            { value: 'profile', label: t('pd.tab_profile') },
-          ]} />
-
-        {tab === 'bookings' && (
-          scopedBookings.length === 0 ? (
-            <Box><p className="ag-small">{t('pd.no_bookings')}</p></Box>
-          ) : (
-            <div className="grid gap-3">
-              {scopedBookings.map((b) => <BookingCard key={b.id} b={b} onCancel={handleCancelBooking} onAccept={handleAcceptBooking} host={{ name: provider.extras?.host_name || user?.name || provider.business_name, business: provider.business_name, phone: provider.contact_phone, location: provider.location }} />)}
-            </div>
-          )
-        )}
-
-        {tab === 'listings' && (
-          <>
-            <div className="ag-row">
-              <ButtonLink to="/feed" size="sm" icon={<Pencil />} data-testid="post-update-cta">{t('pd.post_update')}</ButtonLink>
-              <Button size="sm" icon={<Plus />} onClick={() => setListingModal({ open: true, editing: null })} data-testid="add-listing-cta">{t('pd.add_listing')}</Button>
-            </div>
-            {listings.length < 3 && (
-              <ListingJourney count={listings.length} onAdd={() => setListingModal({ open: true, editing: null })} />
-            )}
-            {listings.length > 0 && (
-              <div className="grid gap-2.5 sm:grid-cols-2">
-                {listings.map((l) => (
-                  <article key={l.id} className="ag-card">
-                    {l.image ? <img src={l.image} alt="" className="img" /> : <div className="img !grid place-items-center text-[var(--r)]"><Storefront size={32} aria-hidden="true" /></div>}
-                    <div className="body">
-                      <span className="name line-clamp-1">{l.title}</span>
-                      <span className="meta">{t(`categories.${l.type}`, { defaultValue: l.type })} · {l.location}</span>
-                      {l.price > 0 && <span className="ag-price">₹{Number(l.price).toLocaleString('en-IN')}</span>}
-                      <div className="ag-row mt-2">
-                        <ButtonLink to={`/listing/${l.id}`} size="sm" data-testid={`view-listing-${l.id}`}>{t('common.view')}</ButtonLink>
-                        <Button size="sm" icon={<Pencil />} onClick={() => setSelectedListing(l)} data-testid={`edit-listing-${l.id}`}>{t('common.edit')}</Button>
-                        <Button size="sm" variant="stop" icon={<Trash />} onClick={() => handleDeleteListing(l.id)} data-testid={`delete-listing-${l.id}`}>{t('common.delete')}</Button>
-                      </div>
+        <section className="ag-host-sec">
+          <SecHead title={<>{t('host.your_listings', 'Your listings')} <span className="n">{listings.length}</span></>} action={<SeeAll to="/my-listings" data-testid="host-see-listings">{t('home.see_all', 'See all')}</SeeAll>} />
+          <div className="ag-host-lgrid">
+            {listings.map((l, i) => {
+              const on = l.extras?.available !== false;
+              return (
+                <div key={l.id} className="ag-host-lcard" data-testid={`host-listing-${l.id}`}>
+                  <button type="button" className="ag-host-lphoto" style={l.image ? { backgroundImage: `url(${l.image})` } : undefined}
+                    aria-label={l.title} onClick={() => setSelectedListing(l)} data-testid={`edit-listing-${l.id}`}>
+                    {!l.image && <Icon name={BAND_ICON[l.type] || 'home'} />}
+                  </button>
+                  <div className="ag-host-lbody">
+                    <span className="ag-host-gtag"><Icon name={BAND_ICON[l.type] || 'home'} />{typeLabel(l.type)}</span>
+                    <b>{l.title}</b>
+                    <span className="ag-small">{l.location}{Number(l.price) > 0 ? ` · ${t('host.from', 'From')} ₹${Number(l.price).toLocaleString('en-IN')}` : ''}</span>
+                    {i === 0 && <HostPassLine provider={provider} user={user} onRenewed={async () => { await refresh(); await loadDashboard(); }} />}
+                    <div className="ag-host-lacts">
+                      {provider.page_path && (
+                        <ButtonLink to={provider.page_path} go icon={<Icon name="globe" />} data-testid={i === 0 ? 'host-page-open' : undefined}>{t('host.site', 'Website')}</ButtonLink>
+                      )}
+                      <ButtonLink to="/provider/profile" go icon={<Icon name="person" />}>{t('common.edit')}</ButtonLink>
+                      <Button icon={<Icon name="t_trip" />} onClick={() => open('bookings')} data-testid={i === 0 ? 'tab-bookings' : undefined}>
+                        {t('host.bookings', 'Bookings')}{nAsk > 0 && <span className="ag-host-badge">{nAsk}</span>}
+                      </Button>
+                      <Button icon={<Icon name="check" />} onClick={() => open('documents')} data-testid={i === 0 ? 'tab-profile' : undefined}>
+                        {docsLabel}{docsDue && <span className="ag-host-badge warn">!</span>}
+                      </Button>
+                      <span className="ag-host-tgrow">
+                      <label className="ag-host-ltoggle" title={t('host.tg_what', 'What does this toggle mean?')}>
+                        <input type="checkbox" role="switch" checked={on} disabled={switching === l.id}
+                          aria-label={`${t('host.taking', 'Taking bookings')}: ${l.title}`}
+                          onChange={(e) => setListingTaking(l, e.target.checked)} data-testid={`listing-taking-${l.id}`} />
+                      </label>
+                      <button type="button" className="ag-host-tginfo" aria-label={t('host.tg_what', 'What does this toggle mean?')} onClick={() => setTgPop(true)}>
+                        <Icon name="bell" />
+                      </button>
+                      </span>
                     </div>
-                  </article>
-                ))}
-              </div>
+                  </div>
+                </div>
+              );
+            })}
+            {listings.length === 0 && (
+              <div className="col-span-2"><HostPassLine provider={provider} user={user} onRenewed={async () => { await refresh(); await loadDashboard(); }} /></div>
             )}
-          </>
+            <button type="button" className="ag-host-add" onClick={() => setAddOpen(true)} data-testid="add-listing-cta">
+              <Icon name="plus" /><span>{t('host.add_more', 'Add more listings')}</span>
+            </button>
+          </div>
+        </section>
+
+        <section className="ag-host-sec">
+          <SecHead title={t('host.overview', 'Business overview')} />
+          <div className="ag-host-stats" data-testid="host-figures">
+            <button type="button" className={`ag-host-stat${nNew ? ' hot' : ''}`} onClick={() => open('bookings')}><b>{nNew}</b><span>{t('host.new', 'New requests')}</span></button>
+            <button type="button" className="ag-host-stat" onClick={() => open('bookings')}><b>{nUp}</b><span>{t('host.upcoming', 'Upcoming')}</span></button>
+            <button type="button" className="ag-host-stat" onClick={() => open('bookings')}><b>{doneList.length}</b><span>{t('host.completed', 'Completed')}</span></button>
+            <button type="button" className="ag-host-stat" onClick={() => open('bookings')}><b>₹{earned.toLocaleString('en-IN')}</b><span>{t('host.earned', 'Earned')}</span></button>
+          </div>
+        </section>
+
+        <label className="ag-box ag-host-switch ag-host-avail">
+          <span>
+            <b>{t('host.taking', 'Taking bookings')}</b>
+            <span className="ag-small">{taking ? t('host.avail_on', 'Available. Travellers can ask to book.') : t('host.avail_off', 'Not available right now. Your listings show as paused.')}</span>
+          </span>
+          <input type="checkbox" role="switch" checked={taking} disabled={switching === 'business'}
+            onChange={(e) => setBusinessTaking(e.target.checked)} data-testid="business-taking" />
+        </label>
+
+        {nextStep}
+
+        {!live && (
+          <Box className="ag-host-help" data-testid="host-help-whatsapp">
+            <div className="row">
+              <MenuIcon><Icon name="wa" /></MenuIcon>
+              <div className="min-w-0 flex-1">
+                <b>{t('host.help_h', 'Need help getting verified?')}</b><br />
+                <span className="ag-small">{t('host.help_s', 'Message the aangan team on WhatsApp. We can collect your ID and photos on a call and finish the setup for you.')}</span>
+              </div>
+            </div>
+            <ButtonA target="_blank" rel="noopener noreferrer" icon={<Icon name="wa" />}
+              href={`https://wa.me/${HELP_WA}?text=${encodeURIComponent(`${t('host.help_msg', 'Hi aangan, I need help getting my business verified:')} ${provider.business_name} (${typeLabel(type)}, ${provider.location || ''})`)}`}>
+              {t('host.help_btn', 'Ask for help on WhatsApp')}
+            </ButtonA>
+          </Box>
         )}
 
-        {tab === 'profile' && (
-          <>
-            <KycSection onProfileChange={setKycProfile} />
-            <Box as="section">
-              <div>
-                <span className="ag-eyebrow">{t('pd.business')}</span>
-                <h2>{provider.business_name}</h2>
-                <p className="ag-small">{t(`categories.${type}`, { defaultValue: type })} · {provider.location}</p>
-              </div>
-              <div>
-                <span className="ag-eyebrow">{t('pd.contact')}</span>
-                <p className="text-[var(--ink-strong)]">{provider.contact_phone}</p>
-              </div>
-              <div>
-                <span className="ag-eyebrow">{t('pd.description')}</span>
-                <p className="text-[var(--ink7)]">{provider.description || '—'}</p>
-              </div>
-            </Box>
-          </>
-        )}
+        <DeliveryRequestsPanel visible={['cafe', 'shop', 'homestay'].includes(type)} />
+        <HostReviewsCard stats={hostStats} />
 
-        {/* Feedback for the aangan team (board: host dashboard "Feedback"), closed until asked for. */}
-        <div data-testid="host-feedback">
-          {feedbackOpen ? (
-            <form className="ag-box" onSubmit={sendFeedback}>
-              <h2>{t('pd.feedback_title')}</h2>
-              <TextArea value={feedbackMessage} onChange={(event) => setFeedbackMessage(event.target.value)} minLength={10} maxLength={2000} required
-                placeholder={t('pd.feedback_ph')} aria-label={t('pd.feedback_title')} />
-              <div className="ag-row">
-                <Button type="submit" size="sm" disabled={sendingFeedback} icon={<PaperPlaneTilt />}>
-                  {sendingFeedback ? t('pd.feedback_sending') : t('pd.feedback_send')}
-                </Button>
-                <Button variant="text" onClick={() => setFeedbackOpen(false)}>{t('owners.cancel')}</Button>
-              </div>
-              {feedback[0] && <p className="ag-small">{t('pd.feedback_latest', { status: feedback[0].status })}</p>}
-            </form>
-          ) : (
-            <Button variant="text" onClick={() => setFeedbackOpen(true)} data-testid="host-feedback-open">{t('pd.feedback_open')}</Button>
+        <div className="ag-host-links">
+          {pageUrl && (
+            <div className="ag-host-share" data-testid="host-page-card">
+              <span className="min-w-0">
+                <span className="ag-small block">{t('host.share', 'Share link')}</span>
+                {!live && <span className="ag-small block">{provider.plan_active ? t('ui.hostExtras.private_until_approved') : t('ui.hostExtras.private_until_active')}</span>}
+              </span>
+              <span className="acts">
+                <button type="button" className="ag-host-rowic" onClick={copy} aria-label={t('ui.hostExtras.copy_link')} title={t('ui.hostExtras.copy_link')}>
+                  <svg className="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 9h10v10H9zM5 15V5h10" /></svg>
+                </button>
+                <button type="button" className="ag-host-rowic" onClick={share} aria-label={t('host.share', 'Share link')} title={t('host.share', 'Share link')}>
+                  <Icon name="share" />
+                </button>
+              </span>
+            </div>
           )}
+          <Button go onClick={toTraveller}>{t('pd.switch_traveller')}</Button>
         </div>
-        <Button go className="self-start" onClick={toTraveller}>{t('pd.switch_traveller')}</Button>
       </div>
 
-      {selectedListing && (
-        <EditListingModal
-          listing={selectedListing}
-          onClose={() => setSelectedListing(null)}
-          onSave={loadDashboard}
-        />
+      {tgPop && (
+        <div className="ag-host-pop" role="dialog" aria-modal="true" aria-label={t('host.tg_what', 'What does this toggle mean?')} onClick={(e) => { if (e.target === e.currentTarget) setTgPop(false); }}>
+          <div className="ag-host-popbox">
+            <MenuIcon><Icon name="t_trip" /></MenuIcon>
+            <h2>{t('host.taking', 'Taking bookings')}</h2>
+            <p className="ag-small"><b className="on">{t('host.on', 'On')}</b> {t('host.tg_on', 'this listing shows to travellers and they can ask to book.')}</p>
+            <p className="ag-small"><b className="off">{t('host.off', 'Off')}</b> {t('host.tg_off', 'it stays on your website, but travellers cannot book it (full, closed for the season, or on a break).')}</p>
+            <Button variant="primary" onClick={() => setTgPop(false)}>{t('host.tg_ok', 'Got it')}</Button>
+          </div>
+        </div>
       )}
 
-      <ListingFormModal
-        open={listingModal.open}
-        initial={listingModal.editing || undefined}
-        onClose={() => setListingModal({ open: false, editing: null })}
-        onSubmit={handleSaveListing}
-      />
+      {editModal}
+
+      <ListingFormModal open={addOpen} onClose={() => setAddOpen(false)} onSubmit={handleAddListing} />
     </div>
   );
 }

@@ -63,8 +63,11 @@ async function signedInPage(browser, token, mode, width) {
       const g = await signedInPage(browser, guestToken, 'tourist', 390);
       const snapG = (name) => g.page.screenshot({ path: path.join(OUT, `${type}-${String(++n).padStart(2, '0')}-guest-${name}.png`), fullPage: false });
       await g.page.goto(`${WEB}/listing/${listing.id}`, { waitUntil: 'networkidle' });
-      await g.page.locator('[data-testid="booking-submit"]').first().waitFor({ timeout: 15000 });
-      await g.page.waitForTimeout(1500);
+      // Book now opens the booking screen (prototype: separate steps, ending in Send).
+      await g.page.locator('[data-testid="mobile-sticky-cta"]').waitFor({ timeout: 15000 });
+      await g.page.click('[data-testid="mobile-sticky-cta"]');
+      await g.page.locator('[data-testid="booking-next"]').first().waitFor({ timeout: 15000 });
+      await g.page.waitForTimeout(500);
       // Fill the dates, and again if the page re-rendered and cleared them (it loads in stages).
       const offset = 20 + Math.floor(Math.random() * 300);
       for (let attempt = 0; attempt < 3; attempt++) {
@@ -83,8 +86,13 @@ async function signedInPage(browser, token, mode, width) {
         const opts = await route.locator('option').evaluateAll((o) => o.map((x) => x.value).filter(Boolean));
         if (opts[0]) await route.selectOption(opts[0]);
       }
-      const svc = g.page.locator('[data-testid^="booking-service-"]');
-      if (await svc.count()) await svc.first().click();
+      // Step through the booking screens; a guide's services are on step 2.
+      for (let s = 0; s < 3 && (await g.page.locator('[data-testid="booking-next"]').count()); s++) {
+        await g.page.locator('[data-testid="booking-next"]').first().click();
+        await g.page.waitForTimeout(600);
+        const svc = g.page.locator('[data-testid^="booking-service-"]');
+        if (await svc.count()) await svc.first().click();
+      }
       await g.page.locator('[data-testid="booking-submit"]').first().click();
       await g.page.waitForTimeout(1500);
       const sent = await g.page.locator('[data-testid="booking-request-sent"]').count();
@@ -109,7 +117,9 @@ async function signedInPage(browser, token, mode, width) {
       const hostToken = await signIn(host.phone, host.name || 'Host', 'provider');
       const h = await signedInPage(browser, hostToken, 'provider', 1280);
       await h.page.goto(`${WEB}/provider/dashboard`, { waitUntil: 'networkidle' });
-      await h.page.waitForTimeout(1500);
+      // Wait for the dashboard itself, not a fixed time: the loading splash holds a fresh page a moment.
+      await h.page.locator('[data-testid="host-figures"]').first().waitFor({ timeout: 20000 }).catch(() => {});
+      await h.page.waitForTimeout(500);
       const tab = h.page.getByRole('button', { name: /bookings/i }).first();
       if (await tab.count()) await tab.click().catch(() => {});
       await h.page.waitForTimeout(800);
@@ -129,7 +139,9 @@ async function signedInPage(browser, token, mode, width) {
 
       // 3. Guest confirms; without the pass that is the ₹1 fee.
       await g.page.goto(`${WEB}/my-trips`, { waitUntil: 'networkidle' });
-      await g.page.waitForTimeout(1500);
+      // Wait for the trip card itself rather than a fixed time (splash, first compile).
+      await g.page.waitForFunction(() => !document.getElementById('app-splash'), null, { timeout: 20000 }).catch(() => {});
+      await g.page.locator(`[data-testid="trip-confirm-${booking.id}"]`).waitFor({ timeout: 15000 }).catch(() => {});
       const confirmBtn = g.page.locator(`[data-testid="trip-confirm-${booking.id}"]`);
       line(type, (await confirmBtn.count()) > 0, 'guest sees "Confirm booking" after the host accepts');
       await snapG('my-trips-accepted');

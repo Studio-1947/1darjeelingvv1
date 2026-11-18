@@ -1,33 +1,38 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { CircleNotch as Loader2, Newspaper, SquaresFour, CloudSun } from '@phosphor-icons/react';
+import { CircleNotch as Loader2 } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
 import { useSeo } from '@/components/Seo';
 import PostCard from '@/components/feed/PostCard';
 import PostComposer from '@/components/feed/PostComposer';
+import TitleTrack from '@/components/feed/TitleTrack';
+import HostSites from '@/components/feed/HostSites';
 import ReportDialog, { ReportTarget } from '@/components/listing-detail/ReportDialog';
 import { CanPostReason, deletePost, fetchFeed, fetchMyPosts, HostPost } from '@/lib/posts';
 import api from '@/lib/api';
 import { HillWeather } from '@/components/WeatherForecast';
-import { Box, Button, ButtonLink, Chip, Chips, FieldError, PageHead, SecHead } from '@/components/ag';
+import { Box, Button, ButtonLink, FieldError, IconButton } from '@/components/ag';
+import { Icon } from '@/components/ag/Icon';
 
-/** What "Show me" can narrow the feed to: the kinds the app has data for. */
-type Show = 'all' | 'weather' | 'posts';
-const SHOW: Array<{ k: Show; label: string; fallback: string; icon: React.ReactNode }> = [
-  { k: 'all', label: 'feed.kind_all', fallback: 'Everything', icon: <SquaresFour /> },
-  { k: 'weather', label: 'feed.kind_weather', fallback: 'Weather', icon: <CloudSun /> },
-  { k: 'posts', label: 'feed.kind_posts', fallback: 'Host posts', icon: <Newspaper /> },
+/** What "Show me" can include: the kinds the app has data for (the prototype's trip plans and local news have no backend). */
+type Kind = 'weather' | 'sites' | 'posts';
+const KINDS: Array<{ k: Kind; label: string; fallback: string }> = [
+  { k: 'weather', label: 'feed.kind_weather', fallback: 'Weather' },
+  { k: 'sites', label: 'feed.kind_sites', fallback: 'Websites' },
+  { k: 'posts', label: 'feed.kind_posts', fallback: 'Host posts' },
 ];
+const ALL: Kind[] = KINDS.map((x) => x.k);
 const SHOW_KEY = 'aangan-feed-show';
-function savedShow(): Show {
+function savedShow(): Kind[] {
   try {
     const v = localStorage.getItem(SHOW_KEY);
-    return v === 'weather' || v === 'posts' ? v : 'all';
-  } catch {
-    return 'all';
-  }
+    if (v === 'weather' || v === 'posts') return [v]; // the old single choice
+    const list = JSON.parse(v || 'null');
+    if (Array.isArray(list)) return ALL.filter((k) => list.includes(k));
+  } catch { /* private window or old value */ }
+  return ALL;
 }
 
 /**
@@ -58,11 +63,15 @@ export default function Feed() {
   const [sp] = useSearchParams();
   const sharedPostId = sp.get('post');
   // A shared post always shows, whatever the reader last picked.
-  const [show, setShow] = useState<Show>(() => (sharedPostId ? 'all' : savedShow()));
-  const pick = (k: Show) => {
-    setShow(k);
-    try { localStorage.setItem(SHOW_KEY, k); } catch { /* private window: just this visit */ }
+  const [show, setShow] = useState<Kind[]>(() => (sharedPostId ? ALL : savedShow()));
+  const save = (list: Kind[]) => {
+    setShow(list);
+    try { localStorage.setItem(SHOW_KEY, JSON.stringify(list)); } catch { /* private window: just this visit */ }
   };
+  const toggleKind = (k: Kind) => save(show.includes(k) ? show.filter((x) => x !== k) : ALL.filter((x) => x === k || show.includes(x)));
+  const all = show.length === ALL.length;
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [composing, setComposing] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -117,6 +126,7 @@ export default function Feed() {
 
   const onSaved = () => {
     setEditing(null);
+    setComposing(false);
     load();
     loadMine();
   };
@@ -135,16 +145,60 @@ export default function Feed() {
   // My own posts that the public feed does not show (hidden by an admin), so I can see why.
   const myHidden = business ? mine.filter((p) => p.hidden) : [];
   const isMine = (p: HostPost) => !!user && p.author_user_id === user.id;
-  const showWeather = show !== 'posts';
-  const showPosts = show !== 'weather';
+  const showWeather = show.includes('weather');
+  const showSites = show.includes('sites');
+  const showPosts = show.includes('posts');
+  const startEdit = (post: HostPost) => { setEditing(post); setComposing(true); window.scrollTo({ top: 0, behavior: 'smooth' }); };
 
   return (
     <div className="ag-wrap">
-      <div className="ag-main">
-        <PageHead eyebrow={t('feed.label')} title={t('feed.title')} sub={t('feed.subtitle')} />
+      <div className="ag-main ag-feed">
+        <h1 className="sr-only">{t('feed.title')}</h1>
 
-        {user && business && canPost && (
-          <PostComposer editing={editing} onSaved={onSaved} onCancelEdit={() => setEditing(null)} />
+        <div className="ag-feed-top">
+          <TitleTrack />
+          <div className="ag-feed-bar">
+            <IconButton label={t('feed.filter', 'Filter')} className="ag-feed-fbtn" aria-pressed={filterOpen} aria-expanded={filterOpen}
+              onClick={() => setFilterOpen((v) => !v)} data-testid="feed-filter">
+              <Icon name="filter" />
+              {!all && <span className="ag-feed-fdot" aria-hidden="true" />}
+            </IconButton>
+            {user && business && canPost && (
+              <Button size="sm" go className="ag-feed-barbtn" icon={<Icon name="news" />} aria-expanded={composing}
+                onClick={() => { if (composing) setEditing(null); setComposing((v) => !v); }} data-testid="feed-create-post">
+                {t('feed.create_post', 'Create a post')}
+              </Button>
+            )}
+          </div>
+          {filterOpen && (
+            <div className="ag-feed-pop" role="dialog" aria-label={t('feed.filter', 'Filter')} data-testid="feed-filter-sheet">
+              <div className="flex items-center justify-between gap-2">
+                <b className="ag-feed-poph">{t('feed.filter', 'Filter')}</b>
+                <IconButton label={t('feed.close', 'Close')} onClick={() => setFilterOpen(false)}><Icon name="close" /></IconButton>
+              </div>
+              <p className="ag-eyebrow m-0" id="feed-show-me">{t('feed.show_me', 'Show me')}</p>
+              <div className="ag-feed-fchips" role="group" aria-labelledby="feed-show-me">
+                <label className="ag-feed-fchip" data-testid="feed-show-all">
+                  <input type="checkbox" checked={all} onChange={() => save(all ? [] : ALL)} />
+                  <span>{t('feed.kind_all', 'Everything')}</span>
+                </label>
+                {KINDS.map((x) => (
+                  <label key={x.k} className="ag-feed-fchip" data-testid={`feed-show-${x.k}`}>
+                    <input type="checkbox" checked={show.includes(x.k)} onChange={() => toggleKind(x.k)} />
+                    <span>{t(x.label, x.fallback)}</span>
+                  </label>
+                ))}
+              </div>
+              <div className="ag-feed-popact">
+                <Button size="sm" onClick={() => save(ALL)} data-testid="feed-filter-clear">{t('feed.clear_filters', 'Clear filters')}</Button>
+                <Button size="sm" onClick={() => setFilterOpen(false)} data-testid="feed-filter-done">{t('feed.done', 'Done')}</Button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {user && business && canPost && (composing || editing) && (
+          <PostComposer editing={editing} onSaved={onSaved} onCancelEdit={() => { setEditing(null); setComposing(false); }} />
         )}
         {user && business && !canPost && (reason === 'not_verified' || reason === 'plan_not_live') && (
           <Box>
@@ -155,26 +209,16 @@ export default function Feed() {
           </Box>
         )}
 
-        <div className="flex flex-col gap-2">
-          <span className="ag-eyebrow" id="feed-show-me">{t('feed.show_me', 'Show me')}</span>
-          <Chips scroll role="group" aria-labelledby="feed-show-me">
-            {SHOW.map((s) => (
-              <Chip key={s.k} on={show === s.k} onClick={() => pick(s.k)} data-testid={`feed-show-${s.k}`}>
-                {s.icon} {t(s.label, s.fallback)}
-              </Chip>
-            ))}
-          </Chips>
-        </div>
-
         {showWeather && <HillWeather />}
+
+        {showSites && !loading && <HostSites posts={posts} />}
 
         {showPosts && (
           <section className="flex flex-col gap-3" aria-labelledby="feed-posts-h">
-            {showWeather && <SecHead id="feed-posts-h" title={t('feed.kind_posts', 'Host posts')} className="!mb-0" />}
-            {!showWeather && <h2 id="feed-posts-h" className="sr-only">{t('feed.kind_posts', 'Host posts')}</h2>}
+            <h2 id="feed-posts-h" className={show.length > 1 ? 'ag-feed-h' : 'sr-only'}>{t('feed.kind_posts', 'Host posts')}</h2>
 
             {myHidden.map((p) => (
-              <PostCard key={p.id} post={p} isMine onEdit={setEditing} onDelete={remove} />
+              <PostCard key={p.id} post={p} isMine onEdit={startEdit} onDelete={remove} />
             ))}
 
             {loading ? (
@@ -185,9 +229,9 @@ export default function Feed() {
                 <Button size="sm" className="self-start" onClick={load}>{t('feed.retry')}</Button>
               </Box>
             ) : posts.length === 0 ? (
-              <Box data-testid="feed-empty" className="items-start">
-                <Newspaper size={24} className="text-[var(--r)]" aria-hidden="true" />
-                <p className="m-0 text-[var(--ink7)]">{t('feed.empty')}</p>
+              <Box data-testid="feed-empty" className="ag-feed-empty">
+                <Icon name="news" />
+                <p className="m-0">{t('feed.empty')}</p>
                 {!business && (
                   <ButtonLink to="/provider/onboard" go size="sm">{t('feed.list_cta', 'Add my homestay, car or shop')}</ButtonLink>
                 )}
@@ -201,7 +245,7 @@ export default function Feed() {
                     isMine={business && isMine(p)}
                     ownBusiness={!business && isMine(p)}
                     canReport={!!user && !isMine(p)}
-                    onEdit={(post) => { setEditing(post); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                    onEdit={startEdit}
                     onDelete={remove}
                     onReport={(post) => setReportTarget({ type: 'post', id: post.id, authorId: post.author_user_id, authorName: post.host.name })}
                     autoOpen={p.id === sharedPostId}
@@ -218,11 +262,8 @@ export default function Feed() {
           </section>
         )}
 
-        {!user && (
-          <Box tone="blush">
-            <h2>{t('feed.host_cta')}</h2>
-            <ButtonLink to="/provider/onboard" go className="self-start">{t('nav.host_with_us', 'List your Stay / Taxi')}</ButtonLink>
-          </Box>
+        {show.length === 0 && (
+          <Box className="ag-feed-empty"><p className="m-0">{t('feed.kind_all', 'Everything')}?</p></Box>
         )}
       </div>
 

@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { MapPin } from '@phosphor-icons/react';
+import { Icon } from '@/components/ag/Icon';
 import SmartImg from '@/components/SmartImg';
-import VerifiedBadge from '@/components/provider/VerifiedBadge';
 import { listingImage } from '@/lib/listingContent';
 import { Box, cx } from '@/components/ag';
 
@@ -40,8 +39,8 @@ export function Section({ title, eyebrow, note, action, testid, id, className, t
   );
 }
 
-/** A priced line in a box: name and small sub-line on the left, price and unit on the right. */
-export function PriceRow({ name, sub, price, unit, icon, photo, testid }: {
+/** A priced line (prototype `.sum` rows): name and a small line on the left, price and unit right. */
+export function PriceRow({ name, sub, price, unit, photo, testid }: {
   name: React.ReactNode;
   sub?: React.ReactNode;
   price?: number;
@@ -51,18 +50,16 @@ export function PriceRow({ name, sub, price, unit, icon, photo, testid }: {
   testid?: string;
 }) {
   return (
-    <div className="flex items-center gap-3 py-2.5 border-b border-[var(--warmline)] last:border-b-0" data-testid={testid}>
-      {photo
-        ? <img src={photo} alt="" loading="lazy" className="w-12 h-12 rounded-[12px] object-cover flex-none bg-[var(--creme2)]" />
-        : icon && <span className="ag-micon">{icon}</span>}
-      <span className="flex-1 min-w-0 flex flex-col">
-        <span className="text-[15px] leading-[22px] text-[var(--ink-strong)]">{name}</span>
-        {sub != null && <span className="ag-small !text-[13px] !leading-[18px]">{sub}</span>}
+    <div className="flex items-start gap-3 py-1.5 text-[16px] leading-6 text-[var(--ink7)]" data-testid={testid}>
+      {photo && <img src={photo} alt="" loading="lazy" className="w-12 h-12 rounded-[12px] object-cover flex-none bg-[var(--creme2)]" />}
+      <span className="flex-1 min-w-0">
+        {name}
+        {sub != null && <span className="ag-small block">{sub}</span>}
       </span>
       {price != null && price > 0 && (
-        <span className="flex-none text-right ag-price flex flex-col">
-          <span>₹{price.toLocaleString('en-IN')}</span>
-          {unit != null && <span className="unit">{unit}</span>}
+        <span className="flex-none text-right tabular-nums">
+          <b className="font-medium text-[var(--ink-strong)]">₹{price.toLocaleString('en-IN')}</b>
+          {unit != null && <span className="ag-small"> {unit}</span>}
         </span>
       )}
     </div>
@@ -108,19 +105,20 @@ export function PersonCard({ testid, title, name, photo, verified, place, chips,
   bio?: string;
   children?: React.ReactNode;
 }) {
+  const { t } = useTranslation();
   return (
     <Section title={title} testid={testid}>
       <div className="flex items-center gap-3">
-        <Avatar photo={photo} initial={(name || '?').trim().charAt(0).toUpperCase()} />
+        <Avatar photo={photo} size={56} initial={(name || '?').trim().charAt(0).toUpperCase()} />
         <div className="min-w-0 flex flex-col gap-1">
           <span className="text-[18px] leading-6 font-medium text-[var(--ink-strong)]">{name}</span>
-          {verified && <span><VerifiedBadge size="sm" /></span>}
-          {place && <span className="ag-small !text-[13px] inline-flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-[var(--r)]" aria-hidden="true" /> {place}</span>}
+          {verified && <span className="ag-listing-tag ok self-start">{t('listing.verified', 'Verified')}</span>}
+          {place && <span className="ag-small inline-flex items-center gap-1"><Icon name="pin" size={14} className="text-[var(--r)]" /> {place}</span>}
         </div>
       </div>
       {chips && chips.length > 0 && (
-        <div className="ag-chips">
-          {chips.map((c) => <span key={c} className="ag-chip !h-8 !px-3 !text-[13px] cursor-default">{c}</span>)}
+        <div className="ag-listing-langrow">
+          {chips.map((c) => <span key={c} className="ag-listing-langchip">{c}</span>)}
         </div>
       )}
       {bio && <p className="m-0 text-[15px] leading-[22px] text-[var(--ink7)] whitespace-pre-line">{bio}</p>}
@@ -139,7 +137,7 @@ export function MiniCard({ item, badge }: { item: any; badge?: string }) {
         <SmartImg src={listingImage(item, 500, 375)} alt="" className="img" />
         {badge && (
           <span className="absolute left-2 bottom-2 ag-status !bg-[var(--surface)] !text-[var(--ink-strong)]">
-            <MapPin className="w-3.5 h-3.5 text-[var(--r)]" aria-hidden="true" />{badge}
+            <Icon name="pin" size={14} className="text-[var(--r)]" />{badge}
           </span>
         )}
       </span>

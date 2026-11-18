@@ -183,6 +183,24 @@ describe('public SPA Content-Security-Policy', () => {
     expect(blocked).toEqual([]);
   });
 
+  it('allows every outside host the app fetches from directly', () => {
+    // A fetch() to a host missing from connect-src is refused by the browser, and the page just
+    // shows nothing: the Feed weather box (Open-Meteo) was blank on the live site this way while
+    // every local run looked fine, because the dev server sends no CSP.
+    const connectSrc = directiveSources(publicCsp, 'connect-src');
+    const fetched = new Set();
+    for (const file of sourceFiles(SRC_DIR)) {
+      if (/\.test\./.test(file)) continue;
+      // Comments are dropped so a link in a doc comment isn't read as a host the code calls.
+      const code = fs.readFileSync(file, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+      if (!/\bfetch\(/.test(code)) continue;
+      // Hosts are read from the whole file, as for iframes: the URL usually sits in a constant.
+      for (const m of code.matchAll(/https:\/\/([a-z0-9.-]+\.[a-z]{2,})/gi)) fetched.add('https://' + m[1]);
+    }
+    const blocked = [...fetched].filter((origin) => !connectSrc.includes(origin));
+    expect(blocked).toEqual([]);
+  });
+
   it('still allows listing images from wherever they were sourced', () => {
     // Listing photos come from Cloudinary, Pexels, Unsplash, TripAdvisor, MinIO and more,
     // depending on who created the listing. A narrow img-src would blank a photo whenever

@@ -131,7 +131,9 @@ const j = async (m, p, body, token) => { const r = await fetch(API + p, { method
       line(type, true, 'profile items still needed after sign-up', missing.join(', ') || 'none');
       if (missing.length) {
         await p.goto(WEB + '/provider/profile', { waitUntil: 'networkidle' });
-        await p.waitForTimeout(1500);
+        // Wait for the form itself, not a fixed time: the loading splash holds a fresh page a moment.
+        await p.locator('[data-testid="profile-save"]').first().waitFor({ timeout: 20000 }).catch(() => {});
+        await p.waitForTimeout(500);
         await snap('profile');
         for (const input of await p.locator('input[type="file"][multiple]').all()) await input.setInputFiles(IMG.slice(0, 8)).catch(() => {});
         await p.waitForTimeout(4000);
@@ -147,7 +149,8 @@ const j = async (m, p, body, token) => { const r = await fetch(API + p, { method
 
       // 6. Documents from the dashboard.
       await p.goto(WEB + '/provider/dashboard', { waitUntil: 'networkidle' });
-      await p.waitForTimeout(1200);
+      await p.locator('[data-testid="host-figures"]').first().waitFor({ timeout: 20000 }).catch(() => {});
+      await p.waitForTimeout(500);
       const up = p.getByRole('button', { name: /upload documents/i }).first();
       if (await up.count()) await up.click();
       await p.waitForTimeout(1200);
@@ -197,12 +200,15 @@ const j = async (m, p, body, token) => { const r = await fetch(API + p, { method
       const guest = await (await b.newContext({ viewport: { width: 390, height: 844 } })).newPage();
       if (listing) {
         await guest.goto(`${WEB}/listing/${listing.id}`, { waitUntil: 'networkidle' });
-        await guest.waitForTimeout(1500);
+        // A fresh guest browser shows the loading splash first: wait for it to go, then for the title.
+        await guest.waitForFunction(() => !document.getElementById('app-splash'), null, { timeout: 20000 }).catch(() => {});
+        await guest.locator(`text=${listing.title}`).first().waitFor({ timeout: 15000 }).catch(() => {});
         const ok = (await guest.locator(`text=${listing.title}`).count()) > 0 && (await guest.locator('text=/page not found|something went wrong/i').count()) === 0;
         line(type, ok, 'listing page opens for a guest', guest.url().replace(WEB, ''));
       }
       await guest.goto(WEB + me.page_path, { waitUntil: 'networkidle' });
-      await guest.waitForTimeout(1200);
+      await guest.waitForFunction(() => !document.getElementById('app-splash'), null, { timeout: 20000 }).catch(() => {});
+      await guest.locator('[data-testid="badge-verified"]').first().waitFor({ timeout: 15000 }).catch(() => {});
       line(type, (await guest.locator('[data-testid="badge-verified"]').count()) > 0 && (await guest.locator('[data-testid="badge-member"]').count()) > 0, 'host page shows the blue tick and Member badge', me.page_path);
       await guest.screenshot({ path: path.join(OUT, `${type}-zz-host-page.png`) });
       await guest.context().close();

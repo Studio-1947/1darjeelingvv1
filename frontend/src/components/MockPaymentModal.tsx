@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ShieldCheck, Lock, CheckCircle as CheckCircle2, CircleNotch as Loader2 } from '@phosphor-icons/react';
+import { CircleNotch as Loader2 } from '@phosphor-icons/react';
+import { Icon } from '@/components/ag/Icon';
 import Logo from '@/components/Logo';
 import { rupees } from '@/lib/prices';
 import { Button, Seg, SelectField, TextField } from '@/components/ag';
@@ -42,7 +43,7 @@ export default function MockPaymentModal({ open, onClose, amount, title, descrip
         <Logo className="w-8 h-8" />
         <div className="min-w-0">
           <div className="ag-lead !text-[14px] !leading-5">{t('pay.secure')}</div>
-          <div className="ag-small !text-[12px] !leading-4 inline-flex items-center gap-1"><ShieldCheck className="w-3.5 h-3.5 text-[var(--ok)]" aria-hidden="true" /> {t('pay.sandbox')}</div>
+          <div className="ag-small !text-[12px] !leading-4 inline-flex items-center gap-1"><Icon name="badge" size={14} className="text-[var(--ok)]" /> {t('pay.sandbox')}</div>
         </div>
       </div>
 
@@ -82,11 +83,11 @@ export default function MockPaymentModal({ open, onClose, amount, title, descrip
       )}
 
       <Button variant="primary" block center onClick={handlePay} disabled={busy || done} data-testid="mock-payment-pay" data-autofocus
-        icon={done ? <CheckCircle2 /> : busy ? <Loader2 className="animate-spin" /> : undefined}>
+        icon={done ? <Icon name="check" /> : busy ? <Loader2 className="animate-spin" /> : undefined}>
         {done ? t('pay.success') : busy ? t('common.processing') : t('pay.pay_amount', { amount: shown })}
       </Button>
 
-      <p className="ag-small !text-[12px] !leading-4 text-center inline-flex items-center justify-center gap-1"><Lock className="w-3 h-3" aria-hidden="true" /> {t('pay.footer')}</p>
+      <p className="ag-small !text-[12px] !leading-4 text-center inline-flex items-center justify-center gap-1"><Icon name="badge" size={12} /> {t('pay.footer')}</p>
     </Sheet>
   );
 }

@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { PencilSimple, SealCheck, Trash, EyeSlash } from '@phosphor-icons/react';
 import type { Engagement, HostPost } from '@/lib/posts';
 import { HostAvatar, ListingLink, PostActionBar, PostViewer } from '@/components/feed/PostActions';
 import { Box, Button, IconButton, Status } from '@/components/ag';
+import { Icon } from '@/components/ag/Icon';
 
 import { timeAgo } from '@/lib/timeAgo';
 
@@ -56,26 +58,29 @@ export default function PostCard({
   };
 
   return (
-    <Box as="article" data-testid={`post-${post.id}`} onClick={openFromCard} className="cursor-pointer">
+    <Box as="article" data-testid={`post-${post.id}`} onClick={openFromCard} className="ag-feed-post cursor-pointer">
       {post.hidden && (
         <Status tone="no" className="self-start">
           <EyeSlash size={14} /> {t('feed.hidden_notice')}{post.hidden_reason ? `: ${post.hidden_reason}` : ''}
         </Status>
       )}
 
-      <header className="flex items-center gap-3">
-        <HostAvatar post={post} />
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5">
-            <span className="font-medium text-[var(--ink-strong)] truncate">{post.host.name}</span>
-            {post.host.verified && (
-              <SealCheck size={16} weight="fill" className="text-[var(--r)] flex-none" aria-label={t('feed.verified_host')} />
-            )}
-          </div>
-          <div className="ag-small !text-[13px] !leading-[18px] truncate">
-            {t(`feed.type_${post.host.type}`, post.host.type)} · {post.host.location} · {timeAgo(post.created_at, i18n.language, t)}
-          </div>
-        </div>
+      <header className="flex items-center gap-2">
+        <Link to={`/business/${post.host.provider_id}`} className="ag-feed-phead" data-testid={`post-host-${post.id}`}>
+          <HostAvatar post={post} />
+          <span className="min-w-0 flex-1">
+            <span className="flex items-center gap-1.5">
+              <b className="truncate">{post.host.name}</b>
+              {post.host.verified && (
+                <SealCheck size={16} weight="fill" className="text-[var(--r)] flex-none" aria-label={t('feed.verified_host')} />
+              )}
+            </span>
+            <span className="ag-small block truncate">
+              {t(`feed.type_${post.host.type}`, post.host.type)} · {post.host.location} · {timeAgo(post.created_at, i18n.language, t)}
+            </span>
+          </span>
+          {!isMine && !ownBusiness && <Icon name="arrowne" className="ag-feed-pgo" />}
+        </Link>
         {isMine ? (
           <div className="flex items-center gap-1.5 flex-none">
             <IconButton small label={t('feed.edit')} onClick={() => onEdit?.(post)} data-testid={`post-edit-${post.id}`}>
@@ -90,13 +95,13 @@ export default function PostCard({
         ) : null}
       </header>
 
-      <p className="m-0 text-base leading-relaxed text-[var(--ink7)] whitespace-pre-line break-words">{text}</p>
+      <p className="ag-feed-ptext">{text}</p>
       {long && (
         <Button variant="text" className="self-start" onClick={() => setOpen('post')}>{t('feed.read_more')}</Button>
       )}
 
       {photos.length > 0 && (
-        <div className={`grid gap-1.5 rounded-[22px] overflow-hidden ${photos.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
+        <div className={`grid gap-1.5 rounded-xl overflow-hidden ${photos.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
           {photos.map((src, i) => (
             <img key={src + i} src={src} alt={t('feed.photo_alt', { name: post.host.name })} loading="lazy"
               className={`block w-full object-cover bg-[var(--creme2)] ${photos.length === 1 ? 'aspect-video max-h-[420px]' : 'aspect-square'}`} />
@@ -107,10 +112,8 @@ export default function PostCard({
       <ListingLink post={post} testId={`post-listing-${post.id}`} />
 
       {!post.hidden && (
-        <div className="border-t border-[var(--warmline)] pt-3">
-          <PostActionBar post={post} engagement={engagement} onEngagement={setEngagement} onComment={() => setOpen('comment')}
-            onReport={canReport && !isMine ? () => onReport?.(post) : undefined} />
-        </div>
+        <PostActionBar post={post} engagement={engagement} onEngagement={setEngagement} onComment={() => setOpen('comment')}
+          onReport={canReport && !isMine ? () => onReport?.(post) : undefined} />
       )}
       {open && (
         <PostViewer post={post} engagement={engagement} onEngagement={setEngagement}
