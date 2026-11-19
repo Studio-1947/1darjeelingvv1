@@ -159,7 +159,8 @@ function CategoryPage({ typeOverride }: { typeOverride?: string }) {
   useEffect(() => {
     setSearchQuery(q);
   }, [q]);
-  // Filters handed over by the home filter panel: ?near=me|<place>&within=<km>&sort=price_asc.
+  // Filters handed over by the home filter panel (?near=me|<place>&within=<km>&sort=price_asc): read once
+  // when the page opens; after that the filters drive the address, not the other way round.
   const nearParam = sp.get('near') || '';
   const withinParam = Number(sp.get('within')) || 0;
   const sortParam = sp.get('sort') || '';
@@ -169,7 +170,7 @@ function CategoryPage({ typeOverride }: { typeOverride?: string }) {
     if (nearParam && withinParam > 0) setRadius(withinParam);
     if (sortParam === 'price_asc' || sortParam === 'price_desc' || sortParam === 'name_asc') setSortOrder(sortParam);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nearParam, withinParam, sortParam]);
+  }, []);
   const clearing = useRef(false);
   // Keep the address in step with the filters (replace, so Back still leaves the page in one step).
   useEffect(() => {
