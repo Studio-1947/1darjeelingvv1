@@ -29,7 +29,8 @@ export const PLACES: Place[] = [
   { keys: ['dali'], lat: 27.0215, lng: 88.2548 },
   { keys: ['rock garden', 'barbotey'], lat: 27.0, lng: 88.238 },
   { keys: ['sonada'], lat: 26.98, lng: 88.229 },
-  { keys: ['sukhiapokhri'], lat: 26.994, lng: 88.177 },
+  { keys: ['sukhiapokhri', 'sukhia pokhri', 'sukhia'], lat: 26.994, lng: 88.177 },
+  { keys: ['simana'], lat: 27.003, lng: 88.158 },
   { keys: ['lepchajagat'], lat: 27.029, lng: 88.201 },
   { keys: ['takdah'], lat: 27.033, lng: 88.36 },
   { keys: ['lamahatta'], lat: 27.078, lng: 88.365 },
@@ -40,7 +41,7 @@ export const PLACES: Place[] = [
   { keys: ['njp', 'new jalpaiguri'], lat: 26.6833, lng: 88.4429 },
   { keys: ['bagdogra'], lat: 26.6812, lng: 88.3286 },
   { keys: ['siliguri'], lat: 26.7271, lng: 88.3953 },
-  { keys: ['gangtok'], lat: 27.3389, lng: 88.6065 },
+  { keys: ['gangtok', 'sikkim'], lat: 27.3389, lng: 88.6065 },
   // The town itself, last: "Darjeeling", "Darjeeling Town".
   { keys: ['darjeeling'], lat: 27.041, lng: 88.2663 },
 ];

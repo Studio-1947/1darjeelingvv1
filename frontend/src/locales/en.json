@@ -192,7 +192,8 @@
     "not_found": "Listing not found.",
     "entry_varies": "Entry varies",
     "previous": "Previous",
-    "next": "Next"
+    "next": "Next",
+    "remove": "Remove"
   },
   "cta": {
     "book_now": "Reserve",
@@ -1020,7 +1021,10 @@
     "find_place": "Search a place",
     "journey_date": "Journey date",
     "rs_free_on": "Drivers free on {{date}}",
-    "none_filtered": "Nothing matches these filters."
+    "none_filtered": "Nothing matches these filters.",
+    "free_entry": "Free entry",
+    "paid_entry": "Paid entry",
+    "applied": "Filters on"
   },
   "notes": {
     "title": "Notifications",

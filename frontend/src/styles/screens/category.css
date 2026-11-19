@@ -9,7 +9,7 @@
 .ag-category-search .qbox { position: relative; flex: 1; min-width: 0; display: flex; align-items: center; height: 48px; }
 .ag-category-search input { width: 100%; height: 100%; border: 0; outline: 0; background: transparent; color: var(--ink-strong); font: 400 16px/24px var(--font); letter-spacing: .5px; }
 .ag-category-search input::-webkit-search-cancel-button { display: none; }
-.ag-category-search .qph { position: absolute; left: 0; top: 50%; transform: translateY(-50%); max-width: 100%; overflow: hidden; white-space: nowrap; pointer-events: none; font: 400 16px/24px var(--font); color: #7A7A7A; }
+.ag-category-search .qph { position: absolute; left: 0; top: 50%; transform: translateY(-50%); max-width: 100%; overflow: hidden; white-space: nowrap; pointer-events: none; font: 400 16px/24px var(--font); color: var(--ink-muted); }
 .ag-category-search .qph::after { content: ""; display: inline-block; width: 1.5px; height: 18px; margin-left: 2px; vertical-align: -3px; background: currentColor; animation: ag-blink 1s steps(1) infinite; }
 .ag-category-search .clear { width: 36px; height: 36px; flex: none; display: grid; place-items: center; border: 0; border-radius: 50%; background: transparent; color: var(--ink-muted); cursor: pointer; }
 .ag-category-search .clear svg.i { width: 18px; height: 18px; }
@@ -135,3 +135,6 @@
 @media (prefers-reduced-motion: reduce) {
   .ag-category-search .qph::after, .ag-category-sact .vbtn.on { animation: none; }
 }
+
+/* Dark mode: Clear filters in the panel reads at 4.5:1 or better. */
+html[data-mode="dark"] .ag-category-reset { color: var(--ink-strong); text-decoration: underline; }
