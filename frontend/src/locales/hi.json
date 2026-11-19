@@ -2135,7 +2135,8 @@
       "traveller_type": "यात्री का प्रकार",
       "food_preference": "खाने की पसंद",
       "save": "प्रोफ़ाइल सहेजें",
-      "skip": "अभी छोड़ें"
+      "skip": "अभी छोड़ें",
+      "more": "आपके बारे में और"
     },
     "travellerProfile": {
       "gender": {
@@ -2793,7 +2794,10 @@
       "friends": "जुड़े दोस्त",
       "seetrips": "मेरी यात्रा देखें",
       "sharefriend": "ऐसे दोस्त को भेजें जो होमस्टे या कॉफ़ी शॉप चलाता है, टूरिस्ट गाइड है, या स्थानीय घूमना पसंद करता है",
-      "yourdetails": "आपकी जानकारी"
+      "yourdetails": "आपकी जानकारी",
+      "signed_wa": "लॉग इन: WhatsApp",
+      "signed_gg": "लॉग इन: Google",
+      "savedetails": "जानकारी सेव करें"
     },
     "notes": {
       "eyebrow": "अपडेट"

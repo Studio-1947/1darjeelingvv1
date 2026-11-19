@@ -2542,7 +2542,8 @@
       "traveller_type": "Type of traveller",
       "food_preference": "Food preference",
       "save": "Save profile",
-      "skip": "Skip for now"
+      "skip": "Skip for now",
+      "more": "More about you"
     },
     "travellerProfile": {
       "gender": {
@@ -3200,7 +3201,10 @@
       "friends": "Friends joined",
       "seetrips": "See my trips",
       "sharefriend": "Share with a friend who runs a homestay, a coffee shop, is a tourist guide, or loves to explore locally",
-      "yourdetails": "Your details"
+      "yourdetails": "Your details",
+      "signed_wa": "Signed in with WhatsApp",
+      "signed_gg": "Signed in with Google",
+      "savedetails": "Save details"
     },
     "notes": {
       "eyebrow": "Updates"

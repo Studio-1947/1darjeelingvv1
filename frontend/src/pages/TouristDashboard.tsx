@@ -10,8 +10,6 @@ import { PALETTES, accentOf, mix, useTheme, useMode } from '@/lib/theme';
 import { Box, Button, ButtonA, ButtonLink, PageHead, Status } from '@/components/ag';
 import { Icon, type IconName } from '@/components/ag/Icon';
 import Wordmark from '@/components/Wordmark';
-import BlockedPeople from '@/components/BlockedPeople';
-import SignOutButton from '@/components/SignOutButton';
 import TravellerPanels, { Avatar } from '@/components/TravellerPanels';
 
 /** Prototype language order and labels (V.language). */
@@ -98,11 +96,31 @@ function LanguageScreen() {
   );
 }
 
+/** Account -> Traveller dashboard (prototype V.tdash): its own screen at /dashboard?s=tdash. */
+function TravellerDashScreen() {
+  const { t } = useTranslation();
+  const { user, loading } = useAuth();
+  const nav = useNavigate();
+  React.useEffect(() => { if (!loading && !user) nav('/login?next=' + encodeURIComponent('/dashboard?s=tdash'), { replace: true }); }, [loading, user, nav]);
+  if (loading || !user) return <div className="ag-wrap"><div className="ag-main"><p className="ag-small">{t('common.loading')}</p></div></div>;
+  return (
+    <div className="ag-wrap">
+      <div className="ag-main" id="traveller-dashboard" data-testid="traveller-dashboard">
+        <PageHead eyebrow={t('ui.account.eyebrow', 'Your account')} title={t('ui.account.tdash', 'Traveller dashboard')} />
+        <TravellerPanels />
+      </div>
+    </div>
+  );
+}
+
+/** "+918012345678" -> "+91 8012345678", as the prototype writes a number. */
+const shownPhone = (p?: string | null) => (p && /^\+91\d{10}$/.test(p) ? `+91 ${p.slice(3)}` : p || '');
+
 /**
  * The Account tab (prototype V.me): who you are, the menu (profile, theme colour, language, traveller
  * dashboard, membership), the business card, then the help card. Always reachable, so a signed-out
- * visitor gets the guest version with a Log in button. The traveller dashboard sits on this page
- * (the menu row scrolls to it); Language opens as its own screen at /dashboard?s=language.
+ * visitor gets the guest version with a Log in button. The traveller dashboard and Language open as
+ * their own screens (/dashboard?s=tdash, ?s=language); Log out and blocked people live on Profile.
  */
 export default function TouristDashboard() {
   const { t, i18n } = useTranslation();
@@ -115,12 +133,12 @@ export default function TouristDashboard() {
   const [colourMode, setColourMode] = useMode();
 
   if (sp.get('s') === 'language') return <LanguageScreen />;
+  if (sp.get('s') === 'tdash') return <TravellerDashScreen />;
   if (loading) return <div className="ag-wrap"><div className="ag-main"><p className="ag-small">{t('common.loading')}</p></div></div>;
 
   const passOn = !!user && isSupportActive(user);
   const isHost = user?.role === 'provider';
   const live = provider?.status === 'active';
-  const toPanels = () => document.getElementById('traveller-dashboard')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
   const pal = PALETTES.find((p) => p.key === theme);
   const accent = accentOf(theme);
@@ -141,7 +159,9 @@ export default function TouristDashboard() {
                 passOn ? (
                   <Status tone="ok" className="mt-1" data-testid="account-mode"><Icon name="check" size={14} /> {t('ui.travellerPanels.pass_title')}</Status>
                 ) : (
-                  <p className="ag-small" data-testid="account-mode">{t('dashboard.traveller')}</p>
+                  <p className="ag-small" data-testid="account-mode">
+                  {user.phone ? t('ui.account.signed_wa', 'Signed in with WhatsApp') : user.email ? t('ui.account.signed_gg', 'Signed in with Google') : t('dashboard.traveller')}
+                </p>
                 )
               ) : (
                 <p className="ag-small">{t('ui.account.not_in', 'Not logged in')}</p>
@@ -156,7 +176,7 @@ export default function TouristDashboard() {
         {/* Menu */}
         <nav className="ag-box ag-account-menu" aria-label={t('nav.account')}>
           <Link to={user ? '/profile/edit' : '/login?next=/profile/edit'} data-testid="account-edit-profile">
-            <Row icon="person" title={t('nav.profile')} sub={user?.phone || ''} />
+            <Row icon="person" title={t('nav.profile')} sub={shownPhone(user?.phone)} />
           </Link>
           <Link to="/theme" data-testid="account-theme">
             <Row icon="sun" title={t('theme.title', 'Theme colour')} sub={themeName}
@@ -166,22 +186,16 @@ export default function TouristDashboard() {
                 </span>
               )} />
           </Link>
+          <Link to="/dashboard?s=language" data-testid="account-language">
+            <Row icon="globe" title={t('lang.choose', 'Language')} sub={langName(i18n.language)} />
+          </Link>
           <button type="button" role="switch" aria-checked={colourMode === 'dark'} onClick={() => setColourMode(colourMode === 'dark' ? 'light' : 'dark')} data-testid="account-dark-mode">
             <Row icon="moon" title={t('theme.dark', 'Dark mode')} sub={colourMode === 'dark' ? t('theme.on', 'On') : t('theme.off', 'Off')}
               end={<span className={`ag-account-tog${colourMode === 'dark' ? ' on' : ''}`} aria-hidden="true"><i /></span>} />
           </button>
-          <Link to="/dashboard?s=language" data-testid="account-language">
-            <Row icon="globe" title={t('lang.choose', 'Language')} sub={langName(i18n.language)} />
+          <Link to={user ? '/dashboard?s=tdash' : '/login?next=' + encodeURIComponent('/dashboard?s=tdash')} data-testid="account-traveller-dashboard">
+            <Row icon="t_trip" title={t('ui.account.tdash', 'Traveller dashboard')} />
           </Link>
-          {user ? (
-            <button type="button" onClick={toPanels} data-testid="account-traveller-dashboard">
-              <Row icon="t_trip" title={t('ui.account.tdash', 'Traveller dashboard')} />
-            </button>
-          ) : (
-            <Link to="/login?next=/dashboard" data-testid="account-traveller-dashboard">
-              <Row icon="t_trip" title={t('ui.account.tdash', 'Traveller dashboard')} />
-            </Link>
-          )}
           <Link to="/support" data-testid="account-pass">
             <Row icon="badge" title={t('ui.account.member', 'Membership')}
               sub={passOn ? `${t('ui.travellerPanels.pass_title')} · ${t('ui.travellerPanels.pass_active')}` : t('ui.travellerPanels.get_pass', { price: rupees(pass.total) })} />
@@ -222,16 +236,6 @@ export default function TouristDashboard() {
             </ButtonLink>
           )}
         </section>
-
-        {user && (
-          <section id="traveller-dashboard" className="scroll-mt-20 flex flex-col gap-4" aria-label={t('ui.account.tdash', 'Traveller dashboard')}>
-            <TravellerPanels />
-          </section>
-        )}
-
-        {user && <BlockedPeople />}
-
-        {user && <SignOutButton className="mt-2" />}
 
         <AccountFoot />
       </div>
