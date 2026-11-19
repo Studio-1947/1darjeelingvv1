@@ -203,8 +203,8 @@ export default function Login() {
             <TextField label={t('ui.login.name', 'Your name')} value={name} onChange={(e) => setName(e.target.value)}
               autoComplete="name" data-testid="login-name" />
             <div className="ag-pick">
-              <Button type="submit" className="self-start" icon={<Icon name="wa" />} disabled={busy} data-testid="login-wa">
-                {t('ui.login.wa', 'Continue with WhatsApp')}
+              <Button type="submit" variant="primary" go className="self-start" disabled={busy} data-testid="login-wa">
+                {t('common.continue', 'Continue')}
               </Button>
               {GOOGLE_CLIENT_ID && (
                 <Button className="self-start" icon={googleBusy ? undefined : <Icon name="google" />} disabled={googleBusy || busy}
