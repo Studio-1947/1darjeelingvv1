@@ -11,6 +11,7 @@ import { themeVars, useMode } from '@/lib/theme';
 import DeliveryRequestButton from '@/components/DeliveryRequestButton';
 import { waLink, waShare } from '@/lib/tripMessages';
 import { Box, Button, ButtonA, ButtonLink, PageHead } from '@/components/ag';
+import SmartImg from '@/components/SmartImg';
 
 /**
  * A host's public page, aanganerp.in/<type>/<business-name> (board: "Profile - all profiles should
@@ -109,7 +110,7 @@ export default function HostPage() {
               {listings.map((l: any) => (
                 <Link key={l.id} to={`/listing/${l.id}`} data-testid={`host-page-listing-${l.id}`}
                   className="relative block aspect-square rounded-[16px] overflow-hidden bg-[var(--creme2)] no-underline">
-                  {l.image && <img src={l.image} alt="" className="absolute inset-0 w-full h-full object-cover" />}
+                  {l.image && <SmartImg src={l.image} alt="" className="absolute inset-0 w-full h-full object-cover" />}
                   <span className="absolute inset-x-0 bottom-0 p-2.5 flex flex-col text-white bg-gradient-to-t from-black/70 to-transparent">
                     <span className="text-[13px] leading-4 font-medium line-clamp-2">{l.title}</span>
                     {Number(l.price) > 0 && <b className="text-[13px] leading-5 font-semibold">₹{Number(l.price).toLocaleString('en-IN')}</b>}

@@ -129,7 +129,7 @@ export default function MyListings() {
         <h1 className="ag-host-tabh">{t('host.your_listings', 'Your listings')}</h1>
         <div className="ag-host-two">
           <ButtonLink to="/feed" go data-testid="post-update-cta">{t('pd.post_update')}</ButtonLink>
-          <Button icon={<Icon name={isDriver ? 'car' : 'home'} />} onClick={() => setListingModal({ open: true, editing: null })} data-testid="add-listing-cta">
+          <Button icon={<Icon name={isDriver ? 'car' : 'home'} />} onClick={() => nav('/provider/onboard?add=1')} data-testid="add-listing-cta">
             {isDriver ? t('host.add_vehicle', 'Add a vehicle') : t('host.add_property', 'Add a property')}
           </Button>
         </div>

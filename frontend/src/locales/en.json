@@ -455,7 +455,9 @@
     "confirmation_fee": "Booking confirmation fee",
     "payable_now": "Payable now",
     "fees_and_refunds": "Fees & refund policy",
-    "guests_required": "At least one guest"
+    "guests_required": "At least one guest",
+    "fee_note_pass": "Your aangan pass covers this booking. No fee, and your request goes with a verified badge.",
+    "route_required": "Pick where to start and where to go."
   },
   "responsible": {
     "title": "Responsible Tourism",
@@ -861,7 +863,8 @@
     "banners": "Highlights",
     "slide_n": "Slide {{n}}",
     "eyebrow_deals": "Offers",
-    "are_in": "are in"
+    "are_in": "are in",
+    "stick_free": "Free"
   },
   "widget": {
     "destination": "Destination",
@@ -2498,7 +2501,8 @@
     "host_accept": "Accept",
     "host_accepted_note": "Accepted. Waiting for the guest to confirm.",
     "host_request_note": "Check you are free, then accept or decline.",
-    "accept_failed": "Could not accept this request. Please try again."
+    "accept_failed": "Could not accept this request. Please try again.",
+    "step_confirm_pass": "You confirm it in My Trips. Free with your pass."
   },
   "photoKind": {
     "label": "What this photo shows",
@@ -3738,5 +3742,13 @@
     "report": "Report this plan",
     "tj_h": "Trips you joined",
     "tj_my": "Trips you planned"
+  },
+  "member": {
+    "title": "Your membership",
+    "active": "Active",
+    "included": "Included with your business plan",
+    "id": "Member ID",
+    "valid_till": "Valid till",
+    "back": "Back to account"
   }
 }

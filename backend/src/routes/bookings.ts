@@ -508,6 +508,10 @@ router.get('/me', authenticateToken, async (req: Request, res: Response) => {
       amount_due: listing && b.status === 'confirmed' && (b.listingType === 'homestay' || (b.listingType === 'driver' && !!b.quotedFare))
         ? amountOfBooking(b, listing.price)
         : null,
+      // The same fixed total at every stage (waiting, accepted, done), so the card can show it.
+      amount: listing && (b.listingType === 'homestay' || (b.listingType === 'driver' && !!b.quotedFare))
+        ? amountOfBooking(b, listing.price)
+        : null,
     });
   }
 

@@ -86,7 +86,7 @@ function TypeStep({ w }: { w: HostWizard }) {
         ))}
       </div>
 
-      <Box tone="blush" className="ag-onboard-charge">
+      {!w.adding && <Box tone="blush" className="ag-onboard-charge">
         <span className="ag-eyebrow" data-testid="onboard-free-chip">{t('ob.wz.ch_eye')}</span>
         <FeeList plain />
         <span className="ag-eyebrow">{t('ob.wz.ch_when')}</span>
@@ -101,7 +101,7 @@ function TypeStep({ w }: { w: HostWizard }) {
           ))}
         </div>
         <p className="ag-small">{t('ob.wz.gst_note')}</p>
-      </Box>
+      </Box>}
       <HelpWhatsApp type={d.type || undefined} />
     </Frame>
   );
@@ -364,9 +364,9 @@ function ReviewStep({ w }: { w: HostWizard }) {
       cta={(
         <>
           <NextButton onClick={submit} disabled={busy} data-testid="onboard-submit">
-            {busy ? t('common.loading') : d.payWhen === 'now' ? t('ob.wz.put_pay', { price: rupees(plan.base) }) : t('ob.wz.put')}
+            {busy ? t('common.loading') : d.payWhen === 'now' && !w.adding ? t('ob.wz.put_pay', { price: rupees(plan.base) }) : t('ob.wz.put')}
           </NextButton>
-          <FeeList />
+          {!w.adding && <FeeList />}
         </>
       )}>
       <article className="ag-onboard-card">
@@ -399,7 +399,7 @@ function DoneStep({ w }: { w: HostWizard }) {
         <h1 tabIndex={-1}>{t('ob.wz.in_title')}</h1>
         <p>{t('ob.wz.in_body')}</p>
         <ButtonLink go to="/provider/dashboard" data-testid="wz-dashboard">{t('ob.wz.biz')}</ButtonLink>
-        <ButtonLink go to="/my-listings" icon={<Icon name="plus" />} data-testid="wz-another">{d.type === 'driver' ? t('ob.wz.addveh') : t('ob.wz.addprop')}</ButtonLink>
+        <Button go onClick={() => window.location.assign("/provider/onboard?add=1")} icon={<Icon name="plus" />} data-testid="wz-another">{d.type === 'driver' ? t('ob.wz.addveh') : t('ob.wz.addprop')}</Button>
       </Box>
     </section>
   );

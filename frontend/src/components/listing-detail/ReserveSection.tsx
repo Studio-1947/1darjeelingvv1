@@ -7,6 +7,7 @@ import { BookingFlow, bookingTotal, chosenRoom, chosenRoute, roomsOf, routesOf }
 import { todayStr, addDays, isBadRange, parseDate } from '@/lib/dates';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
+import { needsSupport } from '@/lib/support';
 import { niceTime } from '@/lib/tripTime';
 
 /** Listing types whose bookings are requests the host accepts first (server: HOST_APPROVAL_TYPES). */
@@ -253,6 +254,7 @@ export function BookingScreen({ item, unit, step, booking, onNext }: {
               placeholder={t('listing.db_find', 'Search a place')} value={form.drop_place || ''}
               onChange={(e) => updateForm({ drop_place: e.target.value })} data-testid="booking-to" />
           </div>
+          {errors.route && <FieldError id="booking-error-route">{errors.route}</FieldError>}
           {(route?.price || rate) > 0 && (
             <p className="ag-small ag-listing-rate m-0 inline-flex items-center gap-1.5" data-testid="booking-rate">
               <Icon name="car" size={16} className="text-[var(--r)]" />
@@ -389,11 +391,11 @@ export function BookingScreen({ item, unit, step, booking, onNext }: {
             {busy ? t('common.loading') : t('listing.send', 'Send')}
           </Button>
           {msg && <p data-testid="booking-msg" role="alert" className="ag-err !text-[14px] !leading-5">{msg}</p>}
-          {(errors.check_in || errors.check_out || errors.guests) && (
-            <p className="ag-err !text-[14px] !leading-5" role="alert">{errors.check_in || errors.check_out || errors.guests}</p>
+          {(errors.route || errors.check_in || errors.check_out || errors.guests) && (
+            <p className="ag-err !text-[14px] !leading-5" role="alert">{errors.route || errors.check_in || errors.check_out || errors.guests}</p>
           )}
           <p className="ag-small ag-listing-center m-0">{t('listing.askfree', 'Asking is free. You pay nothing now.')}</p>
-          <p className="ag-listing-feeline"><Icon name="badge" /><span>{t('booking.fee_note')}</span></p>
+          <p className="ag-listing-feeline" data-testid="booking-fee-line"><Icon name="badge" /><span>{user && !needsSupport(user) ? t('booking.fee_note_pass', 'Your aangan pass covers this booking. No fee, and your request goes with a verified badge.') : t('booking.fee_note')}</span></p>
           <p className="ag-small ag-listing-center m-0" data-testid="booking-cancel-note">
             {t('booking.cancel_note')} <Link to="/refunds" className="text-[var(--r)] no-underline font-medium">{t('booking.fees_and_refunds')}</Link>
           </p>
@@ -402,7 +404,7 @@ export function BookingScreen({ item, unit, step, booking, onNext }: {
             <Box tone="blush" flat data-testid="reserve-how-it-works">
               <span className="ag-eyebrow">{t('approval.next_steps')}</span>
               <ol className="grid gap-2.5 m-0 p-0 list-none">
-                {[t('approval.step_ask'), t('approval.step_host'), t('approval.step_confirm'), t('approval.step_contact')].map((s, i) => (
+                {[t('approval.step_ask'), t('approval.step_host'), user && !needsSupport(user) ? t('approval.step_confirm_pass', 'You confirm it in My Trips. Free with your pass.') : t('approval.step_confirm'), t('approval.step_contact')].map((s, i) => (
                   <li key={i} className="flex items-start gap-3">
                     <span className="ag-micon !w-7 !h-7 text-[13px] font-medium">{i === 1 ? <Icon name="hourglass" size={16} /> : i + 1}</span>
                     <span className="pt-0.5 text-[14px] leading-5 text-[var(--ink-strong)]">{s}</span>

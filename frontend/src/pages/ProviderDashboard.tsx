@@ -473,7 +473,7 @@ function ProviderDashboardPage() {
             {listings.length === 0 && (
               <div className="col-span-2"><HostPassLine provider={provider} user={user} onRenewed={async () => { await refresh(); await loadDashboard(); }} /></div>
             )}
-            <button type="button" className="ag-host-add" onClick={() => setAddOpen(true)} data-testid="add-listing-cta">
+            <button type="button" className="ag-host-add" onClick={() => nav('/provider/onboard?add=1')} data-testid="add-listing-cta">
               <Icon name="plus" /><span>{t('host.add_more', 'Add more listings')}</span>
             </button>
           </div>

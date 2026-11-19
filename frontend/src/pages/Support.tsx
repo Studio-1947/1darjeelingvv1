@@ -5,12 +5,42 @@ import { Check } from '@phosphor-icons/react';
 import { Box, Button, PageHead } from '@/components/ag';
 import { useAuth } from '@/context/AuthContext';
 import { createPaymentOrder, completeMockPayment, payWithRazorpay } from '@/lib/api';
-import { needsSupport } from '@/lib/support';
+import { needsSupport, isSupportActive } from '@/lib/support';
 import MockPaymentModal from '@/components/MockPaymentModal';
 import PriceBreakup from '@/components/PriceBreakup';
 import { rupees, usePassPrice } from '@/lib/prices';
 import PassOffer from '@/components/PassOffer';
 import { useSeo } from '@/components/Seo';
+
+/** The pass holder's card: member number, until when, what it covers (prototype "Membership"). */
+function MembershipCard({ user }: { user: any }) {
+  const { t, i18n } = useTranslation();
+  const active = isSupportActive(user);
+  const until = active ? new Date(user.supportExpiresAt).toLocaleDateString(i18n.language, { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+  const memberId = 'AG-' + String(user.id || '').replace(/-/g, '').slice(0, 8).toUpperCase();
+  return (
+    <div className="ag-wrap">
+      <div className="ag-main" data-testid="membership-screen">
+        <PageHead eyebrow={t('ui.account.eyebrow', 'Your account')} title={t('member.title', 'Your membership')} />
+        <Box>
+          <span className="ag-eyebrow">{t('pass_card.title')}</span>
+          <p className="text-[28px] leading-[34px] font-medium text-[var(--r)] m-0" data-testid="membership-status">
+            {active ? t('member.active', 'Active') : t('member.included', 'Included with your business plan')}
+          </p>
+          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm m-0">
+            <dt className="ag-small">{t('member.id', 'Member ID')}</dt><dd className="m-0 font-medium" data-testid="membership-id">{memberId}</dd>
+            {active && (<><dt className="ag-small">{t('member.valid_till', 'Valid till')}</dt><dd className="m-0 font-medium" data-testid="membership-until">{until}</dd></>)}
+          </dl>
+          <ul className="mt-2 flex flex-col gap-1.5 text-sm text-[var(--ink7)]">
+            <li className="flex items-start gap-2"><Check size={16} weight="bold" className="mt-0.5 flex-none text-[var(--ok)]" aria-hidden="true" />{t('pass_card.what')}</li>
+            <li className="flex items-start gap-2"><Check size={16} weight="bold" className="mt-0.5 flex-none text-[var(--ok)]" aria-hidden="true" />{t('pass_card.pay_host')}</li>
+          </ul>
+        </Box>
+        <Link to="/dashboard" className="self-center"><Button variant="text">{t('member.back', 'Back to account')}</Button></Link>
+      </div>
+    </div>
+  );
+}
 
 export default function Support() {
   const { t } = useTranslation();
@@ -66,6 +96,10 @@ export default function Support() {
   // the homepage). leaving suppresses the branch for exactly that window; once the location
   // actually changes, Support unmounts and the flag stops mattering.
   if (!user && !leaving) return <Navigate to="/login" replace />;
+
+  // Opened on its own (Account → Membership, or just paid from there): a pass holder sees their
+  // membership card. Sent here on the way to something else: carry on to it.
+  if (!needsSupport(user) && !from?.pathname && !next) return <MembershipCard user={user} />;
 
   // Fee already active (paid just now in another tab, settled by webhook while away, etc.) 
   // don't show the pay screen again, just send them on to where they were headed.

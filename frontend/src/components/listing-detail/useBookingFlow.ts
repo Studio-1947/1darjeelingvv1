@@ -29,6 +29,8 @@ export interface BookingForm {
 }
 
 export interface BookingErrors {
+  /** A driver request with no From or To. */
+  route?: string;
   check_in?: string;
   check_out?: string;
   guests?: string;
@@ -200,6 +202,9 @@ export function useBookingFlow(item: any, id: string) {
     // guide's seasons can be checked.
     if ((item?.type === 'driver' || item?.type === 'guide') && !form.check_in) {
       next.check_in = t('booking.date_required');
+    }
+    if (item?.type === 'driver' && (!form.pickup_place?.trim() || !form.drop_place?.trim())) {
+      next.route = t('booking.route_required', 'Pick where to start and where to go.');
     }
     const roomOcc = item?.type === 'homestay' ? Number(chosenRoom(item, form.room)?.occ) || 0 : 0;
     const baseMax = item?.type === 'driver' ? (item?.extras?.seats || 6) : (item?.guests || item?.extras?.capacity || 10);
