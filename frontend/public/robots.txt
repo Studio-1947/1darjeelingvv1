@@ -1,4 +1,4 @@
-# aangan  https://aangan.in
+# aangan  https://aanganerp.in
 #
 # The whole public site is meant to be found: tourists reach a homestay or a viewpoint through
 # search far more often than by typing the domain. Only the surfaces that are private, personal,
@@ -40,4 +40,4 @@ Disallow: /my-listings
 Disallow: /saved
 Disallow: /provider/dashboard
 
-Sitemap: https://aangan.in/sitemap.xml
+Sitemap: https://aanganerp.in/sitemap.xml

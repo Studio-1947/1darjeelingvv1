@@ -79,6 +79,8 @@ function registerValidSW(swUrl: string, config?: Config) {
   navigator.serviceWorker
     .register(swUrl)
     .then((registration) => {
+      // Some browsers that block service workers resolve with nothing instead of failing.
+      if (!registration) return;
       registration.onupdatefound = () => {
         const installingWorker = registration.installing;
         if (installingWorker == null) return;

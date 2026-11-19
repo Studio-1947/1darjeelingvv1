@@ -408,6 +408,13 @@ export function listingImage(item: any, w = 1200, h = 900): string {
   return stockPhoto(primaryKeyword(item), w, h, seedFor(item?.title));
 }
 
+/** The host's own other photos, tried in order when the cover will not load (a file gone from storage). */
+export function listingImageBackups(item: any, w = 1200): string[] {
+  const own = Array.isArray(item?.extras?.images) ? item.extras.images.filter((u: unknown) => typeof u === 'string' && u) : [];
+  const first = listingImage(item, w);
+  return own.map((u: string) => sizedImage(u, w)).filter((u: string) => u !== first);
+}
+
 /**
  * The gallery photos for a listing, each distinct across listings. A gallery
  * entry may be a real photo URL - used as-is - or a keyword, which resolves to

@@ -1120,7 +1120,8 @@
     "kind_offer_s": "A deal or free room",
     "kind_event_s": "Something happening",
     "kind_photo_s": "A view worth sharing",
-    "kind_plans": "Trip plans"
+    "kind_plans": "Trip plans",
+    "type_guide": "Guide"
   },
   "contact": {
     "event_note": "Reach the organizer directly, add it to your calendar, or get directions.",
