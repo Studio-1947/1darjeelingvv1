@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Phone, WhatsappLogo, NavigationArrow, SealCheck, Star, PlayCircle, Globe, CrownSimple } from '@phosphor-icons/react';
+import { Phone, WhatsappLogo, NavigationArrow, SealCheck, Star, PlayCircle, Globe, CrownSimple, Info } from '@phosphor-icons/react';
 import { Box, ButtonA, SecHead, Status, cx } from '@/components/ag';
 import { themeVars, useMode } from '@/lib/theme';
 import SmartImg from '@/components/SmartImg';
@@ -67,6 +67,9 @@ export default function HostMiniSite({ data, actions }: { data: MiniSiteData; ac
   // Re-render when dark mode is switched, so the business colour follows it.
   const [colourMode] = useMode();
   const { t } = useTranslation();
+  // The (i) beside the badges: what the blue tick and the Business Pass each mean for this host.
+  const [badgeInfo, setBadgeInfo] = React.useState(false);
+  const infoId = React.useId();
   const initial = (data.hostName || data.name || '?').trim().charAt(0).toUpperCase();
   const joined = data.joinedAt ? new Date(data.joinedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) : null;
   const stars = Math.round(data.rating || 0);
@@ -95,7 +98,8 @@ export default function HostMiniSite({ data, actions }: { data: MiniSiteData; ac
 
       {/* Identity: photo, name with the two marks, type and joining date, stars, place */}
       <div className="flex items-start gap-4">
-        <div className="-mt-12 grid h-24 w-24 flex-none place-items-center overflow-hidden rounded-full border-4 border-[var(--surface)] bg-[var(--r-tint)] text-4xl font-medium text-[var(--r)] shadow-sm">
+        {/* relative + z-index: the cover is positioned, so a static photo would be painted under it. */}
+        <div className="relative z-[1] -mt-12 grid h-24 w-24 flex-none place-items-center overflow-hidden rounded-full border-4 border-[var(--surface)] bg-[var(--r-tint)] text-4xl font-medium text-[var(--r)] shadow-sm">
           <FaceImg src={data.avatar} initial={initial} className="h-full w-full object-cover" />
         </div>
         <div className="grid min-w-0 flex-1 gap-1">
@@ -105,13 +109,37 @@ export default function HostMiniSite({ data, actions }: { data: MiniSiteData; ac
             {data.verified && (
               <span title={t('miniSite.verified_title')} data-testid="badge-verified" className="inline-flex items-center text-sky-500">
                 <SealCheck size={24} weight="fill" aria-hidden="true" />
-                <span className="sr-only">{t('kyc.verified')}</span>
+                <span className="sr-only">{t('miniSite.docs_verified')}</span>
               </span>
             )}
             {data.member && (
               <Status tone="info" data-testid="badge-member"><CrownSimple size={14} weight="fill" aria-hidden="true" /> {t('miniSite.member')}</Status>
             )}
+            {(data.verified || data.member) && (
+              <button type="button" onClick={() => setBadgeInfo((v) => !v)} aria-expanded={badgeInfo} aria-controls={infoId}
+                aria-label={t('miniSite.badges_info')} title={t('miniSite.badges_info')} data-testid="badge-info"
+                className="grid h-8 w-8 place-items-center rounded-full border border-[var(--hairline)] bg-[var(--surface)] text-[var(--ink-muted)] hover:text-[var(--ink-strong)]">
+                <Info size={18} weight={badgeInfo ? 'fill' : 'regular'} aria-hidden="true" />
+              </button>
+            )}
           </div>
+          {badgeInfo && (data.verified || data.member) && (
+            <Box flat id={infoId} className="!gap-2 text-sm" data-testid="badge-info-panel">
+              {data.verified && (
+                <p className="flex items-start gap-2">
+                  <SealCheck size={18} weight="fill" className="mt-0.5 flex-none text-sky-500" aria-hidden="true" />
+                  <span><b className="font-medium text-[var(--ink-strong)]">{t('miniSite.docs_verified')}</b><br /><span className="ag-small">{t('miniSite.docs_verified_body')}</span></span>
+                </p>
+              )}
+              <p className="flex items-start gap-2">
+                <CrownSimple size={18} weight={data.member ? 'fill' : 'regular'} className={cx('mt-0.5 flex-none', data.member ? 'text-[var(--r)]' : 'text-[var(--ink-muted)]')} aria-hidden="true" />
+                <span>
+                  <b className="font-medium text-[var(--ink-strong)]">{t(data.member ? 'miniSite.pass_active' : 'miniSite.pass_none')}</b><br />
+                  <span className="ag-small">{t(data.member ? 'miniSite.pass_active_body' : 'miniSite.pass_none_body')}</span>
+                </span>
+              </p>
+            </Box>
+          )}
           <p className="ag-small">
             {typeLabel}
             {data.experienceYears ? ` · ${t('profile.experience_years', { count: data.experienceYears })}` : ''}
