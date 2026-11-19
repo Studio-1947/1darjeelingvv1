@@ -18,6 +18,7 @@ import { rank, type Interpretation } from '../lib/search';
 import { isIsoDate, maxGuestsFor } from '../lib/bookingRules';
 import { checkNameLike } from '../lib/contentRules';
 import { listingCover } from '../lib/listingCover';
+import { ratingsForListings } from '../lib/listingRatings';
 import {
   SPOT_TYPE, SPOT_FORBIDDEN_MESSAGE, canWriteSpots, parseSpotExtras,
   isSpotPublished, publicSpotVisibility, spotOrdering, SpotValidationError,
@@ -210,25 +211,6 @@ const router = Router();
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
  */
-/** Rating summary (count + 1-decimal average) per listing id, for the ids given. */
-async function ratingsForListings(listingIds: string[]): Promise<Map<string, { count: number; average: number }>> {
-  const out = new Map<string, { count: number; average: number }>();
-  if (listingIds.length === 0) return out;
-  const rows = await db.select({ listingId: schema.reviews.listingId, rating: schema.reviews.rating })
-    .from(schema.reviews)
-    .where(inArray(schema.reviews.listingId, listingIds));
-  const acc = new Map<string, { sum: number; count: number }>();
-  for (const r of rows) {
-    const a = acc.get(r.listingId) || { sum: 0, count: 0 };
-    a.sum += r.rating;
-    a.count += 1;
-    acc.set(r.listingId, a);
-  }
-  for (const [id, a] of acc) {
-    out.set(id, { count: a.count, average: Math.round((a.sum / a.count) * 10) / 10 });
-  }
-  return out;
-}
 
 // Get list of listings with filter
 router.get('/', async (req: Request, res: Response) => {

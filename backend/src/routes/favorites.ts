@@ -1,5 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { listExtras } from '../lib/listingContact';
+import { maxGuestsFor } from '../lib/bookingRules';
+import { ratingsForListings } from '../lib/listingRatings';
 import { v4 as uuidv4 } from 'uuid';
 import { db, schema } from '../db';
 import { eq, and, desc, inArray } from 'drizzle-orm';
@@ -68,6 +70,7 @@ router.get('/', authenticateToken, async (req: Request, res: Response) => {
       .where(inArray(schema.providers.id, providerIds))
     : [];
   const providerById = new Map(providerRows.map(p => [p.id, p]));
+  const ratingByListing = await ratingsForListings(listings.map(l => l.id));
 
   // Preserve the favorites order (newest saved first); a listing that was deleted since it was
   // saved simply drops out rather than surfacing as a broken card. A spot that has since been
@@ -79,6 +82,7 @@ router.get('/', authenticateToken, async (req: Request, res: Response) => {
     .filter(l => l.type !== SPOT_TYPE || isSpotPublished(l.extras))
     .map(l => {
       const provider = providerById.get(l.providerId);
+      const rating = ratingByListing.get(l.id);
       return {
         id: l.id,
         title: l.title,
@@ -88,11 +92,14 @@ router.get('/', authenticateToken, async (req: Request, res: Response) => {
         latitude: l.latitude,
         longitude: l.longitude,
         price: l.price,
+        max_guests: maxGuestsFor(l),
         image: l.image,
         tags: l.tags,
         provider_id: l.providerId,
         extras: listExtras(l.type, l.extras),
         created_at: l.createdAt,
+        rating: rating?.average ?? 0,
+        review_count: rating?.count ?? 0,
         provider_verified: provider?.kycStatus === 'verified' && provider?.status === 'active',
       };
     });

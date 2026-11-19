@@ -6,7 +6,8 @@ import { Icon } from '@/components/ag/Icon';
 import { useAuth } from '@/context/AuthContext';
 import { fetchFavorites, SavedListing } from '@/lib/favorites';
 import api from '@/lib/api';
-import ListingCard from '@/components/ListingCard';
+import ListingCard, { CatSpotCard, CatStayCard } from '@/components/ListingCard';
+import { distanceTo, placeFor } from '@/lib/places';
 import PlanCard from '@/components/feed/PlanCard';
 import { SaveHeart } from '@/components/home/cards';
 import { useFavorites } from '@/context/FavoritesContext';
@@ -16,6 +17,12 @@ import { Box, Button, ButtonLink, Chip, Chips, IconButton, PageHead, TextField }
 
 /** Prototype order of the saved groups: places to see, stays, rides, guides, food, shops, events. */
 const TYPE_ORDER = ['spot', 'biodiversity', 'homestay', 'driver', 'guide', 'cafe', 'shop', 'event'];
+/** The same cards the category lists use: stay cards (who it fits, rating, price, heart) and tall spot cards. */
+const STAY_TYPES = new Set(['homestay', 'driver', 'guide', 'cafe', 'shop']);
+const SPOT_TYPES = new Set(['spot', 'biodiversity']);
+const BOOKABLE = new Set(['homestay', 'driver', 'guide']);
+/** Stay cards measure from town, as the category lists do. */
+const TOWN = placeFor('darjeeling') as { lat: number; lng: number };
 
 /**
  * Saved (prototype V.saved): the places you kept, two to a row, with Plan a trip and a shareable
@@ -31,7 +38,13 @@ export default function Saved() {
   const [plans, setPlans] = useState<TripPlan[]>([]);
   const { isFavorite, loading: favLoading } = useFavorites();
   const [kind, setKind] = useState('');
-  const typeLabel = (k: string) => t(`nav.${({ spot: 'spots', homestay: 'homestays', driver: 'drivers', guide: 'guides', cafe: 'cafes', shop: 'shops', event: 'events', biodiversity: 'biodiversity' } as Record<string, string>)[k] || k}`, k);
+  // The prototype's group names (Homestay, Car & Driver, Places to see...), as the category pages title them.
+  const TYPE_LABEL: Record<string, [string, string]> = {
+    spot: ['filter.t_spots', 'Places to see'], biodiversity: ['home.nature_title', 'Nature'],
+    homestay: ['home.tile.stays', 'Homestay'], driver: ['home.tile.cars', 'Car & Driver'], guide: ['home.tile.guides', 'Tour Guides'],
+    cafe: ['home.cafes_title', 'Cafes & Restaurants'], shop: ['home.shops_title', 'Local Shops'], event: ['home.tile.events', 'Festivals'],
+  };
+  const typeLabel = (k: string) => (TYPE_LABEL[k] ? t(TYPE_LABEL[k][0], TYPE_LABEL[k][1]) : k);
   const [loading, setLoading] = useState(true);
 
   // Share sheet state
@@ -126,7 +139,7 @@ export default function Saved() {
       <div className="ag-main">
         {head}
 
-        {items.length > 0 && kinds.length > 1 && (
+        {items.length > 0 && (
           <Chips scroll className="ag-account-pills" role="group" aria-label={t('ui.saved.filter', 'Show saved')} data-testid="saved-pills">
             <Chip on={!pick} onClick={() => setKind('')}>{t('ui.trips.all', 'Everything')} <span className="n">{items.length}</span></Chip>
             {kinds.map((k) => (
@@ -160,14 +173,23 @@ export default function Saved() {
             const list = items.filter((i) => i.type === k);
             return (
               <section key={k} className="ag-account-savesec" data-testid={`saved-group-${k}`}>
-                {!pick && kinds.length > 1 && <h2>{typeLabel(k)} <span className="ag-small">{list.length}</span></h2>}
-                <div className="grid grid-cols-2 gap-2.5">
-                  {list.map((it) => (
-                    <div key={it.id} className="relative">
-                      <ListingCard item={it} />
-                      {!sharedPlanParam && <SaveHeart id={it.id} testId={`saved-heart-${it.id}`} className="!absolute right-2 top-2" />}
-                    </div>
-                  ))}
+                {!pick && <h2>{typeLabel(k)} <span className="ag-small">{list.length}</span></h2>}
+                <div className="ag-category-grid">
+                  {list.map((it) => {
+                    const href = `/listing/${it.id}`;
+                    if (STAY_TYPES.has(it.type)) {
+                      return (
+                        <CatStayCard key={it.id} it={it} href={href} km={distanceTo(TOWN, it)} testId={`saved-card-${it.id}`}
+                          ctaLabel={BOOKABLE.has(it.type) ? t('cta.reserve', 'Reserve') : t('cta.view', 'View')} />
+                      );
+                    }
+                    return (
+                      <div key={it.id} className="relative">
+                        {SPOT_TYPES.has(it.type) ? <CatSpotCard it={it} href={href} testId={`saved-card-${it.id}`} /> : <ListingCard item={it} />}
+                        {!sharedPlanParam && <SaveHeart id={it.id} testId={`saved-heart-${it.id}`} className="!absolute right-2 top-2 z-[3]" />}
+                      </div>
+                    );
+                  })}
                 </div>
               </section>
             );
