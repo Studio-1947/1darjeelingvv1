@@ -20,7 +20,8 @@ const TYPES: { value: string; key: string; fallback: string }[] = [
   { value: 'nature', key: 'filter.t_nature', fallback: 'Nature' },
 ];
 /** 'food' is the prototype's Foods & Shops: cafes and shops together. */
-export const typeMatches = (want: string, have: string) => !want || have === want || (want === 'food' && (have === 'cafe' || have === 'shop'));
+export const typeMatches = (want: string, have: string) => !want || have === want
+  || (want === 'food' && (have === 'cafe' || have === 'shop')) || (want === 'nature' && have === 'biodiversity');
 
 type Origin = { lat: number; lng: number };
 
@@ -42,30 +43,32 @@ export default function HomeFilterPanel({ query, onDone }: { query: string; onDo
   const [cheap, setCheap] = useState(false);
   const [all, setAll] = useState<any[] | null>(null);
 
-  // Everything once, for the live count (the same 60-per-type the results page loads).
+  // The rows the count is taken from: every listing, or, once words are typed, what the smart search
+  // finds for them (the same answer the results page gives), so "Search N" is what you will see.
+  const term = query.trim();
   useEffect(() => {
     let live = true;
-    api.get('/listings', { params: { limit: 60 } })
-      .then(({ data }) => { if (live) setAll(data.items || []); })
-      .catch(() => { if (live) setAll([]); });
-    return () => { live = false; };
-  }, []);
+    const timer = setTimeout(() => {
+      api.get('/listings', { params: term ? { q: term, limit: 200 } : { limit: 200 } })
+        .then(({ data }) => { if (live) setAll(data.items || []); })
+        .catch(() => { if (live) setAll([]); });
+    }, term ? 250 : 0);
+    return () => { live = false; clearTimeout(timer); };
+  }, [term]);
 
   const origin: Origin | null = near === 'me' ? me : near ? placeFor(near) : null;
 
   const count = useMemo(() => {
     if (!all) return null;
-    const term = query.trim().toLowerCase();
     return all.filter((it) => {
       if (!typeMatches(type, it.type)) return false;
-      if (term && ![it.title, it.description, it.location].some((s) => String(s || '').toLowerCase().includes(term))) return false;
       if (origin && rad > 0) {
         const d = distanceTo(origin, it);
         if (!d || d.km > rad) return false;
       }
       return true;
     }).length;
-  }, [all, type, query, origin, rad]);
+  }, [all, type, origin, rad]);
 
   const locate = () => {
     if (near === 'me') { setNear(''); return; }

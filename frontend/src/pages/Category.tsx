@@ -1,6 +1,6 @@
 import React, { Fragment, useEffect, useMemo, useState } from 'react';
-import { distanceTo, placeFor } from '@/lib/places';
-import { useParams, useSearchParams } from 'react-router-dom';
+import { PLACES, distanceTo, placeFor } from '@/lib/places';
+import { useLocation, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import SuggestPlace from '@/components/spots/SuggestPlace';
 import api from '@/lib/api';
@@ -8,7 +8,7 @@ import Seo from '@/components/Seo';
 import { GridTileSkeleton, ListRowSkeleton, repeat } from '@/components/skeletons';
 import CategoryFilterBar, { type SortOrder } from '@/components/CategoryFilterBar';
 import { contentFor } from '@/lib/listingContent';
-import { tripMatch } from '@/lib/routeFares';
+import { normalizeRoutes, routeForTrip, tripMatch } from '@/lib/routeFares';
 import { readTrip, hasTrip, tripSuffix } from '@/lib/tripParams';
 import { formatDay, formatRange } from '@/lib/dates';
 import SearchUnderstood, { type SearchInterpretation } from '@/components/SearchUnderstood';
@@ -27,6 +27,29 @@ const TYPE_MAP = {
   cafes: 'cafe',
   events: 'event',
   biodiversity: 'biodiversity',
+};
+/** Kinds the home filter panel names differently from the API. */
+const TYPE_ALIAS: Record<string, string> = { nature: 'biodiversity', stays: 'homestay', drivers: 'driver' };
+
+const SORTS = new Set(['price_asc', 'price_desc', 'name_asc']);
+const squash = (v: string) => v.toLowerCase().replace(/[^a-z]/g, '');
+/** A place picked in the filter matches its other spellings too (Ghum / Ghoom). */
+function placeKeys(name: string): string[] {
+  const n = squash(name);
+  const hit = PLACES.find((p) => p.keys.some((k) => squash(k) === n));
+  return hit ? hit.keys.map(squash) : [n];
+}
+/** A spot with an entry ticket ("₹30 per person") is paid even if its listed price is 0. */
+function freeEntry(it: any): boolean {
+  const fee = String(it.extras?.entry_fee || '').toLowerCase();
+  if (/free|nil|no entry fee/.test(fee)) return true;
+  if (/[1-9]/.test(fee)) return false;
+  return !Number(it.price);
+}
+/** Car words by cab kind, from titles and the host's vehicle type (constants/listingOptions VEHICLE_TYPES). */
+const CAB_WORDS: Record<string, string[]> = {
+  hatchback: ['hatchback', 'sedan', 'dzire', 'swift', 'etios', 'alto', 'wagon', 'amaze', 'aura'],
+  suv: ['suv', 'innova', 'bolero', 'sumo', 'scorpio', 'jeep', 'xylo', 'ertiga', 'tempo', 'traveller', 'mountain'],
 };
 
 /** Results shown as stay cards (photo, facts, price, button, heart). */
@@ -78,7 +101,14 @@ const kindOf = (it: any): string => {
 const RIDE_PLACES = ['Darjeeling', 'Ghum', 'Tiger Hill', 'Kurseong', 'Mirik', 'Kalimpong', 'Siliguri', 'NJP Station', 'Bagdogra Airport', 'Gangtok', 'Sittong', 'Lamahatta', 'Takdah', 'Lepchajagat', 'Sukhia Pokhri'];
 const SUPPORT_PHONE = '+91 90932 77919';
 
-export default function Category({ typeOverride }) {
+/** A new category or search starts clean: filters from one page never carry into the next. */
+export default function Category({ typeOverride }: { typeOverride?: string }) {
+  const { pathname } = useLocation();
+  const [sp] = useSearchParams();
+  return <CategoryPage key={`${pathname}|${sp.get('type') || ''}`} typeOverride={typeOverride} />;
+}
+
+function CategoryPage({ typeOverride }: { typeOverride?: string }) {
   const { t, i18n } = useTranslation();
   const { type: paramType } = useParams();
   const [sp, setSp] = useSearchParams();
@@ -88,7 +118,7 @@ export default function Category({ typeOverride }) {
   // both ends of the route instead of a query.
   const from = sp.get('from') || '';
   const to = sp.get('to') || '';
-  const type = typeOverride ? typeOverride : (urlType || TYPE_MAP[paramType]);
+  const type = typeOverride ? typeOverride : (TYPE_ALIAS[urlType] || urlType || TYPE_MAP[paramType]);
   // The home filter's Foods & Shops ('food') is cafes and shops together: fetch all, keep those two.
   const apiType = type === 'food' ? undefined : type;
   const keepType = (list: any[]) => (type === 'food' ? list.filter((it) => typeMatches('food', it.type)) : list);
@@ -105,13 +135,13 @@ export default function Category({ typeOverride }) {
 
   // Interactive Filter & Search states
   const [searchQuery, setSearchQuery] = useState(q);
-  const [selectedLocation, setSelectedLocation] = useState('All Locations');
-  const [sortOrder, setSortOrder] = useState<SortOrder>('recommended');
-  const [maxPrice, setMaxPrice] = useState<number | undefined>(undefined);
-  const [selectedCab, setSelectedCab] = useState<string>('all');
-  const [entryFilter, setEntryFilter] = useState<string>('all');
-  const [kind, setKind] = useState('');
-  const [delivers, setDelivers] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState(() => sp.get('loc') || 'All Locations');
+  const [sortOrder, setSortOrder] = useState<SortOrder>(() => (SORTS.has(sp.get('sort') || '') ? sp.get('sort') : 'recommended') as SortOrder);
+  const [maxPrice, setMaxPrice] = useState<number | undefined>(() => Number(sp.get('max')) || undefined);
+  const [selectedCab, setSelectedCab] = useState<string>(() => sp.get('cab') || 'all');
+  const [entryFilter, setEntryFilter] = useState<string>(() => sp.get('entry') || 'all');
+  const [kind, setKind] = useState(() => sp.get('kind') || '');
+  const [delivers, setDelivers] = useState(() => sp.get('del') === '1');
   // Board: "Filter > by proximity & by price". Where the traveller is, and how far they will go.
   const [near, setNear] = useState<{ lat: number; lng: number } | null>(null);
   const [radius, setRadius] = useState<number | null>(null);
@@ -134,13 +164,30 @@ export default function Category({ typeOverride }) {
   const withinParam = Number(sp.get('within')) || 0;
   const sortParam = sp.get('sort') || '';
   useEffect(() => {
-    if (nearParam === 'me') locate();
+    if (nearParam === 'me' && !near) locate();
     else if (nearParam) { const at = placeFor(nearParam); if (at) setNear(at); }
     if (nearParam && withinParam > 0) setRadius(withinParam);
     if (sortParam === 'price_asc' || sortParam === 'price_desc' || sortParam === 'name_asc') setSortOrder(sortParam);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nearParam, withinParam, sortParam]);
-  useEffect(() => { setKind(''); setDelivers(false); }, [type]);
+  // Keep the address in step with the filters (replace, so Back still leaves the page in one step).
+  useEffect(() => {
+    setSp((prev) => {
+      const n = new URLSearchParams(prev);
+      const put = (k: string, v: string | null) => { if (v) n.set(k, v); else n.delete(k); };
+      put('loc', selectedLocation !== 'All Locations' ? selectedLocation : null);
+      put('max', maxPrice ? String(maxPrice) : null);
+      put('cab', selectedCab !== 'all' ? selectedCab : null);
+      put('entry', entryFilter !== 'all' ? entryFilter : null);
+      put('kind', kind || null);
+      put('del', delivers ? '1' : null);
+      put('sort', sortOrder !== 'recommended' ? sortOrder : null);
+      put('near', near ? (prev.get('near') || 'me') : null);
+      put('within', near && radius ? String(radius) : null);
+      return n.toString() === prev.toString() ? prev : n;
+    }, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedLocation, maxPrice, selectedCab, entryFilter, kind, delivers, sortOrder, near, radius]);
 
   // Smart search (server lib/search.ts): reads intent, budget, local spellings and typos and ranks
   // the results. Asked a moment after typing stops; until it answers, the plain match below shows.
@@ -161,7 +208,7 @@ export default function Category({ typeOverride }) {
     let cancelled = false;
     setLoading(true);
     setElsewhere([]);
-    api.get('/listings', { params: { type: apiType, limit: 60, ...dayParam } })
+    api.get('/listings', { params: { type: apiType, limit: apiType ? 60 : 200, ...dayParam } })
       .then((r) => { if (!cancelled) setItems(keepType(r.data.items || [])); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
@@ -207,8 +254,8 @@ export default function Category({ typeOverride }) {
     }
 
     if (selectedLocation && selectedLocation !== 'All Locations') {
-      const loc = selectedLocation.toLowerCase();
-      list = list.filter((it) => it.location?.toLowerCase().includes(loc));
+      const keys = placeKeys(selectedLocation);
+      list = list.filter((it) => { const at = squash(it.location || ''); return keys.some((k) => at.includes(k)); });
     }
 
     if (maxPrice !== undefined && maxPrice > 0) {
@@ -216,18 +263,16 @@ export default function Category({ typeOverride }) {
     }
 
     if (selectedCab && selectedCab !== 'all') {
+      const words = CAB_WORDS[selectedCab] || [];
       list = list.filter((it) => {
-        const extrasStr = JSON.stringify(it.extras || {}).toLowerCase();
-        const titleStr = (it.title || '').toLowerCase();
-        if (selectedCab === 'hatchback') return titleStr.includes('dzire') || titleStr.includes('hatchback') || titleStr.includes('sedan') || extrasStr.includes('hatchback') || extrasStr.includes('sedan');
-        if (selectedCab === 'suv') return titleStr.includes('innova') || titleStr.includes('bolero') || titleStr.includes('suv') || extrasStr.includes('suv');
-        return true;
+        const hay = `${it.title || ''} ${JSON.stringify(it.extras || {})}`.toLowerCase();
+        return !words.length || words.some((w) => hay.includes(w));
       });
     }
 
     if (entryFilter !== 'all') {
       list = list.filter((it) => {
-        const free = !it.price || Number(it.price) === 0 || it.extras?.entry_fee?.toLowerCase().includes('free') || it.extras?.entry_fee?.toLowerCase().includes('nil');
+        const free = freeEntry(it);
         if (entryFilter === 'free') return free;
         if (entryFilter === 'paid') return !free;
         return true;
@@ -249,10 +294,11 @@ export default function Category({ typeOverride }) {
       list = list.map((it) => ({ ...it, _km: distanceTo(TOWN, it) }));
     }
 
+    const priced = (it: any, none: number) => Number(it.price) || none;
     if (sortOrder === 'price_asc') {
-      list.sort((a, b) => (Number(a.price) || 0) - (Number(b.price) || 0));
+      list.sort((a, b) => priced(a, Infinity) - priced(b, Infinity));
     } else if (sortOrder === 'price_desc') {
-      list.sort((a, b) => (Number(b.price) || 0) - (Number(a.price) || 0));
+      list.sort((a, b) => priced(b, -1) - priced(a, -1));
     } else if (sortOrder === 'name_asc') {
       list.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
     }
@@ -292,9 +338,15 @@ export default function Category({ typeOverride }) {
     setDelivers(false);
     setNear(null);
     setRadius(null);
+    setSp((prev) => { const n = new URLSearchParams(prev); ['q', 'guests'].forEach((k) => n.delete(k)); return n; }, { replace: true });
   };
 
   const searching = !!(q || routeTrip || searchQuery);
+  // Any filter on: an empty list then means "nothing matches these filters", not "nothing here".
+  const filtering = selectedLocation !== 'All Locations' || !!maxPrice || selectedCab !== 'all' || entryFilter !== 'all'
+    || !!kind || delivers || !!near || trip.guests > 1;
+  // Typed words wait for the smart search; until it answers, show the loading state, not "nothing found".
+  const smartPending = !!searchQuery.trim() && smart?.q !== searchQuery.trim();
 
   /**
    * A type-scoped search that finds nothing is not the same answer as "there is
@@ -341,6 +393,7 @@ export default function Category({ typeOverride }) {
     if (STAY_TYPES.has(it.type)) {
       return (
         <CatStayCard key={it.id} it={it} href={listingHref(it.id)} km={it._km} testId={`grid-tile-${it.id}`} ctaTestId={`grid-cta-${it.id}`}
+          fare={it.type === 'driver' && routeTrip ? routeForTrip(normalizeRoutes(contentFor(it).routes), from, to) : null}
           ctaLabel={BOOKABLE.has(it.type) ? t('cta.reserve', 'Reserve') : t('cta.view', 'View')} />
       );
     }
@@ -359,7 +412,7 @@ export default function Category({ typeOverride }) {
     </div>
   );
 
-  const countLine = loading ? t('common.loading') : t('category.results', { count: results.length });
+  const countLine = loading || smartPending ? t('common.loading') : t('category.results', { count: results.length });
 
   return (
     <div className="ag-wrap">
@@ -488,9 +541,9 @@ export default function Category({ typeOverride }) {
           </div>
         )}
 
-        <p className="sr-only" role="status">{countLine}</p>
+        <p className={searching || filtering ? 'ag-small m-0' : 'sr-only'} role="status" data-testid="category-count">{countLine}</p>
 
-        {loading ? (
+        {loading || smartPending ? (
           asRows ? (
             <div className="flex flex-col gap-2.5">{repeat(5, (i) => <ListRowSkeleton key={i} />)}</div>
           ) : (
@@ -498,7 +551,12 @@ export default function Category({ typeOverride }) {
           )
         ) : results.length === 0 ? (
           <div data-testid="category-empty" className="flex flex-col gap-4">
-            {searching ? (
+            {!searching && filtering ? (
+              <Box className="ag-category-empty" data-testid="category-none-filtered">
+                <p className="m-0">{t('category.none_filtered', 'Nothing matches these filters.')}</p>
+                <Button onClick={resetFilters} icon={<Icon name="close" />} data-testid="category-clear-filters">{t('category.clear', 'Clear filters')}</Button>
+              </Box>
+            ) : searching ? (
               <Box className="ag-category-empty">
                 <p className="m-0">
                   {type

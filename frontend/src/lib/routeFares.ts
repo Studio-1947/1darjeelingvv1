@@ -135,6 +135,15 @@ export function routesCoverTrip(fares: RouteFare[], from: string, to: string): b
  * common trip (NJP → Darjeeling) used to end on an empty page while drivers were live
  * (persona test 2026-11-09). Same rule in the app (src/lib/routeFares.ts).
  */
+/** The driver's route that covers this trip (both ends when both are given), priced ones first. */
+export function routeForTrip(fares: RouteFare[], from: string, to: string): RouteFare | null {
+  const start = from.trim();
+  const end = to.trim();
+  if (!start && !end) return null;
+  const hits = fares.filter((f) => (!start || routeCoversPlace(f.route, start)) && (!end || routeCoversPlace(f.route, end)));
+  return hits.find((f) => f.price > 0) || hits[0] || null;
+}
+
 export type TripMatch = 'covers' | 'unlisted' | 'no';
 export function tripMatch(fares: RouteFare[], from: string, to: string): TripMatch {
   if (routesCoverTrip(fares, from, to)) return 'covers';

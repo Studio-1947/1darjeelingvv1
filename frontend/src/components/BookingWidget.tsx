@@ -292,8 +292,28 @@ export default function BookingWidget() {
     setShowSuggest(true);
   };
 
+  // The tappable rows of the open list, in order (place chips, then matches).
+  const suggestItems = () => Array.from(document.querySelectorAll<HTMLElement>('#booking-widget-pill-suggest button, #booking-widget-pill-suggest a'));
+  const onSearchKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Escape') {
+      // A search box clears itself on Escape; here Escape only closes the list.
+      e.preventDefault();
+      setShowSuggest(false);
+    } else if (e.key === 'ArrowDown' && showSuggest) {
+      const first = suggestItems()[0];
+      if (first) { e.preventDefault(); first.focus(); }
+    }
+  };
+  const onListKey = (e: React.KeyboardEvent<HTMLElement>) => {
+    const list = suggestItems();
+    const at = list.indexOf(document.activeElement as HTMLElement);
+    if (e.key === 'ArrowDown' && at >= 0) { e.preventDefault(); list[Math.min(list.length - 1, at + 1)]?.focus(); }
+    else if (e.key === 'ArrowUp' && at >= 0) { e.preventDefault(); if (at === 0) inputRef.current?.focus(); else list[at - 1]?.focus(); }
+    else if (e.key === 'Escape') { e.preventDefault(); setShowSuggest(false); inputRef.current?.focus(); }
+  };
+
   const suggestions = showSuggest && (
-    <Box flat id="booking-widget-pill-suggest" data-testid="booking-widget-pill-suggest" className="!gap-2">
+    <Box flat id="booking-widget-pill-suggest" data-testid="booking-widget-pill-suggest" className="!gap-2" onKeyDown={onListKey}>
       {placeMatches.length > 0 && <span className="ag-eyebrow">{t('widget.popular')}</span>}
       {placeMatches.length > 0 && (
         <Chips>
@@ -366,6 +386,7 @@ export default function BookingWidget() {
                 setShowSuggest(true);
               }}
               onBlur={() => setFocused(false)}
+              onKeyDown={onSearchKey}
               type="search"
               enterKeyHint="search"
               placeholder={focused ? (tab === 'driver' ? t('widget.to_placeholder') : t('widget.destination_placeholder')) : ''}

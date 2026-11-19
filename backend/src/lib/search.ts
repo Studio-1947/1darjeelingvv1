@@ -10,7 +10,11 @@
  *   - a budget is read out of it ("under 2000", "below ₹1500", "cheap")
  *   - every other word is matched on its own, in the title, place, tags, profile and description
  *   - local spellings are folded together (Ghum/Ghoom, NJP/New Jalpaiguri, Kanchenjunga...)
- *   - a near miss still matches ("darjeling", "kanchanjunga"), and the query is corrected
+ *   - a near miss still matches ("darjeling", "kanchanjunga"), and the query is corrected; a typo
+ *     of a kind word ("homstay") still picks the kind
+ *   - common Hindi, Nepali and Bengali words are read too ("दार्जिलिंग में होमस्टे")
+ *   - when a kind of place was understood but no listing matches the words, that kind is listed
+ *     instead of nothing ("taxi to tiger hill" lists the drivers), flagged as a fallback
  *   - results come back best match first
  *
  * The directory is a few hundred rows for one district, so scoring happens in memory over the
@@ -41,6 +45,11 @@ export interface Interpretation {
   terms: string[];
   /** The query with typos fixed, when any word was corrected; null otherwise. */
   corrected: string | null;
+  /**
+   * True when no listing matched the words, so every listing of the kind asked for is shown
+   * instead ("taxi to tiger hill" with no driver naming Tiger Hill lists the drivers).
+   */
+  fallback: boolean;
 }
 
 /** Words that say what kind of place someone wants. Matched after normalising. */
@@ -66,8 +75,15 @@ const TYPE_WORDS: Record<string, SearchType> = {
 const STOP = new Set([
   'a', 'an', 'the', 'in', 'at', 'near', 'nearby', 'around', 'to', 'for', 'with', 'and', 'or', 'of', 'on',
   'from', 'me', 'my', 'i', 'want', 'need', 'looking', 'find', 'show', 'best', 'good', 'nice', 'top',
-  'some', 'any', 'place', 'places', 'please', 'darjeeling', 'is', 'are', 'that', 'this', 'one', 'by',
+  'some', 'any', 'place', 'places', 'please', 'is', 'are', 'that', 'this', 'one', 'by',
 ]);
+
+/**
+ * The district itself. Searched on its own ("Darjeeling") it finds the listings that name it; next
+ * to anything else ("homestay in darjeeling", "cafe darjeeling") it only lifts the listings that
+ * name it, since a stay in Ghum is still a stay in Darjeeling.
+ */
+const REGION = new Set(['darjeeling']);
 
 /** Local spellings and short forms, folded to one word each before matching. */
 const ALIASES: Record<string, string> = {
@@ -84,8 +100,73 @@ const MISSPELLINGS = new Set(['darjiling', 'darjling', 'kanchanjunga', 'kanchenj
 /** Words that ask for the cheaper end. */
 const CHEAP = new Set(['cheap', 'budget', 'affordable', 'cheapest', 'low', 'lowcost', 'inexpensive']);
 
-export function normalize(text: string): string {
+/**
+ * Hindi, Nepali (Devanagari) and Bengali words a traveller (or voice search in those languages)
+ * uses, turned into the Latin words the directory is written in. Applied before normalising,
+ * which keeps only a-z and 0-9, so any native word not listed here is simply dropped.
+ */
+const NATIVE: Record<string, string> = {
+  // Places
+  'दार्जिलिंग': 'darjeeling', 'दार्जीलिंग': 'darjeeling', 'दार्जिलिङ': 'darjeeling', 'दार्जीलिङ': 'darjeeling',
+  'दार्जलिंग': 'darjeeling', 'দার্জিলিং': 'darjeeling', 'দার্জিলিঙ': 'darjeeling',
+  'মিরিক': 'mirik', 'मिरिक': 'mirik',
+  'कर्सियांग': 'kurseong', 'कर्सियाँग': 'kurseong', 'कार्सियांग': 'kurseong', 'खरसाङ': 'kurseong', 'खर्साङ': 'kurseong',
+  'खरसांग': 'kurseong', 'কার্শিয়াং': 'kurseong', 'কার্সিয়াং': 'kurseong', 'খরসাং': 'kurseong',
+  'कलिम्पोंग': 'kalimpong', 'कालिम्पोंग': 'kalimpong', 'कालिम्पोङ': 'kalimpong', 'कालेबुङ': 'kalimpong',
+  'কালিম্পং': 'kalimpong', 'কালিংপং': 'kalimpong',
+  'घूम': 'ghum', 'घुम': 'ghum', 'ঘুম': 'ghum',
+  'सित्तोंग': 'sittong', 'सिटोंग': 'sittong', 'सित्तोङ': 'sittong', 'সিটং': 'sittong', 'সিত্তং': 'sittong',
+  'सिलीगुड़ी': 'siliguri', 'सिलिगुड़ी': 'siliguri', 'सिलीगुडी': 'siliguri', 'सिलगढी': 'siliguri', 'শিলিগুড়ি': 'siliguri',
+  'লাভা': 'lava', 'लावा': 'lava', 'लाभा': 'lava',
+  'टाइगर': 'tiger', 'টাইগার': 'tiger', 'हिल': 'hill', 'হিল': 'hill',
+  'बतासिया': 'batasia', 'बताशिया': 'batasia', 'বাতাসিয়া': 'batasia',
+  'लामाहाट्टा': 'lamahatta', 'लामाहट्टा': 'lamahatta', 'লামাহাট্টা': 'lamahatta',
+  'सुखिया': 'sukhia', 'सुखियापोखरी': 'sukhia pokhri', 'पोखरी': 'pokhri', 'সুখিয়া': 'sukhia', 'সুখিয়াপোখরি': 'sukhia pokhri',
+  'পোখরি': 'pokhri',
+  'पेलिंग': 'pelling', 'पेलिङ': 'pelling', 'পেলিং': 'pelling',
+  'गंगटोक': 'gangtok', 'गान्तोक': 'gangtok', 'গ্যাংটক': 'gangtok',
+  'सिक्किम': 'sikkim', 'সিকিম': 'sikkim',
+  'लेप्चाजगत': 'lepchajagat', 'লেপচাজগৎ': 'lepchajagat',
+  'तकदह': 'takdah', 'तक्दह': 'takdah', 'তাকদাহ': 'takdah',
+  'बागडोगरा': 'bagdogra', 'বাগডোগরা': 'bagdogra',
+  'एनजेपी': 'njp', 'এনজেপি': 'njp', 'जलपाईगुड़ी': 'jalpaiguri', 'জলপাইগুড়ি': 'jalpaiguri',
+  // Kinds of place
+  'होमस्टे': 'homestay', 'হোমস্টে': 'homestay',
+  'होटल': 'hotel', 'হোটেল': 'hotel',
+  'कमरा': 'room', 'कोठा': 'room', 'রুম': 'room', 'ঘর': 'room',
+  'टैक्सी': 'taxi', 'ट्याक्सी': 'taxi', 'गाड़ी': 'taxi', 'गाडी': 'taxi', 'ট্যাক্সি': 'taxi', 'গাড়ি': 'taxi',
+  'ड्राइवर': 'driver', 'ड्राइभर': 'driver', 'ড্রাইভার': 'driver',
+  'गाइड': 'guide', 'গাইড': 'guide',
+  'कैफे': 'cafe', 'कैफ़े': 'cafe', 'क्याफे': 'cafe', 'ক্যাফে': 'cafe',
+  'रेस्टोरेंट': 'restaurant', 'रेस्टुरेन्ट': 'restaurant', 'रेस्तरां': 'restaurant', 'রেস্টুরেন্ট': 'restaurant',
+  'রেস্তোরাঁ': 'restaurant',
+  'दुकान': 'shop', 'पसल': 'shop', 'দোকান': 'shop',
+  'मोमो': 'momo', 'মোমো': 'momo',
+  'चाय': 'tea', 'चिया': 'tea', 'চা': 'tea',
+  'गुम्बा': 'monastery', 'गोम्पा': 'monastery', 'मठ': 'monastery', 'মঠ': 'monastery', 'গুম্ফা': 'monastery',
+  'झील': 'lake', 'ताल': 'lake', 'লেক': 'lake', 'হ্রদ': 'lake',
+  'सस्ता': 'cheap', 'सस्ती': 'cheap', 'सस्तो': 'cheap', 'সস্তা': 'cheap',
+};
+const NATIVE_WORDS = new Map(Object.entries(NATIVE).map(([k, v]) => [k.normalize('NFC'), v]));
+/** Longer native words also match with a case ending attached ("দার্জিলিংয়ে", in Darjeeling). */
+const NATIVE_STEMS = [...NATIVE_WORDS.keys()].filter((k) => k.length >= 4).sort((a, b) => b.length - a.length);
+const NATIVE_SCRIPT = /[ऀ-৿]/;
+
+/** Swaps known Devanagari and Bengali words for their Latin search words; leaves the rest as is. */
+export function fromNativeScript(text: string): string {
+  if (!NATIVE_SCRIPT.test(text)) return text;
   return text
+    .normalize('NFC')
+    .replace(/[​-‍]/g, '')
+    .replace(/[\p{L}\p{M}\p{N}]+/gu, (token) => {
+      if (!NATIVE_SCRIPT.test(token)) return token;
+      const latin = NATIVE_WORDS.get(token) ?? NATIVE_WORDS.get(NATIVE_STEMS.find((s) => token.startsWith(s)) ?? '');
+      return latin ? ` ${latin} ` : token;
+    });
+}
+
+export function normalize(text: string): string {
+  return fromNativeScript(text)
     .toLowerCase()
     .normalize('NFKD')
     .replace(/[̀-ͯ]/g, '')
@@ -188,15 +269,33 @@ function readAmount(token: string | undefined): number {
   return Math.round(value);
 }
 
-/** Reads the query: kind of place, budget, and the words to match. */
-export function interpret(query: string, fixedType?: string | null): Omit<Interpretation, 'corrected'> {
+/**
+ * A typo of a kind word ("homstay", "resturant"): one letter off a TYPE_WORDS key, at least five
+ * letters long, and not a word some listing actually uses ("natural" is not "nature").
+ */
+function kindTypo(w: string, known?: (w: string) => boolean): string | null {
+  if (w.length < 5 || TYPE_WORDS[w] || STOP.has(w) || CHEAP.has(w) || ALIASES[w] || NOT_TYPOS.has(w) || /\d/.test(w)) return null;
+  const key = Object.keys(TYPE_WORDS)
+    .find((k) => k.length >= 5 && Math.abs(k.length - w.length) <= 1 && editDistance(w, k, 1) <= 1);
+  return key && !known?.(w) ? key : null;
+}
+
+/** Real words one letter off a kind word, which mean something else. */
+const NOT_TYPOS = new Set(['hours', 'bikes', 'pride', 'bride', 'steep', 'sheep', 'natural', 'shows', 'cards', 'mature']);
+
+/** What `interpret` reads, plus the typo fixes and every kind the words themselves named. */
+type Reading = Omit<Interpretation, 'corrected' | 'fallback'> & { fixes: Map<string, string>; kinds: Set<SearchType> };
+
+function read(query: string, fixedType: string | null, known?: (w: string) => boolean): Reading {
   const raw = normalize(query).split(' ').filter(Boolean);
   let type: SearchType | null = null;
   let maxPrice: number | null = null;
   let cheapestFirst = false;
   const terms: string[] = [];
+  const fixes = new Map<string, string>();
+  const kinds = new Set<SearchType>();
   for (let i = 0; i < raw.length; i++) {
-    const w = raw[i];
+    let w = raw[i];
     // "under 2000", "below 1500", "upto 3000", "max 2500", "less than 2000"
     if (['under', 'below', 'upto', 'max', 'within', 'less'].includes(w)) {
       const j = raw[i + 1] === 'than' ? i + 2 : i + 1;
@@ -204,6 +303,9 @@ export function interpret(query: string, fixedType?: string | null): Omit<Interp
       if (Number.isFinite(n) && n > 0) { maxPrice = n; i = j; continue; }
     }
     if (CHEAP.has(w)) { cheapestFirst = true; continue; }
+    const typo = kindTypo(w, known);
+    if (typo) { fixes.set(w, typo); w = typo; }
+    if (TYPE_WORDS[w]) kinds.add(TYPE_WORDS[w]);
     if (!fixedType && TYPE_WORDS[w] && !type) { type = TYPE_WORDS[w]; continue; }
     // "stays" in a homestay-only search adds nothing; a word for another kind ("momo" while
     // looking at homestays) is something to match, not something to drop.
@@ -211,7 +313,13 @@ export function interpret(query: string, fixedType?: string | null): Omit<Interp
     if (STOP.has(w) || /^\d/.test(w)) continue;
     terms.push(fold(w));
   }
-  return { type, max_price: maxPrice, cheapest_first: cheapestFirst, terms };
+  return { type, max_price: maxPrice, cheapest_first: cheapestFirst, terms, fixes, kinds };
+}
+
+/** Reads the query: kind of place, budget, and the words to match. */
+export function interpret(query: string, fixedType?: string | null): Omit<Interpretation, 'corrected' | 'fallback'> {
+  const { fixes: _fixes, kinds: _kinds, ...reading } = read(query, fixedType ?? null);
+  return reading;
 }
 
 export interface ScoredListing<T> { item: T; score: number }
@@ -226,19 +334,35 @@ export function rank<T extends SearchableListing>(
   query: string,
   opts: { type?: string | null; boost?: (item: T) => number } = {},
 ): { results: ScoredListing<T>[]; interpretation: Interpretation } {
-  const base = interpret(query, opts.type ?? null);
+  const indexes = new Map<T, Indexed<T>>();
+  const indexOf = (l: T) => {
+    let ix = indexes.get(l);
+    if (!ix) { ix = index(l); indexes.set(l, ix); }
+    return ix;
+  };
+  // A word some listing uses is never read as a typo of a kind word ("natural" is not "nature").
+  let everyWord: Set<string> | null = null;
+  const known = (w: string) => {
+    if (!everyWord) {
+      everyWord = new Set();
+      for (const l of listings) for (const f of FIELDS) for (const x of indexOf(l).fields[f.key]) everyWord.add(x);
+    }
+    return everyWord.has(w) || everyWord.has(w + 's');
+  };
+  const base = read(query, opts.type ?? null, known);
   const wanted = opts.type || base.type;
   const pool = listings
     .filter((l) => !wanted || l.type === wanted)
     .filter((l) => base.max_price == null || (l.price != null && l.price > 0 && l.price <= base.max_price));
-  const indexed = pool.map(index);
+  const indexed = pool.map(indexOf);
 
   // A word that matches nothing exactly but is close to a known word is corrected, for the
   // "Did you mean" line and so the correction is what gets matched.
   const vocab = new Set<string>();
   for (const ix of indexed) for (const f of FIELDS) for (const w of ix.fields[f.key]) vocab.add(w);
-  const fixes = new Map<string, string>();
+  const fixes = new Map<string, string>(base.fixes);
   const terms = base.terms.map((t) => {
+    if (REGION.has(t)) return t;
     if (vocab.has(t) || vocab.has(t + 's') || [...vocab].some((w) => w.startsWith(t) && t.length >= 3)) return t;
     const typos = allowedTypos(t);
     if (!typos) return t;
@@ -253,6 +377,12 @@ export function rank<T extends SearchableListing>(
     return t;
   });
 
+  // "Darjeeling" next to anything else only lifts the listings naming it; on its own it must match.
+  const specific = terms.filter((t) => !REGION.has(t));
+  const required = new Set(
+    specific.length || wanted || base.max_price != null || base.cheapest_first ? specific : terms,
+  );
+
   const scored: { item: T; score: number; matched: number }[] = [];
   for (const ix of indexed) {
     let score = 0;
@@ -265,7 +395,7 @@ export function rank<T extends SearchableListing>(
           if (m) best = Math.max(best, m * f.weight);
         }
       }
-      if (best) { matched++; score += best; }
+      if (best) { score += best; if (required.has(t)) matched++; }
     }
     // Two-word places ("tiger hill", "mall road") count extra when the words sit together.
     if (terms.length >= 2) {
@@ -273,21 +403,35 @@ export function rank<T extends SearchableListing>(
       const hay = `${ix.fields.title.join(' ')} ${ix.fields.location.join(' ')} ${ix.fields.extras.join(' ')}`;
       if (hay.includes(phrase)) score += 4;
     }
-    if (terms.length === 0) score = 1; // only a type and/or budget was asked for
-    score += opts.boost?.(ix.listing) ?? 0;
+    if (!required.size) score += 1; // only a type and/or budget was asked for (plus "Darjeeling")
     scored.push({ item: ix.listing, score, matched });
   }
+  const boosted = (s: { item: T; score: number; matched: number }) =>
+    ({ ...s, score: s.score + (opts.boost?.(s.item) ?? 0) });
 
-  const need = terms.length;
+  const need = terms.filter((t) => required.has(t)).length;
   // Nothing to match, no kind of place and no budget (a phone number, a lone "the"): no results.
   if (need === 0 && !wanted && base.max_price == null && !base.cheapest_first) {
-    return { results: [], interpretation: { type: null, max_price: null, cheapest_first: false, terms, corrected: null } };
+    return {
+      results: [],
+      interpretation: { type: null, max_price: null, cheapest_first: false, terms, corrected: null, fallback: false },
+    };
   }
   let hits = scored.filter((s) => s.matched === need && (need === 0 || s.score > 0));
   if (!hits.length && need > 1) {
     const most = Math.max(0, ...scored.map((s) => s.matched));
     if (most > 0) hits = scored.filter((s) => s.matched === most);
   }
+  // Nothing matched the words, but a kind of place was understood ("taxi to tiger hill" where no
+  // driver names Tiger Hill): list that kind, within the budget, rather than a dead end. Only when
+  // the query itself named the kind: a nonsense search on the homestays page (type fixed by the
+  // page, no kind word) still finds nothing, and so does a word for another kind ("momo" there).
+  let fallback = false;
+  if (!hits.length && need > 0 && wanted && base.kinds.has(wanted as SearchType) && !terms.some((t) => TYPE_WORDS[t])) {
+    hits = scored.map((s) => ({ ...s, score: 1 }));
+    fallback = hits.length > 0;
+  }
+  hits = hits.map(boosted);
   const price = (x: T) => (x.price && x.price > 0 ? x.price : Number.MAX_SAFE_INTEGER);
   hits.sort(base.cheapest_first
     ? (a, b) => price(a.item) - price(b.item) || b.score - a.score
@@ -306,6 +450,7 @@ export function rank<T extends SearchableListing>(
         if (!fixes.size && !raw.some((w) => MISSPELLINGS.has(w))) return null;
         return raw.map((w) => fixes.get(fold(w)) ?? (MISSPELLINGS.has(w) ? fold(w) : w)).join(' ');
       })(),
+      fallback,
     },
   };
 }
