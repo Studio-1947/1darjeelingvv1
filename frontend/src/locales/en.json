@@ -3165,7 +3165,8 @@
       "waq": "Your WhatsApp number",
       "wa_lead": "We send a one-time code to this number.",
       "change_name": "Change name",
-      "codeq": "Enter the code"
+      "codeq": "Enter the code",
+      "phoneq": "Your phone number"
     },
     "footer": {
       "by_studio": "By {{name}}",
@@ -3503,7 +3504,7 @@
     "person1": "1 person",
     "per_year": "/yr",
     "bookings_tab": "Bookings",
-    "docs_s": "A photo of your ID and a photo of your place. That is all we need to check you.",
+    "docs_s": "A photo of your ID and a photo of your place (homestays: also your homestay registration papers). Our team checks them to give you the Verified tick.",
     "shop_free": "Local shops list free",
     "shop_free_s": "No yearly pass and no commission. Keep taking orders.",
     "menu_n": "Menu · {{count}}"

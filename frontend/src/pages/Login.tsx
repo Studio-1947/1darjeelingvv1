@@ -35,8 +35,8 @@ export default function Login() {
     }
   }, [user, mode, nav, next]);
 
-  // The prototype's sign-in: 0 = your name, then Continue with WhatsApp (1 = number, 2 = code) or Google.
-  const [step, setStep] = useState(0);
+  // Sign-in: 1 = the phone number, 2 = the code (and, for a new account only, the name).
+  const [step, setStep] = useState(1);
   const [phone, setPhone] = useState('');
   const [countryCode, setCountryCode] = useState('+91');
   const [otp, setOtp] = useState('');
@@ -142,6 +142,8 @@ export default function Login() {
   const verify = async (e) => {
     e.preventDefault();
     if (!canonicalPhone) return;
+    // A new account needs a name; an existing one keeps the name it has.
+    if (!userExists && !name.trim()) { setErr(t('ui.login.badname', 'Please write your name.')); return; }
     setBusy(true); setErr('');
     try {
       const { data } = await api.post('/auth/otp/verify', {
@@ -185,40 +187,14 @@ export default function Login() {
     }
   };
 
-  // Step 0 (prototype login view): the name first, then how to sign in.
-  const continueWith = (how: 'wa' | 'google') => {
-    if (!name.trim()) { setErr(t('ui.login.badname', 'Please write your name.')); return; }
-    setErr('');
-    if (how === 'wa') setStep(1);
-    else googleSignIn();
-  };
 
   return (
     <div className="ag-wrap">
-      <Seo title={t('ui.login.nameq', 'What should we call you?')} noindex />
+      <Seo title={t('ui.login.phoneq', 'Your phone number')} noindex />
       <div className="ag-main ag-account-login">
-        {step === 0 && (
-          <form onSubmit={(e) => { e.preventDefault(); continueWith('wa'); }} className="flex flex-col gap-4" data-testid="login-step-0">
-            <PageHead title={t('ui.login.nameq', 'What should we call you?')} sub={t('ui.login.lead', 'No password needed. We send a one-time code to your phone.')} />
-            <TextField label={t('ui.login.name', 'Your name')} value={name} onChange={(e) => setName(e.target.value)}
-              autoComplete="name" data-testid="login-name" />
-            <div className="ag-pick">
-              <Button type="submit" variant="primary" go className="self-start" disabled={busy} data-testid="login-wa">
-                {t('common.continue', 'Continue')}
-              </Button>
-              {GOOGLE_CLIENT_ID && (
-                <Button className="self-start" icon={googleBusy ? undefined : <Icon name="google" />} disabled={googleBusy || busy}
-                  onClick={() => continueWith('google')} data-testid="login-google">
-                  {googleBusy ? t('common.loading') : t('ui.login.gg', 'Continue with Google')}
-                </Button>
-              )}
-            </div>
-          </form>
-        )}
-
         {step === 1 && (
           <form onSubmit={sendOtp} className="flex flex-col gap-4" data-testid="login-step-1">
-            <PageHead title={t('ui.login.waq', 'Your WhatsApp number')} sub={t('ui.login.wa_lead', 'We send a one-time code to this number.')} />
+            <PageHead title={t('ui.login.phoneq', 'Your phone number')} sub={t('ui.login.lead', 'No password needed. We send a one-time code to your phone.')} />
             {/* One field, one name: "Phone number" everywhere; the hint says the code goes on
                 WhatsApp first and falls back to SMS (QA 3.2). */}
             <div className="flex flex-col gap-1.5">
@@ -235,12 +211,15 @@ export default function Login() {
               </div>
               <p id="login-phone-hint" data-testid="login-phone-hint" className="ag-small !text-xs !leading-4">{t('auth.phone_hint')}</p>
             </div>
-            <Button type="submit" className="self-start" icon={<Icon name="wa" />} disabled={busy || !canonicalPhone} data-testid="login-send-otp">
-              {busy ? t('common.loading') : t('auth.send_otp')}
+            <Button type="submit" variant="primary" go className="self-start" disabled={busy || !canonicalPhone} data-testid="login-send-otp">
+              {busy ? t('common.loading') : t('common.continue', 'Continue')}
             </Button>
-            <Button variant="text" onClick={() => { setErr(''); setStep(0); }} className="self-start" data-testid="login-back-name">
-              {t('ui.login.change_name', 'Change name')}
-            </Button>
+            {GOOGLE_CLIENT_ID && (
+              <Button className="self-start" icon={googleBusy ? undefined : <Icon name="google" />} disabled={googleBusy || busy}
+                onClick={googleSignIn} data-testid="login-google">
+                {googleBusy ? t('common.loading') : t('ui.login.gg', 'Continue with Google')}
+              </Button>
+            )}
           </form>
         )}
 
@@ -262,6 +241,10 @@ export default function Login() {
             <TextField label={t('auth.otp_label')} value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))} required maxLength={6}
               inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" title={t('auth.otp_six_digits')}
               data-testid="login-otp" placeholder="123456" className="[&_input]:tracking-[0.3em] [&_input]:tabular-nums [&_input]:text-lg" />
+            {!userExists && (
+              <TextField label={t('ui.login.nameq', 'What should we call you?')} value={name} onChange={(e) => setName(e.target.value)}
+                autoComplete="name" required maxLength={80} data-testid="login-name" />
+            )}
             {!userExists && role !== 'provider' && (
               <TextField label={t('auth.referral_label')} value={referral} onChange={(e) => setReferral(e.target.value.toUpperCase().slice(0, 12))}
                 data-testid="login-referral" placeholder="ANG26-XXXXXX" autoCapitalize="characters" autoComplete="off" className="[&_input]:tracking-wider" />

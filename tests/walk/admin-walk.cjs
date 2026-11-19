@@ -142,13 +142,11 @@ async function onboardHost(type, opts = {}) {
   const snap = (n) => shot(p, `setup-${type}-${n}`);
   try {
     await p.goto(WEB + '/login?next=' + encodeURIComponent('/provider/onboard'), { waitUntil: 'networkidle' });
-    await p.locator('[data-testid="login-name"]').waitFor({ timeout: 20000 });
-    await p.fill('[data-testid="login-name"]', `Owner ${type} ${digits.slice(-4)}`);
-    await p.click('[data-testid="login-wa"]');
     await p.fill('[data-testid="login-phone"]', digits);
     const sent = p.waitForResponse((r) => r.url().includes('/auth/otp/send'));
     await p.click('[data-testid="login-send-otp"]');
     await p.fill('[data-testid="login-otp"]', (await (await sent).json()).mock_otp);
+    if (await p.locator('[data-testid="login-name"]').count()) await p.fill('[data-testid="login-name"] input, input[data-testid="login-name"]', 'Walk Host').catch(() => p.locator('[data-testid="login-name"] input').fill('Walk Host'));
     await p.click('[data-testid="login-verify"]');
     await p.waitForTimeout(2000);
     if (!p.url().includes('/provider/onboard')) await p.goto(WEB + '/provider/onboard', { waitUntil: 'networkidle' });
