@@ -133,17 +133,30 @@ export function BestTimeSection({ bestTime }: { bestTime: string }) {
  */
 export function OffersSection({ amenities, list }: { amenities: { label: string; labelKey?: string }[]; list?: boolean }) {
   const { t } = useTranslation();
-  const label = (a: { label: string; labelKey?: string }) => (a.labelKey ? t(a.labelKey) : optionLabel(t, a.label));
+  // A translation that only changes the case ("Tea" -> "tea") keeps the host's own spelling.
+  const label = (a: { label: string; labelKey?: string }) => {
+    if (a.labelKey) return t(a.labelKey);
+    const shown = optionLabel(t, a.label);
+    return shown.trim().toLowerCase() === a.label.trim().toLowerCase() ? a.label : shown;
+  };
+  // Shown once each, however the stored labels were cased.
+  const seen = new Set<string>();
+  const shownList = amenities.filter((a) => {
+    const k = label(a).trim().toLowerCase();
+    if (!k || seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
   return (
     <Section title={t('listing.facil', 'Facilities')} testid="detail-offers">
       {list ? (
         <ul className="ag-listing-facts">
-          {amenities.map((a) => <li key={a.label}><Icon name="check" />{label(a)}</li>)}
+          {shownList.map((a) => <li key={a.label}><Icon name="check" />{label(a)}</li>)}
         </ul>
       ) : (
         <div className="ag-listing-facgrid">
           {/* Amenities are stored in English; only the display is localised. */}
-          {amenities.map((a) => (
+          {shownList.map((a) => (
             <div key={a.label} className="ag-listing-facard">
               <span className="ag-listing-ic40"><Icon name={facIcon(a.label)} /></span>
               <span>{label(a)}</span>

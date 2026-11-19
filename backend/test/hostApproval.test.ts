@@ -95,7 +95,7 @@ describe('contact-only listings', () => {
 });
 
 describe('admin approval gate for new hosts', () => {
-  it('keeps a newly registered host out of the feed, the detail page and bookings until verified', async () => {
+  it('shows a newly registered host straight away (like the prototype), without the Verified tick yet', async () => {
     const { token, providerId } = await onboardActiveProvider({ name: 'Fresh Stay', awaitingApproval: true });
     const listing = await listingOf(providerId);
 
@@ -105,10 +105,12 @@ describe('admin approval gate for new hosts', () => {
     expect(me.approval_pending).toBe(true);
 
     const feed = await request(app).get('/api/listings').query({ type: 'homestay' });
-    expect(feed.body.items.some((i: any) => i.id === listing.id)).toBe(false);
+    const item = feed.body.items.find((i: any) => i.id === listing.id);
+    expect(item).toBeTruthy();
+    expect(item.provider_verified).toBeFalsy();
 
-    expect((await request(app).get(`/api/listings/${listing.id}`)).status).toBe(404);
-    expect((await bookAs(listing.id)).status).toBe(409);
+    expect((await request(app).get(`/api/listings/${listing.id}`)).status).toBe(200);
+    expect((await bookAs(listing.id)).status).toBe(200);
   });
 
   it('goes live the moment an admin verifies the last required document', async () => {
@@ -129,7 +131,7 @@ describe('admin approval gate for new hosts', () => {
     expect((await bookAs(listing.id)).status).toBe(200);
   });
 
-  it('pulls the host back out when an admin rejects an approved document', async () => {
+  it('takes the Verified tick back (but keeps the listing up) when an admin rejects an approved document', async () => {
     const { token, providerId } = await onboardActiveProvider({ name: 'Revoked Stay', awaitingApproval: true });
     const listing = await listingOf(providerId);
     const admin = await loginAdmin();
@@ -140,8 +142,10 @@ describe('admin approval gate for new hosts', () => {
     await request(app).post(`/api/admin/kyc/${firstDoc}/review`)
       .set('Authorization', `Bearer ${admin}`).send({ decision: 'reject', reason: 'blurry' });
 
-    expect((await request(app).get(`/api/listings/${listing.id}`)).status).toBe(404);
+    expect((await request(app).get(`/api/listings/${listing.id}`)).status).toBe(200);
     expect((await providerMe(token)).approval_pending).toBe(true);
+    const feed = await request(app).get('/api/listings').query({ type: 'homestay' });
+    expect(feed.body.items.find((i: any) => i.id === listing.id)?.provider_verified).toBeFalsy();
   });
 
   it('leaves a host who was already live untouched, with no KYC at all', async () => {

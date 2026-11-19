@@ -226,7 +226,9 @@ function ProviderDashboardPage() {
   const typeLabel = (ty: string) => t(`ob.wz.t_${ty}`, { defaultValue: t(`categories.${ty}`, { defaultValue: ty }) });
   const isDriver = type === 'driver';
   const isGuide = type === 'guide';
-  const live = active && !provider.approval_pending;
+  // Like the prototype, a listing is public as soon as it is put up; the documents earn the
+  // Verified tick (provider.approval_pending now means "not verified yet").
+  const live = active;
   const missing: { key: string; label: string; min?: number; have?: number }[] = provider.profile_missing || [];
   const taking = provider.extras?.available !== false;
   const pageUrl = provider.page_path ? `${window.location.origin}${provider.page_path}` : '';
@@ -421,7 +423,7 @@ function ProviderDashboardPage() {
   return (
     <div className="ag-wrap">
       <div className="ag-main">
-        <PageHead eyebrow={`${typeLabel(type)} · ${provider.location || ''}`} title={provider.extras?.host_name || provider.business_name} />
+        <PageHead eyebrow={`${typeLabel(type)} · ${provider.location || ''}`} title={provider.business_name || provider.extras?.host_name} />
         <p className="ag-host-status flex flex-wrap items-center gap-2">
           {/* Paid but not yet approved reads "Pending review"; listings are still private. */}
           <Status tone={live ? 'ok' : 'pending'} data-testid="provider-status">
@@ -451,6 +453,11 @@ function ProviderDashboardPage() {
                         <ButtonLink to={provider.page_path} go icon={<Icon name="globe" />} data-testid={i === 0 ? 'host-page-open' : undefined}>{t('host.site', 'Website')}</ButtonLink>
                       )}
                       <ButtonLink to="/provider/profile" go icon={<Icon name="person" />}>{t('common.edit')}</ButtonLink>
+                      {(type === 'cafe' || type === 'shop') && (
+                        <ButtonLink to="/provider/profile#menu" go icon={<Icon name="cup" />} data-testid={i === 0 ? 'host-menu-open' : undefined}>
+                          {t('host.menu_n', 'Menu · {{count}}', { count: (Array.isArray(provider.extras?.[type === 'cafe' ? 'menu' : 'goods']) ? provider.extras[type === 'cafe' ? 'menu' : 'goods'].length : 0) })}
+                        </ButtonLink>
+                      )}
                       <Button icon={<Icon name="t_trip" />} onClick={() => open('bookings')} data-testid={i === 0 ? 'tab-bookings' : undefined}>
                         {t('host.bookings', 'Bookings')}{nAsk > 0 && <span className="ag-host-badge">{nAsk}</span>}
                       </Button>

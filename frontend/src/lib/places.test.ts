@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { distanceTo, kmLabel, placeFor } from './places';
+import { distanceTo, isKnownPlace, kmLabel, placeFor } from './places';
 
 const chowrasta = { lat: 27.0425, lng: 88.2663 };
 
@@ -21,5 +21,16 @@ describe('Near me without a map pin', () => {
     expect(driver.km).toBeGreaterThan(15);
     expect(kmLabel(driver)).toMatch(/^≈ \d+ km$/);
     expect(distanceTo(chowrasta, { location: 'asdasd' })).toBeNull();
+  });
+});
+
+describe('isKnownPlace (weather card on the Home search)', () => {
+  it('is true for a place and false for a business name', () => {
+    expect(isKnownPlace('Mirik')).toBe(true);
+    expect(isKnownPlace('homestay in ghum')).toBe(true);
+    expect(isKnownPlace('Deolo Hill', ['Deolo Hill', 'Pedong'])).toBe(true);
+    expect(isKnownPlace('Audit Shop 5441', ['Deolo Hill', 'Pedong'])).toBe(false);
+    expect(isKnownPlace('momo')).toBe(false);
+    expect(isKnownPlace('da')).toBe(false);
   });
 });

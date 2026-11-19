@@ -33,14 +33,13 @@ describe('host feed', () => {
     expect(feed.body.posts[0]).not.toHaveProperty('hidden');
   });
 
-  it('refuses travellers, hosts awaiting approval, and hosts whose plan lapsed', async () => {
+  it('refuses travellers and hosts whose plan lapsed; a host waiting for the document check can post', async () => {
     const { token: traveller } = await registerUser({ name: 'Just Visiting' });
     expect((await post(traveller, { body: 'hello' })).status).toBe(403);
 
     const { token: pending } = await onboardActiveProvider({ name: 'Pending Host', awaitingApproval: true });
     const p = await post(pending, { body: 'hello' });
-    expect(p.status).toBe(403);
-    expect(p.body.code).toBe('not_verified');
+    expect(p.status).toBe(201);
 
     const { token: lapsed, providerId } = await onboardActiveProvider({ name: 'Lapsed Host' });
     await db.update(schema.providers).set({ planExpiresAt: new Date(Date.now() - 1000).toISOString() }).where(eq(schema.providers.id, providerId));

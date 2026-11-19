@@ -71,15 +71,16 @@ describe('computeCompletion', () => {
     expect(onlyLegacy.kycStatus).not.toBe('verified');
   });
 
-  it('a homestay is fully verified with just its photo ID and front photo approved (and its pin)', () => {
+  it('a homestay is fully verified with its photo ID, front photo and registration papers approved (and its pin)', () => {
     const home: ProfileInput = { ...richProfile, businessType: 'homestay', extras: { location_verification: { source: 'google_maps_link' } } };
     const r = computeCompletion(home, [
       { docType: 'aadhaar', status: 'approved' },
       { docType: 'property_photo_front', status: 'approved' },
+      { docType: 'tourism_registration', status: 'approved' },
     ]);
     expect(r.kycStatus).toBe('verified');
     expect(r.completionPercent).toBe(100);
-    expect(r.checklist.filter((c) => c.kind === 'kyc').map((c) => c.key)).toEqual(['aadhaar', 'property_photo_front']);
+    expect(r.checklist.filter((c) => c.kind === 'kyc').map((c) => c.key)).toEqual(['aadhaar', 'property_photo_front', 'tourism_registration']);
   });
 
   it('marks photos and description done when present in extras or listings', () => {

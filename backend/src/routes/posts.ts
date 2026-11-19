@@ -5,7 +5,7 @@ import { and, desc, eq, gte, inArray, isNull, lt, sql } from 'drizzle-orm';
 import { db, schema } from '../db';
 import { authenticateToken, optionalUser, requireAdmin } from '../middleware/auth';
 import { rateLimiter } from '../middleware/rateLimiter';
-import { isHostApprovalPending, isHostPlanLive } from '../lib/hostPlan';
+import { isHostPlanLive } from '../lib/hostPlan';
 import { routeParam } from '../lib/routeParam';
 import { myProvider as hostProvider } from '../lib/hostAccess';
 import { checkPostText } from '../lib/contentRules';
@@ -29,7 +29,7 @@ type Provider = typeof schema.providers.$inferSelect;
 type Post = typeof schema.hostPosts.$inferSelect;
 
 function hostCanPost(p: Provider): boolean {
-  return isHostPlanLive(p) && !isHostApprovalPending(p);
+  return isHostPlanLive(p);
 }
 
 /** Visible in the public feed: not hidden by an admin, and the host is live and approved. */
@@ -37,8 +37,7 @@ function publicPostCondition(now = new Date()) {
   return and(
     isNull(schema.hostPosts.hiddenAt),
     eq(schema.providers.status, 'active'),
-    sql`${schema.providers.planExpiresAt} IS NOT NULL AND ${schema.providers.planExpiresAt} > ${now.toISOString()}`,
-    sql`NOT (${schema.providers.approvalRequired} AND ${schema.providers.kycStatus} <> 'verified')`
+    sql`${schema.providers.planExpiresAt} IS NOT NULL AND ${schema.providers.planExpiresAt} > ${now.toISOString()}`
   );
 }
 
@@ -288,7 +287,7 @@ router.get('/me', authenticateToken, async (req: Request, res: Response) => {
     .where(eq(schema.hostPosts.providerId, provider.id))
     .orderBy(desc(schema.hostPosts.createdAt))
     .limit(100)) as Row[];
-  const reason = hostCanPost(provider) ? null : isHostApprovalPending(provider) ? 'not_verified' : 'plan_not_live';
+  const reason = hostCanPost(provider) ? null : 'plan_not_live';
   res.json({ can_post: reason === null, reason, posts: await postsOut(rows, req.user!.id, { includeModeration: true }) });
 });
 
@@ -345,10 +344,8 @@ router.post('/', authenticateToken, rateLimiter(20, 60 * 60 * 1000, 'post_create
   if (!provider) return res.status(403).json({ detail: 'Only hosts can post to the feed', code: 'not_a_host' });
   if (!hostCanPost(provider)) {
     return res.status(403).json({
-      detail: isHostApprovalPending(provider)
-        ? 'You can post once our team has verified your documents'
-        : 'Your host plan is not active. Renew it to post',
-      code: isHostApprovalPending(provider) ? 'not_verified' : 'plan_not_live',
+      detail: 'Your host plan is not active. Renew it to post',
+      code: 'plan_not_live',
     });
   }
 

@@ -70,9 +70,8 @@ export function hostPlanVisibility(now: Date = new Date()) {
     SELECT 1 FROM ${schema.providers}
     WHERE ${schema.providers.id} = ${schema.listings.providerId}
       AND (
-        (${schema.providers.planExpiresAt} IS NOT NULL
-          AND ${schema.providers.planExpiresAt} <= ${now.toISOString()})
-        OR (${schema.providers.approvalRequired} AND ${schema.providers.kycStatus} <> 'verified')
+        ${schema.providers.planExpiresAt} IS NOT NULL
+          AND ${schema.providers.planExpiresAt} <= ${now.toISOString()}
       )
   )`;
 }
@@ -86,9 +85,10 @@ export function isHostApprovalPending(row: { approvalRequired?: boolean | null; 
 }
 
 /**
- * Whether a listing's host cannot take guests right now: their plan has lapsed, or they are
- * still waiting for admin approval. Listings with no provider row (spots, admin-authored
- * listings) never are.
+ * Whether a listing's host cannot take guests right now: their plan has lapsed. Waiting for the
+ * team's document check does not stop bookings (like the prototype, a listing is live as soon as
+ * it is put up; approval earns the Verified tick). Listings with no provider row (spots,
+ * admin-authored listings) never are.
  */
 export async function isListingHostLapsed(providerId: string, now: Date = new Date()): Promise<boolean> {
   const [row] = await db.select({
@@ -100,5 +100,5 @@ export async function isListingHostLapsed(providerId: string, now: Date = new Da
     .from(schema.providers)
     .where(eq(schema.providers.id, providerId))
     .limit(1);
-  return !!row && (isHostPlanLapsed(row, now) || isHostApprovalPending(row));
+  return !!row && isHostPlanLapsed(row, now);
 }

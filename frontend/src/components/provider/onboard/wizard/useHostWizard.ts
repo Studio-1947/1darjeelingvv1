@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import api, { createPaymentOrder, completeMockPayment, payWithRazorpay } from '@/lib/api';
@@ -84,6 +84,23 @@ type Draft = {
 };
 
 const DRAFT_KEY = 'ag-host-draft';
+/**
+ * Set when "Put my listing up" sent a signed-out host to log in: back on the review step, signed
+ * in, the wizard puts the listing up by itself instead of asking for the same tap again. Holds the
+ * draft it belongs to and when it was set; older than PUT_UP_TTL it is ignored.
+ */
+const PUT_UP_KEY = 'ag-host-put-up';
+const PUT_UP_TTL = 30 * 60 * 1000;
+
+function takePutUpMark(draftKey: string): boolean {
+  try {
+    const raw = sessionStorage.getItem(PUT_UP_KEY);
+    if (!raw) return false;
+    sessionStorage.removeItem(PUT_UP_KEY);
+    const mark = JSON.parse(raw);
+    return mark?.draft === draftKey && Date.now() - Number(mark?.at) < PUT_UP_TTL;
+  } catch { return false; }
+}
 const last10 = (p?: string | null) => (p || '').replace(/\D/g, '').slice(-10);
 
 /** Photos picked while signed out, by their blob: URL. Module level, so they outlive the trip to /login. */
@@ -145,12 +162,15 @@ export function useHostWizard() {
 
   // Signed out: the questions are open to anyone (prototype). Putting the listing live asks to log in
   // once, then comes straight back to this step (with any invite ref).
-  const askToSignIn = useCallback((step: number) => {
+  const askToSignIn = useCallback((step: number, fromSubmit = false) => {
+    if (fromSubmit) {
+      try { sessionStorage.setItem(PUT_UP_KEY, JSON.stringify({ draft: draftKey, at: Date.now() })); } catch { /* private mode */ }
+    }
     const back = new URLSearchParams(location.search);
     back.set('step', String(step));
     const next = encodeURIComponent(`${location.pathname}?${back}`);
     nav(`/login?next=${next}${link.ref ? `&ref=${encodeURIComponent(link.ref)}` : ''}&role=provider`);
-  }, [nav, location.pathname, location.search, link.ref]);
+  }, [nav, location.pathname, location.search, link.ref, draftKey]);
 
   // Prefill from the account once it has loaded.
   useEffect(() => {
@@ -322,9 +342,13 @@ export function useHostWizard() {
   };
 
   /** "Put my listing up": onboard, then go live free (pay later) or pay the first year now. */
+  // One put-up at a time: a second tap, or the automatic one after signing in, while one is on its way.
+  const putting = useRef(false);
   const submit = async () => {
     if (!d.type || !d.place) return;
-    if (!user) { askToSignIn(i); return; }
+    if (!user) { askToSignIn(i, true); return; }
+    if (putting.current) return;
+    putting.current = true;
     setBusy(true);
     setErr('');
     try {
@@ -383,9 +407,20 @@ export function useHostWizard() {
     } catch (e: any) {
       setErr(e?.response?.data?.detail || e?.message || t('ui.useProviderOnboard.failed'));
     } finally {
+      putting.current = false;
       setBusy(false);
     }
   };
+
+  // Back from the log-in that "Put my listing up" asked for: carry on and put it up, once. The mark
+  // is used up on the first signed-in look, so it never fires later from another step.
+  const resumed = useRef(false);
+  useEffect(() => {
+    if (!user || resumed.current) return;
+    resumed.current = true;
+    if (takePutUpMark(draftKey) && step === 'review') submit();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, step, draftKey]);
 
   const finishMockPayment = async () => {
     if (!payModal) return;

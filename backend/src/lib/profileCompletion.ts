@@ -1,4 +1,4 @@
-import { requirementsFor, requiredDocTypes, locationMethodFor, type LocationMethod } from './kycRequirements';
+import { kycTypes, requirementsFor, requiredDocTypes, locationMethodFor, type LocationMethod } from './kycRequirements';
 
 export type DocState = 'missing' | 'in_review' | 'done' | 'rejected';
 export type KycStatus = 'none' | 'partial' | 'submitted' | 'verified';
@@ -27,6 +27,8 @@ export type ProfileInput = {
   hasListingDescription?: boolean;
   /** How each of this provider's verified listing pins was confirmed (`google_maps_link`, `live_capture`). */
   listingLocationSources?: string[];
+  /** The kinds of its listings: a business also sends the documents of each other kind it lists. */
+  listingTypes?: string[];
 };
 
 /**
@@ -118,8 +120,9 @@ export function computeCompletion(
   const profileScore = pChecks.length ? (profileDone / pChecks.length) * PROFILE_WEIGHT : PROFILE_WEIGHT;
 
   // KYC portion (required docs only count toward the bar)
-  const reqs = requirementsFor(profile.businessType);
-  const requiredTypes = requiredDocTypes(profile.businessType);
+  const types = kycTypes(profile.businessType, profile.listingTypes);
+  const reqs = requirementsFor(types);
+  const requiredTypes = requiredDocTypes(types);
   const approvedRequired = requiredTypes.filter(t => byType.get(t)?.status === 'approved').length;
   const kycScore = requiredTypes.length
     ? (approvedRequired / requiredTypes.length) * KYC_WEIGHT

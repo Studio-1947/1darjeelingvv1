@@ -55,20 +55,20 @@ async function firstListingId(token: string) {
 }
 
 describe('homestay verification checklist', () => {
-  it('asks for a photo ID, a photo of the front and a Google Maps pin', async () => {
+  it('asks for a photo ID, a photo of the front, the homestay registration papers and a Google Maps pin', async () => {
     const { token } = await onboardActiveProvider({ name: 'Check Stay', awaitingApproval: true });
     const p = await profile(token);
     const docs = p.checklist.filter((c: any) => c.kind === 'kyc');
-    expect(docs.map((c: any) => c.key)).toEqual(['aadhaar', 'property_photo_front']);
+    expect(docs.map((c: any) => c.key)).toEqual(['aadhaar', 'property_photo_front', 'tourism_registration']);
     expect(docs.every((c: any) => c.required && !c.media)).toBe(true);
     expect(p.checklist.find((c: any) => c.key === 'location').label).toMatch(/Google Maps/);
   });
 
-  it('is verified with just the ID and the front photo approved, even with old documents lying about', async () => {
+  it('is verified with the ID, front photo and registration papers approved, even with old documents lying about', async () => {
     const admin = await loginAdmin();
     const { token, providerId } = await onboardActiveProvider({ name: 'Short List Stay', awaitingApproval: true });
     await completeMandatoryProfile(token);
-    for (const docType of ['aadhaar', 'property_photo_front']) {
+    for (const docType of ['aadhaar', 'property_photo_front', 'tourism_registration']) {
       const res = await request(app).post('/api/providers/me/kyc').set('Authorization', `Bearer ${token}`)
         .send({ doc_type: docType, file: PNG_DATA_URL, filename: `${docType}.png` });
       expect(res.status).toBe(200);
@@ -89,7 +89,7 @@ describe('homestay verification checklist', () => {
 
     const p = await profile(token);
     expect(p.kyc_status).toBe('verified');
-    expect(p.checklist.filter((c: any) => c.kind === 'kyc').map((c: any) => c.state)).toEqual(['done', 'done']);
+    expect(p.checklist.filter((c: any) => c.kind === 'kyc').map((c: any) => c.state)).toEqual(['done', 'done', 'done']);
     expect(p.verification.status).toBe('approved');
     // The rejected old document does not ask the host to fix anything.
     expect(p.verification.action_required).toBe(false);
@@ -154,5 +154,30 @@ describe('a homestay is verified only with its documents AND a confirmed pin', (
     await request(app).post('/api/providers/me/location/verify')
       .set('Authorization', `Bearer ${token}`).send({ maps_url: IN_DARJEELING });
     expect((await profile(token)).kyc_status).toBe('partial');
+  });
+});
+
+describe('a homestay business that also lists a shop', () => {
+  it('is asked for the shop’s front photo too, and a second homestay adds nothing', async () => {
+    const { token } = await onboardActiveProvider({ name: 'Two Kinds Stay', awaitingApproval: true });
+    const before = (await profile(token)).checklist.filter((c: any) => c.kind === 'kyc').map((c: any) => c.key);
+    expect(before).toEqual(['aadhaar', 'property_photo_front', 'tourism_registration']);
+
+    const addStay = await request(app).post('/api/listings').set('Authorization', `Bearer ${token}`)
+      .send({ title: 'Second home', type: 'homestay', description: 'Another homestay of the same family', location: 'Mirik', price: 1500 });
+    expect(addStay.status).toBe(200);
+    expect((await profile(token)).checklist.filter((c: any) => c.kind === 'kyc').map((c: any) => c.key)).toEqual(before);
+
+    const addShop = await request(app).post('/api/listings').set('Authorization', `Bearer ${token}`)
+      .send({ title: 'Family shop', type: 'shop', description: 'Tea and woollens next to the homestay', location: 'Mirik', price: 100 });
+    expect(addShop.status).toBe(200);
+    const after = (await profile(token)).checklist.filter((c: any) => c.kind === 'kyc').map((c: any) => c.key);
+    expect(after).toEqual(['aadhaar', 'property_photo_front', 'tourism_registration', 'premises_photo_front']);
+
+    // And the shop's document can be sent.
+    await completeMandatoryProfile(token);
+    const up = await request(app).post('/api/providers/me/kyc').set('Authorization', `Bearer ${token}`)
+      .send({ doc_type: 'premises_photo_front', file: PNG_DATA_URL, filename: 'front.png' });
+    expect(up.status).toBe(200);
   });
 });

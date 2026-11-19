@@ -839,10 +839,7 @@ async function homeSearch(page, text) {
   await step('8 login', async () => {
     const { ctx, page: l } = await context(browser, { label: 'login' });
     await go(l, '/login');
-    await tid(l, 'login-wa').click();
-    ok(/name/i.test(await tid(l, 'login-error').innerText().catch(() => '')), '8 login', 'continuing without a name asks for it');
-    await tid(l, 'login-name').locator('input').first().fill(`Login Walk${T}`).catch(async () => tid(l, 'login-name').fill(`Login Walk${T}`));
-    await tid(l, 'login-wa').click();
+    // The phone number comes first; a new account gives its name on the code screen.
     await tid(l, 'login-phone').waitFor({ timeout: 6000 });
     const ph = `98${String(Date.now()).slice(-8)}`;
     const input = (await tid(l, 'login-phone').evaluate((e) => e.tagName)) === 'INPUT' ? tid(l, 'login-phone') : tid(l, 'login-phone').locator('input');
@@ -857,6 +854,10 @@ async function homeSearch(page, text) {
     ok(/whatsapp/i.test(await tid(l, 'login-sent-via').innerText().catch(() => '')), '8 login', 'says the code went on WhatsApp');
     const otpIn = (await tid(l, 'login-otp').evaluate((e) => e.tagName)) === 'INPUT' ? tid(l, 'login-otp') : tid(l, 'login-otp').locator('input');
     await otpIn.fill(otp);
+    await tid(l, 'login-verify').click();
+    ok(/name/i.test(await tid(l, 'login-error').innerText().catch(() => '')), '8 login', 'a new account without a name is asked for it');
+    const nameIn = (await tid(l, 'login-name').evaluate((e) => e.tagName)) === 'INPUT' ? tid(l, 'login-name') : tid(l, 'login-name').locator('input');
+    await nameIn.fill(`Login Walk${T}`);
     await tid(l, 'login-verify').click();
     await l.waitForURL((u) => !u.pathname.startsWith('/login'), { timeout: 8000 }).catch(() => {});
     const tok = await l.evaluate(() => localStorage.getItem('token'));

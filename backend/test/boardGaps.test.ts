@@ -49,13 +49,12 @@ describe('host public page (aanganerp.in/<type>/<slug>)', () => {
     expect(wrongType.body.path).toBe('/homestay/same-names-business');
   });
 
-  it('hides a host awaiting approval from everyone but the host', async () => {
-    const h = await onboardActiveProvider({ name: 'Hidden Host', awaitingApproval: true });
+  it('shows a host waiting for the document check to everyone (like the prototype)', async () => {
+    const h = await onboardActiveProvider({ name: 'Waiting Host', awaitingApproval: true });
     const { slug } = (await request(app).get('/api/providers/me').set(auth(h.token))).body.provider;
-    expect((await request(app).get(`/api/providers/page/homestay/${slug}`)).status).toBe(404);
-    const own = await request(app).get(`/api/providers/page/homestay/${slug}`).set(auth(h.token));
-    expect(own.status).toBe(200);
-    expect(own.body.not_live).toBe(true);
+    const page = await request(app).get(`/api/providers/page/homestay/${slug}`);
+    expect(page.status).toBe(200);
+    expect(page.body.not_live).toBeFalsy();
   });
 
   it('a renamed business gets a new address', async () => {

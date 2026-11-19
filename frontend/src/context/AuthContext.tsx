@@ -44,17 +44,29 @@ export function AuthProvider({ children }) {
     setModeState(next);
   }, []);
 
+  const refreshProvider = useCallback(async () => {
+    try {
+      const { data } = await api.get('/providers/me');
+      setProvider(data.provider ?? null);
+    } catch {
+      setProvider(null);
+    }
+  }, []);
+
   const refresh = useCallback(async () => {
     const t = localStorage.getItem('token');
     if (!t) { setUser(null); setLoading(false); return; }
     try {
       const { data } = await api.get('/auth/me');
       setUser(data.user);
+      // A host's business can appear without their user changing (signed in during setup, then the
+      // business is created): reload it too, or screens waiting on it never leave Loading.
+      if (data.user?.role === 'provider') await refreshProvider();
     } catch (e) {
       localStorage.removeItem('token');
       setUser(null);
     } finally { setLoading(false); }
-  }, []);
+  }, [refreshProvider]);
 
   useEffect(() => { refresh(); }, [refresh]);
 
@@ -70,15 +82,6 @@ export function AuthProvider({ children }) {
     i18n.on('languageChanged', save);
     return () => { i18n.off('languageChanged', save); };
   }, [user?.id, user?.language]);
-
-  const refreshProvider = useCallback(async () => {
-    try {
-      const { data } = await api.get('/providers/me');
-      setProvider(data.provider ?? null);
-    } catch {
-      setProvider(null);
-    }
-  }, []);
 
   // Only hosts have a business to load.
   useEffect(() => {

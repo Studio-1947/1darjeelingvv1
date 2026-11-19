@@ -139,13 +139,13 @@ describe('POST /providers/me/start-free', () => {
     expect((await request(app).post('/api/providers/me/start-free')).status).toBe(401);
   });
 
-  it('keeps the listing hidden until the documents are approved, as for every new host', async () => {
+  it('puts the listing up straight away, before the documents are approved (like the prototype)', async () => {
     const host = await freeHost('Waiting Wangdi', 'homestay', { approved: false });
     const traveller = await registerUser({ name: 'Curious Traveller' });
     const feed = await request(app).get('/api/listings?limit=100');
-    expect(feed.body.items.some((i: any) => i.id === host.listing.id)).toBe(false);
-    expect((await request(app).get(`/api/listings/${host.listing.id}`).set(auth(traveller.token))).status).toBe(404);
-    expect((await requestStay(traveller.token, host.listing.id, 5)).status).toBe(409);
+    expect(feed.body.items.some((i: any) => i.id === host.listing.id)).toBe(true);
+    expect((await request(app).get(`/api/listings/${host.listing.id}`).set(auth(traveller.token))).status).toBe(200);
+    expect((await requestStay(traveller.token, host.listing.id, 5)).status).toBe(200);
 
     await db.update(schema.providers).set({ kycStatus: 'verified' }).where(eq(schema.providers.id, host.providerId));
     const after = await request(app).get(`/api/listings/${host.listing.id}`);

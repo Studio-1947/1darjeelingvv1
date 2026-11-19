@@ -22,6 +22,9 @@ export const KYC_REQUIREMENTS: Record<string, DocRequirement[]> = {
   homestay: [
     PHOTO_ID,
     { docType: 'property_photo_front', label: 'Photo of the property (front of the building)', required: true },
+    // The homestay's own papers (user decision 2026-11-19): its homestay / tourism registration.
+    // Every homestay verified before had this approved, so none loses the Verified tick.
+    { docType: 'tourism_registration', label: 'Homestay / tourism registration certificate', required: true },
   ],
   // Drivers: the licence, and a selfie beside the vehicle so the person and the car are tied together.
   driver: [
@@ -46,23 +49,40 @@ export const KYC_REQUIREMENTS: Record<string, DocRequirement[]> = {
   ],
 };
 
-export function requirementsFor(businessType: string): readonly DocRequirement[] {
-  // Defensive copy  the array in KYC_REQUIREMENTS is the shared, single source of truth for
-  // every consumer; a caller mutating what we return here must never corrupt it for the rest.
-  return [...(KYC_REQUIREMENTS[businessType] ?? [])];
+/**
+ * The kinds of business whose documents apply: the business's own type first, then any other kind
+ * of listing it runs (a homestay that also lists a shop). Unknown kinds are ignored.
+ */
+export function kycTypes(businessType: string | null | undefined, listingTypes: readonly (string | null | undefined)[] = []): string[] {
+  const out: string[] = [];
+  for (const t of [businessType, ...listingTypes]) if (t && KYC_REQUIREMENTS[t] && !out.includes(t)) out.push(t);
+  return out;
 }
 
-export function isAllowedDocType(businessType: string, docType: string): boolean {
-  return requirementsFor(businessType).some(d => d.docType === docType);
+/**
+ * The documents for one kind of business, or for several together (each document once, in the
+ * order the kinds come; the business's own kind first).
+ */
+export function requirementsFor(types: string | readonly string[]): readonly DocRequirement[] {
+  // Defensive copies: the arrays in KYC_REQUIREMENTS are the shared, single source of truth for
+  // every consumer; a caller mutating what we return here must never corrupt it for the rest.
+  const list = typeof types === 'string' ? [types] : types;
+  const out: DocRequirement[] = [];
+  for (const t of list) for (const r of KYC_REQUIREMENTS[t] ?? []) if (!out.some((o) => o.docType === r.docType)) out.push({ ...r });
+  return out;
+}
+
+export function isAllowedDocType(types: string | readonly string[], docType: string): boolean {
+  return requirementsFor(types).some(d => d.docType === docType);
 }
 
 /** Whether this document is captured as a video rather than a photo or scan. */
-export function isVideoDocType(businessType: string, docType: string): boolean {
-  return requirementsFor(businessType).some(d => d.docType === docType && d.media === 'video');
+export function isVideoDocType(types: string | readonly string[], docType: string): boolean {
+  return requirementsFor(types).some(d => d.docType === docType && d.media === 'video');
 }
 
-export function requiredDocTypes(businessType: string): string[] {
-  return requirementsFor(businessType).filter(d => d.required).map(d => d.docType);
+export function requiredDocTypes(types: string | readonly string[]): string[] {
+  return requirementsFor(types).filter(d => d.required).map(d => d.docType);
 }
 
 export type LocationMethod = 'maps_link' | 'live_capture';

@@ -6,12 +6,13 @@ import {
   isVideoDocType,
   requiresLocationVerification,
   locationMethodFor,
+  kycTypes,
 } from '../src/lib/kycRequirements';
 
 // The short list the Aangan 2.0 prototype asks for (provider.js DOCS): a photo ID and one photo.
 describe('kycRequirements', () => {
   it('asks each type for exactly the prototype documents, all of them required', () => {
-    expect(requiredDocTypes('homestay')).toEqual(['aadhaar', 'property_photo_front']);
+    expect(requiredDocTypes('homestay')).toEqual(['aadhaar', 'property_photo_front', 'tourism_registration']);
     expect(requiredDocTypes('driver')).toEqual(['aadhaar', 'driving_license', 'driver_vehicle_photo']);
     expect(requiredDocTypes('guide')).toEqual(['aadhaar', 'owner_photo']);
     expect(requiredDocTypes('cafe')).toEqual(['aadhaar', 'premises_photo_front']);
@@ -29,7 +30,7 @@ describe('kycRequirements', () => {
 
   it('no longer asks for PAN, certificates, licences, room photos, videos or GST', () => {
     const dropped: Record<string, string[]> = {
-      homestay: ['pan', 'owner_photo', 'property_proof', 'tourism_registration', 'property_photo_room', 'property_video', 'gst_certificate'],
+      homestay: ['pan', 'owner_photo', 'property_proof', 'property_photo_room', 'property_video', 'gst_certificate'],
       driver: ['vehicle_rc', 'driver_vehicle_video', 'pollution_certificate', 'vehicle_insurance'],
       guide: ['guide_licence'],
       cafe: ['pan', 'owner_photo', 'fssai_license', 'trade_license', 'premises_photo_inside', 'premises_video', 'gst_certificate'],
@@ -64,5 +65,17 @@ describe('kycRequirements', () => {
   it('returns empty requirements for non-onboardable types', () => {
     expect(requirementsFor('spot')).toEqual([]);
     expect(requiredDocTypes('event')).toEqual([]);
+  });
+});
+
+// A business with more than one kind of listing sends each kind's documents, each once
+// (prototype provider.js docsReq).
+describe('documents for a business with several kinds of listing', () => {
+  it('adds the other kind’s documents, without asking for the photo ID twice', () => {
+    expect(kycTypes('homestay', ['homestay', 'shop', 'shop', 'spot', null])).toEqual(['homestay', 'shop']);
+    expect(requiredDocTypes(kycTypes('homestay', ['shop']))).toEqual(['aadhaar', 'property_photo_front', 'tourism_registration', 'premises_photo_front']);
+    expect(requiredDocTypes(kycTypes('homestay', ['homestay']))).toEqual(requiredDocTypes('homestay'));
+    expect(isAllowedDocType(kycTypes('homestay', ['cafe']), 'premises_photo_front')).toBe(true);
+    expect(isAllowedDocType('homestay', 'premises_photo_front')).toBe(false);
   });
 });

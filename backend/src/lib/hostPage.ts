@@ -1,7 +1,7 @@
 import { inArray, or, eq } from 'drizzle-orm';
 import { db, schema } from '../db';
 import { canSeeProviderPhone, listExtras } from './listingContact';
-import { isHostApprovalPending, isHostPlanLive } from './hostPlan';
+import { isHostPlanLive } from './hostPlan';
 import { pagePath } from './providerSlug';
 import { themeOf } from './hostProfile';
 
@@ -24,7 +24,7 @@ export function hostBadges(p: Pick<Provider, 'status' | 'planExpiresAt' | 'kycSt
 }
 
 /** Whether travellers can see this host at all (the same rule as the public feed). */
-export const hostIsPublic = (p: Provider) => p.status === 'active' && !isHostApprovalPending(p) && isHostPlanLive(p);
+export const hostIsPublic = (p: Provider) => p.status === 'active' && isHostPlanLive(p);
 
 const priced = (list: unknown, nameKey = 'name') =>
   (Array.isArray(list) ? list : [])

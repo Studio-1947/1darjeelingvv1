@@ -7,6 +7,7 @@ import api from '@/lib/api';
 import { todayStr, addDays, isBadRange, formatDay, formatRange } from '@/lib/dates';
 import { writeTrip } from '@/lib/tripParams';
 import WeatherForecast from '@/components/WeatherForecast';
+import { isKnownPlace } from '@/lib/places';
 import { Box, Button, Chip, Chips, IconButton, Seg, TextField, cx } from '@/components/ag';
 import { Icon } from '@/components/ag/Icon';
 
@@ -100,6 +101,9 @@ function placeMatchesTerm(place: { name: string; alt?: string[] }, needle: strin
   if (place.name.toLowerCase().includes(needle)) return true;
   return (place.alt || []).some((a) => a.toLowerCase().includes(needle));
 }
+
+/** Every place name the chips know, for the weather card (lib/places.ts isKnownPlace). */
+const PLACE_NAMES = PLACES.map((p) => p.name);
 
 const MAX_GUESTS = 99;
 const typedGuests = (raw: string) => raw.replace(/\D/g, '').slice(0, String(MAX_GUESTS).length);
@@ -200,10 +204,13 @@ export default function BookingWidget() {
       api
         .get('/listings', { params: { q: searchNeedle, limit: 5, ...(activeTab.type ? { type: activeTab.type } : {}) } })
         .then(async (r) => {
-          const own = r.data.items || [];
+          // A fallback (none of the words matched, so every listing of the kind they named came
+          // back, e.g. "Audit Shop 5441") is not a match: the box says nothing matches instead.
+          const hits = (res: any) => (res.data?.search?.fallback ? [] : res.data?.items || []);
+          const own = hits(r);
           if (own.length || !activeTab.type) return own;
           const any = await api.get('/listings', { params: { q: searchNeedle, limit: 5 } });
-          return any.data.items || [];
+          return hits(any);
         })
         .then((items) => setMatches(items))
         .catch(() => setMatches([]))
@@ -439,7 +446,8 @@ export default function BookingWidget() {
 
       {panelOpen && <HomeFilterPanel query={q} onDone={() => setPanelOpen(false)} />}
 
-      {destinationQuery.trim().length >= 3 && <WeatherForecast query={destinationQuery} />}
+      {/* The sky only for a place we know: a business name or a dish is not a place to forecast. */}
+      {isKnownPlace(destinationQuery, PLACE_NAMES) && <WeatherForecast query={destinationQuery} />}
     </form>
   );
 }

@@ -171,6 +171,9 @@
 .ag-home-gcard .gdl { color: var(--r); }
 .ag-home-gcard .gprice { margin-top: 4px; padding: 0 10px; font: 600 13px/16px var(--font); color: var(--r); white-space: nowrap; }
 .ag-home-gcard .gprice .small { display: inline; padding: 0; }
+/* "New": a business that went live in the last two weeks (lib/homeRail.ts), on the photo's corner. */
+.ag-home-gcard.fresh { position: relative; }
+.ag-home-newb { position: absolute; top: 8px; left: 8px; z-index: 1; padding: 2px 8px; border-radius: 10px; background: var(--r); color: var(--on-r); font: 600 11px/15px var(--font); letter-spacing: .2px; }
 
 /* ---------- Suggest a place: a scalloped frame round a blush box ---------- */
 .ag-home-sugg { position: relative; isolation: isolate; display: flex; flex-direction: column; gap: 12px; margin: 14px 0 8px; padding: 20px; }
