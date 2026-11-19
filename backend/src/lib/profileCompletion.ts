@@ -61,7 +61,7 @@ function profileChecks(p: ProfileInput): { key: string; label: string; done: boo
   const hasDesc = descText.length >= 20 || p.hasListingDescription === true;
 
   const checks: { key: string; label: string; done: boolean; action?: LocationMethod }[] = [
-    { key: 'description', label: 'Add a description (60+ characters)', done: hasDesc },
+    { key: 'description', label: 'Add a description (20+ characters)', done: hasDesc },
     { key: 'photos', label: 'Add at least one photo', done: hasPhoto },
     { key: 'price', label: 'Set a starting price', done: p.priceFrom > 0 },
   ];

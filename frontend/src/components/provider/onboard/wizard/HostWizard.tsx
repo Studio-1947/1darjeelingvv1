@@ -47,8 +47,9 @@ function FeeList({ plain }: { plain?: boolean }) {
   const small = useHostPlanPrice('cafe');
   const { grace_bookings } = useHostSignupInfo();
   const lines = [
-    t('ob.wz.fee_full', { price: rupees(full.base) }),
-    t('ob.wz.fee_small', { price: rupees(small.base) }),
+    t('ob.wz.fee_big', { price: rupees(full.base), defaultValue: 'Homestays, drivers and guides: {{price}} a year' }),
+    t('ob.wz.fee_cafe', { price: rupees(small.base), defaultValue: 'Cafes and restaurants: {{price}} a year' }),
+    t('ob.wz.fee_shop', 'Local shops: free'),
     t('ob.wz.fp_4', { count: grace_bookings, defaultValue: 'Pay now, or after your first {{count}} bookings' }),
   ];
   const tick = plain ? null : <Icon name="check" />;
@@ -86,7 +87,7 @@ function TypeStep({ w }: { w: HostWizard }) {
         ))}
       </div>
 
-      {!w.adding && <Box tone="blush" className="ag-onboard-charge">
+      {!w.adding && d.type !== 'shop' && <Box tone="blush" className="ag-onboard-charge">
         <span className="ag-eyebrow" data-testid="onboard-free-chip">{t('ob.wz.ch_eye')}</span>
         <FeeList plain />
         <span className="ag-eyebrow">{t('ob.wz.ch_when')}</span>
@@ -364,7 +365,7 @@ function ReviewStep({ w }: { w: HostWizard }) {
       cta={(
         <>
           <NextButton onClick={submit} disabled={busy} data-testid="onboard-submit">
-            {busy ? t('common.loading') : d.payWhen === 'now' && !w.adding ? t('ob.wz.put_pay', { price: rupees(plan.base) }) : t('ob.wz.put')}
+            {busy ? t('common.loading') : d.payWhen === 'now' && !w.adding && d.type !== 'shop' ? t('ob.wz.put_pay', { price: rupees(plan.base) }) : t('ob.wz.put')}
           </NextButton>
           {!w.adding && <FeeList />}
         </>

@@ -154,8 +154,24 @@ describe('host plan: ₹499 a year (₹99 for cafes, shops and guides)', () => {
     expect(after - Date.parse(endsInTenDays)).toBeLessThan(366 * DAY_MS);
   });
 
-  it('charges a cafe, shop or guide ₹99 + GST + fee (₹118.80), first year and renewal', async () => {
-    for (const businessType of ['cafe', 'shop', 'guide']) {
+  it('lists a local shop free: nothing to pay, and the free start never runs out', async () => {
+    const { token, providerId } = await onboardActiveProvider({ name: 'Free shop', businessType: 'shop' });
+    const order = await request(app).post('/api/payments/order').set('Authorization', `Bearer ${token}`)
+      .send({ flow: 'provider_registration', reference_id: providerId });
+    expect(order.status).toBe(409);
+    expect(order.body.code).toBe('free_listing');
+    const me = await providerMe(token);
+    expect(me.status).toBe('active');
+  });
+
+  it('charges a guide ₹499 + GST + fee, like homestays and drivers', async () => {
+    const { providerId } = await onboardActiveProvider({ name: 'Big guide', businessType: 'guide' });
+    const [payment] = await db.select().from(schema.payments).where(eq(schema.payments.referenceId, providerId)).limit(1);
+    expect(payment.amount).toBe(59880);
+  });
+
+  it('charges a cafe ₹99 + GST + fee (₹118.80), first year and renewal', async () => {
+    for (const businessType of ['cafe']) {
       const { token, providerId } = await onboardActiveProvider({ name: `Small ${businessType}`, businessType });
       const [payment] = await db.select().from(schema.payments).where(eq(schema.payments.referenceId, providerId)).limit(1);
       expect(payment.amount).toBe(11880);

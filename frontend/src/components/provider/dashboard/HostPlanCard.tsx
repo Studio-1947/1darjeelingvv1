@@ -6,7 +6,7 @@ import MockPaymentModal from '@/components/MockPaymentModal';
 import PriceBreakup from '@/components/PriceBreakup';
 import { Box, Button, FieldError, MenuIcon, cx } from '@/components/ag';
 import { Icon } from '@/components/ag/Icon';
-import { rupees, useHostPlanPrice } from '@/lib/prices';
+import { isFreeHostType, rupees, useHostPlanPrice } from '@/lib/prices';
 import { graceLeft, type GraceState } from '@/lib/hostQuickFill';
 
 /**
@@ -136,6 +136,15 @@ export default function HostPlanCard({ provider, user, reviews, onRenewed }: {
 }) {
   const { t, busy, err, firstYear, renewal, price, registrationPending, grace, notStarted, lapsed, daysLeft, soon, until, canRenew, startFree, renew, modal } = useHostPlan(provider, user, onRenewed);
   if (!provider) return null;
+  if (isFreeHostType(provider.business_type) && provider.status === 'active') {
+    return (
+      <Box as="section" data-testid="host-plan-card">
+        <span className="ag-eyebrow">{t('pd.plan_label')}</span>
+        <p className="m-0"><b>{t('host.shop_free', 'Local shops list free')}</b></p>
+        <p className="ag-small m-0">{t('host.shop_free_s', 'No yearly pass and no commission. Keep taking orders.')}</p>
+      </Box>
+    );
+  }
 
   // Lapsed or paused needs attention (blush); everything else is the plain creme panel.
   const alarm = lapsed || !!grace?.paused;
@@ -209,6 +218,9 @@ export default function HostPlanCard({ provider, user, reviews, onRenewed }: {
 export function HostPassLine({ provider, user, onRenewed }: { provider: any; user: any; onRenewed: () => Promise<void> | void }) {
   const { t, busy, err, firstYear, registrationPending, grace, notStarted, lapsed, soon, until, canRenew, startFree, renew, modal } = useHostPlan(provider, user, onRenewed);
   if (!provider) return null;
+  if (isFreeHostType(provider.business_type) && provider.status === 'active') {
+    return <p className="ag-small m-0" data-testid="host-pass-line">{t('host.shop_free', 'Local shops list free')}</p>;
+  }
   const coOwner = provider.access === 'co_owner';
   const fee = <><b>{rupees(firstYear.base)}</b>{t('host.per_year', '/yr')}</>;
   const due = lapsed || !!grace?.paused || (registrationPending && !grace && !notStarted);

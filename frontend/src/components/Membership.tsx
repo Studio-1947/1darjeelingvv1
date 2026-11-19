@@ -78,7 +78,7 @@ export function MemberCard() {
 
       {active && (
         <>
-          <p className="ag-small m-0">{t('member.why', 'Your pass puts a verified badge on your booking requests, so hosts and drivers say yes faster. It also covers the booking fee.')}</p>
+          <p className="ag-small m-0">{t('member.why2', 'Pay ₹1 a year to aangan and get a verified badge. Hosts and drivers see it on your booking requests, so they say yes faster.')}</p>
           {!asking ? (
             <Button go className="self-start" onClick={() => setAsking(true)} data-testid="membership-end">{t('member.end', 'End membership')}</Button>
           ) : (
@@ -114,14 +114,14 @@ export function PassJoinCard({ price, renewing, children }: { price: number; ren
       <p className="ag-small m-0">{t('member.offer', 'Get the aangan pass and a verified badge. Hosts and drivers see it on your booking requests, so they say yes faster.')}</p>
       <div className="pprice">
         <b data-testid="pass-offer-price">{rupees(price)}</b>
-        <span>/ {renewing ? t('member.year', 'year') : t('member.first_year', 'first year')}</span>
-        {!renewing && <span className="pnote">{t('member.then', 'then {{price}} a year', { price: rupees(yearly.total) })}</span>}
+        <span>/ {renewing || yearly.total === price ? t('member.year', 'year') : t('member.first_year', 'first year')}</span>
+        {!renewing && yearly.total !== price && <span className="pnote">{t('member.then', 'then {{price}} a year', { price: rupees(yearly.total) })}</span>}
       </div>
       <p className="m-0"><b>{t('member.vwhy', 'Verified travellers get more confirmations from homestays.')}</b></p>
       <ul className="pchecks">
         <li><Icon name="check" />{t('member.vt1', 'Verified badge on every booking request')}</li>
         <li><Icon name="check" />{t('member.vt2', 'Membership card on your phone')}</li>
-        <li><Icon name="check" />{t('member.vt3', 'No booking fee on your requests')}</li>
+        <li><Icon name="check" />{t('member.vt3b', 'Still no booking fees, ever')}</li>
       </ul>
       {children}
     </Box>
@@ -133,14 +133,14 @@ export function BusinessPassCard() {
   const { t } = useTranslation();
   const { user } = useAuth();
   const { grace_bookings } = useHostSignupInfo();
-  const pass = usePrice('platform_support');
   const big = useHostPlanPrice('homestay');
   const small = useHostPlanPrice('cafe');
   const yr = t('member.year', 'year');
   const rows: Array<[Parameters<typeof Icon>[0]['name'], string, string, boolean]> = [
-    ['person', t('member.r_trav', 'Travellers (optional pass)'), `${rupees(pass.total)} / ${yr}`, false],
-    ['home', t('member.r_big', 'Homestays and drivers'), `${rupees(big.base)} / ${yr}`, true],
-    ['cup', t('member.r_small', 'Guides, cafes and shops'), `${rupees(small.base)} / ${yr}`, true],
+    ['person', t('member.r_trav2', 'Travellers'), t('member.free', 'Free'), false],
+    ['home', t('member.r_big2', 'Homestays, drivers and guides'), `${rupees(big.base)} / ${yr}`, true],
+    ['cup', t('member.r_cafe', 'Restaurants and cafes'), `${rupees(small.base)} / ${yr}`, true],
+    ['bag', t('member.r_shop', 'Local shops'), t('member.free', 'Free'), false],
   ];
   const isHost = user?.role === 'provider';
   return (
@@ -152,7 +152,7 @@ export function BusinessPassCard() {
           <h2 className="m-0">{t('member.passh', 'A yearly pass, not a commission')}</h2>
         </div>
       </div>
-      <p className="ag-small m-0">{t('member.passS', 'aangan takes no commission on any booking. Homestays, drivers, guides, cafes and shops pay one small yearly pass instead. It is what lets aangan build and keep running for the hills.')}</p>
+      <p className="ag-small m-0">{t('member.passS2', 'aangan takes no commission on any booking. Homestays, drivers, guides and restaurants pay one small yearly pass instead. It is what lets aangan build and keep running for the hills.')}</p>
       <div className="pprice">
         <span className="pfrom">{t('member.from', 'From')}</span><b>{rupees(small.base)}</b><span>/ {yr}</span>
         <span className="pnote">{t('member.nocomm', 'No commission')}</span>
@@ -177,7 +177,7 @@ export function BusinessPassCard() {
         {isHost
           ? <ButtonLink to="/provider/dashboard" go block data-testid="business-pass-open">{t('member.check_biz', 'Check your business')}</ButtonLink>
           : <ButtonLink to="/provider/onboard" variant="primary" go block data-testid="business-pass-list">{t('member.list_biz', 'List your business')}</ButtonLink>}
-        {!isHost && <p className="ag-small m-0 text-center"><Link to="/about">{t('member.for_hosts', 'For homestays, drivers, guides, cafes and shops.')}</Link></p>}
+        {!isHost && <p className="ag-small m-0 text-center"><Link to="/about">{t('member.passforhosts', 'For homestays and drivers. Travellers never pay.')}</Link></p>}
       </div>
     </Box>
   );

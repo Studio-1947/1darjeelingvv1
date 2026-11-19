@@ -373,15 +373,16 @@ export const PLATFORM_FEE_PERCENT = 2;
 // Fixed base prices, in paise. `donation` is deliberately absent: its presence here would imply a
 // fixed price, and the whole point of a donation is that the giver chooses. See lib/payments.ts.
 //
-//   platform_support       ₹1    the first year of the aangan pass, GST included: every booking
-//                          confirms free (₹12 for every year after: PASS_RENEWAL_BASE)
-//   booking_commission     ₹1    the convenience fee on one booking, for a traveller without a pass
-//   provider_registration  ₹499  a homestay's or driver's first year (₹99 for cafes, shops and
-//                          guides: SMALL_HOST_PLAN_BASE)
+//   platform_support       ₹1    the aangan pass, a year, GST included: an optional verified
+//                          badge for travellers (₹1 every year: PASS_RENEWAL_BASE)
+//   booking_commission     ₹1    no longer charged: confirming a booking is free. The flow stays so
+//                          refunds of orders made before 2026-11-19 still match.
+//   provider_registration  ₹499  a homestay's, driver's or guide's first year (₹99 for cafes and
+//                          restaurants: SMALL_HOST_PLAN_BASE; local shops list free)
 //   provider_renewal       ₹499  every year after that, the same price (₹99 for the small plan)
 //
-// Pricing cards, user decision 2026-11-08: "₹499 per year" for homestays and drivers, "₹99 per
-// year" for shops and restaurants (guides too), each plus GST and the fee; the pass ₹1 then ₹12.
+// Fees as the Aangan 2.0 prototype states them (user decision 2026-11-19): "aangan is free for
+// tourists"; homestays, drivers and guides ₹499 a year, cafes ₹99, local shops free.
 //
 // The board ("Booking Flow"): with the pass you can book everything; without it, take the pass or
 // pay ₹1 per service. The flow keeps its old name so refunds of earlier orders still match.
@@ -392,9 +393,11 @@ export const AMOUNTS: Record<string, number> = {
   provider_renewal: 49900,
 };
 
-// The yearly host plan for cafes, shops and guides, in paise, first year and every year after.
+// The yearly host plan for cafes and restaurants, in paise, first year and every year after.
 export const SMALL_HOST_PLAN_BASE = 9900;
-export const SMALL_HOST_TYPES: ReadonlySet<string> = new Set(['cafe', 'shop', 'guide']);
+export const SMALL_HOST_TYPES: ReadonlySet<string> = new Set(['cafe']);
+// Businesses that list free: no plan to pay, and the free start never runs out.
+export const FREE_HOST_TYPES: ReadonlySet<string> = new Set(['shop']);
 
 // Flows whose price already includes GST and carries no gateway fee: the traveller pays the
 // price on the card and nothing more.
@@ -402,7 +405,7 @@ export const GST_INCLUDED_FLOWS: ReadonlySet<string> = new Set(['platform_suppor
 
 // The aangan pass after its first year. Same flow (platform_support); the server picks this
 // price for anyone who has held a pass before (lib/pricing.ts passBreakupFor).
-export const PASS_RENEWAL_BASE = 1200;
+export const PASS_RENEWAL_BASE = 100;
 
 // How long one host payment (registration or renewal) keeps a host's listings live, in days.
 export const HOST_PLAN_DAYS = 365;

@@ -274,7 +274,8 @@ export function useHostWizard() {
   const describe = () => {
     const what = d.type ? t(`ob.wz.t_${d.type}`) : '';
     const offers = offerLabels();
-    return `${what} · ${d.place?.name || ''}${offers.length ? `. ${offers.join(', ')}.` : ''}`;
+    const base = t('ob.wz.describe', { what, place: d.place?.name || '', name: d.name.trim(), defaultValue: '{{what}} in {{place}}, run by {{name}} and listed on aangan.' });
+    return `${base}${offers.length ? ` ${offers.join(', ')}.` : ''}`;
   };
 
   const extrasFor = (d: Draft): Record<string, unknown> => {
@@ -360,7 +361,7 @@ export function useHostWizard() {
         extras: extrasFor(sent),
       });
       const providerId = data.provider.id;
-      if (d.payWhen === 'later') {
+      if (d.payWhen === 'later' || d.type === 'shop') {
         await api.post('/providers/me/start-free');
         await finish();
         return;

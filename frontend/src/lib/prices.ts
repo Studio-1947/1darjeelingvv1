@@ -36,16 +36,18 @@ const BASES: Record<PricedFlow, number> = {
   provider_renewal: 49900,
   host_plan_small: 9900,
   platform_support: 100,
-  platform_support_renewal: 1200,
+  platform_support_renewal: 100,
   booking_commission: 100,
 };
 
 /** Prices that already include GST and carry no fee. */
 const GST_INCLUDED: PricedFlow[] = ['platform_support', 'platform_support_renewal'];
 
-/** Cafes, shops and guides pay the ₹99 plan; homestays and drivers the ₹499 one. */
-const SMALL_HOST_TYPES = ['cafe', 'shop', 'guide'];
+/** Cafes pay the ₹99 plan; homestays, drivers and guides the ₹499 one; local shops list free. */
+const SMALL_HOST_TYPES = ['cafe'];
 export const isSmallHostType = (type?: string | null) => !!type && SMALL_HOST_TYPES.includes(type);
+const FREE_HOST_TYPES = ['shop'];
+export const isFreeHostType = (type?: string | null) => !!type && FREE_HOST_TYPES.includes(type);
 export const hostPlanFlow = (type?: string | null): PricedFlow => (isSmallHostType(type) ? 'host_plan_small' : 'provider_registration');
 
 export function breakupOf(base: number, gstRate = 18, feeRate = 2): PriceBreakup {

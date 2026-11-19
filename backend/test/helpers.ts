@@ -97,16 +97,21 @@ export async function onboardActiveProvider(opts: {
   }
   const providerId = onboardRes.body.provider.id as string;
 
-  const orderRes = await request(app)
-    .post('/api/payments/order')
-    .set('Authorization', `Bearer ${token}`)
-    .send({ flow: 'provider_registration', reference_id: providerId });
-  const orderId = orderRes.body.order.id as string;
+  if (businessType === 'shop') {
+    // Local shops list free: they go live on the free start, which never runs out.
+    await request(app).post('/api/providers/me/start-free').set('Authorization', `Bearer ${token}`);
+  } else {
+    const orderRes = await request(app)
+      .post('/api/payments/order')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ flow: 'provider_registration', reference_id: providerId });
+    const orderId = orderRes.body.order.id as string;
 
-  await request(app)
-    .post('/api/payments/mock/complete')
-    .set('Authorization', `Bearer ${token}`)
-    .send({ order_id: orderId, flow: 'provider_registration', reference_id: providerId });
+    await request(app)
+      .post('/api/payments/mock/complete')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ order_id: orderId, flow: 'provider_registration', reference_id: providerId });
+  }
 
   if (!opts.awaitingApproval) {
     await db.update(schema.providers).set({ approvalRequired: false }).where(eq(schema.providers.id, providerId));

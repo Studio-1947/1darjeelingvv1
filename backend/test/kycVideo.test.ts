@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
 
 vi.mock('../src/lib/s3', () => ({
@@ -12,7 +12,15 @@ vi.mock('../src/lib/s3', () => ({
 
 import { app } from '../src/app';
 import { uploadPrivate } from '../src/lib/s3';
+import { KYC_REQUIREMENTS } from '../src/lib/kycRequirements';
 import { onboardActiveProvider } from './helpers';
+
+// No document on the current (prototype) list is a video, but the video route stays so one can be
+// asked for again. To keep it covered, this file puts the old driver vehicle video back on the
+// driver's list for its own run only (vitest gives each test file its own module instance).
+const VIDEO_REQ = { docType: 'driver_vehicle_video', label: 'Short vehicle video', required: true, media: 'video' as const };
+beforeAll(() => { KYC_REQUIREMENTS.driver.push(VIDEO_REQ); });
+afterAll(() => { KYC_REQUIREMENTS.driver.splice(KYC_REQUIREMENTS.driver.indexOf(VIDEO_REQ), 1); });
 
 // The smallest thing the route will accept as MP4: a box whose type, at offset 4, is "ftyp".
 const MP4 = Buffer.concat([Buffer.from([0, 0, 0, 0x18]), Buffer.from('ftypmp42'), Buffer.alloc(32)]);

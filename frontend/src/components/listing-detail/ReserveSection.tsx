@@ -395,7 +395,7 @@ export function BookingScreen({ item, unit, step, booking, onNext }: {
             <p className="ag-err !text-[14px] !leading-5" role="alert">{errors.route || errors.check_in || errors.check_out || errors.guests}</p>
           )}
           <p className="ag-small ag-listing-center m-0">{t('listing.askfree', 'Asking is free. You pay nothing now.')}</p>
-          <p className="ag-listing-feeline" data-testid="booking-fee-line"><Icon name="badge" /><span>{user && !needsSupport(user) ? t('booking.fee_note_pass', 'Your aangan pass covers this booking. No fee, and your request goes with a verified badge.') : t('booking.fee_note')}</span></p>
+          <p className="ag-listing-feeline" data-testid="booking-fee-line"><Icon name="badge" /><span>{user && !needsSupport(user) ? t('booking.vsend', 'Your request goes with a verified badge') : <Link to="/support" className="text-inherit">{t('booking.vnudge', 'Get verified for ₹1 a year and get more confirmations')}</Link>}</span></p>
           <p className="ag-small ag-listing-center m-0" data-testid="booking-cancel-note">
             {t('booking.cancel_note')} <Link to="/refunds" className="text-[var(--r)] no-underline font-medium">{t('booking.fees_and_refunds')}</Link>
           </p>
@@ -404,7 +404,7 @@ export function BookingScreen({ item, unit, step, booking, onNext }: {
             <Box tone="blush" flat data-testid="reserve-how-it-works">
               <span className="ag-eyebrow">{t('approval.next_steps')}</span>
               <ol className="grid gap-2.5 m-0 p-0 list-none">
-                {[t('approval.step_ask'), t('approval.step_host'), user && !needsSupport(user) ? t('approval.step_confirm_pass', 'You confirm it in My Trips. Free with your pass.') : t('approval.step_confirm'), t('approval.step_contact')].map((s, i) => (
+                {[t('approval.step_ask'), t('approval.step_host'), t('approval.step_confirm_free', 'You confirm it in My Trips. It is free.'), t('approval.step_contact')].map((s, i) => (
                   <li key={i} className="flex items-start gap-3">
                     <span className="ag-micon !w-7 !h-7 text-[13px] font-medium">{i === 1 ? <Icon name="hourglass" size={16} /> : i + 1}</span>
                     <span className="pt-0.5 text-[14px] leading-5 text-[var(--ink-strong)]">{s}</span>

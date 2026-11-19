@@ -58,7 +58,7 @@ describe('platform_support payment flow', () => {
     expect(res.body.breakup).toMatchObject({ total: 100, platform_fee: 0, gst_included: true });
   });
 
-  it('charges exactly ₹12 (GST included) once a pass has been held before', async () => {
+  it('charges exactly ₹1 (GST included) again once a pass has been held before', async () => {
     const { token, user } = await registerUser({ name: 'Returning Rinzing', paySupport: false });
     await paySupport(token, user.id);
     const res = await request(app)
@@ -66,7 +66,7 @@ describe('platform_support payment flow', () => {
       .set('Authorization', `Bearer ${token}`)
       .send({ flow: 'platform_support', reference_id: user.id });
     expect(res.status).toBe(200);
-    expect(res.body.amount).toBe(1200);
+    expect(res.body.amount).toBe(100);
   });
 
   it('refuses an order that references another user', async () => {
@@ -127,12 +127,21 @@ describe('support gate on tourist creates', () => {
     const listing = await createListing();
 
     const res = await request(app)
+      .post('/api/reviews')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ listing_id: listing.id, rating: 5, comment: 'Lovely quiet place' });
+
+    expect(res.status).toBe(402);
+  });
+
+  it('saves a place without the pass (saving is free)', async () => {
+    const { token } = await registerUser({ name: 'Free Saver', paySupport: false });
+    const listing = await createListing();
+    const res = await request(app)
       .post('/api/favorites')
       .set('Authorization', `Bearer ${token}`)
       .send({ listing_id: listing.id });
-
-    expect(res.status).toBe(402);
-    expect(res.body.code).toBe('support_required');
+    expect(res.status).toBe(200);
   });
 
   it('lets a tourist through once the fee is paid', async () => {
@@ -155,9 +164,9 @@ describe('support gate on tourist creates', () => {
     const listing = await createListing();
 
     const res = await request(app)
-      .post('/api/favorites')
+      .post('/api/reviews')
       .set('Authorization', `Bearer ${token}`)
-      .send({ listing_id: listing.id });
+      .send({ listing_id: listing.id, rating: 5, comment: 'Lovely quiet place' });
 
     expect(res.status).toBe(402);
   });
@@ -193,9 +202,9 @@ describe('support gate on tourist creates', () => {
 
     // Confirm the lapse actually took effect, so a silent no-op cannot make this test vacuous.
     const blocked = await request(app)
-      .post('/api/favorites')
+      .post('/api/reviews')
       .set('Authorization', `Bearer ${token}`)
-      .send({ listing_id: listing.id });
+      .send({ listing_id: listing.id, rating: 5, comment: 'Lovely quiet place' });
     expect(blocked.status).toBe(402);
 
     const res = await request(app)
@@ -224,7 +233,7 @@ describe('membership card and ending it', () => {
     expect(again.body.member_id).toBe(res.body.member_id);
   });
 
-  it('ends the pass now, and the next pass is the yearly price', async () => {
+  it('ends the pass now, and the next pass is the same ₹1 a year', async () => {
     const { token, user } = await registerUser({ name: 'Leaver', paySupport: false });
     await paySupport(token, user.id);
     expect(Date.parse((await me(token)).supportExpiresAt)).toBeGreaterThan(Date.now());
@@ -237,7 +246,7 @@ describe('membership card and ending it', () => {
 
     const order = await request(app).post('/api/payments/order').set('Authorization', `Bearer ${token}`)
       .send({ flow: 'platform_support', reference_id: user.id });
-    expect(order.body.amount).toBe(1200);
+    expect(order.body.amount).toBe(100);
   });
 
   it('needs a signed-in user', async () => {

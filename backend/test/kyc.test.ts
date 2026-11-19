@@ -111,11 +111,11 @@ describe('provider KYC', () => {
   it('re-uploading replaces the doc and keeps it pending', async () => {
     const { token } = await onboardActiveProvider({ name: 'Kyc Five', businessType: 'shop' });
     await request(app).post('/api/providers/me/kyc').set('Authorization', `Bearer ${token}`)
-      .send({ doc_type: 'pan', file: PNG_DATA_URL, filename: 'pan.png' });
+      .send({ doc_type: 'premises_photo_front', file: PNG_DATA_URL, filename: 'pan.png' });
     await request(app).post('/api/providers/me/kyc').set('Authorization', `Bearer ${token}`)
-      .send({ doc_type: 'pan', file: PNG_DATA_URL, filename: 'pan2.png' });
+      .send({ doc_type: 'premises_photo_front', file: PNG_DATA_URL, filename: 'pan2.png' });
     const list = await request(app).get('/api/providers/me/kyc').set('Authorization', `Bearer ${token}`);
-    const panDocs = list.body.documents.filter((d: any) => d.doc_type === 'pan');
+    const panDocs = list.body.documents.filter((d: any) => d.doc_type === 'premises_photo_front');
     expect(panDocs.length).toBe(1);
     expect(panDocs[0].status).toBe('pending');
   });
@@ -219,14 +219,14 @@ describe('provider KYC', () => {
     const { token, providerId } = await onboardActiveProvider({ name: 'Kyc Ten', businessType: 'shop' });
     const upload = (filename: string) =>
       request(app).post('/api/providers/me/kyc').set('Authorization', `Bearer ${token}`)
-        .send({ doc_type: 'pan', file: PNG_DATA_URL, filename });
+        .send({ doc_type: 'premises_photo_front', file: PNG_DATA_URL, filename });
 
     const [r1, r2] = await Promise.all([upload('pan-a.png'), upload('pan-b.png')]);
     expect(r1.status).toBe(200);
     expect(r2.status).toBe(200);
 
     const rows = await db.select().from(schema.kycDocuments)
-      .where(and(eq(schema.kycDocuments.providerId, providerId), eq(schema.kycDocuments.docType, 'pan')));
+      .where(and(eq(schema.kycDocuments.providerId, providerId), eq(schema.kycDocuments.docType, 'premises_photo_front')));
     expect(rows.length).toBe(1);
     expect(rows[0].status).toBe('pending');
   });
@@ -247,19 +247,19 @@ describe('provider KYC', () => {
 
     // Establish the pre-existing row/object (key0) sequentially first.
     const initial = await request(app).post('/api/providers/me/kyc').set('Authorization', `Bearer ${token}`)
-      .send({ doc_type: 'pan', file: PNG_DATA_URL, filename: 'pan-0.png' });
+      .send({ doc_type: 'premises_photo_front', file: PNG_DATA_URL, filename: 'pan-0.png' });
     expect(initial.status).toBe(200);
 
     const upload = (filename: string) =>
       request(app).post('/api/providers/me/kyc').set('Authorization', `Bearer ${token}`)
-        .send({ doc_type: 'pan', file: PNG_DATA_URL, filename });
+        .send({ doc_type: 'premises_photo_front', file: PNG_DATA_URL, filename });
 
     const [r1, r2] = await Promise.all([upload('pan-a.png'), upload('pan-b.png')]);
     expect(r1.status).toBe(200);
     expect(r2.status).toBe(200);
 
     const rows = await db.select().from(schema.kycDocuments)
-      .where(and(eq(schema.kycDocuments.providerId, providerId), eq(schema.kycDocuments.docType, 'pan')));
+      .where(and(eq(schema.kycDocuments.providerId, providerId), eq(schema.kycDocuments.docType, 'premises_photo_front')));
     expect(rows.length).toBe(1);
     expect(rows[0].status).toBe('pending');
     const survivingKey = rows[0].fileKey;
@@ -432,7 +432,7 @@ describe('provider KYC', () => {
       expect(before.body.kyc_status).toBe('verified');
 
       const reupload = await request(app).post('/api/providers/me/kyc').set('Authorization', `Bearer ${token}`)
-        .send({ doc_type: 'pan', file: PNG_DATA_URL, filename: 'pan-v2.png' });
+        .send({ doc_type: 'premises_photo_front', file: PNG_DATA_URL, filename: 'pan-v2.png' });
       expect(reupload.status).toBe(200);
       expect(reupload.body.document.status).toBe('pending');
 
@@ -477,7 +477,7 @@ describe('provider KYC', () => {
     it('deleting a docType the provider never uploaded is a no-op: 200, no deletePrivate call, other docs unaffected', async () => {
       const { token } = await onboardActiveProvider({ name: 'Kyc Never Uploaded', businessType: 'shop' });
       await request(app).post('/api/providers/me/kyc').set('Authorization', `Bearer ${token}`)
-        .send({ doc_type: 'pan', file: PNG_DATA_URL, filename: 'pan.png' });
+        .send({ doc_type: 'premises_photo_front', file: PNG_DATA_URL, filename: 'pan.png' });
 
       const deletePrivateMock = deletePrivate as unknown as ReturnType<typeof vi.fn>;
       const callsBefore = deletePrivateMock.mock.calls.length;
@@ -488,7 +488,7 @@ describe('provider KYC', () => {
       expect(deletePrivateMock.mock.calls.length).toBe(callsBefore);
 
       const list = await request(app).get('/api/providers/me/kyc').set('Authorization', `Bearer ${token}`);
-      const panDocs = list.body.documents.filter((d: any) => d.doc_type === 'pan');
+      const panDocs = list.body.documents.filter((d: any) => d.doc_type === 'premises_photo_front');
       expect(panDocs.length).toBe(1);
       expect(list.body.documents.find((d: any) => d.doc_type === 'aadhaar')).toBeUndefined();
     });
@@ -498,21 +498,21 @@ describe('provider KYC', () => {
     it('re-uploading an existing doc calls deletePrivate with the OLD fileKey, not the new one', async () => {
       const { token, providerId } = await onboardActiveProvider({ name: 'Kyc Old Key', businessType: 'shop' });
       await request(app).post('/api/providers/me/kyc').set('Authorization', `Bearer ${token}`)
-        .send({ doc_type: 'pan', file: PNG_DATA_URL, filename: 'pan-v1.png' });
+        .send({ doc_type: 'premises_photo_front', file: PNG_DATA_URL, filename: 'pan-v1.png' });
 
       const [rowBefore] = await db.select().from(schema.kycDocuments)
-        .where(and(eq(schema.kycDocuments.providerId, providerId), eq(schema.kycDocuments.docType, 'pan')));
+        .where(and(eq(schema.kycDocuments.providerId, providerId), eq(schema.kycDocuments.docType, 'premises_photo_front')));
       const oldKey = rowBefore.fileKey;
 
       const deletePrivateMock = deletePrivate as unknown as ReturnType<typeof vi.fn>;
       const callsBefore = deletePrivateMock.mock.calls.length;
 
       const reupload = await request(app).post('/api/providers/me/kyc').set('Authorization', `Bearer ${token}`)
-        .send({ doc_type: 'pan', file: PNG_DATA_URL, filename: 'pan-v2.png' });
+        .send({ doc_type: 'premises_photo_front', file: PNG_DATA_URL, filename: 'pan-v2.png' });
       expect(reupload.status).toBe(200);
 
       const [rowAfter] = await db.select().from(schema.kycDocuments)
-        .where(and(eq(schema.kycDocuments.providerId, providerId), eq(schema.kycDocuments.docType, 'pan')));
+        .where(and(eq(schema.kycDocuments.providerId, providerId), eq(schema.kycDocuments.docType, 'premises_photo_front')));
       const newKey = rowAfter.fileKey;
       expect(newKey).not.toBe(oldKey);
 

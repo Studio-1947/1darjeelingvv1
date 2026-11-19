@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { CircleNotch as Loader2 } from '@phosphor-icons/react';
 import { useAuth } from '@/context/AuthContext';
@@ -21,6 +21,24 @@ const STEPS = 4;
 const fresh = (): Draft => ({
   title: '', cover: '', date: '', nights: 2, days: [], seats: 4, stay: null, driver: null, adj: {}, extra: [], notes: '',
 });
+
+/**
+ * A signed-out visitor fills the whole planner (the prototype opens it to anyone) and is asked to
+ * log in only at Post. What they typed waits here for the trip to /login?next=/plan and back.
+ */
+const DRAFT_KEY = 'aangan-plan-draft';
+function readDraft(): { d: Draft; i: number } | null {
+  try {
+    const raw = sessionStorage.getItem(DRAFT_KEY);
+    if (!raw) return null;
+    const v = JSON.parse(raw);
+    if (!v || typeof v !== 'object' || !v.d || typeof v.d.title !== 'string') return null;
+    return { d: { ...fresh(), ...v.d }, i: Math.min(STEPS - 1, Math.max(0, Number(v.i) || 0)) };
+  } catch { return null; }
+}
+function keepDraft(d: Draft, i: number) {
+  try { sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ d, i })); } catch { /* private mode: they type it again */ }
+}
 
 type Opt = { label: string; sub: string };
 
@@ -146,9 +164,12 @@ function ListingPicker({ type, near, onPick }: { type: 'homestay' | 'driver'; ne
 export default function PlanTrip() {
   const { t, i18n } = useTranslation();
   const { user } = useAuth();
+  const navTo = useNavigate();
   useSeo({ title: t('plans.plan_trip', 'Plan a trip') });
-  const [i, setI] = useState(0);
-  const [d, setD] = useState<Draft>(fresh);
+  // A draft kept on the way to log in comes back where they left it (read here, cleared after mount).
+  const [i, setI] = useState(() => readDraft()?.i ?? 0);
+  const [d, setD] = useState<Draft>(() => readDraft()?.d ?? fresh());
+  useEffect(() => { try { sessionStorage.removeItem(DRAFT_KEY); } catch { /* nothing kept */ } }, []);
   const [err, setErr] = useState('');
   const [pick, setPick] = useState<{ day: number } | 'homestay' | 'driver' | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -164,7 +185,12 @@ export default function PlanTrip() {
 
   useEffect(() => { top.current?.focus(); window.scrollTo({ top: 0 }); }, [i, posted]);
 
-  if (!user) return <Navigate to={`/login?next=${encodeURIComponent('/plan')}`} replace />;
+  // Signed out, the plan is kept and they log in; back on /plan it opens at this step to post.
+  const toLogin = () => { keepDraft({ ...d, days }, i); navTo(`/login?next=${encodeURIComponent('/plan')}`); };
+  // Shown as the organiser in the preview until they log in.
+  const me = user
+    ? { id: user.id, name: user.name || t('plans.traveller', 'Traveller'), avatar: user.avatar ?? null }
+    : { id: 'you', name: t('plans.traveller', 'Traveller'), avatar: null };
 
   const setDay = (j: number, p: Partial<PlanDay>) => set({ days: days.map((x, k) => (k === j ? { ...x, ...p } : x)) });
   const go = (n: number) => { setErr(''); setPick(null); setI(n); };
@@ -193,6 +219,7 @@ export default function PlanTrip() {
   };
 
   const post = async () => {
+    if (!user) { toLogin(); return; }
     setPosting(true);
     setErr('');
     try {
@@ -246,7 +273,7 @@ export default function PlanTrip() {
       ) : (
         <Button variant="primary" onClick={post} disabled={posting} data-testid="plan-post"
           icon={posting ? <Loader2 className="animate-spin" /> : <Icon name="t_trip" />}>
-          {t('plans.post', 'Post the plan')}
+          {user ? t('plans.post', 'Post the plan') : t('plans.login_post', 'Log in and post')}
         </Button>
       )}
     </div>
@@ -294,6 +321,12 @@ export default function PlanTrip() {
                 <img src={d.cover} alt="" className="ag-plan-cover" />
                 <Button variant="text" size="sm" className="self-start" icon={<Icon name="close" />} onClick={() => set({ cover: '' })}>{t('plans.remove', 'Remove')}</Button>
               </div>
+            ) : !user ? (
+              // Photos upload to their account, so signed out this keeps the plan and asks them to log in.
+              <button type="button" className="ag-btn ag-plan-coverbtn cursor-pointer" onClick={toLogin} data-testid="plan-cover-login">
+                <Icon name="download" />
+                <span className="min-w-0 truncate">{t('plans.cover_login', 'Log in to add a cover photo.')}</span>
+              </button>
             ) : (
               <label className="ag-btn ag-plan-coverbtn cursor-pointer" data-testid="plan-cover">
                 {uploading ? <Loader2 className="animate-spin" /> : <Icon name="download" />}
@@ -397,11 +430,14 @@ export default function PlanTrip() {
             id: 'preview', title: d.title.trim(), cover: d.cover || null, stops: stops.map((place) => ({ place })), days: [],
             start_date: d.date || null, nights: d.nights, seats: d.seats, cost_per_person: c.total, notes: d.notes,
             visibility: 'public', created_at: '', updated_at: null,
-            organiser: { id: user.id, name: user.name || t('plans.traveller', 'Traveller'), avatar: user.avatar ?? null },
+            organiser: me,
             stay: d.stay, driver: d.driver, joined_count: 1, seats_left: d.seats - 1, full: d.seats <= 1,
-            members: [{ id: user.id, name: user.name || '', avatar: user.avatar ?? null }],
+            members: [{ id: me.id, name: user?.name || '', avatar: me.avatar }],
             viewer: { is_organiser: true, saved: false, join_status: null },
           }} />
+        )}
+        {i === 3 && !user && (
+          <p className="ag-small m-0" data-testid="plan-login-note">{t('plans.login_note', 'You will log in before the plan is posted. What you typed is kept.')}</p>
         )}
 
         <FieldError id="plan-err">{err}</FieldError>

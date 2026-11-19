@@ -167,7 +167,7 @@ export default function Support() {
             </p>
           </div>
           {err && <p data-testid="support-error" role="alert" className="ag-err !text-sm text-center m-0">{err}</p>}
-          <Button variant="text" className="self-center" onClick={browseAnonymously} data-testid="support-skip">{t('support.skip')}</Button>
+          <Button variant="text" className="self-center" onClick={browseAnonymously} data-testid="support-skip">{t('support.skip2', 'Not now')}</Button>
         </PassJoinCard>
 
         <SecHead title={t('member.forbiz', 'For businesses')} />

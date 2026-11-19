@@ -135,7 +135,7 @@ export default function Header() {
             <Icon name={mode === 'dark' ? 'sun' : 'moon'} />
           </button>
           <Link
-            to={user ? '/notifications' : `/login?next=${encodeURIComponent('/notifications')}`}
+            to="/notifications"
             className="ag-iconbtn"
             data-testid="header-notifications"
             aria-label={t('notes.title')}

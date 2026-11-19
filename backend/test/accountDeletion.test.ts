@@ -25,7 +25,7 @@ const PNG_DATA_URL =
 async function providerWithKyc(name: string) {
   const { token, providerId } = await onboardActiveProvider({ name });
 
-  for (const docType of ['aadhaar', 'pan']) {
+  for (const docType of ['aadhaar', 'property_photo_front']) {
     const up = await request(app)
       .post('/api/providers/me/kyc')
       .set('Authorization', `Bearer ${token}`)

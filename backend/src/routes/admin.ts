@@ -659,9 +659,11 @@ router.post('/admin/kyc/:id/review', authenticateToken, requireAdmin, async (req
   const kycStatus = await recomputeKycStatus(doc.providerId);
 
   // Tell the host (and any co-owners) straight away: what to fix, or that they are live.
-  if (decision === 'reject') {
-    const label = requirementsFor(before?.businessType ?? '').find((r) => r.docType === doc.docType)?.label ?? doc.docType.replace(/_/g, ' ');
-    await notifyHostVerification(doc.providerId, { kind: 'changes_requested', document: label, reason: reason || null });
+  // A document of a type no longer asked for (stored before the list was shortened) cannot be sent
+  // again, so rejecting it asks the host for nothing.
+  const requirement = requirementsFor(before?.businessType ?? '').find((r) => r.docType === doc.docType);
+  if (decision === 'reject' && requirement) {
+    await notifyHostVerification(doc.providerId, { kind: 'changes_requested', document: requirement.label, reason: reason || null });
   }
   // Becoming verified is announced by recomputeKycStatus, whatever step completed it.
 

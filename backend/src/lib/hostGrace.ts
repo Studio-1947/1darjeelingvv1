@@ -1,6 +1,6 @@
 import { and, count, eq } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
-import { HOST_GRACE_BOOKINGS, log } from '../config';
+import { FREE_HOST_TYPES, HOST_GRACE_BOOKINGS, log } from '../config';
 import { db, schema } from '../db';
 import { addHostNotification } from './inApp';
 import { isCompleted, todayInIndia } from './travellerDashboard';
@@ -52,6 +52,8 @@ export async function graceUsed(providerId: string, tx: Pick<typeof db, 'select'
 /** The host's grace, or null for a host who has paid (or is not active). */
 export async function graceStateFor(p: Provider | null | undefined): Promise<GraceState | null> {
   if (!p || !isOnGrace(p)) return null;
+  // Local shops list free: their free start never runs out.
+  if (p.businessType && FREE_HOST_TYPES.has(p.businessType)) return null;
   const used = await graceUsed(p.id);
   return { used, limit: HOST_GRACE_BOOKINGS, paused: used >= HOST_GRACE_BOOKINGS };
 }

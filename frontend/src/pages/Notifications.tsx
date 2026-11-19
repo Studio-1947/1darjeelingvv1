@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { noteText } from '@/lib/serverText';
 import { Checks, CircleNotch as Loader2 } from '@phosphor-icons/react';
 import { Icon } from '@/components/ag/Icon';
-import { Box, Button, MenuIcon, PageHead } from '@/components/ag';
+import { Box, Button, ButtonLink, MenuIcon, PageHead } from '@/components/ag';
 import { webLinkTarget } from '@/lib/notificationLink';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
@@ -19,7 +19,7 @@ type Note = { id: string; kind: string; title: string; body: string; ref_id: str
  */
 export default function Notifications() {
   const { t, i18n } = useTranslation();
-  const { user, isHostMode } = useAuth();
+  const { user, isHostMode, loading: authLoading } = useAuth();
   const nav = useNavigate();
   useSeo({ title: t('notes.title'), description: t('notes.title') });
   const [items, setItems] = useState<Note[] | null>(null);
@@ -29,7 +29,27 @@ export default function Notifications() {
   }, []);
   useEffect(() => { if (user) load(); }, [user, load]);
 
-  if (!user) return <Navigate to={`/login?next=${encodeURIComponent('/notifications')}`} replace />;
+  // Signed out: the prototype's empty box (V.notes with nothing yet), with a quiet way to log in.
+  if (!user) {
+    return (
+      <div className="ag-wrap">
+        <div className="ag-main">
+          <PageHead eyebrow={t('ui.notes.eyebrow', 'Updates')} title={t('notes.title')} />
+          {authLoading ? (
+            <p className="ag-small">{t('common.loading')}</p>
+          ) : (
+            <Box className="ag-account-empty" data-testid="notes-guest">
+              <Icon name="bell" />
+              <p>{t('ui.notes.none', 'No notifications yet.')}</p>
+              <ButtonLink to={`/login?next=${encodeURIComponent('/notifications')}`} variant="text" size="sm" data-testid="notes-login">
+                {t('nav.login', 'Log in')}
+              </ButtonLink>
+            </Box>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   const markAll = async () => {
     await api.post('/notifications/read-all').catch(() => {});

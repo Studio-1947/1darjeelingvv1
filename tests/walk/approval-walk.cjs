@@ -148,18 +148,11 @@ async function signedInPage(browser, token, mode, width) {
       if (await confirmBtn.count()) {
         await confirmBtn.click();
         await g.page.waitForTimeout(1200);
-        const fee = g.page.locator('[data-testid="booking-fee-modal"]');
-        line(type, (await fee.count()) > 0, 'no pass: guest is offered the ₹1 fee or the pass');
-        await snapG('fee-choice');
-        if (await fee.count()) {
-          await g.page.click('[data-testid="fee-pay-once"]');
-          await g.page.waitForTimeout(1000);
-          if (await g.page.locator('[data-testid="mock-payment-pay"]').count()) await g.page.click('[data-testid="mock-payment-pay"]');
-          await g.page.waitForTimeout(2500);
-        }
+        await g.page.waitForTimeout(1500);
+        line(type, (await g.page.locator('[data-testid="booking-fee-modal"]').count()) === 0, 'no pass: Confirm asks for no fee');
       }
       const done = (await j('GET', '/bookings/me', null, guestToken)).d.items.find((b) => b.id === booking.id);
-      line(type, done.status === 'confirmed', 'after the ₹1 fee the booking is confirmed', done.status);
+      line(type, done.status === 'confirmed', 'confirmed free, without the pass', done.status);
       await g.page.goto(`${WEB}/my-trips`, { waitUntil: 'networkidle' });
       await g.page.waitForTimeout(1200);
       await snapG('confirmed');

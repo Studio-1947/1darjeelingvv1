@@ -5,7 +5,7 @@ import { db, schema } from '../db';
 import { eq, and, ne, gte, desc, sql } from 'drizzle-orm';
 import { authenticateToken } from '../middleware/auth';
 import { rateLimiter } from '../middleware/rateLimiter';
-import { AMOUNTS, GST_RATE_PERCENT, PLATFORM_FEE_PERCENT, HOST_RENEWAL_WINDOW_DAYS, MOCK_PAYMENTS, rzpClient, RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, RAZORPAY_WEBHOOK_SECRET, IS_PROD, log } from '../config';
+import { AMOUNTS, FREE_HOST_TYPES, GST_RATE_PERCENT, PLATFORM_FEE_PERCENT, HOST_RENEWAL_WINDOW_DAYS, MOCK_PAYMENTS, rzpClient, RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, RAZORPAY_WEBHOOK_SECRET, IS_PROD, log } from '../config';
 import { computeSupportPassExpiry, isExemptFromSupport, isSupportActive } from '../lib/support';
 import { computeHostPlanExpiry, isHostPlanLive, isListingHostLapsed } from '../lib/hostPlan';
 import { serializeProvider } from '../lib/providerShape';
@@ -115,6 +115,9 @@ async function assertOwnsReference(
     if (flow === 'provider_registration' && provider.activatedAt && !provider.grace) {
       return { status: 409, detail: 'This business is already registered. Renew the plan instead.' };
     }
+    if (provider.businessType && FREE_HOST_TYPES.has(provider.businessType)) {
+      return { status: 409, detail: 'Local shops list free. There is nothing to pay.', code: 'free_listing' };
+    }
     if (flow === 'provider_registration' && provider.status === 'suspended') {
       return { status: 403, detail: 'This business is suspended. Contact support.' };
     }
@@ -154,17 +157,9 @@ async function assertOwnsReference(
     if (booking.status === 'cancelled') return { status: 409, detail: 'This booking was cancelled' };
     // Paying the fee confirms the booking, so a request still waiting for its host cannot be paid.
     if (await isAwaitingHost(booking)) return { status: 409, detail: AWAITING_HOST_DETAIL, code: 'awaiting_host' };
-    // A pass holder confirms free; charging them ₹1 as well would be taking money twice.
-    const [payer] = await db.select().from(schema.users).where(eq(schema.users.id, userId)).limit(1);
-    if (payer && (isExemptFromSupport(payer) || isSupportActive(payer))) {
-      return { status: 409, detail: 'Your aangan pass covers this booking. Confirm it for free.' };
-    }
-    const [listing] = await db.select({ providerId: schema.listings.providerId })
-      .from(schema.listings).where(eq(schema.listings.id, booking.listingId)).limit(1);
-    if (listing && (await isListingHostLapsed(listing.providerId))) {
-      return { status: 409, detail: 'This listing is not taking bookings right now' };
-    }
-    return null;
+    // Confirming is free for every traveller now; nobody pays this fee any more. The flow stays
+    // for refunds of fees paid before the change.
+    return { status: 409, detail: 'Confirming a booking is free. There is nothing to pay.', code: 'booking_free' };
   }
 
   if (flow === 'platform_support') {

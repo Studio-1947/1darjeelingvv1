@@ -138,7 +138,9 @@ export default function TouristDashboard() {
 
   const passOn = !!user && isSupportActive(user);
   const isHost = user?.role === 'provider';
-  const live = provider?.status === 'active';
+  // Live = travellers can find it: active and not waiting for the team's approval (same rule as
+  // the Business Dashboard and the public listing filter).
+  const live = provider?.status === 'active' && !provider?.approval_pending;
 
   const pal = PALETTES.find((p) => p.key === theme);
   const accent = accentOf(theme);

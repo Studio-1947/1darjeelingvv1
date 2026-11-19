@@ -105,14 +105,15 @@
     "eyebrow": "the invitation",
     "title": "Come into the aangan",
     "amount_line": "Homestays, rides, cafés and quiet corners, from people who actually live in the hills.",
-    "body": "Pay exactly what you see: GST is included, nothing is added on top. Without the pass, each booking has a ₹1 convenience fee + 18% GST + 2% platform fee (₹1.20).",
+    "body": "Pay exactly what you see: GST is included, nothing is added on top. The pass is optional: asking and confirming a booking are free without it.",
     "cta": "Take the pass · {{total}}",
     "reassurance": "Valid for one year. Nothing auto-charges.",
     "skip": "Not now, I will pay ₹1.20 per booking",
     "modal_title": "aangan pass",
     "modal_duration": "· valid for 1 year",
     "privacy_link": "privacy policy",
-    "error": "Payment could not be completed. Please try again."
+    "error": "Payment could not be completed. Please try again.",
+    "skip2": "Not now"
   },
   "donate": {
     "title": "Donate for good",
@@ -348,7 +349,7 @@
   },
   "provider": {
     "onboard_title": "List your business",
-    "onboard_sub": "Reach thousands of travellers. Go live free and pay after your first completed bookings: ₹499 a year for homestays and drivers, ₹99 a year for cafés, shops and guides, plus 18% GST and a 2% platform fee.",
+    "onboard_sub": "Reach thousands of travellers. Go live free and pay after your first completed bookings: ₹499 a year for homestays, drivers and guides, ₹99 a year for cafés, plus 18% GST and a 2% platform fee. Local shops list free.",
     "business_name": "Business name",
     "business_type": "Business type",
     "description": "Description",
@@ -451,13 +452,15 @@
     "nights_other": "{{count}} nights",
     "pick_dates_for_total": "Pick your dates to see the full amount.",
     "paid_to_host": "Paid directly to your host, the way you agree with them. aangan never takes a share of it.",
-    "cancel_note": "You can withdraw a request until the host says yes. After that, you ask the host to cancel. If you paid the ₹1.20 fee, it comes back to you when the booking is cancelled.",
+    "cancel_note": "You can withdraw a request until the host says yes. After that, you ask the host to cancel.",
     "confirmation_fee": "Booking confirmation fee",
     "payable_now": "Payable now",
     "fees_and_refunds": "Fees & refund policy",
     "guests_required": "At least one guest",
     "fee_note_pass": "Your aangan pass covers this booking. No fee, and your request goes with a verified badge.",
-    "route_required": "Pick where to start and where to go."
+    "route_required": "Pick where to start and where to go.",
+    "vsend": "Your request goes with a verified badge",
+    "vnudge": "Get verified for ₹1 a year and get more confirmations"
   },
   "responsible": {
     "title": "Responsible Tourism",
@@ -552,7 +555,20 @@
         "l": "Trail & waste upkeep",
         "v": "₹ 8"
       }
-    ]
+    ],
+    "intro": "Darjeeling is a fragile Himalayan place. Six promises keep it that way. Ask them of yourself and of anyone you travel with.",
+    "p1_b": "Say no to plastic.",
+    "p1_t": "Carry your own bottle, bag and cup.",
+    "p2_b": "Stay local.",
+    "p2_t": "Choose homestays. Your money reaches the family that hosts you.",
+    "p3_b": "Respect wildlife.",
+    "p3_t": "Do not feed or chase animals. Watch from far.",
+    "p4_b": "Save the tea gardens.",
+    "p4_t": "Walk on marked paths only.",
+    "p5_b": "Honour culture.",
+    "p5_t": "Ask before you photograph monasteries, rituals and people.",
+    "p6_b": "Keep it quiet.",
+    "p6_t": "Keep noise low. Quiet hours are 8 pm to 6 am."
   },
   "privacy": {
     "title": "Privacy Policy",
@@ -1441,7 +1457,7 @@
       "your_name": "Your name",
       "price_whole_any": "Price in whole rupees"
     },
-    "fee_chip": "₹499 / ₹99 a year + GST & fee",
+    "fee_chip": "₹499 / ₹99 a year + GST & fee · shops free",
     "list_business": "List Your Business",
     "get_started": "Get started by entering your basic business details.",
     "business_name": "Business Name",
@@ -1564,10 +1580,10 @@
       "suffix_cafe": "per person",
       "suffix_shop": "onwards",
       "fee_note_cafe": "Listing your café is free until your first completed bookings or delivered orders. After that it is ₹99 a year, plus 18% GST and a 2% platform fee, to keep taking bookings. You can also pay now.",
-      "fee_note_shop": "Listing your shop is free until your first completed bookings or delivered orders. After that it is ₹99 a year, plus 18% GST and a 2% platform fee, to keep taking bookings. You can also pay now."
+      "fee_note_shop": "Listing your shop is free, always. No yearly pass and no commission."
     },
     "gd": {
-      "fee_note": "Listing your guide profile is free until your first completed bookings. After that it is ₹99 a year, plus 18% GST and a 2% platform fee, to keep taking bookings. You can also pay now.",
+      "fee_note": "Listing your guide profile is free until your first completed bookings. After that it is ₹499 a year, plus 18% GST and a 2% platform fee, to keep taking bookings. You can also pay now.",
       "phone_ph": "e.g. 98765 43210",
       "phone_hint": "Leave it empty to use the number you signed in with.",
       "type_label": "Guide",
@@ -1698,7 +1714,11 @@
       "ch_nowS": "Pay the yearly charge now and go live today.",
       "ch_later": "Pay after {{count}} bookings",
       "ch_laterS": "List free now, pay after your first {{count}} bookings.",
-      "guests": "Guests"
+      "guests": "Guests",
+      "fee_big": "Homestays, drivers and guides: {{price}} a year",
+      "fee_cafe": "Cafes and restaurants: {{price}} a year",
+      "fee_shop": "Local shops: free",
+      "describe": "{{what}} in {{place}}, run by {{name}} and listed on aangan."
     }
   },
   "pay": {
@@ -1875,16 +1895,16 @@
         "p": "All amounts below are what you pay to the Platform. They are separate from, and additional to, whatever you pay the local business for the stay, ride or goods themselves.",
         "sub": [
           {
-            "h": "3.1 Traveller Pass  ₹1 for the first year, then ₹12 per year, GST included",
-            "p": "A payment gives a traveller account one year in which every booking confirms with no fee, and lets it save listings and leave reviews. Without the pass, booking requests are free to make and each booking is confirmed with a ₹1 convenience fee plus 18% GST and a 2% platform fee (₹1.20 in all), refunded if the booking is cancelled. It does not renew automatically; after it expires, you may buy another one-year pass."
+            "h": "3.1 Traveller Pass — ₹1 a year, GST included, optional",
+            "p": "The pass is optional. A payment gives a traveller account one year with a verified badge that hosts see on its booking requests. Asking for and confirming bookings are free with or without the pass. It does not renew automatically; after it expires, you may buy another one-year pass."
           },
           {
-            "h": "3.2 Bookings  free with the pass, ₹1.20 without",
-            "p": "Making a booking request is free. Confirming it is free with the Traveller Pass; without the pass there is a ₹1 convenience fee per booking plus 18% GST and a 2% platform fee (₹1.20 in all), refunded if the booking is cancelled. What you pay for the stay, ride or goods themselves is paid directly to the business."
+            "h": "3.2 Bookings — free for travellers",
+            "p": "Making a booking request is free, and confirming it is free. aangan charges travellers no booking fee, no GST add-on and no platform fee. What you pay for the stay, ride or goods themselves is paid directly to the business; aangan never receives it and takes no share."
           },
           {
-            "h": "3.3 Business Listing Plan  ₹499 a year for homestays and drivers, ₹99 a year for cafés, shops and guides, each plus 18% GST and a 2% platform fee; free until 2 completed bookings",
-            "p": "A new local business can list for free. Its documents are still checked and approved before its listing goes live. Once live, it takes bookings without paying until 2 bookings have been completed, meaning the guest's stay, ride or tour has taken place (for cafés and shops, until 2 bookings or home-delivery orders have been completed or delivered). After that, new bookings pause until the business pays for its first year (₹499 for a homestay or driver, ₹99 for a café, shop or guide, each plus 18% GST and a 2% platform fee): the listing stays visible, bookings already confirmed go ahead, and requests already received can still be accepted. The business may pay at any time during the free period, and its first year starts on the day it pays. Each year after that costs the same. The plan does not renew automatically: if a year ends without renewal, the business's listings are hidden from travellers and stop taking bookings until it renews. It is not a commission on bookings."
+            "h": "3.3 Business Listing Plan — ₹499 a year for homestays, drivers and guides, ₹99 a year for cafés, each plus 18% GST and a 2% platform fee; free until 2 completed bookings; local shops list free",
+            "p": "A new local business can list for free. Its documents are still checked and approved before its listing goes live. Once live, it takes bookings without paying until 2 bookings have been completed, meaning the guest's stay, ride or tour has taken place (for cafés, until 2 bookings or home-delivery orders have been completed or delivered). After that, new bookings pause until the business pays for its first year (₹499 for a homestay, driver or guide, ₹99 for a café, each plus 18% GST and a 2% platform fee): the listing stays visible, bookings already confirmed go ahead, and requests already received can still be accepted. The business may pay at any time during the free period, and its first year starts on the day it pays. Each year after that costs the same. The plan does not renew automatically: if a year ends without renewal, the business's listings are hidden from travellers and stop taking bookings until it renews. Local shops list free and pay nothing. It is not a commission on bookings."
           },
           {
             "h": "3.4 Donations  voluntary, ₹10 to ₹1,00,000",
@@ -1982,7 +2002,7 @@
         "p": "A booking can be cancelled at any time before it takes place, from your dashboard, by the business, or by our team.",
         "items": [
           "A booking still awaiting payment can simply be cancelled  nothing has been charged.",
-          "A confirmed booking can be cancelled by you, by the business, or by us. If you paid the ₹1.20 convenience fee to confirm it, that fee is refunded in full.",
+          "A confirmed booking can be cancelled by you, by the business, or by us. Confirming is free, so there is nothing to refund. A booking fee paid before 19 November 2026 is refunded in full if that booking is cancelled.",
           "If the business cancels on you, we will help you find an alternative wherever we can."
         ]
       },
@@ -1990,7 +2010,7 @@
         "h": "2. Automatic Refunds",
         "p": "Some refunds need no request at all  the Platform issues them itself:",
         "items": [
-          "The booking convenience fee (₹1 + 18% GST + 2% platform fee = ₹1.20): if the booking is cancelled, or loses its dates to another traveller who confirmed first, the fee is refunded in full automatically.",
+          "Booking fees: travellers pay none. A booking fee paid before 19 November 2026 (₹1.20) is refunded in full automatically if that booking is cancelled, or loses its dates to another traveller who confirmed first.",
           "Duplicate charges: if a technical fault charges you twice for one thing, the duplicate is refunded in full."
         ]
       },
@@ -1998,15 +2018,15 @@
         "h": "3. The Fees, One by One",
         "sub": [
           {
-            "h": "3.1 Bookings  free with the Traveller Pass, otherwise ₹1 + 18% GST + 2% platform fee (₹1.20)",
-            "p": "Asking a host to book is free. A booking is confirmed free with an active Traveller Pass; without one, confirming it costs a ₹1 convenience fee plus 18% GST and a 2% platform fee (₹1.20 in all). That fee is refunded in full if the booking is cancelled, by any party, before the stay, or if its dates go to another traveller who confirmed first."
+            "h": "3.1 Bookings — free for travellers",
+            "p": "Asking a host to book is free, and confirming a booking is free. You can cancel any time before the trip; there is nothing to refund because you paid aangan nothing. A booking fee paid before 19 November 2026 is refunded in full if that booking is cancelled, by any party, before the stay, or if its dates go to another traveller who confirmed first."
           },
           {
-            "h": "3.2 Traveller Pass  ₹1 for the first year, then ₹12 per year, GST included",
-            "p": "Refundable in full within 7 days of payment if you have not used it to confirm any booking. After 7 days, or once it has been used, it is not refundable  it has already delivered the access it pays for. It expires after one year and never renews automatically, so there is no recurring charge to cancel."
+            "h": "3.2 Traveller Pass — ₹1 a year, GST included, optional",
+            "p": "Refundable in full within 7 days of payment if you ask us. After 7 days it is not refundable; you can end it at any time from Membership, without a refund. It expires after one year and never renews automatically, so there is no recurring charge to cancel."
           },
           {
-            "h": "3.3 Business Listing Plan  ₹499 a year for homestays and drivers, ₹99 a year for cafés, shops and guides, each plus 18% GST and a 2% platform fee; free until 2 completed bookings",
+            "h": "3.3 Business Listing Plan — ₹499 a year for homestays, drivers and guides, ₹99 a year for cafés, each plus 18% GST and a 2% platform fee; free until 2 completed bookings; local shops list free",
             "p": "Listing is free until 2 of your bookings are completed (for cafés and shops, delivered home-delivery orders count too), so nothing is paid before then. If you pay while your listing is already live on the free start, that payment is not refundable, because the listing is already published. Otherwise, each payment is refundable in full within 7 days if your listing has not yet gone live that year. Once the listing is published and visible to travellers, that year's payment is not refundable. If we reject or remove your listing for a reason that is not a breach of our Terms, we refund the current year in full regardless of when. The plan never renews automatically."
           },
           {
@@ -2502,7 +2522,8 @@
     "host_accepted_note": "Accepted. Waiting for the guest to confirm.",
     "host_request_note": "Check you are free, then accept or decline.",
     "accept_failed": "Could not accept this request. Please try again.",
-    "step_confirm_pass": "You confirm it in My Trips. Free with your pass."
+    "step_confirm_pass": "You confirm it in My Trips. Free with your pass.",
+    "step_confirm_free": "You confirm it in My Trips. It is free."
   },
   "photoKind": {
     "label": "What this photo shows",
@@ -2701,7 +2722,8 @@
       "empty_hint": "Tap the heart on any place, homestay or driver to keep it here.",
       "guest": "Log in to keep the places you like here.",
       "filter": "Show saved",
-      "plans": "Trip plans"
+      "plans": "Trip plans",
+      "none": "Nothing saved yet. Tap Save on any place."
     },
     "myTrips": {
       "title": "My Trips & Bookings",
@@ -3220,7 +3242,8 @@
       "savedetails": "Save details"
     },
     "notes": {
-      "eyebrow": "Updates"
+      "eyebrow": "Updates",
+      "none": "No notifications yet."
     }
   },
   "planner": {
@@ -3385,7 +3408,7 @@
       "services": "Add at least one service with its charge"
     },
     "check": {
-      "description": "Add a description (60+ characters)",
+      "description": "Add a description (20+ characters)",
       "photos": "Add at least one photo",
       "price": "Set a starting price",
       "location_maps_link": "Verify your location with a Google Maps link",
@@ -3411,7 +3434,9 @@
       "tourism_registration": "Homestay / tourism registration certificate",
       "trade_license": "Shop & Establishment / trade licence",
       "vehicle_insurance": "Vehicle insurance",
-      "vehicle_rc": "Vehicle registration (RC)"
+      "vehicle_rc": "Vehicle registration (RC)",
+      "photo_id": "Aadhaar or any photo ID",
+      "driver_vehicle_photo": "Selfie with your vehicle"
     }
   },
   "host": {
@@ -3472,7 +3497,10 @@
     "people": "{{n}} people",
     "person1": "1 person",
     "per_year": "/yr",
-    "bookings_tab": "Bookings"
+    "bookings_tab": "Bookings",
+    "docs_s": "A photo of your ID and a photo of your place. That is all we need to check you.",
+    "shop_free": "Local shops list free",
+    "shop_free_s": "No yearly pass and no commission. Keep taking orders."
   },
   "listing": {
     "about": "About this",
@@ -3589,7 +3617,7 @@
     "i_host": "The traveller will be told your reason. Any fee they paid goes back to them.",
     "i_pre": "The host has not said yes yet, so your request is simply withdrawn. Nothing is charged.",
     "i_accepted": "Nothing is paid yet, so this cancels at once at no charge. The host will be told.",
-    "i_post": "The host has already kept this for you. They will be asked to accept the cancellation. Talk to them first if you can. If you paid the ₹1.20 fee, it comes back when they accept.",
+    "i_post": "The host has already kept this for you. They will be asked to accept the cancellation. Talk to them first if you can.",
     "do_decline": "Decline request",
     "do_send": "Send cancellation request",
     "pick": "Please choose a reason.",
@@ -3638,7 +3666,10 @@
     "accepted_s": "The aangan team will publish it on Offbeat Places once it is ready.",
     "rejected": "Not added",
     "show_all": "Show all ({{n}})",
-    "live": "Live on Offbeat Places. See it"
+    "live": "Live on Offbeat Places. See it",
+    "photos_login": "Log in to add photos",
+    "login_note": "You will log in before it is sent. What you typed is kept.",
+    "login_send": "Log in and send"
   },
   "plans": {
     "plan_trip": "Plan a trip",
@@ -3741,7 +3772,10 @@
     "accepted_s": "You are in. The organiser sees you on the trip, and any change to the plan shows here.",
     "report": "Report this plan",
     "tj_h": "Trips you joined",
-    "tj_my": "Trips you planned"
+    "tj_my": "Trips you planned",
+    "login_post": "Log in and post",
+    "cover_login": "Log in to add a cover photo.",
+    "login_note": "You will log in before the plan is posted. What you typed is kept."
   },
   "member": {
     "title": "Your membership",
@@ -3785,6 +3819,31 @@
     "biz_paid": "Your business pass is paid",
     "check_biz": "Check your business",
     "list_biz": "List your business",
-    "for_hosts": "For homestays, drivers, guides, cafes and shops."
+    "for_hosts": "For homestays, drivers, guides, cafes and shops.",
+    "why2": "Pay ₹1 a year to aangan and get a verified badge. Hosts and drivers see it on your booking requests, so they say yes faster.",
+    "vt3b": "Still no booking fees, ever",
+    "r_trav2": "Travellers",
+    "free": "Free",
+    "r_big2": "Homestays, drivers and guides",
+    "r_cafe": "Restaurants and cafes",
+    "r_shop": "Local shops",
+    "passS2": "aangan takes no commission on any booking. Homestays, drivers, guides and restaurants pay one small yearly pass instead. It is what lets aangan build and keep running for the hills.",
+    "passforhosts": "For homestays and drivers. Travellers never pay."
+  },
+  "pwa": {
+    "h": "Get the aangan app",
+    "s": "Install aangan on your phone. It opens from your home screen, loads fast, and works even when the signal is weak.",
+    "btn": "Install app",
+    "done": "Installed. Open aangan from your home screen.",
+    "inapp": "You are using the installed app.",
+    "size": "Under 1 MB to install. No app store needed.",
+    "ios": "On iPhone",
+    "ios1": "Open this page in Safari.",
+    "ios2": "Tap the Share button (the square with an arrow).",
+    "ios3": "Tap \"Add to Home Screen\", then Add.",
+    "and": "On Android",
+    "and1": "Open this page in Chrome.",
+    "and2": "Tap the three dots at the top right.",
+    "and3": "Tap \"Install app\" or \"Add to Home screen\"."
   }
 }

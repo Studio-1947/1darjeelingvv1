@@ -49,7 +49,7 @@ export default function MyTrips() {
     return <div className="ag-wrap"><div className="ag-main">{head}<p className="ag-small">{t('common.loading')}</p></div></div>;
   }
 
-  // Signed out: the prototype's empty box, asking them to log in.
+  // Signed out: the prototype's empty box (V.trips with no trips), with a quiet way to log in.
   if (!user) {
     return (
       <div className="ag-wrap">
@@ -57,8 +57,9 @@ export default function MyTrips() {
           {head}
           <Box className="ag-account-empty" data-testid="trips-guest">
             <Icon name="bag" />
-            <p>{t('ui.trips.guest', 'Log in to see your trips.')}</p>
-            <ButtonLink to="/login?next=/my-trips" go data-testid="trips-login">{t('nav.login')}</ButtonLink>
+            <p>{t('ui.trips.none', 'You have no trips yet.')}</p>
+            <ButtonLink to="/" go data-testid="trips-find-place">{t('ui.trips.find', 'Find a place')}</ButtonLink>
+            <ButtonLink to="/login?next=/my-trips" variant="text" size="sm" data-testid="trips-login">{t('nav.login', 'Log in')}</ButtonLink>
           </Box>
         </div>
       </div>

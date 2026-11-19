@@ -13,15 +13,7 @@ const richProfile: ProfileInput = {
 };
 
 /** Every document a shop has to have approved, in one list so the tests agree on it. */
-const SHOP_DOCS = [
-  'aadhaar',
-  'pan',
-  'owner_photo',
-  'trade_license',
-  'premises_photo_front',
-  'premises_photo_inside',
-  'premises_video',
-];
+const SHOP_DOCS = ['aadhaar', 'premises_photo_front'];
 
 describe('computeCompletion', () => {
   it('empty shop profile with no docs is 0% and kycStatus none', () => {
@@ -63,10 +55,31 @@ describe('computeCompletion', () => {
     expect(r.checklist.find(c => c.key === 'aadhaar')?.state).toBe('rejected');
   });
 
-  it('optional docs do not block 100%', () => {
-    const docs = SHOP_DOCS.map((docType) => ({ docType, status: 'approved' as const }));
-    const r = computeCompletion(richProfile, docs); // gst_certificate + fssai_license optional, absent
+  it('documents of a type no longer asked for neither help nor hold anything up', () => {
+    // A host who sent some of the old, longer list before it was shortened.
+    const legacy = [
+      { docType: 'pan', status: 'rejected' as const },
+      { docType: 'trade_license', status: 'pending' as const },
+    ];
+    const done = computeCompletion(richProfile, [...SHOP_DOCS.map((docType) => ({ docType, status: 'approved' as const })), ...legacy]);
+    expect(done.completionPercent).toBe(100);
+    expect(done.kycStatus).toBe('verified');
+    expect(done.checklist.some((c) => c.key === 'pan' || c.key === 'trade_license')).toBe(false);
+
+    const onlyLegacy = computeCompletion(richProfile, [{ docType: 'pan', status: 'approved' as const }]);
+    expect(onlyLegacy.completionPercent).toBe(40);
+    expect(onlyLegacy.kycStatus).not.toBe('verified');
+  });
+
+  it('a homestay is fully verified with just its photo ID and front photo approved (and its pin)', () => {
+    const home: ProfileInput = { ...richProfile, businessType: 'homestay', extras: { location_verification: { source: 'google_maps_link' } } };
+    const r = computeCompletion(home, [
+      { docType: 'aadhaar', status: 'approved' },
+      { docType: 'property_photo_front', status: 'approved' },
+    ]);
+    expect(r.kycStatus).toBe('verified');
     expect(r.completionPercent).toBe(100);
+    expect(r.checklist.filter((c) => c.kind === 'kyc').map((c) => c.key)).toEqual(['aadhaar', 'property_photo_front']);
   });
 
   it('marks photos and description done when present in extras or listings', () => {

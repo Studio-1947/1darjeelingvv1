@@ -70,7 +70,7 @@ describe('provider onboarding guards', () => {
     const first = await request(app)
       .post('/api/providers/onboard')
       .set('Authorization', `Bearer ${token}`)
-      .send(onboardPayload({ business_name: 'First Business' }));
+      .send(onboardPayload({ business_name: 'First Business', business_type: 'cafe' }));
     expect(first.status).toBe(200);
     expect(first.body.provider.status).toBe('pending_payment');
     const firstProviderId = first.body.provider.id;
@@ -78,7 +78,7 @@ describe('provider onboarding guards', () => {
     const second = await request(app)
       .post('/api/providers/onboard')
       .set('Authorization', `Bearer ${token}`)
-      .send(onboardPayload({ business_name: 'Resumed Business', description: 'Updated on resume' }));
+      .send(onboardPayload({ business_name: 'Resumed Business', description: 'Updated on resume', business_type: 'cafe' }));
     expect(second.status).toBe(200);
     expect(second.body.provider.id).toBe(firstProviderId);
     expect(second.body.provider.business_name).toBe('Resumed Business');

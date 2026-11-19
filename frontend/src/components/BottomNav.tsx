@@ -11,7 +11,8 @@ type Tab = { key: string; to: string; match: string[]; label: string; icon: Icon
  * Bottom tab bar (red /7), on every screen size, drawn with the prototype's own tab icons
  * (t_home, t_feed, t_trip, t_saved, t_me). Active = brand red; inactive = faint grey.
  * Traveller: Home, Feed, My trip, Saved, Account. Hosts: Home (dashboard), Feed, Bookings, Saved, Account.
- * Tabs match the routes they stand for, not where they send a signed-out visitor, so /login lights no tab.
+ * Signed out, My trip and Saved still open their screens (an empty box and a way to log in), as the
+ * prototype does, instead of the sign-in page.
  */
 export default function BottomNav() {
   const { t } = useTranslation();
@@ -23,8 +24,6 @@ export default function BottomNav() {
   const savedCount = useFavorites().ids.size;
   const [avatarError, setAvatarError] = useState(false);
   useEffect(() => { setAvatarError(false); }, [user?.avatar]);
-
-  const gate = (to: string) => (user ? to : `/login?next=${to}`);
 
   // Hosts keep the traveller's five tabs, as in the prototype; My trip becomes Bookings and Home is
   // the business dashboard. My listings is reached from the dashboard's "Your listings · See all".
@@ -39,8 +38,8 @@ export default function BottomNav() {
     : [
         { key: 'home', to: '/', match: ['/'], label: t('nav.home'), icon: 't_home' },
         { key: 'feed', to: '/feed', match: ['/feed'], label: t('nav.feed_tab'), icon: 't_feed' },
-        { key: 'trips', to: gate('/my-trips'), match: ['/my-trips'], label: t('nav.trips'), icon: 't_trip' },
-        { key: 'saved', to: gate('/saved'), match: ['/saved'], label: t('nav.saved'), icon: 't_saved', badge: savedCount },
+        { key: 'trips', to: '/my-trips', match: ['/my-trips'], label: t('nav.trips'), icon: 't_trip' },
+        { key: 'saved', to: '/saved', match: ['/saved'], label: t('nav.saved'), icon: 't_saved', badge: savedCount },
         { key: 'account', to: '/dashboard', match: ['/dashboard'], label: t('nav.account'), icon: 't_me' },
       ];
 
