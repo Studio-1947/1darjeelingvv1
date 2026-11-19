@@ -24,13 +24,16 @@ function isSupportedImage(file: File): boolean {
  * Read a file into a data URL and push it to the listings upload endpoint.
  * Rejects with a display-ready message string so callers can show it as-is.
  */
+/** Why this file cannot be uploaded, or '' when it can. Lets a form refuse it before any upload. */
+export function imageProblem(file: File): string {
+  if (!isSupportedImage(file)) return UNSUPPORTED_IMAGE_MESSAGE;
+  if (file.size > MAX_UPLOAD_BYTES) return 'Image is larger than 20 MB. Please choose a smaller photo.';
+  return '';
+}
+
 export async function uploadImage(file: File): Promise<string> {
-  if (!isSupportedImage(file)) {
-    throw UNSUPPORTED_IMAGE_MESSAGE;
-  }
-  if (file.size > MAX_UPLOAD_BYTES) {
-    throw 'Image is larger than 20 MB. Please choose a smaller photo.';
-  }
+  const problem = imageProblem(file);
+  if (problem) throw problem;
   const dataUrl = await new Promise<string | ArrayBuffer | null>((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result);

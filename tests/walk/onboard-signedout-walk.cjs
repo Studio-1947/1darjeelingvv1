@@ -1,0 +1,75 @@
+// Run against the local stack like the other walks (MESSAGING_PROVIDER=mock, MOCK_PAYMENTS=true, website on
+// 127.0.0.1:3100). Usage: PLAYWRIGHT=<path to playwright> node tests/walk/onboard-signedout-walk.cjs [outdir]
+// The prototype flow: List your business opens the wizard signed out; "Put it live" asks to log in once,
+// comes back to the review step, and the listing goes up with the photo picked before sign-in.
+const { chromium } = require(process.env.PLAYWRIGHT);
+const fs = require('fs');
+const path = require('path');
+const WEB = process.env.WEB || 'http://127.0.0.1:3100';
+const OUT = path.resolve(process.argv[2] || 'onboard-signedout-out');
+fs.mkdirSync(OUT, { recursive: true });
+const IMG = path.resolve(__dirname, '../../frontend/public/media/list-business.jpg');
+const shot = (p, n) => p.screenshot({ path: path.join(OUT, `${n}.png`) });
+const fails = [];
+const ok = (c, m) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (!c) fails.push(m); };
+(async () => {
+  const b = await chromium.launch({ executablePath: process.env.CHROME_EXE });
+  const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, userAgent: 'Mozilla/5.0 Chrome/140' });
+  await ctx.addInitScript(() => sessionStorage.setItem('aangan-splash-seen', '1'));
+  const p = await ctx.newPage(); const errs = [];
+  p.on('pageerror', (e) => errs.push(e.message));
+  const step = async (k) => p.locator(`[data-testid=wz-step-${k}]`).waitFor({ timeout: 20000 }).then(() => true, () => false);
+
+  await p.goto(WEB + '/provider/onboard', { waitUntil: 'networkidle' });
+  ok(await step('type'), 'signed out: wizard opens on the type step (no login first) ' + new URL(p.url()).pathname);
+  await shot(p, '1-type');
+  await p.click('[data-testid=wz-type-homestay]'); await p.click('[data-testid=wz-next]');
+  ok(await step('place'), 'place step');
+  await p.click('[data-testid="wz-place-Darjeeling"]'); await p.click('[data-testid=wz-next]');
+  ok(await step('name'), 'name step');
+  const nm = 'Signedout Stay ' + String(Date.now()).slice(-5);
+  const digits = '87' + String(Date.now()).slice(-8);
+  await p.fill('[data-testid=wz-name]', nm); await p.fill('[data-testid=onboard-phone]', digits);
+  await p.click('[data-testid=wz-next]');
+  ok(await step('price'), 'price step');
+  await p.click('[data-testid=wz-next]');
+  ok(await step('extras'), 'extras step');
+  await p.setInputFiles('[data-testid=wz-photos]', IMG);
+  await p.waitForTimeout(500);
+  const src = await p.evaluate(() => document.querySelector('.ag-onboard-photos [style*="background-image"]')?.getAttribute('style') || '');
+  ok(/blob:/.test(src), 'photo picked signed out is shown from the page (blob:)');
+  await shot(p, '2-extras');
+  await p.click('[data-testid=wz-next]');
+  ok(await step('review'), 'review step');
+  await shot(p, '3-review');
+  await p.click('[data-testid=onboard-submit]');
+  await p.locator('[data-testid=login-name]').waitFor({ timeout: 15000 });
+  const lu = new URL(p.url());
+  ok(lu.pathname === '/login' && (lu.searchParams.get('next') || '').startsWith('/provider/onboard') && lu.searchParams.get('role') === 'provider', 'Put it live asks to log in: ' + lu.pathname + lu.search);
+  await shot(p, '4-login');
+  await p.fill('[data-testid=login-name]', 'Pema Host');
+  await p.click('[data-testid=login-wa]');
+  await p.fill('[data-testid=login-phone]', digits);
+  const sent = p.waitForResponse((r) => r.url().includes('/auth/otp/send'));
+  await p.click('[data-testid=login-send-otp]');
+  const otp = (await (await sent).json()).mock_otp;
+  await p.fill('[data-testid=login-otp]', otp);
+  await p.click('[data-testid=login-verify]');
+  ok(await step('review'), 'after sign-in: straight back to the review step ' + new URL(p.url()).pathname + new URL(p.url()).search);
+  const src2 = await p.evaluate(() => document.querySelector('.ag-onboard-review [style*="background-image"], [data-testid=wz-step-review] [style*="background-image"]')?.getAttribute('style') || '');
+  ok(/blob:/.test(src2), 'photo still there after sign-in');
+  await shot(p, '5-back');
+  await p.click('[data-testid=onboard-submit]');
+  ok(await p.locator('[data-testid=wz-done]').waitFor({ timeout: 30000 }).then(() => true, () => false), 'listing goes up (done screen)');
+  await shot(p, '6-done');
+  const me = await p.evaluate(async () => { const h = { Authorization: 'Bearer ' + localStorage.getItem('token') }; const u = await (await fetch('/api/auth/me', { headers: h })).json(); const pr = await (await fetch('/api/providers/me', { headers: h })).json(); return { u: u.user || u, pr }; });
+  const pv = me.pr.provider || me.pr;
+  ok(me.u.role === 'provider', 'account is a host now: role=' + me.u.role);
+  ok(pv.business_name === nm, 'business name saved: ' + pv.business_name);
+  const imgs = JSON.stringify([pv.images, pv.extras && pv.extras.images]);
+  ok(/(\/uploads\/|https?:)/.test(imgs) && !/blob:/.test(imgs), 'photo uploaded at Put it live: ' + imgs.slice(0, 160));
+  ok(!errs.length, 'no page errors ' + errs.join(' | '));
+  console.log(fails.length ? `${fails.length} PROBLEMS` : 'SIGNED-OUT ONBOARDING WORKS');
+  await b.close();
+  process.exitCode = fails.length ? 1 : 0;
+})();

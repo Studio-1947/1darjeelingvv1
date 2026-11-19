@@ -3114,7 +3114,17 @@
       "or": "OR",
       "country_code": "Country calling code",
       "who": "How will you use aangan?",
-      "lead": "No password needed. We send a one-time code to your phone."
+      "lead": "No password needed. We send a one-time code to your phone.",
+      "nameq": "What should we call you?",
+      "nameonly": "No password needed. Just tell us your name.",
+      "name": "Your name",
+      "wa": "Continue with WhatsApp",
+      "gg": "Continue with Google",
+      "badname": "Please write your name.",
+      "waq": "Your WhatsApp number",
+      "wa_lead": "We send a one-time code to this number.",
+      "change_name": "Change name",
+      "codeq": "Enter the code"
     },
     "footer": {
       "by_studio": "By {{name}}",

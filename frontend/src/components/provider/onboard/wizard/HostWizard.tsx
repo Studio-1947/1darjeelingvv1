@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import api from '@/lib/api';
 import { rupees, useHostPlanPrice } from '@/lib/prices';
-import { SUPPORTED_IMAGE_ACCEPT, uploadImage } from '@/lib/uploadImage';
+import { SUPPORTED_IMAGE_ACCEPT } from '@/lib/uploadImage';
 import { distanceTo } from '@/lib/places';
 import { isValidPhone } from '@/lib/hostFormChecks';
 import { Box, Button, ButtonLink, FieldError, IconButton, StepBar, TextField } from '@/components/ag';
@@ -262,14 +262,14 @@ function PriceStep({ w }: { w: HostWizard }) {
 
 /* ---------- 4b. Your menu (cafe, shop) ---------- */
 function MenuStep({ w }: { w: HostWizard }) {
-  const { t, d, set, setErr } = w;
+  const { t, d, set, setErr, photoUrl } = w;
   const [upAt, setUpAt] = useState<number | null>(null);
   const quick = QUICK_DISHES.filter((q) => !d.menu.some((m) => m.name === q));
   const setDish = (k: number, patch: Partial<{ name: string; price: string; photo: string }>) => set({ menu: d.menu.map((m, j) => (j === k ? { ...m, ...patch } : m)) });
   const photo = async (k: number, f?: File) => {
     if (!f) return;
     setUpAt(k);
-    try { setDish(k, { photo: await uploadImage(f) }); } catch (e) { setErr(typeof e === 'string' ? e : t('kyc.uploadFailed')); } finally { setUpAt(null); }
+    try { setDish(k, { photo: await photoUrl(f) }); } catch (e) { setErr(typeof e === 'string' ? e : t('kyc.uploadFailed')); } finally { setUpAt(null); }
   };
   return (
     <Frame w={w} title={t('ob.wz.mn_h')} sub={t('ob.wz.mn_s')}>
