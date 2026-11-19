@@ -20,17 +20,17 @@ async function signIn(phone, name, role) {
 const PUBLIC = ['/', '/explore', '/spots', '/homestays', '/drivers', '/guides', '/shops', '/cafes', '/events', '/biodiversity',
   '/search', '/search?q=momo', '/feed', '/login', '/about', '/privacy', '/terms', '/refunds', '/contact', '/responsible',
   '/policies', '/delete-account', '/provider/onboard'];
-const TRAVELLER = ['/dashboard', '/my-trips', '/saved', '/profile/edit', '/profile/edit?setup=1', '/support', '/explore', '/feed'];
+const TRAVELLER = ['/dashboard', '/dashboard?s=tdash', '/my-trips', '/saved', '/profile/edit', '/profile/edit?setup=1', '/support', '/explore', '/feed'];
 const HOST = ['/provider/dashboard', '/my-listings', '/provider/profile', '/feed', '/profile/edit'];
 
 // What each role must be able to reach on a phone, and where: [page, selector, label].
 const MUST_REACH = {
   traveller: [
-    ['/dashboard', '[data-testid=account-sign-out]', 'Log out'],
-    ['/dashboard', '[data-testid=dashboard-saved]', 'Saved places'],
+    ['/profile/edit', '[data-testid=account-sign-out]', 'Log out'],
+    ['/dashboard?s=tdash', '[data-testid=dashboard-saved]', 'Saved places'],
     ['/dashboard', '[data-testid=account-edit-profile]', 'Edit profile'],
     ['/dashboard', '[data-testid=account-switch-business]', 'Switch to Business / list a business'],
-    ['/dashboard', '[data-testid=panel-feedback]', 'Feedback for aangan'],
+    ['/dashboard?s=tdash', '[data-testid=panel-feedback]', 'Feedback for aangan'],
     ['/', '[data-testid=bottom-nav-trips]', 'My Trips tab'],
     ['/', '[data-testid=bottom-nav-saved]', 'Saved tab'],
     ['/', '[data-testid=bottom-nav-feed]', 'Feed tab'],
@@ -144,7 +144,7 @@ const IGNORE_CONSOLE = [/Download the React DevTools/, /\[vite\]/, /favicon/, /s
     const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
     await ctx.addInitScript((token) => { if (!sessionStorage.getItem('done')) { localStorage.setItem('token', token); sessionStorage.setItem('done', '1'); } }, traveller.token);
     const page = await ctx.newPage();
-    await page.goto(BASE + '/dashboard');
+    await page.goto(BASE + '/profile/edit');
     await page.waitForTimeout(1500);
     await page.locator('[data-testid=account-sign-out]').click();
     await page.waitForTimeout(1200);

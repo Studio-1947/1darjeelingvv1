@@ -2135,7 +2135,8 @@
       "traveller_type": "ভ্রমণকারীর ধরন",
       "food_preference": "খাবারের পছন্দ",
       "save": "প্রোফাইল সেভ করুন",
-      "skip": "এখন থাক"
+      "skip": "এখন থাক",
+      "more": "আপনার সম্পর্কে আরও"
     },
     "travellerProfile": {
       "gender": {
@@ -2793,7 +2794,10 @@
       "friends": "যোগ দেওয়া বন্ধু",
       "seetrips": "আমার যাত্রা দেখুন",
       "sharefriend": "এমন বন্ধুকে পাঠান যে হোমস্টে বা কফি শপ চালায়, ট্যুরিস্ট গাইড, বা স্থানীয়ভাবে ঘুরতে ভালোবাসে",
-      "yourdetails": "আপনার তথ্য"
+      "yourdetails": "আপনার তথ্য",
+      "signed_wa": "লগ ইন: WhatsApp",
+      "signed_gg": "লগ ইন: Google",
+      "savedetails": "তথ্য সেভ করুন"
     },
     "notes": {
       "eyebrow": "আপডেট"
