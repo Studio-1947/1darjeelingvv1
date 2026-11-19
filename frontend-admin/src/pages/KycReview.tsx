@@ -30,7 +30,7 @@ const PAGE_SIZE = 20;
 // The API baseURL already ends in `/api`, but `file_url` from the backend is
 // itself a relative path rooted at `/api` (e.g. `/api/providers/kyc/:id/file`).
 // Strip the trailing `/api` from the configured base so we don't double it up.
-const API_ORIGIN = (import.meta.env.VITE_API_URL || 'http://localhost:8000/api').replace(/\/api$/, '');
+const API_ORIGIN = (import.meta.env.VITE_API_URL || '/api').replace(/\/api$/, '');
 
 // How long an object URL is kept alive after being opened in a new tab, so the
 // tab has time to load the blob before we release the memory it points to.
@@ -206,9 +206,15 @@ export default function KycReview() {
   // Returns the fetched page (or null on failure) so callers that need to react to what came
   // back  e.g. `review()` deciding whether the current page just became empty  don't have to
   // read `docs`/`total` state right after calling this, which wouldn't yet reflect the update.
+  // Reloads "Hosts not live yet" whenever the queue reloads; the last decision, said back.
+  const [hostsTick, setHostsTick] = useState(0);
+  const [done, setDone] = useState('');
+  useEffect(() => { if (!done) return undefined; const id = setTimeout(() => setDone(''), 5000); return () => clearTimeout(id); }, [done]);
+
   const load = useCallback(async (): Promise<{ documents: AdminKycDoc[]; total: number } | null> => {
     setLoading(true);
     setLoadError('');
+    setHostsTick((n) => n + 1);
     try {
       const params: Record<string, string | number> = { limit: PAGE_SIZE, offset };
       if (statusFilter !== 'all') params.status = statusFilter;
@@ -255,6 +261,7 @@ export default function KycReview() {
     setBusy(doc.id);
     try {
       await api.post(`/admin/kyc/${doc.id}/review`, { decision, reason });
+      setDone(`${decision === 'approve' ? 'Approved' : 'Rejected'}: ${doc.doc_type?.replace(/_/g, ' ') || 'document'}${doc.business_name ? ` for ${doc.business_name}` : ''}.`);
       const result = await load();
       // Reviewing the only remaining item on a non-first page (e.g. approving the last pending
       // doc while filtered to "Pending") moves it out of the current filter, leaving `offset`
@@ -373,7 +380,10 @@ export default function KycReview() {
       </div>
 
       {/* Per host: what is holding each one up (documents are only part of going live). */}
-      <HostsWaiting />
+      {done && (
+        <p role="status" data-testid="kyc-done" className="mb-4 rounded-xl border border-[var(--line)] bg-mist px-4 py-2 text-sm font-bold text-ink">{done}</p>
+      )}
+      <HostsWaiting refreshKey={hostsTick} />
 
       {/* Status filter */}
       <div className="flex flex-wrap items-center gap-2 mb-6" role="tablist" aria-label="Filter by status">

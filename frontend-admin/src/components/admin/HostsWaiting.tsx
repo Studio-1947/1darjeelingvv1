@@ -54,7 +54,8 @@ function waLink(h: WaitingHost): string | null {
  * every document approved could still be invisible (missing photos, no location check) and nothing
  * on this page said why.
  */
-export default function HostsWaiting() {
+/** `refreshKey` changes whenever the page around it reloads (Refresh, a document decided), so this list follows. */
+export default function HostsWaiting({ refreshKey = 0 }: { refreshKey?: number }) {
   const [hosts, setHosts] = useState<WaitingHost[]>([]);
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
@@ -74,7 +75,7 @@ export default function HostsWaiting() {
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load(); }, [load, refreshKey]);
 
   // The team's turn first, then the hosts who need a nudge.
   const sorted = [...hosts].sort((a, b) => Number(STEPS[b.next_step]?.team) - Number(STEPS[a.next_step]?.team));

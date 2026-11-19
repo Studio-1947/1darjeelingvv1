@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, Link, useLocation, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import Admin from '@/pages/Admin';
 import AdminLogin from '@/pages/AdminLogin';
@@ -21,8 +21,9 @@ const NAV_LINKS = [
 ];
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
+  const { user, loading, logout } = useAuth();
   const location = useLocation();
+  const nav = useNavigate();
 
   if (loading) {
     return <div className="p-16 text-center text-ink-soft">Loading...</div>;
@@ -47,6 +48,11 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
               {link.label}
             </Link>
           ))}
+          {/* Signing out from any screen, not only the dashboard. */}
+          <button type="button" onClick={() => { logout(); nav('/login'); }} data-testid="nav-logout"
+            className="ml-auto text-sm font-bold whitespace-nowrap text-ink-soft hover:text-flag">
+            Log out
+          </button>
         </div>
       </nav>
       {children}

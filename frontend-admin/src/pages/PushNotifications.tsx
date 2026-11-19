@@ -379,11 +379,12 @@ export default function PushNotifications() {
               <div className="flex flex-wrap items-center gap-3">
                 <button
                   type="button" disabled={problems.length > 0 || reachLoading}
-                  onClick={() => (audience === 'person' ? send() : setConfirming(true))}
+                  // One person or a crowd, a sent message cannot be taken back: always review first.
+                  onClick={() => setConfirming(true)}
                   className="inline-flex items-center gap-2 min-h-[48px] px-6 rounded-xl bg-[#1F6656] text-white text-sm font-bold btn-hover disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
                   data-testid="push-review"
                 >
-                  {audience === 'person' ? <>{sending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />} Send</> : <>Review and send <ChevronRight size={16} /></>}
+                  <>Review and send <ChevronRight size={16} /></>
                 </button>
                 {problems.length > 0 && <span className="text-xs text-ink-soft">{problems[0]}</span>}
               </div>

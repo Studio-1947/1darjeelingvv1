@@ -16,6 +16,8 @@ import { notifyHostVerification } from '../lib/notifications';
 import { deleteListingsOwnedBy, deleteKycFilesOwnedBy } from '../lib/accountCleanup';
 import { listUnreturnedPayments, refundPayment } from '../lib/refunds';
 import { routeParam } from '../lib/routeParam';
+import { hostPlanVisibility } from '../lib/hostPlan';
+import { publicSpotVisibility } from '../lib/spots';
 
 const router = Router();
 
@@ -107,6 +109,8 @@ router.post('/admin/seed', authenticateToken, requireAdmin, async (req: Request,
  *                 listings: { type: integer }
  *                 bookings: { type: integer }
  *                 payments: { type: integer, description: "Count of payments with status=paid" }
+ *                 active_services: { type: integer, description: "Business listings (homestay, driver, guide, cafe, shop) travellers can see now" }
+ *                 paid_bookings: { type: integer, description: "Paid booking fees (flow booking_commission)" }
  *       403:
  *         description: Not an admin
  *         content:
@@ -120,6 +124,13 @@ router.get('/admin/stats', authenticateToken, requireAdmin, async (req: Request,
   const listingsCount = await db.select({ value: count() }).from(schema.listings);
   const bookingsCount = await db.select({ value: count() }).from(schema.bookings);
   const paymentsCount = await db.select({ value: count() }).from(schema.payments).where(eq(schema.payments.status, 'paid'));
+  // What travellers can book right now: the same visibility GET /listings applies, business kinds only.
+  const activeServices = await db.select({ value: count() }).from(schema.listings).where(and(
+    publicSpotVisibility(), hostPlanVisibility(),
+    inArray(schema.listings.type, ['homestay', 'driver', 'guide', 'cafe', 'shop']),
+  ));
+  const paidBookings = await db.select({ value: count() }).from(schema.payments)
+    .where(and(eq(schema.payments.status, 'paid'), eq(schema.payments.flow, 'booking_commission')));
   const nowIso = new Date().toISOString();
   const passCount = await db.select({ value: count() }).from(schema.users).where(gt(schema.users.supportExpiresAt, nowIso));
   const appFeedbackOpen = await db.select({ value: count() }).from(schema.appFeedback).where(eq(schema.appFeedback.status, 'open'));
@@ -134,6 +145,8 @@ router.get('/admin/stats', authenticateToken, requireAdmin, async (req: Request,
     listings: listingsCount[0]?.value || 0,
     bookings: bookingsCount[0]?.value || 0,
     payments: paymentsCount[0]?.value || 0,
+    active_services: activeServices[0]?.value || 0,
+    paid_bookings: paidBookings[0]?.value || 0,
     active_passes: passCount[0]?.value || 0,
     open_feedback: (appFeedbackOpen[0]?.value || 0) + (hostFeedbackOpen[0]?.value || 0),
     post_comments: commentsCount[0]?.value || 0,

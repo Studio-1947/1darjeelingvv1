@@ -1,7 +1,8 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000/api',
+  // Same-site /api by default: the dev server proxies it, production sets VITE_API_URL=/api.
+  baseURL: import.meta.env.VITE_API_URL || '/api',
 });
 
 // Auto attach Authorization header if token exists
