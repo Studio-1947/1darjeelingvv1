@@ -205,3 +205,43 @@ describe('support gate on tourist creates', () => {
     expect(res.status).toBe(200);
   });
 });
+
+describe('membership card and ending it', () => {
+  it('shows a member since date, what was paid and a stable member ID', async () => {
+    const { token, user } = await registerUser({ name: 'Card Holder', paySupport: false });
+    const none = await request(app).get('/api/payments/membership').set('Authorization', `Bearer ${token}`);
+    expect(none.status).toBe(200);
+    expect(none.body).toMatchObject({ active: false, since: null, paid: null });
+
+    const { completeRes } = await paySupport(token, user.id);
+    expect(completeRes.status).toBe(200);
+    const res = await request(app).get('/api/payments/membership').set('Authorization', `Bearer ${token}`);
+    expect(res.body.active).toBe(true);
+    expect(res.body.paid).toBe(100);
+    expect(typeof res.body.since).toBe('string');
+    expect(res.body.member_id).toMatch(/^AG-\d{2}-[0-9A-F]{5}$/);
+    const again = await request(app).get('/api/payments/membership').set('Authorization', `Bearer ${token}`);
+    expect(again.body.member_id).toBe(res.body.member_id);
+  });
+
+  it('ends the pass now, and the next pass is the yearly price', async () => {
+    const { token, user } = await registerUser({ name: 'Leaver', paySupport: false });
+    await paySupport(token, user.id);
+    expect(Date.parse((await me(token)).supportExpiresAt)).toBeGreaterThan(Date.now());
+
+    const end = await request(app).post('/api/payments/membership/end').set('Authorization', `Bearer ${token}`);
+    expect(end.status).toBe(200);
+    expect(Date.parse((await me(token)).supportExpiresAt)).toBeLessThanOrEqual(Date.now());
+    const card = await request(app).get('/api/payments/membership').set('Authorization', `Bearer ${token}`);
+    expect(card.body.active).toBe(false);
+
+    const order = await request(app).post('/api/payments/order').set('Authorization', `Bearer ${token}`)
+      .send({ flow: 'platform_support', reference_id: user.id });
+    expect(order.body.amount).toBe(1200);
+  });
+
+  it('needs a signed-in user', async () => {
+    expect((await request(app).get('/api/payments/membership')).status).toBe(401);
+    expect((await request(app).post('/api/payments/membership/end')).status).toBe(401);
+  });
+});

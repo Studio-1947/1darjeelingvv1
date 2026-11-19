@@ -2,41 +2,26 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation, Navigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Check } from '@phosphor-icons/react';
-import { Box, Button, PageHead } from '@/components/ag';
+import { Button, PageHead, SecHead } from '@/components/ag';
 import { useAuth } from '@/context/AuthContext';
 import { createPaymentOrder, completeMockPayment, payWithRazorpay } from '@/lib/api';
-import { needsSupport, isSupportActive } from '@/lib/support';
+import { needsSupport } from '@/lib/support';
 import MockPaymentModal from '@/components/MockPaymentModal';
 import PriceBreakup from '@/components/PriceBreakup';
 import { rupees, usePassPrice } from '@/lib/prices';
-import PassOffer from '@/components/PassOffer';
+import { BusinessPassCard, MemberCard, PassJoinCard } from '@/components/Membership';
 import { useSeo } from '@/components/Seo';
 
-/** The pass holder's card: member number, until when, what it covers (prototype "Membership"). */
-function MembershipCard({ user }: { user: any }) {
-  const { t, i18n } = useTranslation();
-  const active = isSupportActive(user);
-  const until = active ? new Date(user.supportExpiresAt).toLocaleDateString(i18n.language, { day: 'numeric', month: 'short', year: 'numeric' }) : '';
-  const memberId = 'AG-' + String(user.id || '').replace(/-/g, '').slice(0, 8).toUpperCase();
+/** A pass holder (or a host whose plan includes it): the membership card, then For businesses. */
+function MembershipScreen() {
+  const { t } = useTranslation();
   return (
     <div className="ag-wrap">
       <div className="ag-main" data-testid="membership-screen">
-        <PageHead eyebrow={t('ui.account.eyebrow', 'Your account')} title={t('member.title', 'Your membership')} />
-        <Box>
-          <span className="ag-eyebrow">{t('pass_card.title')}</span>
-          <p className="text-[28px] leading-[34px] font-medium text-[var(--r)] m-0" data-testid="membership-status">
-            {active ? t('member.active', 'Active') : t('member.included', 'Included with your business plan')}
-          </p>
-          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm m-0">
-            <dt className="ag-small">{t('member.id', 'Member ID')}</dt><dd className="m-0 font-medium" data-testid="membership-id">{memberId}</dd>
-            {active && (<><dt className="ag-small">{t('member.valid_till', 'Valid till')}</dt><dd className="m-0 font-medium" data-testid="membership-until">{until}</dd></>)}
-          </dl>
-          <ul className="mt-2 flex flex-col gap-1.5 text-sm text-[var(--ink7)]">
-            <li className="flex items-start gap-2"><Check size={16} weight="bold" className="mt-0.5 flex-none text-[var(--ok)]" aria-hidden="true" />{t('pass_card.what')}</li>
-            <li className="flex items-start gap-2"><Check size={16} weight="bold" className="mt-0.5 flex-none text-[var(--ok)]" aria-hidden="true" />{t('pass_card.pay_host')}</li>
-          </ul>
-        </Box>
-        <Link to="/dashboard" className="self-center"><Button variant="text">{t('member.back', 'Back to account')}</Button></Link>
+        <PageHead eyebrow={t('ui.account.eyebrow', 'Your account')} title={t('member.title_short', 'Membership')} />
+        <MemberCard />
+        <SecHead title={t('member.forbiz', 'For businesses')} />
+        <BusinessPassCard />
       </div>
     </div>
   );
@@ -99,7 +84,7 @@ export default function Support() {
 
   // Opened on its own (Account → Membership, or just paid from there): a pass holder sees their
   // membership card. Sent here on the way to something else: carry on to it.
-  if (!needsSupport(user) && !from?.pathname && !next) return <MembershipCard user={user} />;
+  if (!needsSupport(user) && !from?.pathname && !next) return <MembershipScreen />;
 
   // Fee already active (paid just now in another tab, settled by webhook while away, etc.) 
   // don't show the pay screen again, just send them on to where they were headed.
@@ -169,26 +154,24 @@ export default function Support() {
   return (
     <div className="ag-wrap">
       <div className="ag-main" data-testid="support-screen">
-        <PageHead eyebrow={t('support.eyebrow') || t('ui.account.eyebrow', 'Your account')} title={t('support.title')} />
+        <PageHead eyebrow={t('ui.account.eyebrow', 'Your account')} title={t('member.title_short', 'Membership')} />
 
-        <Box>
-          <PassOffer renewing={!!user?.supportExpiresAt} />
-        </Box>
-        <p className="ag-small">{t('support.body')}</p>
-        <PriceBreakup breakup={pass} label={user?.supportExpiresAt ? t('price.pass') : t('price.pass_first_year')} />
+        <PassJoinCard price={pass.total} renewing={!!user?.supportExpiresAt}>
+          <PriceBreakup breakup={pass} label={user?.supportExpiresAt ? t('price.pass') : t('price.pass_first_year')} />
+          <div className="flex flex-col gap-2">
+            <Button variant="primary" go block onClick={startPayment} disabled={busy} data-testid="support-pay">
+              {busy ? t('common.loading') : t('support.cta', { total: rupees(pass.total) })}
+            </Button>
+            <p className="ag-small !text-xs flex items-center justify-center gap-1 m-0">
+              <Check size={14} aria-hidden="true" /> {t('support.reassurance')}
+            </p>
+          </div>
+          {err && <p data-testid="support-error" role="alert" className="ag-err !text-sm text-center m-0">{err}</p>}
+          <Button variant="text" className="self-center" onClick={browseAnonymously} data-testid="support-skip">{t('support.skip')}</Button>
+        </PassJoinCard>
 
-        <div className="flex flex-col gap-2">
-          <Button variant="primary" go block onClick={startPayment} disabled={busy} data-testid="support-pay">
-            {busy ? t('common.loading') : t('support.cta', { total: rupees(pass.total) })}
-          </Button>
-          <p className="ag-small !text-xs flex items-center justify-center gap-1">
-            <Check size={14} aria-hidden="true" /> {t('support.reassurance')}
-          </p>
-        </div>
-
-        {err && <p data-testid="support-error" role="alert" className="ag-err !text-sm text-center">{err}</p>}
-
-        <Button variant="text" className="self-center" onClick={browseAnonymously} data-testid="support-skip">{t('support.skip')}</Button>
+        <SecHead title={t('member.forbiz', 'For businesses')} />
+        <BusinessPassCard />
 
         <p className="ag-small !text-xs text-center">
           <Link to="/privacy" className="underline">{t('support.privacy_link')}</Link>
