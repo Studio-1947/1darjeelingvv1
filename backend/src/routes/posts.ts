@@ -9,13 +9,14 @@ import { isHostPlanLive } from '../lib/hostPlan';
 import { routeParam } from '../lib/routeParam';
 import { myProvider as hostProvider } from '../lib/hostAccess';
 import { checkPostText } from '../lib/contentRules';
+import { isVerifiedBusiness } from '../lib/feedRights';
 
 const router = Router();
 
 // ============ HOST FEED ============
-// Hosts write short posts about their place; everyone can read them. Only a host whose plan is
-// live and who is verified may post, and the same rule decides whose posts are shown, so a host
-// whose plan lapses or who is suspended drops out of the feed with their listings.
+// Hosts write short posts about their place; everyone can read, react, comment and share. Only a
+// business with the Verified tick and a live plan may post (lib/feedRights). A host whose plan
+// lapses or who is suspended drops out of the feed with their listings.
 
 export const MAX_POST_LEN = 1000;
 export const MAX_POST_PHOTOS = 4;
@@ -28,8 +29,11 @@ const PAGE_MAX = 50;
 type Provider = typeof schema.providers.$inferSelect;
 type Post = typeof schema.hostPosts.$inferSelect;
 
-function hostCanPost(p: Provider): boolean {
-  return isHostPlanLive(p);
+/** Why this business may not post now, or null when it may: it needs the Verified tick and a live plan. */
+function postRefusal(p: Provider): 'not_verified' | 'plan_not_live' | null {
+  if (!isVerifiedBusiness(p)) return 'not_verified';
+  if (!isHostPlanLive(p)) return 'plan_not_live';
+  return null;
 }
 
 /** Visible in the public feed: not hidden by an admin, and the host is live and approved. */
@@ -287,7 +291,7 @@ router.get('/me', authenticateToken, async (req: Request, res: Response) => {
     .where(eq(schema.hostPosts.providerId, provider.id))
     .orderBy(desc(schema.hostPosts.createdAt))
     .limit(100)) as Row[];
-  const reason = hostCanPost(provider) ? null : 'plan_not_live';
+  const reason = postRefusal(provider);
   res.json({ can_post: reason === null, reason, posts: await postsOut(rows, req.user!.id, { includeModeration: true }) });
 });
 
@@ -342,10 +346,13 @@ router.get('/admin/comments', authenticateToken, requireAdmin, async (_req: Requ
 router.post('/', authenticateToken, rateLimiter(20, 60 * 60 * 1000, 'post_create'), async (req: Request, res: Response) => {
   const provider = await myProvider(req.user!.id);
   if (!provider) return res.status(403).json({ detail: 'Only hosts can post to the feed', code: 'not_a_host' });
-  if (!hostCanPost(provider)) {
+  const refusal = postRefusal(provider);
+  if (refusal) {
     return res.status(403).json({
-      detail: 'Your host plan is not active. Renew it to post',
-      code: 'plan_not_live',
+      detail: refusal === 'not_verified'
+        ? 'Only verified businesses can post. Your posts open once the team approves your documents'
+        : 'Your host plan is not active. Renew it to post',
+      code: refusal,
     });
   }
 

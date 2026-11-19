@@ -244,7 +244,11 @@ function ProviderDashboardPage() {
   // Documents the team still needs (a missing or bounced document gets the "!" on the cards).
   const kycItems = kycProfile?.checklist.filter((c) => c.kind === 'kyc') || [];
   const docsDue = kycItems.some((c) => c.required && (c.state === 'missing' || c.state === 'rejected'));
-  const docsLabel = t('host.docs_n', 'Verification: {{count}} things', { count: kycItems.filter((c) => c.required).length || 2 });
+  // Before the list loads (or before the plan is paid), count what this type is asked for: homestays and
+  // drivers send 3 papers, guides, cafés and shops 2 (backend lib/kycRequirements).
+  const docsLabel = t('host.docs_n', 'Verification: {{count}} things', {
+    count: kycItems.filter((c) => c.required).length || (type === 'homestay' || type === 'driver' ? 3 : 2),
+  });
 
   const backBtn = (
     <Button className="ag-host-back" icon={<Icon name="back" />} onClick={() => open('main')} data-testid="host-back">

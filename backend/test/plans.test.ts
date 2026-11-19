@@ -60,12 +60,11 @@ describe('trip plans: posting', () => {
     expect(JSON.stringify(feed.body)).not.toMatch(/phone/i);
   });
 
-  it('needs a signed-in traveller, not business mode', async () => {
+  it('needs a sign-in; the business side follows the same verified rule as the traveller side', async () => {
     expect((await request(app).post('/api/plans').send(planBody())).status).toBe(401);
     const { token } = await registerUser({ name: 'Mode Tester' });
     const biz = await request(app).post('/api/plans').set(auth(token)).set('X-Aangan-Mode', 'business').send(planBody());
-    expect(biz.status).toBe(403);
-    expect(biz.body.code).toBe('business_mode');
+    expect(biz.status).toBe(201);
   });
 
   it('validates every field', async () => {

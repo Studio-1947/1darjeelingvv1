@@ -51,7 +51,7 @@ describe('admin: traveller profiles, feedback and comments', () => {
 
   it('lists comments on host posts for moderation, and an admin can delete one', async () => {
     const admin = await loginAdmin();
-    const host = await onboardActiveProvider({ name: 'Comment Host' });
+    const host = await onboardActiveProvider({ name: 'Comment Host', verified: true });
     const post = await request(app).post('/api/posts').set(auth(host.token)).send({ body: 'Snow on Tiger Hill this morning.' });
     const { token } = await registerUser({ name: 'Commenter Chorten' });
     const c = await request(app).post(`/api/posts/${post.body.post.id}/comments`).set(auth(token)).send({ body: 'Spam spam spam' });

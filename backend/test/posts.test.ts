@@ -13,7 +13,7 @@ async function post(token: string, body: Record<string, unknown>) {
 
 describe('host feed', () => {
   it('lets a live host post, and shows it to everyone with the host and listing', async () => {
-    const { token, providerId } = await onboardActiveProvider({ name: 'Norbu' });
+    const { token, providerId } = await onboardActiveProvider({ name: 'Norbu', verified: true });
     const [listing] = await db.select().from(schema.listings).where(eq(schema.listings.providerId, providerId)).limit(1);
 
     const res = await post(token, {
@@ -33,15 +33,18 @@ describe('host feed', () => {
     expect(feed.body.posts[0]).not.toHaveProperty('hidden');
   });
 
-  it('refuses travellers and hosts whose plan lapsed; a host waiting for the document check can post', async () => {
+  it('refuses travellers, hosts without the Verified tick, and hosts whose plan lapsed', async () => {
     const { token: traveller } = await registerUser({ name: 'Just Visiting' });
     expect((await post(traveller, { body: 'hello' })).status).toBe(403);
 
     const { token: pending } = await onboardActiveProvider({ name: 'Pending Host', awaitingApproval: true });
     const p = await post(pending, { body: 'hello' });
-    expect(p.status).toBe(201);
+    expect(p.status).toBe(403);
+    expect(p.body.code).toBe('not_verified');
+    const me = await request(app).get('/api/posts/me').set('Authorization', `Bearer ${pending}`);
+    expect(me.body).toMatchObject({ can_post: false, reason: 'not_verified' });
 
-    const { token: lapsed, providerId } = await onboardActiveProvider({ name: 'Lapsed Host' });
+    const { token: lapsed, providerId } = await onboardActiveProvider({ name: 'Lapsed Host', verified: true });
     await db.update(schema.providers).set({ planExpiresAt: new Date(Date.now() - 1000).toISOString() }).where(eq(schema.providers.id, providerId));
     const l = await post(lapsed, { body: 'hello' });
     expect(l.status).toBe(403);
@@ -49,14 +52,14 @@ describe('host feed', () => {
   });
 
   it('drops a host’s posts from the feed while their plan has lapsed', async () => {
-    const { token, providerId } = await onboardActiveProvider({ name: 'Fading Host' });
+    const { token, providerId } = await onboardActiveProvider({ name: 'Fading Host', verified: true });
     expect((await post(token, { body: 'Fresh momos today' })).status).toBe(201);
     await db.update(schema.providers).set({ planExpiresAt: new Date(Date.now() - 1000).toISOString() }).where(eq(schema.providers.id, providerId));
     expect((await request(app).get('/api/posts')).body.posts).toHaveLength(0);
   });
 
   it('validates the text, the photos and the linked listing', async () => {
-    const { token } = await onboardActiveProvider({ name: 'Careful Host' });
+    const { token } = await onboardActiveProvider({ name: 'Careful Host', verified: true });
     expect((await post(token, { body: '   ' })).status).toBe(400);
     expect((await post(token, { body: 'x'.repeat(1001) })).status).toBe(400);
     expect((await post(token, { body: 'ok', photos: ['a', 'b', 'c', 'd', 'e'] })).status).toBe(400);
@@ -66,7 +69,7 @@ describe('host feed', () => {
   });
 
   it('pages newest first', async () => {
-    const { token } = await onboardActiveProvider({ name: 'Chatty Host' });
+    const { token } = await onboardActiveProvider({ name: 'Chatty Host', verified: true });
     for (const n of [1, 2, 3]) {
       expect((await post(token, { body: `Post ${n}` })).status).toBe(201);
       await new Promise((r) => setTimeout(r, 5));
@@ -80,8 +83,8 @@ describe('host feed', () => {
   });
 
   it('lets only the author edit or delete, and an admin hide', async () => {
-    const { token } = await onboardActiveProvider({ name: 'Owner Host' });
-    const { token: other } = await onboardActiveProvider({ name: 'Other Host' });
+    const { token } = await onboardActiveProvider({ name: 'Owner Host', verified: true });
+    const { token: other } = await onboardActiveProvider({ name: 'Other Host', verified: true });
     const id = (await post(token, { body: 'Original' })).body.post.id;
 
     expect((await request(app).patch(`/api/posts/${id}`).set(auth(other)).send({ body: 'Hijacked' })).status).toBe(404);
@@ -105,7 +108,7 @@ describe('host feed', () => {
   });
 
   it('can be reported, and a blocked host’s posts are hidden from the blocker', async () => {
-    const { token: host } = await onboardActiveProvider({ name: 'Spammy Host' });
+    const { token: host } = await onboardActiveProvider({ name: 'Spammy Host', verified: true });
     const created = (await post(host, { body: 'Buy now!!!' })).body.post;
     const { token: reader } = await registerUser({ name: 'Reader' });
 

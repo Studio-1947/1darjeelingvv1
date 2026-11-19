@@ -119,7 +119,7 @@ export default function App() {
                     <Route path="/my-listings" element={<MyListings />} />
                     <Route path="/saved" element={<TravellerOnly><Saved /></TravellerOnly>} />
                   <Route path="/feed" element={<Feed />} />
-                    <Route path="/plan" element={<TravellerOnly><PlanTrip /></TravellerOnly>} />
+                    <Route path="/plan" element={<PlanTrip />} />
                     <Route path="/plan/:id" element={<PlanDetail />} />
                     <Route path="/responsible" element={<Responsible />} />
                     <Route path="/about" element={<About />} />
