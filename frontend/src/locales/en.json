@@ -195,7 +195,8 @@
     "entry_varies": "Entry varies",
     "previous": "Previous",
     "next": "Next",
-    "remove": "Remove"
+    "remove": "Remove",
+    "retry": "Try again"
   },
   "cta": {
     "book_now": "Reserve",
@@ -2982,7 +2983,8 @@
     },
     "providerProfile": {
       "could_not_save": "Could not save",
-      "keep_editing": "Keep editing"
+      "keep_editing": "Keep editing",
+      "load_failed": "Could not open your business profile. Check your connection."
     },
     "useProviderOnboard": {
       "business_name_required": "Business name is required",

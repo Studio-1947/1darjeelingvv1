@@ -195,7 +195,8 @@
     "entry_varies": "প্রবেশমূল্য আলাদা হতে পারে",
     "previous": "আগের",
     "next": "পরের",
-    "remove": "সরান"
+    "remove": "সরান",
+    "retry": "আবার চেষ্টা করুন"
   },
   "cta": {
     "book_now": "বুক করুন",
@@ -2575,7 +2576,8 @@
     },
     "providerProfile": {
       "could_not_save": "সেভ করা যায়নি",
-      "keep_editing": "এডিট চালিয়ে যান"
+      "keep_editing": "এডিট চালিয়ে যান",
+      "load_failed": "আপনার ব্যবসার প্রোফাইল খোলা গেল না। আপনার সংযোগ দেখুন।"
     },
     "useProviderOnboard": {
       "business_name_required": "ব্যবসার নাম দিতে হবে",

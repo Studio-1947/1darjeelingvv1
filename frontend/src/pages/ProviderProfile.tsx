@@ -148,6 +148,20 @@ export default function ProviderProfile() {
     if (user.role !== 'provider') { nav('/provider/onboard'); }
   }, [authLoading, user, nav]);
 
+  // Signing in from "List your business" makes the account a host before any business is saved.
+  // With no business there is no profile to show: go to setup instead of "Loading…" for ever.
+  const [loadFailed, setLoadFailed] = useState(false);
+  const checkBusiness = React.useCallback(() => {
+    setLoadFailed(false);
+    api.get('/providers/me')
+      .then((r) => { if (!r.data?.provider) nav('/provider/onboard', { replace: true }); else refreshProvider(); })
+      .catch((e) => { if (e?.response?.status === 404) nav('/provider/onboard', { replace: true }); else setLoadFailed(true); });
+  }, [nav, refreshProvider]);
+  useEffect(() => {
+    if (authLoading || user?.role !== 'provider' || provider) return;
+    checkBusiness();
+  }, [authLoading, user?.role, provider, checkBusiness]);
+
   useEffect(() => {
     if (!provider) return;
     const e = provider.extras || {};
@@ -323,6 +337,14 @@ export default function ProviderProfile() {
   const unitLabel = (u: string) => t(`profile.unit_${u}`);
 
   if (!form) {
+    if (loadFailed) {
+      return (
+        <div className="ag-wrap"><div className="ag-main" data-testid="profile-load-failed">
+          <p className="ag-small">{t('ui.providerProfile.load_failed', 'Could not open your business profile. Check your connection.')}</p>
+          <Button onClick={checkBusiness}>{t('common.retry', 'Try again')}</Button>
+        </div></div>
+      );
+    }
     return <div className="ag-wrap"><div className="ag-main"><p className="ag-small">{t('common.loading')}</p></div></div>;
   }
 
