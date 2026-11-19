@@ -26,8 +26,9 @@ async function confirmUnderLock(bookingId: string) {
     const target = await lockBookingForChange(tx, bookingId);
     if (!target) return { outcome: 'missing' as const };
 
-    // Already confirmed by an earlier call  nothing to redo.
-    if (target.status === 'confirmed') return { outcome: 'confirmed' as const, booking: target };
+    // Already confirmed by an earlier call (the payment settles it, then the app's /checkout comes
+    // in for the same booking): nothing to redo, and nobody is told a second time.
+    if (target.status === 'confirmed') return { outcome: 'already' as const, booking: target };
     // Cancelled first (by the guest, the host or request expiry): it stays cancelled.
     if (target.status === 'cancelled') return { outcome: 'cancelled' as const, booking: target };
 
@@ -78,6 +79,7 @@ export async function settleBookingConfirmation(
 
   const booking: BookingRow = settlement.booking;
   const conflicted = settlement.outcome === 'conflict';
+  const announce = settlement.outcome !== 'already';
 
   // Cancelled before this confirm got its turn. Nothing to announce; a fee paid for it goes back.
   if (settlement.outcome === 'cancelled') {
@@ -104,7 +106,9 @@ export async function settleBookingConfirmation(
   const hostPhone = providerInfo?.contact_phone || providerInfo?.phone || null;
   const hostName = providerInfo?.business_name || providerInfo?.name || null;
 
-  if (conflicted) {
+  if (!announce) {
+    // Confirmed earlier; the record below is all the caller needs.
+  } else if (conflicted) {
     await addInAppNotification(booking.userId, {
       kind: 'booking_cancelled',
       title: 'Booking cancelled',

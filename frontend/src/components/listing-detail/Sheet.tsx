@@ -59,7 +59,7 @@ export default function Sheet({ onClose, labelledBy, label, testid, closeTestid,
       <button type="button" tabIndex={-1} aria-label={t('common.close')} onClick={() => onClose?.()}
         className="absolute inset-0 bg-ink/50 cursor-default" />
       <div ref={panel} tabIndex={-1} className="relative w-full sm:max-w-md outline-none focus-visible:outline-none animate-in fade-in slide-in-from-bottom-4 duration-200">
-        <Box className={cx('max-h-[90svh] overflow-y-auto rounded-b-none sm:rounded-b-[var(--r-card)] pb-[max(16px,env(safe-area-inset-bottom))]', className)}>
+        <Box className={cx('relative max-h-[90svh] overflow-y-auto rounded-b-none sm:rounded-b-[var(--r-card)] pb-[max(16px,env(safe-area-inset-bottom))]', className)}>
           {onClose && (
             <IconButton label={t('common.close')} small onClick={onClose} data-testid={closeTestid} className="absolute right-3 top-3 z-10">
               <X />

@@ -99,6 +99,20 @@ describe('cancelling with a reason (PATCH /bookings/:id/cancel)', () => {
   });
 });
 
+describe('a guest withdrawing a request', () => {
+  it('tells the host, whose last word was "New booking request"', async () => {
+    const { hostToken, listingId } = await hostWithHomestay('Withdrawn');
+    const { token } = await registerUser({ name: 'Changed Mind' });
+    const id = await ask(token, listingId, 14, 16);
+    const res = await request(app).patch(`/api/bookings/${id}/cancel`).set(auth(token)).send({ reason: 'plans_changed' });
+    expect(res.status).toBe(200);
+    const feed = await notes(hostToken);
+    const n = feed.find((x) => x.kind === 'booking_withdrawn' && x.ref_id === id);
+    expect(n).toBeTruthy();
+    expect(n.msg).toMatchObject({ key: 'request_withdrawn', params: { place: 'Withdrawn House' } });
+  });
+});
+
 describe('cancel requests on a confirmed booking', () => {
   it('guest asks, takes it back, asks again; host keeps; guest asks again; host accepts', async () => {
     const { hostToken, listingId } = await hostWithHomestay('Answering Host');

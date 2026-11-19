@@ -57,6 +57,24 @@ describe('booking without the aangan pass', () => {
   });
 });
 
+describe('confirming once', () => {
+  it('the app\'s /checkout after the fee settled does not tell anyone a second time', async () => {
+    const { token } = await registerUser({ name: 'Once Only', paySupport: false });
+    const listing = await createListing();
+    const id = await book(token, listing.id);
+    const order = await request(app).post('/api/payments/order').set('Authorization', `Bearer ${token}`)
+      .send({ flow: 'booking_commission', reference_id: id });
+    await request(app).post('/api/payments/mock/complete').set('Authorization', `Bearer ${token}`)
+      .send({ order_id: order.body.order.id, flow: 'booking_commission', reference_id: id });
+    // What BookingFeeModal does after the payment: ask /checkout again.
+    const again = await request(app).post(`/api/bookings/${id}/checkout`).set('Authorization', `Bearer ${token}`);
+    expect(again.status).toBe(200);
+    const feed = await request(app).get('/api/notifications').set('Authorization', `Bearer ${token}`);
+    const confirmed = (feed.body.items || []).filter((n: any) => n.kind === 'booking_confirmed' && n.ref_id === id);
+    expect(confirmed).toHaveLength(1);
+  });
+});
+
 describe('booking with the aangan pass', () => {
   it('confirms free', async () => {
     const { token } = await registerUser({ name: 'Pass Pema' });

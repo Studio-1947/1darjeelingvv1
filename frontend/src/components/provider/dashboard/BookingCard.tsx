@@ -100,7 +100,7 @@ export default function BookingCard({ b, onCancel, onAccept, onCancelRequest, ho
 
   const decline = onCancel && b.status !== 'cancelled' && !b.completed && !confirming && !request && (
     <Button variant="stop" onClick={() => setConfirming(true)} icon={<Icon name="close" />} data-testid={`booking-cancel-${b.id}`}>
-      {t('pd.decline')}
+      {b.status === 'confirmed' || b.status === 'accepted' ? t('ui.trips.cx_go', 'Cancel booking') : t('pd.decline')}
     </Button>
   );
 

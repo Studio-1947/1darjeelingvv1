@@ -71,7 +71,7 @@ export default function CancelSheet({ booking: b, mode, onSubmit, onClose, submi
     : mode === 'host_cancel' ? t('cancel.i_host', 'The traveller will be told your reason. Any fee they paid goes back to them.')
     : mode === 'guest_withdraw' ? t('cancel.i_pre', 'The host has not said yes yet, so your request is simply withdrawn. Nothing is charged.')
     : mode === 'guest_cancel' ? t('cancel.i_accepted', 'Nothing is paid yet, so this cancels at once at no charge. The host will be told.')
-    : t('cancel.i_post', 'The host has already kept this for you. They will be asked to accept the cancellation. Talk to them first if you can. If you paid the ₹1 fee, it comes back when they accept.');
+    : t('cancel.i_post', 'The host has already kept this for you. They will be asked to accept the cancellation. Talk to them first if you can. If you paid the ₹1.20 fee, it comes back when they accept.');
   const go = mode === 'host_decline' ? t('cancel.do_decline', 'Decline request')
     : mode === 'guest_request' ? t('cancel.do_send', 'Send cancellation request')
     : t('ui.trips.cx_go', 'Cancel booking');

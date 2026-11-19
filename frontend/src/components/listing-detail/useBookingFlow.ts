@@ -113,16 +113,20 @@ function clearDraft(id: string) {
  * The form's opening state, in order of authority:
  *   1. a draft from earlier in this visit - what the visitor actually typed,
  *      including whatever they had entered when the login wall interrupted them;
- *   2. the dates and guest count carried over from the search (lib/tripParams);
+ *   2. the dates and guest count carried over from the search (lib/tripParams), and for a driver
+ *      the From and To of Find a ride;
  *   3. empty.
  */
 function initialForm(id: string, search: string): BookingForm {
-  const trip = readTrip(new URLSearchParams(search));
+  const sp = new URLSearchParams(search);
+  const trip = readTrip(sp);
   const base: BookingForm = {
     check_in: trip.checkIn,
     check_out: trip.checkOut,
     guests: trip.guests,
     notes: '',
+    ...(sp.get('from') ? { pickup_place: sp.get('from')!.slice(0, 120) } : {}),
+    ...(sp.get('to') ? { drop_place: sp.get('to')!.slice(0, 120) } : {}),
   };
   return { ...base, ...(loadDraft(id) || {}) };
 }
