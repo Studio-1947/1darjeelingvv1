@@ -1,3 +1,4 @@
+import { normalizeRoutes, routeForTrip } from '@/lib/routeFares';
 import { useCallback, useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -151,6 +152,15 @@ export function useBookingFlow(item: any, id: string) {
   const [feeFor, setFeeFor] = useState<string | null>(null);
   // A driver, homestay or guide request waiting for the host (board: "Waiting for approval").
   const [requested, setRequested] = useState<any | null>(null);
+
+  // Find a ride's From and To pick the driver's matching route, so the total is that trip's fare.
+  useEffect(() => {
+    if (item?.type !== 'driver' || form.route) return;
+    const sp = new URLSearchParams(search);
+    const hit = routeForTrip(normalizeRoutes(item?.extras?.routes), sp.get('from') || '', sp.get('to') || '');
+    if (hit) setForm((f) => (f.route ? f : { ...f, route: hit.route }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [item?.id]);
 
   // Moving between listings has to start a fresh form; the hook is not remounted
   // by the router, so without this the second listing would inherit the first

@@ -143,7 +143,8 @@
     "cafe": "Cafes",
     "event": "Festivals",
     "biodiversity": "Biodiversity",
-    "guide": "Guides"
+    "guide": "Guides",
+    "food": "Foods & Shops"
   },
   "search": {
     "did_you_mean": "Did you mean",
@@ -1018,7 +1019,8 @@
     "rs_clear": "Clear",
     "find_place": "Search a place",
     "journey_date": "Journey date",
-    "rs_free_on": "Drivers free on {{date}}"
+    "rs_free_on": "Drivers free on {{date}}",
+    "none_filtered": "Nothing matches these filters."
   },
   "notes": {
     "title": "Notifications",

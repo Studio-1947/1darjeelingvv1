@@ -123,8 +123,10 @@ function featOf(it: any, t: TFunction): string {
  * badge, name with a verified tick, place, who it fits and its rating, one fact, the price, then the
  * button and a heart.
  */
-export function CatStayCard({ it, href, km, testId, ctaTestId, ctaLabel }: {
+export function CatStayCard({ it, href, km, testId, ctaTestId, ctaLabel, fare }: {
   it: any; href: string; km?: Km; testId?: string; ctaTestId?: string; ctaLabel: string;
+  /** Find a ride: the fare of this driver's route for the searched trip, shown instead of the day rate. */
+  fare?: { price: number; unit: 'trip' | 'day' } | null;
 }) {
   const { t } = useTranslation();
   const e = it.extras || {};
@@ -177,7 +179,9 @@ export function CatStayCard({ it, href, km, testId, ctaTestId, ctaLabel }: {
           <span className="ag-category-price" aria-hidden="true">{' '}</span>
         ) : (
           <span className="ag-category-price">
-            {p.text ? <span className="unit">{p.text}</span> : p.amount ? <><b>{p.amount}</b> <span className="unit">{unit}</span></> : null}
+            {fare && fare.price > 0
+              ? <><b>₹{fare.price.toLocaleString('en-IN')}</b> <span className="unit">{fare.unit === 'day' ? t('category.per_day', 'per day') : t('listing.per_trip', 'per trip')}</span></>
+              : p.text ? <span className="unit">{p.text}</span> : p.amount ? <><b>{p.amount}</b> <span className="unit">{unit}</span></> : null}
           </span>
         )}
         <div className="ag-category-stayact">
