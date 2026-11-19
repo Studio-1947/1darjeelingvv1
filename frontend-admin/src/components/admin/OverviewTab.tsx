@@ -12,14 +12,17 @@ interface OverviewTabProps {
 export default function OverviewTab({ stats, onSeed }: OverviewTabProps) {
   const usersCount = stats?.users || 0;
   const providersCount = stats?.providers || 0;
-  const listingsCount = stats?.listings || 0;
+  // Live business listings, not every row (spots, events, drafts and hosts not live are left out).
+  const listingsCount = stats?.active_services ?? stats?.listings ?? 0;
   const bookingsCount = stats?.bookings || 0;
-  const paymentsCount = stats?.payments || 0;
+
 
   // Compute metrics safely to avoid NaN division errors
   const providerRate = usersCount > 0 ? Math.round((providersCount / usersCount) * 100) : 0;
   const bookingsPerService = listingsCount > 0 ? (bookingsCount / listingsCount).toFixed(1) : '0';
-  const paymentRate = bookingsCount > 0 ? Math.round((paymentsCount / bookingsCount) * 100) : 0;
+  // Bookings whose fee was paid, over bookings (host plans and passes are payments too, but not bookings).
+  const paidBookings = stats?.paid_bookings ?? 0;
+  const paymentRate = bookingsCount > 0 ? Math.min(100, Math.round((paidBookings / bookingsCount) * 100)) : 0;
 
   return (
     <div className="space-y-6">

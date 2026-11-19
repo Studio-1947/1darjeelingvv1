@@ -329,7 +329,7 @@ export default function Feed() {
         )}
 
         {show.length === 0 && (
-          <Box className="ag-feed-empty"><p className="m-0">{t('feed.kind_all', 'Everything')}?</p></Box>
+          <Box className="ag-feed-empty" data-testid="feed-nothing-picked"><p className="m-0">{t('feed.none_picked', 'Nothing picked. Tap the filter and choose what to see.')}</p></Box>
         )}
       </div>
 

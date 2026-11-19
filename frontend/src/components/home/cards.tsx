@@ -63,7 +63,7 @@ function Where({ it, km }: { it: any; km?: Km }) {
   );
 }
 
-function SaveHeart({ id, testId, className }: { id: string; testId?: string; className?: string }) {
+export function SaveHeart({ id, testId, className }: { id: string; testId?: string; className?: string }) {
   const { t } = useTranslation();
   const { isFavorite, toggle } = useFavorites();
   const { requireAuth } = useLoginGate();

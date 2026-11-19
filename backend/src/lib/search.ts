@@ -205,7 +205,9 @@ export function interpret(query: string, fixedType?: string | null): Omit<Interp
     }
     if (CHEAP.has(w)) { cheapestFirst = true; continue; }
     if (!fixedType && TYPE_WORDS[w] && !type) { type = TYPE_WORDS[w]; continue; }
-    if (TYPE_WORDS[w]) continue; // "stays" in a homestay-only search adds nothing
+    // "stays" in a homestay-only search adds nothing; a word for another kind ("momo" while
+    // looking at homestays) is something to match, not something to drop.
+    if (TYPE_WORDS[w]) { if (fixedType && TYPE_WORDS[w] !== fixedType) terms.push(fold(w)); continue; }
     if (STOP.has(w) || /^\d/.test(w)) continue;
     terms.push(fold(w));
   }

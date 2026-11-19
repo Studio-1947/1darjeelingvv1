@@ -6,7 +6,7 @@ import { MapPin, SealCheck } from '@phosphor-icons/react';
 import SmartImg from '@/components/SmartImg';
 import { Status, cx } from '@/components/ag';
 import { Icon } from '@/components/ag/Icon';
-import { contentFor, listingImage } from '@/lib/listingContent';
+import { contentFor, listingImage, listingImageBackups } from '@/lib/listingContent';
 import { optionLabel } from '@/lib/optionLabel';
 import { priceParts } from '@/components/home/cards';
 import { useFavorites } from '@/context/FavoritesContext';
@@ -19,7 +19,7 @@ export default function ListingCard({ item, badge = null }) {
   return (
     <Link to={`/listing/${item.id}`} data-testid={`listing-card-${item.id}`} className="ag-card flex flex-col no-underline">
       <span className="relative block">
-        <SmartImg src={listingImage(item, 800, 600)} alt={item.title} className="img !flex" />
+        <SmartImg src={listingImage(item, 800, 600)} fallback={listingImageBackups(item, 800)} alt={item.title} className="img !flex" />
         {badge && <Status tone="info" className="absolute left-2 top-2">{badge}</Status>}
       </span>
       <span className="body">
@@ -140,7 +140,7 @@ export function CatStayCard({ it, href, km, testId, ctaTestId, ctaLabel }: {
   return (
     <div className={cx('ag-category-stay', isCar && 'car')} data-testid={testId}>
       <Link to={href} className="ag-category-stayimg" aria-label={it.title}>
-        <SmartImg src={listingImage(it, 600, 600)} alt="" className="absolute inset-0 h-full w-full object-cover" />
+        <SmartImg src={listingImage(it, 600, 600)} fallback={listingImageBackups(it, 600)} alt="" className="absolute inset-0 h-full w-full object-cover" />
         {isCar && (
           // The initial is drawn by CSS (data-initial) so the card's text still starts with its name.
           <span className="ag-category-selfie" aria-hidden="true" data-initial={avatar ? undefined : (it.title || '?').trim().charAt(0).toUpperCase()}>
@@ -229,7 +229,7 @@ export function CatSpotCard({ it, href, km, testId }: { it: any; href: string; k
   const entry = Number(it.price) > 0 ? `₹${Number(it.price).toLocaleString('en-IN')}` : (it.extras?.entry_fee || '');
   return (
     <Link to={href} className="ag-category-spot" data-testid={testId} aria-label={[it.title, it.location, entry || p.text].filter(Boolean).join(', ')}>
-      <SmartImg src={listingImage(it, 600, 800)} alt="" className="absolute inset-0 h-full w-full object-cover" />
+      <SmartImg src={listingImage(it, 600, 800)} fallback={listingImageBackups(it, 600)} alt="" className="absolute inset-0 h-full w-full object-cover" />
       <Sticker it={it} />
       <span className="info">
         <span className="loc"><Icon name="pin" /><span className="truncate">{km ? `${catKm(km, t)} · ` : ''}{it.location}</span></span>

@@ -169,7 +169,8 @@ export default function BookingWidget() {
   };
 
   const tabs = [
-    { key: 'stay', label: t('nav.stays', 'Stays'), Icon: HomeIcon, target: '/homestays', type: 'homestay' },
+    // The home search pill (no tab is shown) looks across every kind, as the prototype's does.
+    { key: 'stay', label: t('nav.stays', 'Stays'), Icon: HomeIcon, target: '/homestays', type: '' },
     { key: 'driver', label: t('nav.drivers'), Icon: Car, target: '/drivers', type: 'driver' },
   ];
   const activeTab = tabs.find((x) => x.key === tab) ?? tabs[0];
@@ -197,7 +198,7 @@ export default function BookingWidget() {
       // The tab's own kind first; when nothing of that kind matches (a monastery on the Stays tab),
       // the closest matches of any kind, so the box never answers a real place with "nothing".
       api
-        .get('/listings', { params: { q: searchNeedle, limit: 5, type: activeTab.type } })
+        .get('/listings', { params: { q: searchNeedle, limit: 5, ...(activeTab.type ? { type: activeTab.type } : {}) } })
         .then(async (r) => {
           const own = r.data.items || [];
           if (own.length || !activeTab.type) return own;
@@ -263,7 +264,7 @@ export default function BookingWidget() {
 
     const active = activeTab;
     const trip = { checkIn, checkOut, guests: guestsTouched ? guestCount : 1 };
-    const params = writeTrip(new URLSearchParams({ type: active.type }), trip);
+    const params = writeTrip(new URLSearchParams(active.type ? { type: active.type } : {}), trip);
     const bare = writeTrip(new URLSearchParams(), trip).toString();
 
     if (tab === 'driver') {

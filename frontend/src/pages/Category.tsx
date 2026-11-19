@@ -314,7 +314,14 @@ export default function Category({ typeOverride }) {
   const head = type ? HEAD[type] : undefined;
   const title = (q && !type) ? `“${q}”` : head ? t(head.title[0], head.title[1]) : (q ? `“${q}”` : t('category.search'));
   const eyebrow = head ? t(head.eyebrow[0], head.eyebrow[1]) : t('category.search');
-  const suffix = tripSuffix(trip);
+  // A driver searched by route also carries where from and where to, so the booking form starts filled.
+  const suffix = (() => {
+    const params = new URLSearchParams(tripSuffix(trip).replace(/^\?/, ''));
+    if (type === 'driver' && from) params.set('from', from);
+    if (type === 'driver' && to) params.set('to', to);
+    const qs = params.toString();
+    return qs ? `?${qs}` : '';
+  })();
   const listingHref = (id: string) => `/listing/${id}${suffix}`;
 
   const locale = i18n.language || 'en';
@@ -395,7 +402,10 @@ export default function Category({ typeOverride }) {
         <CategoryFilterBar
           categoryType={type}
           searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
+          onSearchChange={(v: string) => {
+            setSearchQuery(v);
+            if (!v.trim() && q) setSp((prev) => { const next = new URLSearchParams(prev); next.delete('q'); return next; }, { replace: true });
+          }}
           selectedLocation={selectedLocation}
           onLocationChange={setSelectedLocation}
           sortOrder={sortOrder}

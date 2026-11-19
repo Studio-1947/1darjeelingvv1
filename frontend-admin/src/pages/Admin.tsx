@@ -8,8 +8,7 @@ import {
   LayoutList,
   Database,
   ShieldCheck,
-  Mountain,
-  LogOut
+  Mountain
 } from 'lucide-react';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
@@ -31,7 +30,7 @@ import MaintenanceTab from '@/components/admin/MaintenanceTab';
  * It coordinates data fetching and renders the appropriate subcomponent tab.
  */
 export default function Admin() {
-  const { user, loading: authLoading, logout } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const nav = useNavigate();
 
   // Tab state: 'overview' | 'users' | 'listings' | 'spots' | 'bookings' | 'payments' | 'cleanup'
@@ -222,12 +221,6 @@ export default function Admin() {
     }
   };
 
-  // Logout action
-  const handleLogout = () => {
-    logout();
-    nav('/login');
-  };
-
   if (authLoading || loading) {
     return <div className="p-16 text-center text-ink-soft">Loading Admin Dashboard...</div>;
   }
@@ -261,9 +254,6 @@ export default function Admin() {
           <button onClick={handleSeed} title="Adds back any built-in spots and events that are missing (also ones deleted on purpose)" className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold border border-[var(--line)] text-ink rounded-full hover:bg-mist transition-all">
             <Database size={13} /> Seed spots &amp; events
           </button>
-          <button onClick={handleLogout} className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold bg-ink text-white rounded-full btn-hover transition-all">
-            <LogOut size={13} /> Log Out
-          </button>
         </div>
       </div>
 
@@ -279,7 +269,7 @@ export default function Admin() {
         <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
           <StatCard label="Total Users" value={stats.users} icon={UsersIcon} color="text-pine bg-pine/10" />
           <StatCard label="Service Providers" value={stats.providers} icon={Store} color="text-flag bg-flag/10" />
-          <StatCard label="Active Services" value={stats.listings} icon={LayoutList} color="text-blue-500 bg-blue-50" />
+          <StatCard label="Active Services" value={stats.active_services ?? stats.listings} icon={LayoutList} color="text-blue-500 bg-blue-50" />
           {/* Live spots only  drafts aren't visible to anyone but this console. */}
           <StatCard label="Tourist Spots" value={spotsList.filter((s) => s.published).length} icon={Mountain} color="text-emerald-600 bg-emerald-50" />
           <StatCard label="Bookings Made" value={stats.bookings} icon={CalendarCheck} color="text-orange-500 bg-orange-50" />

@@ -15,6 +15,8 @@ export type Verification = {
   status: VerificationStatus;
   action_message: string | null;
   action_document?: string | null;
+  /** A document (required or optional) the team turned down and wants sent again. */
+  action_required?: boolean;
   support_phone?: string | null;
 };
 
@@ -66,7 +68,8 @@ export default function VerificationTracker({ verification, paid, freeStart = fa
       ) : (
         <p className="ag-small">{t(body)}</p>
       )}
-      {headline === 'changes' && (
+      {/* A required document to redo (changes), or an optional one the team turned down: either way, say which and why. */}
+      {(headline === 'changes' || verification?.action_required) && (
         <Box tone="blush" flat className="w-full" data-testid="verification-action">
           <span className="ag-eyebrow">{t('verify.action_needed')}</span>
           {verification?.action_document && <b className="text-[var(--ink-strong)]">{verification.action_document}</b>}

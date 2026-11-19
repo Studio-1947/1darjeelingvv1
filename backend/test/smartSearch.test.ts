@@ -24,6 +24,16 @@ const listings: SearchableListing[] = [
 ];
 const titles = (q: string, type?: string) => rank(listings, q, { type }).results.map((r) => r.item.title);
 
+describe('a word for another kind on a fixed-type search', () => {
+  it('is kept as a term (momo on homestays), while the same kind\'s word is dropped', () => {
+    expect(interpret('momo', 'homestay').terms).toEqual(['momo']);
+    expect(interpret('homestay in ghoom', 'homestay').terms).toEqual(['ghum']);
+    // So a homestay search for momo is not every homestay.
+    const stays = rank(listings, 'momo', { type: 'homestay' }).results;
+    expect(stays.length).toBeLessThan(listings.filter((l) => l.type === 'homestay').length);
+  });
+});
+
 describe('smart search', () => {
   it('reads intent words as the kind of place', () => {
     expect(interpret('taxi to tiger hill')).toMatchObject({ type: 'driver', terms: ['tiger', 'hill'] });

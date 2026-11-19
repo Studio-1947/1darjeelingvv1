@@ -14,7 +14,7 @@ const WEB: Record<string, { traveller: string; host?: string }> = {
   refer: { traveller: '/dashboard' },
   profile: { traveller: '/profile/edit' },
   host_dashboard: { traveller: '/provider/dashboard' },
-  host_bookings: { traveller: '/provider/dashboard' },
+  host_bookings: { traveller: '/provider/dashboard?s=bookings' },
   host_plan: { traveller: '/provider/dashboard' },
 };
 

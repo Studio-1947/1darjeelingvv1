@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
-import { and, desc, eq, gte, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray, sql } from 'drizzle-orm';
 
 import { db, schema } from '../db';
 import { authenticateToken, requireAdmin } from '../middleware/auth';
@@ -168,7 +168,13 @@ router.get('/spots/suggestions/mine', authenticateToken, async (req: Request, re
     .where(eq(schema.placeSuggestions.userId, req.user!.id))
     .orderBy(desc(schema.placeSuggestions.createdAt))
     .limit(50);
-  res.json({ suggestions: rows.map(out) });
+  // An accepted place is live once the team publishes the spot it became.
+  const ids = rows.map((r) => r.listingId).filter((x): x is string => !!x);
+  const spots = ids.length
+    ? await db.select({ id: schema.listings.id, extras: schema.listings.extras }).from(schema.listings).where(inArray(schema.listings.id, ids))
+    : [];
+  const live = new Set(spots.filter((s) => (s.extras as any)?.published !== false).map((s) => s.id));
+  res.json({ suggestions: rows.map((r) => ({ ...out(r), live: !!r.listingId && live.has(r.listingId) })) });
 });
 
 /**

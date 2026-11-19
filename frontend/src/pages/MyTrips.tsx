@@ -6,6 +6,8 @@ import { useAuth } from '@/context/AuthContext';
 import { useSeo } from '@/components/Seo';
 import TripStats, { tileBuckets, tileLabel, type TripFilter } from '@/components/TripStats';
 import TripCard from '@/components/TripCard';
+import PlanCard from '@/components/feed/PlanCard';
+import { fetchMyPlans, type TripPlan } from '@/lib/plans';
 import { Box, Button, ButtonLink, PageHead } from '@/components/ag';
 import { Icon } from '@/components/ag/Icon';
 
@@ -17,6 +19,7 @@ export default function MyTrips() {
   const [bookings, setBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<TripFilter>('all');
+  const [plans, setPlans] = useState<{ joined: TripPlan[]; mine: TripPlan[] }>({ joined: [], mine: [] });
 
   const loadBookings = useCallback(() => {
     return api.get('/bookings/me')
@@ -31,7 +34,14 @@ export default function MyTrips() {
       return;
     }
     loadBookings().finally(() => setLoading(false));
+    fetchMyPlans().then((m) => setPlans({ joined: m.joined, mine: m.mine })).catch(() => {});
   }, [user, authLoading, loadBookings]);
+
+  const swap = (np: TripPlan) => setPlans((p) => ({
+    joined: p.joined.map((x) => (x.id === np.id ? np : x)),
+    mine: p.mine.map((x) => (x.id === np.id ? np : x)),
+  }));
+  const hasPlans = !isHostMode && (plans.joined.length > 0 || plans.mine.length > 0);
 
   const head = <PageHead title={t('nav.trips', 'My trip')} />;
 
@@ -73,7 +83,7 @@ export default function MyTrips() {
           </Box>
         )}
 
-        {bookings.length === 0 ? (
+        {bookings.length === 0 && hasPlans ? null : bookings.length === 0 ? (
           <Box className="ag-account-empty" data-testid="trips-empty">
             <Icon name="bag" />
             <p>{t('ui.trips.none', 'You have no trips yet.')}</p>
@@ -105,6 +115,19 @@ export default function MyTrips() {
               ))
             )}
           </>
+        )}
+
+        {hasPlans && plans.joined.length > 0 && (
+          <section className="flex flex-col gap-3" data-testid="trips-joined-plans" aria-labelledby="tj-h">
+            <h2 id="tj-h" className="ag-feed-h inline-flex items-center gap-2"><Icon name="t_trip" /> {t('plans.tj_h', 'Trips you joined')}</h2>
+            {plans.joined.map((p) => <PlanCard key={p.id} plan={p} onChange={swap} />)}
+          </section>
+        )}
+        {hasPlans && plans.mine.length > 0 && (
+          <section className="flex flex-col gap-3" data-testid="trips-my-plans" aria-labelledby="tj-my">
+            <h2 id="tj-my" className="ag-feed-h">{t('plans.tj_my', 'Trips you planned')}</h2>
+            {plans.mine.map((p) => <PlanCard key={p.id} plan={p} onChange={swap} />)}
+          </section>
         )}
 
         <MyDeliveries />

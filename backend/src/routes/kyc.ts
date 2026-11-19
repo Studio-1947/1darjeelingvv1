@@ -87,6 +87,8 @@ function verificationOut(
   const requiredDocs = docs.filter(doc => requiredTypes.includes(doc.docType));
   const submittedAt = requiredDocs.length ? requiredDocs.map(doc => doc.uploadedAt).sort().at(-1) ?? null : null;
   const rejected = requiredDocs.find(doc => doc.status === 'rejected');
+  // Any rejected document asks the host to fix it; only a required one holds up going live.
+  const toFix = rejected ?? docs.find(doc => doc.status === 'rejected');
   // "Documents sent" means every required document is in, not just the first one. A host who
   // had sent four of five was told the team was reviewing while the fifth was still missing.
   const uploaded = new Set(requiredDocs.map(doc => doc.docType));
@@ -105,11 +107,11 @@ function verificationOut(
     status,
     submitted_at: submittedAt,
     review_started_at: provider.kycReviewStartedAt,
-    action_required: !!rejected,
-    action_message: rejected?.rejectionReason ?? null,
+    action_required: !!toFix,
+    action_message: toFix?.rejectionReason ?? null,
     // Which document to upload again, in the host's words (the checklist label).
-    action_document: rejected
-      ? requirementsFor(provider.businessType).find((r) => r.docType === rejected.docType)?.label ?? rejected.docType
+    action_document: toFix
+      ? requirementsFor(provider.businessType).find((r) => r.docType === toFix.docType)?.label ?? toFix.docType
       : null,
     support_phone: VERIFICATION_SUPPORT_PHONE,
   };

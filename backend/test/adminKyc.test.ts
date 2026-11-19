@@ -92,6 +92,24 @@ describe('admin KYC review', () => {
     expect(r.body.document.rejection_reason).toBe('Blurry scan');
   });
 
+  it('an optional document turned down asks the host to fix it, without holding up review', async () => {
+    const prov = await onboardActiveProvider({ name: 'Prov Optional', businessType: 'homestay' });
+    await uploadRequiredDocs(prov.token);
+    const up = await request(app).post('/api/providers/me/kyc').set('Authorization', `Bearer ${prov.token}`)
+      .send({ doc_type: 'gst_certificate', file: PNG_DATA_URL, filename: 'gst.png' });
+    expect(up.status).toBe(200);
+    const admin = await loginAdmin();
+    const list = await request(app).get('/api/admin/kyc?status=pending&limit=100').set('Authorization', `Bearer ${admin}`);
+    const gst = list.body.documents.find((d: any) => d.provider_id === prov.providerId && d.doc_type === 'gst_certificate');
+    const r = await request(app).post(`/api/admin/kyc/${gst.id}/review`)
+      .set('Authorization', `Bearer ${admin}`).send({ decision: 'reject', reason: 'Name does not match' });
+    expect(r.status).toBe(200);
+    const profile = await request(app).get('/api/providers/me/profile').set('Authorization', `Bearer ${prov.token}`);
+    expect(profile.body.verification).toMatchObject({ action_required: true, action_message: 'Name does not match', action_document: 'GST certificate' });
+    // Only required documents decide "changes requested".
+    expect(profile.body.verification.status).not.toBe('changes_requested');
+  });
+
   it('rejects a non-string reason on review', async () => {
     const prov = await onboardActiveProvider({ name: 'Prov U', businessType: 'shop' });
     await request(app).post('/api/providers/me/kyc').set('Authorization', `Bearer ${prov.token}`)

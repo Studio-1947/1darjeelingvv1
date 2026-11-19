@@ -1002,16 +1002,27 @@ router.patch('/:id/cancel', authenticateToken, async (req: Request, res: Respons
         refId: booking.id,
       });
     }
-  } else if (wasStatus === 'confirmed' || wasStatus === 'accepted') {
+  } else {
     const [listing] = await db.select({ providerId: schema.listings.providerId })
       .from(schema.listings).where(eq(schema.listings.id, booking.listingId)).limit(1);
-    await addHostNotification(listing?.providerId, {
-      kind: 'booking_cancelled',
-      title: 'Booking cancelled',
-      body: `A guest cancelled their booking for ${booking.listingTitle}.${reasonLine}`,
-      msg: { key: 'cancelled_by_guest', params: { place: booking.listingTitle, reason: why.reason ?? '' } },
-      refId: booking.id,
-    });
+    if (wasStatus === 'confirmed' || wasStatus === 'accepted') {
+      await addHostNotification(listing?.providerId, {
+        kind: 'booking_cancelled',
+        title: 'Booking cancelled',
+        body: `A guest cancelled their booking for ${booking.listingTitle}.${reasonLine}`,
+        msg: { key: 'cancelled_by_guest', params: { place: booking.listingTitle, reason: why.reason ?? '' } },
+        refId: booking.id,
+      });
+    } else {
+      // Withdrawn before the host answered: their last notice was "New booking request".
+      await addHostNotification(listing?.providerId, {
+        kind: 'booking_withdrawn',
+        title: 'Request withdrawn',
+        body: `A guest withdrew their request for ${booking.listingTitle}. Nothing to do.${reasonLine}`,
+        msg: { key: 'request_withdrawn', params: { place: booking.listingTitle, reason: why.reason ?? '' } },
+        refId: booking.id,
+      });
+    }
   }
 
   // Only worth telling the guest when there was something to tell them about  a booking that

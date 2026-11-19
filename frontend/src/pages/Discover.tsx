@@ -142,6 +142,24 @@ function HomeTiles({ testIdPrefix }: { testIdPrefix?: string }) {
 
 /* ---------- List your Business ---------- */
 
+/** The photos among `urls` that actually load; a host photo gone from storage is left out, not drawn empty. */
+function useLoadedImages(urls: string[]): string[] {
+  const [ok, setOk] = useState<string[]>([]);
+  const key = urls.join('|');
+  useEffect(() => {
+    let live = true;
+    setOk([]);
+    urls.forEach((u) => {
+      const img = new Image();
+      img.onload = () => { if (live) setOk((prev) => (prev.includes(u) ? prev : [...prev, u])); };
+      img.src = u;
+    });
+    return () => { live = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+  return urls.filter((u) => ok.includes(u));
+}
+
 /**
  * The card's footer row, as the prototype draws it: a few host faces and "N are in" (GET
  * /app/host-signup: active hosts, and up to three public hosts who set a photo), with the free start
@@ -150,13 +168,14 @@ function HomeTiles({ testIdPrefix }: { testIdPrefix?: string }) {
 function HostFreeNote({ testId }: { testId?: string }) {
   const { t } = useTranslation();
   const { grace_bookings, live_hosts = 0, recent_hosts = [] } = useHostSignupInfo();
+  const faces = useLoadedImages(recent_hosts.slice(0, 3).map((h) => sizedImage(h.avatar, 96)));
   return (
     <span className="joined">
       {live_hosts > 0 && (
         <span className="arein" data-testid={testId ? 'host-count' : undefined}>
-          {recent_hosts.length > 0 && (
+          {faces.length > 0 && (
             <span className="faces" aria-hidden="true">
-              {recent_hosts.slice(0, 3).map((h) => <span key={h.avatar} style={{ backgroundImage: `url(${sizedImage(h.avatar, 96)})` }} />)}
+              {faces.map((u) => <span key={u} style={{ backgroundImage: `url(${u})` }} />)}
             </span>
           )}
           <span><b>{live_hosts}</b> {t('home.are_in', 'are in')}</span>

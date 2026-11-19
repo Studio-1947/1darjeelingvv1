@@ -24,6 +24,8 @@ const MIN_DETAILS = 20;
 export type Suggestion = {
   id: string; name: string; place: string; details: string; entry_price: number | null; photos: string[];
   status: 'pending' | 'approved' | 'rejected'; review_note: string | null; created_at: string;
+  /** The spot it became, and whether the team has published it yet. */
+  listing_id?: string | null; live?: boolean;
 };
 
 /** The explorer drawing on the Suggest a place box (the prototype's media/explorer.svg). */
@@ -69,7 +71,11 @@ function SuggestionCard({ s }: { s: Suggestion }) {
         <div className="strip">{s.photos.map((p) => <span key={p} style={{ backgroundImage: `url(${p})` }} />)}</div>
       )}
       <p className="ag-small m-0">{s.details}</p>
-      {s.status === 'approved' && <p className="ag-small m-0">{t('sugg.accepted_s', 'The aangan team will publish it on Offbeat Places once it is ready.')}</p>}
+      {s.status === 'approved' && (s.live && s.listing_id ? (
+        <Link to={`/listing/${s.listing_id}`} className="ag-small m-0 font-medium text-[var(--r)] underline" data-testid={`my-sugg-live-${s.id}`}>
+          {t('sugg.live', 'Live on Offbeat Places. See it')}
+        </Link>
+      ) : <p className="ag-small m-0">{t('sugg.accepted_s', 'The aangan team will publish it on Offbeat Places once it is ready.')}</p>)}
       {s.status === 'rejected' && s.review_note && <p className="ag-small m-0" data-testid={`my-sugg-note-${s.id}`}>{s.review_note}</p>}
     </div>
   );
@@ -83,7 +89,7 @@ export function MySuggestions({ items }: { items: Suggestion[] }) {
   // The three newest; the rest behind "Show all", so the box stays short on Home.
   const shown = all ? items : items.slice(0, 3);
   return (
-    <div className="ag-home-suggmine" data-testid="my-suggestions">
+    <div className="ag-home-suggmine" id="my-suggestions" data-testid="my-suggestions">
       <h3 className="ag-home-suggh">{t('sugg.mine', 'My suggestions')}</h3>
       {shown.map((s) => <SuggestionCard key={s.id} s={s} />)}
       {items.length > shown.length && (
@@ -116,7 +122,12 @@ export default function SuggestPlace() {
     if (!user) { setMine([]); return undefined; }
     let live = true;
     api.get('/spots/suggestions/mine')
-      .then((r) => { if (live) setMine(Array.isArray(r.data?.suggestions) ? r.data.suggestions : []); })
+      .then((r) => {
+        if (!live) return;
+        setMine(Array.isArray(r.data?.suggestions) ? r.data.suggestions : []);
+        // Arriving from a suggestion notice (#my-suggestions): bring the list into view.
+        if (window.location.hash === '#my-suggestions') setTimeout(() => document.getElementById('my-suggestions')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 300);
+      })
       .catch(() => { /* the list is a courtesy; the form still works */ });
     return () => { live = false; };
   }, [user]);

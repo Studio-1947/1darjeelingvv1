@@ -37,6 +37,19 @@ describe('admin routes', () => {
     expect(res.status).toBe(200);
     expect(res.body.users).toBeGreaterThanOrEqual(1);
   });
+
+  it('counts live business listings as active services, and only booking fees as paid bookings', async () => {
+    const admin = await loginAdmin();
+    const res = await request(app).get('/api/admin/stats').set('Authorization', `Bearer ${admin}`);
+    expect(res.status).toBe(200);
+    // Spots, events and drafts are rows too, but not services anyone can book.
+    expect(res.body.active_services).toBeLessThanOrEqual(res.body.listings);
+    const live = await request(app).get('/api/listings?limit=500').set('User-Agent', 'Mozilla/5.0 Chrome/140');
+    const bookable = (live.body.items || []).filter((l: any) => ['homestay', 'driver', 'guide', 'cafe', 'shop'].includes(l.type)).length;
+    expect(res.body.active_services).toBe(bookable);
+    // Host plans and passes are paid payments, but not bookings.
+    expect(res.body.paid_bookings).toBeLessThanOrEqual(res.body.payments);
+  });
 });
 
 describe('admin provider status update', () => {

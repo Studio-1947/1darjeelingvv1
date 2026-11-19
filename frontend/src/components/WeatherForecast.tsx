@@ -261,7 +261,8 @@ export function HillWeather() {
         setHits((res?.results || []).slice(0, 6).map((r: any) => {
           const parts = String(r.display_name || '').split(',').map((s: string) => s.trim()).filter(Boolean);
           return { name: parts[0] || needle, sub: parts.slice(1, 3).join(', '), lat: Number(r.lat), lng: Number(r.lon) };
-        }).filter((h: Hit) => Number.isFinite(h.lat) && Number.isFinite(h.lng)));
+        }).filter((h: Hit, i: number, all: Hit[]) => Number.isFinite(h.lat) && Number.isFinite(h.lng)
+          && all.findIndex((x) => x.name === h.name && x.sub === h.sub) === i));
       } catch {
         if (!cancelled) setHits([]);
       } finally {

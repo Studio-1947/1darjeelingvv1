@@ -37,16 +37,17 @@ export function ImageFallback({ className = '', label = '' }: { className?: stri
 /**
  * <img> that falls back to a branded placeholder rather than a broken-image box.
  *
- * `fallback` is an optional second source tried once before giving up - use it
- * only where a genuine alternate photo of the same subject exists (editorial
- * pages). Listing surfaces pass no fallback: a stand-in photo of somewhere else
- * is worse than admitting there is no photo. See ImageFallback above.
+ * `fallback` is one more source, or a list tried in order, before giving up - use
+ * it only where a genuine alternate photo of the same subject exists (editorial
+ * pages, or a listing's own other photos). Never a stand-in photo of somewhere
+ * else: that is worse than admitting there is no photo. See ImageFallback above.
  */
 export default function SmartImg({
   src, fallback, alt = '', className = '', ...rest
-}: { src?: string, fallback?: string, alt?: string, className?: string } & React.ImgHTMLAttributes<HTMLImageElement>) {
+}: { src?: string, fallback?: string | string[], alt?: string, className?: string } & React.ImgHTMLAttributes<HTMLImageElement>) {
   const [current, setCurrent] = useState(src);
   const [failed, setFailed] = useState(false);
+  const backups = (Array.isArray(fallback) ? fallback : fallback ? [fallback] : []).filter((u) => u && u !== src);
 
   // Cards are recycled as the feed pages and filters change, so the same element
   // can be handed a new listing's photo. Without this the component would keep
@@ -64,7 +65,8 @@ export default function SmartImg({
       decoding="async"
       className={className}
       onError={() => {
-        if (fallback && current !== fallback) { setCurrent(fallback); return; }
+        const next = backups[backups.indexOf(current || '') + 1];
+        if (next) { setCurrent(next); return; }
         setFailed(true);
       }}
       {...rest}
