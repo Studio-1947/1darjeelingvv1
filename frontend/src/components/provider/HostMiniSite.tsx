@@ -5,6 +5,7 @@ import { Box, ButtonA, SecHead, Status, cx } from '@/components/ag';
 import { themeVars, useMode } from '@/lib/theme';
 import SmartImg from '@/components/SmartImg';
 import FaceImg from '@/components/FaceImg';
+import PhotoViewer from '@/components/PhotoViewer';
 
 /**
  * A host's mini website, laid out like the board's mock-up (Aangan Blue Print, "Profile: all
@@ -70,6 +71,9 @@ export default function HostMiniSite({ data, actions }: { data: MiniSiteData; ac
   // The (i) beside the badges: what the blue tick and the Business Pass each mean for this host.
   const [badgeInfo, setBadgeInfo] = React.useState(false);
   const infoId = React.useId();
+  const [photoOpen, setPhotoOpen] = React.useState(false);
+  // relative + z-index: the cover is positioned, so a static photo would be painted under it.
+  const avatarCls = 'relative z-[1] -mt-12 grid h-24 w-24 flex-none place-items-center overflow-hidden rounded-full border-4 border-[var(--surface)] bg-[var(--r-tint)] text-4xl font-medium text-[var(--r)] shadow-sm';
   const initial = (data.hostName || data.name || '?').trim().charAt(0).toUpperCase();
   const joined = data.joinedAt ? new Date(data.joinedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) : null;
   const stars = Math.round(data.rating || 0);
@@ -98,10 +102,18 @@ export default function HostMiniSite({ data, actions }: { data: MiniSiteData; ac
 
       {/* Identity: photo, name with the two marks, type and joining date, stars, place */}
       <div className="flex items-start gap-4">
-        {/* relative + z-index: the cover is positioned, so a static photo would be painted under it. */}
-        <div className="relative z-[1] -mt-12 grid h-24 w-24 flex-none place-items-center overflow-hidden rounded-full border-4 border-[var(--surface)] bg-[var(--r-tint)] text-4xl font-medium text-[var(--r)] shadow-sm">
-          <FaceImg src={data.avatar} initial={initial} className="h-full w-full object-cover" />
-        </div>
+        {data.avatar ? (
+          // Tap the photo to see it full screen.
+          <button type="button" onClick={() => setPhotoOpen(true)} aria-label={t('miniSite.view_photo')} title={t('miniSite.view_photo')}
+            data-testid="host-avatar" className={cx(avatarCls, 'cursor-zoom-in p-0 transition-transform hover:scale-[1.03] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--r)]')}>
+            <FaceImg src={data.avatar} initial={initial} className="h-full w-full object-cover" />
+          </button>
+        ) : (
+          <div className={avatarCls}>{initial}</div>
+        )}
+        {photoOpen && data.avatar && (
+          <PhotoViewer src={data.avatar} alt={data.hostName || data.name} caption={data.hostName || data.name} onClose={() => setPhotoOpen(false)} testid="host-avatar-viewer" />
+        )}
         <div className="grid min-w-0 flex-1 gap-1">
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="m-0 text-[28px] font-medium leading-[34px] tracking-[-.02em] text-[var(--ink7)]">{data.name || t('miniSite.your_business')}</h1>
