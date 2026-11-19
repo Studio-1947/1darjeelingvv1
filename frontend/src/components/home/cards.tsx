@@ -202,11 +202,12 @@ export function SpotCard({ it, href, km, testId, className }: { it: any; href: s
 }
 
 /** Tour guides on Home (the prototype's gcard): square photo, first name, what they offer, place, price a day. */
-export function GuideCard({ it, href, testId }: { it: any; href: string; testId?: string }) {
+export function GuideCard({ it, href, testId, fresh }: { it: any; href: string; testId?: string; fresh?: boolean }) {
   const { t } = useTranslation();
   const service = Array.isArray(it.extras?.services) ? it.extras.services.find((x: any) => x && x.name) : null;
   return (
-    <Link to={href} className="ag-home-gcard" data-testid={testId}>
+    <Link to={href} className={cx('ag-home-gcard', fresh && 'fresh')} data-testid={testId}>
+      {fresh && <span className="ag-home-newb" data-testid={testId ? `${testId}-new` : undefined}>{t('home.new', 'New')}</span>}
       <SmartImg src={listingImage(it, 300, 300)} alt="" className="gimg" />
       <b>{String(it.title || '').split(' ')[0]}</b>
       {service && <span className="gtag"><Icon name="trek" /><span className="truncate">{service.name}</span></span>}
@@ -219,13 +220,14 @@ export function GuideCard({ it, href, testId }: { it: any; href: string; testId?
 }
 
 /** Cafes and shops on Home: square photo, name, kind, place and whether they deliver. */
-export function ShopCard({ it, href, testId }: { it: any; href: string; testId?: string }) {
+export function ShopCard({ it, href, testId, fresh }: { it: any; href: string; testId?: string; fresh?: boolean }) {
   const { t } = useTranslation();
   const ex = it.extras || {};
   const cafe = it.type === 'cafe';
   const kind = cafe ? t('home.sk_food', 'Food') : (typeof ex.shop_kind === 'string' && ex.shop_kind.trim()) || t('home.sk_shop', 'Shop');
   return (
-    <Link to={href} className="ag-home-gcard shop" data-testid={testId}>
+    <Link to={href} className={cx('ag-home-gcard shop', fresh && 'fresh')} data-testid={testId}>
+      {fresh && <span className="ag-home-newb" data-testid={testId ? `${testId}-new` : undefined}>{t('home.new', 'New')}</span>}
       <SmartImg src={listingImage(it, 300, 300)} alt="" className="gimg" />
       <b>{it.title}</b>
       <span className="gtag"><Icon name={cafe ? 'cup' : 'bag'} /><span className="truncate">{kind}</span></span>

@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useHostSignupInfo } from '@/components/provider/onboard/QuickFill';
 import api from '@/lib/api';
 import { sizedImage } from '@/lib/listingContent';
+import { pickRail } from '@/lib/homeRail';
 import Seo from '@/components/Seo';
 import BookingWidget from '@/components/BookingWidget';
 import RouteEstimator from '@/components/RouteEstimator';
@@ -239,10 +240,15 @@ function Section({ id, eyebrow, title, action, tone, testId, children }: {
 
 const PER = { spot: 4, homestay: 5, guide: 9, driver: 4, cafe: 9, shop: 9, biodiversity: 4, event: 4 } as const;
 type Kind = keyof typeof PER;
+// Hosts' own listings: a business approved in the last two weeks is always given a place in its rail
+// (lib/homeRail.ts), so these read a longer page to find it. Spots, nature and festivals stay curated.
+const HOST_KINDS: readonly Kind[] = ['homestay', 'guide', 'driver', 'cafe', 'shop'];
+const HOST_PAGE = 60;
 
 export default function Discover() {
   const { t } = useTranslation();
   const [lists, setLists] = useState<Partial<Record<Kind, any[]>>>({});
+  const [fresh, setFresh] = useState<Set<string>>(() => new Set());
   const [loading, setLoading] = useState(true);
   const [deals, setDeals] = useState<Promotion[]>([]);
 
@@ -257,12 +263,22 @@ export default function Discover() {
   useEffect(() => {
     let live = true;
     const kinds = Object.keys(PER) as Kind[];
-    Promise.allSettled(kinds.map((type) => api.get('/listings', { params: { type, limit: PER[type] } })))
+    const isHost = (k: Kind) => HOST_KINDS.includes(k);
+    Promise.allSettled(kinds.map((type) => api.get('/listings', { params: { type, limit: isHost(type) ? HOST_PAGE : PER[type] } })))
       .then((res) => {
         if (!live) return;
         const next: Partial<Record<Kind, any[]>> = {};
-        res.forEach((r, i) => { next[kinds[i]] = r.status === 'fulfilled' ? (r.value.data?.items || []).slice(0, PER[kinds[i]]) : []; });
+        const newIds = new Set<string>();
+        res.forEach((r, i) => {
+          const k = kinds[i];
+          const items: any[] = r.status === 'fulfilled' ? (r.value.data?.items || []) : [];
+          if (!isHost(k)) { next[k] = items.slice(0, PER[k]); return; }
+          const picked = pickRail(items, PER[k]);
+          next[k] = picked.items;
+          picked.fresh.forEach((id) => newIds.add(String(id)));
+        });
         setLists(next);
+        setFresh(newIds);
       })
       .finally(() => { if (live) setLoading(false); });
     return () => { live = false; };
@@ -337,7 +353,7 @@ export default function Discover() {
           <Section id="home-guides-h" tone="soft" eyebrow={t('home.eyebrow_guides', 'Go with a local')} title={t('home.tile.guides', 'Tour Guides')}
             action={<SeeAllLink to="/guides">{seeAll}</SeeAllLink>}>
             <div className="ag-home-three">
-              {guides.map((g) => <GuideCard key={g.id} it={g} href={`/listing/${g.id}`} testId={`guide-tile-${g.id}`} />)}
+              {guides.map((g) => <GuideCard key={g.id} it={g} fresh={fresh.has(String(g.id))} href={`/listing/${g.id}`} testId={`guide-tile-${g.id}`} />)}
             </div>
           </Section>
         )}
@@ -359,7 +375,7 @@ export default function Discover() {
           <Section id="home-cafes-h" tone="band" eyebrow={t('home.eyebrow_eat', 'Eat local')} title={t('home.cafes_title', 'Cafes & Restaurants')}
             action={<SeeAllLink to="/cafes">{seeAll}</SeeAllLink>}>
             <div className="ag-home-three">
-              {cafes.map((c) => <ShopCard key={c.id} it={c} href={`/listing/${c.id}`} testId={`cafe-tile-${c.id}`} />)}
+              {cafes.map((c) => <ShopCard key={c.id} it={c} fresh={fresh.has(String(c.id))} href={`/listing/${c.id}`} testId={`cafe-tile-${c.id}`} />)}
             </div>
           </Section>
         )}
@@ -368,7 +384,7 @@ export default function Discover() {
           <Section id="home-shops-h" tone="band" eyebrow={t('home.eyebrow_shop', 'Shop local')} title={t('home.shops_title', 'Local Shops')}
             action={<SeeAllLink to="/shops">{seeAll}</SeeAllLink>}>
             <div className="ag-home-three">
-              {shops.map((s) => <ShopCard key={s.id} it={s} href={`/listing/${s.id}`} testId={`shop-tile-${s.id}`} />)}
+              {shops.map((s) => <ShopCard key={s.id} it={s} fresh={fresh.has(String(s.id))} href={`/listing/${s.id}`} testId={`shop-tile-${s.id}`} />)}
             </div>
           </Section>
         )}

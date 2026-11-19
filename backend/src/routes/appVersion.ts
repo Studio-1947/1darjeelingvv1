@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { and, desc, eq, sql } from 'drizzle-orm';
 
 import { db, schema } from '../db';
-import { isHostApprovalPending, isHostPlanLive } from '../lib/hostPlan';
+import { isHostPlanLive } from '../lib/hostPlan';
 
 import { APP_MIN_VERSION, APP_LATEST_VERSION, APP_STORE_URL, PLAY_STORE_URL, VERIFICATION_SUPPORT_PHONE, HOST_GRACE_BOOKINGS } from '../config';
 
@@ -58,7 +58,7 @@ router.get('/host-signup', async (_req: Request, res: Response) => {
     .orderBy(desc(sql`coalesce(${schema.providers.activatedAt}, ${schema.providers.createdAt})`))
     .limit(30);
   const recent = withPhoto
-    .filter((p) => isHostPlanLive(p) && !isHostApprovalPending(p))
+    .filter((p) => isHostPlanLive(p))
     .slice(0, 3)
     .map((p) => ({ name: p.businessName, avatar: String((p.extras as Record<string, unknown>).host_avatar) }));
   res.set('Cache-Control', 'public, max-age=300');

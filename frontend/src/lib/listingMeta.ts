@@ -89,11 +89,16 @@ const TYPE_AMENITIES: Record<string, Amenity[]> = {
 const prettify = (tag: string) =>
   tag.replace(/[-_]+/g, ' ').replace(/^\w/, (c) => c.toUpperCase());
 
+/** Kinds a host lists and runs themselves: their page shows only the facilities they picked. */
+const HOST_LISTED = new Set(['homestay', 'driver', 'guide', 'cafe', 'shop']);
+
 export function amenitiesFor(item: any, max = 8): Amenity[] {
   const out: Amenity[] = [];
   const seen = new Set<string>();
+  // One entry per facility whatever its case or spacing ("Tea" and "tea" are the same thing).
   const push = (a: Amenity) => {
-    if (a && !seen.has(a.label)) { seen.add(a.label); out.push(a); }
+    const key = a?.label?.trim().toLowerCase();
+    if (key && !seen.has(key)) { seen.add(key); out.push(a); }
   };
 
   const custom: string[] = item?.extras?.amenities || [];
@@ -108,7 +113,10 @@ export function amenitiesFor(item: any, max = 8): Amenity[] {
   });
 
   if (item?.extras?.home_delivery === true) push({ Icon: Package, label: 'Home delivery', labelKey: 'ui.listingMeta.home_delivery' });
-  (TYPE_AMENITIES[item?.type] || []).forEach(push);
+  // The type's stock list fills out the team's own listings only. A host's page lists what the host
+  // picked and nothing else: a shop that chose "Tea" must not also claim "Gift wrapping".
+  const hostOwned = HOST_LISTED.has(item?.type) && !!item?.provider_id && item.provider_id !== 'admin-seed-provider';
+  if (!hostOwned) (TYPE_AMENITIES[item?.type] || []).forEach(push);
 
   return out.slice(0, max);
 }

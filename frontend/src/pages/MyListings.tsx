@@ -119,7 +119,7 @@ export default function MyListings() {
   }
 
   const isDriver = provider.business_type === 'driver';
-  const live = provider.status === 'active' && !provider.approval_pending;
+  const live = provider.status === 'active';
 
   // The prototype's Listings screen (provider.js): two actions, the journey, one box per listing,
   // then the membership card and the invite link that used to sit on the dashboard.

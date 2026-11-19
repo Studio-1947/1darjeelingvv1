@@ -12,6 +12,7 @@ import { ADMIN_BOOTSTRAP_SECRET, log } from '../config';
 import { hostReadiness, recomputeKycStatus } from './kyc';
 import { approvalRequired, realHostIds } from '../lib/bookingApproval';
 import { requirementsFor } from '../lib/kycRequirements';
+import { kycTypesFor } from '../lib/kycTypes';
 import { notifyHostVerification } from '../lib/notifications';
 import { deleteListingsOwnedBy, deleteKycFilesOwnedBy } from '../lib/accountCleanup';
 import { listUnreturnedPayments, refundPayment } from '../lib/refunds';
@@ -661,7 +662,9 @@ router.post('/admin/kyc/:id/review', authenticateToken, requireAdmin, async (req
   // Tell the host (and any co-owners) straight away: what to fix, or that they are live.
   // A document of a type no longer asked for (stored before the list was shortened) cannot be sent
   // again, so rejecting it asks the host for nothing.
-  const requirement = requirementsFor(before?.businessType ?? '').find((r) => r.docType === doc.docType);
+  const requirement = before
+    ? requirementsFor(await kycTypesFor({ id: doc.providerId, businessType: before.businessType })).find((r) => r.docType === doc.docType)
+    : undefined;
   if (decision === 'reject' && requirement) {
     await notifyHostVerification(doc.providerId, { kind: 'changes_requested', document: requirement.label, reason: reason || null });
   }

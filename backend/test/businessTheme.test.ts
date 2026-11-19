@@ -67,7 +67,7 @@ describe('"N are in" on the home List your business card', () => {
         .send({ profile: { host_avatar: `https://cdn.test/face-${i}.jpg` } });
       expect(r.status).toBe(200);
     }
-    // One with a photo is still waiting for approval, so travellers cannot see them yet.
+    // One with a photo is still waiting for the document check: public all the same (like the prototype).
     await db.update(schema.providers).set({ approvalRequired: true, kycStatus: 'pending' })
       .where(eq(schema.providers.id, hosts[3].providerId));
     // A host who has not paid is not counted.
@@ -78,8 +78,7 @@ describe('"N are in" on the home List your business card', () => {
     expect(res.body.live_hosts).toBe(4);
     expect(res.body.recent_hosts).toHaveLength(3);
     const avatars = res.body.recent_hosts.map((h: any) => h.avatar);
-    expect(avatars).not.toContain('https://cdn.test/face-3.jpg');
-    expect(avatars.every((a: string) => /^https:\/\/cdn\.test\/face-[0-2]\.jpg$/.test(a))).toBe(true);
+    expect(avatars.every((a: string) => /^https:\/\/cdn\.test\/face-[0-3]\.jpg$/.test(a))).toBe(true);
     expect(res.body.recent_hosts[0]).toEqual({ name: expect.any(String), avatar: expect.any(String) });
     // Nothing private: no phone numbers or ids.
     expect(JSON.stringify(res.body.recent_hosts)).not.toMatch(/\+91/);

@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { missingLabel } from '@/lib/serverText';
+import { photoGoalFor } from '@/lib/photoGoal';
 import { MagnifyingGlass, Eye, X, VideoCamera, Check } from '@phosphor-icons/react';
 import { Icon } from '@/components/ag/Icon';
 import EditListingModal from '@/components/provider/dashboard/EditListingModal';
@@ -39,9 +40,9 @@ const GOODS_UNITS = ['item', 'piece', 'kg', 'gram', 'litre', 'pack', 'dozen'];
 const MAX_GOODS = 10;
 
 /** One panel of the form: a Box with its h2 and an optional note. */
-function Section({ title, note, children, testid }: { title: string; note?: string; children: React.ReactNode; testid?: string }) {
+function Section({ title, note, children, testid, id }: { title: string; note?: string; children: React.ReactNode; testid?: string; id?: string }) {
   return (
-    <Box as="section" data-testid={testid}>
+    <Box as="section" id={id} data-testid={testid} className={id ? 'scroll-mt-20' : undefined}>
       <div>
         <h2>{title}</h2>
         {note && <p className="ag-small">{note}</p>}
@@ -194,6 +195,16 @@ export default function ProviderProfile() {
     });
   }, [provider]);
 
+  // The dashboard's Menu button links to /provider/profile#menu: once the form is drawn, bring the
+  // cafe menu or the shop's goods into view (once, so later edits do not jump the page).
+  const location = useLocation();
+  const scrolledToHash = useRef(false);
+  useEffect(() => {
+    if (!form || scrolledToHash.current || location.hash !== '#menu') return;
+    scrolledToHash.current = true;
+    window.requestAnimationFrame(() => document.getElementById('menu')?.scrollIntoView({ block: 'start' }));
+  }, [form, location.hash]);
+
   const type: string = p?.business_type || '';
   const missing: { key: string; label: string; min?: number; have?: number }[] = p?.profile_missing || [];
   const updateForm = (updater: (current: any) => any) => {
@@ -300,9 +311,14 @@ export default function ProviderProfile() {
   };
 
   // Matches the server's missingMandatory: 6 car photos; 8 photos for a homestay, cafe or shop.
-  const photoGoal = type === 'driver' ? 6 : (type === 'homestay' || type === 'cafe' || type === 'shop') ? 8 : 0;
+  const photoGoal = photoGoalFor(type);
   const photosNote = type === 'driver' ? 'hostProfile.photos_note_driver' : type === 'cafe' ? 'hostProfile.photos_note_cafe'
     : type === 'shop' ? 'hostProfile.photos_note_shop' : 'hostProfile.photos_note_homestay';
+  // "Gallery · 11 photos (8 needed) ✓", or "Gallery · 3 of 8 needed" while short.
+  const galleryHave = form?.images?.length || 0;
+  const galleryLabel = !photoGoal ? t('hostProfile.gallery') : `${t('hostProfile.gallery')} · ${galleryHave >= photoGoal
+    ? t('hostProfile.gallery_done', '{{have}} photos ({{goal}} needed) ✓', { have: galleryHave, goal: photoGoal })
+    : t('hostProfile.gallery_short', '{{have}} of {{goal}} needed', { have: galleryHave, goal: photoGoal })}`;
   const nameLabel = type === 'homestay' ? t('hostProfile.property_name') : type === 'guide' ? t('hostProfile.business_name_guide') : t('hostProfile.business_name');
   const unitLabel = (u: string) => t(`profile.unit_${u}`);
 
@@ -505,7 +521,7 @@ export default function ProviderProfile() {
         )}
 
         {type === 'cafe' && (
-          <Section title={t('hostProfile.menu')} note={t('hostProfile.menu_note')} testid="profile-cafe">
+          <Section title={t('hostProfile.menu')} note={t('hostProfile.menu_note')} testid="profile-cafe" id="menu">
             <PricedEditor rows={form.menu} onChange={(menu) => set({ menu })} units={MENU_UNITS} unitLabel={unitLabel}
               namePlaceholder={t('hostProfile.menu_ph')} addLabel={t('hostProfile.add_menu')} testid="profile-menu" />
             <Group label={t('hostProfile.amenities')}>
@@ -522,7 +538,7 @@ export default function ProviderProfile() {
         )}
 
         {type === 'shop' && (
-          <Section title={t('hostProfile.goods')} note={t('hostProfile.goods_note')} testid="profile-shop">
+          <Section title={t('hostProfile.goods')} note={t('hostProfile.goods_note')} testid="profile-shop" id="menu">
             <PricedEditor rows={form.goods} onChange={(goods) => set({ goods })} units={GOODS_UNITS} unitLabel={unitLabel}
               namePlaceholder={t('hostProfile.goods_ph')} addLabel={t('hostProfile.add_goods')} testid="profile-goods"
               max={MAX_GOODS} fullNote={t('hostProfile.goods_full')} />
@@ -548,7 +564,7 @@ export default function ProviderProfile() {
               </label>
             </div>
           </Group>
-          <Group label={`${t('hostProfile.gallery')}${photoGoal ? ` (${form.images.length}/${photoGoal})` : ''}`} hint={type === 'homestay' ? t('photoKind.hint') : undefined}>
+          <Group label={galleryLabel} hint={type === 'homestay' ? t('photoKind.hint') : undefined}>
             <GalleryUploader images={form.images} uploading={uploading === 'images'} onFilesSelected={uploadGallery}
               onRemove={(i) => updateForm((f: any) => ({ ...f, images: f.images.filter((_: string, j: number) => j !== i) }))}
               {...(type === 'homestay' ? {

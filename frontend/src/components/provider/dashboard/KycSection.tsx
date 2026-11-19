@@ -117,9 +117,9 @@ export default function KycSection({ onProfileChange }: { onProfileChange?: (p: 
     <>
       {/* provider.js documents screen: "Profile completion" with the bar and what is left. */}
       <Box as="section" data-testid="kyc-completion">
-        <h2>{t('kyc.profileCompletion')}</h2>
+        <h2>{t('kyc.verifyProgress', 'Getting the Verified tick')}</h2>
         <div className="ag-host-pct">
-          <span className="ag-host-bar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} aria-label={t('kyc.profileCompletion')}><i style={{ width: `${pct}%` }} /></span>
+          <span className="ag-host-bar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} aria-label={t('kyc.verifyProgress', 'Getting the Verified tick')}><i style={{ width: `${pct}%` }} /></span>
           <b>{pct}%</b>
         </div>
         <FieldError>{error}</FieldError>

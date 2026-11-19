@@ -5,6 +5,12 @@ export interface SearchInterpretation {
   cheapest_first?: boolean;
   terms: string[];
   corrected: string | null;
+  /**
+   * True when none of the words matched and the server listed every listing of the kind the words
+   * named instead ("Audit Shop 5441" lists all shops). These are not matches and must not be shown
+   * as if they were.
+   */
+  fallback?: boolean;
 }
 
 /**

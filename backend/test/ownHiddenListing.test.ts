@@ -8,8 +8,11 @@ import { onboardActiveProvider, registerUser } from './helpers';
 const auth = (token: string) => ({ Authorization: `Bearer ${token}` });
 
 describe('a listing hidden while its host waits for approval', () => {
-  it('404s for travellers but opens for its own host, marked not live', async () => {
-    const host = await onboardActiveProvider({ name: 'Waiting Wangdi', awaitingApproval: true });
+  it('404s for travellers but opens for its own host, marked not live (plan lapsed)', async () => {
+    const host = await onboardActiveProvider({ name: 'Lapsed Wangdi' });
+    // Waiting for the document check no longer hides a listing; a lapsed plan still does.
+    await db.update(schema.providers).set({ planExpiresAt: new Date(Date.now() - 60_000).toISOString() })
+      .where(eq(schema.providers.id, host.providerId));
     const [listing] = await db.select().from(schema.listings).where(eq(schema.listings.providerId, host.providerId)).limit(1);
     expect(listing).toBeTruthy();
 

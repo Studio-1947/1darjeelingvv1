@@ -351,6 +351,11 @@ function CategoryPage({ typeOverride }: { typeOverride?: string }) {
     || !!kind || delivers || !!near || trip.guests > 1;
   // Typed words wait for the smart search; until it answers, show the loading state, not "nothing found".
   const smartPending = !!searchQuery.trim() && smart?.q !== searchQuery.trim();
+  // None of the words matched, and the server listed every listing of the kind they named instead
+  // ("Audit Shop 5441" lists all shops). Say "Nothing found" and show those under their own label,
+  // never as matches.
+  const noExact = !smartPending && !!searchQuery.trim() && !!smart?.search?.fallback && results.length > 0;
+  const otherKind = t(`categories.${smart?.search?.type || type || 'shop'}`).toLocaleLowerCase(i18n.language || 'en');
 
   /**
    * A type-scoped search that finds nothing is not the same answer as "there is
@@ -416,7 +421,7 @@ function CategoryPage({ typeOverride }: { typeOverride?: string }) {
     </div>
   );
 
-  const countLine = loading || smartPending ? t('common.loading') : t('category.results', { count: results.length });
+  const countLine = loading || smartPending ? t('common.loading') : t('category.results', { count: noExact ? 0 : results.length });
 
   return (
     <div className="ag-wrap">
@@ -605,6 +610,16 @@ function CategoryPage({ typeOverride }: { typeOverride?: string }) {
                 </div>
               </section>
             )}
+          </div>
+        ) : noExact ? (
+          <div data-testid="search-no-exact" className="flex flex-col gap-4">
+            <Box className="ag-category-empty">
+              <p className="m-0">{t('category.none', 'Nothing found. Try another place or word.')}</p>
+            </Box>
+            <section aria-labelledby="no-exact-h">
+              <SecHead id="no-exact-h" title={t('search.no_exact_other', 'No exact match. Other {{kind}}:', { kind: otherKind })} />
+              {resultsOf(results)}
+            </section>
           </div>
         ) : (
           resultsOf(results)

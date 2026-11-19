@@ -151,7 +151,8 @@
     "did_you_mean": "Did you mean",
     "under": "under {{price}}",
     "cheapest_first": "cheapest first",
-    "placeholder": "Search  place, shop or event"
+    "placeholder": "Search  place, shop or event",
+    "no_exact_other": "No exact match. Other {{kind}}:"
   },
   "estimator": {
     "title": "Darjeeling Route & Driver Fare Guide",
@@ -368,7 +369,7 @@
     "profileCompletion": "Profile completion",
     "completeYourListing": "Complete your listing",
     "verification": "Verification (KYC)",
-    "verificationHelp": "Our team checks these before your listing goes live, and they earn you the Verified badge. JPEG, PNG or PDF, up to 5 MB.",
+    "verificationHelp": "Our team checks these to give you the Verified badge. JPEG, PNG or PDF, up to 5 MB.",
     "verified": "Verified",
     "inReview": "In review",
     "rejected": "Rejected",
@@ -408,7 +409,8 @@
     "locationSlow": "Your phone could not find your location in time. Go near a window or outside and try again.",
     "reloadFailed": "Document uploaded, but refreshing your profile failed. Reload the page to see the update.",
     "tryAgain": "Try again",
-    "notActiveYet": "KYC verification becomes available once your business registration is complete and active. Finish onboarding to unlock this section."
+    "notActiveYet": "KYC verification becomes available once your business registration is complete and active. Finish onboarding to unlock this section.",
+    "verifyProgress": "Getting the Verified tick"
   },
   "locationPicker": {
     "search_placeholder": "Search address or landmark…",
@@ -1687,8 +1689,8 @@
       "photos_added_one": "{{count}} photo added",
       "photos_added_other": "{{count}} photos added",
       "put_pay": "Pay {{price}} and put my listing up",
-      "in_title": "Your listing is in",
-      "in_body": "Next, add your documents from the Business dashboard. Once the aangan team approves them, travellers can find you and book.",
+      "in_title": "Your listing is up",
+      "in_body": "Travellers can find it now. Next, finish your business profile and send your documents from the Business dashboard to get the Verified tick.",
       "day_route": "Full day hire",
       "day_service": "Day tour",
       "fo": {
@@ -1718,7 +1720,8 @@
       "fee_big": "Homestays, drivers and guides: {{price}} a year",
       "fee_cafe": "Cafes and restaurants: {{price}} a year",
       "fee_shop": "Local shops: free",
-      "describe": "{{what}} in {{place}}, run by {{name}} and listed on aangan."
+      "describe": "{{what}} in {{place}}, run by {{name}} and listed on aangan.",
+      "wzphS2": "The first one is the cover. Photos help travellers choose you: add at least {{count}} to get the Verified tick. You can add them later."
     }
   },
   "pay": {
@@ -2359,7 +2362,9 @@
     "video_uploading": "Uploading…",
     "video_too_big": "That video is over 25 MB. Try a shorter clip.",
     "video_failed": "Could not upload the video",
-    "video_old_link": "Your current video link"
+    "video_old_link": "Your current video link",
+    "gallery_done": "{{have}} photos ({{goal}} needed) ✓",
+    "gallery_short": "{{have}} of {{goal}} needed"
   },
   "owners": {
     "title": "Owners",
@@ -2390,7 +2395,7 @@
     "step_paid": "Plan paid",
     "step_free": "Free start",
     "title_profile": "Finish your profile first",
-    "body_profile": "Our team checks your documents once your business profile is complete. Still needed:",
+    "body_profile": "Your listing is live. To get the Verified tick, finish your business profile and send your documents. Still needed:",
     "cta_profile": "Open business profile",
     "step_sent": "Documents sent",
     "step_review": "Team reviewing",
@@ -2398,12 +2403,12 @@
     "title_pay": "Pay for your plan to continue",
     "body_pay": "Once your plan is paid you can send your documents for approval.",
     "title_send": "Send your documents for approval",
-    "body_send": "Your plan is paid. Upload your documents so our team can check them. Your listing stays private until then.",
-    "body_send_free": "You are on the free start, so there is nothing to pay now. Upload your documents so our team can check them. Your listing stays private until then.",
+    "body_send": "Your plan is paid and your listing is live. Upload your documents so our team can check them and give you the Verified tick.",
+    "body_send_free": "Your listing is live and there is nothing to pay now. Upload your documents so our team can check them and give you the Verified tick.",
     "title_waiting": "Documents sent",
-    "body_waiting": "Our team will start checking them soon. Your listing stays private until the review is complete.",
+    "body_waiting": "Our team will start checking them soon. Your listing stays live meanwhile; the Verified tick appears once the check is done.",
     "title_reviewing": "Our team is checking your documents",
-    "body_reviewing": "We will notify you as soon as it is done. Your listing stays private until then.",
+    "body_reviewing": "We will notify you as soon as it is done. Your listing stays live meanwhile.",
     "title_changes": "A document needs changing",
     "body_changes": "Upload it again and we will check it straight away. Your other documents are kept.",
     "title_live": "You are live",
@@ -2890,7 +2895,7 @@
     "hostExtras": {
       "link_copied": "Link copied",
       "page_title": "Your page on aangan",
-      "private_until_approved": "Only you can open it until our team approves your documents.",
+      "private_until_approved": "Travellers can open it now. The Verified tick appears once our team approves your documents.",
       "private_until_active": "Only you can open it until your plan is active and verified.",
       "open_my_page": "Open my page",
       "copy_link": "Copy link",
@@ -3500,7 +3505,8 @@
     "bookings_tab": "Bookings",
     "docs_s": "A photo of your ID and a photo of your place. That is all we need to check you.",
     "shop_free": "Local shops list free",
-    "shop_free_s": "No yearly pass and no commission. Keep taking orders."
+    "shop_free_s": "No yearly pass and no commission. Keep taking orders.",
+    "menu_n": "Menu · {{count}}"
   },
   "listing": {
     "about": "About this",

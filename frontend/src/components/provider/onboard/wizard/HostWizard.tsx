@@ -9,6 +9,7 @@ import { Box, Button, ButtonLink, FieldError, IconButton, StepBar, TextField } f
 import { Icon, type IconName } from '@/components/ag/Icon';
 import { HelpWhatsApp, useHostSignupInfo } from '@/components/provider/onboard/QuickFill';
 import { HOST_TYPES, HUBS, MAX_PHOTOS, OFFERS, PRESETS, QUICK_DISHES, type HostType, type HostWizard, type Place } from './useHostWizard';
+import { photoGoalFor } from '@/lib/photoGoal';
 
 /*
  * The host sign-up wizard, laid out as the Aangan 2.0 prototype's V.biz / V.bizsetup
@@ -347,7 +348,7 @@ function ExtrasStep({ w }: { w: HostWizard }) {
             </label>
           )}
         </div>
-        <p className="ag-small">{t('ob.wz.wzphS')}</p>
+        <p className="ag-small">{photoGoalFor(d.type) ? t('ob.wz.wzphS2', 'The first one is the cover. Photos help travellers choose you: add at least {{count}} to get the Verified tick. You can add them later.', { count: photoGoalFor(d.type) }) : t('ob.wz.wzphS')}</p>
       </Box>
     </Frame>
   );

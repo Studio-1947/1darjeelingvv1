@@ -77,3 +77,14 @@ export function kmLabel(d: { km: number; approx: boolean }): string {
   const n = d.km < 10 ? (d.approx ? Math.max(1, Math.round(d.km)) : Number(d.km.toFixed(1))) : Math.round(d.km);
   return `${d.approx ? '≈ ' : ''}${n} km`;
 }
+
+/**
+ * Whether the words name a known place (this list, or one of `extra`, such as the search box's
+ * place chips). The Home search shows the weather only for a place, never for a business name.
+ */
+export function isKnownPlace(text: unknown, extra: string[] = []): boolean {
+  if (placeFor(text)) return true;
+  const flat = (v: unknown) => String(v ?? '').toLowerCase().replace(/[^a-z]/g, '');
+  const q = flat(text);
+  return q.length >= 3 && extra.some((name) => { const n = flat(name); return n.length >= 3 && q.includes(n); });
+}

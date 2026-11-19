@@ -5,7 +5,8 @@ import path from 'path';
 import { db, schema } from '../db';
 import { eq, and } from 'drizzle-orm';
 import { authenticateToken } from '../middleware/auth';
-import { isAllowedDocType, isVideoDocType, requirementsFor } from '../lib/kycRequirements';
+import { isAllowedDocType, isVideoDocType } from '../lib/kycRequirements';
+import { kycTypesFor } from '../lib/kycTypes';
 import { computeCompletion } from '../lib/profileCompletion';
 import { uploadPrivate, getPrivateObject, deletePrivate } from '../lib/s3';
 import { log, VERIFICATION_SUPPORT_PHONE } from '../config';
@@ -90,7 +91,8 @@ function verificationOut(
   // Any rejected document on the list asks the host to fix it; only a required one holds up going
   // live. A document of a type no longer asked for (stored before the list was shortened) cannot be
   // uploaded again, so it never asks for a fix.
-  const toFix = rejected ?? docs.find(doc => doc.status === 'rejected' && isAllowedDocType(provider.businessType, doc.docType));
+  const asked = (docType: string) => checklist.some(item => item.kind === 'kyc' && item.key === docType);
+  const toFix = rejected ?? docs.find(doc => doc.status === 'rejected' && asked(doc.docType));
   // "Documents sent" means every required document is in, not just the first one. A host who
   // had sent four of five was told the team was reviewing while the fifth was still missing.
   const uploaded = new Set(requiredDocs.map(doc => doc.docType));
@@ -113,7 +115,7 @@ function verificationOut(
     action_message: toFix?.rejectionReason ?? null,
     // Which document to upload again, in the host's words (the checklist label).
     action_document: toFix
-      ? requirementsFor(provider.businessType).find((r) => r.docType === toFix.docType)?.label ?? toFix.docType
+      ? checklist.find((item) => item.kind === 'kyc' && item.key === toFix.docType)?.label ?? toFix.docType
       : null,
     support_phone: VERIFICATION_SUPPORT_PHONE,
   };
@@ -143,6 +145,7 @@ export async function recomputeKycStatus(providerId: string): Promise<string> {
       hasListingImage,
       hasListingDescription,
       listingLocationSources,
+      listingTypes: providerListings.map(l => l.type),
     },
     docs.map(d => ({ docType: d.docType, status: d.status as any }))
   );
@@ -182,6 +185,7 @@ export async function hostReadiness(provider: typeof schema.providers.$inferSele
       hasListingImage,
       hasListingDescription,
       listingLocationSources,
+      listingTypes: providerListings.map(l => l.type),
     },
     docs.map(d => ({ docType: d.docType, status: d.status as any }))
   );
@@ -358,11 +362,12 @@ router.post('/me/kyc', authenticateToken, async (req: Request, res: Response) =>
   if (!doc_type || !file || !filename) {
     return res.status(400).json({ detail: 'doc_type, file, and filename are required' });
   }
-  if (!isAllowedDocType(provider.businessType, doc_type)) {
+  const types = await kycTypesFor(provider);
+  if (!isAllowedDocType(types, doc_type)) {
     return res.status(400).json({ detail: `doc_type "${doc_type}" is not valid for a ${provider.businessType}` });
   }
 
-  if (isVideoDocType(provider.businessType, doc_type)) {
+  if (isVideoDocType(types, doc_type)) {
     return res.status(400).json({ detail: `"${doc_type}" is a video - upload it to /api/providers/me/kyc/video` });
   }
 
@@ -403,10 +408,11 @@ router.post('/me/kyc/video', authenticateToken, async (req: Request, res: Respon
   }
 
   const doc_type = String(req.query.doc_type || '');
-  if (!doc_type || !isAllowedDocType(provider.businessType, doc_type)) {
+  const types = await kycTypesFor(provider);
+  if (!doc_type || !isAllowedDocType(types, doc_type)) {
     return res.status(400).json({ detail: `doc_type "${doc_type}" is not valid for a ${provider.businessType}` });
   }
-  if (!isVideoDocType(provider.businessType, doc_type)) {
+  if (!isVideoDocType(types, doc_type)) {
     return res.status(400).json({ detail: `"${doc_type}" is not a video document` });
   }
 

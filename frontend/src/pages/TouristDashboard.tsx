@@ -138,9 +138,9 @@ export default function TouristDashboard() {
 
   const passOn = !!user && isSupportActive(user);
   const isHost = user?.role === 'provider';
-  // Live = travellers can find it: active and not waiting for the team's approval (same rule as
-  // the Business Dashboard and the public listing filter).
-  const live = provider?.status === 'active' && !provider?.approval_pending;
+  // Live = travellers can find it: active (same rule as the Business Dashboard and the public
+  // listing filter; the team's document check earns the Verified tick, it does not hide anyone).
+  const live = provider?.status === 'active';
 
   const pal = PALETTES.find((p) => p.key === theme);
   const accent = accentOf(theme);
