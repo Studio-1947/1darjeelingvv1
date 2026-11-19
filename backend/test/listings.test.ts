@@ -301,7 +301,7 @@ describe('listings read endpoints', () => {
     const before = await request(app).get(`/api/listings/${listingId}`);
     expect(before.body.item.provider_verified).toBe(true);
 
-    const del = await request(app).delete('/api/providers/me/kyc/pan').set('Authorization', `Bearer ${token}`);
+    const del = await request(app).delete('/api/providers/me/kyc/premises_photo_front').set('Authorization', `Bearer ${token}`);
     expect(del.status).toBe(200);
 
     const afterSingle = await request(app).get(`/api/listings/${listingId}`);
@@ -329,7 +329,7 @@ describe('listings read endpoints', () => {
     const reupload = await request(app)
       .post('/api/providers/me/kyc')
       .set('Authorization', `Bearer ${token}`)
-      .send({ doc_type: 'owner_photo', file: PNG_DATA_URL, filename: 'owner_photo-new.png' });
+      .send({ doc_type: 'premises_photo_front', file: PNG_DATA_URL, filename: 'front-new.png' });
     expect(reupload.status).toBe(200);
     expect(reupload.body.document.status).toBe('pending');
 

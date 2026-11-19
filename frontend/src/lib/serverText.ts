@@ -36,6 +36,8 @@ export function checklistLabel(t: TFunction, item: { key: string; label: string;
   if (english()) return item.label;
   let k: string;
   if (item.kind === 'profile') k = item.key === 'location' ? `serverText.check.location_${item.action || 'pin'}` : `serverText.check.${item.key}`;
+  // The ID row now takes any photo ID, not only Aadhaar, so it reads from its own key.
+  else if (item.key === 'aadhaar') k = 'serverText.doc.photo_id';
   else if (item.key === 'owner_photo') k = businessType === 'guide' ? 'serverText.doc.owner_photo_self' : 'serverText.doc.owner_photo';
   else if (item.key === 'premises_photo_inside') k = `serverText.doc.premises_photo_inside_${businessType === 'shop' ? 'shop' : 'cafe'}`;
   else k = `serverText.doc.${item.key}`;

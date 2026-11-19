@@ -11,10 +11,20 @@ vi.mock('../src/lib/s3', () => ({
 }));
 
 import { app } from '../src/app';
+import { v4 as uuidv4 } from 'uuid';
+import { db, schema } from '../src/db';
 import { onboardActiveProvider, loginAdmin, uploadRequiredDocs, captureLiveLocation } from './helpers';
 
 const PNG_DATA_URL =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+
+/** A document of a type no longer asked for, as a host who sent the old, longer list still has it. */
+async function insertLegacyDoc(providerId: string, docType: string, status: 'pending' | 'approved' | 'rejected') {
+  await db.insert(schema.kycDocuments).values({
+    id: uuidv4(), providerId, docType, fileKey: `${providerId}/${docType}/old.png`, contentType: 'image/png',
+    status, rejectionReason: status === 'rejected' ? 'Old reason' : null, uploadedAt: new Date().toISOString(),
+  });
+}
 
 async function uploadAllShopDocs(token: string) {
   await uploadRequiredDocs(token);
@@ -47,7 +57,7 @@ describe('admin KYC review', () => {
     const admin = await loginAdmin();
     const res = await request(app).get('/api/admin/kyc?status=pending').set('Authorization', `Bearer ${admin}`);
     expect(res.status).toBe(200);
-    expect(res.body.documents.length).toBeGreaterThanOrEqual(4);
+    expect(res.body.documents.length).toBeGreaterThanOrEqual(2);
   });
 
   it('non-admin cannot list KYC', async () => {
@@ -92,22 +102,23 @@ describe('admin KYC review', () => {
     expect(r.body.document.rejection_reason).toBe('Blurry scan');
   });
 
-  it('an optional document turned down asks the host to fix it, without holding up review', async () => {
-    const prov = await onboardActiveProvider({ name: 'Prov Optional', businessType: 'homestay' });
+  it('a document no longer asked for still shows in the queue, and turning it down asks the host for nothing', async () => {
+    const prov = await onboardActiveProvider({ name: 'Prov Legacy', businessType: 'homestay' });
     await uploadRequiredDocs(prov.token);
-    const up = await request(app).post('/api/providers/me/kyc').set('Authorization', `Bearer ${prov.token}`)
-      .send({ doc_type: 'gst_certificate', file: PNG_DATA_URL, filename: 'gst.png' });
-    expect(up.status).toBe(200);
+    await insertLegacyDoc(prov.providerId, 'gst_certificate', 'pending');
     const admin = await loginAdmin();
-    const list = await request(app).get('/api/admin/kyc?status=pending&limit=100').set('Authorization', `Bearer ${admin}`);
+    const list = await request(app).get('/api/admin/kyc?status=pending&limit=200').set('Authorization', `Bearer ${admin}`);
     const gst = list.body.documents.find((d: any) => d.provider_id === prov.providerId && d.doc_type === 'gst_certificate');
+    expect(gst).toBeTruthy();
     const r = await request(app).post(`/api/admin/kyc/${gst.id}/review`)
       .set('Authorization', `Bearer ${admin}`).send({ decision: 'reject', reason: 'Name does not match' });
     expect(r.status).toBe(200);
     const profile = await request(app).get('/api/providers/me/profile').set('Authorization', `Bearer ${prov.token}`);
-    expect(profile.body.verification).toMatchObject({ action_required: true, action_message: 'Name does not match', action_document: 'GST certificate' });
-    // Only required documents decide "changes requested".
+    // It cannot be sent again, so the host is not asked to.
+    expect(profile.body.verification).toMatchObject({ action_required: false, action_message: null, action_document: null });
     expect(profile.body.verification.status).not.toBe('changes_requested');
+    const feed = await request(app).get('/api/notifications').set('Authorization', `Bearer ${prov.token}`);
+    expect(feed.body.items.some((n: any) => n.kind === 'kyc_changes')).toBe(false);
   });
 
   it('rejects a non-string reason on review', async () => {
@@ -186,7 +197,7 @@ describe('admin KYC review', () => {
 
       // approved -> rejected: the doc is still present (just no longer approved), so every
       // required type still has an entry -> 'submitted', not 'partial' or 'none'.
-      const reject = await request(app).post(`/api/admin/kyc/${docIds['pan']}/review`)
+      const reject = await request(app).post(`/api/admin/kyc/${docIds['premises_photo_front']}/review`)
         .set('Authorization', `Bearer ${admin}`).send({ decision: 'reject', reason: 'Needs a clearer copy' });
       expect(reject.status).toBe(200);
       expect(reject.body.document.status).toBe('rejected');
@@ -196,7 +207,7 @@ describe('admin KYC review', () => {
       expect(profile.body.kyc_status).toBe('submitted');
 
       // rejected -> approved again: back to verified.
-      const approve = await request(app).post(`/api/admin/kyc/${docIds['pan']}/review`)
+      const approve = await request(app).post(`/api/admin/kyc/${docIds['premises_photo_front']}/review`)
         .set('Authorization', `Bearer ${admin}`).send({ decision: 'approve' });
       expect(approve.status).toBe(200);
       expect(approve.body.document.status).toBe('approved');
@@ -206,30 +217,32 @@ describe('admin KYC review', () => {
       expect(profile.body.kyc_status).toBe('verified');
     });
 
-    it('rejecting an optional doc does not block verified status when all required docs are approved', async () => {
-      const prov = await onboardActiveProvider({ name: 'Prov Optional Reject', businessType: 'shop' });
+    it('documents from the old, longer list do not block verified status once the short list is approved', async () => {
+      // A shop that sent part of the old list (some approved, one still pending, one turned down)
+      // before it was shortened to a photo ID and a photo of the front.
+      const prov = await onboardActiveProvider({ name: 'Prov Old List', businessType: 'shop' });
       const admin = await loginAdmin();
+      await insertLegacyDoc(prov.providerId, 'pan', 'approved');
+      await insertLegacyDoc(prov.providerId, 'trade_license', 'pending');
+      await insertLegacyDoc(prov.providerId, 'premises_video', 'rejected');
       const requiredCount = (await uploadRequiredDocs(prov.token)).length;
-      await request(app).post('/api/providers/me/kyc').set('Authorization', `Bearer ${prov.token}`)
-        .send({ doc_type: 'gst_certificate', file: PNG_DATA_URL, filename: 'gst.png' });
+      expect(requiredCount).toBe(2);
 
-      const list = await request(app).get('/api/admin/kyc?status=pending').set('Authorization', `Bearer ${admin}`);
+      const list = await request(app).get('/api/admin/kyc?status=pending&limit=200').set('Authorization', `Bearer ${admin}`);
       const mine = list.body.documents.filter((d: any) => d.provider_id === prov.providerId);
-      expect(mine.length).toBe(requiredCount + 1); // every required shop doc + the optional gst_certificate
+      expect(mine.map((d: any) => d.doc_type).sort()).toEqual(['aadhaar', 'premises_photo_front', 'trade_license']);
 
-      for (const d of mine) {
-        const decision = d.doc_type === 'gst_certificate' ? 'reject' : 'approve';
+      for (const d of mine.filter((x: any) => x.doc_type !== 'trade_license')) {
         const r = await request(app).post(`/api/admin/kyc/${d.id}/review`)
-          .set('Authorization', `Bearer ${admin}`)
-          .send(decision === 'reject' ? { decision, reason: 'Not required' } : { decision });
+          .set('Authorization', `Bearer ${admin}`).send({ decision: 'approve' });
         expect(r.status).toBe(200);
       }
       expect((await captureLiveLocation(prov.token)).status).toBe(200);
 
       const profile = await request(app).get('/api/providers/me/profile').set('Authorization', `Bearer ${prov.token}`);
       expect(profile.body.kyc_status).toBe('verified');
-      const gstItem = profile.body.checklist.find((c: any) => c.key === 'gst_certificate');
-      expect(gstItem?.state).toBe('rejected');
+      expect(profile.body.verification).toMatchObject({ status: 'approved', action_required: false });
+      expect(profile.body.checklist.filter((c: any) => c.kind === 'kyc').map((c: any) => c.key)).toEqual(['aadhaar', 'premises_photo_front']);
     });
 
     it('reviewing an unknown document id returns 404', async () => {
@@ -265,7 +278,7 @@ describe('admin KYC review', () => {
       expect(res.body.limit).toBe(50);
       expect(res.body.offset).toBe(0);
       expect(res.body.documents.length).toBeLessThanOrEqual(res.body.limit);
-      expect(res.body.total).toBeGreaterThanOrEqual(4);
+      expect(res.body.total).toBeGreaterThanOrEqual(2);
     });
 
     it('limit and offset page through results without overlap, and status is filtered server-side', async () => {
@@ -282,15 +295,15 @@ describe('admin KYC review', () => {
 
       const page1 = await request(app)
         .get('/api/admin/kyc')
-        .query({ status: 'pending', limit: 2, offset: 0 })
+        .query({ status: 'pending', limit: 1, offset: 0 })
         .set('Authorization', `Bearer ${admin}`);
       const page2 = await request(app)
         .get('/api/admin/kyc')
-        .query({ status: 'pending', limit: 2, offset: 2 })
+        .query({ status: 'pending', limit: 1, offset: 1 })
         .set('Authorization', `Bearer ${admin}`);
 
-      expect(page1.body.documents.length).toBe(2);
-      expect(page2.body.documents.length).toBe(2);
+      expect(page1.body.documents.length).toBe(1);
+      expect(page2.body.documents.length).toBe(1);
       expect(page1.body.documents.every((d: any) => d.status === 'pending')).toBe(true);
       const page1Ids = page1.body.documents.map((d: any) => d.id);
       const page2Ids = page2.body.documents.map((d: any) => d.id);

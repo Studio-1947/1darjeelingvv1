@@ -120,7 +120,7 @@
 .ag-home-stay { position: relative; display: flex; flex-direction: column; min-width: 0; overflow: hidden; border-radius: 22px; border: 1px solid var(--warmline); background: linear-gradient(180deg, var(--creme-hi), var(--creme)); box-shadow: var(--warmshadow); }
 .ag-home-stay:nth-child(even) { background: linear-gradient(180deg, var(--blush-hi), var(--blush)); border-color: var(--blush2); }
 .ag-home-stayimg { position: relative; display: block; aspect-ratio: 4 / 3; border-radius: 20px 20px 0 0; background: var(--blush); }
-.ag-home-stayimg .ag-home-photo { width: 100%; height: 100%; object-fit: cover; border-radius: 20px 20px 0 0; display: flex; }
+.ag-home-stayimg .ag-home-photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 20px 20px 0 0; display: flex; }
 .ag-home-distb { position: absolute; top: 10px; left: 10px; display: inline-flex; align-items: center; gap: 3px; padding: 3px 8px; border-radius: 10px; background: rgb(255 255 255 / .92); color: var(--ink-strong); font: 600 12px/16px var(--font); }
 .ag-home-distb svg.i { width: 13px; height: 13px; color: var(--r); opacity: .7; }
 .ag-home-selfie { position: absolute; left: 10px; bottom: -22px; z-index: 1; width: 48px; height: 48px; display: grid; place-items: center; overflow: hidden; border-radius: 50%; border: 3px solid #fff; background: var(--blush); color: var(--r); box-shadow: 0 2px 6px rgb(0 0 0 / .3); font: 500 18px/1 var(--font); }

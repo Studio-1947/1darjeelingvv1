@@ -2,15 +2,30 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation, Navigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Check } from '@phosphor-icons/react';
-import { Box, Button, PageHead } from '@/components/ag';
+import { Button, PageHead, SecHead } from '@/components/ag';
 import { useAuth } from '@/context/AuthContext';
 import { createPaymentOrder, completeMockPayment, payWithRazorpay } from '@/lib/api';
 import { needsSupport } from '@/lib/support';
 import MockPaymentModal from '@/components/MockPaymentModal';
 import PriceBreakup from '@/components/PriceBreakup';
 import { rupees, usePassPrice } from '@/lib/prices';
-import PassOffer from '@/components/PassOffer';
+import { BusinessPassCard, MemberCard, PassJoinCard } from '@/components/Membership';
 import { useSeo } from '@/components/Seo';
+
+/** A pass holder (or a host whose plan includes it): the membership card, then For businesses. */
+function MembershipScreen() {
+  const { t } = useTranslation();
+  return (
+    <div className="ag-wrap">
+      <div className="ag-main" data-testid="membership-screen">
+        <PageHead eyebrow={t('ui.account.eyebrow', 'Your account')} title={t('member.title_short', 'Membership')} />
+        <MemberCard />
+        <SecHead title={t('member.forbiz', 'For businesses')} />
+        <BusinessPassCard />
+      </div>
+    </div>
+  );
+}
 
 export default function Support() {
   const { t } = useTranslation();
@@ -66,6 +81,10 @@ export default function Support() {
   // the homepage). leaving suppresses the branch for exactly that window; once the location
   // actually changes, Support unmounts and the flag stops mattering.
   if (!user && !leaving) return <Navigate to="/login" replace />;
+
+  // Opened on its own (Account → Membership, or just paid from there): a pass holder sees their
+  // membership card. Sent here on the way to something else: carry on to it.
+  if (!needsSupport(user) && !from?.pathname && !next) return <MembershipScreen />;
 
   // Fee already active (paid just now in another tab, settled by webhook while away, etc.) 
   // don't show the pay screen again, just send them on to where they were headed.
@@ -135,26 +154,24 @@ export default function Support() {
   return (
     <div className="ag-wrap">
       <div className="ag-main" data-testid="support-screen">
-        <PageHead eyebrow={t('support.eyebrow') || t('ui.account.eyebrow', 'Your account')} title={t('support.title')} />
+        <PageHead eyebrow={t('ui.account.eyebrow', 'Your account')} title={t('member.title_short', 'Membership')} />
 
-        <Box>
-          <PassOffer renewing={!!user?.supportExpiresAt} />
-        </Box>
-        <p className="ag-small">{t('support.body')}</p>
-        <PriceBreakup breakup={pass} label={user?.supportExpiresAt ? t('price.pass') : t('price.pass_first_year')} />
+        <PassJoinCard price={pass.total} renewing={!!user?.supportExpiresAt}>
+          <PriceBreakup breakup={pass} label={user?.supportExpiresAt ? t('price.pass') : t('price.pass_first_year')} />
+          <div className="flex flex-col gap-2">
+            <Button variant="primary" go block onClick={startPayment} disabled={busy} data-testid="support-pay">
+              {busy ? t('common.loading') : t('support.cta', { total: rupees(pass.total) })}
+            </Button>
+            <p className="ag-small !text-xs flex items-center justify-center gap-1 m-0">
+              <Check size={14} aria-hidden="true" /> {t('support.reassurance')}
+            </p>
+          </div>
+          {err && <p data-testid="support-error" role="alert" className="ag-err !text-sm text-center m-0">{err}</p>}
+          <Button variant="text" className="self-center" onClick={browseAnonymously} data-testid="support-skip">{t('support.skip2', 'Not now')}</Button>
+        </PassJoinCard>
 
-        <div className="flex flex-col gap-2">
-          <Button variant="primary" go block onClick={startPayment} disabled={busy} data-testid="support-pay">
-            {busy ? t('common.loading') : t('support.cta', { total: rupees(pass.total) })}
-          </Button>
-          <p className="ag-small !text-xs flex items-center justify-center gap-1">
-            <Check size={14} aria-hidden="true" /> {t('support.reassurance')}
-          </p>
-        </div>
-
-        {err && <p data-testid="support-error" role="alert" className="ag-err !text-sm text-center">{err}</p>}
-
-        <Button variant="text" className="self-center" onClick={browseAnonymously} data-testid="support-skip">{t('support.skip')}</Button>
+        <SecHead title={t('member.forbiz', 'For businesses')} />
+        <BusinessPassCard />
 
         <p className="ag-small !text-xs text-center">
           <Link to="/privacy" className="underline">{t('support.privacy_link')}</Link>

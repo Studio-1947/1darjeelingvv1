@@ -5,7 +5,7 @@ import { db, schema } from '../db';
 import { eq, and, ne, gte, desc, sql } from 'drizzle-orm';
 import { authenticateToken } from '../middleware/auth';
 import { rateLimiter } from '../middleware/rateLimiter';
-import { AMOUNTS, GST_RATE_PERCENT, PLATFORM_FEE_PERCENT, HOST_RENEWAL_WINDOW_DAYS, MOCK_PAYMENTS, rzpClient, RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, RAZORPAY_WEBHOOK_SECRET, IS_PROD, log } from '../config';
+import { AMOUNTS, FREE_HOST_TYPES, GST_RATE_PERCENT, PLATFORM_FEE_PERCENT, HOST_RENEWAL_WINDOW_DAYS, MOCK_PAYMENTS, rzpClient, RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, RAZORPAY_WEBHOOK_SECRET, IS_PROD, log } from '../config';
 import { computeSupportPassExpiry, isExemptFromSupport, isSupportActive } from '../lib/support';
 import { computeHostPlanExpiry, isHostPlanLive, isListingHostLapsed } from '../lib/hostPlan';
 import { serializeProvider } from '../lib/providerShape';
@@ -115,6 +115,9 @@ async function assertOwnsReference(
     if (flow === 'provider_registration' && provider.activatedAt && !provider.grace) {
       return { status: 409, detail: 'This business is already registered. Renew the plan instead.' };
     }
+    if (provider.businessType && FREE_HOST_TYPES.has(provider.businessType)) {
+      return { status: 409, detail: 'Local shops list free. There is nothing to pay.', code: 'free_listing' };
+    }
     if (flow === 'provider_registration' && provider.status === 'suspended') {
       return { status: 403, detail: 'This business is suspended. Contact support.' };
     }
@@ -154,17 +157,9 @@ async function assertOwnsReference(
     if (booking.status === 'cancelled') return { status: 409, detail: 'This booking was cancelled' };
     // Paying the fee confirms the booking, so a request still waiting for its host cannot be paid.
     if (await isAwaitingHost(booking)) return { status: 409, detail: AWAITING_HOST_DETAIL, code: 'awaiting_host' };
-    // A pass holder confirms free; charging them ₹1 as well would be taking money twice.
-    const [payer] = await db.select().from(schema.users).where(eq(schema.users.id, userId)).limit(1);
-    if (payer && (isExemptFromSupport(payer) || isSupportActive(payer))) {
-      return { status: 409, detail: 'Your aangan pass covers this booking. Confirm it for free.' };
-    }
-    const [listing] = await db.select({ providerId: schema.listings.providerId })
-      .from(schema.listings).where(eq(schema.listings.id, booking.listingId)).limit(1);
-    if (listing && (await isListingHostLapsed(listing.providerId))) {
-      return { status: 409, detail: 'This listing is not taking bookings right now' };
-    }
-    return null;
+    // Confirming is free for every traveller now; nobody pays this fee any more. The flow stays
+    // for refunds of fees paid before the change.
+    return { status: 409, detail: 'Confirming a booking is free. There is nothing to pay.', code: 'booking_free' };
   }
 
   if (flow === 'platform_support') {
@@ -319,6 +314,63 @@ async function settlePaymentOnce(payment: PaymentRow, gatewayPaymentId: string) 
  */
 router.get('/prices', (_req: Request, res: Response) => {
   res.json({ gst_rate: GST_RATE_PERCENT, platform_fee_rate: PLATFORM_FEE_PERCENT, prices: priceList() });
+});
+
+/** The traveller's member number: AG-<year joined>-<5 letters from their account>, stable for life. */
+export function memberIdFor(userId: string, since: string | null): string {
+  const yy = since ? String(new Date(since).getUTCFullYear()).slice(-2) : '00';
+  const code = crypto.createHash('sha256').update(String(userId)).digest('hex').toUpperCase().replace(/[^0-9A-Z]/g, '').slice(0, 5);
+  return `AG-${yy}-${code}`;
+}
+
+/**
+ * @openapi
+ * /payments/membership:
+ *   get:
+ *     summary: The signed-in traveller's aangan pass, for the membership card
+ *     tags: [Payments]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: "`{ active, expires_at, since, paid, member_id }`; paid is in paise, from the latest pass payment" }
+ */
+router.get('/membership', authenticateToken, async (req: Request, res: Response) => {
+  const [u] = await db.select({ id: schema.users.id, role: schema.users.role, supportExpiresAt: schema.users.supportExpiresAt })
+    .from(schema.users).where(eq(schema.users.id, req.user.id)).limit(1);
+  if (!u) return res.status(404).json({ detail: 'User not found' });
+  const paid = await db.select({ amount: schema.payments.amount, paidAt: schema.payments.paidAt, createdAt: schema.payments.createdAt })
+    .from(schema.payments)
+    .where(and(eq(schema.payments.userId, u.id), eq(schema.payments.flow, 'platform_support'), eq(schema.payments.status, 'paid')))
+    .orderBy(schema.payments.createdAt);
+  const first = paid[0];
+  const last = paid[paid.length - 1];
+  const since = first ? (first.paidAt || first.createdAt) : null;
+  res.json({
+    active: isSupportActive(u),
+    expires_at: u.supportExpiresAt,
+    since,
+    paid: last ? last.amount : null,
+    member_id: memberIdFor(u.id, since),
+  });
+});
+
+/**
+ * @openapi
+ * /payments/membership/end:
+ *   post:
+ *     summary: End the traveller's aangan pass now (no refund; buying again later costs the yearly price)
+ *     tags: [Payments]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: "`{ ok: true, supportExpiresAt }`" }
+ */
+router.post('/membership/end', authenticateToken, async (req: Request, res: Response) => {
+  const [u] = await db.select({ id: schema.users.id, role: schema.users.role, supportExpiresAt: schema.users.supportExpiresAt })
+    .from(schema.users).where(eq(schema.users.id, req.user.id)).limit(1);
+  if (!u) return res.status(404).json({ detail: 'User not found' });
+  if (!isSupportActive(u)) return res.json({ ok: true, supportExpiresAt: u.supportExpiresAt });
+  const supportExpiresAt = new Date().toISOString();
+  await db.update(schema.users).set({ supportExpiresAt }).where(eq(schema.users.id, u.id));
+  res.json({ ok: true, supportExpiresAt });
 });
 
 // Create order

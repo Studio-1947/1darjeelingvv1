@@ -10,7 +10,9 @@ vi.mock('../src/lib/s3', () => ({
   deletePrivate: vi.fn(async () => {}),
 }));
 
+import { v4 as uuidv4 } from 'uuid';
 import { app } from '../src/app';
+import { db, schema } from '../src/db';
 import { completeMandatoryProfile, loginAdmin, onboardActiveProvider } from './helpers';
 
 const PNG_DATA_URL =
@@ -53,16 +55,45 @@ async function firstListingId(token: string) {
 }
 
 describe('homestay verification checklist', () => {
-  it('asks for the certificate, a selfie at the property, photos, a video and a Google Maps pin', async () => {
+  it('asks for a photo ID, a photo of the front and a Google Maps pin', async () => {
     const { token } = await onboardActiveProvider({ name: 'Check Stay', awaitingApproval: true });
     const p = await profile(token);
-    const keys = p.checklist.map((c: any) => c.key);
-    for (const k of ['tourism_registration', 'owner_photo', 'property_photo_front', 'property_photo_room', 'property_video', 'location']) {
-      expect(keys).toContain(k);
-    }
-    expect(p.checklist.find((c: any) => c.key === 'property_video').media).toBe('video');
-    expect(p.checklist.find((c: any) => c.key === 'owner_photo').label).toMatch(/property/i);
+    const docs = p.checklist.filter((c: any) => c.kind === 'kyc');
+    expect(docs.map((c: any) => c.key)).toEqual(['aadhaar', 'property_photo_front']);
+    expect(docs.every((c: any) => c.required && !c.media)).toBe(true);
     expect(p.checklist.find((c: any) => c.key === 'location').label).toMatch(/Google Maps/);
+  });
+
+  it('is verified with just the ID and the front photo approved, even with old documents lying about', async () => {
+    const admin = await loginAdmin();
+    const { token, providerId } = await onboardActiveProvider({ name: 'Short List Stay', awaitingApproval: true });
+    await completeMandatoryProfile(token);
+    for (const docType of ['aadhaar', 'property_photo_front']) {
+      const res = await request(app).post('/api/providers/me/kyc').set('Authorization', `Bearer ${token}`)
+        .send({ doc_type: docType, file: PNG_DATA_URL, filename: `${docType}.png` });
+      expect(res.status).toBe(200);
+    }
+    // A document from the old, longer list, sent before it was shortened and since rejected.
+    const [legacy] = await db.insert(schema.kycDocuments).values({
+      id: uuidv4(), providerId, docType: 'pan', fileKey: `${providerId}/pan/old.png`, contentType: 'image/png',
+      status: 'rejected', rejectionReason: 'Blurry', uploadedAt: new Date().toISOString(),
+    }).returning();
+    // The old type cannot be sent again.
+    const again = await request(app).post('/api/providers/me/kyc').set('Authorization', `Bearer ${token}`)
+      .send({ doc_type: 'pan', file: PNG_DATA_URL, filename: 'pan.png' });
+    expect(again.status).toBe(400);
+
+    await approveAll(admin, providerId);
+    await request(app).post('/api/providers/me/location/verify')
+      .set('Authorization', `Bearer ${token}`).send({ maps_url: IN_DARJEELING });
+
+    const p = await profile(token);
+    expect(p.kyc_status).toBe('verified');
+    expect(p.checklist.filter((c: any) => c.kind === 'kyc').map((c: any) => c.state)).toEqual(['done', 'done']);
+    expect(p.verification.status).toBe('approved');
+    // The rejected old document does not ask the host to fix anything.
+    expect(p.verification.action_required).toBe(false);
+    expect(p.documents.some((d: any) => d.id === legacy.id)).toBe(true);
   });
 });
 

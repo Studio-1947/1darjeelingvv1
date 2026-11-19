@@ -52,21 +52,19 @@ describe('cancelling with a reason (PATCH /bookings/:id/cancel)', () => {
     expect(feed.some((n) => n.kind === 'booking_declined' && n.msg?.key === 'request_declined' && /Fully booked/.test(n.body))).toBe(true);
   });
 
-  it('a guest cancelling a confirmed booking under 24 hours ahead is late; the fee refund still happens', async () => {
+  it('a guest cancelling a confirmed booking under 24 hours ahead is late (nothing to refund: confirming is free)', async () => {
     const { token } = await registerUser({ name: 'Late Guest', paySupport: false });
     const { hostToken, listingId } = await hostWithHomestay('Late Host');
     void hostToken;
     const id = await ask(token, listingId, 0, 1);
     await request(app).patch(`/api/bookings/${id}/confirm`).set(auth(await loginAdmin()));
-    // No pass: the ₹1 fee confirms it.
-    const order = await request(app).post('/api/payments/order').set(auth(token)).send({ flow: 'booking_commission', reference_id: id });
-    expect(order.status).toBe(200);
-    await request(app).post('/api/payments/mock/complete').set(auth(token))
-      .send({ order_id: order.body.order.id, flow: 'booking_commission', reference_id: id });
+    // No pass: it confirms free.
+    const checkout = await request(app).post(`/api/bookings/${id}/checkout`).set(auth(token));
+    expect(checkout.status).toBe(200);
 
     const res = await request(app).patch(`/api/bookings/${id}/cancel`).set(auth(token)).send({ reason: 'weather_road' });
     expect(res.status).toBe(200);
-    expect(res.body.refunded).toBe(true);
+    expect(res.body.refunded).toBeFalsy();
     expect(res.body.booking).toMatchObject({ cancelled_by: 'guest', cancel_late: true, declined: false, cancel_reason: 'weather_road' });
   });
 

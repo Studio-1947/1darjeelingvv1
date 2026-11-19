@@ -92,7 +92,7 @@ export default function Saved() {
   if (authLoading || (user && loading && !sharedPlanParam)) {
     return <div className="ag-wrap"><div className="ag-main">{head}<p className="ag-small">{t('common.loading')}</p></div></div>;
   }
-  // Signed out: the prototype's empty box, asking them to log in.
+  // Signed out: the prototype's empty box (V.saved with nothing saved), with a quiet way to log in.
   if (!user && !sharedPlanParam) {
     return (
       <div className="ag-wrap">
@@ -100,9 +100,10 @@ export default function Saved() {
           {head}
           <Box className="ag-account-empty" data-testid="saved-guest">
             <Icon name="heart" />
-            <p>{t('ui.saved.guest', 'Log in to keep the places you like here.')}</p>
+            <p>{t('ui.saved.none', 'Nothing saved yet. Tap Save on any place.')}</p>
             <p className="ag-small">{t('ui.saved.empty_hint', 'Tap the heart on any place, homestay or driver to keep it here.')}</p>
-            <ButtonLink to="/login?next=/saved" go data-testid="saved-login">{t('nav.login')}</ButtonLink>
+            <ButtonLink to="/" go data-testid="saved-find-place">{t('ui.trips.find', 'Find a place')}</ButtonLink>
+            <ButtonLink to="/login?next=/saved" variant="text" size="sm" data-testid="saved-login">{t('nav.login', 'Log in')}</ButtonLink>
           </Box>
         </div>
       </div>

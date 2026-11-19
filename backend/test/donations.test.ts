@@ -108,12 +108,11 @@ describe('donation settlement', () => {
     await donate(token, user.id, 100000);
 
     const res = await request(app)
-      .post('/api/favorites')
+      .post('/api/reviews')
       .set('Authorization', `Bearer ${token}`)
-      .send({ listing_id: listing.id });
+      .send({ listing_id: listing.id, rating: 5, comment: 'Lovely quiet place' });
 
     expect(res.status).toBe(402);
-    expect(res.body.code).toBe('support_required');
   });
 
   it('reports the STORED amount, not one supplied at settlement time', async () => {

@@ -146,8 +146,8 @@ export default function TripCard({ booking: b, testId, onReviewed }: {
 
       <p className="line" data-testid="trip-details">
         {[b.check_in ? formatTripDates(b.check_in, b.check_out, i18n.language) : null, b.guests ? (Number(b.guests) === 1 ? t('ui.trips.one_person', '1 person') : t('ui.trips.n_people', '{{n}} people', { n: b.guests })) : null].filter(Boolean).join(', ')}.
-        {contact && b.amount_due ? (
-          <> <b className="ag-price" data-testid={`trip-amount-${b.id}`}>₹{Number(b.amount_due).toLocaleString('en-IN')}</b></>
+        {!cancelled && (b.amount ?? b.amount_due) ? (
+          <> <b className="ag-price" data-testid={`trip-amount-${b.id}`}>₹{Number(b.amount ?? b.amount_due).toLocaleString('en-IN')}</b></>
         ) : null}
       </p>
       {(b.room_name || rideBits.length > 0 || b.route_name) && (

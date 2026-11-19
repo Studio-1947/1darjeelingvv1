@@ -87,8 +87,10 @@ function verificationOut(
   const requiredDocs = docs.filter(doc => requiredTypes.includes(doc.docType));
   const submittedAt = requiredDocs.length ? requiredDocs.map(doc => doc.uploadedAt).sort().at(-1) ?? null : null;
   const rejected = requiredDocs.find(doc => doc.status === 'rejected');
-  // Any rejected document asks the host to fix it; only a required one holds up going live.
-  const toFix = rejected ?? docs.find(doc => doc.status === 'rejected');
+  // Any rejected document on the list asks the host to fix it; only a required one holds up going
+  // live. A document of a type no longer asked for (stored before the list was shortened) cannot be
+  // uploaded again, so it never asks for a fix.
+  const toFix = rejected ?? docs.find(doc => doc.status === 'rejected' && isAllowedDocType(provider.businessType, doc.docType));
   // "Documents sent" means every required document is in, not just the first one. A host who
   // had sent four of five was told the team was reviewing while the fifth was still missing.
   const uploaded = new Set(requiredDocs.map(doc => doc.docType));

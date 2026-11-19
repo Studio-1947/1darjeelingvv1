@@ -21,6 +21,7 @@ import PointsRules, { hostPointsRows } from '@/components/PointsRules';
 import { Box, Button, ButtonA, ButtonLink, Chip, Chips, MenuIcon, PageHead, SecHead, SeeAll, Status, TextArea } from '@/components/ag';
 import { Icon } from '@/components/ag/Icon';
 import { themeVars, useMode } from '@/lib/theme';
+import { isFreeHostType } from '@/lib/prices';
 
 type View = 'main' | 'bookings' | 'documents';
 
@@ -351,6 +352,7 @@ function ProviderDashboardPage() {
         <div className="ag-main">
           {backBtn}
           <h1 className="ag-host-tabh">{docsLabel}</h1>
+          <p className="ag-small" data-testid="docs-intro">{t('host.docs_s', 'A photo of your ID and a photo of your place. That is all we need to check you.')}</p>
           <KycSection onProfileChange={setKycProfile} />
           <Box as="section" className="ag-host-kv">
             <span className="ag-eyebrow">{t('pd.business')}</span>
@@ -384,7 +386,7 @@ function ProviderDashboardPage() {
   let nextStep: React.ReactNode = null;
   if (provider.approval_pending && kycProfile) {
     nextStep = (
-      <VerificationTracker verification={kycProfile.verification} paid={active} freeStart={active && !!provider.grace} profileMissing={missing} businessType={type}
+      <VerificationTracker verification={kycProfile.verification} paid={active} freeStart={active && (!!provider.grace || isFreeHostType(type))} profileMissing={missing} businessType={type}
         onOpenProfile={() => nav('/provider/profile')} phone={user?.phone} onOpen={() => open('documents')} />
     );
   } else if (missing.length) {
@@ -473,7 +475,7 @@ function ProviderDashboardPage() {
             {listings.length === 0 && (
               <div className="col-span-2"><HostPassLine provider={provider} user={user} onRenewed={async () => { await refresh(); await loadDashboard(); }} /></div>
             )}
-            <button type="button" className="ag-host-add" onClick={() => setAddOpen(true)} data-testid="add-listing-cta">
+            <button type="button" className="ag-host-add" onClick={() => nav('/provider/onboard?add=1')} data-testid="add-listing-cta">
               <Icon name="plus" /><span>{t('host.add_more', 'Add more listings')}</span>
             </button>
           </div>

@@ -8,43 +8,42 @@ import {
   locationMethodFor,
 } from '../src/lib/kycRequirements';
 
+// The short list the Aangan 2.0 prototype asks for (provider.js DOCS): a photo ID and one photo.
 describe('kycRequirements', () => {
-  it('driver requires Aadhaar, licence, RC, a vehicle selfie and a vehicle video', () => {
-    expect(requiredDocTypes('driver').sort()).toEqual(
-      ['aadhaar', 'driver_vehicle_photo', 'driver_vehicle_video', 'driving_license', 'vehicle_rc'].sort()
-    );
+  it('asks each type for exactly the prototype documents, all of them required', () => {
+    expect(requiredDocTypes('homestay')).toEqual(['aadhaar', 'property_photo_front']);
+    expect(requiredDocTypes('driver')).toEqual(['aadhaar', 'driving_license', 'driver_vehicle_photo']);
+    expect(requiredDocTypes('guide')).toEqual(['aadhaar', 'owner_photo']);
+    expect(requiredDocTypes('cafe')).toEqual(['aadhaar', 'premises_photo_front']);
+    expect(requiredDocTypes('shop')).toEqual(['aadhaar', 'premises_photo_front']);
+    for (const type of ['homestay', 'driver', 'guide', 'cafe', 'shop']) {
+      expect(requirementsFor(type).every((r) => r.required)).toBe(true);
+    }
   });
 
-  it('driver pollution certificate and insurance are optional, PAN is not asked for', () => {
-    const reqs = requirementsFor('driver');
-    expect(reqs.find(r => r.docType === 'pollution_certificate')?.required).toBe(false);
-    expect(reqs.find(r => r.docType === 'vehicle_insurance')?.required).toBe(false);
-    expect(isAllowedDocType('driver', 'pan')).toBe(false);
+  it('the ID row takes any photo ID, not only Aadhaar', () => {
+    for (const type of ['homestay', 'driver', 'guide', 'cafe', 'shop']) {
+      expect(requirementsFor(type).find((r) => r.docType === 'aadhaar')?.label).toBe('Aadhaar or any photo ID');
+    }
   });
 
-  it('homestay has tourism_registration required and gst_certificate optional', () => {
-    const reqs = requirementsFor('homestay');
-    expect(reqs.find(r => r.docType === 'tourism_registration')?.required).toBe(true);
-    expect(reqs.find(r => r.docType === 'gst_certificate')?.required).toBe(false);
+  it('no longer asks for PAN, certificates, licences, room photos, videos or GST', () => {
+    const dropped: Record<string, string[]> = {
+      homestay: ['pan', 'owner_photo', 'property_proof', 'tourism_registration', 'property_photo_room', 'property_video', 'gst_certificate'],
+      driver: ['vehicle_rc', 'driver_vehicle_video', 'pollution_certificate', 'vehicle_insurance'],
+      guide: ['guide_licence'],
+      cafe: ['pan', 'owner_photo', 'fssai_license', 'trade_license', 'premises_photo_inside', 'premises_video', 'gst_certificate'],
+      shop: ['pan', 'owner_photo', 'trade_license', 'premises_photo_inside', 'premises_video', 'fssai_license', 'gst_certificate'],
+    };
+    for (const [type, docs] of Object.entries(dropped)) {
+      for (const doc of docs) expect(isAllowedDocType(type, doc)).toBe(false);
+    }
   });
 
-  it('homestay needs the registration certificate, a selfie at the property, property photos and a video', () => {
-    expect(requiredDocTypes('homestay').sort()).toEqual(
-      [
-        'aadhaar',
-        'pan',
-        'owner_photo',
-        'property_proof',
-        'tourism_registration',
-        'property_photo_front',
-        'property_photo_room',
-        'property_video',
-      ].sort()
-    );
-    expect(isVideoDocType('homestay', 'property_video')).toBe(true);
-    expect(isVideoDocType('homestay', 'property_photo_front')).toBe(false);
-    // The selfie keeps its old doc type so existing uploads still count, but now says where.
-    expect(requirementsFor('homestay').find(r => r.docType === 'owner_photo')?.label).toMatch(/property/i);
+  it('no document is a video any more', () => {
+    for (const type of ['homestay', 'driver', 'guide', 'cafe', 'shop']) {
+      expect(requirementsFor(type).some((r) => isVideoDocType(type, r.docType))).toBe(false);
+    }
   });
 
   it('a homestay confirms its pin with Google Maps, a cafe or shop captures it live, a driver neither', () => {
@@ -56,36 +55,10 @@ describe('kycRequirements', () => {
     expect(requiresLocationVerification('driver')).toBe(false);
   });
 
-  it('a cafe or shop needs the trade licence, a selfie at the premises, photos and a video', () => {
-    for (const type of ['cafe', 'shop']) {
-      const required = requiredDocTypes(type);
-      for (const doc of ['trade_license', 'owner_photo', 'premises_photo_front', 'premises_photo_inside', 'premises_video']) {
-        expect(required).toContain(doc);
-      }
-      expect(isVideoDocType(type, 'premises_video')).toBe(true);
-      expect(requirementsFor(type).find(r => r.docType === 'owner_photo')?.label).toMatch(/premises|shop|caf/i);
-    }
-    // FSSAI stays required for a cafe and optional for a shop; the premises documents are not for homestays.
-    expect(requiredDocTypes('cafe')).toContain('fssai_license');
-    expect(requiredDocTypes('shop')).not.toContain('fssai_license');
-    expect(isAllowedDocType('homestay', 'premises_video')).toBe(false);
-  });
-
-  it('the property documents are not asked of other businesses', () => {
-    for (const other of ['driver', 'cafe', 'shop']) {
-      expect(isAllowedDocType(other, 'property_video')).toBe(false);
-      expect(isAllowedDocType(other, 'property_photo_front')).toBe(false);
-    }
-  });
-
-  it('shop requires trade_license but fssai_license is optional', () => {
-    expect(requiredDocTypes('shop')).toContain('trade_license');
-    expect(requiredDocTypes('shop')).not.toContain('fssai_license');
-    expect(isAllowedDocType('shop', 'fssai_license')).toBe(true);
-  });
-
   it('rejects a docType not allowed for the type', () => {
     expect(isAllowedDocType('cafe', 'driving_license')).toBe(false);
+    expect(isAllowedDocType('homestay', 'premises_photo_front')).toBe(false);
+    expect(isAllowedDocType('shop', 'property_photo_front')).toBe(false);
   });
 
   it('returns empty requirements for non-onboardable types', () => {

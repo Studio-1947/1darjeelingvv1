@@ -6,110 +6,43 @@ export type DocRequirement = {
   media?: 'video';
 };
 
-// v1 matrix  approved in the design spec (§3). Single source of truth for
-// backend validation, completion math, and the frontend checklist.
-const IDENTITY: DocRequirement[] = [
-  { docType: 'aadhaar', label: 'Aadhaar card', required: true },
-  { docType: 'pan', label: 'PAN card', required: true },
-  { docType: 'owner_photo', label: 'Owner photo / selfie', required: true },
-];
+// The documents a host sends to be checked, per business type. Single source of truth for backend
+// validation, completion math, and the host's documents screen.
+//
+// Kept to the short list the Aangan 2.0 prototype asks for (provider.js DOCS): a photo ID, plus one
+// photo that ties the person to what they offer. Everything else the first matrix asked for (PAN,
+// registration certificates, licences, room photos, walk-around videos, GST) was dropped, not made
+// optional: the documents screen lists only what is needed, so an optional slot would be one no
+// host can see. Documents already stored under a dropped type stay in the table and in the admin
+// queue; they simply no longer count towards verification, and since every list below is a subset
+// of the old required one, nobody who was verified before stops being verified.
+const PHOTO_ID: DocRequirement = { docType: 'aadhaar', label: 'Aadhaar or any photo ID', required: true };
 
 export const KYC_REQUIREMENTS: Record<string, DocRequirement[]> = {
-  // Guides: who they are and a face to match it. A government / tourism-department guide licence
-  // is welcome but many local guides work without one, so it must not block a listing.
-  guide: [
-    { docType: 'aadhaar', label: 'Aadhaar card', required: true },
-    { docType: 'owner_photo', label: 'Your photo / selfie', required: true },
-    { docType: 'guide_licence', label: 'Guide licence or certificate (if you have one)', required: false },
-  ],
-  // Drivers: no PAN and no selfie. The plate photo is the driver check, a shot of the driver
-  // beside the vehicle with the front number plate legible, so the person and the car are tied
-  // together. Pollution (PUC) and insurance are welcome but must not block a listing.
-  driver: [
-    { docType: 'aadhaar', label: 'Aadhaar card', required: true },
-    { docType: 'driving_license', label: 'Driving licence', required: true },
-    { docType: 'vehicle_rc', label: 'Vehicle registration (RC)', required: true },
-    {
-      docType: 'driver_vehicle_photo',
-      label: 'Selfie with your vehicle (front number plate visible)',
-      required: true,
-    },
-    {
-      docType: 'driver_vehicle_video',
-      label: 'Short vehicle video (walk around, show the plate)',
-      required: true,
-      media: 'video',
-    },
-    { docType: 'pollution_certificate', label: 'Pollution certificate (PUC)', required: false },
-    { docType: 'vehicle_insurance', label: 'Vehicle insurance', required: false },
-  ],
-  // Homestays: the host and the property both have to be seen. The selfie is taken at the property
-  // with the building behind the host, two photos and a short video show the place itself, and the
-  // registration certificate and proof of ownership or tenancy back it up. The Google Maps pin is
-  // the sixth check; it is not a document, so it is required separately (see
-  // `requiresLocationVerification`).
   homestay: [
-    { docType: 'aadhaar', label: 'Aadhaar card', required: true },
-    { docType: 'pan', label: 'PAN card', required: true },
-    {
-      docType: 'owner_photo',
-      label: 'Selfie at your property (your homestay visible behind you)',
-      required: true,
-    },
-    { docType: 'property_proof', label: 'Property proof (deed / rent / electricity bill)', required: true },
-    { docType: 'tourism_registration', label: 'Homestay / tourism registration certificate', required: true },
+    PHOTO_ID,
     { docType: 'property_photo_front', label: 'Photo of the property (front of the building)', required: true },
-    { docType: 'property_photo_room', label: 'Photo of a guest room', required: true },
-    {
-      docType: 'property_video',
-      label: 'Short property video (entrance, rooms, view)',
-      required: true,
-      media: 'video',
-    },
-    { docType: 'gst_certificate', label: 'GST certificate', required: false },
   ],
-  // Cafés and shops are fixed premises a traveller walks into, so they are checked like one: the
-  // trade licence, the owner at the premises, photos of the front and the inside, a short video,
-  // and the location captured live from a phone standing there (see `locationMethodFor`).
+  // Drivers: the licence, and a selfie beside the vehicle so the person and the car are tied together.
+  driver: [
+    PHOTO_ID,
+    { docType: 'driving_license', label: 'Driving licence', required: true },
+    { docType: 'driver_vehicle_photo', label: 'Selfie with your vehicle', required: true },
+  ],
+  // Guides go to the traveller and have no premises: who they are and a face to match it.
+  guide: [
+    PHOTO_ID,
+    { docType: 'owner_photo', label: 'Your photo / selfie', required: true },
+  ],
+  // Cafés and shops are fixed premises a traveller walks into: the front, with the name board. Where
+  // they are is proved separately, captured live from a phone standing there (`locationMethodFor`).
   cafe: [
-    { docType: 'aadhaar', label: 'Aadhaar card', required: true },
-    { docType: 'pan', label: 'PAN card', required: true },
-    {
-      docType: 'owner_photo',
-      label: 'Selfie at your restaurant or café (the premises visible behind you)',
-      required: true,
-    },
-    { docType: 'fssai_license', label: 'FSSAI food licence', required: true },
-    { docType: 'trade_license', label: 'Shop & Establishment / trade licence', required: true },
+    PHOTO_ID,
     { docType: 'premises_photo_front', label: 'Photo of the front (name board visible)', required: true },
-    { docType: 'premises_photo_inside', label: 'Photo of the inside (seating or counter)', required: true },
-    {
-      docType: 'premises_video',
-      label: 'Short video of the premises (entrance, inside, kitchen or counter)',
-      required: true,
-      media: 'video',
-    },
-    { docType: 'gst_certificate', label: 'GST certificate', required: false },
   ],
   shop: [
-    { docType: 'aadhaar', label: 'Aadhaar card', required: true },
-    { docType: 'pan', label: 'PAN card', required: true },
-    {
-      docType: 'owner_photo',
-      label: 'Selfie at your shop (the shop visible behind you)',
-      required: true,
-    },
-    { docType: 'trade_license', label: 'Shop & Establishment / trade licence', required: true },
+    PHOTO_ID,
     { docType: 'premises_photo_front', label: 'Photo of the front (name board visible)', required: true },
-    { docType: 'premises_photo_inside', label: 'Photo of the inside (shelves or counter)', required: true },
-    {
-      docType: 'premises_video',
-      label: 'Short video of the shop (entrance, inside, what you sell)',
-      required: true,
-      media: 'video',
-    },
-    { docType: 'fssai_license', label: 'FSSAI food licence', required: false },
-    { docType: 'gst_certificate', label: 'GST certificate', required: false },
   ],
 };
 

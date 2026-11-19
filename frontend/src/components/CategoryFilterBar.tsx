@@ -306,7 +306,7 @@ export default function CategoryFilterBar({
               <span className="fcount">{totalCount}</span>
             </button>
             {filtersOn && (
-              <button type="button" className="ag-btn text" onClick={onReset} data-testid="category-reset-btn">
+              <button type="button" className="ag-btn text ag-category-reset" onClick={onReset} data-testid="category-reset-btn">
                 {t('category.clear', 'Clear filters')}
               </button>
             )}

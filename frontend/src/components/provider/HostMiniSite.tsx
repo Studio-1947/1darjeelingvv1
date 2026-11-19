@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { Phone, WhatsappLogo, NavigationArrow, SealCheck, Star, PlayCircle, Globe, CrownSimple } from '@phosphor-icons/react';
 import { Box, ButtonA, SecHead, Status, cx } from '@/components/ag';
 import { themeVars, useMode } from '@/lib/theme';
+import SmartImg from '@/components/SmartImg';
+import FaceImg from '@/components/FaceImg';
 
 /**
  * A host's mini website, laid out like the board's mock-up (Aangan Blue Print, "Profile: all
@@ -87,14 +89,14 @@ export default function HostMiniSite({ data, actions }: { data: MiniSiteData; ac
 
       {/* Cover */}
       <div className="relative aspect-[16/9] overflow-hidden rounded-[var(--r-card)] border border-[var(--warmline)] bg-[var(--creme2)]">
-        {data.cover && <img src={data.cover} alt="" className="absolute inset-0 h-full w-full object-cover" />}
+        {data.cover && <SmartImg src={data.cover} alt="" className="absolute inset-0 h-full w-full object-cover" />}
         {!data.available && <Status className="absolute right-3 top-3">{t('miniSite.not_taking')}</Status>}
       </div>
 
       {/* Identity: photo, name with the two marks, type and joining date, stars, place */}
       <div className="flex items-start gap-4">
         <div className="-mt-12 grid h-24 w-24 flex-none place-items-center overflow-hidden rounded-full border-4 border-[var(--surface)] bg-[var(--r-tint)] text-4xl font-medium text-[var(--r)] shadow-sm">
-          {data.avatar ? <img src={data.avatar} alt="" className="h-full w-full object-cover" /> : initial}
+          <FaceImg src={data.avatar} initial={initial} className="h-full w-full object-cover" />
         </div>
         <div className="grid min-w-0 flex-1 gap-1">
           <div className="flex flex-wrap items-center gap-2">
@@ -150,7 +152,7 @@ export default function HostMiniSite({ data, actions }: { data: MiniSiteData; ac
           <div className="grid grid-cols-2 gap-2.5">
             {data.items.map((it, i) => (
               <div key={i} className="ag-card">
-                {(it.photo || data.gallery[i]) ? <img src={it.photo || data.gallery[i]} alt="" className="img" /> : <div className="img" />}
+                {(it.photo || data.gallery[i]) ? <SmartImg src={it.photo || data.gallery[i]} alt="" className="img" /> : <div className="img" />}
                 <div className="body">
                   <span className="name truncate">{it.name}</span>
                   {it.price > 0 && (
@@ -194,7 +196,7 @@ export default function HostMiniSite({ data, actions }: { data: MiniSiteData; ac
           <SecHead title={t('miniSite.photos')} className="!mt-0" />
           <div className="-mx-4 flex snap-x gap-2.5 overflow-x-auto px-4 pb-1 [scrollbar-width:none]">
             {data.gallery.slice(0, 12).map((src, i) => (
-              <img key={i} src={src} alt="" className="aspect-[4/3] w-44 flex-none snap-start rounded-[18px] border border-[var(--warmline)] bg-[var(--creme2)] object-cover" />
+              <SmartImg key={i} src={src} alt="" className="aspect-[4/3] w-44 flex-none snap-start rounded-[18px] border border-[var(--warmline)] bg-[var(--creme2)] object-cover" />
             ))}
           </div>
         </section>

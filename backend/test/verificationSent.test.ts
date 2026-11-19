@@ -30,7 +30,7 @@ describe('verification: "Documents sent" only once every required document is in
     await uploadRequiredDocs(host.token);
     const all = await request(app).get('/api/providers/me/profile').set(auth(host.token));
     expect(all.body.verification.status).toBe('submitted');
-    // The checklist tells the website which box is a video.
-    expect(all.body.checklist.some((c: any) => c.kind === 'kyc' && c.media === 'video')).toBe(true);
+    // The short list is all photos: no row asks the website for a video picker.
+    expect(all.body.checklist.some((c: any) => c.kind === 'kyc' && c.media === 'video')).toBe(false);
   });
 });

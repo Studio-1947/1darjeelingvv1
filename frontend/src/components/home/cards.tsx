@@ -19,6 +19,7 @@ import { kmLabel } from '@/lib/places';
 import { cardCtaKey } from '@/lib/cardCta';
 import { useFavorites } from '@/context/FavoritesContext';
 import { useLoginGate } from '@/components/LoginGate';
+import FaceImg from '@/components/FaceImg';
 
 type Km = { km: number; approx: boolean } | null | undefined;
 
@@ -33,7 +34,7 @@ export function priceParts(it: any, t: TFunction): { amount?: string; unit?: str
     return { amount };
   }
   if (it.extras?.entry_fee) return { text: it.extras.entry_fee };
-  if (['spot', 'biodiversity', 'event'].includes(it.type)) return { text: t('common.entry_varies') };
+  if (['spot', 'biodiversity', 'event'].includes(it.type)) return { text: t('listing.freeentry', 'Free entry') };
   // A host who has not set a rate yet: say so, rather than a card with no price at all.
   if (['homestay', 'driver', 'guide'].includes(it.type)) return { text: t('common.price_on_request') };
   return {};
@@ -108,7 +109,7 @@ export function StayCard({ it, href, km, testId, ctaTestId, saveTestId, ctaLabel
         {km && <span className="ag-home-distb"><Icon name="pin" />{kmLabel(km)}</span>}
         {selfie && (
           <span className="ag-home-selfie">
-            {avatar ? <img src={sizedImage(avatar, 120)} alt="" loading="lazy" /> : <b>{String(it.title || '?').trim().charAt(0).toUpperCase()}</b>}
+            <FaceImg src={avatar ? sizedImage(avatar, 120) : ''} initial={<b>{String(it.title || '?').trim().charAt(0).toUpperCase()}</b>} />
           </span>
         )}
       </Link>
@@ -161,15 +162,15 @@ const STICK = (() => {
   return `${d}Z`;
 })();
 
-/** The round entry sticker on a place's photo: "₹150 entry ticket", the host's own fee text, or "Entry varies". */
+/** The round entry sticker on a place's photo: "₹150 entry ticket", the host's own fee text, or "Free entry". */
 function Sticker({ it }: { it: any }) {
   const { t } = useTranslation();
   const paid = Number(it.price) > 0;
   const fee = typeof it.extras?.entry_fee === 'string' ? it.extras.entry_fee.trim() : '';
-  // A price of 0 means nobody has set one, not that the place is free, so it never says "Free".
+  // No ticket price and no fee text: free, as the spot list and the place page say.
   const [big, small] = paid
     ? [`₹${Number(it.price).toLocaleString('en-IN')}`, t('home.stick_ticket', 'Entry ticket')]
-    : fee ? [fee, t('home.stick_entry', 'entry')] : [t('home.stick_entry_big', 'Entry'), t('home.stick_varies', 'varies')];
+    : fee ? [fee, t('home.stick_entry', 'entry')] : [t('home.stick_free', 'Free'), t('home.stick_entry', 'entry')];
   return (
     <span className={cx('ag-home-stick', paid && 'paid')} aria-hidden="true">
       <svg viewBox="0 0 100 100"><path d={STICK} /><circle cx="50" cy="50" r="33" fill="none" stroke="currentColor" strokeWidth="1.5" strokeDasharray="3 3" /></svg>

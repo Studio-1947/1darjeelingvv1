@@ -101,9 +101,9 @@ async function hosted(u: string): Promise<string> {
   return url;
 }
 
-function loadDraft(): Partial<Draft> {
+function loadDraft(key: string): Partial<Draft> {
   try {
-    const saved: Partial<Draft> = JSON.parse(sessionStorage.getItem(DRAFT_KEY) || '{}');
+    const saved: Partial<Draft> = JSON.parse(sessionStorage.getItem(key) || '{}');
     // After a reload the in-page photos are gone; drop their dead links.
     if (saved.photos) saved.photos = saved.photos.filter(usable);
     if (saved.menu) saved.menu = saved.menu.map((m) => (m.photo && !usable(m.photo) ? { ...m, photo: '' } : m));
@@ -118,9 +118,12 @@ export function useHostWizard() {
   const location = useLocation();
   const [params, setParams] = useSearchParams();
   const link = readHostLink(Object.fromEntries(params));
+  // Adding another listing to a business that is already live (dashboard "Add more listings").
+  const adding = params.get('add') === '1';
+  const draftKey = adding ? DRAFT_KEY + ':add' : DRAFT_KEY;
 
   const [d, setD] = useState<Draft>(() => {
-    const saved = loadDraft();
+    const saved = loadDraft(draftKey);
     const ty = (HOST_TYPES as readonly string[]).includes(link.type || '') ? (link.type as HostType) : (saved.type || '');
     return {
       type: ty,
@@ -138,7 +141,7 @@ export function useHostWizard() {
   });
   const set = useCallback((patch: Partial<Draft>) => setD((prev) => ({ ...prev, ...patch })), []);
 
-  useEffect(() => { try { sessionStorage.setItem(DRAFT_KEY, JSON.stringify(d)); } catch { /* private mode */ } }, [d]);
+  useEffect(() => { try { sessionStorage.setItem(draftKey, JSON.stringify(d)); } catch { /* private mode */ } }, [d, draftKey]);
 
   // Signed out: the questions are open to anyone (prototype). Putting the listing live asks to log in
   // once, then comes straight back to this step (with any invite ref).
@@ -271,7 +274,8 @@ export function useHostWizard() {
   const describe = () => {
     const what = d.type ? t(`ob.wz.t_${d.type}`) : '';
     const offers = offerLabels();
-    return `${what} · ${d.place?.name || ''}${offers.length ? `. ${offers.join(', ')}.` : ''}`;
+    const base = t('ob.wz.describe', { what, place: d.place?.name || '', name: d.name.trim(), defaultValue: '{{what}} in {{place}}, run by {{name}} and listed on aangan.' });
+    return `${base}${offers.length ? ` ${offers.join(', ')}.` : ''}`;
   };
 
   const extrasFor = (d: Draft): Record<string, unknown> => {
@@ -312,7 +316,7 @@ export function useHostWizard() {
   };
 
   const finish = async () => {
-    try { sessionStorage.removeItem(DRAFT_KEY); } catch { /* private mode */ }
+    try { sessionStorage.removeItem(draftKey); } catch { /* private mode */ }
     await refresh();
     goTo('done');
   };
@@ -329,6 +333,21 @@ export function useHostWizard() {
       const menu = await Promise.all(d.menu.map(async (m) => (m.photo && isLocal(m.photo) ? { ...m, photo: await hosted(m.photo) } : m)));
       const sent: Draft = { ...d, photos, menu };
       setD(sent);
+      if (adding) {
+        await api.post('/listings', {
+          title: d.name.trim(),
+          type: d.type,
+          description: describe(),
+          location: d.place.name,
+          latitude: d.place.lat,
+          longitude: d.place.lng,
+          price: startingPrice(),
+          image: photos[0] || '',
+          extras: extrasFor(sent),
+        });
+        await finish();
+        return;
+      }
       const { data } = await api.post('/providers/onboard', {
         business_name: d.name.trim(),
         business_type: d.type,
@@ -342,7 +361,7 @@ export function useHostWizard() {
         extras: extrasFor(sent),
       });
       const providerId = data.provider.id;
-      if (d.payWhen === 'later') {
+      if (d.payWhen === 'later' || d.type === 'shop') {
         await api.post('/providers/me/start-free');
         await finish();
         return;
@@ -376,7 +395,7 @@ export function useHostWizard() {
   };
 
   return {
-    t, user, nav, d, set, pickType, steps, i, step, err, setErr, busy, uploading, next, back, goTo,
+    t, user, nav, d, set, pickType, steps, i, step, err, setErr, busy, uploading, next, back, goTo, adding,
     addPhotos, photoUrl, startingPrice, offerLabels, submit, payModal, setPayModal, finishMockPayment,
   };
 }

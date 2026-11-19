@@ -108,7 +108,8 @@ export default function KycSection({ onProfileChange }: { onProfileChange?: (p: 
 
   if (!profile) return null;
 
-  const kycItems = profile.checklist.filter(c => c.kind === 'kyc');
+  // Only the documents that are needed (the prototype's short list: an ID and one photo).
+  const kycItems = profile.checklist.filter(c => c.kind === 'kyc' && c.required);
   const profileItems = profile.checklist.filter(c => c.kind === 'profile');
   const pct = Math.max(0, Math.min(100, Math.round(profile.completion_percent || 0)));
 
@@ -143,11 +144,8 @@ export default function KycSection({ onProfileChange }: { onProfileChange?: (p: 
       </Box>
 
       <Box as="section">
-        <div>
-          <h2>{t('kyc.verification')}</h2>
-          <p className="ag-small mt-2">{t('kyc.verificationHelp')}</p>
-        </div>
-        <ul className="grid">
+        <h2>{t('kyc.verification')}</h2>
+        <ul className="grid" data-testid="kyc-docs">
           {kycItems.map(item => {
             const m = stateMeta[item.state];
             const doc = profile.documents.find(d => d.doc_type === item.key);
@@ -155,7 +153,7 @@ export default function KycSection({ onProfileChange }: { onProfileChange?: (p: 
               <li key={item.key} className="ag-host-docrow">
                 <div className="top">
                   <div className="min-w-0">
-                    <b>{checklistLabel(t, item, businessType)}{!item.required && <span className="font-normal text-[var(--ink-muted)]"> ({t('kyc.optional')})</span>}</b>
+                    <b>{checklistLabel(t, item, businessType)}</b>
                     <Status tone={m.tone}>{m.label}</Status>
                     {item.media === 'video' && item.state === 'missing' && (
                       <p className="ag-small mt-1">{t('kyc.videoHint')}</p>
@@ -188,7 +186,8 @@ export default function KycSection({ onProfileChange }: { onProfileChange?: (p: 
                         }}
                       />
                     </label>
-                    {doc && (
+                    {/* A verified document stays: removing it would take a live business off verified. */}
+                    {doc && item.state !== 'done' && (
                       <Button variant="text" className="!text-[var(--fail)]" onClick={() => onDelete(item.key)} disabled={busyKey === item.key}>
                         {t('kyc.remove')}
                       </Button>

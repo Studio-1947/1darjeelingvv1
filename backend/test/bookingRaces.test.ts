@@ -100,11 +100,11 @@ describe('limits on unpaid requests and orders', () => {
   });
 
   it('hands back the same open order when Pay is pressed again, even at the same instant', async () => {
-    const listing = await createListing({ title: 'One Order Spot' });
-    const { token } = await registerUser({ name: 'Presses Pay Twice', paySupport: false });
-    const made = await request(app).post('/api/bookings').set(auth(token)).send({ listing_id: listing.id });
+    // The aangan pass order (the booking fee is gone; the reuse rule is the same for every flow).
+    const { token, user } = await registerUser({ name: 'Presses Pay Twice', paySupport: false });
+    const made = { body: { booking: { id: user.id } } };
     const order = () => request(app).post('/api/payments/order').set(auth(token))
-      .send({ flow: 'booking_commission', reference_id: made.body.booking.id });
+      .send({ flow: 'platform_support', reference_id: user.id });
     const [a, b] = await Promise.all([order(), order()]);
     const c = await order();
     expect(a.status).toBe(200);

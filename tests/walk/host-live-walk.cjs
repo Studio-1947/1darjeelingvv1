@@ -25,7 +25,8 @@ const IMG = [...Array(10)].map((_, i) => { const f = path.join(OUT, `img${i}.png
 
 const TYPES = (process.env.TYPES || 'homestay,driver,guide,cafe,shop').split(',');
 // What each plan costs at checkout (pricing cards, 2026-11-08): ₹499 or ₹99 + 18% GST + 2% fee.
-const PLAN_TOTAL = { homestay: 59880, driver: 59880, guide: 11880, cafe: 11880, shop: 11880 };
+// Prototype fees: homestays, drivers and guides ₹499 a year, cafes ₹99, local shops free.
+const PLAN_TOTAL = { homestay: 59880, driver: 59880, guide: 59880, cafe: 11880, shop: 0 };
 // The documents step needs a short video. Made here with ffmpeg when it is installed; otherwise the
 // smallest file the server accepts as MP4 (an "ftyp" box), the same as backend/test/helpers.ts.
 const CLIP = path.join(OUT, 'clip.mp4');
@@ -87,7 +88,9 @@ const j = async (m, p, body, token) => { const r = await fetch(API + p, { method
       await p.click(`[data-testid="wz-type-${type}"]`);
       // "Pay later" (the free start) is the default. This walk takes "Pay now", so the paid route,
       // the checkout amount and the Member badge are all exercised.
-      await p.click('[data-testid="plan-now"]');
+      // A local shop lists free: there is no plan to choose.
+      if (type === 'shop') line(type, (await p.locator('[data-testid="plan-now"]').count()) === 0, 'a local shop is not asked to choose a plan');
+      else await p.click('[data-testid="plan-now"]');
       let ok = await nextStep('type');
       if (ok) { await p.click('[data-testid="wz-place-Darjeeling"]'); ok = await nextStep('place'); }
       if (ok) {
@@ -117,17 +120,22 @@ const j = async (m, p, body, token) => { const r = await fetch(API + p, { method
       const formMsg = (await p.locator('text=/must|required|invalid|failed/i').allInnerTexts()).join(' ');
       if (formMsg) line(type, false, 'form refused on submit', formMsg.slice(0, 200));
 
-      // 4. Pay (mock checkout).
-      const mockPay = p.locator('[data-testid="mock-payment-pay"]');
-      await mockPay.waitFor({ timeout: 10000 }).catch(() => {});
-      if (await mockPay.count()) await mockPay.click();
-      else await p.getByRole('button', { name: /pay|complete/i }).last().click();
+      // 4. Pay (mock checkout); a shop goes live free with no checkout.
+      const wantTotal = PLAN_TOTAL[type];
+      if (wantTotal) {
+        const mockPay = p.locator('[data-testid="mock-payment-pay"]');
+        await mockPay.waitFor({ timeout: 10000 }).catch(() => {});
+        if (await mockPay.count()) await mockPay.click();
+        else await p.getByRole('button', { name: /pay|complete/i }).last().click();
+      } else {
+        line(type, (await p.locator('[data-testid="mock-payment-pay"]').count()) === 0, 'no checkout for a local shop');
+      }
       await p.waitForTimeout(2500);
       const token = await p.evaluate(() => localStorage.getItem('token'));
       let me = (await j('GET', '/providers/me', null, token)).d?.provider;
-      const wantTotal = PLAN_TOTAL[type];
-      line(type, me?.plan_active === true && !me?.grace && charged === wantTotal, `plan paid (₹${(wantTotal / 100).toFixed(2)})`, `charged ${charged ?? '?'} paise, status ${me?.status}, free start ${me?.grace ? 'yes' : 'no'}`);
-      if (!me?.plan_active) { await snap('not-paid'); await ctx.close(); continue; }
+      if (wantTotal) line(type, me?.plan_active === true && !me?.grace && charged === wantTotal, `plan paid (₹${(wantTotal / 100).toFixed(2)})`, `charged ${charged ?? '?'} paise, status ${me?.status}, free start ${me?.grace ? 'yes' : 'no'}`);
+      else line(type, me?.status === 'active' && !charged, 'listed free: active with nothing charged', `status ${me?.status}, charged ${charged ?? 'nothing'}`);
+      if (wantTotal ? !me?.plan_active : me?.status !== 'active') { await snap('not-paid'); await ctx.close(); continue; }
 
       // 5. Profile: the board's mandatory items before documents.
       const missing = (me.profile_missing || []).map((m) => m.label);
@@ -216,7 +224,9 @@ const j = async (m, p, body, token) => { const r = await fetch(API + p, { method
       await guest.goto(WEB + me.page_path, { waitUntil: 'networkidle' });
       await guest.waitForFunction(() => !document.getElementById('app-splash'), null, { timeout: 20000 }).catch(() => {});
       await guest.locator('[data-testid="badge-verified"]').first().waitFor({ timeout: 15000 }).catch(() => {});
-      line(type, (await guest.locator('[data-testid="badge-verified"]').count()) > 0 && (await guest.locator('[data-testid="badge-member"]').count()) > 0, 'host page shows the blue tick and Member badge', me.page_path);
+      // A local shop lists free, so it has no paid plan behind a Member badge; the blue tick still shows.
+      const member = type === 'shop' || (await guest.locator('[data-testid="badge-member"]').count()) > 0;
+      line(type, (await guest.locator('[data-testid="badge-verified"]').count()) > 0 && member, type === 'shop' ? 'host page shows the blue tick' : 'host page shows the blue tick and Member badge', me.page_path);
       await guest.screenshot({ path: path.join(OUT, `${type}-zz-host-page.png`) });
       await guest.context().close();
       if (errs.length) line(type, false, 'page or server errors', errs.slice(0, 4).join(' / '));

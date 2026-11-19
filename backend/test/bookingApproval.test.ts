@@ -75,7 +75,7 @@ describe('host approval before a booking can be confirmed', () => {
     });
   }
 
-  it('will not take the ₹1 fee for a request the host has not accepted', async () => {
+  it('takes no fee: waiting for the host, then confirmed free once accepted', async () => {
     const { hostToken, listing } = await hostListing('Fee Gate', 'homestay');
     const { token: guest } = await registerUser({ name: 'No Pass Guest', paySupport: false });
     const booking = await ask(guest, listing);
@@ -87,13 +87,14 @@ describe('host approval before a booking can be confirmed', () => {
 
     await request(app).patch(`/api/bookings/${booking.id}/confirm`).set(auth(hostToken)).expect(200);
 
-    // Once accepted, the traveller without a pass is asked for the fee as before.
-    const checkout = await request(app).post(`/api/bookings/${booking.id}/checkout`).set(auth(guest));
-    expect(checkout.status).toBe(402);
-    expect(checkout.body.code).toBe('fee_required');
-    const paid = await request(app).post('/api/payments/order').set(auth(guest))
+    // Once accepted, the traveller without a pass confirms free; there is no fee to order.
+    const fee = await request(app).post('/api/payments/order').set(auth(guest))
       .send({ flow: 'booking_commission', reference_id: booking.id });
-    expect(paid.status).toBe(200);
+    expect(fee.status).toBe(409);
+    expect(fee.body.code).toBe('booking_free');
+    const checkout = await request(app).post(`/api/bookings/${booking.id}/checkout`).set(auth(guest));
+    expect(checkout.status).toBe(200);
+    expect(checkout.body.booking.status).toBe('confirmed');
   });
 
   it('lets the host decline a request instead', async () => {

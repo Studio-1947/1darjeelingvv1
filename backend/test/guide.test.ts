@@ -6,9 +6,9 @@ import { onboardActiveProvider, registerUser } from './helpers';
 
 // Guide: a host type of its own, booked by request like a driver.
 describe('guide', () => {
-  it('asks a guide for Aadhaar and a selfie, with a guide licence optional', () => {
+  it('asks a guide for a photo ID and a selfie, and nothing else', () => {
     expect(requiredDocTypes('guide').sort()).toEqual(['aadhaar', 'owner_photo']);
-    expect(requirementsFor('guide').find((r) => r.docType === 'guide_licence')?.required).toBe(false);
+    expect(requirementsFor('guide').map((r) => r.docType)).toEqual(['aadhaar', 'owner_photo']);
     expect(requiresLocationVerification('guide')).toBe(false);
   });
 

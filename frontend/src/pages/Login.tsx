@@ -199,7 +199,7 @@ export default function Login() {
       <div className="ag-main ag-account-login">
         {step === 0 && (
           <form onSubmit={(e) => { e.preventDefault(); continueWith('wa'); }} className="flex flex-col gap-4" data-testid="login-step-0">
-            <PageHead title={t('ui.login.nameq', 'What should we call you?')} sub={t('ui.login.nameonly', 'No password needed. Just tell us your name.')} />
+            <PageHead title={t('ui.login.nameq', 'What should we call you?')} sub={t('ui.login.lead', 'No password needed. We send a one-time code to your phone.')} />
             <TextField label={t('ui.login.name', 'Your name')} value={name} onChange={(e) => setName(e.target.value)}
               autoComplete="name" data-testid="login-name" />
             <div className="ag-pick">

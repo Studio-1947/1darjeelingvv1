@@ -1,4 +1,4 @@
-import React, { Fragment, useEffect, useMemo, useState } from 'react';
+import React, { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { PLACES, distanceTo, placeFor } from '@/lib/places';
 import { useLocation, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -49,7 +49,7 @@ function freeEntry(it: any): boolean {
 /** Car words by cab kind, from titles and the host's vehicle type (constants/listingOptions VEHICLE_TYPES). */
 const CAB_WORDS: Record<string, string[]> = {
   hatchback: ['hatchback', 'sedan', 'dzire', 'swift', 'etios', 'alto', 'wagon', 'amaze', 'aura'],
-  suv: ['suv', 'innova', 'bolero', 'sumo', 'scorpio', 'jeep', 'xylo', 'ertiga', 'tempo', 'traveller', 'mountain'],
+  suv: ['suv', 'innova', 'bolero', 'sumo', 'scorpio', 'jeep', 'xylo', 'ertiga', 'mountain'],
 };
 
 /** Results shown as stay cards (photo, facts, price, button, heart). */
@@ -159,7 +159,8 @@ function CategoryPage({ typeOverride }: { typeOverride?: string }) {
   useEffect(() => {
     setSearchQuery(q);
   }, [q]);
-  // Filters handed over by the home filter panel: ?near=me|<place>&within=<km>&sort=price_asc.
+  // Filters handed over by the home filter panel (?near=me|<place>&within=<km>&sort=price_asc): read once
+  // when the page opens; after that the filters drive the address, not the other way round.
   const nearParam = sp.get('near') || '';
   const withinParam = Number(sp.get('within')) || 0;
   const sortParam = sp.get('sort') || '';
@@ -169,11 +170,13 @@ function CategoryPage({ typeOverride }: { typeOverride?: string }) {
     if (nearParam && withinParam > 0) setRadius(withinParam);
     if (sortParam === 'price_asc' || sortParam === 'price_desc' || sortParam === 'name_asc') setSortOrder(sortParam);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nearParam, withinParam, sortParam]);
+  }, []);
+  const clearing = useRef(false);
   // Keep the address in step with the filters (replace, so Back still leaves the page in one step).
   useEffect(() => {
     setSp((prev) => {
       const n = new URLSearchParams(prev);
+      if (clearing.current) { clearing.current = false; n.delete('q'); n.delete('guests'); }
       const put = (k: string, v: string | null) => { if (v) n.set(k, v); else n.delete(k); };
       put('loc', selectedLocation !== 'All Locations' ? selectedLocation : null);
       put('max', maxPrice ? String(maxPrice) : null);
@@ -197,7 +200,7 @@ function CategoryPage({ typeOverride }: { typeOverride?: string }) {
     if (!term) { setSmart(null); return; }
     let cancelled = false;
     const timer = setTimeout(() => {
-      api.get('/listings', { params: { q: term, type: apiType, limit: 60, ...dayParam } })
+      api.get('/listings', { params: { q: term, type: apiType, limit: apiType ? 60 : 200, ...dayParam } })
         .then((r) => { if (!cancelled) setSmart({ q: term, items: keepType(r.data.items || []), search: r.data.search || null }); })
         .catch(() => { if (!cancelled) setSmart(null); });
     }, 250);
@@ -338,6 +341,7 @@ function CategoryPage({ typeOverride }: { typeOverride?: string }) {
     setDelivers(false);
     setNear(null);
     setRadius(null);
+    clearing.current = true;
     setSp((prev) => { const n = new URLSearchParams(prev); ['q', 'guests'].forEach((k) => n.delete(k)); return n; }, { replace: true });
   };
 
@@ -471,7 +475,7 @@ function CategoryPage({ typeOverride }: { typeOverride?: string }) {
           onEntryFilterChange={setEntryFilter}
           onReset={resetFilters}
           totalCount={results.length}
-          extraActive={!!near || (type === 'homestay' && trip.guests > 1)}
+          extraActive={!!near || (type === 'homestay' && trip.guests > 1) || delivers || !!kind}
           nearSlot={(
             <button type="button" className={cx('ag-category-myloc', near && 'on')} aria-pressed={!!near}
               onClick={near ? () => { setNear(null); setRadius(null); } : locate} disabled={locating} data-testid="near-me-toggle">
@@ -539,6 +543,25 @@ function CategoryPage({ typeOverride }: { typeOverride?: string }) {
               {t('category.delivers', 'Delivers')}
             </button>
           </div>
+        )}
+
+        {filtering && (
+          <Chips scroll role="group" aria-label={t('category.applied', 'Filters on')} data-testid="category-applied">
+            {[
+              selectedLocation !== 'All Locations' && { k: 'loc', label: selectedLocation, off: () => setSelectedLocation('All Locations') },
+              !!near && { k: 'near', label: radius ? `${t('filter.within', 'Within')} ${radius} km` : (sp.get('near') && sp.get('near') !== 'me' ? sp.get('near') : t('filter.my_location', 'My location')), off: () => { setNear(null); setRadius(null); } },
+              !!maxPrice && { k: 'max', label: `≤ ₹${maxPrice.toLocaleString('en-IN')}`, off: () => setMaxPrice(undefined) },
+              selectedCab !== 'all' && { k: 'cab', label: selectedCab === 'suv' ? t('ui.categoryFilterBar.cab_suv') : t('ui.categoryFilterBar.cab_hatchback'), off: () => setSelectedCab('all') },
+              entryFilter !== 'all' && { k: 'entry', label: entryFilter === 'free' ? t('category.free_entry', 'Free entry') : t('category.paid_entry', 'Paid entry'), off: () => setEntryFilter('all') },
+              !!kind && { k: 'kind', label: kind, off: () => setKind('') },
+              delivers && { k: 'del', label: t('category.delivers', 'Delivers'), off: () => setDelivers(false) },
+              trip.guests > 1 && { k: 'guests', label: t('widget.guest_count', { count: trip.guests }), off: () => setSp((prev) => { const n = new URLSearchParams(prev); n.delete('guests'); return n; }) },
+            ].filter(Boolean).map((c: any) => (
+              <Chip key={c.k} on onClick={c.off} aria-label={`${c.label}: ${t('common.remove', 'Remove')}`} data-testid={`applied-${c.k}`}>
+                {c.label} <Icon name="close" className="!h-3 !w-3" />
+              </Chip>
+            ))}
+          </Chips>
         )}
 
         <p className={searching || filtering ? 'ag-small m-0' : 'sr-only'} role="status" data-testid="category-count">{countLine}</p>

@@ -52,19 +52,24 @@ export default function Header() {
   // Unread notifications, for the badge on the bell. Re-read on every page change and when the
   // notifications page marks something read.
   const [unread, setUnread] = React.useState(lastUnreadCount);
+  // Who the count is for. A reply is kept if the same person is still signed in, even when the
+  // effect has re-run meanwhile (a fresh /auth/me gives a new user object); dropping it left the
+  // badge empty until the next 60 s check.
+  const unreadFor = React.useRef<string | undefined>(undefined);
+  unreadFor.current = user?.id;
   React.useEffect(() => {
     if (!user) { lastUnreadCount = 0; lastUnreadCheck = 0; setUnread(0); return undefined; }
-    let live = true;
+    const forUser = user.id;
     const read = () => {
       lastUnreadCheck = Date.now();
       api.get('/notifications', { params: { limit: 1 } })
-        .then(({ data }) => { lastUnreadCount = Number(data.unread_count) || 0; if (live) setUnread(lastUnreadCount); }).catch(() => {});
+        .then(({ data }) => { if (unreadFor.current !== forUser) return; lastUnreadCount = Number(data.unread_count) || 0; setUnread(lastUnreadCount); }).catch(() => {});
     };
     if (Date.now() - lastUnreadCheck > 30_000) read();
     window.addEventListener('aangan:notifications', read);
     const every = window.setInterval(() => { if (document.visibilityState === 'visible') read(); }, 60_000);
-    return () => { live = false; window.clearInterval(every); window.removeEventListener('aangan:notifications', read); };
-  }, [user, pathname]);
+    return () => { window.clearInterval(every); window.removeEventListener('aangan:notifications', read); };
+  }, [user?.id, pathname]);
 
   // A sub-screen inside a tab root (e.g. /dashboard?s=language) gets Back, as in the prototype.
   const isRoot = ROOTS.includes(pathname) && !new URLSearchParams(query).get('s');
@@ -130,7 +135,7 @@ export default function Header() {
             <Icon name={mode === 'dark' ? 'sun' : 'moon'} />
           </button>
           <Link
-            to={user ? '/notifications' : `/login?next=${encodeURIComponent('/notifications')}`}
+            to="/notifications"
             className="ag-iconbtn"
             data-testid="header-notifications"
             aria-label={t('notes.title')}

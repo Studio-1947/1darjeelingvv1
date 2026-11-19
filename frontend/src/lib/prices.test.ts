@@ -1,15 +1,16 @@
 import { describe, it, expect } from 'vitest';
-import { breakupOf, gstIncludedOf, hostPlanFlow, isSmallHostType, rupees } from './prices';
+import { breakupOf, gstIncludedOf, hostPlanFlow, isSmallHostType, isFreeHostType, rupees } from './prices';
 
 describe('price breakup (same rule as backend/src/lib/pricing.ts)', () => {
   it('adds 18% GST and the 2% gateway fee to a host plan', () => {
     expect(breakupOf(49900)).toMatchObject({ gst: 8982, platform_fee: 998, total: 59880 });
   });
 
-  it('charges ₹99 + GST + fee (₹118.80) for cafes, shops and guides, ₹499 (₹598.80) for homestays and drivers', () => {
+  it('charges ₹99 + GST + fee (₹118.80) for cafes, ₹499 (₹598.80) for homestays, drivers and guides; shops list free', () => {
     expect(breakupOf(9900).total).toBe(11880);
-    for (const type of ['cafe', 'shop', 'guide']) expect(hostPlanFlow(type)).toBe('host_plan_small');
-    for (const type of ['homestay', 'driver', undefined]) expect(hostPlanFlow(type)).toBe('provider_registration');
+    expect(hostPlanFlow('cafe')).toBe('host_plan_small');
+    expect(isFreeHostType('shop')).toBe(true);
+    for (const type of ['homestay', 'driver', 'guide', undefined]) expect(hostPlanFlow(type)).toBe('provider_registration');
     expect(isSmallHostType('homestay')).toBe(false);
   });
 

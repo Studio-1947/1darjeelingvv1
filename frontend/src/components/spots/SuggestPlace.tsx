@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import React, { useEffect, useRef, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
@@ -20,6 +20,14 @@ import { Status, cx } from '@/components/ag';
 
 const MAX_PHOTOS = 4;
 const MIN_DETAILS = 20;
+
+/**
+ * Signed out, the form opens and fills like the prototype's; only Send (or Add photos, which
+ * uploads to their account) asks them to log in. What they typed waits here for the trip to
+ * /login?next=<this page> and back, then the form reopens filled in.
+ */
+const DRAFT_KEY = 'aangan-suggest-draft';
+type SuggDraft = { path: string; name: string; place: string; area: string; details: string; free: boolean; price: string };
 
 export type Suggestion = {
   id: string; name: string; place: string; details: string; entry_price: number | null; photos: string[];
@@ -104,7 +112,9 @@ export function MySuggestions({ items }: { items: Suggestion[] }) {
 export default function SuggestPlace() {
   const { t } = useTranslation();
   const { pathname } = useLocation();
+  const navTo = useNavigate();
   const { user } = useAuth() as { user: unknown };
+  const boxRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
   const [place, setPlace] = useState(HUBS[0]);
@@ -132,6 +142,28 @@ export default function SuggestPlace() {
     return () => { live = false; };
   }, [user]);
 
+  // Back from logging in: reopen the form with what they typed, and bring it into view.
+  useEffect(() => {
+    let v: SuggDraft | null = null;
+    try {
+      const raw = sessionStorage.getItem(DRAFT_KEY);
+      if (raw) v = JSON.parse(raw);
+    } catch { v = null; }
+    if (!v || typeof v !== 'object' || v.path !== pathname) return;
+    try { sessionStorage.removeItem(DRAFT_KEY); } catch { /* nothing kept */ }
+    setName(String(v.name || '')); setArea(String(v.area || '')); setDetails(String(v.details || ''));
+    if (HUBS.includes(v.place)) setPlace(v.place);
+    setFree(v.free !== false); setPrice(String(v.price || ''));
+    setOpen(true); setState('idle');
+    setTimeout(() => boxRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 300);
+  }, [pathname]);
+
+  const toLogin = () => {
+    const keep: SuggDraft = { path: pathname, name, place, area, details, free, price };
+    try { sessionStorage.setItem(DRAFT_KEY, JSON.stringify(keep)); } catch { /* private mode: they type it again */ }
+    navTo(`/login?next=${encodeURIComponent(pathname)}`);
+  };
+
   const addPhotos = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []).slice(0, MAX_PHOTOS - photos.length);
     e.target.value = '';
@@ -156,6 +188,7 @@ export default function SuggestPlace() {
     const n = Number(price);
     if (!free && (!price || !Number.isInteger(n) || n < 1)) { setErr(t('sugg.need_price', 'Write the ticket price in rupees, or pick Free entry.')); return; }
     setErr('');
+    if (!user) { toLogin(); return; }
     setState('sending');
     try {
       const { data } = await api.post('/spots/suggestions', {
@@ -174,7 +207,7 @@ export default function SuggestPlace() {
   const go = <span className="go" aria-hidden="true"><Icon name="arrowne" /></span>;
 
   return (
-    <div className="ag-home-sugg" data-testid="home-suggest">
+    <div className="ag-home-sugg" data-testid="home-suggest" ref={boxRef}>
       <div className="row">
         <Explorer />
         <div className="grow">
@@ -187,15 +220,9 @@ export default function SuggestPlace() {
         </div>
       </div>
       {!open && (
-        user ? (
-          <button type="button" className="ag-home-softbtn" onClick={() => { setOpen(true); setState('idle'); }} data-testid="home-suggest-open">
-            {t('home.suggest', 'Suggest a place')}{go}
-          </button>
-        ) : (
-          <Link to={`/login?next=${encodeURIComponent(pathname)}`} className="ag-home-softbtn" data-testid="home-suggest-login">
-            {t('home.suggest', 'Suggest a place')}{go}
-          </Link>
-        )
+        <button type="button" className="ag-home-softbtn" onClick={() => { setOpen(true); setState('idle'); }} data-testid="home-suggest-open">
+          {t('home.suggest', 'Suggest a place')}{go}
+        </button>
       )}
       {open && (
         <form onSubmit={send} className="flex flex-col gap-3" noValidate>
@@ -245,7 +272,12 @@ export default function SuggestPlace() {
               ))}
             </div>
           )}
-          {photos.length < MAX_PHOTOS && (
+          {!user ? (
+            <button type="button" className="ag-home-ftonal self-start" onClick={toLogin} data-testid="home-suggest-photos-login">
+              <Icon name="download" />
+              <span>{t('sugg.photos_login', 'Log in to add photos')}</span>
+            </button>
+          ) : photos.length < MAX_PHOTOS && (
             <label className={cx('ag-home-ftonal self-start', uploading && 'opacity-60')}>
               <Icon name="download" />
               <span>{uploading ? t('sugg.uploading', 'Uploading…') : t('sugg.add_photos', 'Add photos')}</span>
@@ -254,8 +286,9 @@ export default function SuggestPlace() {
             </label>
           )}
           {err && <p className="ag-err m-0" role="alert" data-testid="home-suggest-error">{err}</p>}
+          {!user && <p className="ag-small m-0" data-testid="home-suggest-login-note">{t('sugg.login_note', 'You will log in before it is sent. What you typed is kept.')}</p>}
           <button type="submit" className="ag-home-redbtn self-start" disabled={state === 'sending' || uploading} data-testid="home-suggest-send">
-            {t('sugg.send', 'Send to the aangan team')}{go}
+            {user ? t('sugg.send', 'Send to the aangan team') : t('sugg.login_send', 'Log in and send')}{go}
           </button>
         </form>
       )}

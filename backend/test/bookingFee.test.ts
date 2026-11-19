@@ -16,34 +16,20 @@ async function book(token: string, listingId: string) {
 }
 
 describe('booking without the aangan pass', () => {
-  it('can ask, is asked for ₹1 to confirm, and the ₹1 confirms it', async () => {
+  it('can ask and confirm free, with no fee to pay', async () => {
     const { token } = await registerUser({ name: 'No Pass Nima', paySupport: false });
     const listing = await createListing();
     const id = await book(token, listing.id);
 
-    const checkout = await request(app).post(`/api/bookings/${id}/checkout`).set('Authorization', `Bearer ${token}`);
-    expect(checkout.status).toBe(402);
-    expect(checkout.body.code).toBe('fee_required');
-    expect(checkout.body.amount).toBe(120);
-    expect(checkout.body.breakup).toMatchObject({ base: 100, gst: 18, platform_fee: 2, total: 120 });
-    expect(checkout.body.pass_breakup.total).toBe(100);
-
     const order = await request(app).post('/api/payments/order').set('Authorization', `Bearer ${token}`)
       .send({ flow: 'booking_commission', reference_id: id, amount: 1 });
-    expect(order.status).toBe(200);
-    expect(order.body.amount).toBe(120);
+    expect(order.status).toBe(409);
+    expect(order.body.code).toBe('booking_free');
 
-    const paid = await request(app).post('/api/payments/mock/complete').set('Authorization', `Bearer ${token}`)
-      .send({ order_id: order.body.order.id, flow: 'booking_commission', reference_id: id });
-    expect(paid.status).toBe(200);
-
+    const checkout = await request(app).post(`/api/bookings/${id}/checkout`).set('Authorization', `Bearer ${token}`);
+    expect(checkout.status).toBe(200);
     const mine = await request(app).get('/api/bookings/me').set('Authorization', `Bearer ${token}`);
     expect(mine.body.items.find((b: { id: string }) => b.id === id)?.status).toBe('confirmed');
-
-    // Paying twice for the same booking is refused.
-    const again = await request(app).post('/api/payments/order').set('Authorization', `Bearer ${token}`)
-      .send({ flow: 'booking_commission', reference_id: id });
-    expect(again.status).toBe(409);
   });
 
   it('cannot pay the fee on someone else\'s booking', async () => {
@@ -58,15 +44,12 @@ describe('booking without the aangan pass', () => {
 });
 
 describe('confirming once', () => {
-  it('the app\'s /checkout after the fee settled does not tell anyone a second time', async () => {
+  it('confirming twice does not tell anyone a second time', async () => {
     const { token } = await registerUser({ name: 'Once Only', paySupport: false });
     const listing = await createListing();
     const id = await book(token, listing.id);
-    const order = await request(app).post('/api/payments/order').set('Authorization', `Bearer ${token}`)
-      .send({ flow: 'booking_commission', reference_id: id });
-    await request(app).post('/api/payments/mock/complete').set('Authorization', `Bearer ${token}`)
-      .send({ order_id: order.body.order.id, flow: 'booking_commission', reference_id: id });
-    // What BookingFeeModal does after the payment: ask /checkout again.
+    await request(app).post(`/api/bookings/${id}/checkout`).set('Authorization', `Bearer ${token}`);
+    // A second tap (or the app retrying) confirms nothing new.
     const again = await request(app).post(`/api/bookings/${id}/checkout`).set('Authorization', `Bearer ${token}`);
     expect(again.status).toBe(200);
     const feed = await request(app).get('/api/notifications').set('Authorization', `Bearer ${token}`);

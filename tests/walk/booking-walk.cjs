@@ -176,7 +176,7 @@ async function tripCard(g, id) {
   return seen(g, `[data-testid="my-trip-card-${id}"]`, 20000);
 }
 
-/** Guest presses Confirm on an accepted trip and pays the ₹1 fee in the mock checkout. */
+/** Guest presses Confirm on an accepted trip: free, no fee screen and no checkout. */
 async function guestConfirm(g, step, gTok, id, hostTok) {
   await tripCard(g, id);
   const btn = g.page.locator(`[data-testid="trip-confirm-${id}"]`);
@@ -184,17 +184,9 @@ async function guestConfirm(g, step, gTok, id, hostTok) {
   const accNote = await g.page.locator(`[data-testid="trip-accepted-${id}"]`).innerText().catch(() => '');
   await g.snap('trip-accepted');
   await btn.click();
-  const fee = await seen(g, '[data-testid="booking-fee-modal"]', 10000);
-  line(step, fee, 'without the pass, Confirm offers the ₹1 fee or the pass');
-  if (fee) {
-    await g.page.waitForTimeout(500); // the sheet slides up
-    await g.snap('fee-choice');
-    await g.page.click('[data-testid="fee-pay-once"]');
-    if (await seen(g, '[data-testid="mock-payment-pay"]', 10000)) await g.page.click('[data-testid="mock-payment-pay"]');
-    else line(step, false, 'the mock checkout opens for the ₹1 fee');
-  }
   const done = await until(async () => (await guestBooking(gTok, id))?.status === 'confirmed', 15000);
-  line(step, !!done, 'after paying the fee the booking is confirmed', (await guestBooking(gTok, id))?.status);
+  line(step, !!done, 'Confirm confirms the booking free, without the pass', (await guestBooking(gTok, id))?.status);
+  line(step, (await g.page.locator('[data-testid="booking-fee-modal"]').count()) === 0 && (await g.page.locator('[data-testid="mock-payment-pay"]').count()) === 0, 'no fee screen and no checkout');
   await g.page.locator('[data-testid="booking-fee-modal"]').waitFor({ state: 'detached', timeout: 8000 }).catch(() => {});
   // One confirmation says it once: each side should get one "Booking confirmed" notice.
   await sleep(800);
@@ -614,9 +606,9 @@ async function guestConfirm(g, step, gTok, id, hostTok) {
       line(S, gn.some((t) => /Cancellation accepted/i.test(t)), 'guest gets "Cancellation accepted"', gn.join(' / '));
       const hn = (await noticesFor(hdTok, b.id)).map((n) => n.title);
       line(S, hn.filter((t) => /cancel/i.test(t)).length >= 1, 'driver has the cancel in their notices', hn.join(' / '));
-      // The ₹1 fee comes back when the host accepts the cancellation (the sheet promises it).
+      // Confirming was free, so there is no fee to refund.
       const fee = await feeFor(b.id);
-      line(S, fee?.status === 'refunded', 'the ₹1 fee is refunded after the host accepts the cancel', fee ? fee.status : 'no fee payment found');
+      line(S, !fee, 'no booking fee was taken, so nothing to refund', fee ? fee.status : 'none');
     }
   } catch (e) { line(S, false, 'walk crashed', e.message.split('\n')[0]); await g.snap('crash'); }
   flushErrs(g, S); flushErrs(hd, S);
@@ -739,7 +731,7 @@ async function guestConfirm(g, step, gTok, id, hostTok) {
     const gn = (await noticesFor(gTok, b.id)).find((n) => n.kind === 'booking_cancelled');
     line(S, !!gn && /Family/i.test(gn.body), 'guest gets "Booking cancelled" with the reason', gn ? gn.body : 'none');
     const fee = await feeFor(b.id);
-    line(S, fee?.status === 'refunded', 'the guest\'s ₹1 fee is refunded', fee ? fee.status : 'no fee payment found');
+    line(S, !fee, 'the guest paid no booking fee, so nothing to refund', fee ? fee.status : 'none');
   } catch (e) { line(S, false, 'walk crashed', e.message.split('\n')[0]); await hs.snap('crash'); }
   flushErrs(g, S); flushErrs(hs, S);
 

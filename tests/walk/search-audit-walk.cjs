@@ -730,11 +730,12 @@ function expectFor(list, { near = false, radius = null, maxPrice, loc, sort = 'r
       ['🌄', {}], ['+91 98765 43210', {}], ['x'.repeat(400), {}],
     ];
     for (const [q, want] of cases) {
-      const smart = page.waitForResponse((r) => /\/api\/listings\?/.test(r.url()) && new URL(r.url()).searchParams.get('limit') === '60' && (new URL(r.url()).searchParams.get('q') || '') === q.trim(), { timeout: 10000 }).catch(() => null);
+      const smart = page.waitForResponse((r) => /\/api\/listings\?/.test(r.url()) && ['60', '200'].includes(new URL(r.url()).searchParams.get('limit')) && (new URL(r.url()).searchParams.get('q') || '') === q.trim(), { timeout: 10000 }).catch(() => null);
       await page.goto(`${WEB}/search?q=${encodeURIComponent(q)}`, { waitUntil: 'domcontentloaded' });
       if (!(await smart)) ok(false, 'D', `${JSON.stringify(q.slice(0, 20))}: the page asked the smart search`, 'no /listings?q= call seen');
       const shown = await ready(page);
-      const api = (await apiList({ q, limit: '60' }));
+      // A search without a kind asks for up to 200 (Category.tsx).
+      const api = (await apiList({ q, limit: '200' }));
       const items = api.items || [];
       const lbl = JSON.stringify(q.length > 30 ? q.slice(0, 20) + '…' : q);
       ok(same(shown, items.map((x) => x.id)), 'D', `${lbl}: page shows the server's results in its order`, `${shown.length} shown, ${items.length} from the API`);
@@ -768,7 +769,7 @@ function expectFor(list, { near = false, radius = null, maxPrice, loc, sort = 'r
       await pill.fill(q);
       await page.evaluate(() => { window.__seen = []; });
       const t0 = Date.now();
-      const smart = page.waitForResponse((r) => /\/api\/listings\?/.test(r.url()) && new URL(r.url()).searchParams.get('q') === q && new URL(r.url()).searchParams.get('limit') === '60', { timeout: 8000 }).catch(() => null);
+      const smart = page.waitForResponse((r) => /\/api\/listings\?/.test(r.url()) && new URL(r.url()).searchParams.get('q') === q && ['60', '200'].includes(new URL(r.url()).searchParams.get('limit')), { timeout: 8000 }).catch(() => null);
       await page.keyboard.press('Enter');
       await page.waitForURL(/\/search\?/, { timeout: 8000 });
       await smart;

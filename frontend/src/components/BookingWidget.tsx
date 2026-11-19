@@ -430,6 +430,7 @@ export default function BookingWidget() {
         </button>
       </div>
 
+      {listening && <p className="ag-small m-0" role="status" data-testid="booking-widget-listening">{t('category.listening')}</p>}
       {activeField !== 'from' && suggestions}
 
       {!panelOpen && summary && (
