@@ -38,6 +38,7 @@ export default function Notifications() {
   };
 
   // A booking notice leads to where that booking is handled; a team message to its chosen screen.
+  const isBooking = (kind?: string) => !!kind && (kind.startsWith('booking_') || kind.startsWith('cancel_request'));
   const open = async (n: Note) => {
     if (n.unread) {
       await api.patch(`/notifications/${n.id}/read`).catch(() => {});
@@ -48,8 +49,10 @@ export default function Notifications() {
     const target = webLinkTarget(n.link, isHostMode);
     if (target?.kind === 'route') nav(target.to);
     else if (target?.kind === 'external') window.open(target.href, '_blank', 'noopener,noreferrer');
-    else if (n.kind?.startsWith('booking_')) nav(isHostMode ? '/provider/dashboard' : '/my-trips');
+    else if (isBooking(n.kind)) nav(isHostMode ? '/provider/dashboard?s=bookings' : '/my-trips');
     else if (n.kind?.startsWith('delivery')) nav(isHostMode ? '/provider/dashboard' : '/my-trips');
+    else if (n.kind === 'place_suggestion_live' && n.ref_id) nav(`/listing/${n.ref_id}`);
+    else if (n.kind?.startsWith('place_suggestion')) nav('/#my-suggestions');
     else if (n.kind?.startsWith('plan_')) nav(n.kind === 'plan_cancelled' || !n.ref_id ? '/feed' : `/plan/${n.ref_id}`);
   };
 
@@ -78,7 +81,7 @@ export default function Notifications() {
                   <li key={n.id} className="!p-0">
                     <button type="button" onClick={() => open(n)} data-testid={`note-${n.id}`}
                       className="w-full flex items-start gap-3.5 py-3 px-3 text-left bg-transparent border-0 cursor-pointer">
-                      <MenuIcon><Icon name={n.kind === 'announcement' ? 'news' : n.kind?.startsWith('booking_') ? 't_trip' : 'bell'} /></MenuIcon>
+                      <MenuIcon><Icon name={n.kind === 'announcement' ? 'news' : isBooking(n.kind) ? 't_trip' : 'bell'} /></MenuIcon>
                       <span className="ag-mlab">
                         <span className={`text-[var(--ink-strong)] ${n.unread ? 'font-medium' : 'font-normal'}`}>{text.title}</span>
                         {text.body && <span className="ag-small whitespace-pre-line">{text.body}</span>}

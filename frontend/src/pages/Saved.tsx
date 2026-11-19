@@ -7,7 +7,10 @@ import { useAuth } from '@/context/AuthContext';
 import { fetchFavorites, SavedListing } from '@/lib/favorites';
 import api from '@/lib/api';
 import ListingCard from '@/components/ListingCard';
-import TripPlannerModal from '@/components/TripPlannerModal';
+import PlanCard from '@/components/feed/PlanCard';
+import { SaveHeart } from '@/components/home/cards';
+import { useFavorites } from '@/context/FavoritesContext';
+import { fetchMyPlans, type TripPlan } from '@/lib/plans';
 import { useSeo } from '@/components/Seo';
 import { Box, Button, ButtonLink, Chip, Chips, IconButton, PageHead, TextField } from '@/components/ag';
 
@@ -25,13 +28,14 @@ export default function Saved() {
   const [searchParams] = useSearchParams();
 
   const [items, setItems] = useState<SavedListing[]>([]);
+  const [plans, setPlans] = useState<TripPlan[]>([]);
+  const { isFavorite, loading: favLoading } = useFavorites();
   const [kind, setKind] = useState('');
   const typeLabel = (k: string) => t(`nav.${({ spot: 'spots', homestay: 'homestays', driver: 'drivers', guide: 'guides', cafe: 'cafes', shop: 'shops', event: 'events', biodiversity: 'biodiversity' } as Record<string, string>)[k] || k}`, k);
   const [loading, setLoading] = useState(true);
 
   // Share sheet state
   const [showPlanModal, setShowPlanModal] = useState(false);
-  const [showItineraryModal, setShowItineraryModal] = useState(false);
   const [copied, setCopied] = useState(false);
   const [tripTitle, setTripTitle] = useState(() => t('saved.default_trip_name'));
 
@@ -52,7 +56,15 @@ export default function Saved() {
     if (!user) { setLoading(false); return; }
     setLoading(true);
     fetchFavorites().then(setItems).finally(() => setLoading(false));
+    // Trip plans saved with their heart (prototype plans.js "Trip plans" section).
+    fetchMyPlans().then((m) => setPlans(m.saved)).catch(() => setPlans([]));
   }, [user, authLoading, sharedPlanParam]);
+
+  // A card whose heart is turned off here leaves the list at once.
+  useEffect(() => {
+    if (sharedPlanParam || favLoading) return;
+    setItems((list) => (list.every((i) => isFavorite(i.id)) ? list : list.filter((i) => isFavorite(i.id))));
+  }, [isFavorite, favLoading, sharedPlanParam]);
 
   const getShareableUrl = () => {
     const ids = items.map((i) => i.id).join(',');
@@ -126,16 +138,16 @@ export default function Saved() {
 
         {items.length > 0 && (
           <div className="flex flex-wrap gap-2">
-            <Button go size="sm" icon={<Icon name="t_trip" />} onClick={() => setShowItineraryModal(true)} data-testid="build-itinerary-cta">
+            <ButtonLink to="/plan" go size="sm" icon={<Icon name="t_trip" />} data-testid="build-itinerary-cta">
               {t('ui.saved.plan', 'Plan a trip')}
-            </Button>
+            </ButtonLink>
             <Button size="sm" icon={<Icon name="share" />} onClick={() => setShowPlanModal(true)} data-testid="plan-trip-cta">
               {t('saved.plan_cta')}
             </Button>
           </div>
         )}
 
-        {items.length === 0 ? (
+        {items.length === 0 && plans.length === 0 ? (
           <Box className="ag-account-empty" data-testid="saved-empty">
             <Icon name="heart" />
             <p>{t('saved.empty')}</p>
@@ -149,11 +161,25 @@ export default function Saved() {
               <section key={k} className="ag-account-savesec" data-testid={`saved-group-${k}`}>
                 {!pick && kinds.length > 1 && <h2>{typeLabel(k)} <span className="ag-small">{list.length}</span></h2>}
                 <div className="grid grid-cols-2 gap-2.5">
-                  {list.map((it) => <ListingCard key={it.id} item={it} />)}
+                  {list.map((it) => (
+                    <div key={it.id} className="relative">
+                      <ListingCard item={it} />
+                      {!sharedPlanParam && <SaveHeart id={it.id} testId={`saved-heart-${it.id}`} className="!absolute right-2 top-2" />}
+                    </div>
+                  ))}
                 </div>
               </section>
             );
           })
+        )}
+
+        {!sharedPlanParam && plans.length > 0 && (
+          <section className="ag-account-savesec flex flex-col gap-3" data-testid="saved-plans">
+            <h2>{t('ui.saved.plans', 'Trip plans')} <span className="ag-small">{plans.length}</span></h2>
+            {plans.map((p) => (
+              <PlanCard key={p.id} plan={p} onChange={(np) => setPlans((list) => (np.viewer?.saved === false ? list.filter((x) => x.id !== np.id) : list.map((x) => (x.id === np.id ? np : x))))} />
+            ))}
+          </section>
         )}
       </div>
 
@@ -189,11 +215,6 @@ export default function Saved() {
         </div>
       )}
 
-      <TripPlannerModal
-        open={showItineraryModal}
-        onClose={() => setShowItineraryModal(false)}
-        savedTitles={items.map((i) => i.title)}
-      />
     </div>
   );
 }

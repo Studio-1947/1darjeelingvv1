@@ -4,6 +4,7 @@ import { db } from '../db';
 import * as schema from '../schema';
 import { and, eq, inArray } from 'drizzle-orm';
 import { authenticateToken, requireAdmin } from '../middleware/auth';
+import { addInAppNotification } from '../lib/inApp';
 import { storeBase64Image, ImageUploadError } from '../lib/imageUpload';
 import { routeParam } from '../lib/routeParam';
 import {
@@ -430,10 +431,25 @@ router.post('/admin/spots/:id/publish', authenticateToken, requireAdmin, async (
     return res.status(400).json({ detail: 'published must be a boolean' });
   }
 
+  const wasLive = ((existing.extras || {}) as Record<string, any>).published !== false;
   const extras = parseSpotExtras({ published }, (existing.extras || {}) as Record<string, any>);
   await db.update(schema.listings).set({ extras }).where(eq(schema.listings.id, existing.id));
   const [updated] = await db.select().from(schema.listings).where(eq(schema.listings.id, existing.id)).limit(1);
   if (!updated) return res.status(404).json({ detail: 'Tourist spot not found' });
+  // A place someone suggested going live for the first time: tell them, as the thank-you promised.
+  if (published && !wasLive) {
+    const [s] = await db.select().from(schema.placeSuggestions)
+      .where(and(eq(schema.placeSuggestions.listingId, existing.id), eq(schema.placeSuggestions.status, 'approved'))).limit(1);
+    if (s) {
+      await addInAppNotification(s.userId, {
+        kind: 'place_suggestion_live',
+        title: 'Your place is live',
+        body: `${s.name} is now on Offbeat Places. Thank you for adding it.`,
+        msg: { key: 'place_suggestion_live', params: { place: s.name } },
+        refId: existing.id,
+      });
+    }
+  }
   res.json({ item: toAdminSpot(updated) });
 });
 

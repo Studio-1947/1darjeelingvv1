@@ -62,7 +62,8 @@ export default function Header() {
     };
     if (Date.now() - lastUnreadCheck > 30_000) read();
     window.addEventListener('aangan:notifications', read);
-    return () => { live = false; window.removeEventListener('aangan:notifications', read); };
+    const every = window.setInterval(() => { if (document.visibilityState === 'visible') read(); }, 60_000);
+    return () => { live = false; window.clearInterval(every); window.removeEventListener('aangan:notifications', read); };
   }, [user, pathname]);
 
   // A sub-screen inside a tab root (e.g. /dashboard?s=language) gets Back, as in the prototype.

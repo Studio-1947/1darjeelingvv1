@@ -449,7 +449,7 @@
     "nights_other": "{{count}} nights",
     "pick_dates_for_total": "Pick your dates to see the full amount.",
     "paid_to_host": "Paid directly to your host, the way you agree with them. aangan never takes a share of it.",
-    "cancel_note": "Free to cancel any time before your trip. If you paid the ₹1.20 fee, it comes back to you automatically.",
+    "cancel_note": "You can withdraw a request until the host says yes. After that, you ask the host to cancel. If you paid the ₹1.20 fee, it comes back to you when the booking is cancelled.",
     "confirmation_fee": "Booking confirmation fee",
     "payable_now": "Payable now",
     "fees_and_refunds": "Fees & refund policy",
@@ -1121,7 +1121,8 @@
     "kind_event_s": "Something happening",
     "kind_photo_s": "A view worth sharing",
     "kind_plans": "Trip plans",
-    "type_guide": "Guide"
+    "type_guide": "Guide",
+    "none_picked": "Nothing picked. Tap the filter and choose what to see."
   },
   "contact": {
     "event_note": "Reach the organizer directly, add it to your calendar, or get directions.",
@@ -2689,7 +2690,8 @@
       "eyebrow": "Your favourites",
       "empty_hint": "Tap the heart on any place, homestay or driver to keep it here.",
       "guest": "Log in to keep the places you like here.",
-      "filter": "Show saved"
+      "filter": "Show saved",
+      "plans": "Trip plans"
     },
     "myTrips": {
       "title": "My Trips & Bookings",
@@ -3353,6 +3355,14 @@
       "plan_cancelled": {
         "title": "A trip plan was cancelled",
         "body": "{{guest}} cancelled the trip \"{{plan}}\"."
+      },
+      "request_withdrawn": {
+        "title": "Request withdrawn",
+        "body": "A guest withdrew their request for {{place}}. Nothing to do."
+      },
+      "place_suggestion_live": {
+        "title": "Your place is live",
+        "body": "{{place}} is now on Offbeat Places. Thank you for adding it."
       }
     },
     "missing": {
@@ -3569,7 +3579,7 @@
     "i_host": "The traveller will be told your reason. Any fee they paid goes back to them.",
     "i_pre": "The host has not said yes yet, so your request is simply withdrawn. Nothing is charged.",
     "i_accepted": "Nothing is paid yet, so this cancels at once at no charge. The host will be told.",
-    "i_post": "The host has already kept this for you. They will be asked to accept the cancellation. Talk to them first if you can. If you paid the ₹1 fee, it comes back when they accept.",
+    "i_post": "The host has already kept this for you. They will be asked to accept the cancellation. Talk to them first if you can. If you paid the ₹1.20 fee, it comes back when they accept.",
     "do_decline": "Decline request",
     "do_send": "Send cancellation request",
     "pick": "Please choose a reason.",
@@ -3617,7 +3627,8 @@
     "accepted": "Accepted",
     "accepted_s": "The aangan team will publish it on Offbeat Places once it is ready.",
     "rejected": "Not added",
-    "show_all": "Show all ({{n}})"
+    "show_all": "Show all ({{n}})",
+    "live": "Live on Offbeat Places. See it"
   },
   "plans": {
     "plan_trip": "Plan a trip",
@@ -3718,6 +3729,8 @@
     "day_plan": "Day by day",
     "notes_h": "From the organiser",
     "accepted_s": "You are in. The organiser sees you on the trip, and any change to the plan shows here.",
-    "report": "Report this plan"
+    "report": "Report this plan",
+    "tj_h": "Trips you joined",
+    "tj_my": "Trips you planned"
   }
 }

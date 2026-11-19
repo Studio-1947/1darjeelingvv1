@@ -172,4 +172,26 @@ describe('reviewing place suggestions (admin)', () => {
 
     expect((await request(app).post('/api/admin/spots/suggestions/nope/reject').set(auth(admin))).status).toBe(404);
   });
+
+  it('publishing the spot tells the sender once, and their suggestion shows as live', async () => {
+    const { token, user } = await registerUser({ name: 'Pema Live' });
+    const s = (await suggest(token, { ...good, name: 'Sittong Orange Garden' })).body.suggestion;
+    const admin = await loginAdmin();
+    const ok = await request(app).post(`/api/admin/spots/suggestions/${s.id}/approve`).set(auth(admin));
+    expect(ok.status).toBe(200);
+    const spotId = ok.body.spot.id;
+    let mine = await request(app).get('/api/spots/suggestions/mine').set(auth(token));
+    expect(mine.body.suggestions[0]).toMatchObject({ status: 'approved', listing_id: spotId, live: false });
+
+    for (let i = 0; i < 2; i++) {
+      expect((await request(app).post(`/api/admin/spots/${spotId}/publish`).set(auth(admin)).send({ published: true })).status).toBe(200);
+    }
+    const lives = await db.select().from(schema.notifications)
+      .where(and(eq(schema.notifications.userId, user.id), eq(schema.notifications.kind, 'place_suggestion_live')));
+    expect(lives).toHaveLength(1);
+    expect(lives[0].refId).toBe(spotId);
+    expect(lives[0].msg).toEqual({ key: 'place_suggestion_live', params: { place: 'Sittong Orange Garden' } });
+    mine = await request(app).get('/api/spots/suggestions/mine').set(auth(token));
+    expect(mine.body.suggestions[0].live).toBe(true);
+  });
 });
