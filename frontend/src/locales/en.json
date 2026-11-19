@@ -1150,7 +1150,9 @@
     "kind_photo_s": "A view worth sharing",
     "kind_plans": "Trip plans",
     "type_guide": "Guide",
-    "none_picked": "Nothing picked. Tap the filter and choose what to see."
+    "none_picked": "Nothing picked. Tap the filter and choose what to see.",
+    "cannot_post_nobiz": "Set up your business to post in the Feed.",
+    "set_up_biz": "Set up your business"
   },
   "contact": {
     "event_note": "Reach the organizer directly, add it to your calendar, or get directions.",
@@ -3439,7 +3441,7 @@
       "property_photo_front": "Photo of the property (front of the building)",
       "property_photo_room": "Photo of a guest room",
       "property_proof": "Property proof (deed / rent / electricity bill)",
-      "tourism_registration": "Homestay / tourism registration certificate",
+      "tourism_registration": "Homestay registration certificate",
       "trade_license": "Shop & Establishment / trade licence",
       "vehicle_insurance": "Vehicle insurance",
       "vehicle_rc": "Vehicle registration (RC)",
@@ -3784,7 +3786,17 @@
     "tj_my": "Trips you planned",
     "login_post": "Log in and post",
     "cover_login": "Log in to add a cover photo.",
-    "login_note": "You will log in before the plan is posted. What you typed is kept."
+    "login_note": "You will log in before the plan is posted. What you typed is kept.",
+    "verify_h": "Only verified people post in the Feed",
+    "verify_host": "Your plan can go in the Feed once your business has the Verified tick. Send your documents from the Business dashboard.",
+    "verify_traveller": "Get the {{price}} Verified traveller pass to post your plan. Everyone can still see, like, comment on and share what is in the Feed.",
+    "verify_tick": "Get the Verified tick",
+    "verify_pass": "Get the pass for {{price}}",
+    "keep_private": "Keep it to myself for now",
+    "done_private": "Your plan is saved",
+    "done_private_s": "Only you can see it. Once you are verified, open it and post it in the Feed.",
+    "to_feed": "Go to the Feed",
+    "post_to_feed": "Post it in the Feed"
   },
   "member": {
     "title": "Your membership",

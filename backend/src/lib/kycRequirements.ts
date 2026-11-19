@@ -22,9 +22,9 @@ export const KYC_REQUIREMENTS: Record<string, DocRequirement[]> = {
   homestay: [
     PHOTO_ID,
     { docType: 'property_photo_front', label: 'Photo of the property (front of the building)', required: true },
-    // The homestay's own papers (user decision 2026-11-19): its homestay / tourism registration.
+    // The homestay's own papers (user decision 2026-11-19): its homestay registration certificate.
     // Every homestay verified before had this approved, so none loses the Verified tick.
-    { docType: 'tourism_registration', label: 'Homestay / tourism registration certificate', required: true },
+    { docType: 'tourism_registration', label: 'Homestay registration certificate', required: true },
   ],
   // Drivers: the licence, and a selfie beside the vehicle so the person and the car are tied together.
   driver: [

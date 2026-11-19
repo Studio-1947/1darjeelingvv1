@@ -10,7 +10,8 @@ import { Icon } from '@/components/ag/Icon';
 import PlanCard, { PlanAvatar } from '@/components/feed/PlanCard';
 import ReportDialog, { ReportTarget } from '@/components/listing-detail/ReportDialog';
 import '@/styles/screens/plans.css';
-import { answerRequest, apiError, dayDate, deletePlan, fetchPlan, type TripPlan } from '@/lib/plans';
+import { answerRequest, apiError, dayDate, deletePlan, fetchPlan, updatePlan, type TripPlan } from '@/lib/plans';
+import VerifyToPost from '@/components/feed/VerifyToPost';
 
 /**
  * One trip plan (/plan/:id, the link "Share" sends): the card with Ask to join, the day notes and
@@ -26,6 +27,8 @@ export default function PlanDetail() {
   const [state, setState] = useState<'loading' | 'missing' | 'error' | 'ok'>('loading');
   const [busy, setBusy] = useState<string | null>(null);
   const [report, setReport] = useState<ReportTarget | null>(null);
+  // Posting a kept plan in the Feed needs a verified person; not verified yet shows how to get there.
+  const [needVerify, setNeedVerify] = useState(false);
   useSeo({ title: plan?.title || t('plans.trip_plan', 'Trip plan') });
 
   const load = useCallback(async () => {
@@ -45,6 +48,19 @@ export default function PlanDetail() {
       setPlan(await answerRequest(id, userId, action));
     } catch (e) {
       toast.error(apiError(e, t('plans.answer_failed', 'Could not update this request.')));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const toFeed = async () => {
+    setBusy('feed');
+    try {
+      setPlan(await updatePlan(id, { visibility: 'public' }));
+      toast.success(t('plans.done', 'Your plan is in the Feed'));
+    } catch (e: any) {
+      if (e?.response?.data?.code === 'not_verified') setNeedVerify(true);
+      else toast.error(apiError(e, t('plans.post_failed', 'Could not post the plan. Try again.')));
     } finally {
       setBusy(null);
     }
@@ -94,7 +110,16 @@ export default function PlanDetail() {
         <h1 className="sr-only">{plan.title}</h1>
         <PlanCard plan={plan} onChange={setPlan} />
 
-        {mine && plan.visibility === 'private' && <Status className="self-start">{t('plans.private', 'Only you can see this plan')}</Status>}
+        {mine && plan.visibility === 'private' && (
+          <>
+            <Status className="self-start">{t('plans.private', 'Only you can see this plan')}</Status>
+            {needVerify ? <VerifyToPost next={`/plan/${plan.id}`} /> : (
+              <Button variant="primary" go className="self-start" onClick={toFeed} disabled={busy !== null} data-testid="plan-to-feed">
+                {t('plans.post_to_feed', 'Post it in the Feed')}
+              </Button>
+            )}
+          </>
+        )}
 
         {mine && (
           <Box className="ag-plan-sec" data-testid="plan-requests">

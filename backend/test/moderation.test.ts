@@ -7,7 +7,7 @@ const auth = (token: string) => ({ Authorization: `Bearer ${token}` });
 
 describe('admin moderation', () => {
   it('shows what each report points at, who sent it, and how many open reports the item has', async () => {
-    const { token: host } = await onboardActiveProvider({ name: 'Loud Host' });
+    const { token: host } = await onboardActiveProvider({ name: 'Loud Host', verified: true });
     const post = (await request(app).post('/api/posts').set(auth(host)).send({ body: 'Cheapest rooms in town!!!' })).body.post;
     const listing = await createListing({ title: 'Mystery Lodge' });
     const { token: a } = await registerUser({ name: 'Reporter A' });
@@ -30,7 +30,7 @@ describe('admin moderation', () => {
   });
 
   it('resolves every open report on the same item with ?all=1', async () => {
-    const { token: host } = await onboardActiveProvider({ name: 'Twice Reported' });
+    const { token: host } = await onboardActiveProvider({ name: 'Twice Reported', verified: true });
     const post = (await request(app).post('/api/posts').set(auth(host)).send({ body: 'Hello' })).body.post;
     for (const name of ['R1', 'R2']) {
       const { token } = await registerUser({ name });
@@ -45,7 +45,7 @@ describe('admin moderation', () => {
   });
 
   it('shows a deleted item as gone', async () => {
-    const { token: host } = await onboardActiveProvider({ name: 'Deleting Host' });
+    const { token: host } = await onboardActiveProvider({ name: 'Deleting Host', verified: true });
     const post = (await request(app).post('/api/posts').set(auth(host)).send({ body: 'Soon gone' })).body.post;
     const { token } = await registerUser({ name: 'Early Reporter' });
     await request(app).post('/api/reports').set(auth(token)).send({ target_type: 'post', target_id: post.id, reason: 'other' });
@@ -67,7 +67,7 @@ describe('admin moderation', () => {
   });
 
   it('lists every post for an admin, hidden ones too, and keeps it from everyone else', async () => {
-    const { token: host } = await onboardActiveProvider({ name: 'Listed Host' });
+    const { token: host } = await onboardActiveProvider({ name: 'Listed Host', verified: true });
     const p1 = (await request(app).post('/api/posts').set(auth(host)).send({ body: 'Visible' })).body.post;
     const p2 = (await request(app).post('/api/posts').set(auth(host)).send({ body: 'To hide' })).body.post;
     const admin = await loginAdmin();

@@ -84,6 +84,7 @@ a.ag-account-stat:hover { border-color: var(--r); }
 .ag-account-tdash { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
 .ag-account-tdtile { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 10px; border-radius: 14px; border: 1px solid var(--hairline); background: var(--surface); color: var(--ink-strong); text-align: left; cursor: pointer; }
 .ag-account-tdtile > svg.i { width: 16px; height: 16px; color: var(--r-press); }
+html[data-mode="dark"] .ag-account-tdtile > svg.i, html[data-mode="dark"] .ag-account-tdtile .go { color: color-mix(in srgb, var(--r) 55%, #fff); }
 .ag-account-tdtile .go { position: absolute; top: 9px; right: 9px; width: 20px; height: 20px; display: grid; place-items: center; border-radius: 50%; background: var(--blush2); color: var(--r-press); }
 .ag-account-tdtile .go svg.i { width: 12px; height: 12px; }
 .ag-account-tdtile b { font: 500 22px/26px var(--font); letter-spacing: -.01em; font-variant-numeric: tabular-nums; }

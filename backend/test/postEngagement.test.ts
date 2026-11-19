@@ -6,7 +6,7 @@ import { registerUser, onboardActiveProvider } from './helpers';
 const auth = (token: string) => ({ Authorization: `Bearer ${token}` });
 
 async function hostPost() {
-  const host = await onboardActiveProvider({ name: 'Dawa' });
+  const host = await onboardActiveProvider({ name: 'Dawa', verified: true });
   const res = await request(app).post('/api/posts').set(auth(host.token)).send({ body: 'First flush is in.' });
   expect(res.status).toBe(201);
   return { host, postId: res.body.post.id as string };

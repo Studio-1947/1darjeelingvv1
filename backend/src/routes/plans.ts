@@ -5,6 +5,7 @@ import { and, desc, eq, gte, inArray, isNull, lt, or, sql } from 'drizzle-orm';
 import { db, schema } from '../db';
 import { authenticateToken, optionalUser, requireAdmin, type AuthenticatedUser } from '../middleware/auth';
 import { requireTravellerMode } from '../middleware/mode';
+import { planPostRights } from '../lib/feedRights';
 import { rateLimiter } from '../middleware/rateLimiter';
 import { routeParam } from '../lib/routeParam';
 import { checkNameLike, looksLikeGibberish, tidyText } from '../lib/contentRules';
@@ -472,11 +473,11 @@ async function acceptedCount(planId: string, tx: { select: any } = db): Promise<
  *               driver_listing_id: { type: string, description: "A driver listing" }
  *               notes: { type: string, maxLength: 1000 }
  *               cover: { type: string, description: "URL from POST /listings/upload" }
- *               visibility: { type: string, enum: [public, private] }
+ *               visibility: { type: string, enum: [public, private], description: "public (the Feed) needs a verified person: the aangan pass, or a business with the Verified tick" }
  *     responses:
  *       201: { description: The plan }
  *       400: { description: Invalid input }
- *       403: { description: Business mode }
+ *       403: { description: "code not_verified: a public plan from someone who is not verified" }
  */
 router.get('/', async (req: Request, res: Response) => {
   const limit = Math.min(Math.max(parseInt(String(req.query.limit ?? PAGE_DEFAULT), 10) || PAGE_DEFAULT, 1), PAGE_MAX);
@@ -540,11 +541,32 @@ router.get('/me', authenticateToken, async (req: Request, res: Response) => {
   });
 });
 
-router.post('/', authenticateToken, requireTravellerMode, rateLimiter(20, 60 * 60 * 1000, 'plan_create'), async (req: Request, res: Response) => {
+/**
+ * @openapi
+ * /plans/rights:
+ *   get:
+ *     summary: Whether you may post a trip plan in the Feed
+ *     description: Anyone can plan a trip and keep it to themselves. Posting it in the Feed needs the aangan pass (Verified traveller) or a business with the Verified tick.
+ *     tags: [Plans]
+ *     security: [{ bearerAuth: [] }]
+ */
+router.get('/rights', authenticateToken, async (req: Request, res: Response) => {
+  const r = await planPostRights(req.user!.id);
+  res.json({ can_post: r.can, pass_active: r.passActive, verified_business: r.verifiedBusiness });
+});
+
+const NOT_VERIFIED = {
+  detail: 'Only verified people can post a trip plan in the Feed. Get the aangan pass (Verified traveller), or the Verified tick for your business',
+  code: 'not_verified',
+};
+
+router.post('/', authenticateToken, rateLimiter(20, 60 * 60 * 1000, 'plan_create'), async (req: Request, res: Response) => {
   const me = req.user!;
   if (me.role === 'admin') return res.status(403).json({ detail: 'Sign in as a traveller to post a trip plan' });
   const input = await readPlanInput(req.body, null, 0);
   if ('error' in input) return res.status(400).json({ detail: input.error });
+  // Anyone, traveller or business, may plan a trip and keep it; putting it in the Feed needs a verified person.
+  if ((input.value.visibility ?? 'public') === 'public' && !(await planPostRights(me.id)).can) return res.status(403).json(NOT_VERIFIED);
 
   const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
   const [{ count }] = await db.select({ count: sql<number>`count(*)::int` }).from(schema.tripPlans)
@@ -600,6 +622,10 @@ router.patch('/:id', authenticateToken, async (req: Request, res: Response) => {
   if (!row || row.plan.userId !== req.user!.id) return res.status(404).json({ detail: 'Plan not found' });
   const input = await readPlanInput(req.body, row.plan, await acceptedCount(row.plan.id));
   if ('error' in input) return res.status(400).json({ detail: input.error });
+  // Putting a private plan in the Feed is posting it.
+  if (input.value.visibility === 'public' && row.plan.visibility !== 'public' && !(await planPostRights(req.user!.id)).can) {
+    return res.status(403).json(NOT_VERIFIED);
+  }
   await db.update(schema.tripPlans)
     .set({ ...input.value, updatedAt: new Date().toISOString() })
     .where(eq(schema.tripPlans.id, row.plan.id));

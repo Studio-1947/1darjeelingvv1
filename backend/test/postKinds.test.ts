@@ -7,7 +7,7 @@ const auth = (token: string) => ({ Authorization: `Bearer ${token}` });
 
 describe('host post kinds (prototype feed.js: update, offer, event, photo)', () => {
   it('defaults to update, keeps the kind a host picks, and returns it on every read', async () => {
-    const { token, providerId } = await onboardActiveProvider({ name: 'Kind Host' });
+    const { token, providerId } = await onboardActiveProvider({ name: 'Kind Host', verified: true });
 
     const plain = await request(app).post('/api/posts').set(auth(token)).send({ body: 'Fresh snow on the peaks this morning.' });
     expect(plain.status).toBe(201);
@@ -35,7 +35,7 @@ describe('host post kinds (prototype feed.js: update, offer, event, photo)', () 
   });
 
   it('refuses a kind that is not one of the four', async () => {
-    const { token } = await onboardActiveProvider({ name: 'Odd Kind Host' });
+    const { token } = await onboardActiveProvider({ name: 'Odd Kind Host', verified: true });
     const bad = await request(app).post('/api/posts').set(auth(token)).send({ body: 'Something new at the cafe.', kind: 'advert' });
     expect(bad.status).toBe(400);
     expect(bad.body.detail).toMatch(/kind/);

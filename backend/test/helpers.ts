@@ -78,6 +78,8 @@ export async function onboardActiveProvider(opts: {
    * (as if the host pre-dated the rule). Set true to keep the real new-host behaviour.
    */
   awaitingApproval?: boolean;
+  /** Give the business the Verified tick (documents approved), which posting in the Feed needs. */
+  verified?: boolean;
 }) {
   const businessType = opts.businessType || 'homestay';
   const { token, phone } = await registerUser({ name: opts.name, role: 'provider' });
@@ -115,6 +117,9 @@ export async function onboardActiveProvider(opts: {
 
   if (!opts.awaitingApproval) {
     await db.update(schema.providers).set({ approvalRequired: false }).where(eq(schema.providers.id, providerId));
+  }
+  if (opts.verified) {
+    await db.update(schema.providers).set({ kycStatus: 'verified' }).where(eq(schema.providers.id, providerId));
   }
 
   return { token, providerId, phone };

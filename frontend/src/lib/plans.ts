@@ -69,6 +69,12 @@ export async function fetchMyPlans(): Promise<{ mine: TripPlan[]; joined: TripPl
   return { mine: data.mine || [], joined: data.joined || [], saved: data.saved || [] };
 }
 
+/** Whether this person may put a plan in the Feed: the aangan pass, or a business with the Verified tick. */
+export async function fetchPlanRights(): Promise<{ can_post: boolean; pass_active: boolean; verified_business: boolean }> {
+  const { data } = await api.get('/plans/rights');
+  return data;
+}
+
 export async function createPlan(input: PlanInput): Promise<TripPlan> {
   const { data } = await api.post('/plans', input);
   return data.plan;

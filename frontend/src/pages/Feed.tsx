@@ -61,6 +61,8 @@ export default function Feed() {
 
   const [canPost, setCanPost] = useState(false);
   const [reason, setReason] = useState<CanPostReason>(null);
+  // Every business sees Create a post (prototype feed.js); one that may not post yet is told why on tap.
+  const [postGate, setPostGate] = useState(false);
   const [mine, setMine] = useState<HostPost[]>([]);
   const [editing, setEditing] = useState<HostPost | null>(null);
   const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null);
@@ -197,17 +199,20 @@ export default function Feed() {
               <Icon name="filter" />
               {!all && <span className="ag-feed-fdot" aria-hidden="true" />}
             </IconButton>
-            {user && business && canPost && (
-              <Button size="sm" go className="ag-feed-barbtn" icon={<Icon name="news" />} aria-expanded={composing}
-                onClick={() => { if (composing) setEditing(null); setComposing((v) => !v); }} data-testid="feed-create-post">
+            {user && business && (
+              <Button size="sm" go className="ag-feed-barbtn" icon={<Icon name="news" />} aria-expanded={canPost ? composing : postGate}
+                onClick={() => {
+                  if (!canPost) { setPostGate((v) => !v); return; }
+                  if (composing) setEditing(null);
+                  setComposing((v) => !v);
+                }} data-testid="feed-create-post">
                 {t('feed.create_post', 'Create a post')}
               </Button>
             )}
-            {!business && (
-              <ButtonLink to="/plan" size="sm" go className="ag-feed-barbtn" icon={<Icon name="t_trip" />} data-testid="feed-plan-trip">
-                {t('plans.plan_trip', 'Plan a trip')}
-              </ButtonLink>
-            )}
+            {/* Anyone plans a trip, on either side; posting it in the Feed needs a verified person. */}
+            <ButtonLink to="/plan" size="sm" go className="ag-feed-barbtn" icon={<Icon name="t_trip" />} data-testid="feed-plan-trip">
+              {t('plans.plan_trip', 'Plan a trip')}
+            </ButtonLink>
           </div>
           {filterOpen && (
             <div className="ag-feed-pop" role="dialog" aria-label={t('feed.filter', 'Filter')} data-testid="feed-filter-sheet">
@@ -239,12 +244,16 @@ export default function Feed() {
         {user && business && canPost && (composing || editing) && (
           <PostComposer editing={editing} onSaved={onSaved} onCancelEdit={() => { setEditing(null); setComposing(false); }} />
         )}
-        {user && business && !canPost && (reason === 'not_verified' || reason === 'plan_not_live') && (
-          <Box>
+        {user && business && !canPost && postGate && (
+          <Box data-testid="feed-post-gate">
             <p className="ag-small m-0 !text-[var(--ink7)]">
-              {reason === 'not_verified' ? t('feed.cannot_post_unverified') : t('feed.cannot_post_plan')}
+              {reason === 'not_verified' ? t('feed.cannot_post_unverified')
+                : reason === 'plan_not_live' ? t('feed.cannot_post_plan')
+                : t('feed.cannot_post_nobiz', 'Set up your business to post in the Feed.')}
             </p>
-            <ButtonLink to="/provider/dashboard" go size="sm" className="self-start">{t('nav.business_dashboard')}</ButtonLink>
+            {reason === 'not_verified' || reason === 'plan_not_live'
+              ? <ButtonLink to="/provider/dashboard" go size="sm" className="self-start">{t('nav.business_dashboard')}</ButtonLink>
+              : <ButtonLink to="/provider/onboard" go size="sm" className="self-start">{t('feed.set_up_biz', 'Set up your business')}</ButtonLink>}
           </Box>
         )}
 
@@ -259,7 +268,7 @@ export default function Feed() {
               <Box className="ag-feed-empty" data-testid="feed-plans-empty">
                 <Icon name="t_trip" />
                 <p className="m-0">{t('plans.empty', 'No trip plans yet. Plan one, and other travellers can ask to join.')}</p>
-                {!business && <ButtonLink to="/plan" go size="sm">{t('plans.plan_trip', 'Plan a trip')}</ButtonLink>}
+                <ButtonLink to="/plan" go size="sm">{t('plans.plan_trip', 'Plan a trip')}</ButtonLink>
               </Box>
             ) : (
               <>

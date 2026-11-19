@@ -10,9 +10,10 @@ import { HUBS } from '@/components/provider/onboard/wizard/useHostWizard';
 import { Box, Button, ButtonLink, FieldError, IconButton, StepBar, TextArea, TextField } from '@/components/ag';
 import { Icon } from '@/components/ag/Icon';
 import PlanCard from '@/components/feed/PlanCard';
+import VerifyToPost from '@/components/feed/VerifyToPost';
 import '@/styles/screens/plans.css';
 import {
-  apiError, createPlan, dayDate, fitDays, planCosts, stopsOf, type CostKey, type PlanDay, type PlanDraftCosts, MAX_NIGHTS, MAX_SEATS, MAX_STOPS, MAX_TITLE_LEN, rupees, type PlanListing, type TripPlan,
+  apiError, createPlan, fetchPlanRights, dayDate, fitDays, planCosts, stopsOf, type CostKey, type PlanDay, type PlanDraftCosts, MAX_NIGHTS, MAX_SEATS, MAX_STOPS, MAX_TITLE_LEN, rupees, type PlanListing, type TripPlan,
 } from '@/lib/plans';
 
 type Draft = PlanDraftCosts & { title: string; cover: string; date: string; days: PlanDay[]; notes: string };
@@ -175,6 +176,14 @@ export default function PlanTrip() {
   const [uploading, setUploading] = useState(false);
   const [posting, setPosting] = useState(false);
   const [posted, setPosted] = useState<TripPlan | null>(null);
+  // Anyone plans; only a verified person (the pass, or a business with the Verified tick) posts it in the Feed.
+  const [canPost, setCanPost] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (!user) { setCanPost(null); return; }
+    let live = true;
+    fetchPlanRights().then((r) => { if (live) setCanPost(!!r.can_post); }).catch(() => { if (live) setCanPost(true); });
+    return () => { live = false; };
+  }, [user?.id, user?.supportExpiresAt]);
   const top = useRef<HTMLHeadingElement>(null);
 
   const set = (p: Partial<Draft>) => setD((x) => ({ ...x, ...p }));
@@ -218,7 +227,7 @@ export default function PlanTrip() {
     } finally { setUploading(false); }
   };
 
-  const post = async () => {
+  const post = async (visibility: 'public' | 'private' = 'public') => {
     if (!user) { toLogin(); return; }
     setPosting(true);
     setErr('');
@@ -237,9 +246,11 @@ export default function PlanTrip() {
         driver_listing_id: d.driver?.id ?? null,
         cost_per_person: c.total,
         notes,
+        visibility,
       });
       setPosted(plan);
-    } catch (e) {
+    } catch (e: any) {
+      if (e?.response?.data?.code === 'not_verified') { setCanPost(false); return; }
       setErr(apiError(e, t('plans.post_failed', 'Could not post the plan. Try again.')));
     } finally {
       setPosting(false);
@@ -252,12 +263,25 @@ export default function PlanTrip() {
         <section className="ag-main" data-testid="plan-done">
           <div className="ag-done">
             <span className="big"><Icon name="check" /></span>
-            <div className="ag-q"><h1 ref={top} tabIndex={-1}>{t('plans.done', 'Your plan is in the Feed')}</h1></div>
-            <p className="ag-small m-0">{t('plans.done_s', 'Travellers can see it and join. You will see who joins.')}</p>
-            <div className="ag-flowbar">
-              <ButtonLink to="/feed" variant="primary" go data-testid="plan-done-feed">{t('plans.see_feed', 'See it in the Feed')}</ButtonLink>
-              <ButtonLink to={`/plan/${posted.id}`} data-testid="plan-done-open">{t('plans.open_plan', 'Open the plan')}</ButtonLink>
-            </div>
+            {posted.visibility === 'private' ? (
+              <>
+                <div className="ag-q"><h1 ref={top} tabIndex={-1}>{t('plans.done_private', 'Your plan is saved')}</h1></div>
+                <p className="ag-small m-0">{t('plans.done_private_s', 'Only you can see it. Once you are verified, open it and post it in the Feed.')}</p>
+                <div className="ag-flowbar">
+                  <ButtonLink to={`/plan/${posted.id}`} variant="primary" go data-testid="plan-done-open">{t('plans.open_plan', 'Open the plan')}</ButtonLink>
+                  <ButtonLink to="/feed" data-testid="plan-done-feed">{t('plans.to_feed', 'Go to the Feed')}</ButtonLink>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="ag-q"><h1 ref={top} tabIndex={-1}>{t('plans.done', 'Your plan is in the Feed')}</h1></div>
+                <p className="ag-small m-0">{t('plans.done_s', 'Travellers can see it and join. You will see who joins.')}</p>
+                <div className="ag-flowbar">
+                  <ButtonLink to="/feed" variant="primary" go data-testid="plan-done-feed">{t('plans.see_feed', 'See it in the Feed')}</ButtonLink>
+                  <ButtonLink to={`/plan/${posted.id}`} data-testid="plan-done-open">{t('plans.open_plan', 'Open the plan')}</ButtonLink>
+                </div>
+              </>
+            )}
           </div>
         </section>
       </div>
@@ -270,8 +294,8 @@ export default function PlanTrip() {
       {i > 0 && <Button onClick={() => go(i - 1)} icon={<Icon name="back" />} data-testid="plan-back">{t('plans.back', 'Back')}</Button>}
       {i < 3 ? (
         <Button variant="primary" go onClick={next} data-testid="plan-next">{t('plans.next', 'Next')}</Button>
-      ) : (
-        <Button variant="primary" onClick={post} disabled={posting} data-testid="plan-post"
+      ) : user && canPost === false ? null : (
+        <Button variant="primary" onClick={() => post()} disabled={posting || (!!user && canPost === null)} data-testid="plan-post"
           icon={posting ? <Loader2 className="animate-spin" /> : <Icon name="t_trip" />}>
           {user ? t('plans.post', 'Post the plan') : t('plans.login_post', 'Log in and post')}
         </Button>
@@ -435,6 +459,9 @@ export default function PlanTrip() {
             members: [{ id: me.id, name: user?.name || '', avatar: me.avatar }],
             viewer: { is_organiser: true, saved: false, join_status: null },
           }} />
+        )}
+        {i === 3 && user && canPost === false && (
+          <VerifyToPost next="/plan" beforeLeave={() => keepDraft({ ...d, days }, i)} onKeepPrivate={() => post('private')} busy={posting} />
         )}
         {i === 3 && !user && (
           <p className="ag-small m-0" data-testid="plan-login-note">{t('plans.login_note', 'You will log in before the plan is posted. What you typed is kept.')}</p>
