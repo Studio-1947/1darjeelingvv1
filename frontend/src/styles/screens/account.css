@@ -123,6 +123,10 @@ html[data-mode="dark"] .ag-account-tdtile > svg.i, html[data-mode="dark"] .ag-ac
 .ag-account-savesec { display: flex; flex-direction: column; gap: 10px; }
 .ag-account-savesec h2 { margin: 6px 0 0; font: 500 18px/24px var(--font); color: var(--ink-strong); }
 .ag-account-savesec h2 .ag-small { margin-left: 4px; }
+/* Saved's stay cards sit tight like the prototype's (no reserved lines for a 2-line name or place). */
+.ag-account-savesec .ag-category-staybody .name,
+.ag-account-savesec .ag-category-staybody .meta.place,
+.ag-account-savesec .ag-category-stay:not(.car) .metarow { min-height: 0; }
 
 /* ---- Login (prototype login: smaller title) ---- */
 .ag-account-login h1 { font: 500 24px/32px var(--font) !important; letter-spacing: -.02em !important; }
