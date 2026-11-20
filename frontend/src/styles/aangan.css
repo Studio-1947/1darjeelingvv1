@@ -307,3 +307,24 @@ svg.i { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-widt
 
 /* dark mode: dropdown arrows drawn light (the light one is a fixed dark stroke) */
 html[data-mode="dark"] select.ag-in, html[data-mode="dark"] .ag-category-sel { background-image: url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%23EDEDED%27 stroke-width=%272%27 stroke-linecap=%27round%27%3E%3Cpath d=%27M6 9l6 6 6-6%27/%3E%3C/svg%3E"); }
+
+/* Date and time fields on iPhone/iPad (only iOS WebKit has -webkit-touch-callout): Safari draws its own
+   small arrow jammed against the right edge, ignoring the padding. Hide it and draw the dropdowns' own
+   chevron, at the same place as on select.ag-in. Android and desktop keep the browser's calendar icon. */
+@supports (-webkit-touch-callout: none) {
+  input.ag-in:is([type="date"], [type="time"], [type="datetime-local"], [type="month"]) {
+    -webkit-appearance: none; appearance: none;
+    padding-right: 44px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23111' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 18px center; background-size: 18px;
+  }
+  /* iOS centres the chosen date; the other fields start on the left. */
+  input.ag-in::-webkit-date-and-time-value { text-align: left; margin: 0; }
+  html[data-mode="dark"] input.ag-in:is([type="date"], [type="time"], [type="datetime-local"], [type="month"]) {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%23EDEDED%27 stroke-width=%272%27 stroke-linecap=%27round%27%3E%3Cpath d=%27M6 9l6 6 6-6%27/%3E%3C/svg%3E");
+  }
+  /* The booking screens' two-up date boxes are narrow: a smaller chevron, closer in. */
+  :is(.ag-listing-daterange, .ag-listing-dtrow) input.ag-in:is([type="date"], [type="time"]) {
+    padding-right: 30px; background-position: right 10px center; background-size: 16px;
+  }
+}

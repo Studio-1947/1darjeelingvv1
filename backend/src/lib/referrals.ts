@@ -114,7 +114,7 @@ export async function assignReferralCode(userId: string): Promise<string> {
 }
 
 /** Monotonic, like computeHostPlanExpiry  a reward may only push the expiry outwards. */
-function extendedExpiry(existing: string | null | undefined, days: number, now: Date): string {
+export function extendedExpiry(existing: string | null | undefined, days: number, now: Date): string {
   const nowMs = now.getTime();
   const existingMs = existing ? Date.parse(existing) : NaN;
   // An old lifetime pass has nothing left to extend (see LIFETIME_SUPPORT_EXPIRY in config.ts).

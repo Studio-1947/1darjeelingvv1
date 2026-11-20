@@ -88,7 +88,9 @@ describe('shortcut link', () => {
   it('drops a type it does not know and cleans the code', () => {
     expect(readHostLink({ type: 'hotel', ref: 'x<script>' })).toEqual({ type: null, ref: 'XSCRIPT' });
     expect(readHostLink({ type: 'driver', ref: undefined })).toEqual({ type: 'driver', ref: '' });
-    expect(cleanRef('ANG26-ABCDEFGHIJK')).toHaveLength(12);
+    // Up to 20: admin codes like amitAangan26 or rahulAangan2026 fit whole.
+    expect(cleanRef('rahulAangan2026')).toBe('RAHULAANGAN2026');
+    expect(cleanRef('ANG26-ABCDEFGHIJKLMNOPQ')).toHaveLength(20);
     expect(isHostType('guide')).toBe(true);
     expect(isHostType(42)).toBe(false);
   });

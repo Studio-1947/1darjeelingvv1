@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { Icon } from '@/components/ag/Icon';
-import { Box, Button, PageHead, SelectField, TextField } from '@/components/ag';
+import { Box, Button, PageHead, SelectField, Status, TextField } from '@/components/ag';
 import Seo from '@/components/Seo';
 import { nationalPhone, OTP_COUNTRIES, otpPhone } from '@/lib/phoneRegions';
 
@@ -35,7 +35,9 @@ export default function Login() {
     }
   }, [user, mode, nav, next]);
 
-  // Sign-in: 1 = the phone number, 2 = the code (and, for a new account only, the name).
+  // Sign-in: 1 = the phone number, 2 = the code only, 3 = a new account's name and referral code,
+  // shown only once the code has been accepted (the server answers `name_required` for a right code
+  // on a new number without using the code up; step 3 sends the same code again with the details).
   const [step, setStep] = useState(1);
   const [phone, setPhone] = useState('');
   const [countryCode, setCountryCode] = useState('+91');
@@ -43,7 +45,7 @@ export default function Login() {
   const [name, setName] = useState('');
   // A friend's invite code, as the app asks for it. An invite link (/login?ref=CODE) fills it in.
   const [referral, setReferral] = useState(() => {
-    try { return (new URLSearchParams(window.location.search).get('ref') || '').toUpperCase().slice(0, 12); } catch { return ''; }
+    try { return (new URLSearchParams(window.location.search).get('ref') || '').toUpperCase().slice(0, 20); } catch { return ''; }
   });
   // No Traveller / Host question here (prototype: one sign-in, the rest is asked later). Arriving from
   // List your business (next=/provider/...) or with ?role=provider signs in on the business side.
@@ -59,7 +61,6 @@ export default function Login() {
   const [sentChannel, setSentChannel] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
-  const [userExists, setUserExists] = useState(false);
   const [googleBusy, setGoogleBusy] = useState(false);
   const gisLoaded = useRef(false);
   const country = OTP_COUNTRIES.find((item) => item.code === countryCode) ?? OTP_COUNTRIES[0];
@@ -126,7 +127,6 @@ export default function Login() {
       const { data } = await api.post('/auth/otp/send', { phone: canonicalPhone, channel: 'whatsapp' });
       setMockOtp(data.mock_otp);
       setSentChannel(data.channel || '');
-      setUserExists(!!data.exists);
       setOtp('');
       setStep(2);
       setResendIn(RESEND_SECONDS);
@@ -139,21 +139,40 @@ export default function Login() {
     await requestCode();
   };
 
+  // Step 2: the code alone. An existing account signs in here; a new number with the right code
+  // moves on to step 3. A wrong code stays on this screen.
   const verify = async (e) => {
     e.preventDefault();
     if (!canonicalPhone) return;
-    // A new account needs a name; an existing one keeps the name it has.
-    if (!userExists && !name.trim()) { setErr(t('ui.login.badname', 'Please write your name.')); return; }
+    setBusy(true); setErr('');
+    try {
+      const { data } = await api.post('/auth/otp/verify', { phone: canonicalPhone, otp, role });
+      finishSignIn(data);
+    } catch (e) {
+      // `code` is new; the detail check covers a backend deployed before it (same answer, older shape).
+      const body = e?.response?.data;
+      if (body?.code === 'name_required' || body?.detail === 'Name is required for registration') { setStep(3); return; }
+      setErr(e?.response?.data?.detail || t('auth.invalid_otp'));
+    } finally { setBusy(false); }
+  };
+
+  // Step 3: the new account's name and an optional referral code, sent with the code already accepted.
+  const createAccount = async (e) => {
+    e.preventDefault();
+    if (!canonicalPhone) return;
+    if (!name.trim()) { setErr(t('ui.login.badname', 'Please write your name.')); return; }
     setBusy(true); setErr('');
     try {
       const { data } = await api.post('/auth/otp/verify', {
         phone: canonicalPhone, otp, name, role,
-        // Only a new account can redeem a code; the server ignores it for an existing one.
-        ...(!userExists && referral.trim() ? { referral_code: referral.trim() } : {}),
+        // Hosts too: a code from a host link or a field team member (admin → Referrals) is counted for them.
+        ...(referral.trim() ? { referral_code: referral.trim() } : {}),
       });
       finishSignIn(data);
-    } catch (e) { setErr(e?.response?.data?.detail || t('auth.invalid_otp')); }
-    finally { setBusy(false); }
+    } catch (e) {
+      // The code ran out while the name was being typed (10 minutes): say so; "Send a new code" is below.
+      setErr(e?.response?.data?.detail || t('auth.invalid_otp'));
+    } finally { setBusy(false); }
   };
 
   const googleSignIn = async () => {
@@ -240,16 +259,9 @@ export default function Login() {
             )}
             <TextField label={t('auth.otp_label')} value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))} required maxLength={6}
               inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" title={t('auth.otp_six_digits')}
-              data-testid="login-otp" placeholder="123456" className="[&_input]:tracking-[0.3em] [&_input]:tabular-nums [&_input]:text-lg" />
-            {!userExists && (
-              <TextField label={t('ui.login.nameq', 'What should we call you?')} value={name} onChange={(e) => setName(e.target.value)}
-                autoComplete="name" required maxLength={80} data-testid="login-name" />
-            )}
-            {!userExists && role !== 'provider' && (
-              <TextField label={t('auth.referral_label')} value={referral} onChange={(e) => setReferral(e.target.value.toUpperCase().slice(0, 12))}
-                data-testid="login-referral" placeholder="ANG26-XXXXXX" autoCapitalize="characters" autoComplete="off" className="[&_input]:tracking-wider" />
-            )}
-            <Button type="submit" go className="self-start" disabled={busy} data-testid="login-verify">
+              // Six empty slots, not "123456": a sample number read as a code already typed in.
+              data-testid="login-otp" placeholder="––––––" className="[&_input]:tracking-[0.3em] [&_input]:tabular-nums [&_input]:text-lg" />
+            <Button type="submit" go className="self-start" disabled={busy || otp.length !== 6} data-testid="login-verify">
               {busy ? t('common.loading') : t('auth.verify')}
             </Button>
             <p className="ag-small text-center" data-testid="login-resend">
@@ -261,6 +273,23 @@ export default function Login() {
               )}
             </p>
             <Button variant="text" onClick={() => setStep(1)} className="self-center">{t('auth.change_number')}</Button>
+          </form>
+        )}
+
+        {step === 3 && (
+          <form onSubmit={createAccount} className="flex flex-col gap-4" data-testid="login-step-3">
+            <PageHead title={t('ui.login.details_h', 'One last step')} sub={t('ui.login.details_s', 'This is a new account. Tell us your name to finish.')} />
+            <Status tone="ok" className="self-start" data-testid="login-verified"><Icon name="check" /> {t('ui.login.verified', 'Number verified')} · {canonicalPhone}</Status>
+            <TextField label={t('ui.login.nameq', 'What should we call you?')} value={name} onChange={(e) => setName(e.target.value)}
+              autoComplete="name" required maxLength={80} autoFocus data-testid="login-name" />
+            <TextField label={t('auth.referral_label')} value={referral} onChange={(e) => setReferral(e.target.value.toUpperCase().slice(0, 20))}
+              data-testid="login-referral" placeholder="ANG26-XXXXXX" autoCapitalize="characters" autoComplete="off" className="[&_input]:tracking-wider" />
+            <Button type="submit" variant="primary" go className="self-start" disabled={busy || !name.trim()} data-testid="login-create">
+              {busy ? t('common.loading') : t('common.continue', 'Continue')}
+            </Button>
+            {err && (
+              <Button variant="text" onClick={requestCode} disabled={busy} className="self-center" data-testid="login-new-code">{t('ui.login.new_code', 'Send a new code')}</Button>
+            )}
           </form>
         )}
 

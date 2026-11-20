@@ -1,0 +1,62 @@
+/* About aangan (prototype about.js / style.css .ab*): the hero card with its stats, the "where it
+   works" and "how it works" timelines, the four promises two by two, and the team as photo cards
+   that open a profile. Theme variables only, so the theme colour and dark mode re-tint it.
+   Imported by pages/About.tsx. */
+
+.ag-about-hero { display: flex; flex-direction: column; gap: 10px; padding: 22px 18px; border-radius: 24px;
+  border: 1px solid color-mix(in srgb, var(--r) 30%, var(--warmline));
+  background: linear-gradient(160deg, color-mix(in srgb, var(--r) 22%, var(--surface)) 0%, var(--surface) 70%); }
+.ag-about-hero h1 { margin: 0; font: 500 28px/34px var(--font); letter-spacing: -.02em; color: var(--ink-strong); }
+.ag-about-hero .slogan { margin: -4px 0 2px; font: 600 18px/24px var(--font); color: var(--r); }
+.ag-about-hero > p:not(.ag-eyebrow):not(.slogan) { margin: 0; font: 400 15px/23px var(--font); color: var(--ink7); }
+.ag-about-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 6px; }
+.ag-about-stats > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: 12px; border-radius: 14px; background: var(--surface); border: 1px solid var(--warmline); }
+.ag-about-stats b { font: 600 26px/30px var(--font); color: var(--r); }
+.ag-about-stats span { font: 400 11px/15px var(--font); letter-spacing: .3px; color: var(--ink-muted); }
+.ag-about-peak { align-self: flex-end; display: inline-flex; align-items: center; gap: 6px; font: 500 11px/14px var(--font); color: var(--ink-muted); }
+.ag-about-peak svg.i { width: 14px; height: 14px; }
+
+/* Timelines: a dot per row, joined by a line; the first "where it works" row is where we are now. */
+.ag-about-tl { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.ag-about-tl li { position: relative; display: flex; align-items: flex-start; gap: 12px; min-height: 64px; padding: 4px 0; }
+.ag-about-tl li + li::before { content: ""; position: absolute; left: 12px; top: -30px; height: 34px; border-left: 2px dotted var(--outline); }
+.ag-about-tl.steps li + li::before { border-left-color: var(--r); }
+.ag-about-tl .dot { position: relative; z-index: 1; flex: none; width: 26px; height: 26px; display: grid; place-items: center; border-radius: 50%;
+  border: 2px solid var(--r); background: var(--r); color: var(--on-r, #fff); font: 600 13px/1 var(--font); }
+.ag-about-tl .dot svg.i { width: 14px; height: 14px; stroke-width: 3; }
+.ag-about-tl .when { display: block; font: 600 10px/14px var(--font); letter-spacing: 1px; text-transform: uppercase; color: var(--r); }
+.ag-about-tl b { display: block; font: 600 15px/20px var(--font); color: var(--ink-strong); }
+
+/* Four promises: two by two on every width, the number in the corner. */
+.ag-about-diff { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.ag-about-diff > .ag-box { position: relative; gap: 6px; }
+.ag-about-diff .num { position: absolute; top: 12px; right: 14px; font: 600 12px/1 var(--font); color: var(--r); }
+.ag-about-diff .icon { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 50%; background: var(--creme2); color: var(--r); }
+.ag-about-diff .icon svg.i { width: 20px; height: 20px; }
+.ag-about-diff h3 { margin: 4px 0 0; font: 600 15px/20px var(--font); color: var(--ink-strong); }
+.ag-about-diff p { margin: 0; }
+
+/* The team: photo cards two by two; each opens a profile. */
+.ag-about-team { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 10px 0 12px; }
+.ag-about-mem { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; padding: 0 0 10px; text-align: left;
+  border: 1px solid var(--warmline); border-radius: 16px; overflow: hidden; background: var(--surface); color: var(--ink-strong); cursor: pointer; font: inherit; }
+.ag-about-mem:focus-visible { outline: 2px solid var(--r); outline-offset: 2px; }
+.ag-about-ph { display: block; width: 100%; aspect-ratio: 1; margin-bottom: 8px; background: var(--creme2) center / cover no-repeat; }
+.ag-about-role { font: 600 10px/14px var(--font); letter-spacing: 1px; text-transform: uppercase; color: var(--r); }
+.ag-about-mem .ag-about-role, .ag-about-mem b, .ag-about-mem .ag-small { padding: 0 12px; }
+.ag-about-mem b { font: 600 16px/20px var(--font); }
+.ag-about-mem .ag-small { font-size: 12px; line-height: 16px; }
+.ag-about-tag { margin: 4px 0 10px; font: 400 14px/20px var(--font); color: var(--ink-muted); }
+.ag-about-tag b { color: var(--ink-strong); font-weight: 600; }
+
+/* A team member's profile, over the page. */
+.ag-about-pop { position: fixed; inset: 0; z-index: 100; display: grid; place-items: end center; padding: 16px 16px calc(var(--tabbar-h) + 16px); background: rgb(0 0 0 / .55); }
+@media (min-width: 640px) { .ag-about-pop { place-items: center; } }
+.ag-about-popbox { position: relative; width: 100%; max-width: 420px; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 22px 18px;
+  border-radius: 24px; background: var(--creme); border: 1px solid var(--warmline); text-align: center; box-shadow: var(--shadow-lg); }
+.ag-about-popbox .ag-about-ph { max-width: 280px; border-radius: 16px; margin: 28px 0 4px; }
+.ag-about-popbox h2 { margin: 4px 0 0; font: 500 22px/28px var(--font); color: var(--ink-strong); }
+.ag-about-popbox p { margin: 0; }
+.ag-about-popbox .aangan { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-strong); }
+.ag-about-popbox .aangan svg.i { width: 18px; height: 18px; }
+.ag-about-popx { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); }

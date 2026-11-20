@@ -30,19 +30,21 @@
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
         <title>aangan  By studio 1947</title>
         <script src="/error-shim.js"></script>
+        <script src="/splash-theme.js"></script>
         <!-- Inlined rather than relying on the bundled stylesheet: in dev, Vite injects CSS via
              JS, so it isn't applied yet at this point; this has to work before any bundle runs. -->
         <style>
-            /* Arrival (Aangan 2.0 /7): the red wordmark rises and settles on white, then the tagline
+            /* Arrival (Aangan 2.0 /7): the wordmark, in the person's theme colour (Mitti by default), rises and settles on white, then the tagline
                "explore locally"; App.tsx lifts the screen away (about 2.5s, once per session). */
             #app-splash {
                 position: fixed; inset: 0; z-index: 9999;
                 display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
-                background: #FFFFFF; color: #E60000;
+                /* The person's theme colour and mode, set by /splash-theme.js; Mitti on white when none is saved. */
+                background: var(--splash-bg, #FFFFFF); color: var(--splash-ink, #947C47);
                 transition: opacity 0.4s ease, transform 0.4s ease;
             }
             #app-splash svg { width: 55vw; max-width: 215px; height: auto; }
-            #app-splash p { margin: 0; font: 400 16px/24px "Noto Sans", system-ui, sans-serif; letter-spacing: 1.5px; color: #454545; }
+            #app-splash p { margin: 0; font: 400 16px/24px "Noto Sans", system-ui, sans-serif; letter-spacing: 1.5px; color: var(--splash-sub, #454545); }
             #app-splash.app-splash-hide { opacity: 0; transform: translateY(-24px); pointer-events: none; }
             @media (prefers-reduced-motion: no-preference) {
                 #app-splash svg { opacity: 0; transform: translateY(12px) scale(.92); animation: splash-logo .7s cubic-bezier(.2,.8,.2,1) .15s forwards; }

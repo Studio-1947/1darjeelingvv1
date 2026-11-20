@@ -108,7 +108,7 @@ export default function ThemeColour() {
                 </span>
                 <span className="ag-account-paln">
                   {p.name}
-                  <span>{p.key === DEFAULT_THEME ? t('theme.default', 'Studio 1947 red · default') : p.en}</span>
+                  <span>{p.key === DEFAULT_THEME ? t('theme.default', 'Courtyard Earth · default') : p.en}</span>
                 </span>
                 <span className={`ag-account-palradio ${on ? 'on' : ''}`} aria-hidden="true" />
               </button>

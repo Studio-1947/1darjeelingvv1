@@ -1,8 +1,9 @@
 /**
  * Theme colour (Account → Theme colour), as the Aangan 2.0 prototype does it (palette.js):
- * one brand colour tints the whole app. The default is aangan's own red Studio 1947 set, exactly
- * as styles/aangan.css defines it; every other choice is derived from a single colour with the
- * prototype's own mixing formula, so its 12 earthy palettes and "your own colour" look the same here.
+ * one brand colour tints the whole app. The default is Mitti (Courtyard Earth). The red Studio 1947
+ * set is the one styles/aangan.css writes on :root, so it needs no overrides; every other choice,
+ * Mitti included, is derived from a single colour with the prototype's own mixing formula, so its
+ * 12 earthy palettes and "your own colour" look the same here.
  *
  * Works by overriding the theme variables on <html> (the ones aangan.css and tailwind.config.js read).
  * The person's choice is kept on this device only (no account field for it yet). A business's own
@@ -12,12 +13,15 @@ import React from 'react';
 
 export type Palette = { key: string; name: string; en: string; accent: string };
 
-export const DEFAULT_THEME = 'studio1947';
+/** What the app shows when the person has not picked a colour. */
+export const DEFAULT_THEME = 'mitti';
+/** The red set styles/aangan.css writes on :root: picking it removes every override. */
+export const RED_THEME = 'studio1947';
 
-/** Studio 1947 red first, then the prototype's palettes in its own order. */
+/** Mitti (the default) first, then Studio 1947 red, then the prototype's palettes in its own order. */
 export const PALETTES: Palette[] = [
-  { key: DEFAULT_THEME, name: 'aangan', en: 'Studio 1947 Red', accent: '#E60000' },
   { key: 'mitti', name: 'Mitti', en: 'Courtyard Earth', accent: '#947C47' },
+  { key: RED_THEME, name: 'aangan', en: 'Studio 1947 Red', accent: '#E60000' },
   { key: 'rhodo', name: 'Guras', en: 'Rhododendron Bloom', accent: '#A8455A' },
   { key: 'terracotta', name: 'Mato', en: 'Terracotta Clay', accent: '#B5653E' },
   { key: 'saipatri', name: 'Saipatri', en: 'Marigold', accent: '#E08A1E' },
@@ -47,7 +51,7 @@ const channels = (hex: string) => rgbOf(hex).join(' ');
 /** The colour a theme key stands for: a palette key or a "#RRGGBB" of the person's own. */
 export function accentOf(key: string): string {
   if (HEX.test(key)) return key.toUpperCase();
-  return (PALETTES.find((p) => p.key === key) || PALETTES[0]).accent;
+  return (PALETTES.find((p) => p.key === key) || PALETTES.find((p) => p.key === DEFAULT_THEME)!).accent;
 }
 
 /**
@@ -87,8 +91,8 @@ function varsFor(accent: string, dark = false): Record<string, string> {
 
 const APPLIED = Object.keys(varsFor('#E60000'));
 
-/** The default theme's own values, exactly as styles/aangan.css sets them on :root. */
-const DEFAULT_VARS: Record<string, string> = {
+/** The red theme's own values, exactly as styles/aangan.css sets them on :root. */
+const RED_VARS: Record<string, string> = {
   '--r': '#E60000', '--r-rgb': '230 0 0', '--r-press': '#B80000', '--r-press-rgb': '184 0 0',
   '--r-tint': '#FDF0F0', '--r-tint-rgb': '253 240 240', '--star': '#E60000',
   '--creme-hi': '#FFFBF6', '--creme': '#FFF8EF', '--creme-rgb': '255 248 239', '--creme2': '#FBEFDD', '--creme2-rgb': '251 239 221',
@@ -108,25 +112,27 @@ export const isThemeKey = (key: unknown): key is string =>
 export function themeVars(key: string | null | undefined, mode: Mode = currentMode()): React.CSSProperties | undefined {
   if (!isThemeKey(key)) return undefined;
   const dark = mode === 'dark';
-  if (key === DEFAULT_THEME) {
+  if (key === RED_THEME) {
     // In dark mode only the brand colour is pinned; the surfaces stay the dark ones from aangan.css.
-    const v = dark ? Object.fromEntries(Object.entries(DEFAULT_VARS).filter(([k]) => /^--(r|r-rgb|r-press|r-press-rgb|star)$/.test(k))) : DEFAULT_VARS;
+    const v = dark ? Object.fromEntries(Object.entries(RED_VARS).filter(([k]) => /^--(r|r-rgb|r-press|r-press-rgb|star)$/.test(k))) : RED_VARS;
     return v as React.CSSProperties;
   }
   return varsFor(accentOf(key), dark) as React.CSSProperties;
 }
 
 /**
- * Paint the app in this theme and mode. The default theme removes every override, so aangan.css's
- * exact red (or, in dark mode, its dark set) shows.
+ * Paint the app in this theme and mode. The red theme removes every override, so aangan.css's
+ * exact red (or, in dark mode, its dark set) shows; every other theme, the default Mitti too, overrides.
  */
 export function applyTheme(key: string, mode: Mode = storedMode()) {
   const root = document.documentElement;
   for (const k of APPLIED) root.style.removeProperty(k);
-  if (key !== DEFAULT_THEME) {
+  if (key !== RED_THEME) {
     for (const [k, v] of Object.entries(varsFor(accentOf(key), mode === 'dark'))) root.style.setProperty(k, v);
   }
-  root.dataset.theme = key === DEFAULT_THEME ? DEFAULT_THEME : 'custom';
+  root.dataset.theme = key === RED_THEME ? RED_THEME : 'custom';
+  // index.html's splash reads this before any bundle runs (public/splash-theme.js).
+  try { localStorage.setItem('aangan-accent', accentOf(key)); } catch { /* private mode */ }
   root.dataset.mode = mode;
   // The browser bar matches the page.
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content', mode === 'dark' ? '#131313' : '#FFFFFF');

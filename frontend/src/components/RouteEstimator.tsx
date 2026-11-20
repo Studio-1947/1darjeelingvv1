@@ -225,10 +225,10 @@ export default function RouteEstimator() {
         {info.driverCount ? t('ui.routeEstimator.drivers_available_n', { n: info.driverCount }) : t('ui.routeEstimator.drivers_available')}
       </Status>
 
-      <SelectField label={t('estimator.from', 'Pick Pickup Location')} value={fromHub} onChange={(e) => handleFromChange(e.target.value)}>
+      <SelectField label={t('estimator.from', 'Pickup Location')} value={fromHub} onChange={(e) => handleFromChange(e.target.value)}>
         {HUBS.map((h) => <option key={h} value={h}>{h}</option>)}
       </SelectField>
-      <SelectField label={t('estimator.to', 'Pick Drop Destination')} value={toHub} onChange={(e) => handleToChange(e.target.value)}>
+      <SelectField label={t('estimator.to', 'Drop Destination')} value={toHub} onChange={(e) => handleToChange(e.target.value)}>
         {HUBS.map((h) => <option key={h} value={h}>{h}</option>)}
       </SelectField>
 

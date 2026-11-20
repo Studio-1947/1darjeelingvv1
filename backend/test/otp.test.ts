@@ -194,3 +194,46 @@ describe('POST /auth/otp/verify attempt cap', () => {
     expect(res.body.token).toBeTruthy();
   });
 });
+
+// The web sign-in asks for the code on one screen and the new account's name on the next: it sends
+// the code alone first, and only a right code for a new number may answer `name_required`.
+describe('POST /auth/otp/verify code first, name second', () => {
+  it('a right code for a new number answers name_required and leaves the code usable', async () => {
+    const phone = nextPhone();
+    const otp = await issueOtp(phone);
+
+    const first = await request(app).post('/api/auth/otp/verify').send({ phone, otp });
+    expect(first.status).toBe(400);
+    expect(first.body.code).toBe('name_required');
+    expect(first.body.token).toBeUndefined();
+    const [rec] = await db.select().from(schema.otps).where(eq(schema.otps.phone, phone)).limit(1);
+    expect(rec).toBeTruthy();
+    expect(rec.attempts).toBe(0);
+
+    const second = await request(app).post('/api/auth/otp/verify').send({ phone, otp, name: 'Two Step' });
+    expect(second.status).toBe(200);
+    expect(second.body.user.name).toBe('Two Step');
+  });
+
+  it('a wrong code never answers name_required, and counts as a wrong guess', async () => {
+    const phone = nextPhone();
+    await issueOtp(phone);
+
+    const res = await request(app).post('/api/auth/otp/verify').send({ phone, otp: '000000' });
+    expect(res.status).toBe(400);
+    expect(res.body.code).toBeUndefined();
+    expect(res.body.detail).toMatch(/invalid/i);
+    const [rec] = await db.select().from(schema.otps).where(eq(schema.otps.phone, phone)).limit(1);
+    expect(rec.attempts).toBe(1);
+  });
+
+  it('an existing account signs straight in with the code alone', async () => {
+    const phone = nextPhone();
+    await request(app).post('/api/auth/otp/verify').send({ phone, otp: '123456', name: 'Already Here' });
+    const otp = await issueOtp(phone);
+
+    const res = await request(app).post('/api/auth/otp/verify').send({ phone, otp });
+    expect(res.status).toBe(200);
+    expect(res.body.user.name).toBe('Already Here');
+  });
+});

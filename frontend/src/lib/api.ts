@@ -140,7 +140,8 @@ export async function payWithRazorpay({ order, key_id, flow, reference_id, name,
       description: description || 'Payment',
       order_id: order.id,
       prefill,
-      theme: { color: '#E60000' },
+      // The person's theme colour (Mitti by default), not a fixed red.
+      theme: { color: getComputedStyle(document.documentElement).getPropertyValue('--r').trim() || '#947C47' },
       modal: { ondismiss: () => reject(new Error('Payment cancelled')) },
       handler: async (resp: any) => {
         try {

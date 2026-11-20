@@ -25,6 +25,8 @@ export interface CategoryFilterBarProps {
   extraActive?: boolean;
   /** "My location" and its distances: shown first in the panel, beside the place picker. */
   nearSlot?: React.ReactNode;
+  /** Why "My location" did not work (permission off, no position), shown under it. */
+  nearError?: string;
   /** Extra rows (guests) shown after the distance rows. */
   children?: React.ReactNode;
 }
@@ -139,6 +141,7 @@ export default function CategoryFilterBar({
   totalCount,
   extraActive,
   nearSlot,
+  nearError,
   children,
 }: CategoryFilterBarProps) {
   const { t } = useTranslation();
@@ -234,6 +237,7 @@ export default function CategoryFilterBar({
               ))}
             </select>
           </div>
+          {nearError && <p className="ag-err m-0" role="alert" data-testid="near-me-error">{nearError}</p>}
 
           {children}
 

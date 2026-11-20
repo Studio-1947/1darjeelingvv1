@@ -12,6 +12,7 @@ import { toPublicUser } from '../lib/publicUser';
 import { reserveOtpSend } from '../lib/otpSendBudget';
 import { isPlausiblePhone, phoneKey } from '../lib/phone';
 import { generateReferralCode, redeemReferralCode } from '../lib/referrals';
+import { recordCampaignSignup } from '../lib/referralCampaigns';
 import { hashOtp, verifyOtpHash } from '../lib/otpHash';
 import { claimCoOwnerInvites } from '../lib/hostAccess';
 import { cleanName } from '../lib/accountFields';
@@ -322,7 +323,10 @@ router.post('/otp/verify', rateLimiter(10, 60 * 1000, 'otp_verify'), async (req:
   let [user] = await db.select().from(schema.users).where(eq(schema.users.phone, phone)).limit(1);
   if (!user) {
     if (!name || typeof name !== 'string' || name.trim() === '') {
-      return res.status(400).json({ detail: 'Name is required for registration' });
+      // Reached only once the code has passed, and the code is not consumed yet: the web sign-in
+      // sends the code alone first, reads `name_required` as "code is right, new account", asks
+      // for the name and referral on the next screen, then sends the same code again with them.
+      return res.status(400).json({ detail: 'Name is required for registration', code: 'name_required' });
     }
     // Same limits as editing the profile later (lib/accountFields.ts).
     const cleaned = cleanName(name);
@@ -354,7 +358,16 @@ router.post('/otp/verify', rateLimiter(10, 60 * 1000, 'otp_verify'), async (req:
     // by this call site. Deliberately after the insert and deliberately unawaited-for-failure:
     // redeemReferralCode never throws, because losing a reward must not cost someone the
     // account they just created.
-    if (referralCode) {
+    // A code the aangan team made (admin → Referrals) is counted first, for travellers and hosts
+    // alike; anything else is a member's own code and goes through the friend-referral rules.
+    const campaign = referralCode
+      ? await recordCampaignSignup(user.id, referralCode, user.role === 'provider' ? 'host' : 'traveller')
+      : null;
+    if (campaign?.recorded && campaign.rewardDays) {
+      const [fresh] = await db.select().from(schema.users).where(eq(schema.users.id, user.id)).limit(1);
+      if (fresh) user = fresh;
+    }
+    if (referralCode && !campaign?.matched) {
       const redeemed = await redeemReferralCode(user.id, referralCode);
       if (redeemed.ok) {
         // The row was just written by redeem; re-read so the token and the response carry the

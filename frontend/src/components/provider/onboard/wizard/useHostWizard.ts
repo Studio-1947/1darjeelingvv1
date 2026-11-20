@@ -6,6 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import { imageProblem, uploadImage } from '@/lib/uploadImage';
 import { readHostLink } from '@/lib/hostQuickFill';
 import { isValidPhone, MAX_PRICE, MIN_PRICE } from '@/lib/hostFormChecks';
+import { nameProblem } from '@/lib/contentRules';
 
 /*
  * Host onboarding, one question per screen (Aangan 2.0 wizard, provider.js):
@@ -25,7 +26,8 @@ export type HostType = (typeof HOST_TYPES)[number];
 export type StepKey = 'type' | 'place' | 'name' | 'price' | 'menu' | 'extras' | 'review';
 export type Place = { name: string; lat: number; lng: number };
 export type Room = { name: string; price: string; /** guests the room sleeps */ occ?: string };
-export type Dish = { name: string; price: string; photo?: string };
+/** A café dish or a shop item. `unit` is a shop's (per kg, per pack...); a café's is always per plate. */
+export type Dish = { name: string; price: string; photo?: string; unit?: string };
 
 /** Default place chips, in the prototype's order; coordinates inside the backend service box. */
 export const HUBS: Place[] = [
@@ -61,7 +63,12 @@ export const OFFERS: Record<HostType, string[]> = {
   shop: ['food_0', 'food_1', 'food_2'],
 };
 
-/** Quick-add dishes on the menu step (the prototype's FOODIMG names). */
+/** What a shop prices its goods by (backend lib/hostProfile.ts GOODS_UNITS); labels under profile.unit_*. */
+export const SHOP_UNITS = ['item', 'piece', 'kg', 'gram', 'litre', 'pack', 'dozen'] as const;
+/** Most items a shop can list (backend MAX_GOODS: the board caps a shop's goods at ten). */
+export const MAX_GOODS = 10;
+
+/** Quick-add dishes on a café's menu step (the prototype's FOODIMG names). Shops get none: they sell anything. */
 export const QUICK_DISHES = ['Veg momos', 'Chicken momos', 'Thukpa', 'Dal bhat thali', 'Darjeeling tea', 'Chicken curry with rice', 'Egg chowmein', 'Churpee soup', 'Sel roti and aloo dum', 'Butter tea'];
 
 export const MAX_PHOTOS = 8;
@@ -191,12 +198,16 @@ export function useHostWizard() {
   const step: StepKey | 'done' = done ? 'done' : steps[i];
 
   const [err, setErr] = useState('');
+  // The step that can fix what the server refused at "Put it live" (a business name, the place),
+  // so the error can offer to go straight there instead of Back, Back, Back.
+  const [fixAt, setFixAt] = useState<StepKey | null>(null);
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [payModal, setPayModal] = useState<null | { amount: number; order: any; providerId: string }>(null);
 
   const goTo = useCallback((n: number | 'done') => {
     setErr('');
+    setFixAt(null);
     const next = new URLSearchParams(params);
     next.set('step', String(n));
     setParams(next);
@@ -220,10 +231,17 @@ export function useHostWizard() {
     switch (step) {
       case 'type': return d.type ? '' : t('ob.wz.pickone');
       case 'place': return d.place ? '' : t('ob.wz.wz_noplace');
-      case 'name':
-        if (!d.name.trim()) return t('ob.wz.badname');
+      case 'name': {
+        // The server's own name rule (lib/contentRules.ts), checked here so "op" is caught on this
+        // step and not only when the listing is put up.
+        const problem = nameProblem(d.name, 120);
+        if (problem === 'empty') return t('ob.wz.badname');
+        if (problem === 'short') return t('ob.wz.name_short', 'This name is too short. Write it in full, as travellers will see it.');
+        if (problem === 'mash') return t('ob.wz.name_mash', 'This does not look like a real name. Write it as travellers will see it.');
+        if (problem === 'long') return t('ob.wz.name_long', { max: 120, defaultValue: 'Keep the name to {{max}} letters or fewer.' });
         if (!isValidPhone(d.phone)) return t('ob.wz.badphone');
         return '';
+      }
       case 'price': {
         if (d.type === 'homestay' && d.roomsMode) {
           const ok = d.rooms.filter((r) => r.name.trim() && Number(r.price) > 0);
@@ -236,7 +254,7 @@ export function useHostWizard() {
         if (!/^\d+$/.test(d.price) || n < MIN_PRICE || n > MAX_PRICE) return t('ob.wz.price_range');
         return '';
       }
-      case 'menu': return d.menu.some((m) => m.name.trim() && Number(m.price) > 0) ? '' : t('ob.wz.mn_need');
+      case 'menu': return d.menu.some((m) => m.name.trim() && Number(m.price) > 0) ? '' : (d.type === 'shop' ? t('ob.wz.sh_need') : t('ob.wz.mn_need'));
       default: return '';
     }
   };
@@ -327,8 +345,8 @@ export function useHostWizard() {
       case 'cafe':
       case 'shop': {
         const items = d.menu.filter((m) => m.name.trim() && Number(m.price) > 0)
-          .map((m) => ({ name: m.name.trim(), price: Number(m.price), unit: 'item', ...(m.photo ? { photo: m.photo } : {}) }));
-        return { host_name: host, images, amenities: offers, contact_phone: phone, ...(d.type === 'cafe' ? { menu: items.map((m) => ({ ...m, unit: 'plate' })) } : { goods: items.slice(0, 10) }) };
+          .map((m) => ({ name: m.name.trim(), price: Number(m.price), unit: m.unit || 'item', ...(m.photo ? { photo: m.photo } : {}) }));
+        return { host_name: host, images, amenities: offers, contact_phone: phone, ...(d.type === 'cafe' ? { menu: items.map((m) => ({ ...m, unit: 'plate' })) } : { goods: items.slice(0, MAX_GOODS) }) };
       }
       default:
         return {};
@@ -405,7 +423,10 @@ export function useHostWizard() {
         await finish();
       }
     } catch (e: any) {
-      setErr(e?.response?.data?.detail || e?.message || t('ui.useProviderOnboard.failed'));
+      const detail: string = e?.response?.data?.detail || '';
+      setErr(detail || e?.message || t('ui.useProviderOnboard.failed'));
+      // The server names the field it refused (backend lib/contentRules.ts): offer that step.
+      setFixAt(/^(Business name|Name)\b/.test(detail) ? 'name' : /^Location\b/.test(detail) ? 'place' : null);
     } finally {
       putting.current = false;
       setBusy(false);
@@ -430,7 +451,7 @@ export function useHostWizard() {
   };
 
   return {
-    t, user, nav, d, set, pickType, steps, i, step, err, setErr, busy, uploading, next, back, goTo, adding,
+    t, user, nav, d, set, pickType, steps, i, step, err, setErr, fixAt, busy, uploading, next, back, goTo, adding,
     addPhotos, photoUrl, startingPrice, offerLabels, submit, payModal, setPayModal, finishMockPayment,
   };
 }
