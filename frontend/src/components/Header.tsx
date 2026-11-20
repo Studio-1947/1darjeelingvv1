@@ -5,8 +5,8 @@ import { useAuth } from '@/context/AuthContext';
 import Wordmark from '@/components/Wordmark';
 import useGoBack from '@/hooks/useGoBack';
 import api from '@/lib/api';
-import { APP_DOWNLOAD_URL } from '@/constants/app';
-import AppComingSoon from '@/components/AppComingSoon';
+import { APP_STORE_URLS } from '@/constants/app';
+import AppComingSoon, { phonePlatform } from '@/components/AppComingSoon';
 import { Icon } from '@/components/ag/Icon';
 import { useMode } from '@/lib/theme';
 
@@ -35,8 +35,8 @@ function useHomeSearchScrolledAway(active: boolean) {
 
 /**
  * Top bar, as the red /7 prototype draws it (app.js render()):
- * Back on every screen except the tab roots; the full wordmark always; then App (tab roots only,
- * shrinking to its icon when Search is showing), Search (everywhere but Home, where it appears
+ * Back on every screen except the tab roots; the full wordmark always; then App (Home only for now,
+ * while the app is coming soon; shrinking to its icon when Search is showing), Search (everywhere but Home, where it appears
  * once the home search has scrolled away), the bell (always), and Log in (tab roots, signed out).
  */
 export default function Header() {
@@ -77,8 +77,11 @@ export default function Header() {
   const homeSearchAway = useHomeSearchScrolledAway(onHome);
   const showSearch = !onHome || homeSearchAway;
 
+  // A phone whose store already has the app goes straight there; otherwise the "coming soon" sheet.
   const getApp = () => {
-    if (APP_DOWNLOAD_URL) window.open(APP_DOWNLOAD_URL, '_blank', 'noopener');
+    const mine = phonePlatform();
+    const url = mine ? APP_STORE_URLS[mine] : '';
+    if (url) window.open(url, '_blank', 'noopener');
     else setAppSoon(true);
   };
 
@@ -106,7 +109,7 @@ export default function Header() {
         </Link>
 
         <div className="ag-topact">
-          {isRoot && (
+          {onHome && (
             <button
               type="button"
               className={`ag-getapp${showSearch && !user ? ' compact' : ''}`}

@@ -3860,6 +3860,18 @@
     "passS2": "aangan takes no commission on any booking. Homestays, drivers, guides and restaurants pay one small yearly pass instead. It is what lets aangan build and keep running for the hills.",
     "passforhosts": "For homestays and drivers. Travellers never pay."
   },
+  "appsoon": {
+    "h": "The aangan app is coming soon",
+    "h_live": "Get the aangan app",
+    "s": "We are building aangan for Android and iPhone. Until then, keep using it right here: everything works in your browser.",
+    "android": "Android",
+    "ios": "iPhone",
+    "play": "Google Play",
+    "appstore": "App Store",
+    "soon": "Coming soon",
+    "download": "Download",
+    "ok": "OK"
+  },
   "pwa": {
     "h": "Get the aangan app",
     "s": "Install aangan on your phone. It opens from your home screen, loads fast, and works even when the signal is weak.",

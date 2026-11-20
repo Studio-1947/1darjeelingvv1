@@ -2,43 +2,31 @@ import React from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { X } from '@phosphor-icons/react';
-import { Button, IconButton, Status } from '@/components/ag';
+import { Button, ButtonA, IconButton, Status } from '@/components/ag';
 import { Icon } from '@/components/ag/Icon';
+import { APP_STORE_URLS } from '@/constants/app';
 
 /*
- * Get the app (prototype pwa.js V.getapp): aangan installs from the browser as an app. Where the
- * browser offers its own install prompt (Chrome on Android and desktop), the sheet shows one Install
- * button; inside the installed app it says so; otherwise it shows the iPhone and Android steps.
- *
- * The browser fires beforeinstallprompt once, early, often before the sheet is opened, so it is
- * caught here when the module loads (the header imports this at start) and kept until used.
+ * Get the app: the aangan app for Android and iPhone is on its way. Each platform shows "Coming soon"
+ * until its store link is set in constants/app.ts, then a Download button to that store.
+ * (This used to offer installing the website from the browser; that is not the app, so it is gone.)
  */
-type InstallPrompt = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }> };
 
-let deferred: InstallPrompt | null = null;
-let installed = false;
-const listeners = new Set<() => void>();
-const ping = () => listeners.forEach((f) => f());
+export type Platform = 'android' | 'ios';
 
-if (typeof window !== 'undefined') {
-  window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferred = e as InstallPrompt; ping(); });
-  window.addEventListener('appinstalled', () => { installed = true; deferred = null; ping(); });
-}
+/** The phone this is, when it is one: an iPhone/iPad gets the App Store first, everything else Android. */
+export const phonePlatform = (): Platform | null => {
+  if (typeof navigator === 'undefined') return null;
+  const ua = navigator.userAgent;
+  if (/iphone|ipad|ipod/i.test(ua)) return 'ios';
+  if (/android/i.test(ua)) return 'android';
+  return null;
+};
 
-const isStandalone = () => typeof window !== 'undefined'
-  && ((window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || (navigator as Navigator & { standalone?: boolean }).standalone === true);
-const isIOS = () => typeof navigator !== 'undefined' && /iphone|ipad|ipod/i.test(navigator.userAgent);
-
-/** A sheet from the bottom on a phone, a centred card on a wide screen, over a blurred page. Closes with the X, Escape or a tap outside. */
+/** A sheet from the bottom on a phone, a centred card on a wide screen, over a blurred page. Closes with the X, OK, Escape or a tap outside. */
 export default function AppComingSoon({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { t } = useTranslation();
   const closeRef = React.useRef<HTMLButtonElement>(null);
-  const [, redraw] = React.useReducer((n: number) => n + 1, 0);
-
-  React.useEffect(() => {
-    listeners.add(redraw);
-    return () => { listeners.delete(redraw); };
-  }, []);
 
   React.useEffect(() => {
     if (!open) return undefined;
@@ -52,39 +40,14 @@ export default function AppComingSoon({ open, onClose }: { open: boolean; onClos
 
   if (!open) return null;
 
-  const standalone = isStandalone();
-
-  const install = () => {
-    const p = deferred;
-    if (!p) return;
-    deferred = null;
-    p.prompt().catch(() => {});
-    p.userChoice.then((c) => { if (c.outcome === 'accepted') installed = true; ping(); }).catch(() => ping());
-  };
-
-  const steps = (key: 'ios' | 'and', title: string, lines: string[]) => (
-    <section className="flex flex-col gap-3" data-testid={`app-steps-${key}`}>
-      <h3 className="m-0 font-medium text-[var(--ink-strong)]">{title}</h3>
-      <ol className="ag-host-track">
-        {lines.map((line, i) => (
-          <li key={i}>
-            <span className="d" aria-hidden="true">{i + 1}</span>
-            <span className="min-w-0"><b>{line}</b></span>
-          </li>
-        ))}
-      </ol>
-    </section>
-  );
-  const ios = steps('ios', t('pwa.ios', 'On iPhone'), [
-    t('pwa.ios1', 'Open this page in Safari.'),
-    t('pwa.ios2', 'Tap the Share button (the square with an arrow).'),
-    t('pwa.ios3', 'Tap "Add to Home Screen", then Add.'),
-  ]);
-  const android = steps('and', t('pwa.and', 'On Android'), [
-    t('pwa.and1', 'Open this page in Chrome.'),
-    t('pwa.and2', 'Tap the three dots at the top right.'),
-    t('pwa.and3', 'Tap "Install app" or "Add to Home screen".'),
-  ]);
+  const mine = phonePlatform();
+  const rows: { key: Platform; name: string; store: string }[] = [
+    { key: 'android', name: t('appsoon.android', 'Android'), store: t('appsoon.play', 'Google Play') },
+    { key: 'ios', name: t('appsoon.ios', 'iPhone'), store: t('appsoon.appstore', 'App Store') },
+  ];
+  // The person's own phone first.
+  if (mine === 'ios') rows.reverse();
+  const anyLive = rows.some((r) => APP_STORE_URLS[r.key]);
 
   return createPortal(
     <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center sm:p-4" role="presentation" data-testid="app-coming-soon">
@@ -97,23 +60,39 @@ export default function AppComingSoon({ open, onClose }: { open: boolean; onClos
 
         <div className="flex flex-col items-center text-center gap-2.5 pt-2">
           <img src="/logo192.png" alt="" width={72} height={72} className="w-[72px] h-[72px] rounded-[18px] shadow-[var(--shadow-lg)]" />
-          <h2 id="app-get-title" className="!text-2xl !leading-[30px] m-0">{t('pwa.h', 'Get the aangan app')}</h2>
+          <h2 id="app-get-title" className="!text-2xl !leading-[30px] m-0">
+            {anyLive ? t('appsoon.h_live', 'Get the aangan app') : t('appsoon.h', 'The aangan app is coming soon')}
+          </h2>
           <p id="app-get-body" className="m-0 text-[var(--ink7)]">
-            {t('pwa.s', 'Install aangan on your phone. It opens from your home screen, loads fast, and works even when the signal is weak.')}
+            {t('appsoon.s', 'We are building aangan for Android and iPhone. Until then, keep using it right here: everything works in your browser.')}
           </p>
-          {standalone ? (
-            <Status tone="ok" data-testid="app-in-app"><Icon name="check" /> {t('pwa.inapp', 'You are using the installed app.')}</Status>
-          ) : installed ? (
-            <Status tone="ok" data-testid="app-installed"><Icon name="check" /> {t('pwa.done', 'Installed. Open aangan from your home screen.')}</Status>
-          ) : deferred ? (
-            <Button variant="primary" block center icon={<Icon name="download" />} onClick={install} data-testid="app-install">
-              {t('pwa.btn', 'Install app')}
-            </Button>
-          ) : null}
-          <p className="ag-small m-0">{t('pwa.size', 'Under 1 MB to install. No app store needed.')}</p>
         </div>
 
-        {!standalone && (isIOS() ? ios : <>{android}{ios}</>)}
+        <ul className="m-0 mt-4 p-0 list-none flex flex-col gap-2.5" data-testid="app-stores">
+          {rows.map((r) => {
+            const url = APP_STORE_URLS[r.key];
+            return (
+              <li key={r.key} className="flex items-center gap-3 rounded-[18px] border border-[var(--warmline)] bg-[var(--creme)] px-4 py-3" data-testid={`app-store-${r.key}`}>
+                <Icon name="phone" />
+                <span className="min-w-0 flex-1 text-left">
+                  <b className="block text-[var(--ink-strong)]">{r.name}</b>
+                  <span className="ag-small">{r.store}</span>
+                </span>
+                {url ? (
+                  <ButtonA href={url} target="_blank" rel="noopener noreferrer" variant="primary" icon={<Icon name="download" />} data-testid={`app-download-${r.key}`}>
+                    {t('appsoon.download', 'Download')}
+                  </ButtonA>
+                ) : (
+                  <Status data-testid={`app-soon-${r.key}`}><Icon name="hourglass" /> {t('appsoon.soon', 'Coming soon')}</Status>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+
+        <Button variant="primary" block center className="mt-4" onClick={onClose} data-testid="app-coming-soon-ok">
+          {t('appsoon.ok', 'OK')}
+        </Button>
       </div>
     </div>,
     document.body,
