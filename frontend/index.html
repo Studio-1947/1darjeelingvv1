@@ -33,12 +33,12 @@
         <!-- Inlined rather than relying on the bundled stylesheet: in dev, Vite injects CSS via
              JS, so it isn't applied yet at this point; this has to work before any bundle runs. -->
         <style>
-            /* Arrival (Aangan 2.0 /7): the red wordmark rises and settles on white, then the tagline
+            /* Arrival (Aangan 2.0 /7): the wordmark, in the default Mitti colour, rises and settles on white, then the tagline
                "explore locally"; App.tsx lifts the screen away (about 2.5s, once per session). */
             #app-splash {
                 position: fixed; inset: 0; z-index: 9999;
                 display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
-                background: #FFFFFF; color: #E60000;
+                background: #FFFFFF; color: #947C47; /* Mitti, the app's default theme colour (lib/theme.ts) */
                 transition: opacity 0.4s ease, transform 0.4s ease;
             }
             #app-splash svg { width: 55vw; max-width: 215px; height: auto; }
