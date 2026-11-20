@@ -114,7 +114,7 @@ export function PassJoinCard({ price, renewing, children }: { price: number; ren
       <p className="ag-small m-0">{t('member.offer', 'Get the aangan pass and a verified badge. Hosts and drivers see it on your booking requests, so they say yes faster.')}</p>
       <div className="pprice">
         <b data-testid="pass-offer-price">{rupees(price)}</b>
-        <span>/ {renewing || yearly.total === price ? t('member.year', 'year') : t('member.first_year', 'first year')}</span>
+        <span className="pper" data-testid="pass-offer-per">/ {renewing || yearly.total === price ? t('member.year', 'year') : t('member.first_year', 'first year')}</span>
         {!renewing && yearly.total !== price && <span className="pnote">{t('member.then', 'then {{price}} a year', { price: rupees(yearly.total) })}</span>}
       </div>
       <p className="m-0"><b>{t('member.vwhy', 'Verified travellers get more confirmations from homestays.')}</b></p>

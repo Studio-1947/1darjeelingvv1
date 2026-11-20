@@ -211,6 +211,8 @@ html[data-mode="dark"] .ag-account-tdtile > svg.i, html[data-mode="dark"] .ag-ac
 .ag-passcard .pprice b { font: 600 28px/34px var(--font); color: var(--r); }
 .ag-passcard .pprice span { color: var(--ink-muted); font-size: 14px; }
 .ag-passcard .pprice .pfrom { align-self: center; }
+/* "/ year" reads with the price, not as small print: the pass is cheap because it is yearly. */
+.ag-passcard .pprice .pper { font: 600 20px/26px var(--font); color: var(--ink-strong); }
 .ag-passcard .pprice .pnote { margin-left: auto; padding: 4px 10px; border-radius: 12px; background: color-mix(in srgb, var(--r) 12%, transparent); color: var(--r); font: 600 12px/16px var(--font); }
 .ag-passcard .pchecks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .ag-passcard .pchecks li { display: flex; gap: 8px; align-items: flex-start; font-size: 15px; line-height: 22px; color: var(--ink-strong); }
