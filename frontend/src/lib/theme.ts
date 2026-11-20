@@ -131,6 +131,8 @@ export function applyTheme(key: string, mode: Mode = storedMode()) {
     for (const [k, v] of Object.entries(varsFor(accentOf(key), mode === 'dark'))) root.style.setProperty(k, v);
   }
   root.dataset.theme = key === RED_THEME ? RED_THEME : 'custom';
+  // index.html's splash reads this before any bundle runs (public/splash-theme.js).
+  try { localStorage.setItem('aangan-accent', accentOf(key)); } catch { /* private mode */ }
   root.dataset.mode = mode;
   // The browser bar matches the page.
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content', mode === 'dark' ? '#131313' : '#FFFFFF');
