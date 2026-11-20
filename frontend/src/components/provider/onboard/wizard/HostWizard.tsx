@@ -26,8 +26,9 @@ function NextButton({ onClick, children, ...rest }: { onClick: () => void; child
 
 /** Step bar, "Step n / total" and the question over every step except done. */
 function Frame({ w, title, sub, children, cta }: { w: HostWizard; title: React.ReactNode; sub?: React.ReactNode; children: React.ReactNode; cta?: React.ReactNode }) {
-  const { t, i, steps, err, next } = w;
+  const { t, i, steps, err, next, fixAt, goTo } = w;
   const label = t('ob.wz.step', { n: i + 1, total: steps.length });
+  const fixStep = fixAt ? steps.indexOf(fixAt) : -1;
   return (
     <section className="ag-main ag-onboard" aria-labelledby="wz-q" data-testid={`wz-step-${steps[i]}`}>
       <StepBar total={steps.length} at={i} label={label} />
@@ -36,6 +37,11 @@ function Frame({ w, title, sub, children, cta }: { w: HostWizard; title: React.R
       {sub != null && <p className="ag-small ag-onboard-sub">{sub}</p>}
       {children}
       <FieldError id="wz-err">{err}</FieldError>
+      {err && fixStep >= 0 && (
+        <Button variant="text" className="self-start" icon={<Icon name="back" />} onClick={() => goTo(fixStep)} data-testid="wz-fix">
+          {fixAt === 'place' ? t('ob.wz.fix_place', 'Change the place') : t('ob.wz.fix_name', 'Change the name')}
+        </Button>
+      )}
       {cta ?? <NextButton onClick={next} data-testid="wz-next">{t('ob.wz.next')}</NextButton>}
     </section>
   );
