@@ -27,6 +27,9 @@ const STATUS_FILTERS: { key: StatusFilter; label: string }[] = [
 
 const PAGE_SIZE = 20;
 
+// Same format as the Referrals and Place suggestions tabs: "20 Nov, 4:32 pm".
+const when = (iso: string) => new Date(iso).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
+
 // The API baseURL already ends in `/api`, but `file_url` from the backend is
 // itself a relative path rooted at `/api` (e.g. `/api/providers/kyc/:id/file`).
 // Strip the trailing `/api` from the configured base so we don't double it up.
@@ -113,7 +116,7 @@ function ReviewDialog({ target, busy, error, onCancel, onConfirm }: {
           {title}
         </h2>
         <p className="mt-1 text-sm text-ink-soft">
-          {doc.business_name || 'Unnamed business'}  {doc.doc_type}
+          {doc.business_name || 'Unnamed business'} · {doc.doc_type} · uploaded {when(doc.uploaded_at)}
         </p>
 
         {isCorrective && (
@@ -449,7 +452,12 @@ export default function KycReview() {
                     </span>
                   </div>
                   <div className="text-sm text-ink-soft">
-                    {d.owner_name || 'Unknown owner'}  {d.doc_type}
+                    {d.owner_name || 'Unknown owner'} · {d.doc_type}
+                  </div>
+                  {/* When the host sent it in, and when it was decided (once it has been). */}
+                  <div className="text-xs text-ink-soft mt-0.5" data-testid="kyc-doc-times">
+                    Uploaded {when(d.uploaded_at)}
+                    {d.reviewed_at && d.status !== 'pending' ? ` · reviewed ${when(d.reviewed_at)}` : ''}
                   </div>
                   {d.status === 'rejected' && d.rejection_reason && (
                     <div className="text-xs text-flag mt-0.5">Reason: {d.rejection_reason}</div>
