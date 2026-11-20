@@ -323,6 +323,31 @@ async function providerFlags(ids: string[]): Promise<Map<string, boolean>> {
 
 /**
  * @openapi
+ * /listings/count:
+ *   get:
+ *     summary: How many listings a traveller can find (the About page's "places mapped so far")
+ *     tags: [Listings]
+ *     responses:
+ *       200:
+ *         description: The count, under the same visibility rules as GET /listings
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 count: { type: integer }
+ */
+// Declared before /:id, or "count" would be read as a listing id.
+router.get('/count', async (_req: Request, res: Response) => {
+  const [row] = await db.select({ n: sql<number>`count(*)::int` })
+    .from(schema.listings)
+    .where(and(publicSpotVisibility(), hostPlanVisibility()));
+  res.set('Cache-Control', 'public, max-age=300');
+  return res.json({ count: row?.n ?? 0 });
+});
+
+/**
+ * @openapi
  * /listings/{id}:
  *   get:
  *     summary: Get a single listing by id
