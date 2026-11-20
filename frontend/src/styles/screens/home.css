@@ -18,7 +18,10 @@
 .ag-home-banners .dots { position: absolute; left: 0; right: 0; bottom: 10px; z-index: 2; display: flex; justify-content: center; gap: 6px; pointer-events: none; }
 .ag-home-banners .dot { pointer-events: auto; width: 7px; height: 7px; padding: 0; border: 0; border-radius: 999px; background: rgb(255 255 255 / .55); cursor: pointer; transition: width .2s; position: relative; }
 .ag-home-banners .dot::before { content: ""; position: absolute; inset: -10px -4px; } /* a bigger target than the 7px dot */
-.ag-home-banners .dot.on { width: 20px; background: linear-gradient(90deg, #fff, var(--blush2)); }
+.ag-home-banners .dot.on { width: 26px; overflow: hidden; background: rgb(255 255 255 / .4); }
+/* The active dot is a progress bar: Discover.tsx scales the fill from 0 to 1 as the slide runs. */
+.ag-home-banners .dot .fill { position: absolute; inset: 0; border-radius: inherit; background: #fff; transform: scaleX(0); transform-origin: left center; }
+.ag-home-banners .dot.still .fill { transform: none; } /* reduced motion: no countdown, a plain solid dot */
 
 /* ---------- search row ---------- */
 .ag-home-searchrow { display: flex; align-items: center; gap: 8px; }

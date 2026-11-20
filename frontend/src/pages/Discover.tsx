@@ -43,28 +43,65 @@ const SLIDES: Slide[] = [
 ];
 const reducedMotion = () => typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
-/** The banner carousel: the hill video, then four photo slides. Swipe, tap a dot, or wait 6 s. */
+/** How long a photo slide stays, and the video's limit when it cannot play. */
+const PHOTO_MS = 6000;
+
+/**
+ * The banner carousel: the hill video, then four photo slides. Swipe or tap a dot; on its own it
+ * moves on once the whole video has played, and after 6 s on each photo. The active dot is a small
+ * progress bar that fills as the slide runs (the video's own playback, or the photo's 6 s).
+ */
 function Banners() {
   const { t } = useTranslation();
   const track = useRef<HTMLDivElement>(null);
-  const held = useRef(0);
+  const video = useRef<HTMLVideoElement>(null);
+  const fill = useRef<HTMLSpanElement>(null);
+  const elapsed = useRef(0);
   const [at, setAt] = useState(0);
   const count = SLIDES.length + 1;
   const still = reducedMotion();
 
   useEffect(() => {
+    const v = video.current;
+    elapsed.current = 0;
+    if (at === 0 && v && !still) {
+      // Back on the video: play it from the start.
+      v.currentTime = 0;
+      v.play().catch(() => { /* autoplay blocked (e.g. battery saver): runs as a 6 s photo below */ });
+    } else {
+      v?.pause(); // not playing unseen
+    }
     if (still) return undefined;
-    const timer = window.setInterval(() => {
-      const el = track.current;
-      if (!el || document.hidden || Date.now() - held.current < 8000) return;
-      const k = Math.round(el.scrollLeft / el.clientWidth);
-      el.scrollTo({ left: el.clientWidth * ((k + 1) % count), behavior: 'smooth' });
-    }, 6000);
-    return () => window.clearInterval(timer);
-  }, [count, still]);
+
+    let raf = 0;
+    let last = performance.now();
+    const frame = (now: number) => {
+      // Time on this slide, counted per frame so a hidden tab (no frames) does not count; a long gap counts as one frame.
+      elapsed.current += Math.min(now - last, 100);
+      last = now;
+      let p = elapsed.current / PHOTO_MS;
+      if (at === 0 && v) {
+        const dur = Number.isFinite(v.duration) && v.duration > 0 ? v.duration : 0;
+        const playing = !v.paused && !v.ended;
+        if (v.ended) p = 1;
+        else if (playing && dur) p = v.currentTime / dur;
+        // Playing but stuck loading: move on once well past its length.
+        else if (playing) p = elapsed.current >= (dur * 1000 || 20000) + 4000 ? 1 : 0;
+      }
+      if (fill.current) fill.current.style.transform = `scaleX(${Math.min(1, p)})`;
+      if (p >= 1) {
+        const el = track.current;
+        if (el) el.scrollTo({ left: el.clientWidth * ((at + 1) % count), behavior: 'smooth' });
+        return;
+      }
+      raf = requestAnimationFrame(frame);
+    };
+    raf = requestAnimationFrame(frame);
+    return () => cancelAnimationFrame(raf);
+  }, [at, count, still]);
 
   const go = (k: number) => {
-    held.current = Date.now();
+    elapsed.current = 0;
     const el = track.current;
     if (el) el.scrollTo({ left: el.clientWidth * k, behavior: still ? 'auto' : 'smooth' });
   };
@@ -75,10 +112,11 @@ function Banners() {
         ref={track}
         className="track"
         onScroll={(e) => { const el = e.currentTarget; setAt(Math.round(el.scrollLeft / Math.max(1, el.clientWidth))); }}
-        onPointerDown={() => { held.current = Date.now(); }}
+        // A touch on a photo starts its 6 s again, so it does not slide away under the finger.
+        onPointerDown={() => { elapsed.current = 0; }}
       >
         <div className="slide vid" aria-hidden="true">
-          <video autoPlay={!still} muted loop playsInline preload="metadata" poster="/media/hero-poster.jpg">
+          <video ref={video} autoPlay={!still} muted playsInline preload="metadata" poster="/media/hero-poster.jpg">
             <source src="/video-hero/S_47_July_26_web_cover_video_e1wiyd.webm" type="video/webm" />
           </video>
         </div>
@@ -90,8 +128,10 @@ function Banners() {
       </div>
       <div className="dots">
         {Array.from({ length: count }, (_, k) => (
-          <button key={k} type="button" className={cx('dot', k === at && 'on')} aria-label={t('home.slide_n', 'Slide {{n}}', { n: k + 1 })}
-            aria-current={k === at ? 'true' : undefined} onClick={() => go(k)} />
+          <button key={k} type="button" className={cx('dot', k === at && 'on', still && 'still')} aria-label={t('home.slide_n', 'Slide {{n}}', { n: k + 1 })}
+            aria-current={k === at ? 'true' : undefined} onClick={() => go(k)}>
+            {k === at && <span ref={fill} className="fill" aria-hidden="true" />}
+          </button>
         ))}
       </div>
     </section>
