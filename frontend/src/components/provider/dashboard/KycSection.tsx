@@ -145,6 +145,8 @@ export default function KycSection({ onProfileChange }: { onProfileChange?: (p: 
 
       <Box as="section">
         <h2>{t('kyc.verification')}</h2>
+        {/* What the upload takes, before a host picks a file (the server's own limits, routes/kyc.ts). */}
+        <p className="ag-small" data-testid="kyc-docs-help">{t('kyc.verificationHelp')}</p>
         <ul className="grid" data-testid="kyc-docs">
           {kycItems.map(item => {
             const m = stateMeta[item.state];
