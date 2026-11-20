@@ -76,7 +76,9 @@ export default function HomeFilterPanel({ query, onDone }: { query: string; onDo
     setLocErr('');
     navigator.geolocation.getCurrentPosition(
       (pos) => { setMe({ lat: pos.coords.latitude, lng: pos.coords.longitude }); setNear('me'); },
-      () => setLocErr(t('filter.no_location', 'Location is not available on this device.')),
+      (e) => setLocErr(e.code === e.PERMISSION_DENIED
+        ? t('filter.location_denied', 'Location is off for aangan. Allow it in your browser settings and try again.')
+        : t('filter.no_location', 'Location is not available on this device.')),
       { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 },
     );
   };

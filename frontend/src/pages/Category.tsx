@@ -146,12 +146,20 @@ function CategoryPage({ typeOverride }: { typeOverride?: string }) {
   const [near, setNear] = useState<{ lat: number; lng: number } | null>(null);
   const [radius, setRadius] = useState<number | null>(null);
   const [locating, setLocating] = useState(false);
+  // Why My location did not work, shown under the button (it used to fail without a word).
+  const [locErr, setLocErr] = useState('');
   const locate = () => {
-    if (!navigator.geolocation) return;
+    setLocErr('');
+    if (!navigator.geolocation) { setLocErr(t('filter.no_location', 'Location is not available on this device.')); return; }
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
       (pos) => { setNear({ lat: pos.coords.latitude, lng: pos.coords.longitude }); setLocating(false); },
-      () => { setLocating(false); },
+      (e) => {
+        setLocating(false);
+        setLocErr(e.code === e.PERMISSION_DENIED
+          ? t('filter.location_denied', 'Location is off for aangan. Allow it in your browser settings and try again.')
+          : t('filter.no_location', 'Location is not available on this device.'));
+      },
       { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 },
     );
   };
@@ -488,6 +496,7 @@ function CategoryPage({ typeOverride }: { typeOverride?: string }) {
               {locating ? t('ui.category.finding_you') : t('category.myloc', 'My location')}
             </button>
           )}
+          nearError={locErr}
         >
           {near && (
             <div className="ag-category-frow" data-testid="near-me">

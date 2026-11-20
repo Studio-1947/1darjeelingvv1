@@ -132,7 +132,8 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("X-Frame-Options", "DENY");
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
-  res.setHeader("Permissions-Policy", "geolocation=(), microphone=(), camera=()");
+  // Same as deploy/nginx/snippets/headers-common.conf: location and microphone for this site only.
+  res.setHeader("Permissions-Policy", "geolocation=(self), microphone=(self), camera=()");
   if (IS_PROD) {
     res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
   }
