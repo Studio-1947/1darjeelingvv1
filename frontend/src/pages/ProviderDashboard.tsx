@@ -147,7 +147,9 @@ function ProviderDashboardPage() {
 
   // Declining a request or cancelling a booking carries the host's reason (prototype cancel.js).
   const handleCancelBooking = async (bookingId: string, reason: string, note: string) => {
-    await api.patch(`/bookings/${bookingId}/cancel`, { reason, note });
+    // as: 'host' so the server reads this as the host's decline even on a booking the host made
+    // themselves (trying the app), where the account is also the guest.
+    await api.patch(`/bookings/${bookingId}/cancel`, { reason, note, as: 'host' });
     await loadDashboard();
   };
 

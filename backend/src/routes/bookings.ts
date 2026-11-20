@@ -685,6 +685,13 @@ router.get('/provider', authenticateToken, async (req: Request, res: Response) =
  *                   host_not_responding, weather_road, other. Host: fully_booked, not_available,
  *                   family_health, weather_road, other. Admin: any of these.
  *               note: { type: string, maxLength: 200 }
+ *               as:
+ *                 type: string
+ *                 enum: [host]
+ *                 description: >
+ *                   Sent by the host's screen. Makes the host's own booking of their own listing
+ *                   cancel as the host (host reasons, a decline), not as the guest. Ignored unless
+ *                   the caller owns the listing.
  *     responses:
  *       200:
  *         description: >
@@ -919,10 +926,15 @@ router.patch('/:id/cancel', authenticateToken, async (req: Request, res: Respons
   const [booking] = await db.select().from(schema.bookings).where(eq(schema.bookings.id, routeParam(req, 'id'))).limit(1);
   if (!booking) return res.status(404).json({ detail: 'Booking not found' });
 
-  const isGuest = booking.userId === req.user.id;
-  const allowed = isGuest || req.user.role === 'admin' || (await ownsListingFor(booking, req.user));
+  const ownsIt = await ownsListingFor(booking, req.user);
+  // The host's screen says it acts as the host (`as: 'host'`). That matters when one account is both
+  // sides — a host who booked their own listing, as when trying the app — where the request would
+  // otherwise be read as the guest's, checked against the guest's reasons and told to the host.
+  const asHost = req.body?.as === 'host' && ownsIt;
+  const isGuest = booking.userId === req.user.id && !asHost;
+  const allowed = isGuest || req.user.role === 'admin' || ownsIt;
   if (!allowed) return res.status(403).json({ detail: 'You do not have permission to cancel this booking' });
-  const side: CancelSide = isGuest ? 'guest' : req.user.role === 'admin' ? 'admin' : 'host';
+  const side: CancelSide = isGuest ? 'guest' : req.user.role === 'admin' && !asHost ? 'admin' : 'host';
 
   // Why (prototype cancel.js): a reason from the side's own list and an optional note. Optional
   // here only because older app versions cancel without one; when given it must be a known code.

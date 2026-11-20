@@ -52,6 +52,30 @@ describe('cancelling with a reason (PATCH /bookings/:id/cancel)', () => {
     expect(feed.some((n) => n.kind === 'booking_declined' && n.msg?.key === 'request_declined' && /Fully booked/.test(n.body))).toBe(true);
   });
 
+  it('a host declining a request they made on their own listing (trying the app) declines as the host', async () => {
+    const { hostToken, listingId } = await hostWithHomestay('Self Booker');
+    const id = await ask(hostToken, listingId, 14, 15);
+
+    // Without saying so, the account reads as the guest: the host's reasons are refused, as before.
+    const asGuest = await request(app).patch(`/api/bookings/${id}/cancel`).set(auth(hostToken)).send({ reason: 'not_available' });
+    expect(asGuest.status).toBe(400);
+    expect(asGuest.body.code).toBe('bad_reason');
+
+    // The host's screen sends as: 'host'.
+    const res = await request(app).patch(`/api/bookings/${id}/cancel`).set(auth(hostToken)).send({ reason: 'not_available', as: 'host' });
+    expect(res.status).toBe(200);
+    expect(res.body.booking).toMatchObject({ status: 'cancelled', cancelled_by: 'host', declined: true, cancel_reason: 'not_available' });
+  });
+
+  it('as: host from someone who does not own the listing changes nothing', async () => {
+    const { listingId } = await hostWithHomestay('Real Owner');
+    const { token } = await registerUser({ name: 'Pretend Host' });
+    const id = await ask(token, listingId, 16, 17);
+    const res = await request(app).patch(`/api/bookings/${id}/cancel`).set(auth(token)).send({ reason: 'not_available', as: 'host' });
+    expect(res.status).toBe(400);
+    expect(res.body.code).toBe('bad_reason');
+  });
+
   it('a guest cancelling a confirmed booking under 24 hours ahead is late (nothing to refund: confirming is free)', async () => {
     const { token } = await registerUser({ name: 'Late Guest', paySupport: false });
     const { hostToken, listingId } = await hostWithHomestay('Late Host');
