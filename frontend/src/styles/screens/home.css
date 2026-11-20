@@ -188,7 +188,8 @@
 .ag-home-sugg .grow { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .ag-home-sugg .grow b { font: 500 16px/24px var(--font); letter-spacing: -.01em; color: var(--ink-strong); }
 .ag-home-sugg .grow .small { font: 400 14px/20px var(--font); letter-spacing: .25px; color: var(--ink-muted); }
-.ag-home-sugg .ag-in { background: var(--surface); }
+/* background-color, not the `background` shorthand: the shorthand resets a select's arrow to a repeating tile */
+.ag-home-sugg .ag-in { background-color: var(--surface); }
 /* Suggest a place form and My suggestions (prototype spots.js) */
 .ag-home-suggeye { margin: 4px 0 0; font: 500 12px/16px var(--font); letter-spacing: .5px; text-transform: uppercase; color: var(--r); }
 .ag-home-suggtwo { display: flex; flex-wrap: wrap; gap: 8px; }

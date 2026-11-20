@@ -115,6 +115,9 @@
 .ag-category-stick svg { position: absolute; inset: 0; width: 100%; height: 100%; fill: var(--r); }
 .ag-category-stick.free { color: #3A2E0B; }
 .ag-category-stick.free svg { fill: var(--creme2); }
+/* The sticker sits on a photo, not the page: in dark mode --creme2 turns near-black under the dark text,
+   so keep the light creme the home page sticker uses. */
+html[data-mode="dark"] .ag-category-stick.free svg { fill: #EAD9A6; }
 .ag-category-stick .stxt { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; transform: rotate(-8deg); }
 .ag-category-stick .stxt b { display: block; min-height: 0; font: 500 12px/14px var(--font); letter-spacing: -.01em; text-shadow: none; -webkit-line-clamp: unset; }
 .ag-category-stick .stxt i { display: block; max-width: 44px; font: 600 8px/10px var(--font); font-style: normal; letter-spacing: 1px; text-transform: uppercase; }
@@ -126,7 +129,7 @@
 
 /* ---------- Find a ride ---------- */
 .ag-category-rsbox h2 { font: 500 18px/24px var(--font) !important; letter-spacing: -.01em; }
-.ag-category-rsbox .ag-in { background: var(--surface); }
+.ag-category-rsbox .ag-in { background-color: var(--surface); }
 .ag-category-locin { position: relative; display: block; }
 .ag-category-locin > svg.i { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; color: var(--r); pointer-events: none; }
 .ag-category-locin .ag-in { padding-left: 42px; }
