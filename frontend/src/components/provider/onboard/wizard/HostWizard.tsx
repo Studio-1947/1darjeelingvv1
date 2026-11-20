@@ -8,7 +8,7 @@ import { isValidPhone } from '@/lib/hostFormChecks';
 import { Box, Button, ButtonLink, FieldError, IconButton, StepBar, TextField } from '@/components/ag';
 import { Icon, type IconName } from '@/components/ag/Icon';
 import { HelpWhatsApp, useHostSignupInfo } from '@/components/provider/onboard/QuickFill';
-import { HOST_TYPES, HUBS, MAX_PHOTOS, OFFERS, PRESETS, QUICK_DISHES, type HostType, type HostWizard, type Place } from './useHostWizard';
+import { HOST_TYPES, HUBS, MAX_GOODS, MAX_PHOTOS, OFFERS, PRESETS, QUICK_DISHES, SHOP_UNITS, type HostType, type HostWizard, type Place } from './useHostWizard';
 import { photoGoalFor } from '@/lib/photoGoal';
 
 /*
@@ -262,19 +262,26 @@ function PriceStep({ w }: { w: HostWizard }) {
   );
 }
 
-/* ---------- 4b. Your menu (cafe, shop) ---------- */
+/* ---------- 4b. Your menu (cafe) / What you sell (shop) ---------- */
+/**
+ * A café lists dishes (quick-add momos, thukpa...). A shop can be anything (groceries, a pharmacy,
+ * crafts), so it gets no food suggestions: the host writes their own items, each with a unit
+ * (per kg, per pack...), up to the ten a shop can list.
+ */
 function MenuStep({ w }: { w: HostWizard }) {
   const { t, d, set, setErr, photoUrl } = w;
   const [upAt, setUpAt] = useState<number | null>(null);
-  const quick = QUICK_DISHES.filter((q) => !d.menu.some((m) => m.name === q));
-  const setDish = (k: number, patch: Partial<{ name: string; price: string; photo: string }>) => set({ menu: d.menu.map((m, j) => (j === k ? { ...m, ...patch } : m)) });
+  const shop = d.type === 'shop';
+  const full = shop && d.menu.length >= MAX_GOODS;
+  const quick = shop ? [] : QUICK_DISHES.filter((q) => !d.menu.some((m) => m.name === q));
+  const setDish = (k: number, patch: Partial<{ name: string; price: string; photo: string; unit: string }>) => set({ menu: d.menu.map((m, j) => (j === k ? { ...m, ...patch } : m)) });
   const photo = async (k: number, f?: File) => {
     if (!f) return;
     setUpAt(k);
     try { setDish(k, { photo: await photoUrl(f) }); } catch (e) { setErr(typeof e === 'string' ? e : t('kyc.uploadFailed')); } finally { setUpAt(null); }
   };
   return (
-    <Frame w={w} title={t('ob.wz.mn_h')} sub={t('ob.wz.mn_s')}>
+    <Frame w={w} title={shop ? t('ob.wz.sh_h') : t('ob.wz.mn_h')} sub={shop ? t('ob.wz.sh_s') : t('ob.wz.mn_s')}>
       {quick.length > 0 && (
         <>
           <span className="ag-eyebrow">{t('ob.wz.mn_quick')}</span>
@@ -288,23 +295,34 @@ function MenuStep({ w }: { w: HostWizard }) {
         </>
       )}
       <Box>
-        {d.menu.length === 0 && <p className="ag-small">{t('ob.wz.mn_need')}</p>}
+        {d.menu.length === 0 && <p className="ag-small">{shop ? t('ob.wz.sh_need') : t('ob.wz.mn_need')}</p>}
         {d.menu.map((m, k) => (
           <div key={k} className="ag-onboard-mnrow">
             <label className={`ag-onboard-mnph${m.photo ? ' has' : ''}`} style={m.photo ? { backgroundImage: `url(${m.photo})` } : undefined} title={t('ob.wz.photo')}>
               {upAt === k ? <span className="ag-small">…</span> : !m.photo && <Icon name="plus" />}
               <input type="file" accept={SUPPORTED_IMAGE_ACCEPT} className="sr-only" onChange={(e) => photo(k, e.target.files?.[0])} aria-label={t('ob.wz.photo')} />
             </label>
-            <div className="fields">
-              <input className="ag-in" value={m.name} maxLength={40} placeholder={t('ob.wz.mn_dish')} aria-label={t('ob.wz.mn_dish')}
+            <div className={`fields${shop ? ' unit' : ''}`}>
+              <input className="ag-in" value={m.name} maxLength={40} placeholder={shop ? t('ob.wz.sh_item') : t('ob.wz.mn_dish')} aria-label={shop ? t('ob.wz.sh_item') : t('ob.wz.mn_dish')}
                 onChange={(e) => setDish(k, { name: e.target.value })} data-testid={`wz-dish-name-${k}`} />
               <input className="ag-in" type="number" inputMode="numeric" min={0} value={m.price} placeholder={t('ob.wz.mn_price')} aria-label={t('ob.wz.mn_price')}
                 onChange={(e) => setDish(k, { price: e.target.value.replace(/[^\d]/g, '') })} data-testid={`wz-dish-price-${k}`} />
+              {shop && (
+                <select className="ag-in" value={m.unit || 'item'} aria-label={t('ob.wz.sh_unit')} onChange={(e) => setDish(k, { unit: e.target.value })} data-testid={`wz-dish-unit-${k}`}>
+                  {SHOP_UNITS.map((u) => <option key={u} value={u}>{t(`profile.unit_${u}`)}</option>)}
+                </select>
+              )}
             </div>
             <IconButton label={t('ob.wz.remove')} className="ag-onboard-x" onClick={() => set({ menu: d.menu.filter((_, j) => j !== k) })}><Icon name="close" /></IconButton>
           </div>
         ))}
-        <Button className="self-start" onClick={() => set({ menu: [...d.menu, { name: '', price: '' }] })} data-testid="wz-add-dish">{t('ob.wz.mn_add')}</Button>
+        {full ? (
+          <p className="ag-small m-0" data-testid="wz-goods-full">{t('ob.wz.sh_max', { n: MAX_GOODS })}</p>
+        ) : (
+          <Button className="self-start" onClick={() => set({ menu: [...d.menu, shop ? { name: '', price: '', unit: 'item' } : { name: '', price: '' }] })} data-testid="wz-add-dish">
+            {shop ? t('ob.wz.sh_add') : t('ob.wz.mn_add')}
+          </Button>
+        )}
       </Box>
     </Frame>
   );

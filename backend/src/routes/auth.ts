@@ -322,7 +322,10 @@ router.post('/otp/verify', rateLimiter(10, 60 * 1000, 'otp_verify'), async (req:
   let [user] = await db.select().from(schema.users).where(eq(schema.users.phone, phone)).limit(1);
   if (!user) {
     if (!name || typeof name !== 'string' || name.trim() === '') {
-      return res.status(400).json({ detail: 'Name is required for registration' });
+      // Reached only once the code has passed, and the code is not consumed yet: the web sign-in
+      // sends the code alone first, reads `name_required` as "code is right, new account", asks
+      // for the name and referral on the next screen, then sends the same code again with them.
+      return res.status(400).json({ detail: 'Name is required for registration', code: 'name_required' });
     }
     // Same limits as editing the profile later (lib/accountFields.ts).
     const cleaned = cleanName(name);

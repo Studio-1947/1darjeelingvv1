@@ -25,7 +25,8 @@ export type HostType = (typeof HOST_TYPES)[number];
 export type StepKey = 'type' | 'place' | 'name' | 'price' | 'menu' | 'extras' | 'review';
 export type Place = { name: string; lat: number; lng: number };
 export type Room = { name: string; price: string; /** guests the room sleeps */ occ?: string };
-export type Dish = { name: string; price: string; photo?: string };
+/** A café dish or a shop item. `unit` is a shop's (per kg, per pack...); a café's is always per plate. */
+export type Dish = { name: string; price: string; photo?: string; unit?: string };
 
 /** Default place chips, in the prototype's order; coordinates inside the backend service box. */
 export const HUBS: Place[] = [
@@ -61,7 +62,12 @@ export const OFFERS: Record<HostType, string[]> = {
   shop: ['food_0', 'food_1', 'food_2'],
 };
 
-/** Quick-add dishes on the menu step (the prototype's FOODIMG names). */
+/** What a shop prices its goods by (backend lib/hostProfile.ts GOODS_UNITS); labels under profile.unit_*. */
+export const SHOP_UNITS = ['item', 'piece', 'kg', 'gram', 'litre', 'pack', 'dozen'] as const;
+/** Most items a shop can list (backend MAX_GOODS: the board caps a shop's goods at ten). */
+export const MAX_GOODS = 10;
+
+/** Quick-add dishes on a café's menu step (the prototype's FOODIMG names). Shops get none: they sell anything. */
 export const QUICK_DISHES = ['Veg momos', 'Chicken momos', 'Thukpa', 'Dal bhat thali', 'Darjeeling tea', 'Chicken curry with rice', 'Egg chowmein', 'Churpee soup', 'Sel roti and aloo dum', 'Butter tea'];
 
 export const MAX_PHOTOS = 8;
@@ -236,7 +242,7 @@ export function useHostWizard() {
         if (!/^\d+$/.test(d.price) || n < MIN_PRICE || n > MAX_PRICE) return t('ob.wz.price_range');
         return '';
       }
-      case 'menu': return d.menu.some((m) => m.name.trim() && Number(m.price) > 0) ? '' : t('ob.wz.mn_need');
+      case 'menu': return d.menu.some((m) => m.name.trim() && Number(m.price) > 0) ? '' : (d.type === 'shop' ? t('ob.wz.sh_need') : t('ob.wz.mn_need'));
       default: return '';
     }
   };
@@ -327,8 +333,8 @@ export function useHostWizard() {
       case 'cafe':
       case 'shop': {
         const items = d.menu.filter((m) => m.name.trim() && Number(m.price) > 0)
-          .map((m) => ({ name: m.name.trim(), price: Number(m.price), unit: 'item', ...(m.photo ? { photo: m.photo } : {}) }));
-        return { host_name: host, images, amenities: offers, contact_phone: phone, ...(d.type === 'cafe' ? { menu: items.map((m) => ({ ...m, unit: 'plate' })) } : { goods: items.slice(0, 10) }) };
+          .map((m) => ({ name: m.name.trim(), price: Number(m.price), unit: m.unit || 'item', ...(m.photo ? { photo: m.photo } : {}) }));
+        return { host_name: host, images, amenities: offers, contact_phone: phone, ...(d.type === 'cafe' ? { menu: items.map((m) => ({ ...m, unit: 'plate' })) } : { goods: items.slice(0, MAX_GOODS) }) };
       }
       default:
         return {};
