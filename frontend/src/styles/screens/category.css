@@ -127,7 +127,6 @@ html[data-mode="dark"] .ag-category-stick.free svg { fill: #EAD9A6; }
 /* ---------- empty state ---------- */
 .ag-category-empty { align-items: center; text-align: center; padding: 28px 12px; }
 .ag-category-empty p { color: var(--ink7); font: 400 16px/24px var(--font); }
-.ag-category-empty .phone { font: 500 20px/24px var(--font); letter-spacing: .6px; color: var(--ink-strong); text-decoration: none; }
 
 /* ---------- Find a ride ---------- */
 .ag-category-rsbox h2 { font: 500 18px/24px var(--font) !important; letter-spacing: -.01em; }

@@ -99,7 +99,6 @@ const kindOf = (it: any): string => {
 
 /** Places offered in Find a ride as you type; anything else can be typed too. */
 const RIDE_PLACES = ['Darjeeling', 'Ghum', 'Tiger Hill', 'Kurseong', 'Mirik', 'Kalimpong', 'Siliguri', 'NJP Station', 'Bagdogra Airport', 'Gangtok', 'Sittong', 'Lamahatta', 'Takdah', 'Lepchajagat', 'Sukhia Pokhri'];
-const SUPPORT_PHONE = '+91 90932 77919';
 
 /** A new category or search starts clean: filters from one page never carry into the next. */
 export default function Category({ typeOverride }: { typeOverride?: string }) {
@@ -639,23 +638,16 @@ function CategoryPage({ typeOverride }: { typeOverride?: string }) {
   );
 }
 
-/** "No listings here yet": our number to call, a way to copy it, and a way to list yourself. */
+/**
+ * "No listings here yet", and a way to list yourself: one message and one action, like the
+ * filtered and searched empty states above. (A bare helpline number here read as nobody's.)
+ */
 function EmptyCategory() {
   const { t } = useTranslation();
-  const [copied, setCopied] = useState(false);
-  const copy = () => {
-    navigator.clipboard?.writeText(SUPPORT_PHONE).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }).catch(() => {});
-  };
   return (
     <Box className="ag-category-empty">
       <p className="m-0">{t('category.empty')}</p>
-      <a className="phone" href={`tel:${SUPPORT_PHONE.replace(/\s/g, '')}`}>{SUPPORT_PHONE}</a>
-      <div className="flex flex-col items-center gap-3" data-testid="category-empty-actions">
-        <Button onClick={copy} aria-live="polite" data-testid="category-copy-phone">
-          {copied ? t('category.copied', 'Copied') : t('category.copy', 'Copy number')}
-        </Button>
-        <ButtonLink to="/provider/onboard" go data-testid="category-empty-list">{t('category.list_mine', 'Add my homestay, car or shop')}</ButtonLink>
-      </div>
+      <ButtonLink to="/provider/onboard" go data-testid="category-empty-list">{t('category.list_mine', 'Add my homestay, car or shop')}</ButtonLink>
     </Box>
   );
 }
