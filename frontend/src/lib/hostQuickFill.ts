@@ -157,9 +157,9 @@ export function nearestAreaLabel(lat: number, lon: number): string | null {
   return best.km < 0.3 ? best.name : `Near ${best.name}`;
 }
 
-/** An invite code as the sign-in accepts it: letters, digits and dashes, at most 12. */
+/** An invite code as the sign-in accepts it: letters, digits and dashes, at most 20 (admin codes like amitAangan26). */
 export function cleanRef(raw: unknown): string {
-  return typeof raw === 'string' ? raw.toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 12) : '';
+  return typeof raw === 'string' ? raw.toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 20) : '';
 }
 
 /**

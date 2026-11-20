@@ -45,7 +45,7 @@ export default function Login() {
   const [name, setName] = useState('');
   // A friend's invite code, as the app asks for it. An invite link (/login?ref=CODE) fills it in.
   const [referral, setReferral] = useState(() => {
-    try { return (new URLSearchParams(window.location.search).get('ref') || '').toUpperCase().slice(0, 12); } catch { return ''; }
+    try { return (new URLSearchParams(window.location.search).get('ref') || '').toUpperCase().slice(0, 20); } catch { return ''; }
   });
   // No Traveller / Host question here (prototype: one sign-in, the rest is asked later). Arriving from
   // List your business (next=/provider/...) or with ?role=provider signs in on the business side.
@@ -165,7 +165,8 @@ export default function Login() {
     try {
       const { data } = await api.post('/auth/otp/verify', {
         phone: canonicalPhone, otp, name, role,
-        ...(role !== 'provider' && referral.trim() ? { referral_code: referral.trim() } : {}),
+        // Hosts too: a code from a host link or a field team member (admin → Referrals) is counted for them.
+        ...(referral.trim() ? { referral_code: referral.trim() } : {}),
       });
       finishSignIn(data);
     } catch (e) {
@@ -281,10 +282,8 @@ export default function Login() {
             <Status tone="ok" className="self-start" data-testid="login-verified"><Icon name="check" /> {t('ui.login.verified', 'Number verified')} · {canonicalPhone}</Status>
             <TextField label={t('ui.login.nameq', 'What should we call you?')} value={name} onChange={(e) => setName(e.target.value)}
               autoComplete="name" required maxLength={80} autoFocus data-testid="login-name" />
-            {role !== 'provider' && (
-              <TextField label={t('auth.referral_label')} value={referral} onChange={(e) => setReferral(e.target.value.toUpperCase().slice(0, 12))}
-                data-testid="login-referral" placeholder="ANG26-XXXXXX" autoCapitalize="characters" autoComplete="off" className="[&_input]:tracking-wider" />
-            )}
+            <TextField label={t('auth.referral_label')} value={referral} onChange={(e) => setReferral(e.target.value.toUpperCase().slice(0, 20))}
+              data-testid="login-referral" placeholder="ANG26-XXXXXX" autoCapitalize="characters" autoComplete="off" className="[&_input]:tracking-wider" />
             <Button type="submit" variant="primary" go className="self-start" disabled={busy || !name.trim()} data-testid="login-create">
               {busy ? t('common.loading') : t('common.continue', 'Continue')}
             </Button>

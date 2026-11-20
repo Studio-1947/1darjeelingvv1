@@ -20,6 +20,7 @@ import UsersTab from '@/components/admin/UsersTab';
 import ListingsTab from '@/components/admin/ListingsTab';
 import SpotsTab, { type AdminSpot } from '@/components/admin/SpotsTab';
 import PlaceSuggestionsTab from '@/components/admin/PlaceSuggestionsTab';
+import ReferralsTab from '@/components/admin/ReferralsTab';
 import SpotFormModal, { type SpotFormPayload } from '@/components/admin/SpotFormModal';
 import BookingsTab from '@/components/admin/BookingsTab';
 import PaymentsTab from '@/components/admin/PaymentsTab';
@@ -287,6 +288,7 @@ export default function Admin() {
           { id: 'suggestions', label: 'Place suggestions' },
           { id: 'bookings', label: 'Bookings' },
           { id: 'payments', label: 'Payments' },
+          { id: 'referrals', label: 'Referrals' },
           { id: 'cleanup', label: 'Clean-up' }
         ].map((tab) => (
           <button
@@ -320,6 +322,7 @@ export default function Admin() {
         />
       )}
       {activeTab === 'suggestions' && <PlaceSuggestionsTab onApproved={() => loadAdminData({ background: true })} />}
+      {activeTab === 'referrals' && <ReferralsTab />}
       {activeTab === 'cleanup' && <MaintenanceTab onChanged={() => loadAdminData({ background: true })} />}
       {activeTab === 'bookings' && <BookingsTab bookings={bookingsList} onChanged={() => loadAdminData({ background: true })} />}
       {/* Background refetch after a refund: the blocking path would unmount the dashboard and

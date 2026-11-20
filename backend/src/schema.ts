@@ -120,6 +120,44 @@ export const referrals = pgTable('referrals', {
   createdAt: text('created_at').notNull(),
 });
 
+/**
+ * A referral code the aangan team makes (admin → Referrals), as opposed to the one every user has.
+ * Typically one per person who brings people in ("amitAangan26" for Amit), or per poster or partner,
+ * so the report can say how many travellers and hosts each one brought. Matched without case or
+ * dashes (`codeKey`); `code` keeps the spelling the admin typed, for display.
+ */
+export const referralCampaigns = pgTable('referral_campaigns', {
+  id: text('id').primaryKey(),
+  code: text('code').notNull(),
+  // Upper case, letters and digits only: "amit-Aangan26" and "AMITAANGAN26" are the same code.
+  codeKey: text('code_key').notNull().unique(),
+  // Who or what it is for, e.g. "Amit, field team Mirik".
+  name: text('name').notNull(),
+  // Who it counts for: 'any' | 'traveller' | 'host'. A code for hosts typed by a traveller is not recorded.
+  audience: text('audience').default('any').notNull(),
+  // Extra pass days a traveller gets for signing up with it. 0 = the code only counts sign-ups.
+  rewardDays: integer('reward_days').default(0).notNull(),
+  // Optional limits: after this date, or this many sign-ups, the code stops counting new ones.
+  endsAt: text('ends_at'),
+  maxUses: integer('max_uses'),
+  active: boolean('active').default(true).notNull(),
+  createdBy: text('created_by'),
+  createdAt: text('created_at').notNull(),
+});
+
+/** One row per account that signed up with a campaign code (unique: an account counts once). */
+export const campaignSignups = pgTable('campaign_signups', {
+  id: text('id').primaryKey(),
+  campaignId: text('campaign_id').references(() => referralCampaigns.id, { onDelete: 'cascade' }).notNull(),
+  userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull().unique(),
+  // How the account signed up: 'traveller' | 'host'. Whether a host went live is read from providers.
+  joinedAs: text('joined_as').notNull(),
+  rewardDays: integer('reward_days').default(0).notNull(),
+  createdAt: text('created_at').notNull(),
+}, (t) => ({
+  campaignIdx: index('campaign_signups_campaign_id_idx').on(t.campaignId),
+}));
+
 export const vouchers = pgTable('vouchers', {
   id: text('id').primaryKey(),
   userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),

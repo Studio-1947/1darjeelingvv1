@@ -16,6 +16,7 @@ import paymentsRouter from './routes/payments';
 import adminRouter from './routes/admin';
 import adminSpotsRouter from './routes/adminSpots';
 import placeSuggestionsRouter from './routes/placeSuggestions';
+import referralCampaignsRouter from './routes/referralCampaigns';
 import adminMaintenanceRouter from './routes/adminMaintenance';
 import adminBroadcastsRouter from './routes/adminBroadcasts';
 import geocodeRouter from './routes/geocode';
@@ -266,6 +267,7 @@ app.use('/api/notifications', notificationsRouter);
 app.use('/api/promotions', promotionsRouter);
 app.use('/api', feedbackRouter);
 app.use('/api', placeSuggestionsRouter); // Suggest a place: /api/spots/suggestions, /api/admin/spots/suggestions
+app.use('/api', referralCampaignsRouter); // Admin referral codes and their report: /api/admin/referrals
 app.use('/api/app', appVersionRouter);
 app.use('/api', reportsRouter); // /api/reports, /api/users/me/blocks, /api/admin/reports
 app.use('/api', adminRouter); // Mount admin routes directly under /api (e.g. /api/admin/seed, /api/admin/stats)
