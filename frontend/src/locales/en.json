@@ -157,8 +157,8 @@
   "estimator": {
     "title": "Darjeeling Route & Driver Fare Guide",
     "tag": "TRANSIT & REFERENCE FARES",
-    "from": "Pick Pickup Location",
-    "to": "Pick Drop Destination"
+    "from": "Pickup Location",
+    "to": "Drop Destination"
   },
   "common": {
     "price_on_request": "Ask for price",
