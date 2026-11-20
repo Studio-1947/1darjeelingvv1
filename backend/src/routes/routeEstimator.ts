@@ -2,7 +2,9 @@ import { Router, Request, Response } from 'express';
 import { rateLimiter } from '../middleware/rateLimiter';
 import { db } from '../db';
 import { listings } from '../schema';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
+import { hostPlanVisibility } from '../lib/hostPlan';
+import { routesOf } from '../lib/bookingDetails';
 
 const router = Router();
 
@@ -20,9 +22,13 @@ export interface RouteDetail {
   routeNote: string;
   terrainDifficulty: 'Easy Plain' | 'Moderate Hill' | 'Winding Mountain' | 'Steep Ascent';
   driverCount: number;
+  /** What drivers on aangan list for this route themselves (per-trip prices), or null when none do. */
+  driverFares: DriverFares | null;
 }
 
-const ROUTE_DATA: Record<string, Omit<RouteDetail, 'from' | 'to' | 'driverCount'>> = {
+export interface DriverFares { min: number; max: number; count: number }
+
+const ROUTE_DATA: Record<string, Omit<RouteDetail, 'from' | 'to' | 'driverCount' | 'driverFares'>> = {
   // Bagdogra Airport (IXB)
   'Bagdogra Airport (IXB)->Darjeeling Town (Chowk Bazaar / Clubside)': { distanceKm: 68, durationHours: 3.0, minFare: 2800, maxFare: 4500, hatchbackFare: 2800, suvFare: 4200, routeNote: 'Scenic climb via Rohini Road & Ghum Hill Pass', terrainDifficulty: 'Winding Mountain' },
   'Bagdogra Airport (IXB)->Ghum Junction & Monastery': { distanceKm: 62, durationHours: 2.7, minFare: 2600, maxFare: 4200, hatchbackFare: 2600, suvFare: 4000, routeNote: 'Direct climb to highest railway elevation (2,258m)', terrainDifficulty: 'Winding Mountain' },
@@ -75,6 +81,49 @@ function normalizeHub(s: string): string {
   return lower;
 }
 
+// The words a driver might use for each place in a route name they typed themselves.
+const HUB_WORDS: [string, RegExp][] = [
+  ['bagdogra', /bagdogra|\bixb\b|airport/],
+  ['njp', /\bnjp\b|new jalpaiguri/],
+  ['siliguri', /siliguri/],
+  ['darjeeling', /darjeeling|\bdarj\b/],
+  ['ghum', /\bgh(?:u|oo)m\b/],
+  ['kalimpong', /kalimpong/],
+  ['kurseong', /kurseong/],
+  ['mirik', /mirik/],
+];
+
+/**
+ * The places a driver's route name names, ignoring anything after "via" (the way, not an end).
+ * "NJP to Darjeeling" -> {njp, darjeeling}.
+ */
+export function hubsInRouteName(name: string): Set<string> {
+  const ends = name.toLowerCase().split(/\bvia\b/)[0];
+  return new Set(HUB_WORDS.filter(([, re]) => re.test(ends)).map(([key]) => key));
+}
+
+/**
+ * The lowest and highest per-trip price drivers list for this pair of places (either way round),
+ * one price per driver listing (its lowest for the pair). A route name has to name exactly these
+ * two places, so "Siliguri/NJP to Darjeeling" is left out rather than guessed at.
+ */
+export function driverFaresFor(from: string, to: string, driverExtras: Record<string, any>[]): DriverFares | null {
+  const want = [normalizeHub(from), normalizeHub(to)];
+  const prices: number[] = [];
+  for (const extras of driverExtras) {
+    const fares = routesOf(extras)
+      .filter((r) => r.unit === 'trip' && r.price > 0)
+      .filter((r) => {
+        const hubs = hubsInRouteName(r.name);
+        return hubs.size === 2 && want.every((h) => hubs.has(h));
+      })
+      .map((r) => r.price);
+    if (fares.length) prices.push(Math.min(...fares));
+  }
+  if (!prices.length) return null;
+  return { min: Math.min(...prices), max: Math.max(...prices), count: prices.length };
+}
+
 /** Road distance between two places the route table knows (either way round), or null. */
 export function routeDistanceKm(from: string, to: string): number | null {
   return findRoute(from, to)?.distanceKm ?? null;
@@ -117,7 +166,7 @@ function findRoute(f: string, t: string) {
  *         schema: { type: string, default: "Darjeeling Town (Chowk Bazaar / Clubside)" }
  *     responses:
  *       200:
- *         description: Route fare details & driver count
+ *         description: Route fare details, driver count, and driverFares ({min, max, count} from drivers' own per-trip prices for this route, or null)
  */
 router.get('/estimate', async (req: Request, res: Response) => {
   const from = (req.query.from as string || 'Bagdogra Airport (IXB)').trim();
@@ -136,6 +185,7 @@ router.get('/estimate', async (req: Request, res: Response) => {
       routeNote: 'Same pickup and drop location selected',
       terrainDifficulty: 'Easy Plain',
       driverCount: 0,
+      driverFares: null,
     });
   }
 
@@ -150,15 +200,19 @@ router.get('/estimate', async (req: Request, res: Response) => {
     terrainDifficulty: 'Winding Mountain',
   };
 
+  // Only drivers travellers can see (the public feed's rule: a lapsed plan hides a host).
   let driverCount = 0;
+  let driverFares: DriverFares | null = null;
   try {
     const drivers = await db
-      .select()
+      .select({ extras: listings.extras })
       .from(listings)
-      .where(eq(listings.type, 'driver'));
+      .where(and(eq(listings.type, 'driver'), hostPlanVisibility()));
     driverCount = drivers.length;
+    driverFares = driverFaresFor(from, to, drivers.map((d) => d.extras));
   } catch (e) {
     driverCount = 0;
+    driverFares = null;
   }
 
   res.json({
@@ -166,6 +220,7 @@ router.get('/estimate', async (req: Request, res: Response) => {
     to,
     ...base,
     driverCount,
+    driverFares,
   });
 });
 

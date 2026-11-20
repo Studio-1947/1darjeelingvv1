@@ -57,7 +57,7 @@ function AccountFoot() {
       <p className="ag-account-help">
         {t('ui.account.help1', 'Need help? Call us on')} <b>+91 90932 77919</b><br />
         <span className="hrs"><Icon name="bell" /> {t('ui.account.callhrs', 'Calls: Monday to Friday, 9 am to 6 pm')}</span><br />
-        {t('ui.account.help2', 'or email')} <b>aanganerp@gmail.com</b>
+        {t('ui.account.help2', 'or email:')} <a href="mailto:aanganerp@gmail.com" data-testid="account-help-email"><b>aanganerp@gmail.com</b></a>
       </p>
       <div className="ag-account-contact">
         <ButtonA href="tel:+919093277919" icon={<Icon name="phone" />} data-testid="account-help"

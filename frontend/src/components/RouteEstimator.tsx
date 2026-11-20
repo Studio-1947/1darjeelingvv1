@@ -15,6 +15,8 @@ export interface RouteDetail {
   routeNote: string;
   terrainDifficulty: 'Easy Plain' | 'Moderate Hill' | 'Winding Mountain' | 'Steep Ascent';
   driverCount?: number;
+  /** Drivers' own per-trip prices for this route (server-matched), or null when none list it. */
+  driverFares?: { min: number; max: number; count: number } | null;
 }
 
 const HUBS = [
@@ -28,7 +30,7 @@ const HUBS = [
   'Mirik Lake & Simana Border',
 ];
 
-const ROUTE_DATA: Record<string, Omit<RouteDetail, 'driverCount'>> = {
+const ROUTE_DATA: Record<string, Omit<RouteDetail, 'driverCount' | 'driverFares'>> = {
   // Bagdogra Airport (IXB)
   'Bagdogra Airport (IXB)->Darjeeling Town (Chowk Bazaar / Clubside)': { distanceKm: 68, durationHours: 3.0, minFare: 2800, maxFare: 4500, hatchbackFare: 2800, suvFare: 4200, routeNote: 'Scenic climb via Rohini Road & Ghum Hill Pass', terrainDifficulty: 'Winding Mountain' },
   'Bagdogra Airport (IXB)->Ghum Junction & Monastery': { distanceKm: 62, durationHours: 2.7, minFare: 2600, maxFare: 4200, hatchbackFare: 2600, suvFare: 4000, routeNote: 'Direct climb to highest railway elevation (2,258m)', terrainDifficulty: 'Winding Mountain' },
@@ -149,7 +151,8 @@ function getRouteInfo(fromLoc: string, toLoc: string): RouteDetail {
   });
 
   const hit = matchedKey ? ROUTE_DATA[matchedKey] : null;
-  if (hit) return { ...hit, driverCount: 4 };
+  // No driver count or driver prices here: only the server knows them (routes/routeEstimator.ts).
+  if (hit) return { ...hit };
 
   return {
     distanceKm: 55,
@@ -160,7 +163,6 @@ function getRouteInfo(fromLoc: string, toLoc: string): RouteDetail {
     suvFare: 3800,
     routeNote: 'Scenic mountain highway route',
     terrainDifficulty: 'Winding Mountain',
-    driverCount: 4,
   };
 }
 
@@ -172,15 +174,11 @@ export default function RouteEstimator() {
   const [vehicleType, setVehicleType] = useState<'hatchback' | 'suv'>('hatchback');
   const [routeInfo, setRouteInfo] = useState<RouteDetail>(() => getRouteInfo('Bagdogra Airport (IXB)', 'Darjeeling Town (Chowk Bazaar / Clubside)'));
 
-  const handleFromChange = (newFrom: string) => {
-    setFromHub(newFrom);
-    setRouteInfo(getRouteInfo(newFrom, toHub));
-  };
-
-  const handleToChange = (newTo: string) => {
-    setToHub(newTo);
-    setRouteInfo(getRouteInfo(fromHub, newTo));
-  };
+  // The effect below shows the local figures at once and then the server's (with drivers' own
+  // prices). Setting them here as well overwrote the server's answer when the same place was picked
+  // again, since the effect does not re-run for an unchanged route.
+  const handleFromChange = (newFrom: string) => setFromHub(newFrom);
+  const handleToChange = (newTo: string) => setToHub(newTo);
 
   useEffect(() => {
     let cancelled = false;
@@ -205,6 +203,8 @@ export default function RouteEstimator() {
 
   const info = routeInfo;
   const selectedFare = vehicleType === 'suv' ? info.suvFare : info.hatchbackFare;
+  const drivers = info.driverFares && info.driverFares.count > 0 ? info.driverFares : null;
+  const inr = (n: number) => `₹${n.toLocaleString('en-IN')}`;
 
   const handleSearchDrivers = () => {
     const fromName = fromHub.split(' ')[0];
@@ -243,10 +243,14 @@ export default function RouteEstimator() {
         </div>
         <div className="col-span-2 rounded-2xl border border-[var(--warmline)] bg-[var(--surface)] p-3">
           <dt className="ag-small flex flex-wrap items-center justify-between gap-x-3">
-            <span className="flex items-center gap-1"><ShieldCheck size={14} className="text-[var(--r)]" aria-hidden="true" /> {t('ui.routeEstimator.fare_range')}</span>
+            <span className="flex items-center gap-1"><ShieldCheck size={14} className="text-[var(--r)]" aria-hidden="true" /> {drivers ? t('ui.routeEstimator.driver_fares') : t('ui.routeEstimator.fare_range')}</span>
             <span className="flex items-center gap-1"><Mountain size={14} aria-hidden="true" /> {TERRAIN_KEYS[info.terrainDifficulty] ? t(TERRAIN_KEYS[info.terrainDifficulty]) : info.terrainDifficulty}</span>
           </dt>
-          <dd className="ag-price m-0">₹{info.minFare.toLocaleString('en-IN')} - ₹{info.maxFare.toLocaleString('en-IN')}</dd>
+          {/* Drivers' own listed prices when any list this route; our typical range otherwise. */}
+          <dd className="ag-price m-0" data-testid="estimator-fare">{drivers
+            ? (drivers.min === drivers.max ? inr(drivers.min) : `${inr(drivers.min)} - ${inr(drivers.max)}`)
+            : `${inr(info.minFare)} - ${inr(info.maxFare)}`}</dd>
+          {drivers && <dd className="ag-small m-0">{t('ui.routeEstimator.driver_fares_from', { count: drivers.count })}</dd>}
         </div>
       </dl>
 
