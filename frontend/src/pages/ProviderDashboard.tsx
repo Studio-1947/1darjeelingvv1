@@ -337,7 +337,12 @@ function ProviderDashboardPage() {
               {isDriver && fig(t('ui.providerDashboard.km_covered'), activeListing ? '–' : (hostStats?.km_covered ?? 0).toLocaleString('en-IN'))}
               {isDriver && fig(t('ui.providerDashboard.locations_covered'), activeListing ? '–' : (hostStats?.locations_covered?.length ?? 0))}
               {fig(isGuide ? t('ui.providerDashboard.confirmed_value') : t('ui.providerDashboard.confirmed_booking_value'), `₹${(activeListing ? scopedRevenue : stats.revenue || 0).toLocaleString('en-IN')}`)}
-              {fig(t('ui.providerDashboard.aangan_points'), hostStats?.points ?? 0)}
+            </div>
+            {/* Points get the same highlighted card as the traveller dashboard, with the rules inside it. */}
+            <div className="ag-account-pts mt-2" data-testid="host-points">
+              <span className="ag-small">{t('ui.providerDashboard.aangan_points')}</span>
+              <b><Icon name="star" /> {(hostStats?.points ?? 0).toLocaleString('en-IN')}</b>
+              <PointsRules rows={hostPointsRows(hostStats?.points_rules, hostStats?.points_breakdown)} tone="dark" testId="host-points-rules" />
             </div>
             {isDriver && !activeListing && hostStats?.locations_covered?.length > 0 && (
               <p className="ag-small mt-2" data-testid="host-locations">{t('ui.providerDashboard.places_covered', { places: hostStats.locations_covered.join(', ') })}</p>
@@ -345,7 +350,6 @@ function ProviderDashboardPage() {
             {isDriver && !activeListing && hostStats?.unknown_route_trips > 0 && (
               <p className="ag-small mt-2">{t('ui.providerDashboard.unknown_route_trips', { count: hostStats.unknown_route_trips })}</p>
             )}
-            <PointsRules rows={hostPointsRows(hostStats?.points_rules, hostStats?.points_breakdown)} testId="host-points-rules" />
           </section>
           {feedbackBlock}
         </div>
