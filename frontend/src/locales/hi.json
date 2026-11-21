@@ -2031,7 +2031,8 @@
     "video_old_link": "आपका मौजूदा वीडियो लिंक",
     "gallery_done": "{{have}} फ़ोटो ({{goal}} ज़रूरी) ✓",
     "gallery_short": "{{goal}} में से {{have}} ज़रूरी फ़ोटो",
-    "capacity_from_rooms": "आपके कमरों से गिना गया, अतिरिक्त गद्दे शामिल।"
+    "capacity_from_rooms": "आपके कमरों से गिना गया, अतिरिक्त गद्दे शामिल।",
+    "rooms_need_sleeps": "हर कमरे में कितने लोग सो सकते हैं, यह चुनें, फिर सेव करें।"
   },
   "owners": {
     "title": "मालिक",
@@ -2659,7 +2660,7 @@
       "sleeps_one": "{{count}} व्यक्ति",
       "sleeps_other": "{{count}} लोग",
       "extra_label": "अतिरिक्त गद्दा",
-      "extra_none": "अतिरिक्त: नहीं",
+      "extra_none": "अतिरिक्त नहीं",
       "extra_one": "अतिरिक्त: +{{count}}",
       "extra_other": "अतिरिक्त: +{{count}}",
       "extra_price": "₹ प्रति अतिरिक्त व्यक्ति, प्रति रात",

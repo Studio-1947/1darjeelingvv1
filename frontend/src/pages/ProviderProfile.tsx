@@ -194,7 +194,8 @@ export default function ProviderProfile() {
       seats: e.seats ?? '',
       routes: Array.isArray(e.routes) ? e.routes : [],
       // homestay
-      rooms: priced(e.rooms, 'name', 'night'),
+      // A room is one price a night for the whole room (a room saved per head before shows per night).
+      rooms: priced(e.rooms, 'name', 'night').map((r) => ({ ...r, unit: 'night' })),
       meals: priced(e.meals, 'name', 'meal'),
       capacity: e.capacity ?? '',
       amenities: Array.isArray(e.amenities) ? e.amenities : [],
@@ -270,6 +271,11 @@ export default function ProviderProfile() {
 
   const save = async () => {
     if (!form) return;
+    // Every room says how many people it sleeps: that is the most it takes, unless it has an extra mattress.
+    if (type === 'homestay' && form.rooms.some((r: Priced) => r.name.trim() && !roomFit(r).occ)) {
+      setMsg({ ok: false, text: t('hostProfile.rooms_need_sleeps') });
+      return;
+    }
     setBusy(true);
     setMsg(null);
     const num = (v: any) => (v === '' || v === null || v === undefined ? undefined : Number(v));
@@ -525,7 +531,7 @@ export default function ProviderProfile() {
         {type === 'homestay' && (
           <Section title={t('hostProfile.rooms_food')} note={t('hostProfile.rooms_food_note')} testid="profile-homestay">
             <Group label={t('profile.rooms')}>
-              <PricedEditor rows={form.rooms} onChange={(rooms) => set({ rooms })} units={['night', 'head']} unitLabel={unitLabel}
+              <PricedEditor rows={form.rooms} onChange={(rooms) => set({ rooms })} units={['night']} unitLabel={unitLabel}
                 namePlaceholder={t('hostProfile.room_ph')} addLabel={t('hostProfile.add_room')} testid="profile-rooms" sleeps />
             </Group>
             <Group label={t('profile.meals')}>

@@ -126,7 +126,7 @@ export function RoomsFoodSection({ rooms, meals }: { rooms: Priced[]; meals: Pri
               : '';
             return (
               <PriceRow key={i} photo={r.photo} name={r.name} sub={size > 0 ? `${size} ${t('listing.ppl', 'people')}${extra}` : undefined}
-                price={Number(r.price) || 0} unit={t(`profile.unit_${r.unit || 'night'}`)} />
+                price={Number(r.price) || 0} unit={t('profile.unit_night')} />
             );
           })}
         </div>

@@ -2438,7 +2438,8 @@
     "video_old_link": "Your current video link",
     "gallery_done": "{{have}} photos ({{goal}} needed) ✓",
     "gallery_short": "{{have}} of {{goal}} needed",
-    "capacity_from_rooms": "Worked out from your rooms, extra mattresses included."
+    "capacity_from_rooms": "Worked out from your rooms, extra mattresses included.",
+    "rooms_need_sleeps": "Say how many people each room sleeps, then save."
   },
   "owners": {
     "title": "Owners",
@@ -3066,7 +3067,7 @@
       "sleeps_one": "Sleeps {{count}}",
       "sleeps_other": "Sleeps {{count}}",
       "extra_label": "Extra mattress",
-      "extra_none": "Extra: none",
+      "extra_none": "No extra",
       "extra_one": "Extra: +{{count}}",
       "extra_other": "Extra: +{{count}}",
       "extra_price": "₹ per extra person a night",

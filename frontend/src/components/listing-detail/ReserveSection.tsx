@@ -147,11 +147,11 @@ export function BookingScreen({ item, unit, step, booking, onNext }: {
   const pct = form.voucher_pct || 0;
   const off = Math.round((gross * pct) / 100);
   const baseMax = item.max_guests || (isDriver ? (item.extras?.seats || 6) : (item.extras?.capacity || 10));
-  // A room takes what it sleeps plus its extra mattresses; each extra guest on a per-night room
-  // pays the mattress charge a night (lib/roomFit.ts, the server's rule).
+  // A room takes what it sleeps plus its extra mattresses; each extra guest adds the mattress
+  // price to the night (lib/roomFit.ts, the server's rule).
   const fit = roomFit(room);
   const maxGuests = fit.max ? Math.min(baseMax, fit.max) : baseMax;
-  const extraGuests = isStay && room && room.unit !== 'head' && fit.occ ? Math.max(0, Math.min(guests, maxGuests) - fit.occ) : 0;
+  const extraGuests = isStay && room && fit.occ ? Math.max(0, Math.min(guests, maxGuests) - fit.occ) : 0;
 
   const pickRoom = (name: string) => {
     const fits = roomFit(chosenRoom(item, name)).max || 0;
@@ -231,7 +231,7 @@ export function BookingScreen({ item, unit, step, booking, onNext }: {
               {rooms.map((r, i) => (
                 <option key={i} value={r.name}>
                   {/* Short, as the prototype writes it, so it fits a phone: name · price · people. */}
-                  {r.name}{Number(r.price) > 0 ? ` · ${rs(Number(r.price))}${r.unit === 'head' ? ` ${t('profile.unit_head')}` : ''}` : ''}
+                  {r.name}{Number(r.price) > 0 ? ` · ${rs(Number(r.price))}` : ''}
                   {Number(r.occ) > 0 ? ` · ${t('listing.ppl_many', '{{count}} people', { count: Number(r.occ) })}` : ''}
                   {roomFit(r).extraBeds > 0 ? ` (+${roomFit(r).extraBeds})` : ''}
                 </option>

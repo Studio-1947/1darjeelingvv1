@@ -179,16 +179,18 @@ const BY_TYPE: Record<string, Record<string, (v: unknown) => unknown | ProfileEr
   },
   homestay: {
     host_name: (v) => text(v, 80, 'Host name'),
-    // Each room may say how many people it sleeps (`occ`, optional): a booking for that room
-    // cannot be for more people than that (prototype staybook.js rooms[{name,price,occ}]).
-    // It may also take up to two more on an extra mattress (`extra_beds`, 0-2), each paying
-    // `extra_bed_price` a night (optional, 0 or absent = free); see lib/bookingDetails.ts pickRoom.
+    // A room has one price a night for the whole room (user decision 2026-11-21: never per person;
+    // an older client's "head" is accepted and stored as "night"). Each room may say how many people
+    // it sleeps (`occ`): a booking for that room cannot be for more than that (prototype staybook.js
+    // rooms[{name,price,occ}]), unless the host allows up to two more on an extra mattress
+    // (`extra_beds`, 0-2), each adding `extra_bed_price` to the night (optional, 0 or absent = free).
+    // See lib/bookingDetails.ts pickRoom.
     rooms: (v) => list(v, 20, 'Rooms', (x) => {
       const r = priced(ROOM_UNITS, 'room', 'night')(x);
       if ('error' in r) return r;
       const e = x as Record<string, unknown>;
       const blank = (k: string) => e[k] === undefined || e[k] === null || e[k] === '';
-      let out: Record<string, unknown> = r;
+      let out: Record<string, unknown> = { ...r, unit: 'night' };
       if (!blank('occ')) {
         const occ = int(e.occ, 1, MAX_ROOM_OCC, 'People per room');
         if (typeof occ !== 'number') return occ;
@@ -200,8 +202,7 @@ const BY_TYPE: Record<string, Record<string, (v: unknown) => unknown | ProfileEr
         if (extra > 0 && out.occ === undefined) return { error: 'Say how many people the room sleeps before adding an extra mattress' };
         if (extra > 0) out = { ...out, extra_beds: extra };
       }
-      // Not kept on a per-head room: its extra guests pay the head price instead.
-      if (!blank('extra_bed_price') && out.extra_beds && out.unit !== 'head') {
+      if (!blank('extra_bed_price') && out.extra_beds) {
         const fee = int(e.extra_bed_price, 0, MAX_PRICE, 'Extra mattress price');
         if (typeof fee !== 'number') return fee;
         if (fee > 0) out = { ...out, extra_bed_price: fee };

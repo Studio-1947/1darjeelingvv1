@@ -1,8 +1,9 @@
 /**
  * The extra details a booking request can carry, checked against the stored listing:
  *
- * - a homestay request may name one of the host's rooms (prototype staybook.js). Its price then
- *   decides the amount, and its `occ` caps how many people the booking can be for;
+ * - a homestay request may name one of the host's rooms (prototype staybook.js). Its price a night
+ *   (plus any extra mattress guests) decides the amount, and its `occ` plus its extra mattresses
+ *   cap how many people the booking can be for;
  * - a driver request may say where to pick up and drop, at what time, and for how many days on a
  *   day-rate route (prototype drivebook.js). The fare is worked out here, never taken from the client;
  * - cancelling takes a reason from a fixed list per side, and an optional note (prototype cancel.js).
@@ -25,9 +26,8 @@ export type ChosenRoom = {
   /** People on an extra mattress in this booking (beyond `occ`), 0 when none. */
   extraGuests: number;
   /**
-   * What one night costs this booking: the room's price for a room let by the night, plus the
-   * extra mattress charge for each extra guest; or the price x people for a room priced per head
-   * (each extra guest already pays the head price there). Stored as `bookings.room_price`.
+   * What one night costs this booking: the room's price, plus the extra mattress charge for each
+   * guest beyond what the room sleeps. Stored as `bookings.room_price`.
    */
   nightly: number;
 };
@@ -39,8 +39,7 @@ export type ChosenRoom = {
 export function roomFit(r: any): { occ: number | null; extraBeds: number; extraBedPrice: number; max: number | null } {
   const occ = Number.isInteger(Number(r?.occ)) && Number(r?.occ) > 0 ? Number(r.occ) : null;
   const extraBeds = occ ? Math.min(2, Math.max(0, Math.floor(Number(r?.extra_beds)) || 0)) : 0;
-  // A room priced per head charges each extra guest the head price, so it has no mattress charge.
-  const extraBedPrice = extraBeds && r?.unit !== 'head' ? Math.max(0, Math.floor(Number(r?.extra_bed_price)) || 0) : 0;
+  const extraBedPrice = extraBeds ? Math.max(0, Math.floor(Number(r?.extra_bed_price)) || 0) : 0;
   return { occ, extraBeds, extraBedPrice, max: occ ? occ + extraBeds : null };
 }
 
@@ -65,7 +64,9 @@ export function pickRoom(rooms: any[], input: unknown, guests: number):
   const found = rooms.find((r) => r && typeof r === 'object' && roomKey(r.name) === want);
   if (!found) return fail('bad_room', 'This homestay has no room by that name. Pick one of its rooms.');
   const price = Math.max(0, Math.floor(Number(found.price)) || 0);
-  const unit = found.unit === 'head' ? 'head' : 'night';
+  // A room is always one price a night for the whole room (user decision 2026-11-21); a room saved
+  // per head before that is priced the same way now.
+  const unit = 'night';
   const { occ, extraBeds, extraBedPrice, max } = roomFit(found);
   if (max && guests > max) {
     const name = String(found.name).trim();
@@ -74,7 +75,7 @@ export function pickRoom(rooms: any[], input: unknown, guests: number):
       : `${name} sleeps up to ${occ} ${occ === 1 ? 'person' : 'people'}. Pick a bigger room or fewer people.`);
   }
   const extraGuests = occ ? Math.max(0, guests - occ) : 0;
-  const nightly = unit === 'head' ? price * guests : price + extraGuests * extraBedPrice;
+  const nightly = price + extraGuests * extraBedPrice;
   return { ok: true, room: { name: String(found.name).trim(), price, unit, occ, extraGuests, nightly } };
 }
 

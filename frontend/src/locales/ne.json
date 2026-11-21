@@ -2031,7 +2031,8 @@
     "video_old_link": "तपाईंको हालको भिडियो लिंक",
     "gallery_done": "{{have}} फोटो ({{goal}} चाहिने) ✓",
     "gallery_short": "चाहिने {{goal}} मध्ये {{have}}",
-    "capacity_from_rooms": "तपाईंका कोठाबाट गनिएको, थप गद्दा समेत।"
+    "capacity_from_rooms": "तपाईंका कोठाबाट गनिएको, थप गद्दा समेत।",
+    "rooms_need_sleeps": "हरेक कोठामा कति जना सुत्न सक्छन् छान्नुहोस्, अनि सेभ गर्नुहोस्।"
   },
   "owners": {
     "title": "मालिकहरू",
@@ -2659,7 +2660,7 @@
       "sleeps_one": "{{count}} जना",
       "sleeps_other": "{{count}} जना",
       "extra_label": "थप गद्दा",
-      "extra_none": "थप: छैन",
+      "extra_none": "थप छैन",
       "extra_one": "थप: +{{count}}",
       "extra_other": "थप: +{{count}}",
       "extra_price": "₹ प्रति थप व्यक्ति, प्रति रात",

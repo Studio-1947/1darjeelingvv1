@@ -68,8 +68,8 @@ export function chosenRoom(item: any, name?: string) {
 
 /**
  * What the request comes to, by the server's rule (lib/bookingAmount.ts + lib/bookingDetails.ts):
- * a room is its price a night (x people when priced per head), plus each extra-mattress guest's
- * charge on a per-night room (lib/roomFit.ts); otherwise a homestay is the rate x
+ * a room is its price a night for the whole room, plus each extra-mattress guest's charge
+ * (lib/roomFit.ts); otherwise a homestay is the rate x
  * people x nights. A driver is the route's price per trip, or its day rate x days, else the listing
  * rate. A guide is the listing rate.
  */

@@ -2031,7 +2031,8 @@
     "video_old_link": "আপনার বর্তমান ভিডিও লিঙ্ক",
     "gallery_done": "{{have}}টি ছবি ({{goal}}টি দরকার) ✓",
     "gallery_short": "দরকারি {{goal}}টির মধ্যে {{have}}টি",
-    "capacity_from_rooms": "আপনার ঘরগুলো থেকে হিসাব করা, অতিরিক্ত গদি সহ।"
+    "capacity_from_rooms": "আপনার ঘরগুলো থেকে হিসাব করা, অতিরিক্ত গদি সহ।",
+    "rooms_need_sleeps": "প্রতিটি ঘরে কতজন থাকতে পারেন বেছে নিন, তারপর সেভ করুন।"
   },
   "owners": {
     "title": "মালিক",
@@ -2659,7 +2660,7 @@
       "sleeps_one": "{{count}} জন",
       "sleeps_other": "{{count}} জন",
       "extra_label": "অতিরিক্ত গদি",
-      "extra_none": "অতিরিক্ত: নেই",
+      "extra_none": "অতিরিক্ত নেই",
       "extra_one": "অতিরিক্ত: +{{count}}",
       "extra_other": "অতিরিক্ত: +{{count}}",
       "extra_price": "₹ প্রতি অতিরিক্ত জন, প্রতি রাত",

@@ -9,11 +9,13 @@ describe('room size and extra mattress', () => {
     expect(roomFit({ extra_beds: 1, extra_bed_price: 400 })).toEqual({ occ: null, extraBeds: 0, extraBedPrice: 0, max: null });
   });
 
-  it('charges each extra guest on a per-night room, not on a per-head one', () => {
+  it('prices the whole room a night and adds the mattress for each extra guest', () => {
     const room = { price: 2400, unit: 'night', occ: 2, extra_beds: 1, extra_bed_price: 400 };
+    expect(roomNightly(room, 1)).toBe(2400);
     expect(roomNightly(room, 2)).toBe(2400);
     expect(roomNightly(room, 3)).toBe(2800);
-    expect(roomNightly({ ...room, unit: 'head', price: 900 }, 3)).toBe(2700);
+    // A room once saved per head is still one price for the room.
+    expect(roomNightly({ ...room, unit: 'head', price: 900 }, 3)).toBe(1300);
   });
 
   it('adds the named rooms up into the guest occupancy, only when every room says what it sleeps', () => {
@@ -27,7 +29,8 @@ describe('room size and extra mattress', () => {
     expect(roomsCapacity([])).toBe(0);
   });
 
-  it('never charges a mattress on a per-head room', () => {
-    expect(roomFit({ unit: 'head', occ: 2, extra_beds: 1, extra_bed_price: 400 }).extraBedPrice).toBe(0);
+  it('takes no one beyond what the room sleeps when the host set no extra mattress', () => {
+    expect(roomFit({ occ: 2 }).max).toBe(2);
+    expect(roomFit({ occ: 2, extra_beds: 0, extra_bed_price: 400 })).toEqual({ occ: 2, extraBeds: 0, extraBedPrice: 0, max: 2 });
   });
 });

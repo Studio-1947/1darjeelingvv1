@@ -40,9 +40,9 @@ describe('room rule on the host profile', () => {
     expect(ok.rooms[1]).toEqual({ name: 'Loft', price: 1800, unit: 'night', occ: 2, extra_beds: 2 });
     // No extra mattress: its price means nothing and is not kept.
     expect(ok.rooms[2]).toEqual({ name: 'Box', price: 900, unit: 'night', occ: 1 });
-    // A per-head room keeps its extra mattress but not a mattress price.
+    // A room is always priced a night for the whole room: an older client's "head" is stored as "night".
     expect((profilePatchFrom('homestay', { rooms: [{ name: 'Dorm', price: 600, unit: 'head', occ: 4, extra_beds: 1, extra_bed_price: 300 }] }) as any).rooms[0])
-      .toEqual({ name: 'Dorm', price: 600, unit: 'head', occ: 4, extra_beds: 1 });
+      .toEqual({ name: 'Dorm', price: 600, unit: 'night', occ: 4, extra_beds: 1, extra_bed_price: 300 });
     expect(profilePatchFrom('homestay', { rooms: [{ name: 'X', price: 10, occ: 2, extra_beds: 3 }] })).toHaveProperty('error');
     expect(profilePatchFrom('homestay', { rooms: [{ name: 'X', price: 10, extra_beds: 1 }] })).toHaveProperty('error');
     expect(profilePatchFrom('homestay', { rooms: [{ name: 'X', price: 10, occ: 2, extra_beds: 1, extra_bed_price: 50001 }] })).toHaveProperty('error');
@@ -57,9 +57,9 @@ describe('booking amount with a room or a quoted fare', () => {
     expect(bookingGrossAmount({ listingType: 'driver', price: 2000, quotedFare: null })).toBe(2000);
   });
 
-  it('prices a per-head room for the party and caps people at the room size', () => {
+  it('prices a room as one price for the room (a room saved per head too) and caps people at the room size', () => {
     const r = pickRoom(ROOMS, 'family room', 3);
-    expect(r.ok && r.room).toMatchObject({ name: 'Family Room', nightly: 2700, occ: 5 });
+    expect(r.ok && r.room).toMatchObject({ name: 'Family Room', nightly: 900, occ: 5, unit: 'night' });
     const tooMany = pickRoom(ROOMS, 'Valley Room', 3);
     expect(tooMany.ok).toBe(false);
     expect(!tooMany.ok && tooMany.code).toBe('room_too_small');
@@ -72,7 +72,8 @@ describe('booking amount with a room or a quoted fare', () => {
     const rooms = [
       { name: 'Valley Room', price: 2400, unit: 'night', occ: 2, extra_beds: 1, extra_bed_price: 400 },
       { name: 'Free Extra', price: 2000, unit: 'night', occ: 2, extra_beds: 2 },
-      { name: 'Per Head', price: 900, unit: 'head', occ: 2, extra_beds: 1, extra_bed_price: 400 },
+      { name: 'Was Per Head', price: 900, unit: 'head', occ: 2, extra_beds: 1, extra_bed_price: 400 },
+      { name: 'No Extra', price: 1500, unit: 'night', occ: 2 },
     ];
     expect(pickRoom(rooms, 'Valley Room', 2)).toMatchObject({ ok: true, room: { nightly: 2400, extraGuests: 0 } });
     expect(pickRoom(rooms, 'Valley Room', 3)).toMatchObject({ ok: true, room: { nightly: 2800, extraGuests: 1 } });
@@ -80,8 +81,11 @@ describe('booking amount with a room or a quoted fare', () => {
     expect(!four.ok && four.code).toBe('room_too_small');
     expect(!four.ok && four.detail).toMatch(/sleeps 2, and up to 3 with an extra mattress/);
     expect(pickRoom(rooms, 'Free Extra', 4)).toMatchObject({ ok: true, room: { nightly: 2000, extraGuests: 2 } });
-    // A room priced per head: the extra guest pays the head price, not a mattress charge on top.
-    expect(pickRoom(rooms, 'Per Head', 3)).toMatchObject({ ok: true, room: { nightly: 2700 } });
+    // A room once saved per head is one price for the room now, plus the mattress.
+    expect(pickRoom(rooms, 'Was Per Head', 3)).toMatchObject({ ok: true, room: { nightly: 1300 } });
+    // No extra mattress set: nobody beyond what the room sleeps.
+    expect(pickRoom(rooms, 'No Extra', 2)).toMatchObject({ ok: true, room: { nightly: 1500 } });
+    expect(pickRoom(rooms, 'No Extra', 3)).toMatchObject({ ok: false, code: 'room_too_small' });
     // A free room with a paid mattress: the night is just the mattress, as the website shows.
     expect(pickRoom([{ name: 'Free', price: 0, unit: 'night', occ: 2, extra_beds: 1, extra_bed_price: 300 }], 'Free', 3))
       .toMatchObject({ ok: true, room: { nightly: 300 } });
