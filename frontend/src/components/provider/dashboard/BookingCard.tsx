@@ -13,7 +13,7 @@ export const BAND_ICON: Record<string, IconName> = { homestay: 'home', driver: '
 /**
  * One booking request, drawn as the prototype's host booking card (bookings.js bookingCard):
  * a "Homestay booked" band, the name and status, the dates and amount, the journey
- * (Request sent → Host confirmed → Completed), the guest, then the actions for that stage.
+ * (Request sent → You accepted → Guest confirmed → Completed), the guest, then the actions for that stage.
  * Board: a driver, homestay or guide request waits for the host - "Accept" is that yes; the guest
  * then confirms it (pass or ₹1) and it becomes a booking.
  * Declining or cancelling asks the host for a reason (prototype cancel.js); a guest's request to
@@ -79,14 +79,24 @@ export default function BookingCard({ b, onCancel, onAccept, onCancelRequest, ho
   const status = s < 0 ? <Status tone="no">{t('host.st_cancelled', 'Cancelled')}</Status>
     : s === 3 ? <Status tone="ok">{t('host.st_done', 'Completed')}</Status>
     : s === 2 ? <Status tone="ok">{t('booking.status.confirmed', { defaultValue: 'Confirmed' })}</Status>
-    : s === 1 ? <Status tone="ok">{t('host.st_yes', 'Host said yes')}</Status>
+    : s === 1 ? <Status tone="ok">{t('host.st_acc', 'You accepted')}</Status>
     : <Status>{b.awaiting_host ? t('host.st_sent', 'Request sent') : t('booking.status.pending_payment', { defaultValue: 'Waiting for payment' })}</Status>;
-  const steps: Array<[number, string]> = [[0, t('host.st_sent', 'Request sent')], [2, t('host.st_conf', 'Host confirmed')], ...(s === 3 ? [[3, t('host.st_done', 'Completed')] as [number, string]] : [])];
-  const last = steps[steps.length - 1][0];
   const phone = b.customer?.phone || '';
   const digits = phone.replace(/\D/g, '');
   const amount = Number(b.amount) || 0;
   const request = s >= 0 && b.cancel_request ? b.cancel_request : null;
+  // The journey, each step with whether it has happened: Request sent, You accepted (only when the
+  // booking needed your yes), Guest confirmed, a cancel request and you keeping the booking when
+  // there was one, and Completed, always the last step.
+  const kept = s >= 2 && !request && !!b.cancel_request_kept;
+  const steps: Array<[boolean, string]> = [[true, t('host.st_sent', 'Request sent')]];
+  if (s >= 1 || b.accepted_at || b.awaiting_host) steps.push([s >= 1, t('host.st_acc', 'You accepted')]);
+  steps.push([s >= 2, t('host.st_guest_conf', 'Guest confirmed')]);
+  // A request left unanswered past the trip no longer matters: the trip simply completed.
+  if ((request && s < 3) || kept) steps.push([true, t('cancel.hreq', 'Guest asked to cancel')]);
+  if (kept) steps.push([true, t('host.st_kept', 'You kept the booking')]);
+  steps.push([s === 3, t('host.st_done', 'Completed')]);
+  const at = steps.map((x) => x[0]).lastIndexOf(true);
   const cancelledTitle = b.declined ? t('cancel.you_declined', 'You declined this request')
     : b.cancelled_by === 'host' ? t('cancel.you_cancelled', 'You cancelled this booking')
     : b.cancelled_by === 'guest' ? t('cancel.by_guest', 'Cancelled by the guest')
@@ -117,10 +127,10 @@ export default function BookingCard({ b, onCancel, onAccept, onCancelRequest, ho
       </p>
       {s >= 0 && (
         <ol className="ag-host-journey" aria-label={t('host.journey', 'Booking status')}>
-          {steps.map(([n, label], j) => (
-            <li key={n} className={s > n ? 'past' : s === n ? 'here' : undefined}>
-              {j > 0 && <i className={`ln${s >= n ? ' on' : ''}`} />}
-              <span className="dot">{(s === n || (s > n && n === last)) && <Icon name="check" />}</span>
+          {steps.map(([, label], j) => (
+            <li key={j} className={j < at ? 'past' : j === at ? 'here' : undefined}>
+              {j > 0 && <i className={`ln${j <= at ? ' on' : ''}`} />}
+              <span className="dot">{j === at && <Icon name="check" />}</span>
               <span>{label}</span>
             </li>
           ))}
