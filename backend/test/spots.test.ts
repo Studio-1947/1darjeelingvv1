@@ -193,6 +193,7 @@ describe('tourist spots  admin CRUD', () => {
       { extras: { sort_order: -3 } },
       { extras: { published: 'maybe' } },
       { extras: { best_time: 'x'.repeat(500) } },
+      { extras: { photo_source: 'javascript:alert(1)' } },
       { image: 'not-a-url' },
       { price: -10 },
       { latitude: 200 },
@@ -222,6 +223,20 @@ describe('tourist spots  admin CRUD', () => {
     expect(patched.body.item.extras.images).toEqual(['https://cdn.test/a.jpg']);
     expect(patched.body.item.extras.highlights).toEqual(['Great views']);
     expect(patched.body.item.extras.best_time).toBe('Spring');
+  });
+
+  it('keeps a photo credit and its source through an edit that does not mention them', async () => {
+    const admin = await loginAdmin();
+    const spot = await createSpot(admin, {
+      extras: { photo_credit: 'Jane Doe · CC BY-SA 4.0 · Wikimedia Commons', photo_source: 'https://commons.wikimedia.org/wiki/File:X.jpg' },
+    });
+    const patched = await request(app)
+      .patch(`/api/admin/spots/${spot.id}`)
+      .set('Authorization', `Bearer ${admin}`)
+      .send({ extras: { best_time: 'Winter' } });
+    expect(patched.status).toBe(200);
+    expect(patched.body.item.extras.photo_credit).toBe('Jane Doe · CC BY-SA 4.0 · Wikimedia Commons');
+    expect(patched.body.item.extras.photo_source).toBe('https://commons.wikimedia.org/wiki/File:X.jpg');
   });
 
   it('clears a text field when it is sent as an empty string', async () => {

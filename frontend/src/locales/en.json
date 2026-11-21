@@ -241,6 +241,7 @@
     "timings": "Opening times",
     "entry_fee": "Entry fee",
     "altitude": "Altitude",
+    "photo_credit": "Photo",
     "how_to_reach": "How to reach",
     "meet_driver": "Meet your driver",
     "routes": "Routes covered",
@@ -1028,6 +1029,7 @@
     "location_denied": "Location is off for aangan. Allow it in your browser settings and try again."
   },
   "category": {
+    "load_more_failed": "Could not load more. Check your connection.",
     "search": "Search",
     "results_one": "{{count}} result",
     "results_other": "{{count}} results",

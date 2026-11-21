@@ -225,6 +225,18 @@ export default function ListingDetail() {
           stripTestid={ownStay ? 'detail-gallery' : 'detail-photos'}
           stripLabel={item.type === 'driver' ? t('detail.car_photos') : t('listing.photos', 'Photos')} />
 
+        {/* A tourist spot's photo from Wikimedia Commons: its licence (CC BY / BY-SA) asks for the author's credit. */}
+        {isSpot && typeof item.extras?.photo_credit === 'string' && item.extras.photo_credit.trim() && (
+          <p className="ag-small" data-testid="detail-photo-credit">
+            {t('detail.photo_credit', 'Photo')}:{' '}
+            {typeof item.extras.photo_source === 'string' && /^https?:\/\//i.test(item.extras.photo_source) ? (
+              <a href={item.extras.photo_source} target="_blank" rel="noreferrer" className="ag-listing-plink">
+                <b>{item.extras.photo_credit}</b><Icon name="arrowne" />
+              </a>
+            ) : item.extras.photo_credit}
+          </p>
+        )}
+
         {/* Places to visit: the entry ticket box. Everything else: the price line. */}
         {(isSpot || item.type === 'biodiversity') ? (
           <TicketBox price={Number(item.price) || 0} entryFee={spotInfo.entryFee && !(Number(item.price) > 0) ? spotInfo.entryFee : undefined} />
