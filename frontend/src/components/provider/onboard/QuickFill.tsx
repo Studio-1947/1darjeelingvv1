@@ -108,7 +108,7 @@ export function HelpWhatsApp({ type, className = '' }: { type?: string; classNam
   });
   if (!link) return null;
   return (
-    <a href={link} target="_blank" rel="noopener noreferrer" data-testid="host-help-whatsapp" className={`ag-btn ag-onboard-help ${className}`}>
+    <a href={link} target="_blank" rel="noopener noreferrer" data-testid="host-help-whatsapp" className={`ag-onboard-help ${className}`}>
       <Icon name="wa" />
       <span>{t('ob.quick.help')}</span>
     </a>

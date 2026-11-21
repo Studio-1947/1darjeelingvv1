@@ -86,7 +86,13 @@ function TypeStep({ w }: { w: HostWizard }) {
     },
   ];
   return (
-    <Frame w={w} title={t('ob.wz.what')} sub={t('ob.wz.onelist')}>
+    <Frame w={w} title={t('ob.wz.what')} sub={t('ob.wz.onelist')}
+      cta={(
+        <div className="ag-onboard-ctarow">
+          <NextButton onClick={w.next} data-testid="wz-next">{t('ob.wz.next')}</NextButton>
+          <HelpWhatsApp type={d.type || undefined} />
+        </div>
+      )}>
       <div className="ag-onboard-tiles" role="radiogroup" aria-label={t('ob.wz.what')}>
         {HOST_TYPES.map((ty) => (
           <button key={ty} type="button" role="radio" aria-checked={d.type === ty} className="ag-onboard-tile"
@@ -115,7 +121,6 @@ function TypeStep({ w }: { w: HostWizard }) {
         </div>
         <p className="ag-small">{t('ob.wz.gst_note')}</p>
       </Box>}
-      <HelpWhatsApp type={d.type || undefined} />
     </Frame>
   );
 }

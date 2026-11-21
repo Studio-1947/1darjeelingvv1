@@ -144,6 +144,10 @@
 .ag-onboard-done .ag-btn .ag-go { margin-left: auto; }
 
 /* help on WhatsApp (QuickFill) */
-.ag-onboard-help.ag-btn { align-self: flex-start; }
-.ag-onboard-help.ag-btn > svg.i { color: var(--ok); }
+/* A quiet underlined link beside Next, so it never competes with the main action. */
+.ag-onboard-ctarow { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; }
+.ag-onboard-ctarow .ag-onboard-next.ag-btn { align-self: auto; }
+.ag-onboard-help { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; color: var(--ink-strong); font: 500 15px/20px var(--font); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--outline); }
+.ag-onboard-help:hover { text-decoration-color: currentColor; }
+.ag-onboard-help > svg.i { width: 18px; height: 18px; flex: none; color: var(--ok); }
 .ag-onboard-roomin svg.i { width: 14px; height: 14px; flex: none; }
