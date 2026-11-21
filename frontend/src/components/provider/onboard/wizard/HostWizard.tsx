@@ -1,15 +1,20 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import api from '@/lib/api';
 import { rupees, useHostPlanPrice } from '@/lib/prices';
 import { SUPPORTED_IMAGE_ACCEPT } from '@/lib/uploadImage';
-import { distanceTo } from '@/lib/places';
+import { distanceTo, inServiceRegion } from '@/lib/places';
+import { nearestAreaLabel } from '@/lib/hostQuickFill';
+import { CircleNotch as Loader2 } from '@phosphor-icons/react';
 import { capPrice, isValidPhone, MAX_PRICE } from '@/lib/hostFormChecks';
 import { Box, Button, ButtonLink, FieldError, IconButton, StepBar, TextField } from '@/components/ag';
 import { Icon, type IconName } from '@/components/ag/Icon';
 import { HelpWhatsApp, useHostSignupInfo } from '@/components/provider/onboard/QuickFill';
 import { HOST_TYPES, HUBS, MAX_GOODS, MAX_PHOTOS, OFFERS, PRESETS, QUICK_DISHES, SHOP_UNITS, type HostType, type HostWizard, type Place } from './useHostWizard';
 import { photoGoalFor } from '@/lib/photoGoal';
+
+// Leaflet is heavy: load the pin map only once the host has picked a place.
+const PinMap = lazy(() => import('./PinMap'));
 
 /*
  * The host sign-up wizard, laid out as the Aangan 2.0 prototype's V.biz / V.bizsetup
@@ -143,23 +148,51 @@ function PlaceStep({ w }: { w: HostWizard }) {
   const hubs = q.trim() ? HUBS.filter((h) => h.name.toLowerCase().includes(q.trim().toLowerCase())) : HUBS;
   const chips = [...hubs, ...found.filter((f) => !hubs.some((h) => h.name === f.name))];
 
-  const myLocation = () => {
+  // Every pick (GPS, chip, search, pin drag) bumps `seq`; a street name that comes back for an
+  // older pick is dropped. `focus` moves the map view only for picks made outside the map.
+  const seq = useRef(0);
+  const [focus, setFocus] = useState(0);
+  const [naming, setNaming] = useState(false);
+  const nameFromPin = async (lat: number, lng: number, n: number) => {
+    setNaming(true);
+    try {
+      const { data } = await api.get('/geocode/reverse', { params: { lat: lat.toFixed(6), lon: lng.toFixed(6) } });
+      if (n === seq.current && data?.name) w.set((prev) => (prev.place ? { place: { ...prev.place, name: String(data.name).slice(0, 200) } } : {}));
+    } catch { /* keep the nearby-area name */ } finally { if (n === seq.current) setNaming(false); }
+  };
+  const nearbyName = (lat: number, lng: number) => {
+    const km = (h: Place) => distanceTo({ lat, lng }, { latitude: h.lat, longitude: h.lng })?.km ?? 1e9;
+    return nearestAreaLabel(lat, lng) || [...HUBS].sort((a, b) => km(a) - km(b))[0]?.name || 'Darjeeling';
+  };
+  const pick = (p: Place) => { seq.current += 1; setNaming(false); setErr(''); set({ place: p }); setFocus((f) => f + 1); };
+  const movePin = (lat: number, lng: number) => {
+    const n = ++seq.current;
+    setErr(inServiceRegion(lat, lng) ? '' : t('ob.wz.loc_outside'));
+    set({ place: { name: nearbyName(lat, lng), lat, lng } });
+    void nameFromPin(lat, lng, n);
+  };
+
+  const myLocation = async () => {
     setErr('');
     if (!navigator.geolocation) { setErr(t('ob.wz.noloc')); return; }
     setLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      (p) => {
-        setLocating(false);
-        const here = { lat: p.coords.latitude, lng: p.coords.longitude };
-        const km = (h: Place) => distanceTo(here, { latitude: h.lat, longitude: h.lng })?.km ?? 1e9;
-        const near = [...HUBS].sort((a, b) => km(a) - km(b))[0];
-        set({ place: { name: near?.name || 'Darjeeling', lat: here.lat, lng: here.lng } });
-      },
-      () => { setLocating(false); setErr(t('ob.wz.noloc')); },
-      { timeout: 8000, maximumAge: 60000 },
-    );
+    try {
+      const p = await exactPosition();
+      const { latitude: lat, longitude: lng, accuracy } = p.coords;
+      if (!inServiceRegion(lat, lng)) { setErr(t('ob.wz.loc_outside')); return; }
+      const n = ++seq.current;
+      set({ place: { name: nearbyName(lat, lng), lat, lng, accuracy: Math.round(accuracy) } });
+      setFocus((f) => f + 1);
+      void nameFromPin(lat, lng, n);
+    } catch (e) {
+      setErr(e === 'denied' ? t('ob.wz.loc_denied') : t('ob.wz.noloc'));
+    } finally {
+      setLocating(false);
+    }
   };
 
+  const pl = d.place;
+  const weak = (pl?.accuracy ?? 0) > 100;
   return (
     <Frame w={w} title={t('ob.wz.where')}>
       <div className="ag-onboard-loc">
@@ -168,23 +201,72 @@ function PlaceStep({ w }: { w: HostWizard }) {
           <input type="search" placeholder={t('ob.wz.wz_find')} value={q} onChange={(e) => setQ(e.target.value)}
             autoComplete="off" aria-label={t('ob.wz.wz_find')} data-testid="wz-place-search" />
         </label>
-        <Button onClick={myLocation} disabled={locating} className="ag-onboard-myloc" icon={<Icon name="locate" />} data-testid="wz-myloc">
-          {locating ? t('common.loading') : t('ob.wz.myloc')}
+        <Button onClick={myLocation} disabled={locating} className="ag-onboard-myloc" data-testid="wz-myloc"
+          icon={locating ? <Loader2 className="animate-spin" /> : <Icon name="locate" />}>
+          {locating ? t('ob.wz.locating') : t('ob.wz.myloc')}
         </Button>
       </div>
       <div className="ag-onboard-pchips" role="list">
         {chips.map((p) => (
-          <button key={`${p.name}${p.lat}`} type="button" className="ag-onboard-pchip" aria-pressed={d.place?.name === p.name}
-            onClick={() => set({ place: p })} data-testid={`wz-place-${p.name}`}>
+          <button key={`${p.name}${p.lat}`} type="button" className="ag-onboard-pchip" aria-pressed={pl?.name === p.name && pl.lat === p.lat}
+            onClick={() => pick(p)} data-testid={`wz-place-${p.name}`}>
             <Icon name="pin" />{p.name}
           </button>
         ))}
       </div>
       {looking && <p className="ag-small">{t('common.loading')}</p>}
       {!looking && q.trim().length >= 3 && chips.length === 0 && <p className="ag-small">{t('ob.wz.tp_none')}</p>}
-      {d.place && <p className="ag-small ag-onboard-picked"><Icon name="check" />{d.place.name}</p>}
+      {pl && (
+        <div className="ag-onboard-pin" data-testid="wz-place-picked">
+          <p className="where" aria-live="polite">
+            <Icon name="pin" />
+            <span>{naming ? t('ob.wz.loc_naming') : pl.name}</span>
+          </p>
+          <Suspense fallback={<div className="h-56 w-full rounded-[var(--r-card)] bg-[var(--soft)] sm:h-64" />}>
+            <PinMap lat={pl.lat} lng={pl.lng} accuracy={pl.accuracy} focus={focus} onMove={movePin} />
+          </Suspense>
+          <p className="ag-small meta">
+            <span className={weak ? 'weak' : undefined}>
+              {pl.accuracy != null
+                ? (weak ? t('ob.wz.loc_weak', { m: pl.accuracy }) : t('ob.wz.loc_acc', { m: pl.accuracy }))
+                : t('ob.wz.loc_drag')}
+            </span>
+            <span className="ll" data-testid="wz-place-ll">{pl.lat.toFixed(5)}, {pl.lng.toFixed(5)}</span>
+          </p>
+        </div>
+      )}
     </Frame>
   );
+}
+
+/**
+ * The phone's own position, as exact as it will get in a few seconds. The first GPS fix is often
+ * a coarse cell/Wi-Fi guess (hundreds of metres), so keep listening and take the best one, stopping
+ * early once it is within 25 m. Never reuses a cached position. Rejects 'denied' when blocked.
+ */
+function exactPosition(): Promise<GeolocationPosition> {
+  return new Promise((resolve, reject) => {
+    let best: GeolocationPosition | null = null;
+    let done = false;
+    const finish = (why?: 'denied') => {
+      if (done) return;
+      done = true;
+      navigator.geolocation.clearWatch(id);
+      window.clearTimeout(timer);
+      if (why) reject(why);
+      else if (best) resolve(best);
+      else reject('none');
+    };
+    const id = navigator.geolocation.watchPosition(
+      (p) => {
+        if (!best || p.coords.accuracy < best.coords.accuracy) best = p;
+        if (p.coords.accuracy <= 25) finish();
+      },
+      (e) => finish(e.code === e.PERMISSION_DENIED ? 'denied' : undefined),
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 },
+    );
+    const timer = window.setTimeout(() => finish(), 12000);
+  });
 }
 
 /* ---------- 3. Your name and number ---------- */

@@ -7,6 +7,7 @@ import { imageProblem, uploadImage } from '@/lib/uploadImage';
 import { readHostLink } from '@/lib/hostQuickFill';
 import { isValidPhone, MAX_PRICE, MIN_PRICE } from '@/lib/hostFormChecks';
 import { nameProblem } from '@/lib/contentRules';
+import { inServiceRegion } from '@/lib/places';
 
 /*
  * Host onboarding, one question per screen (Aangan 2.0 wizard, provider.js):
@@ -24,7 +25,8 @@ import { nameProblem } from '@/lib/contentRules';
 export const HOST_TYPES = ['homestay', 'driver', 'guide', 'cafe', 'shop'] as const;
 export type HostType = (typeof HOST_TYPES)[number];
 export type StepKey = 'type' | 'place' | 'name' | 'price' | 'menu' | 'extras' | 'review';
-export type Place = { name: string; lat: number; lng: number };
+/** `accuracy` (metres) is set when the place came from the phone's GPS. */
+export type Place = { name: string; lat: number; lng: number; accuracy?: number };
 export type Room = { name: string; price: string; /** guests the room sleeps */ occ?: string };
 /** A café dish or a shop item. `unit` is a shop's (per kg, per pack...); a café's is always per plate. */
 export type Dish = { name: string; price: string; photo?: string; unit?: string };
@@ -163,7 +165,9 @@ export function useHostWizard() {
       photos: saved.photos || [],
     };
   });
-  const set = useCallback((patch: Partial<Draft>) => setD((prev) => ({ ...prev, ...patch })), []);
+  // A patch, or a function of the latest draft (for answers that arrive after the host moved on, like a street name).
+  const set = useCallback((patch: Partial<Draft> | ((prev: Draft) => Partial<Draft>)) =>
+    setD((prev) => ({ ...prev, ...(typeof patch === 'function' ? patch(prev) : patch) })), []);
 
   useEffect(() => { try { sessionStorage.setItem(draftKey, JSON.stringify(d)); } catch { /* private mode */ } }, [d, draftKey]);
 
@@ -230,7 +234,9 @@ export function useHostWizard() {
   const check = (): string => {
     switch (step) {
       case 'type': return d.type ? '' : t('ob.wz.pickone');
-      case 'place': return d.place ? '' : t('ob.wz.wz_noplace');
+      case 'place':
+        if (!d.place) return t('ob.wz.wz_noplace');
+        return inServiceRegion(d.place.lat, d.place.lng) ? '' : t('ob.wz.loc_outside');
       case 'name': {
         // The server's own name rule (lib/contentRules.ts), checked here so "op" is caught on this
         // step and not only when the listing is put up.
