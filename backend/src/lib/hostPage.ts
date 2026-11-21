@@ -1,6 +1,6 @@
 import { inArray, or, eq } from 'drizzle-orm';
 import { db, schema } from '../db';
-import { canSeeProviderPhone, listExtras } from './listingContact';
+import { canSeeProviderPhone, listExtras, publicSocial } from './listingContact';
 import { isHostPlanLive } from './hostPlan';
 import { pagePath } from './providerSlug';
 import { themeOf } from './hostProfile';
@@ -45,7 +45,8 @@ function itemsFor(type: string, e: Record<string, any>) {
  * The public page of one host: the mini-site data the website and the app render (their
  * HostMiniSite components), the host's listings to book, the latest reviews and the contact line.
  * Phone numbers follow the listing rule (lib/listingContact.ts): for drivers, homestays and guides
- * they are only sent to pass holders, hosts, admins and guests with a confirmed booking.
+ * they (and the social links other than the website) are only sent to the host, admins and guests
+ * with a confirmed booking.
  */
 export async function buildHostPage(provider: Provider, viewer: Viewer) {
   const listings = await db.select().from(schema.listings)
@@ -87,7 +88,9 @@ export async function buildHostPage(provider: Provider, viewer: Viewer) {
       gallery: (Array.isArray(e.images) ? e.images : provider.images || []).filter(Boolean),
       available: e.available !== false,
       homeDelivery: e.home_delivery === true,
-      social: e.social && typeof e.social === 'object' ? e.social : {},
+      // Instagram, Facebook and YouTube reach the host as surely as the phone, so they sit behind
+      // the same gate; the website is the host's showcase and stays public.
+      social: publicSocial(e.social, phoneOk),
       // The business theme colour (a palette key or "#RRGGBB"); absent means aangan's own.
       theme: themeOf(e.theme),
     },
