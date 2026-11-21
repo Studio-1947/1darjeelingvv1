@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { readTrip } from '@/lib/tripParams';
-import { roomFit, roomNightly } from '@/lib/roomFit';
+import { roomFit, roomNightly, roomOpen } from '@/lib/roomFit';
 
 export interface BookingForm {
   check_in: string;
@@ -35,12 +35,14 @@ export interface BookingErrors {
   check_in?: string;
   check_out?: string;
   guests?: string;
+  /** A stay whose room the host has since marked full (or every room is full). */
+  room?: string;
 }
 
 const draftKey = (id: string) => `booking_draft_${id}`;
 
 /** The host's rooms, each with a name (listing extras, as the profile writes them). */
-export function roomsOf(item: any): { name: string; price: number; unit: string; occ?: number; extra_beds?: number; extra_bed_price?: number; photo?: string }[] {
+export function roomsOf(item: any): { name: string; price: number; unit: string; occ?: number; extra_beds?: number; extra_bed_price?: number; photo?: string; available?: boolean }[] {
   const rooms = Array.isArray(item?.extras?.rooms) ? item.extras.rooms : [];
   return rooms.filter((r: any) => r && String(r.name || '').trim());
 }
@@ -201,6 +203,11 @@ export function useBookingFlow(item: any, id: string) {
       if (form.check_in && form.check_out && form.check_out <= form.check_in) {
         next.check_out = t('booking.dates_order');
       }
+      // A room the host marked full after the draft was made cannot be sent (the server refuses it too).
+      const rooms = roomsOf(item);
+      const picked = chosenRoom(item, form.room);
+      if (rooms.length && !rooms.some(roomOpen)) next.room = t('listing.rooms_all_full');
+      else if (picked && !roomOpen(picked)) next.room = t('booking.room_full_pick');
     }
     // A driver or guide request needs the day, so the host knows what they are accepting and a
     // guide's seasons can be checked.

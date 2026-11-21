@@ -52,17 +52,26 @@ export function roomsOf(listingExtras: Extras, providerExtras?: Extras): any[] {
 
 const roomKey = (s: unknown) => String(s ?? '').trim().toLowerCase();
 
+/** A room the host switched off (let outside the app) is full: it takes no bookings. */
+export const roomOpen = (r: any) => r?.available !== false;
+
 /**
  * The room a homestay request names, judged against the host's rooms. No room asked for is fine
- * (the listing's own rate applies, as before rooms existed). Returns the room, or a 400 problem.
+ * (the listing's own rate applies, as before rooms existed), unless every room is full. A room the
+ * host marked full is refused. Returns the room, or a 400 problem.
  */
 export function pickRoom(rooms: any[], input: unknown, guests: number):
   { ok: true; room: ChosenRoom | null } | Fail {
-  if (!given(input)) return { ok: true, room: null };
+  if (!given(input)) {
+    const named = rooms.filter((r) => r && typeof r === 'object' && roomKey(r.name));
+    if (named.length && !named.some(roomOpen)) return fail('rooms_full', 'Every room at this homestay is full right now.');
+    return { ok: true, room: null };
+  }
   if (typeof input !== 'string' || input.trim().length > 120) return fail('bad_room', 'Pick one of the rooms this homestay lists.');
   const want = roomKey(input);
   const found = rooms.find((r) => r && typeof r === 'object' && roomKey(r.name) === want);
   if (!found) return fail('bad_room', 'This homestay has no room by that name. Pick one of its rooms.');
+  if (!roomOpen(found)) return fail('room_full', `${String(found.name).trim()} is full right now. Pick another room.`);
   const price = Math.max(0, Math.floor(Number(found.price)) || 0);
   // A room is always one price a night for the whole room (user decision 2026-11-21); a room saved
   // per head before that is priced the same way now.

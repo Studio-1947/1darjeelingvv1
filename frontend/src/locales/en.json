@@ -268,6 +268,7 @@
     "recommended_note": "Local drivers the host knows and trusts",
     "unavailable_title": "Not taking bookings right now",
     "unavailable_body": "This host has paused bookings for now. Save it and check back later.",
+    "rooms_full_body": "Every room here is taken right now. Save it and check back later.",
     "menu_label": "Menu",
     "menu_title": "Menu and prices",
     "menu_note": "What this place serves, and what each item costs",
@@ -451,6 +452,7 @@
     "trip_date": "Date",
     "guide_seasons": "Guides in: {{seasons}}",
     "dates_order": "Check-out date must be after check-in date",
+    "room_full_pick": "This room is full now. Go back and pick another room.",
     "failed": "Booking failed",
     "price_details": "Price details",
     "nights_one": "{{count}} night",
@@ -2472,7 +2474,10 @@
     "gallery_done": "{{have}} photos ({{goal}} needed) ✓",
     "gallery_short": "{{have}} of {{goal}} needed",
     "capacity_from_rooms": "Worked out from your rooms, extra mattresses included.",
-    "rooms_need_sleeps": "Say how many people each room sleeps, then save."
+    "rooms_need_sleeps": "Say how many people each room sleeps, then save.",
+    "property": "Property",
+    "property_hint": "Rooms, food, guest occupancy and amenities below are for this property.",
+    "property_save_first": "Save your changes before switching to another property."
   },
   "owners": {
     "title": "Owners",
@@ -3114,7 +3119,9 @@
       "extra_one": "Extra: +{{count}}",
       "extra_other": "Extra: +{{count}}",
       "extra_price": "₹ per extra person a night",
-      "extra_price_note": "Each extra guest pays this a night. Leave it empty if the mattress is free."
+      "extra_price_note": "Each extra guest pays this a night. Leave it empty if the mattress is free.",
+      "room_open_note": "Travellers can ask to book this room.",
+      "room_full_note": "Shown as full. Turn it back on when the room is free."
     },
     "providerProfile": {
       "could_not_save": "Could not save",
@@ -3732,6 +3739,8 @@
     "ride_near": "Drivers nearby",
     "ppl_one": "1 person",
     "ppl_many": "{{count}} people",
+    "room_full": "Full",
+    "rooms_all_full": "Every room is full right now.",
     "sb_room": "Room",
     "db_fromL": "From",
     "db_toL": "To",

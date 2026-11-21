@@ -9,6 +9,8 @@ export type Priced = {
   name: string; price: number | ''; unit: string; photo?: string;
   /** Homestay rooms only: people the room sleeps, extra mattresses (0-2) and what each extra person pays a night. */
   occ?: number | ''; extra_beds?: number; extra_bed_price?: number | '';
+  /** Homestay rooms only: false when the host has let the room outside the app (shown as full). */
+  available?: boolean;
 };
 
 /** Most people the "Sleeps" picker offers, and extra mattresses a room can take (backend lib/hostProfile.ts). */
@@ -84,6 +86,17 @@ export default function PricedEditor({ rows, onChange, units, unitLabel, namePla
                   <p className="ag-small">{t('ui.pricedEditor.extra_price_note')}</p>
                 </div>
               )}
+              {/* Let outside the app: switched off, the room shows as full and cannot be booked. */}
+              <label className="ag-host-switch">
+                <span>
+                  {/* The same words as the profile's own switch on this page (hostProfile.available_on). */}
+                  <b>{t('hostProfile.available_on')}</b>
+                  <span className="ag-small">{r.available === false ? t('ui.pricedEditor.room_full_note') : t('ui.pricedEditor.room_open_note')}</span>
+                </span>
+                {/* Named by the wrapping label, so the note is read too (as the profile's Toggle). */}
+                <input type="checkbox" role="switch" checked={r.available !== false}
+                  onChange={(e) => set(i, { available: e.target.checked })} data-testid={`${testid}-open-${i}`} />
+              </label>
             </>
           )}
         </div>

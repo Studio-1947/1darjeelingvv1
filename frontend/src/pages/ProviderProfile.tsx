@@ -76,6 +76,32 @@ const last10 = (v: unknown) => String(v ?? '').replace(/\D/g, '').slice(-10);
 /** Passenger capacity choices for a driver: the 1-30 the server accepts. */
 const SEAT_OPTIONS = Array.from({ length: 30 }, (_, i) => i + 1);
 
+/** Saved priced rows (rooms, food, services, routes, goods) as the editor holds them. */
+function pricedRows(rows: any[] | undefined, nameKey = 'name', unit = 'day'): Priced[] {
+  return (Array.isArray(rows) ? rows : []).map((r) => ({
+    name: String(r?.[nameKey] ?? r?.name ?? ''), price: Number(r?.price) || '', unit: r?.unit || unit, ...(r?.photo ? { photo: String(r.photo) } : {}),
+    // A homestay room's size and extra mattress (lib/roomFit.ts), kept so a save does not drop them.
+    ...(Number(r?.occ) > 0 ? { occ: Number(r.occ), extra_beds: Number(r?.extra_beds) || 0, extra_bed_price: Number(r?.extra_bed_price) || '' } : {}),
+    // A room the host switched off (let outside the app) stays off.
+    ...(r?.available === false ? { available: false } : {}),
+  }));
+}
+
+/**
+ * One property's own fields, from its extras (the server's PROPERTY_FIELDS): a host with several
+ * homestays keeps rooms, food, occupancy and amenities per listing (user decision 2026-11-21).
+ */
+const PROPERTY_KEYS = ['rooms', 'meals', 'capacity', 'amenities'] as const;
+function propertyForm(e: any) {
+  return {
+    // A room is one price a night for the whole room (a room saved per head before shows per night).
+    rooms: pricedRows(e?.rooms, 'name', 'night').map((r) => ({ ...r, unit: 'night' })),
+    meals: pricedRows(e?.meals, 'name', 'meal'),
+    capacity: e?.capacity ?? '',
+    amenities: Array.isArray(e?.amenities) ? e.amenities : [],
+  };
+}
+
 function Group({ label, children, hint }: { label: string; children: React.ReactNode; hint?: string }) {
   return (
     <div className="grid gap-2">
@@ -161,7 +187,13 @@ export default function ProviderProfile() {
   const [myListings, setMyListings] = useState<any[]>([]);
   const [editListing, setEditListing] = useState<any>(null);
   const [addListing, setAddListing] = useState(false);
-  const loadListings = () => api.get('/bookings/provider').then((r) => setMyListings(r.data.listings || [])).catch(() => setMyListings([]));
+  // A host with several homestays edits one property's rooms, food, occupancy and amenities at a
+  // time. null = the first one (set up at sign-up), which the profile itself holds.
+  const [propertyId, setPropertyId] = useState<string | null>(null);
+  const propertyIdRef = useRef<string | null>(null);
+  const loadListings = (): Promise<any[]> => api.get('/bookings/provider')
+    .then((r) => { const ls = r.data.listings || []; setMyListings(ls); return ls; })
+    .catch(() => { setMyListings([]); return []; });
   useEffect(() => { loadListings(); }, []);
   useEffect(() => { api.get('/providers/me/stats').then((r) => setStats(r.data)).catch(() => setStats(null)); }, []);
 
@@ -188,14 +220,11 @@ export default function ProviderProfile() {
   useEffect(() => {
     if (!provider) return;
     const e = provider.extras || {};
-    const priced = (rows: any[] | undefined, nameKey = 'name', unit = 'day'): Priced[] =>
-      (Array.isArray(rows) ? rows : []).map((r) => ({
-        name: String(r?.[nameKey] ?? r?.name ?? ''), price: Number(r?.price) || '', unit: r?.unit || unit, ...(r?.photo ? { photo: String(r.photo) } : {}),
-        // A homestay room's size and extra mattress (lib/roomFit.ts), kept so a save does not drop them.
-        ...(Number(r?.occ) > 0 ? { occ: Number(r.occ), extra_beds: Number(r?.extra_beds) || 0, extra_bed_price: Number(r?.extra_bed_price) || '' } : {}),
-      }));
+    const priced = pricedRows;
     setP(provider);
-    setForm({
+    // The profile holds the first property's rooms. While another property is picked, its rooms stay
+    // in the form across a reload of the profile (after a save).
+    setForm((prev: any) => ({
       business_name: provider.business_name || '',
       contact_phone: provider.contact_phone || '',
       cover: (provider.images || [])[0] || '',
@@ -217,12 +246,9 @@ export default function ProviderProfile() {
       license_number: e.license_number || '',
       seats: e.seats ?? '',
       routes: Array.isArray(e.routes) ? e.routes : [],
-      // homestay
-      // A room is one price a night for the whole room (a room saved per head before shows per night).
-      rooms: priced(e.rooms, 'name', 'night').map((r) => ({ ...r, unit: 'night' })),
-      meals: priced(e.meals, 'name', 'meal'),
-      capacity: e.capacity ?? '',
-      amenities: Array.isArray(e.amenities) ? e.amenities : [],
+      // homestay (and a cafe's capacity and amenities)
+      ...propertyForm(e),
+      ...(prev && propertyIdRef.current ? Object.fromEntries(PROPERTY_KEYS.map((k) => [k, prev[k]])) : {}),
       recommended_drivers: Array.isArray(e.recommended_drivers) ? e.recommended_drivers : [],
       home_delivery: e.home_delivery === true,
       // guide
@@ -236,7 +262,7 @@ export default function ProviderProfile() {
       goods: priced(e.goods, 'name', 'item'),
       shop_kind: e.shop_kind || '',
       opening_hours: e.opening_hours || '',
-    });
+    }));
   }, [provider]);
 
   // The dashboard's Menu button links to /provider/profile#menu: once the form is drawn, bring the
@@ -258,6 +284,24 @@ export default function ProviderProfile() {
     setForm(updater);
   };
   const set = (patch: any) => updateForm((f: any) => ({ ...f, ...patch }));
+
+  // The host's homestays, oldest first: the first is the one the profile holds. Only this
+  // business's own listings, the ones a save can write to (the server checks listing_id the same way).
+  const homes = React.useMemo(() => myListings.filter((l) => l.type === 'homestay' && l.provider_id === provider?.id)
+    .sort((a, b) => String(a.created_at).localeCompare(String(b.created_at))), [myListings, provider?.id]);
+  // Unsaved edits to the picked property's rooms, food, occupancy or amenities: switching property
+  // would drop them, so the picker waits for a save.
+  const [propertyEdited, setPropertyEdited] = useState(false);
+  const setProperty = (patch: any) => { setPropertyEdited(true); set(patch); };
+  const pickProperty = (id: string) => {
+    const l = homes.find((x) => x.id === id);
+    if (!l || propertyEdited) return;
+    const pick = id === homes[0]?.id ? null : id;
+    setPropertyId(pick);
+    propertyIdRef.current = pick;
+    // The first property's fields live on the profile; another one's on its own listing.
+    updateForm((f: any) => ({ ...f, ...propertyForm(pick ? l.extras : provider?.extras) }));
+  };
 
   const upload = (field: 'cover' | 'host_avatar') => (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -312,6 +356,7 @@ export default function ProviderProfile() {
         name: r.name.trim(), price: Number(r.price) || 0, unit: r.unit, ...(r.photo ? { photo: r.photo } : {}),
         ...(fit.occ ? { occ: fit.occ } : {}),
         ...(fit.extraBeds ? { extra_beds: fit.extraBeds, ...(fit.extraBedPrice ? { extra_bed_price: fit.extraBedPrice } : {}) } : {}),
+        ...(r.available === false ? { available: false } : {}),
       };
     });
     const profile: Record<string, unknown> = {
@@ -357,6 +402,8 @@ export default function ProviderProfile() {
     if ((type === 'cafe' || type === 'shop') && num(form.capacity) !== undefined) profile.capacity = num(form.capacity);
     if (type === 'cafe' || type === 'shop') profile.opening_hours = (form.opening_hours || '').trim();
     const body: Record<string, unknown> = { profile };
+    // Rooms, food, occupancy and amenities go to the picked property only (the first one when none is picked).
+    if (type === 'homestay' && propertyId) body.listing_id = propertyId;
     if (form.business_name.trim() && form.business_name.trim() !== p.business_name) body.business_name = form.business_name.trim();
     if (form.contact_phone.trim() && form.contact_phone.trim() !== p.contact_phone) body.contact_phone = form.contact_phone.trim();
     if (form.cover && form.cover !== (p.images || [])[0]) body.cover_image = form.cover;
@@ -364,6 +411,12 @@ export default function ProviderProfile() {
       const { data } = await api.patch('/providers/me', body);
       setP((prev: any) => ({ ...prev, ...data.provider }));
       await refreshProvider();
+      // The picker reads each property's rooms from its listing: bring them up to date, and show
+      // another property's rooms as the server stored them (the first one's come back with the profile).
+      const fresh = await loadListings();
+      const saved = propertyId ? fresh.find((l) => l.id === propertyId) : null;
+      if (saved) updateForm((f: any) => ({ ...f, ...propertyForm(saved.extras) }));
+      setPropertyEdited(false);
       setMsg({ ok: true, text: t('hostProfile.saved') });
     } catch (e: any) {
       setMsg({ ok: false, text: e?.response?.data?.detail || e.message || t('ui.providerProfile.could_not_save') });
@@ -598,12 +651,22 @@ export default function ProviderProfile() {
 
         {type === 'homestay' && (
           <Section title={t('hostProfile.rooms_food')} note={t('hostProfile.rooms_food_note')} testid="profile-homestay">
+            {/* Each property keeps its own rooms, food, occupancy and amenities; pick which one to edit. */}
+            {homes.length > 1 && (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <SelectField label={t('hostProfile.property')} disabled={propertyEdited}
+                  hint={propertyEdited ? t('hostProfile.property_save_first') : t('hostProfile.property_hint')}
+                  value={propertyId || homes[0].id} onChange={(e) => pickProperty(e.target.value)} data-testid="profile-property">
+                  {homes.map((l) => <option key={l.id} value={l.id}>{l.title}{l.location ? ` · ${l.location}` : ''}</option>)}
+                </SelectField>
+              </div>
+            )}
             <Group label={t('profile.rooms')}>
-              <PricedEditor rows={form.rooms} onChange={(rooms) => set({ rooms })} units={['night']} unitLabel={unitLabel}
+              <PricedEditor rows={form.rooms} onChange={(rooms) => setProperty({ rooms })} units={['night']} unitLabel={unitLabel}
                 namePlaceholder={t('hostProfile.room_ph')} addLabel={t('hostProfile.add_room')} testid="profile-rooms" sleeps />
             </Group>
             <Group label={t('profile.meals')}>
-              <PricedEditor rows={form.meals} onChange={(meals) => set({ meals })} units={['meal', 'day', 'head']} unitLabel={unitLabel}
+              <PricedEditor rows={form.meals} onChange={(meals) => setProperty({ meals })} units={['meal', 'day', 'head']} unitLabel={unitLabel}
                 namePlaceholder={t('hostProfile.meal_ph')} addLabel={t('hostProfile.add_meal')} testid="profile-meals" />
             </Group>
             {/* Rooms that say what they sleep decide the guest occupancy (saved with the profile); else the host types it. */}
@@ -611,10 +674,10 @@ export default function ProviderProfile() {
               <TextField label={t('hostProfile.capacity')} hint={t('hostProfile.capacity_from_rooms')} value={String(roomsCapacity(form.rooms))}
                 readOnly className="sm:max-w-[12rem]" data-testid="profile-capacity-rooms" />
             ) : (
-              <TextField label={t('hostProfile.capacity')} type="number" min={1} max={100} value={form.capacity} onChange={(e) => set({ capacity: e.target.value })} className="sm:max-w-[12rem]" />
+              <TextField label={t('hostProfile.capacity')} type="number" min={1} max={100} value={form.capacity} onChange={(e) => setProperty({ capacity: e.target.value })} className="sm:max-w-[12rem]" />
             )}
             <Group label={t('hostProfile.amenities')}>
-              <AmenityPicker presets={HOMESTAY_AMENITIES} selected={form.amenities} onChange={(amenities: string[]) => set({ amenities })} />
+              <AmenityPicker presets={HOMESTAY_AMENITIES} selected={form.amenities} onChange={(amenities: string[]) => setProperty({ amenities })} />
             </Group>
             <Group label={t('hostProfile.recommended_drivers')}>
               <DriverPicker selected={form.recommended_drivers} onChange={(recommended_drivers) => set({ recommended_drivers })} />
