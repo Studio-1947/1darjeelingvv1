@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  X, Loader2, Upload, Plus, Trash2, ImageIcon, MapPin, Info, Star, Eye, EyeOff,
+  X, Loader2, Upload, Plus, Trash2, ImageIcon, MapPin, Info, Star, Eye, EyeOff, ExternalLink,
 } from 'lucide-react';
 import { uploadSpotImages, PartialUploadError } from '@/lib/uploadImage';
+import api from '@/lib/api';
 import type { AdminSpot } from './SpotsTab';
 
 /** Same cap as the backend (backend/src/lib/priceCap.ts): no price above ₹50,000. */
@@ -193,6 +194,11 @@ export default function SpotFormModal({ open, spot, onClose, onSubmit }: {
 }) {
   const isEdit = !!spot?.id;
   const [form, setForm] = useState<FormState>(() => initialState(spot));
+  // A Google Maps link (or "lat, lng") turned into the pin by the server, which follows short
+  // maps.app.goo.gl links. It only fills the two fields; Save still decides.
+  const [mapsLink, setMapsLink] = useState('');
+  const [pinBusy, setPinBusy] = useState(false);
+  const [pinMsg, setPinMsg] = useState<{ tone: 'ok' | 'warn' | 'error'; text: string } | null>(null);
   const [gallery, setGallery] = useState<string[]>(() => ((spot?.extras?.images as string[]) || []));
   const [highlights, setHighlights] = useState<string[]>(() => ((spot?.extras?.highlights as string[]) || []));
   const [tags, setTags] = useState<string[]>(() => spot?.tags || []);
@@ -211,6 +217,8 @@ export default function SpotFormModal({ open, spot, onClose, onSubmit }: {
   useEffect(() => {
     if (!open) return;
     setForm(initialState(spot));
+    setMapsLink('');
+    setPinMsg(null);
     setGallery(((spot?.extras?.images as string[]) || []));
     setHighlights(((spot?.extras?.highlights as string[]) || []));
     setTags(spot?.tags || []);
@@ -303,6 +311,25 @@ export default function SpotFormModal({ open, spot, onClose, onSubmit }: {
       throw new Error(`${label} must be a number between -${limit} and ${limit}.`);
     }
     return n;
+  };
+
+  const getPin = async () => {
+    if (!mapsLink.trim() || pinBusy) return;
+    setPinBusy(true);
+    setPinMsg(null);
+    try {
+      const { data } = await api.post('/admin/spots/resolve-pin', { maps_url: mapsLink.trim() });
+      const lat = Number(data.latitude).toFixed(6).replace(/0+$/, '').replace(/\.$/, '');
+      const lng = Number(data.longitude).toFixed(6).replace(/0+$/, '').replace(/\.$/, '');
+      setForm((f) => ({ ...f, latitude: lat, longitude: lng }));
+      setPinMsg(data.in_region
+        ? { tone: 'ok', text: `Pin set: ${lat}, ${lng}. Open it below to check it is the right place.` }
+        : { tone: 'warn', text: `Pin set: ${lat}, ${lng}, but it is outside the Darjeeling area. Check it is the right place.` });
+    } catch (err: any) {
+      setPinMsg({ tone: 'error', text: err?.response?.data?.detail || 'Could not read a pin from that link.' });
+    } finally {
+      setPinBusy(false);
+    }
   };
 
   const submit = async (e: React.FormEvent) => {
@@ -575,7 +602,35 @@ export default function SpotFormModal({ open, spot, onClose, onSubmit }: {
             </div>
           </Section>
 
-          <Section icon={MapPin} title="Map pin" note="Both fields, or neither  the public page falls back to central Darjeeling.">
+          <Section icon={MapPin} title="Map pin" note="Paste the spot's Google Maps link to fill the pin. Leave it empty and the public page falls back to central Darjeeling.">
+            <Field label="Google Maps link" hint="In Google Maps open the spot, tap Share and copy the link. If a link has no pin, right-click the spot on a computer, click the numbers at the top to copy them, and paste those here.">
+              <div className="mt-1 flex flex-wrap items-center gap-2">
+                <input
+                  value={mapsLink}
+                  onChange={(e) => { setMapsLink(e.target.value); setPinMsg(null); }}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void getPin(); } }}
+                  placeholder="https://maps.app.goo.gl/…  or  27.0410, 88.2663"
+                  data-testid="spot-form-maps-link"
+                  className={`${inputClass} !mt-0 flex-1 min-w-[14rem]`}
+                />
+                <button
+                  type="button"
+                  onClick={() => void getPin()}
+                  disabled={pinBusy || !mapsLink.trim()}
+                  data-testid="spot-form-get-pin"
+                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full border border-[var(--line)] text-xs font-bold text-ink disabled:opacity-40 hover:bg-mist transition-colors"
+                >
+                  {pinBusy ? <Loader2 size={14} className="animate-spin" /> : <MapPin size={14} />}
+                  Get pin
+                </button>
+              </div>
+            </Field>
+            {pinMsg && (
+              <p data-testid="spot-form-pin-msg" role={pinMsg.tone === 'error' ? 'alert' : 'status'}
+                className={`text-xs font-semibold ${pinMsg.tone === 'error' ? 'text-flag' : pinMsg.tone === 'warn' ? 'text-gold-dark' : 'text-pine'}`}>
+                {pinMsg.text}
+              </p>
+            )}
             <div className="grid sm:grid-cols-2 gap-4">
               <Field label="Latitude" hint="e.g. 27.0028">
                 <input value={form.latitude} onChange={(e) => set('latitude', e.target.value)} inputMode="decimal" data-testid="spot-form-latitude" className={inputClass} />
@@ -584,6 +639,18 @@ export default function SpotFormModal({ open, spot, onClose, onSubmit }: {
                 <input value={form.longitude} onChange={(e) => set('longitude', e.target.value)} inputMode="decimal" data-testid="spot-form-longitude" className={inputClass} />
               </Field>
             </div>
+            {/* Check the pin where it will show: opens the exact point in Google Maps. */}
+            {form.latitude.trim() && form.longitude.trim() && (
+              <a
+                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${form.latitude.trim()},${form.longitude.trim()}`)}`}
+                target="_blank"
+                rel="noreferrer"
+                data-testid="spot-form-open-map"
+                className="inline-flex items-center gap-1 text-xs font-bold text-pine hover:underline"
+              >
+                <ExternalLink size={13} /> Open this pin in Google Maps
+              </a>
+            )}
           </Section>
 
           <Section icon={Star} title="Publishing" note="Drafts are invisible to visitors until you publish them.">
