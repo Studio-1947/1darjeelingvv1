@@ -46,12 +46,34 @@ describe('provider phone on a listing', () => {
     expect((await detail(id, await loginAdmin())).provider_phone).toBe(phone);
   });
 
-  it('is released to a signed-in guest with an active aangan pass', async () => {
+  it('is held back from a pass holder until their booking is confirmed', async () => {
     const { token: host, phone } = await onboardActiveProvider({ name: 'Phone Release' });
     const id = await listingFor(host, { title: 'Phone Release Stay', type: 'homestay', description: 'A room with a view', location: 'Darjeeling', price: 1500 });
-    const { token: guest } = await registerUser({ name: 'Phone Guest' });
+    const { token: member } = await registerUser({ name: 'Phone Member' });
 
+    const before = await detail(id, member);
+    expect(before.provider_phone).toBeNull();
+    expect(before.provider_phone_locked).toBe(true);
+
+    await createConfirmedBooking({ token: member, listingId: id, listingType: 'homestay', ...nights(40) });
+    expect((await detail(id, member)).provider_phone).toBe(phone);
+  });
+
+  it('is released to a guest without the pass once their booking is confirmed', async () => {
+    const { token: host, phone } = await onboardActiveProvider({ name: 'Phone Paid Fee' });
+    const id = await listingFor(host, { title: 'Phone Paid Fee Stay', type: 'homestay', description: 'A room with a view', location: 'Darjeeling', price: 1500 });
+    const { token: guest } = await registerUser({ name: 'Phone Fee Guest', paySupport: false });
+
+    expect((await detail(id, guest)).provider_phone).toBeNull();
+    await createConfirmedBooking({ token: guest, listingId: id, listingType: 'homestay', ...nights(45) });
     expect((await detail(id, guest)).provider_phone).toBe(phone);
+  });
+
+  it('is not shown to another host', async () => {
+    const { token: host } = await onboardActiveProvider({ name: 'Phone Private Host' });
+    const id = await listingFor(host, { title: 'Phone Private Stay', type: 'homestay', description: 'A room with a view', location: 'Darjeeling', price: 1500 });
+    const { token: otherHost } = await onboardActiveProvider({ name: 'Phone Nosy Host', businessType: 'driver' });
+    expect((await detail(id, otherHost)).provider_phone).toBeNull();
   });
 
   it('is not released to a different guest by someone else\'s booking', async () => {
