@@ -555,7 +555,6 @@ function ProviderDashboardPage() {
               </span>
             </div>
           )}
-          <ButtonLink to="/theme?for=business" icon={<Icon name="sun" />} data-testid="host-theme-link">{t('theme.title', 'Theme colour')}</ButtonLink>
           <Button go onClick={toTraveller}>{t('pd.switch_traveller')}</Button>
         </div>
       </div>
