@@ -153,6 +153,12 @@ function ProviderDashboardPage() {
     await loadDashboard();
   };
 
+  // The guest never came: the booking closes and does not count as a completed trip.
+  const handleNoShow = async (bookingId: string) => {
+    await api.post(`/bookings/${bookingId}/no-show`);
+    await loadDashboard();
+  };
+
   // A guest asked to cancel a confirmed booking: accept (it is cancelled) or keep it.
   const handleCancelRequest = async (bookingId: string, answer: 'accept' | 'keep') => {
     await api.post(`/bookings/${bookingId}/cancel-request/${answer}`);
@@ -314,7 +320,7 @@ function ProviderDashboardPage() {
               {provider.page_path && <ButtonLink to={provider.page_path} go>{t('host.my_site', 'My website')}</ButtonLink>}
             </Box>
           ) : (
-            scoped.map((b) => <BookingCard key={b.id} b={b} onCancel={handleCancelBooking} onAccept={handleAcceptBooking} onCancelRequest={handleCancelRequest} host={hostInfo} />)
+            scoped.map((b) => <BookingCard key={b.id} b={b} onCancel={handleCancelBooking} onAccept={handleAcceptBooking} onCancelRequest={handleCancelRequest} onNoShow={handleNoShow} host={hostInfo} />)
           )}
 
           {/* The board's per-type figures and points, for this listing or all of them. */}

@@ -3,7 +3,7 @@ import request from 'supertest';
 import { eq } from 'drizzle-orm';
 import { app } from '../src/app';
 import { db, schema } from '../src/db';
-import { registerUser, createListing, payToSend, activateSupport } from './helpers';
+import { registerUser, createListing, payToSend, activateSupport, inDays } from './helpers';
 
 /**
  * The booking fee: with the aangan pass a request goes to the host free. Without it the request is
@@ -13,9 +13,9 @@ import { registerUser, createListing, payToSend, activateSupport } from './helpe
 
 const auth = (t: string) => ({ Authorization: `Bearer ${t}` });
 
-async function ask(token: string, listingId: string) {
+async function ask(token: string, listingId: string, body: Record<string, unknown> = {}) {
   const res = await request(app).post('/api/bookings').set(auth(token))
-    .send({ listing_id: listingId, listing_type: 'spot' });
+    .send({ listing_id: listingId, listing_type: 'spot', ...body });
   expect(res.status).toBe(200);
   return res.body as { booking: { id: string; status: string }; fee_due?: boolean };
 }
@@ -80,7 +80,9 @@ describe('booking without the aangan pass', () => {
 
     // Confirmed means the guest has had the host's number: dropping it keeps the fee paid.
     const listing2 = await createListing();
-    const b = (await ask(token, listing2.id)).booking.id;
+    // Dated in the future: a booking with no date counts as completed once confirmed, and a
+    // completed trip cannot be cancelled at all.
+    const b = (await ask(token, listing2.id, { check_in: inDays(20) })).booking.id;
     await payToSend(token, b);
     await request(app).post(`/api/bookings/${b}/checkout`).set(auth(token)).expect(200);
     const dropped = await request(app).patch(`/api/bookings/${b}/cancel`).set(auth(token));

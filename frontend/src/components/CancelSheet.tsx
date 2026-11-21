@@ -20,6 +20,7 @@ const REASON_EN: Record<string, string> = {
   fully_booked: 'Fully booked for these dates',
   not_available: 'Car or home not available',
   family_health: 'Family or health reason',
+  no_show: 'The guest did not come',
 };
 
 export const reasonLabel = (t: TFunction, code?: string | null) =>

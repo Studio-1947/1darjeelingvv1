@@ -187,6 +187,8 @@ export const CANCEL_REASON_TEXT: Record<string, string> = {
   fully_booked: 'Fully booked for these dates',
   not_available: 'Car or home not available',
   family_health: 'Family or health reason',
+  // Set only by POST /bookings/{id}/no-show, never picked in the cancel sheet.
+  no_show: 'The guest did not come',
 };
 
 export type CancelSide = 'guest' | 'host' | 'admin';

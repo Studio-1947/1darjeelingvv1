@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { REQUEST_EXPIRY_HOURS } from '../config';
-import { isCompleted } from '../lib/travellerDashboard';
+import { isCompleted, isTripOver, noShowOpen, noShowRefusal, todayInIndia, NO_SHOW_WINDOW_DAYS } from '../lib/travellerDashboard';
 import { guideWorksOn, isAvailable } from '../lib/hostProfile';
 import { v4 as uuidv4 } from 'uuid';
 import { db, schema } from '../db';
@@ -21,7 +21,7 @@ import { releaseVoucherForBooking } from '../lib/vouchers';
 import { requireTravellerMode } from '../middleware/mode';
 import { amountOfBooking } from '../lib/bookingAmount';
 import {
-  CANCEL_REASON_TEXT, checkCancelReason, checkDriverTrip, isLateCancel, pickRoom, roomsOf,
+  CANCEL_REASON_TEXT, MAX_CANCEL_NOTE, checkCancelReason, checkDriverTrip, isLateCancel, pickRoom, roomsOf,
   type CancelSide, type ChosenRoom, type DriverTrip,
 } from '../lib/bookingDetails';
 import { ownListingIds } from '../lib/hostAccess';
@@ -625,6 +625,8 @@ router.get('/provider', authenticateToken, async (req: Request, res: Response) =
       services: b.services ?? [],
       ...detailFields(b),
       completed: isCompleted(b),
+      // The host may say the guest never came (POST /bookings/{id}/no-show).
+      no_show_open: noShowOpen(b),
       // What this booking is worth to the host (room x nights or rate x guests x nights for a
       // homestay, the quoted fare for a driver), the same rule as stats.revenue, so a dashboard
       // scoped to one listing adds up the same way.
@@ -871,6 +873,84 @@ router.patch('/:id/confirm', authenticateToken, async (req: Request, res: Respon
 
 /**
  * @openapi
+ * /bookings/{id}/no-show:
+ *   post:
+ *     summary: The host says the guest never came
+ *     description: >
+ *       On a confirmed booking with a date, from the day after its first day until
+ *       NO_SHOW_WINDOW_DAYS (2) after its last, and not once the guest has reviewed. The
+ *       booking is closed (`cancel_reason: no_show`), so it never counts as a completed trip: no
+ *       host points, no review. The ₹1 that sent the request is not refunded (the guest had the
+ *       host's number). The guest is told in the app and can use Report a problem if it is wrong.
+ *     tags: [Bookings]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: The closed booking }
+ *       403: { description: Not the host of this listing }
+ *       409: { description: "Not confirmed, the trip has not started, or it ended too long ago (`code`)" }
+ */
+router.post('/:id/no-show', authenticateToken, async (req: Request, res: Response) => {
+  const [booking] = await db.select().from(schema.bookings).where(eq(schema.bookings.id, routeParam(req, 'id'))).limit(1);
+  if (!booking) return res.status(404).json({ detail: 'Booking not found' });
+  const ownsIt = await ownsListingFor(booking, req.user);
+  if (!ownsIt && req.user.role !== 'admin') {
+    return res.status(403).json({ detail: 'Only the host of this listing can report this' });
+  }
+  const rawNote = typeof req.body?.note === 'string' ? req.body.note.trim() : '';
+  if (rawNote.length > MAX_CANCEL_NOTE) {
+    return res.status(400).json({ detail: `The note can be up to ${MAX_CANCEL_NOTE} characters`, code: 'bad_note' });
+  }
+  const note = rawNote || null;
+  // A guest who has already reviewed the stay was there: the review stands, so does the trip.
+  const [reviewed] = await db.select({ id: schema.reviews.id }).from(schema.reviews)
+    .where(and(eq(schema.reviews.userId, booking.userId), eq(schema.reviews.listingId, booking.listingId))).limit(1);
+  if (reviewed) return res.status(409).json({ detail: 'The guest has already reviewed this stay', code: 'reviewed' });
+  const today = todayInIndia();
+
+  const change = await db.transaction(async (tx) => {
+    const now = await lockBookingForChange(tx, booking.id);
+    if (!now) return null;
+    if (now.status === 'cancelled' && now.cancelReason === 'no_show') return { updated: now, unchanged: true as const };
+    if (now.status !== 'confirmed') return { bad: 'not_confirmed' as const };
+    if (!noShowOpen(now, today)) return { bad: noShowRefusal(now, today) };
+    const [updated] = await tx.update(schema.bookings)
+      .set({
+        status: 'cancelled',
+        cancelReason: 'no_show',
+        cancelNote: note,
+        cancelledBy: ownsIt ? 'host' : 'admin',
+        cancelledAt: new Date().toISOString(),
+        declined: false,
+        cancelLate: false,
+        cancelRequestedAt: null,
+      })
+      .where(eq(schema.bookings.id, now.id))
+      .returning();
+    return { updated, unchanged: false as const };
+  });
+  if (!change) return res.status(404).json({ detail: 'Booking not found' });
+  if ('bad' in change) {
+    const detail = change.bad === 'not_confirmed' ? 'Only a confirmed booking can be marked as a no-show'
+      : change.bad === 'no_dates' ? 'A booking with no date cannot be marked as a no-show'
+      : change.bad === 'not_started' ? 'You can report this from the day after the guest was due'
+      : `This trip ended more than ${NO_SHOW_WINDOW_DAYS} days ago`;
+    return res.status(409).json({ detail, code: change.bad });
+  }
+  if (!change.unchanged) {
+    // No refund and the voucher stays spent: the guest held the booking and had the number.
+    await addInAppNotification(booking.userId, {
+      kind: 'booking_no_show',
+      title: 'The host says you did not come',
+      body: `The host of ${booking.listingTitle} says you did not come, so the booking was closed. If that is wrong, use Report a problem in My Trips.`,
+      msg: { key: 'no_show_guest', params: { place: booking.listingTitle } },
+      refId: booking.id,
+    });
+  }
+  res.json({ booking: bookingShape(change.updated) });
+});
+
+/**
+ * @openapi
  * /bookings/{id}/send:
  *   post:
  *     summary: Send a saved request to the host (free with the aangan pass)
@@ -1007,6 +1087,9 @@ router.patch('/:id/cancel', authenticateToken, async (req: Request, res: Respons
     if (!now) return null;
     // Idempotent: cancelling an already-cancelled booking just echoes it back.
     if (now.status === 'cancelled') return { was: now.status, updated: now, unchanged: true };
+    // A finished trip is history: it counts for the host and the guest, and cancelling it now
+    // would also refund the fee for a stay that happened. Only the team can still undo it.
+    if (side !== 'admin' && isTripOver(now)) return { tripOver: true as const };
     const at = new Date();
     const [updated] = await tx.update(schema.bookings)
       .set({
@@ -1028,6 +1111,7 @@ router.patch('/:id/cancel', authenticateToken, async (req: Request, res: Respons
     return { was: now.status, updated, unchanged: false };
   });
   if (!change) return res.status(404).json({ detail: 'Booking not found' });
+  if ('tripOver' in change) return res.status(409).json({ detail: 'This trip is over and can no longer be cancelled', code: 'trip_over' });
   if (change.unchanged) return res.json({ booking: shape(change.updated) });
   const { updated } = change;
   const wasStatus = change.was;
@@ -1177,7 +1261,7 @@ router.post('/:id/cancel-request', authenticateToken, async (req: Request, res: 
     const now = await lockBookingForChange(tx, booking.id);
     if (!now) return null;
     if (now.status !== 'confirmed') return { bad: 'not_confirmed' as const };
-    if (isCompleted(now)) return { bad: 'trip_over' as const };
+    if (isTripOver(now)) return { bad: 'trip_over' as const };
     const fresh = !now.cancelRequestedAt;
     const [updated] = await tx.update(schema.bookings)
       .set({
@@ -1274,6 +1358,8 @@ router.post('/:id/cancel-request/accept', authenticateToken, async (req: Request
     if (!now) return null;
     if (now.status === 'cancelled') return { updated: now, changed: false };
     if (!now.cancelRequestedAt || now.status !== 'confirmed') return { none: true as const };
+    // A trip that has happened stays on the record, as on every other cancel route.
+    if (req.user.role !== 'admin' && isTripOver(now)) return { over: true as const };
     const [updated] = await tx.update(schema.bookings)
       .set({
         status: 'cancelled',
@@ -1292,6 +1378,7 @@ router.post('/:id/cancel-request/accept', authenticateToken, async (req: Request
   });
   if (!outcome) return res.status(404).json({ detail: 'Booking not found' });
   if ('none' in outcome) return res.status(409).json({ detail: 'The guest has not asked to cancel this booking', code: 'no_request' });
+  if ('over' in outcome) return res.status(409).json({ detail: 'This trip is over and can no longer be cancelled', code: 'trip_over' });
   if (!outcome.changed) return res.json({ booking: bookingShape(outcome.updated), refunded: false });
   const { updated } = outcome;
 

@@ -81,7 +81,8 @@
     "upcoming": "Upcoming",
     "completed": "Completed",
     "none_in_filter": "No bookings here yet.",
-    "pickup_at": "Pickup {{time}}"
+    "pickup_at": "Pickup {{time}}",
+    "no_show": "You did not come"
   },
   "explore": {
     "region": "Darjeeling",
@@ -3424,7 +3425,7 @@
       },
       "request_expired_guest": {
         "title": "Your request was not answered",
-        "body": "The host of {{place}} did not answer within {{hours}} hours, so your request was closed. Nothing was charged. You can ask another host."
+        "body": "The host of {{place}} did not answer within {{hours}} hours, so your request was closed. Any fee you paid to send it comes back. You can ask another host."
       },
       "request_expired_host": {
         "title": "A booking request lapsed",
@@ -3440,11 +3441,11 @@
       },
       "request_sent": {
         "title": "Request sent",
-        "body": "Your request for {{place}} has gone to the host. You will hear back within {{hours}} hours; nothing is charged until you confirm."
+        "body": "Your request for {{place}} has gone to the host. You will hear back within {{hours}} hours. If the host says no, any fee you paid comes back."
       },
       "dates_taken_request": {
         "title": "Those dates are no longer free",
-        "body": "The host of {{place}} accepted another guest for some of the same nights, so your request was closed. Nothing was charged."
+        "body": "The host of {{place}} accepted another guest for some of the same nights, so your request was closed. Any fee you paid to send it comes back."
       },
       "request_accepted": {
         "title": "Your request was accepted",
@@ -3492,7 +3493,7 @@
       },
       "request_declined": {
         "title": "Request declined",
-        "body": "The host of {{place}} declined your request. Nothing was charged; you can book somewhere else."
+        "body": "The host of {{place}} declined your request. Any fee you paid to send it comes back, and you can book somewhere else."
       },
       "cancel_request_host": {
         "title": "Guest asked to cancel",
@@ -3549,6 +3550,10 @@
       "place_suggestion_live": {
         "title": "Your place is live",
         "body": "{{place}} is now on Offbeat Places. Thank you for adding it."
+      },
+      "no_show_guest": {
+        "title": "The host says you did not come",
+        "body": "The host of {{place}} says you did not come, so the booking was closed. If that is wrong, use Report a problem in My Trips."
       }
     },
     "missing": {
@@ -3657,7 +3662,8 @@
     "docs_s": "A photo of your ID and a photo of your place (homestays: also your homestay registration papers). Our team checks them to give you the Verified tick.",
     "shop_free": "Local shops list free",
     "shop_free_s": "No yearly pass and no commission. Keep taking orders.",
-    "menu_n": "Menu · {{count}}"
+    "menu_n": "Menu · {{count}}",
+    "st_no_show": "Guest did not come"
   },
   "listing": {
     "about": "About this",
@@ -3768,7 +3774,8 @@
       "other": "Something else",
       "fully_booked": "Fully booked for these dates",
       "not_available": "Car or home not available",
-      "family_health": "Family or health reason"
+      "family_health": "Family or health reason",
+      "no_show": "The guest did not come"
     },
     "reason": "Reason",
     "h_guest": "Why are you cancelling?",
@@ -3800,7 +3807,12 @@
     "ask": "Ask to cancel",
     "hreq": "Guest asked to cancel",
     "accept": "Accept cancellation",
-    "kept_host": "The guest asked to cancel; you kept the booking."
+    "kept_host": "The guest asked to cancel; you kept the booking.",
+    "no_show_btn": "Guest did not come",
+    "no_show_q": "Use this only if the guest never came. The booking closes and does not count as a completed trip. The guest is told, and can report a problem if it is wrong.",
+    "no_show_yes": "Yes, they did not come",
+    "no_show_host": "You marked that the guest did not come",
+    "no_show_you": "The host says you did not come"
   },
   "sugg": {
     "place": "Place",

@@ -4,7 +4,7 @@ import { eq } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
 import { app } from '../src/app';
 import { db, schema } from '../src/db';
-import { onboardActiveProvider, registerUser } from './helpers';
+import { onboardActiveProvider, registerUser, loginAdmin } from './helpers';
 import { slugify } from '../src/lib/providerSlug';
 import { isOngoing, isUpcoming, routeEnds } from '../src/lib/hostStats';
 
@@ -102,6 +102,42 @@ describe('host dashboard figures', () => {
 });
 
 describe('after a trip', () => {
+  it('shows the host a stay as Completed the day after check-out, with nothing to press', async () => {
+    const h = await onboardActiveProvider({ name: 'Completion Host' });
+    const listing = await firstListing(h.providerId);
+    const { user } = await registerUser({ name: 'Completion Guest' });
+    const past = uuidv4(); const today = uuidv4(); const cancelled = uuidv4(); const accepted = uuidv4();
+    await addBooking(user.id, listing, { id: past, checkIn: iso(-3), checkOut: iso(-1) });
+    await addBooking(user.id, listing, { id: today, checkIn: iso(-1), checkOut: iso(0) });
+    await addBooking(user.id, listing, { id: cancelled, checkIn: iso(-3), checkOut: iso(-1), status: 'cancelled' });
+    await addBooking(user.id, listing, { id: accepted, checkIn: iso(-3), checkOut: iso(-1), status: 'accepted' });
+
+    const items = (await request(app).get('/api/bookings/provider').set(auth(h.token))).body.items as any[];
+    const flag = (id: string) => items.find((b) => b.id === id)?.completed;
+    expect(flag(past)).toBe(true);
+    // Check-out day itself is still the stay; it completes the next day (India time).
+    expect(flag(today)).toBe(false);
+    // Only a confirmed booking completes: a cancelled one, or one the guest never confirmed, does not.
+    expect(flag(cancelled)).toBe(false);
+    expect(flag(accepted)).toBe(false);
+  });
+
+  it('does not let the host or the guest cancel a completed stay; the team still can', async () => {
+    const h = await onboardActiveProvider({ name: 'Finished Host' });
+    const listing = await firstListing(h.providerId);
+    const g = await registerUser({ name: 'Finished Guest' });
+    const id = uuidv4();
+    await addBooking(g.user.id, listing, { id, checkIn: iso(-3), checkOut: iso(-1) });
+
+    const byHost = await request(app).patch(`/api/bookings/${id}/cancel`).set(auth(h.token)).send({ as: 'host' });
+    expect(byHost.status).toBe(409);
+    expect(byHost.body.code).toBe('trip_over');
+    const byGuest = await request(app).patch(`/api/bookings/${id}/cancel`).set(auth(g.token));
+    expect(byGuest.status).toBe(409);
+    const byTeam = await request(app).patch(`/api/bookings/${id}/cancel`).set(auth(await loginAdmin()));
+    expect(byTeam.status).toBe(200);
+  });
+
   it('marks it completed, lets the traveller review without a pass, and links the suggestion', async () => {
     const h = await onboardActiveProvider({ name: 'Review Host' });
     const listing = await firstListing(h.providerId);

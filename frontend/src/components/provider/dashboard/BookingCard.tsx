@@ -19,8 +19,10 @@ export const BAND_ICON: Record<string, IconName> = { homestay: 'home', driver: '
  * Declining or cancelling asks the host for a reason (prototype cancel.js); a guest's request to
  * cancel a confirmed booking shows here with Accept cancellation / Keep booking.
  */
-export default function BookingCard({ b, onCancel, onAccept, onCancelRequest, host }: {
+export default function BookingCard({ b, onCancel, onAccept, onCancelRequest, onNoShow, host }: {
   b: any;
+  /** The guest never came: closes the booking so it does not count as a completed trip. */
+  onNoShow?: (id: string) => Promise<void> | void;
   onCancel?: (id: string, reason: string, note: string) => Promise<void> | void;
   onAccept?: (id: string) => Promise<void> | void;
   /** Answer a guest's cancel request: accept (the booking is cancelled) or keep it. */
@@ -32,6 +34,20 @@ export default function BookingCard({ b, onCancel, onAccept, onCancelRequest, ho
   const [accepting, setAccepting] = useState(false);
   const [acceptErr, setAcceptErr] = useState('');
   const [answering, setAnswering] = useState<'' | 'accept' | 'keep'>('');
+  const [noShowAsk, setNoShowAsk] = useState(false);
+  const [noShowBusy, setNoShowBusy] = useState(false);
+  const markNoShow = async () => {
+    setNoShowBusy(true);
+    setAcceptErr('');
+    try {
+      await onNoShow?.(b.id);
+      setNoShowAsk(false);
+    } catch (e: any) {
+      setAcceptErr(e?.response?.data?.detail || t('cancel.failed', 'That did not work. Try again.'));
+    } finally {
+      setNoShowBusy(false);
+    }
+  };
   const answer = async (a: 'accept' | 'keep') => {
     setAnswering(a);
     setAcceptErr('');
@@ -76,7 +92,9 @@ export default function BookingCard({ b, onCancel, onAccept, onCancelRequest, ho
   // The prototype's stages: -1 cancelled, 0 asked, 1 host said yes, 2 confirmed, 3 completed.
   const s = b.status === 'cancelled' ? -1 : b.completed ? 3 : b.status === 'confirmed' ? 2 : b.status === 'accepted' ? 1 : 0;
   const type = b.listing_type || b.listing?.type || 'homestay';
-  const status = s < 0 ? <Status tone="no">{t('host.st_cancelled', 'Cancelled')}</Status>
+  const noShow = b.status === 'cancelled' && b.cancel_reason === 'no_show';
+  const status = noShow ? <Status tone="no">{t('host.st_no_show', 'Guest did not come')}</Status>
+    : s < 0 ? <Status tone="no">{t('host.st_cancelled', 'Cancelled')}</Status>
     : s === 3 ? <Status tone="ok">{t('host.st_done', 'Completed')}</Status>
     : s === 2 ? <Status tone="ok">{t('booking.status.confirmed', { defaultValue: 'Confirmed' })}</Status>
     : s === 1 ? <Status tone="ok">{t('host.st_acc', 'You accepted')}</Status>
@@ -97,7 +115,8 @@ export default function BookingCard({ b, onCancel, onAccept, onCancelRequest, ho
   if (kept) steps.push([true, t('host.st_kept', 'You kept the booking')]);
   steps.push([s === 3, t('host.st_done', 'Completed')]);
   const at = steps.map((x) => x[0]).lastIndexOf(true);
-  const cancelledTitle = b.declined ? t('cancel.you_declined', 'You declined this request')
+  const cancelledTitle = noShow ? t('cancel.no_show_host', 'You marked that the guest did not come')
+    : b.declined ? t('cancel.you_declined', 'You declined this request')
     : b.cancelled_by === 'host' ? t('cancel.you_cancelled', 'You cancelled this booking')
     : b.cancelled_by === 'guest' ? t('cancel.by_guest', 'Cancelled by the guest')
     : b.cancelled_by === 'admin' ? t('cancel.by_team', 'Cancelled by the aangan team') : '';
@@ -107,6 +126,13 @@ export default function BookingCard({ b, onCancel, onAccept, onCancelRequest, ho
     b.pickup_place || b.drop_place ? [b.pickup_place, b.drop_place].map((x: string | null) => x || '…').join(' → ') : null,
     b.days ? (Number(b.days) === 1 ? t('listing.db_day1', '1 day') : t('listing.db_ndays_n', '{{n}} days', { n: b.days })) : null,
   ].filter(Boolean).join(' · ');
+
+  // From the trip's first day to a week after it, the host can say the guest never came.
+  const noShowBtn = onNoShow && b.no_show_open && !request && !noShowAsk && (
+    <Button onClick={() => setNoShowAsk(true)} icon={<Icon name="close" />} data-testid={`booking-noshow-${b.id}`}>
+      {t('cancel.no_show_btn', 'Guest did not come')}
+    </Button>
+  );
 
   const decline = onCancel && b.status !== 'cancelled' && !b.completed && !confirming && !request && (
     <Button variant="stop" onClick={() => setConfirming(true)} icon={<Icon name="close" />} data-testid={`booking-cancel-${b.id}`}>
@@ -150,7 +176,8 @@ export default function BookingCard({ b, onCancel, onAccept, onCancelRequest, ho
           <Icon name="close" />
           <span>
             <b>{cancelledTitle}</b>
-            {(b.cancel_reason || b.cancel_note) && <><br /><span className="ag-small">{reasonLine(t, b.cancel_reason, b.cancel_note)}</span></>}
+            {/* A no-show's reason is the title itself; only a note is added. */}
+            {((b.cancel_reason && !noShow) || b.cancel_note) && <><br /><span className="ag-small">{reasonLine(t, noShow ? null : b.cancel_reason, b.cancel_note)}</span></>}
             {b.cancel_late && <><br /><span className="ag-small">{t('cancel.late_tag', 'Late cancellation')}</span></>}
           </span>
         </div>
@@ -209,9 +236,23 @@ export default function BookingCard({ b, onCancel, onAccept, onCancelRequest, ho
               {t('ui.bookingCard.send_trip_details')}
             </ButtonA>
           )}
+          {noShowBtn}
           {decline}
         </div>
+      ) : s === 3 && noShowBtn ? (
+        <div className="ag-host-tbtns">{noShowBtn}</div>
       ) : null}
+      {noShowAsk && (
+        <Box tone="blush" flat data-testid={`booking-noshow-confirm-${b.id}`}>
+          <p className="text-sm text-[var(--ink-strong)]">{t('cancel.no_show_q', 'Use this only if the guest never came. The booking closes and does not count as a completed trip. The guest is told, and can report a problem if it is wrong.')}</p>
+          <div className="ag-row">
+            <Button variant="stop" size="sm" disabled={noShowBusy} onClick={markNoShow} data-testid={`booking-noshow-yes-${b.id}`}>
+              {noShowBusy ? t('common.loading') : t('cancel.no_show_yes', 'Yes, they did not come')}
+            </Button>
+            <Button size="sm" disabled={noShowBusy} onClick={() => setNoShowAsk(false)}>{t('common.back', 'Back')}</Button>
+          </div>
+        </Box>
+      )}
       {confirming && (
         <CancelSheet booking={b} mode={b.status === 'pending_payment' ? 'host_decline' : 'host_cancel'}
           onSubmit={doCancel} onClose={() => setConfirming(false)} submitTestId={`booking-cancel-yes-${b.id}`} />
