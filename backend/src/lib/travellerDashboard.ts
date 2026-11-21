@@ -48,6 +48,45 @@ export function isCompleted(b: { status: string; checkIn: string | null; checkOu
   return day(end) < today;
 }
 
+/** How many days after a trip's last day the host can still say the guest never came. */
+export const NO_SHOW_WINDOW_DAYS = 2;
+
+const plusDays = (iso: string, n: number) => {
+  const d = new Date(`${day(iso)}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+};
+
+/**
+ * Can the host report "the guest did not come" on this booking today? Only a confirmed booking
+ * with a date, from the day AFTER its first day (a guest may arrive late on the first evening,
+ * and must keep the host's number while travelling) until NO_SHOW_WINDOW_DAYS after its last
+ * day. Kept short so a host cannot use it to wipe a real stay (and the guest's review) later;
+ * the route also refuses once the guest has reviewed.
+ */
+export function noShowOpen(b: { status: string; checkIn: string | null; checkOut: string | null }, today = todayInIndia()): boolean {
+  if (b.status !== 'confirmed' || !b.checkIn) return false;
+  if (today <= day(b.checkIn)) return false;
+  return today <= plusDays(b.checkOut ?? b.checkIn, NO_SHOW_WINDOW_DAYS);
+}
+
+/** Why a no-show cannot be reported today (for the error code), when noShowOpen says no. */
+export function noShowRefusal(b: { status: string; checkIn: string | null; checkOut: string | null }, today = todayInIndia()) {
+  if (b.status !== 'confirmed') return 'not_confirmed' as const;
+  if (!b.checkIn) return 'no_dates' as const;
+  if (today <= day(b.checkIn)) return 'not_started' as const;
+  return 'too_late' as const;
+}
+
+/**
+ * A booking that is over and may no longer be cancelled by the guest or the host. A booking with
+ * no date has no end to be over, so it can always still be cancelled (isCompleted treats it as
+ * completed only for counting).
+ */
+export function isTripOver(b: { status: string; checkIn: string | null; checkOut: string | null }, today = todayInIndia()): boolean {
+  return !!(b.checkOut ?? b.checkIn) && isCompleted(b, today);
+}
+
 const award = (id: string, progress: number, goal: number): Award => ({
   id,
   earned: progress >= goal,

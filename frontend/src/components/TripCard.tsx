@@ -23,8 +23,9 @@ const mapsUrl = (c: { latitude: number | null; longitude: number | null; address
 
 const BAND_ICON: Record<string, 'home' | 'car' | 'trek' | 'cup' | 'bag'> = { homestay: 'home', driver: 'car', guide: 'trek', cafe: 'cup', shop: 'bag' };
 
-function StatusPill({ status, isPast, awaitingHost }: { status: string; isPast: boolean; awaitingHost?: boolean }) {
+function StatusPill({ status, isPast, awaitingHost, noShow }: { status: string; isPast: boolean; awaitingHost?: boolean; noShow?: boolean }) {
   const { t } = useTranslation();
+  if (noShow) return <Status tone="no">{t('trips.no_show', 'You did not come')}</Status>;
   if (awaitingHost) return <Status data-testid="trip-awaiting-host">{t('booking.status.awaiting_host')}</Status>;
   if (status === 'confirmed' && isPast) return <Status tone="ok">{t('trips.completed')}</Status>;
   const tone = ({ confirmed: 'ok', accepted: 'info', cancelled: 'no' } as const)[status as 'confirmed'] ?? 'pending';
@@ -111,7 +112,9 @@ export default function TripCard({ booking: b, testId, onReviewed }: {
   const Icon = (p: { size?: number; 'aria-hidden'?: boolean | 'true' }) => <AgIcon name={bandIcon} {...p} />;
   const typeLabel = t(`ui.inviteHostLink.type.${b.listing_type}`, { defaultValue: String(b.listing_type || '').replace(/^./, (c: string) => c.toUpperCase()) });
   const canCancel = !cancelled && !isPast && !b.cancel_request;
-  const cancelledTitle = b.declined ? t('cancel.declined', 'Declined by the host')
+  const noShow = cancelled && b.cancel_reason === 'no_show';
+  const cancelledTitle = noShow ? t('cancel.no_show_you', 'The host says you did not come')
+    : b.declined ? t('cancel.declined', 'Declined by the host')
     : b.cancelled_by === 'host' ? t('cancel.by_host', 'Cancelled by the host')
     : b.cancelled_by === 'admin' ? t('cancel.by_team', 'Cancelled by the aangan team')
     : b.cancelled_by === 'guest' ? t('cancel.by_you', 'Cancelled by you') : '';
@@ -147,7 +150,7 @@ export default function TripCard({ booking: b, testId, onReviewed }: {
 
       <div className="flex items-start justify-between gap-2">
         <h2 className="line-clamp-2 min-w-0"><Link to={`/listing/${b.listing_id}`}>{title}</Link></h2>
-        <span className="flex-none whitespace-nowrap"><StatusPill status={b.status} isPast={isPast} awaitingHost={!!b.awaiting_host} /></span>
+        <span className="flex-none whitespace-nowrap"><StatusPill status={b.status} isPast={isPast} awaitingHost={!!b.awaiting_host} noShow={noShow} /></span>
       </div>
       {b.listing?.location && (
         <p className="ag-small flex items-center gap-1 min-w-0 -mt-1"><MapPin size={14} className="text-[var(--r)] flex-shrink-0" aria-hidden="true" /><span className="truncate">{b.listing.location}</span></p>
@@ -188,7 +191,7 @@ export default function TripCard({ booking: b, testId, onReviewed }: {
           <AgIcon name="close" />
           <span>
             <b>{cancelledTitle}</b>
-            {(b.cancel_reason || b.cancel_note) && <><br /><span className="ag-small">{reasonLine(t, b.cancel_reason, b.cancel_note)}</span></>}
+            {((b.cancel_reason && !noShow) || b.cancel_note) && <><br /><span className="ag-small">{reasonLine(t, noShow ? null : b.cancel_reason, b.cancel_note)}</span></>}
             {b.cancel_late && <><br /><span className="ag-small">{t('cancel.late_tag', 'Late cancellation')}</span></>}
           </span>
         </div>
@@ -275,7 +278,8 @@ export default function TripCard({ booking: b, testId, onReviewed }: {
           submitTestId={`confirm-cancel-${b.id}`} infoTestId={cancelMode === 'guest_request' ? `cancel-info-${b.id}` : `cancel-free-${b.id}`} />
       )}
 
-      {b.status === 'confirmed' && (
+      {/* A no-show the guest disputes is reported the same way. */}
+      {(b.status === 'confirmed' || noShow) && (
         problemState === 'sent' ? (
           <p className="text-sm text-[var(--ok)]" data-testid={`problem-sent-${b.id}`}>{t('trips.problem_sent')}</p>
         ) : problemOpen ? (

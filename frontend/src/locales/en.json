@@ -81,7 +81,8 @@
     "upcoming": "Upcoming",
     "completed": "Completed",
     "none_in_filter": "No bookings here yet.",
-    "pickup_at": "Pickup {{time}}"
+    "pickup_at": "Pickup {{time}}",
+    "no_show": "You did not come"
   },
   "explore": {
     "region": "Darjeeling",
@@ -467,7 +468,10 @@
     "vnudge": "Get verified for ₹1 a year and get more confirmations",
     "extra_mattress_line_one": "Extra mattress, {{count}} guest",
     "extra_mattress_line_other": "Extra mattress, {{count}} guests",
-    "extra_free": "Free"
+    "extra_free": "Free",
+    "send_pass": "Your aangan pass covers this. Sending is free, and your request goes with a verified badge.",
+    "send_fee": "Sending this request costs {{fee}}. If the host says no or does not answer, you get it back.",
+    "send_fee_pass": "Free with the aangan pass"
   },
   "responsible": {
     "title": "Responsible Tourism",
@@ -2570,7 +2574,13 @@
     "fee_title": "Just this booking",
     "fee_body": "A one-time convenience fee for this booking.",
     "note": "If the booking is cancelled, the fee comes back to you.",
-    "failed": "Payment did not go through. Please try again."
+    "failed": "Payment did not go through. Please try again.",
+    "send_eyebrow": "Send your request",
+    "send_title": "Take the pass, or pay for this request",
+    "send_body": "Your request is saved. The host sees it once you choose one.",
+    "send_fee_title": "Just this request",
+    "send_fee_body": "Sends this one request to the host.",
+    "send_note": "If the host says no or does not answer, or you withdraw before confirming, the fee comes back to you."
   },
   "plan_card": {
     "eyebrow_full": "For homestays and drivers",
@@ -2618,7 +2628,8 @@
     "host_renewal": "Host plan · one more year",
     "pass": "aangan pass · 1 year",
     "pass_first_year": "aangan pass · first year",
-    "booking_fee": "Convenience fee · this booking"
+    "booking_fee": "Convenience fee · this booking",
+    "request_fee": "Fee · this request"
   },
   "approval": {
     "request_eyebrow": "Request sent",
@@ -2640,7 +2651,10 @@
     "host_request_note": "Check you are free, then accept or decline.",
     "accept_failed": "Could not accept this request. Please try again.",
     "step_confirm_pass": "You confirm it in My Trips. Free with your pass.",
-    "step_confirm_free": "You confirm it in My Trips. It is free."
+    "step_confirm_free": "You confirm it in My Trips. It is free.",
+    "step_send_pass": "Send your request. Free with your pass.",
+    "step_send_fee": "Send your request for {{fee}}, or free with the aangan pass.",
+    "step_host_refund": "The host checks availability and accepts. If they say no or do not answer within 48 hours, the request closes and any fee comes back."
   },
   "photoKind": {
     "label": "What this photo shows",
@@ -3411,7 +3425,7 @@
       },
       "request_expired_guest": {
         "title": "Your request was not answered",
-        "body": "The host of {{place}} did not answer within {{hours}} hours, so your request was closed. Nothing was charged. You can ask another host."
+        "body": "The host of {{place}} did not answer within {{hours}} hours, so your request was closed. Any fee you paid to send it comes back. You can ask another host."
       },
       "request_expired_host": {
         "title": "A booking request lapsed",
@@ -3427,11 +3441,11 @@
       },
       "request_sent": {
         "title": "Request sent",
-        "body": "Your request for {{place}} has gone to the host. You will hear back within {{hours}} hours; nothing is charged until you confirm."
+        "body": "Your request for {{place}} has gone to the host. You will hear back within {{hours}} hours. If the host says no, any fee you paid comes back."
       },
       "dates_taken_request": {
         "title": "Those dates are no longer free",
-        "body": "The host of {{place}} accepted another guest for some of the same nights, so your request was closed. Nothing was charged."
+        "body": "The host of {{place}} accepted another guest for some of the same nights, so your request was closed. Any fee you paid to send it comes back."
       },
       "request_accepted": {
         "title": "Your request was accepted",
@@ -3479,7 +3493,7 @@
       },
       "request_declined": {
         "title": "Request declined",
-        "body": "The host of {{place}} declined your request. Nothing was charged; you can book somewhere else."
+        "body": "The host of {{place}} declined your request. Any fee you paid to send it comes back, and you can book somewhere else."
       },
       "cancel_request_host": {
         "title": "Guest asked to cancel",
@@ -3536,6 +3550,10 @@
       "place_suggestion_live": {
         "title": "Your place is live",
         "body": "{{place}} is now on Offbeat Places. Thank you for adding it."
+      },
+      "no_show_guest": {
+        "title": "The host says you did not come",
+        "body": "The host of {{place}} says you did not come, so the booking was closed. If that is wrong, use Report a problem in My Trips."
       }
     },
     "missing": {
@@ -3644,7 +3662,8 @@
     "docs_s": "A photo of your ID and a photo of your place (homestays: also your homestay registration papers). Our team checks them to give you the Verified tick.",
     "shop_free": "Local shops list free",
     "shop_free_s": "No yearly pass and no commission. Keep taking orders.",
-    "menu_n": "Menu · {{count}}"
+    "menu_n": "Menu · {{count}}",
+    "st_no_show": "Guest did not come"
   },
   "listing": {
     "about": "About this",
@@ -3725,7 +3744,9 @@
     "db_day1": "1 day",
     "db_ndays_n": "{{n}} days",
     "extra_mattress_one": "+{{count}} on extra mattress",
-    "extra_mattress_other": "+{{count}} on extra mattresses"
+    "extra_mattress_other": "+{{count}} on extra mattresses",
+    "askfee": "Sending a request costs ₹1, or nothing with the aangan pass.",
+    "send_fee": "Send · {{fee}}"
   },
   "theme": {
     "title": "Theme colour",
@@ -3753,7 +3774,8 @@
       "other": "Something else",
       "fully_booked": "Fully booked for these dates",
       "not_available": "Car or home not available",
-      "family_health": "Family or health reason"
+      "family_health": "Family or health reason",
+      "no_show": "The guest did not come"
     },
     "reason": "Reason",
     "h_guest": "Why are you cancelling?",
@@ -3785,7 +3807,12 @@
     "ask": "Ask to cancel",
     "hreq": "Guest asked to cancel",
     "accept": "Accept cancellation",
-    "kept_host": "The guest asked to cancel; you kept the booking."
+    "kept_host": "The guest asked to cancel; you kept the booking.",
+    "no_show_btn": "Guest did not come",
+    "no_show_q": "Use this only if the guest never came. The booking closes and does not count as a completed trip. The guest is told, and can report a problem if it is wrong.",
+    "no_show_yes": "Yes, they did not come",
+    "no_show_host": "You marked that the guest did not come",
+    "no_show_you": "The host says you did not come"
   },
   "sugg": {
     "place": "Place",

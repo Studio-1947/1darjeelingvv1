@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import request from 'supertest';
 import { app } from '../src/app';
-import { registerUser, onboardActiveProvider, loginAdmin, createListing, inDays } from './helpers';
+import { registerUser, onboardActiveProvider, loginAdmin, createListing, inDays, payToSend } from './helpers';
 import { eq } from 'drizzle-orm';
 import { db, schema } from '../src/db';
 
@@ -75,19 +75,40 @@ describe('host approval before a booking can be confirmed', () => {
     });
   }
 
-  it('takes no fee: waiting for the host, then confirmed free once accepted', async () => {
+  it('without the pass: the request reaches the host only after the ₹1 fee, then confirms free', async () => {
     const { hostToken, listing } = await hostListing('Fee Gate', 'homestay');
     const { token: guest } = await registerUser({ name: 'No Pass Guest', paySupport: false });
-    const booking = await ask(guest, listing);
 
-    const order = await request(app).post('/api/payments/order').set(auth(guest))
-      .send({ flow: 'booking_commission', reference_id: booking.id });
-    expect(order.status).toBe(409);
-    expect(order.body.code).toBe('awaiting_host');
+    const res = await request(app).post('/api/bookings').set(auth(guest))
+      .send({ listing_id: listing.id, check_in: inDays(10), check_out: inDays(12) });
+    expect(res.status).toBe(200);
+    expect(res.body.fee_due).toBe(true);
+    expect(res.body.amount).toBeGreaterThan(0);
+    const booking = res.body.booking;
+    expect(booking.status).toBe('awaiting_fee');
+
+    // Not sent: the host does not see it, cannot accept it, and it is not in My Trips.
+    const hostBefore = await request(app).get('/api/bookings/provider').set(auth(hostToken));
+    expect(hostBefore.body.items.find((b: any) => b.id === booking.id)).toBeUndefined();
+    const early = await request(app).patch(`/api/bookings/${booking.id}/confirm`).set(auth(hostToken));
+    expect(early.status).toBe(409);
+    expect(early.body.code).toBe('not_sent');
+    const mine = await request(app).get('/api/bookings/me').set(auth(guest));
+    expect(mine.body.items.find((b: any) => b.id === booking.id)).toBeUndefined();
+    const send = await request(app).post(`/api/bookings/${booking.id}/send`).set(auth(guest));
+    expect(send.status).toBe(402);
+    expect(send.body.code).toBe('fee_required');
+
+    await payToSend(guest, booking.id);
+    const sent = await request(app).post(`/api/bookings/${booking.id}/send`).set(auth(guest));
+    expect(sent.status).toBe(200);
+    expect(sent.body.booking.status).toBe('pending_payment');
+    expect(sent.body.booking.awaiting_host).toBe(true);
+    const hostAfter = await request(app).get('/api/bookings/provider').set(auth(hostToken));
+    expect(hostAfter.body.items.find((b: any) => b.id === booking.id)).toBeDefined();
 
     await request(app).patch(`/api/bookings/${booking.id}/confirm`).set(auth(hostToken)).expect(200);
-
-    // Once accepted, the traveller without a pass confirms free; there is no fee to order.
+    // The fee was for sending; confirming costs nothing more.
     const fee = await request(app).post('/api/payments/order').set(auth(guest))
       .send({ flow: 'booking_commission', reference_id: booking.id });
     expect(fee.status).toBe(409);
@@ -95,6 +116,19 @@ describe('host approval before a booking can be confirmed', () => {
     const checkout = await request(app).post(`/api/bookings/${booking.id}/checkout`).set(auth(guest));
     expect(checkout.status).toBe(200);
     expect(checkout.body.booking.status).toBe('confirmed');
+  });
+
+  it('gives the ₹1 back when the host declines', async () => {
+    const { hostToken, listing } = await hostListing('Fee Decline', 'driver');
+    const { token: guest } = await registerUser({ name: 'Declined Payer', paySupport: false });
+    const res = await request(app).post('/api/bookings').set(auth(guest)).send({ listing_id: listing.id, check_in: inDays(10) });
+    const id = res.body.booking.id;
+    await payToSend(guest, id);
+    const declined = await request(app).patch(`/api/bookings/${id}/cancel`).set(auth(hostToken)).send({ as: 'host' });
+    expect(declined.status).toBe(200);
+    expect(declined.body.refunded).toBe(true);
+    const [payment] = await db.select().from(schema.payments).where(eq(schema.payments.referenceId, id)).limit(1);
+    expect(payment.status).toBe('refunded');
   });
 
   it('lets the host decline a request instead', async () => {

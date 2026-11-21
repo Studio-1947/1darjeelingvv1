@@ -1,4 +1,4 @@
-import { inArray } from 'drizzle-orm';
+import { and, inArray, ne } from 'drizzle-orm';
 import { db, schema } from '../db';
 import { isCompleted, todayInIndia } from './travellerDashboard';
 import { routeDistanceKm } from '../routes/routeEstimator';
@@ -58,7 +58,9 @@ export async function hostStats(listingIds: string[], opts: { verified: boolean;
       status: schema.bookings.status, checkIn: schema.bookings.checkIn, checkOut: schema.bookings.checkOut,
       guests: schema.bookings.guests, listingType: schema.bookings.listingType, routeName: schema.bookings.routeName,
       listingId: schema.bookings.listingId,
-    }).from(schema.bookings).where(inArray(schema.bookings.listingId, listingIds))
+    }).from(schema.bookings)
+      // An unsent request (fee not paid) never reached the host, so it is not counted.
+      .where(and(inArray(schema.bookings.listingId, listingIds), ne(schema.bookings.status, 'awaiting_fee')))
     : [];
   const reviewRows = listingIds.length
     ? await db.select().from(schema.reviews).where(inArray(schema.reviews.listingId, listingIds))

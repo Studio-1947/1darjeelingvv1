@@ -4,6 +4,8 @@ import { REQUEST_EXPIRY_HOURS, log } from '../config';
 import { HOST_APPROVAL_TYPES, realHostIds } from './bookingApproval';
 import { addHostNotification, addInAppNotification } from './inApp';
 import { releaseVoucherForBooking } from './vouchers';
+import { refundPaymentsFor } from './refunds';
+import { AWAITING_FEE } from './bookingSend';
 
 /**
  * Closes booking requests the host never answered.
@@ -30,7 +32,7 @@ export async function expireStaleRequests(now: Date = new Date()): Promise<numbe
       lt(schema.bookings.createdAt, cutoff),
       inArray(schema.bookings.listingType, [...HOST_APPROVAL_TYPES]),
     ));
-  if (!stale.length) return 0;
+  if (!stale.length) return dropUnsentDrafts(now);
 
   const hosts = await realHostIds(stale.map((b) => b.providerId));
   let closed = 0;
@@ -44,10 +46,12 @@ export async function expireStaleRequests(now: Date = new Date()): Promise<numbe
     if (!row) continue;
     closed++;
     await releaseVoucherForBooking(db, b.id);
+    // The ₹1 paid to send it goes back: the host never answered. No-op when it went free.
+    await refundPaymentsFor('booking_commission', b.id, 'request not answered in time');
     await addInAppNotification(b.userId, {
       kind: 'booking_expired',
       title: 'Your request was not answered',
-      body: `The host of ${b.listingTitle} did not answer within ${REQUEST_EXPIRY_HOURS} hours, so your request was closed. Nothing was charged. You can ask another host.`,
+      body: `The host of ${b.listingTitle} did not answer within ${REQUEST_EXPIRY_HOURS} hours, so your request was closed. Any fee you paid to send it comes back. You can ask another host.`,
       msg: { key: 'request_expired_guest', params: { place: b.listingTitle, hours: REQUEST_EXPIRY_HOURS } },
       refId: b.id,
     });
@@ -59,8 +63,23 @@ export async function expireStaleRequests(now: Date = new Date()): Promise<numbe
       refId: b.id,
     });
   }
+  closed += await dropUnsentDrafts(now);
   if (closed) log.info(`[requests] closed ${closed} request(s) not answered within ${REQUEST_EXPIRY_HOURS}h`);
   return closed;
+}
+
+/**
+ * Requests saved but never sent (the traveller left without paying the ₹1 fee) are closed after a
+ * day, so they do not keep a voucher locked. Nobody was told about them, so nobody is told now.
+ */
+async function dropUnsentDrafts(now: Date): Promise<number> {
+  const cutoff = new Date(now.getTime() - 24 * 3600_000).toISOString();
+  const rows = await db.update(schema.bookings)
+    .set({ status: 'cancelled', cancelledAt: now.toISOString() })
+    .where(and(eq(schema.bookings.status, AWAITING_FEE), lt(schema.bookings.createdAt, cutoff)))
+    .returning({ id: schema.bookings.id });
+  for (const r of rows) await releaseVoucherForBooking(db, r.id);
+  return rows.length;
 }
 
 /** Runs the sweep now and every 30 minutes. Never throws: a failed sweep waits for the next one. */

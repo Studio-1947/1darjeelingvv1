@@ -13,9 +13,9 @@ import Sheet, { SheetHead } from './Sheet';
 type Flow = 'booking_commission' | 'platform_support';
 
 /**
- * The board's booking flow for a traveller without the aangan pass: take the pass (₹1 the first
- * year, then ₹12, every booking free) or pay ₹1.20 for this one. Either payment ends with the booking confirmed.
- * The app shows the same choice (src/components/BookingFeeSheet.tsx).
+ * A traveller without the aangan pass sends a request only after picking: take the pass (every
+ * request free for a year) or pay ₹1 for this one, refunded if the host says no. Either payment
+ * ends with the request sent to the host (POST /bookings/{id}/send).
  */
 export default function BookingFeeModal({ bookingId, onConfirmed, onClose }: {
   bookingId: string | null;
@@ -34,11 +34,11 @@ export default function BookingFeeModal({ bookingId, onConfirmed, onClose }: {
 
   const reference = (flow: Flow) => (flow === 'platform_support' ? user.id : bookingId);
 
-  // Paying the fee confirms the booking on the server; paying for the pass makes checkout free.
-  // Checkout is idempotent, so calling it after either one returns the confirmed booking.
+  // Paying the fee sends the request on the server; with the pass, /send sends it free. /send is
+  // safe to repeat, so calling it after either one returns the sent request.
   const finish = async () => {
     await refresh();
-    const { data } = await api.post(`/bookings/${bookingId}/checkout`);
+    const { data } = await api.post(`/bookings/${bookingId}/send`);
     onConfirmed(data.booking);
   };
 
@@ -56,7 +56,7 @@ export default function BookingFeeModal({ bookingId, onConfirmed, onClose }: {
         key_id: order.key_id,
         flow,
         reference_id: reference(flow),
-        description: flow === 'platform_support' ? t('fee.pass_title') : t('fee.fee_title'),
+        description: flow === 'platform_support' ? t('fee.pass_title') : t('fee.send_fee_title'),
         prefill: { contact: user?.phone, name: user?.name },
       });
       await finish();
@@ -83,8 +83,8 @@ export default function BookingFeeModal({ bookingId, onConfirmed, onClose }: {
   return (
     <>
       <Sheet onClose={onClose} labelledBy="fee-title" testid="booking-fee-modal">
-        <SheetHead id="fee-title" eyebrow={t('fee.eyebrow')} title={t('fee.title')}>
-          <p className="ag-small">{t('fee.body')}</p>
+        <SheetHead id="fee-title" eyebrow={t('fee.send_eyebrow')} title={t('fee.send_title')}>
+          <p className="ag-small">{t('fee.send_body')}</p>
         </SheetHead>
 
         <div className="ag-pick">
@@ -108,24 +108,24 @@ export default function BookingFeeModal({ bookingId, onConfirmed, onClose }: {
             <Icon name="t_trip" />
             <span className="min-w-0 flex-1">
               <span className="flex items-center justify-between gap-3">
-                <b>{t('fee.fee_title')}</b>
+                <b>{t('fee.send_fee_title')}</b>
                 <span className="inline-flex items-center gap-1 whitespace-nowrap font-medium">{rupees(fee.total)} <Icon name="arrowne" size={16} className="text-[var(--r)]" /></span>
               </span>
-              <span className="ag-small">{busy === 'booking_commission' ? t('common.loading') : t('fee.fee_body')}</span>
-              <PriceBreakup breakup={fee} label={t('price.booking_fee')} compact className="mt-2" />
+              <span className="ag-small">{busy === 'booking_commission' ? t('common.loading') : t('fee.send_fee_body')}</span>
+              <PriceBreakup breakup={fee} label={t('price.request_fee', 'Fee · this request')} compact className="mt-2" />
             </span>
           </button>
         </div>
 
         <FieldError id="fee-error">{err}</FieldError>
-        <p className="ag-small !text-[13px]">{t('fee.note')}</p>
+        <p className="ag-small !text-[13px]">{t('fee.send_note')}</p>
       </Sheet>
 
       <MockPaymentModal
         open={!!mock}
         onClose={() => setMock(null)}
         amount={mock?.amount || 0}
-        title={mock?.flow === 'platform_support' ? t('fee.pass_title') : t('fee.fee_title')}
+        title={mock?.flow === 'platform_support' ? t('fee.pass_title') : t('fee.send_fee_title')}
         description={mock?.flow === 'platform_support' ? t('support.modal_duration') : ''}
         onPay={finishMock}
         prefill={{ upi: `${(user?.name || 'traveller').toLowerCase().replace(/\s+/g, '')}@ybl` }}
