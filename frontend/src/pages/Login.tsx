@@ -257,11 +257,13 @@ export default function Login() {
                 <p className="ag-small">{t('auth.mock_note')}</p>
               </Box>
             )}
-            <TextField label={t('auth.otp_label')} value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))} required maxLength={6}
-              inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" title={t('auth.otp_six_digits')}
+            {/* Up to 16 digits, not 6: the payment/store reviewer signs in with a fixed REVIEW_OTP,
+                which config.ts requires to be 10+ characters. Real OTPs are still 6 digits. */}
+            <TextField label={t('auth.otp_label')} value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 16))} required maxLength={16}
+              inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6,16}" title={t('auth.otp_six_digits')}
               // Six empty slots, not "123456": a sample number read as a code already typed in.
               data-testid="login-otp" placeholder="––––––" className="[&_input]:tracking-[0.3em] [&_input]:tabular-nums [&_input]:text-lg" />
-            <Button type="submit" go className="self-start" disabled={busy || otp.length !== 6} data-testid="login-verify">
+            <Button type="submit" go className="self-start" disabled={busy || otp.length < 6} data-testid="login-verify">
               {busy ? t('common.loading') : t('auth.verify')}
             </Button>
             <p className="ag-small text-center" data-testid="login-resend">
