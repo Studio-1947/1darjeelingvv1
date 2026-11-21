@@ -1,0 +1,10 @@
+# Build context for deploy/nginx/Dockerfile, which is built from the repo root.
+#
+# Each frontend stage installs its packages from the lockfile, then copies its folder over the top.
+# Without this, a checkout that has its own node_modules (the VPS, a laptop) overwrites the clean
+# install with whatever happens to be there: a stray Tailwind 4 in frontend-admin/node_modules broke
+# the admin build ("trying to use `tailwindcss` directly as a PostCSS plugin") while the lockfile
+# still pins Tailwind 3. CI never saw it because its fresh checkout has no node_modules.
+**/node_modules
+**/dist
+.git
