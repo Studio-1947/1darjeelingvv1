@@ -106,9 +106,11 @@ jobs:
         working-directory: frontend-admin
         run: npm ci
 
-      - name: Typecheck admin
+      # The full build, not only tsc: a typecheck passes when the CSS pipeline is broken (Tailwind 4
+      # bumped under a Tailwind 3 PostCSS config passed tsc and failed only in the image build).
+      - name: Typecheck and build admin
         working-directory: frontend-admin
-        run: npx tsc --noEmit
+        run: npm run build
 
   # Build both images HERE, on the runner, and push them to GHCR.
   #
