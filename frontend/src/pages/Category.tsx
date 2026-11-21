@@ -2,6 +2,8 @@ import React, { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { PLACES, distanceTo, placeFor } from '@/lib/places';
 import { useLocation, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
+import { CircleNotch as Loader2 } from '@phosphor-icons/react';
 import SuggestPlace from '@/components/spots/SuggestPlace';
 import api from '@/lib/api';
 import Seo from '@/components/Seo';
@@ -128,6 +130,13 @@ function CategoryPage({ typeOverride }: { typeOverride?: string }) {
   const dayParam = availableOn ? { available_on: availableOn } : {};
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  // Paging (GET /listings total + next_offset): where the next page of the plain list starts.
+  const pageSize = apiType ? 60 : 200;
+  const [nextOffset, setNextOffset] = useState<number | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  // Which list is current; a "load more" answer for an older type or day is dropped.
+  const listKey = useRef('');
+  listKey.current = `${type}|${availableOn || ''}`;
   // Everything matching the query in *other* categories. Only fetched when the
   // scoped search comes back empty - see the effect below.
   const [elsewhere, setElsewhere] = useState([]);
@@ -201,14 +210,14 @@ function CategoryPage({ typeOverride }: { typeOverride?: string }) {
 
   // Smart search (server lib/search.ts): reads intent, budget, local spellings and typos and ranks
   // the results. Asked a moment after typing stops; until it answers, the plain match below shows.
-  const [smart, setSmart] = useState<{ q: string; items: any[]; search: SearchInterpretation | null } | null>(null);
+  const [smart, setSmart] = useState<{ q: string; items: any[]; search: SearchInterpretation | null; next: number | null } | null>(null);
   useEffect(() => {
     const term = searchQuery.trim();
     if (!term) { setSmart(null); return; }
     let cancelled = false;
     const timer = setTimeout(() => {
-      api.get('/listings', { params: { q: term, type: apiType, limit: apiType ? 60 : 200, ...dayParam } })
-        .then((r) => { if (!cancelled) setSmart({ q: term, items: keepType(r.data.items || []), search: r.data.search || null }); })
+      api.get('/listings', { params: { q: term, type: apiType, limit: pageSize, ...dayParam } })
+        .then((r) => { if (!cancelled) setSmart({ q: term, items: keepType(r.data.items || []), search: r.data.search || null, next: r.data.next_offset ?? null }); })
         .catch(() => { if (!cancelled) setSmart(null); });
     }, 250);
     return () => { cancelled = true; clearTimeout(timer); };
@@ -218,8 +227,9 @@ function CategoryPage({ typeOverride }: { typeOverride?: string }) {
     let cancelled = false;
     setLoading(true);
     setElsewhere([]);
-    api.get('/listings', { params: { type: apiType, limit: apiType ? 60 : 200, ...dayParam } })
-      .then((r) => { if (!cancelled) setItems(keepType(r.data.items || [])); })
+    setNextOffset(null);
+    api.get('/listings', { params: { type: apiType, limit: pageSize, ...dayParam } })
+      .then((r) => { if (!cancelled) { setItems(keepType(r.data.items || [])); setNextOffset(r.data.next_offset ?? null); } })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [type, availableOn]);
@@ -358,6 +368,39 @@ function CategoryPage({ typeOverride }: { typeOverride?: string }) {
     || !!kind || delivers || !!near || trip.guests > 1;
   // Typed words wait for the smart search; until it answers, show the loading state, not "nothing found".
   const smartPending = !!searchQuery.trim() && smart?.q !== searchQuery.trim();
+
+  // The next page of whichever list is on screen: the search results, or the plain list.
+  const fromSmart = !!searchQuery.trim() && smart?.q === searchQuery.trim();
+  const moreFrom = fromSmart ? smart?.next ?? null : nextOffset;
+  const more = async () => {
+    if (moreFrom == null || loadingMore) return;
+    const term = searchQuery.trim();
+    const key = listKey.current;
+    setLoadingMore(true);
+    try {
+      // `food` is filtered here, not by the server, so a page can hold none of it: keep going
+      // (a few pages at most) until something new shows or the list ends.
+      let offset: number | null = moreFrom;
+      let page: any[] = [];
+      for (let tries = 0; offset != null && page.length === 0 && tries < 5; tries++) {
+        const r = await api.get('/listings', { params: { ...(fromSmart ? { q: term } : {}), type: apiType, limit: pageSize, offset, ...dayParam } });
+        if (listKey.current !== key) return;
+        page = keepType(r.data.items || []);
+        offset = r.data.next_offset ?? null;
+      }
+      const next = offset;
+      const append = (list: any[]) => {
+        const have = new Set(list.map((it) => it.id));
+        return [...list, ...page.filter((it: any) => !have.has(it.id))];
+      };
+      if (fromSmart) setSmart((s) => (s && s.q === term ? { ...s, items: append(s.items), next } : s));
+      else { setItems((list) => append(list) as any); setNextOffset(next); }
+    } catch {
+      toast.error(t('category.load_more_failed', 'Could not load more. Check your connection.'));
+    } finally {
+      setLoadingMore(false);
+    }
+  };
   // None of the words matched, and the server listed every listing of the kind they named instead
   // ("Audit Shop 5441" lists all shops). Say "Nothing found" and show those under their own label,
   // never as matches.
@@ -631,6 +674,13 @@ function CategoryPage({ typeOverride }: { typeOverride?: string }) {
           </div>
         ) : (
           resultsOf(results)
+        )}
+        {/* Also when the filters match nothing loaded so far: a later page may match. */}
+        {!loading && !smartPending && moreFrom != null && (results.length > 0 || filtering) && (
+          <Button onClick={more} disabled={loadingMore} data-testid="category-more" center className="self-center"
+            icon={loadingMore ? <Loader2 className="animate-spin" /> : undefined}>
+            {t('feed.load_more')}
+          </Button>
         )}
         {type === 'spot' && <SuggestPlace />}
       </div>

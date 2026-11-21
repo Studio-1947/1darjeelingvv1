@@ -241,6 +241,7 @@
     "timings": "খোলার সময়",
     "entry_fee": "প্রবেশমূল্য",
     "altitude": "উচ্চতা",
+    "photo_credit": "ছবি",
     "how_to_reach": "কীভাবে পৌঁছাবেন",
     "meet_driver": "আপনার ড্রাইভারের সঙ্গে পরিচিত হন",
     "routes": "যেসব রুটে যান",
@@ -905,6 +906,7 @@
     "location_denied": "aangan-এর জন্য লোকেশন বন্ধ আছে। ব্রাউজার সেটিংসে অনুমতি দিন এবং আবার চেষ্টা করুন।"
   },
   "category": {
+    "load_more_failed": "আর লোড করা গেল না। আপনার সংযোগ দেখুন।",
     "search": "খুঁজুন",
     "results_one": "{{count}}টি ফলাফল",
     "results_other": "{{count}}টি ফলাফল",

@@ -241,6 +241,7 @@
     "timings": "खुलने का समय",
     "entry_fee": "प्रवेश शुल्क",
     "altitude": "ऊँचाई",
+    "photo_credit": "फ़ोटो",
     "how_to_reach": "कैसे पहुँचें",
     "meet_driver": "अपने ड्राइवर से मिलिए",
     "routes": "रूट",
@@ -905,6 +906,7 @@
     "location_denied": "aangan के लिए लोकेशन बंद है। ब्राउज़र सेटिंग्स में इसकी अनुमति दें और फिर कोशिश करें।"
   },
   "category": {
+    "load_more_failed": "और नहीं खुल पाया। अपना कनेक्शन देखें।",
     "search": "खोज",
     "results_one": "{{count}} परिणाम",
     "results_other": "{{count}} परिणाम",

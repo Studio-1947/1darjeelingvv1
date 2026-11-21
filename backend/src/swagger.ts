@@ -86,6 +86,8 @@ const options: swaggerJsdoc.Options = {
             how_to_reach: { type: 'string' },
             altitude: { type: 'string' },
             address: { type: 'string' },
+            photo_credit: { type: 'string' },
+            photo_source: { type: 'string' },
             published: { type: 'boolean', description: 'false keeps the spot a draft, hidden from all public reads' },
             featured: { type: 'boolean' },
             sort_order: { type: 'integer' },

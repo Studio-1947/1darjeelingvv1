@@ -3,7 +3,7 @@ import { hostPlanVisibility, isListingHostLapsed } from '../lib/hostPlan';
 import { isGracePaused } from '../lib/hostGrace';
 import { v4 as uuidv4 } from 'uuid';
 import { db, schema } from '../db';
-import { eq, and, inArray, sql } from 'drizzle-orm';
+import { eq, and, inArray, sql, asc } from 'drizzle-orm';
 import { authenticateToken, optionalUser } from '../middleware/auth';
 import { canSeeProviderPhone, listExtras, publicExtras } from '../lib/listingContact';
 import { rateLimiter } from '../middleware/rateLimiter';
@@ -36,6 +36,8 @@ const MAX_PRICE = 1_000_000;
 /** Upper bound for `limit`, so a public caller can't ask for the whole table in one query. */
 const MAX_PAGE_SIZE = 200;
 const DEFAULT_PAGE_SIZE = 60;
+/** Upper bound for `offset`: paging deeper than this is a scrape, not a person scrolling. */
+const MAX_OFFSET = 10_000;
 
 /**
  * Validates the caller-supplied columns of a listing payload. Returns an error message, or null.
@@ -147,7 +149,11 @@ const router = Router();
  *         description: Case-insensitive search across title, description, location
  *       - in: query
  *         name: limit
- *         schema: { type: integer, default: 60 }
+ *         schema: { type: integer, default: 60, maximum: 200 }
+ *       - in: query
+ *         name: offset
+ *         schema: { type: integer, default: 0, maximum: 10000 }
+ *         description: How many matching listings to skip (pass the previous page's next_offset)
  *       - in: query
  *         name: available_on
  *         schema: { type: string, format: date }
@@ -165,6 +171,8 @@ const router = Router();
  *                 items:
  *                   type: array
  *                   items: { $ref: '#/components/schemas/Listing' }
+ *                 total: { type: integer, description: All listings matching the filters, across pages }
+ *                 next_offset: { type: integer, nullable: true, description: Offset of the next page; null on the last page }
  *   post:
  *     summary: Create a listing
  *     description: >
@@ -222,6 +230,10 @@ router.get('/', async (req: Request, res: Response) => {
   const limit = Number.isFinite(requestedLimit) && requestedLimit > 0
     ? Math.min(requestedLimit, MAX_PAGE_SIZE)
     : DEFAULT_PAGE_SIZE;
+  const requestedOffset = parseInt(req.query.offset as string, 10);
+  const offset = Number.isFinite(requestedOffset) && requestedOffset > 0
+    ? Math.min(requestedOffset, MAX_OFFSET)
+    : 0;
 
   // Draft spots must never surface on a public read  this route has no auth, so the
   // predicate is unconditional here and admins get their drafts from /admin/spots instead.
@@ -254,6 +266,7 @@ router.get('/', async (req: Request, res: Response) => {
   const term = typeof q === 'string' ? q.trim().slice(0, 120) : '';
   let items: (typeof schema.listings.$inferSelect)[];
   let search: Interpretation | null = null;
+  let total: number;
   if (term) {
     const all = await db.select().from(schema.listings).where(and(...conditions));
     const visible = await providerFlags(all.map((i) => i.providerId));
@@ -262,16 +275,23 @@ router.get('/', async (req: Request, res: Response) => {
       // A small lift for verified, active hosts; never enough to beat a better match.
       boost: (l) => (visible.get(l.providerId) ? 0.5 : 0),
     });
-    items = ranked.results.slice(0, limit).map((r) => r.item);
+    total = ranked.results.length;
+    items = ranked.results.slice(offset, offset + limit).map((r) => r.item);
     search = ranked.interpretation;
   } else {
     // The spots feed is curated, so it follows the admin's own order (featured first, then
-    // the manual sort order). Every other type keeps the table's natural order as before.
-    const query = db.select().from(schema.listings).where(and(...conditions));
-    items = type === SPOT_TYPE
-      ? await query.orderBy(...spotOrdering()).limit(limit)
-      : await query.limit(limit);
+    // the manual sort order). Every other type is oldest first. Both end on the id, so the
+    // order is total and paging with offset never repeats or skips a row.
+    const where = and(...conditions);
+    const [counted] = await db.select({ n: sql<number>`count(*)::int` }).from(schema.listings).where(where);
+    total = counted?.n ?? 0;
+    const order = type === SPOT_TYPE
+      ? [...spotOrdering(), asc(schema.listings.id)]
+      : [asc(schema.listings.createdAt), asc(schema.listings.id)];
+    items = await db.select().from(schema.listings).where(where).orderBy(...order).limit(limit).offset(offset);
   }
+  // No next page past the offset cap: a request there would be clamped back and repeat this one.
+  const nextOffset = offset + items.length < total && offset + items.length <= MAX_OFFSET ? offset + items.length : null;
 
   const providerIds = [...new Set(items.map(item => item.providerId))];
   const providerRows = providerIds.length > 0
@@ -309,7 +329,8 @@ router.get('/', async (req: Request, res: Response) => {
     };
   });
 
-  res.json(search ? { items: itemsReturn, search } : { items: itemsReturn });
+  const page = { items: itemsReturn, total, next_offset: nextOffset };
+  res.json(search ? { ...page, search } : page);
 });
 
 /** Which of these providers are verified and active (for the search boost). */

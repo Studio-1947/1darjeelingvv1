@@ -39,6 +39,10 @@ export interface SpotExtras {
   how_to_reach?: string;
   altitude?: string;
   address?: string;
+  /** Who took the cover photo and its licence, e.g. "Jane Doe · CC BY-SA 4.0". Required by CC BY licences. */
+  photo_credit?: string;
+  /** Link to the photo's source page (its licence terms), shown with the credit. */
+  photo_source?: string;
   /** Drafts (false) are admin-visible only; anything without the key is published. */
   published: boolean;
   /** Featured spots sort to the front of the public /spots list. */
@@ -62,6 +66,8 @@ const TEXT_FIELDS = {
   altitude: MAX_SHORT_TEXT,
   address: MAX_SHORT_TEXT,
   how_to_reach: MAX_LONG_TEXT,
+  photo_credit: MAX_SHORT_TEXT,
+  photo_source: MAX_LONG_TEXT,
 } as const;
 
 /** Thrown for a caller-fixable payload problem  routes answer these with a 400. */
@@ -159,6 +165,9 @@ export function parseSpotExtras(raw: unknown, previous: Record<string, any> = {}
       out[key] = prev[field];
     }
   }
+
+  // Rendered as a link on the public page, so it must be a web URL (never javascript: etc.).
+  if (out.photo_source && !/^https?:\/\//i.test(out.photo_source)) fail('photo_source must be an http(s) URL');
 
   // Anything not in the schema above is dropped rather than stored, so a caller
   // can't use extras as an open key/value store on a public row.
