@@ -54,6 +54,28 @@ function Section({ title, note, children, testid, id }: { title: string; note?: 
 }
 
 /** A labelled group for controls that are not a single field (chips, priced rows, uploads). */
+/** Languages a host picks from: the four the app is offered in (src/i18n.ts). Saved as these English names. */
+const HOST_LANGUAGES = ['English', 'Hindi', 'Nepali', 'Bengali'];
+/** The saved list, with a known language in its usual spelling ("nepali" -> "Nepali") and no repeats. */
+const splitLangs = (v: unknown) => [...new Set(String(v ?? '').split(',').map((x) => x.trim()).filter(Boolean)
+  .map((x) => HOST_LANGUAGES.find((l) => l.toLowerCase() === x.toLowerCase()) || x))];
+function languageOptions(selected: string[]): string[] {
+  const known = (x: string) => HOST_LANGUAGES.some((l) => l.toLowerCase() === x.toLowerCase());
+  return [...HOST_LANGUAGES, ...selected.filter((x) => !known(x))];
+}
+
+/** Years of experience to pick from: 0-40, plus an older saved value above that (the server takes up to 80). */
+function experienceOptions(current: unknown): number[] {
+  const opts = Array.from({ length: 41 }, (_, i) => i);
+  const n = Number(current);
+  if (current !== '' && Number.isInteger(n) && n > 40 && n <= 80) opts.push(n);
+  return opts;
+}
+const last10 = (v: unknown) => String(v ?? '').replace(/\D/g, '').slice(-10);
+
+/** Passenger capacity choices for a driver: the 1-30 the server accepts. */
+const SEAT_OPTIONS = Array.from({ length: 30 }, (_, i) => i + 1);
+
 function Group({ label, children, hint }: { label: string; children: React.ReactNode; hint?: string }) {
   return (
     <div className="grid gap-2">
@@ -180,6 +202,8 @@ export default function ProviderProfile() {
       host_avatar: e.host_avatar || '',
       host_name: e.host_name || '',
       whatsapp: e.whatsapp || '',
+      // An empty WhatsApp means "same as the phone" (the server and the public page read it so).
+      sameWhatsapp: !e.whatsapp || last10(e.whatsapp) === last10(provider.contact_phone),
       available: e.available !== false,
       languages: (Array.isArray(e.languages) ? e.languages : []).join(', '),
       experience_years: e.experience_years ?? '',
@@ -292,7 +316,7 @@ export default function ProviderProfile() {
     });
     const profile: Record<string, unknown> = {
       host_avatar: form.host_avatar,
-      whatsapp: form.whatsapp.trim(),
+      whatsapp: form.sameWhatsapp ? '' : form.whatsapp.trim(),
       available: form.available,
       languages: form.languages.split(',').map((s: string) => s.trim()).filter(Boolean),
       host_bio: form.host_bio,
@@ -404,6 +428,24 @@ export default function ProviderProfile() {
     homeDelivery: form.home_delivery && (type === 'cafe' || type === 'shop'),
   };
 
+  // Each listing with Edit, then Add: under "Your properties", or inside a driver's vehicle section.
+  const listingRows = (
+    <>
+      {myListings.map((l) => (
+        <div key={l.id} className="row">
+          <span className="min-w-0">
+            <b>{l.title}</b>
+            <span className="ag-small">{l.location}{Number(l.price) > 0 ? ` · ${t('host.from', 'From')} ₹${Number(l.price).toLocaleString('en-IN')}` : ''}</span>
+          </span>
+          <Button variant="text" onClick={() => setEditListing(l)}>{t('common.edit')}</Button>
+        </div>
+      ))}
+      <Button className="self-start" icon={<Icon name={type === 'driver' ? 'car' : 'home'} />} onClick={() => setAddListing(true)}>
+        {type === 'driver' ? t('host.add_vehicle', 'Add a vehicle') : t('host.add_property', 'Add a property')}
+      </Button>
+    </>
+  );
+
   return (
     <div className="ag-wrap">
       <div className="ag-main" data-testid="provider-profile">
@@ -456,11 +498,34 @@ export default function ProviderProfile() {
           )}
           <div className="grid gap-4 sm:grid-cols-2">
             <TextField label={t('hostProfile.phone')} value={form.contact_phone} onChange={(e) => set({ contact_phone: e.target.value })} inputMode="tel" />
-            <TextField label={t('hostProfile.whatsapp')} hint={t('hostProfile.whatsapp_hint')} value={form.whatsapp} onChange={(e) => set({ whatsapp: e.target.value })} inputMode="tel" />
+            {/* Usually the same number the host signed in with (the code came on WhatsApp): a tick, not a second entry. */}
+            <div className="flex flex-col gap-2">
+              <span className="text-sm font-medium text-[var(--ink-strong)]">{t('hostProfile.whatsapp')}</span>
+              <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm text-[var(--ink7)]">
+                <input type="checkbox" checked={form.sameWhatsapp} onChange={(e) => set({ sameWhatsapp: e.target.checked })}
+                  className="h-5 w-5 accent-[var(--r)]" data-testid="profile-same-whatsapp" />
+                {t('ui.editProfile.same_as_phone')}
+              </label>
+              {!form.sameWhatsapp && (
+                <TextField aria-label={t('hostProfile.whatsapp')} value={form.whatsapp} onChange={(e) => set({ whatsapp: e.target.value })}
+                  type="tel" inputMode="tel" placeholder="98765 43210" data-testid="profile-whatsapp" />
+              )}
+            </div>
+          </div>
+          {/* Tap to pick: the four languages the app itself speaks. One saved earlier outside them stays as a pill. */}
+          <div data-testid="profile-languages">
+            <Group label={t('hostProfile.languages')}>
+              <MultiChips options={languageOptions(splitLangs(form.languages))} selected={splitLangs(form.languages)}
+                onChange={(v) => set({ languages: v.join(', ') })} label={(o) => t(`hostProfile.lang_${o.toLowerCase()}`, o)} />
+            </Group>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
-            <TextField label={t('hostProfile.languages')} hint={t('hostProfile.languages_hint')} value={form.languages} onChange={(e) => set({ languages: e.target.value })} />
-            <TextField label={t('hostProfile.experience')} type="number" min={0} max={80} value={form.experience_years} onChange={(e) => set({ experience_years: e.target.value })} />
+            <SelectField label={t('hostProfile.experience')} value={String(form.experience_years ?? '')} onChange={(e) => set({ experience_years: e.target.value })} data-testid="profile-experience">
+              <option value="">{t('hostProfile.seats_pick', 'Choose')}</option>
+              {experienceOptions(form.experience_years).map((n) => (
+                <option key={n} value={String(n)}>{n === 0 ? t('hostProfile.exp_new', 'Less than a year') : t('hostProfile.exp_n', { count: n })}</option>
+              ))}
+            </SelectField>
           </div>
           {type === 'guide' && (
             <div className="grid gap-4 sm:grid-cols-2">
@@ -500,34 +565,34 @@ export default function ProviderProfile() {
           </div>
         </Section>
 
-        {/* provider.js "Your properties" / "Your vehicles": each listing with Edit, and Add. */}
-        <Box as="section" className="ag-host-props" data-testid="profile-properties">
-          <h2>{type === 'driver' ? t('host.your_vehicles', 'Your vehicles') : t('host.your_properties', 'Your properties')}</h2>
-          {myListings.map((l) => (
-            <div key={l.id} className="row">
-              <span className="min-w-0">
-                <b>{l.title}</b>
-                <span className="ag-small">{l.location}{Number(l.price) > 0 ? ` · ${t('host.from', 'From')} ₹${Number(l.price).toLocaleString('en-IN')}` : ''}</span>
-              </span>
-              <Button variant="text" onClick={() => setEditListing(l)}>{t('common.edit')}</Button>
-            </div>
-          ))}
-          <Button className="self-start" icon={<Icon name={type === 'driver' ? 'car' : 'home'} />} onClick={() => setAddListing(true)}>
-            {type === 'driver' ? t('host.add_vehicle', 'Add a vehicle') : t('host.add_property', 'Add a property')}
-          </Button>
-        </Box>
+        {/* provider.js "Your properties": each listing with Edit, and Add. A driver's vehicles sit
+            inside the vehicle section below instead, so all of it is in one place. */}
+        {type !== 'driver' && (
+          <Box as="section" className="ag-host-props" data-testid="profile-properties">
+            <h2>{t('host.your_properties', 'Your properties')}</h2>
+            {listingRows}
+          </Box>
+        )}
 
         {type === 'driver' && (
           <Section title={t('hostProfile.vehicle')} testid="profile-driver">
             <div className="grid gap-4 sm:grid-cols-3">
               <TextField label={t('hostProfile.vehicle_number')} value={form.vehicle_number} onChange={(e) => set({ vehicle_number: e.target.value })} placeholder="WB 74 A 1234" />
               <TextField label={t('hostProfile.license_number')} value={form.license_number} onChange={(e) => set({ license_number: e.target.value })} />
-              <TextField label={t('hostProfile.seats')} type="number" min={1} max={30} value={form.seats} onChange={(e) => set({ seats: e.target.value })} />
+              {/* A pick, not typing: the server takes 1-30 (lib/hostProfile.ts). */}
+              <SelectField label={t('hostProfile.seats')} value={String(form.seats ?? '')} onChange={(e) => set({ seats: e.target.value })} data-testid="profile-seats">
+                <option value="">{t('hostProfile.seats_pick', 'Choose')}</option>
+                {SEAT_OPTIONS.map((n) => <option key={n} value={String(n)}>{t('hostProfile.seats_n', { count: n })}</option>)}
+              </SelectField>
             </div>
             <p className="ag-small">{t('hostProfile.vehicle_docs_note')}</p>
             <Group label={t('hostProfile.routes')}>
               <RouteFareTable routes={form.routes} onChange={(routes: any) => set({ routes })} emptyNote={t('hostProfile.routes_empty')} />
             </Group>
+            <div className="ag-host-props grid gap-3 border-t border-[var(--hairline)] pt-4" data-testid="profile-properties">
+              <span className="text-sm font-medium text-[var(--ink-strong)]">{t('host.your_vehicles', 'Your vehicles')}</span>
+              {listingRows}
+            </div>
           </Section>
         )}
 

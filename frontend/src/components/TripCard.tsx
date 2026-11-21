@@ -123,10 +123,19 @@ export default function TripCard({ booking: b, testId, onReviewed }: {
   ].filter(Boolean);
   const contact = b.status === 'confirmed' && !isPast && (b.host_contact || b.amount_due);
 
-  // Prototype journey: Request sent, then Host confirmed, then Completed once the trip is over.
-  const stage = b.status === 'confirmed' ? (isPast ? 2 : 1) : 0;
-  const steps: [string, string][] = [['ui.trips.j_sent', 'Request sent'], ['ui.trips.j_conf', 'Host confirmed']];
-  if (stage === 2) steps.push(['trips.completed', 'Completed']);
+  // The journey, each step with whether it has happened: Request sent, Host accepted (only when
+  // the host had to say yes), Booking confirmed (the traveller confirms), a cancel request and the
+  // host keeping the booking when there was one, and Completed, always the last step.
+  const confirmed = b.status === 'confirmed';
+  const kept = !b.cancel_request && !!b.cancel_request_kept && confirmed;
+  const steps: [string, string, boolean][] = [['ui.trips.j_sent', 'Request sent', true]];
+  if (b.status === 'accepted' || b.accepted_at || b.awaiting_host) steps.push(['ui.trips.j_acc', 'Host accepted', b.status === 'accepted' || confirmed]);
+  steps.push(['ui.trips.j_booked', 'Booking confirmed', confirmed]);
+  // A request left unanswered past the trip no longer matters: the trip simply completed.
+  if ((b.cancel_request && !isPast) || kept) steps.push(['ui.trips.j_cxreq', 'You asked to cancel', true]);
+  if (kept) steps.push(['ui.trips.j_kept', 'Host kept the booking', true]);
+  steps.push(['trips.completed', 'Completed', confirmed && isPast]);
+  const stage = steps.map((x) => x[2]).lastIndexOf(true);
 
   return (
     <article data-testid={testId} className="ag-box ag-account-trip">
@@ -163,10 +172,9 @@ export default function TripCard({ booking: b, testId, onReviewed }: {
         <ol className="ag-account-journey" aria-label={t('ui.trips.status', 'Status')}>
           {steps.map(([k, fb], j) => {
             const cls = j < stage ? 'past' : j === stage ? 'here' : '';
-            const tick = j === stage || (j < stage && j === steps.length - 1);
             return (
               <li key={k} className={cls}>
-                <span className="jdot" aria-hidden="true">{(tick || j < stage) && <IconCheck />}</span>
+                <span className="jdot" aria-hidden="true">{j <= stage && <IconCheck />}</span>
                 <span>{t(k, fb)}</span>
               </li>
             );

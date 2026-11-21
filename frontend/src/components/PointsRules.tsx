@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { CaretDown } from '@phosphor-icons/react';
+import { CaretDown, Info } from '@phosphor-icons/react';
 import i18n from '@/i18n';
 
 export type PointsRow = {
@@ -22,12 +22,16 @@ export default function PointsRules({ rows, tone = 'light', testId }: { rows: Po
   if (!rows.length) return null;
   const muted = tone === 'dark' ? 'text-white/75' : 'text-[var(--ink-muted)]';
   const line = tone === 'dark' ? 'border-white/15' : 'border-[var(--warmline)]';
-  const head = tone === 'dark' ? '' : 'text-[var(--r)]';
+  // An outlined pill, not a bare text link, so it reads as something to tap.
+  const head = tone === 'dark'
+    ? 'border-white/60 hover:bg-white/10'
+    : 'border-[var(--r)] text-[var(--r)] hover:bg-[var(--r-tint)]';
   return (
     <details className="group mt-3" data-testid={testId}>
-      <summary className={`flex cursor-pointer list-none items-center gap-1 text-sm font-medium [&::-webkit-details-marker]:hidden ${head}`}>
+      <summary className={`inline-flex min-h-10 cursor-pointer list-none items-center gap-1.5 rounded-full border px-3.5 text-sm font-medium transition-colors [&::-webkit-details-marker]:hidden ${head}`}>
+        <Info size={16} weight="bold" aria-hidden="true" />
         {t('ui.pointsRules.how_points_work')}
-        <CaretDown size={14} weight="bold" className="transition-transform group-open:rotate-180" />
+        <CaretDown size={14} weight="bold" className="transition-transform group-open:rotate-180" aria-hidden="true" />
       </summary>
       <ul className="mt-2 grid w-full gap-1.5">
         {rows.map((r) => (
