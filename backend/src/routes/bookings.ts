@@ -28,6 +28,7 @@ import { ownListingIds } from '../lib/hostAccess';
 import { approvalRequired, AWAITING_HOST_DETAIL, isAwaitingHost, realHostIds } from '../lib/bookingApproval';
 import { announceRequest, AWAITING_FEE, sendAwaitingRequest, sendsFree } from '../lib/bookingSend';
 import { flowBreakup, passBreakupFor } from '../lib/pricing';
+import { ADVANCE_DUE_HOURS, ADVANCE_TYPES, advanceAmount, advancePolicyOf, advanceShape, advanceUnpaidOpen, asksAdvance, upiOf } from '../lib/advance';
 
 /** Listing types guests contact directly rather than book. */
 const CONTACT_ONLY_TYPES = new Set(['cafe', 'shop']);
@@ -67,6 +68,9 @@ function detailFields(b: BookingRow) {
       }
       : null,
     cancel_request_kept: b.status !== 'cancelled' && !b.cancelRequestedAt && !!b.cancelRequestReason,
+    // The homestay advance, paid to the host (lib/advance.ts). The UPI ID is not here: it travels
+    // with the host's number in host_contact, on a confirmed booking only.
+    advance: advanceShape(b),
   };
 }
 
@@ -235,6 +239,22 @@ router.post('/', authenticateToken, requireTravellerMode, async (req: Request, r
     ? [...new Set(services.map((s: unknown) => String(s ?? '').trim()).filter((s: string) => offered.has(s)))].slice(0, 20) as string[]
     : [];
 
+  // A homestay host's advance (lib/advance.ts), copied onto the booking now so a later change of
+  // policy never alters it. Only with a UPI ID to pay it to. Worked out on what the guest will owe
+  // the host: the stay less any voucher discount.
+  let advance: { percent: number; amount: number; refundDays: number | null } | null = null;
+  if (ADVANCE_TYPES.has(listing.type)) {
+    const [prov] = await db.select({ extras: schema.providers.extras }).from(schema.providers)
+      .where(eq(schema.providers.id, listing.providerId)).limit(1);
+    const policy = advancePolicyOf(prov?.extras as Record<string, any>);
+    if (policy && upiOf(prov?.extras as Record<string, any>)) {
+      const gross = amountOfBooking({ listingType: listing.type, guests, checkIn: check_in, checkOut: check_out, roomPrice: room ? room.nightly : null }, listing.price);
+      const owed = Math.round(gross * (100 - (validVoucher?.discountPercentage ?? 0)) / 100);
+      const amount = advanceAmount(owed, policy.percent);
+      if (amount > 0) advance = { percent: policy.percent, amount, refundDays: policy.refund_days };
+    }
+  }
+
   // Sent free with the pass; otherwise saved until the ₹1 fee is paid.
   const free = sendsFree(req.user);
   const booking = {
@@ -262,6 +282,9 @@ router.post('/', authenticateToken, requireTravellerMode, async (req: Request, r
     confirmedAt: null,
     voucherId: validVoucher ? validVoucher.id : null,
     appliedDiscount: validVoucher ? validVoucher.discountPercentage : null,
+    advancePercent: advance?.percent ?? null,
+    advanceAmount: advance?.amount ?? null,
+    advanceRefundDays: advance?.refundDays ?? null,
   };
 
   // The clash check, the insert and the voucher burn happen in one transaction under the listing
@@ -462,7 +485,9 @@ router.get('/me', authenticateToken, async (req: Request, res: Response) => {
     const whatsapp = (typeof e.whatsapp === 'string' && e.whatsapp.trim()) || phone;
     const address = typeof e.address === 'string' && e.address.trim() ? e.address.trim() : listing.location || null;
     if (!phone && !address) return null;
-    return { phone, whatsapp: whatsapp || null, address, latitude: listing.latitude ?? null, longitude: listing.longitude ?? null };
+    // The UPI ID to pay an advance to: opened with the number, never before (lib/advance.ts).
+    const upi = asksAdvance(b) ? upiOf(provider?.extras as Record<string, any>) : null;
+    return { phone, whatsapp: whatsapp || null, address, latitude: listing.latitude ?? null, longitude: listing.longitude ?? null, upi };
   };
   const enrichedBookings = [];
   for (const b of bookings) {
@@ -627,6 +652,8 @@ router.get('/provider', authenticateToken, async (req: Request, res: Response) =
       completed: isCompleted(b),
       // The host may say the guest never came (POST /bookings/{id}/no-show).
       no_show_open: noShowOpen(b),
+      // The advance is overdue: the host may cancel (POST /bookings/{id}/advance/unpaid).
+      advance_unpaid_open: advanceUnpaidOpen(b) && !isTripOver(b),
       // What this booking is worth to the host (room x nights or rate x guests x nights for a
       // homestay, the quoted fare for a driver), the same rule as stats.revenue, so a dashboard
       // scoped to one listing adds up the same way.
@@ -943,6 +970,175 @@ router.post('/:id/no-show', authenticateToken, async (req: Request, res: Respons
       title: 'The host says you did not come',
       body: `The host of ${booking.listingTitle} says you did not come, so the booking was closed. If that is wrong, use Report a problem in My Trips.`,
       msg: { key: 'no_show_guest', params: { place: booking.listingTitle } },
+      refId: booking.id,
+    });
+  }
+  res.json({ booking: bookingShape(change.updated) });
+});
+
+// ============ ADVANCE ============
+// A homestay host may ask for 10-15% up front, paid by the guest straight to the host's UPI after
+// confirming (lib/advance.ts). aangan never holds the money; these routes only record each side's
+// word, so both see where it stands.
+
+/**
+ * @openapi
+ * /bookings/{id}/advance/paid:
+ *   post:
+ *     summary: The guest says they paid the advance to the host
+ *     description: >
+ *       Only the guest, on a confirmed booking that asks for an advance. The money went straight
+ *       to the host's UPI, so this records the guest's word and tells the host to check. Safe to
+ *       repeat.
+ *     tags: [Bookings]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: "The booking, with `advance.paid_at` set" }
+ *       403: { description: Not the guest who made this booking }
+ *       409: { description: "No advance on this booking (`no_advance`) or it is not confirmed (`not_confirmed`)" }
+ */
+router.post('/:id/advance/paid', authenticateToken, async (req: Request, res: Response) => {
+  const [booking] = await db.select().from(schema.bookings).where(eq(schema.bookings.id, routeParam(req, 'id'))).limit(1);
+  if (!booking) return res.status(404).json({ detail: 'Booking not found' });
+  if (booking.userId !== req.user.id) return res.status(403).json({ detail: 'Only the guest can say they paid' });
+  const change = await db.transaction(async (tx) => {
+    const now = await lockBookingForChange(tx, booking.id);
+    if (!now) return null;
+    if (!asksAdvance(now)) return { bad: 'no_advance' as const };
+    if (now.advancePaidAt || now.advanceReceivedAt) return { updated: now, unchanged: true as const };
+    if (now.status !== 'confirmed') return { bad: 'not_confirmed' as const };
+    const [updated] = await tx.update(schema.bookings)
+      .set({ advancePaidAt: new Date().toISOString() })
+      .where(eq(schema.bookings.id, now.id))
+      .returning();
+    return { updated, unchanged: false as const };
+  });
+  if (!change) return res.status(404).json({ detail: 'Booking not found' });
+  if ('bad' in change) {
+    const detail = change.bad === 'no_advance' ? 'This booking has no advance' : 'Only a confirmed booking has an advance to pay';
+    return res.status(409).json({ detail, code: change.bad });
+  }
+  if (!change.unchanged) {
+    await addHostNotification(await listingProviderId(booking), {
+      kind: 'advance_paid',
+      title: 'The guest says they paid the advance',
+      body: `The guest for ${booking.listingTitle} says they paid the ₹${booking.advanceAmount} advance to your UPI. Check your UPI app, then tap Advance received.`,
+      msg: { key: 'advance_paid_host', params: { place: booking.listingTitle, amount: String(booking.advanceAmount ?? '') } },
+      refId: booking.id,
+    });
+  }
+  res.json({ booking: bookingShape(change.updated) });
+});
+
+/**
+ * @openapi
+ * /bookings/{id}/advance/received:
+ *   post:
+ *     summary: The host says the advance reached them
+ *     description: >
+ *       The host of the listing (or an admin), on a booking that asks for an advance and is not
+ *       cancelled. It does not need the guest to have tapped "I've paid" first. Safe to repeat.
+ *     tags: [Bookings]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: "The booking, with `advance.received_at` set" }
+ *       403: { description: Not the host of this listing }
+ *       409: { description: "No advance on this booking (`no_advance`) or it is not confirmed (`not_confirmed`)" }
+ */
+router.post('/:id/advance/received', authenticateToken, async (req: Request, res: Response) => {
+  const [booking] = await db.select().from(schema.bookings).where(eq(schema.bookings.id, routeParam(req, 'id'))).limit(1);
+  if (!booking) return res.status(404).json({ detail: 'Booking not found' });
+  if (!(await ownsListingFor(booking, req.user)) && req.user.role !== 'admin') {
+    return res.status(403).json({ detail: 'Only the host of this listing can say the advance arrived' });
+  }
+  const change = await db.transaction(async (tx) => {
+    const now = await lockBookingForChange(tx, booking.id);
+    if (!now) return null;
+    if (!asksAdvance(now)) return { bad: 'no_advance' as const };
+    if (now.advanceReceivedAt) return { updated: now, unchanged: true as const };
+    if (now.status !== 'confirmed') return { bad: 'not_confirmed' as const };
+    const [updated] = await tx.update(schema.bookings)
+      .set({ advanceReceivedAt: new Date().toISOString() })
+      .where(eq(schema.bookings.id, now.id))
+      .returning();
+    return { updated, unchanged: false as const };
+  });
+  if (!change) return res.status(404).json({ detail: 'Booking not found' });
+  if ('bad' in change) {
+    const detail = change.bad === 'no_advance' ? 'This booking has no advance' : 'Only a confirmed booking has an advance to receive';
+    return res.status(409).json({ detail, code: change.bad });
+  }
+  if (!change.unchanged) {
+    await addInAppNotification(booking.userId, {
+      kind: 'advance_received',
+      title: 'The host got your advance',
+      body: `The host of ${booking.listingTitle} says your ₹${booking.advanceAmount} advance reached them.`,
+      msg: { key: 'advance_received_guest', params: { place: booking.listingTitle, amount: String(booking.advanceAmount ?? '') } },
+      refId: booking.id,
+    });
+  }
+  res.json({ booking: bookingShape(change.updated) });
+});
+
+/**
+ * @openapi
+ * /bookings/{id}/advance/unpaid:
+ *   post:
+ *     summary: The host cancels a booking whose advance never came
+ *     description: >
+ *       The host (or an admin), on a confirmed booking that asks for an advance not marked
+ *       received, from ADVANCE_DUE_HOURS (24) after it was confirmed, and not once the trip is
+ *       over. The booking is cancelled with `cancel_reason: advance_unpaid`. Like a no-show, the ₹1
+ *       that sent the request is kept: the guest has had the host's number. The guest is told and
+ *       can use Report a problem if they did pay.
+ *     tags: [Bookings]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: The cancelled booking }
+ *       403: { description: Not the host of this listing }
+ *       409: { description: "Not open yet or any more (`not_open`), or the trip is over (`trip_over`)" }
+ */
+router.post('/:id/advance/unpaid', authenticateToken, async (req: Request, res: Response) => {
+  const [booking] = await db.select().from(schema.bookings).where(eq(schema.bookings.id, routeParam(req, 'id'))).limit(1);
+  if (!booking) return res.status(404).json({ detail: 'Booking not found' });
+  const ownsIt = await ownsListingFor(booking, req.user);
+  if (!ownsIt && req.user.role !== 'admin') {
+    return res.status(403).json({ detail: 'Only the host of this listing can cancel this booking' });
+  }
+  const change = await db.transaction(async (tx) => {
+    const now = await lockBookingForChange(tx, booking.id);
+    if (!now) return null;
+    if (now.status === 'cancelled' && now.cancelReason === 'advance_unpaid') return { updated: now, unchanged: true as const };
+    if (isTripOver(now)) return { bad: 'trip_over' as const };
+    if (!advanceUnpaidOpen(now)) return { bad: 'not_open' as const };
+    const [updated] = await tx.update(schema.bookings)
+      .set({
+        status: 'cancelled',
+        cancelReason: 'advance_unpaid',
+        cancelNote: null,
+        cancelledBy: ownsIt ? 'host' : 'admin',
+        cancelledAt: new Date().toISOString(),
+        declined: false,
+        cancelLate: false,
+        cancelRequestedAt: null,
+      })
+      .where(eq(schema.bookings.id, now.id))
+      .returning();
+    return { updated, unchanged: false as const };
+  });
+  if (!change) return res.status(404).json({ detail: 'Booking not found' });
+  if ('bad' in change) {
+    const detail = change.bad === 'trip_over' ? 'This trip is over and can no longer be cancelled'
+      : `You can do this once the advance is ${ADVANCE_DUE_HOURS} hours late, and only while it is not marked received`;
+    return res.status(409).json({ detail, code: change.bad });
+  }
+  if (!change.unchanged) {
+    // No ₹1 refund and the voucher stays spent: the guest held the booking and had the number.
+    await addInAppNotification(booking.userId, {
+      kind: 'booking_cancelled',
+      title: 'Booking cancelled: advance not received',
+      body: `The host of ${booking.listingTitle} did not receive your advance, so the booking was cancelled. If you did pay, use Report a problem in My Trips.`,
+      msg: { key: 'advance_unpaid_guest', params: { place: booking.listingTitle } },
       refId: booking.id,
     });
   }

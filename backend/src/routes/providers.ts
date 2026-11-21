@@ -29,6 +29,7 @@ import { MAX_VIDEO_BYTES, VIDEO_MIME, matchesDeclaredType } from './kyc';
 import { uploadToMinIO } from '../lib/s3';
 import { checkNameLike } from '../lib/contentRules';
 import { coverAfterPhotosChange } from '../lib/listingCover';
+import { advancePolicyOf, upiOf } from '../lib/advance';
 
 const SELF_ONBOARDABLE_BUSINESS_TYPES = Object.keys(KYC_REQUIREMENTS);
 
@@ -750,6 +751,14 @@ router.patch('/me', authenticateToken, async (req: Request, res: Response) => {
     set.extras = extras;
     const derived = startingPriceFor(provider.businessType, extras);
     if (derived !== null && body.price_from === undefined && (onFirst || !perProperty)) set.priceFrom = derived;
+  }
+  // An advance is paid to the host's UPI ID (lib/advance.ts), so it cannot be asked for without one.
+  // Checked only when this save touches either, so an unrelated save never fails on it.
+  if (body.upi !== undefined || (profilePatch && 'advance' in profilePatch)) {
+    const after = (set.extras ?? provider.extras ?? {}) as Record<string, any>;
+    if (advancePolicyOf(after) && !upiOf(after)) {
+      return res.status(400).json({ detail: 'Add your UPI ID to ask guests for an advance', code: 'upi_required' });
+    }
   }
   if (body.cover_image !== undefined) {
     const cover = typeof body.cover_image === 'string' ? body.cover_image.trim() : '';

@@ -1,6 +1,7 @@
 import { normaliseVehicleNumber } from './vehicleNumber';
 import { MAX_PRICE } from './priceCap';
 import { isPlausiblePhone } from './phone';
+import { checkAdvancePolicy } from './advance';
 
 /**
  * The host profile: what each kind of host fills in about themselves and their business, beyond
@@ -225,6 +226,9 @@ const BY_TYPE: Record<string, Record<string, (v: unknown) => unknown | ProfileEr
     }),
     meals: (v) => list(v, 20, 'Food', priced(['meal', 'day', 'head'], 'meal', 'meal')),
     ...PREMISES,
+    // An advance paid to the host's own UPI after confirming (lib/advance.ts): { percent, refund_days },
+    // or null for none. The whole business's, like WhatsApp: it goes to every property.
+    advance: (v) => checkAdvancePolicy(v),
     capacity: (v) => int(v, 1, 100, 'Guest occupancy'),
     amenities: (v) => list(v, 30, 'Amenities', (x) => text(x, 60, 'Amenity')),
     // Which photo shows what, keyed by the photo's URL, so the listing page can group them.

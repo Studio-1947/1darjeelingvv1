@@ -2477,7 +2477,19 @@
     "rooms_need_sleeps": "Say how many people each room sleeps, then save.",
     "property": "Property",
     "property_hint": "Rooms, food, guest occupancy and amenities below are for this property.",
-    "property_save_first": "Save your changes before switching to another property."
+    "property_save_first": "Save your changes before switching to another property.",
+    "advance": "Advance payment",
+    "advance_note": "Ask guests for part of the stay up front. They pay it straight to your UPI after the booking is confirmed. aangan never holds this money.",
+    "advance_percent": "Advance",
+    "advance_off": "No advance",
+    "advance_pct": "{{n}}% of the stay",
+    "advance_refund": "If the guest cancels",
+    "advance_refund_days_one": "Returned if they cancel {{count}} or more days before check-in",
+    "advance_refund_days_other": "Returned if they cancel {{count}} or more days before check-in",
+    "advance_refund_none": "Not returned",
+    "upi": "Your UPI ID",
+    "upi_hint": "Guests see it only once their booking is confirmed, like your phone number.",
+    "advance_upi_needed": "Add your UPI ID to ask guests for an advance."
   },
   "owners": {
     "title": "Owners",
@@ -3561,6 +3573,18 @@
       "no_show_guest": {
         "title": "The host says you did not come",
         "body": "The host of {{place}} says you did not come, so the booking was closed. If that is wrong, use Report a problem in My Trips."
+      },
+      "advance_paid_host": {
+        "title": "The guest says they paid the advance",
+        "body": "The guest for {{place}} says they paid the ₹{{amount}} advance to your UPI. Check your UPI app, then tap Advance received."
+      },
+      "advance_received_guest": {
+        "title": "The host got your advance",
+        "body": "The host of {{place}} says your ₹{{amount}} advance reached them."
+      },
+      "advance_unpaid_guest": {
+        "title": "Booking cancelled: advance not received",
+        "body": "The host of {{place}} did not receive your advance, so the booking was cancelled. If you did pay, use Report a problem in My Trips."
       }
     },
     "missing": {
@@ -3784,7 +3808,8 @@
       "fully_booked": "Fully booked for these dates",
       "not_available": "Car or home not available",
       "family_health": "Family or health reason",
-      "no_show": "The guest did not come"
+      "no_show": "The guest did not come",
+      "advance_unpaid": "The advance was not paid"
     },
     "reason": "Reason",
     "h_guest": "Why are you cancelling?",
@@ -4049,5 +4074,28 @@
     "and1": "Open this page in Chrome.",
     "and2": "Tap the three dots at the top right.",
     "and3": "Tap \"Install app\" or \"Add to Home screen\"."
+  },
+  "advance": {
+    "ask_note": "This host asks {{pct}}% ({{amount}}) as an advance, paid to them by UPI after your booking is confirmed.",
+    "refund_days_one": "Returned if you cancel {{count}} or more days before check-in.",
+    "refund_days_other": "Returned if you cancel {{count}} or more days before check-in.",
+    "refund_none": "Not returned if you cancel.",
+    "pay_title": "Pay the {{amount}} advance to the host",
+    "pay_note": "{{pct}}% of your stay, straight to the host by UPI. aangan does not hold this money.",
+    "due": "Pay by {{when}}.",
+    "upi_id": "Host's UPI ID",
+    "paid_waiting": "You said you paid. The host will check and mark it received.",
+    "pay_upi": "Pay by UPI",
+    "i_paid": "I've paid",
+    "received_guest": "The host got your {{amount}} advance.",
+    "host_line": "Advance {{amount}} ({{pct}}%)",
+    "host_received": "Received. It went to your UPI, not to aangan.",
+    "host_guest_paid": "The guest says they paid. Check your UPI app, then tap Advance received.",
+    "host_waiting": "Not paid yet. The guest has 24 hours after confirming to pay it to your UPI.",
+    "mark_received": "Advance received",
+    "unpaid_btn": "Cancel: advance not paid",
+    "unpaid_q": "Use this only if the advance never reached your UPI. The booking is cancelled and the guest is told. If any of it did reach you, return it.",
+    "unpaid_yes": "Yes, cancel the booking",
+    "no_upi": "Ask the host how to pay it: call or WhatsApp them above."
   }
 }

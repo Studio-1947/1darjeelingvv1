@@ -10,6 +10,7 @@ import { useAuth } from '@/context/AuthContext';
 import { needsSupport } from '@/lib/support';
 import { niceTime } from '@/lib/tripTime';
 import { roomFit, roomOpen } from '@/lib/roomFit';
+import { advanceOf, advancePolicyOf, refundRuleText } from '@/lib/advance';
 import { rupees, usePrice } from '@/lib/prices';
 
 /** Listing types whose bookings are requests the host accepts first (server: HOST_APPROVAL_TYPES). */
@@ -184,6 +185,16 @@ export function BookingScreen({ item, unit, step, booking, onNext }: {
 
   const people = <PeopleRow value={form.guests} max={maxGuests} error={errors.guests} onChange={(n) => updateForm({ guests: n })} />;
 
+  // A homestay host may ask 10-15% up front, paid to them by UPI once the booking is confirmed
+  // (lib/advance.ts). Said before the guest sends, with the host's refund rule.
+  const advance = isStay ? advancePolicyOf(item.extras) : null;
+  const advanceNote = advance && gross > 0 ? (
+    <p className="ag-small" data-testid="booking-advance-note">
+      {t('advance.ask_note', { pct: advance.percent, amount: rs(advanceOf(gross - off, advance.percent)) })}{' '}
+      {refundRuleText(t, advance.refund_days)}
+    </p>
+  ) : null;
+
   const totalBox = (
     <Box data-testid="booking-breakdown">
       <div className="ag-listing-sum">
@@ -203,6 +214,7 @@ export function BookingScreen({ item, unit, step, booking, onNext }: {
         <span className="t price">{gross > 0 ? rs(gross - off) : '—'}</span>
       </div>
       <p className="ag-small">{t('listing.payhost', 'You pay this to the host directly. aangan takes no share.')}</p>
+      {advanceNote}
     </Box>
   );
 
@@ -389,6 +401,7 @@ export function BookingScreen({ item, unit, step, booking, onNext }: {
               <span className="t">{t('listing.total', 'Total to pay the host')}</span>
               <span className="t price">{gross > 0 ? rs(gross - off) : '—'}</span>
             </div>
+            {advanceNote}
           </Box>
 
           <TextField label={t('listing.note', 'Message for the host (you can skip)')} value={form.notes} maxLength={200}

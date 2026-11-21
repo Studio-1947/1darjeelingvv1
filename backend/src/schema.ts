@@ -320,6 +320,16 @@ export const bookings = pgTable('bookings', {
   cancelRequestedAt: text('cancel_requested_at'),
   cancelRequestReason: text('cancel_request_reason'),
   cancelRequestNote: text('cancel_request_note'),
+
+  // Homestay advance (lib/advance.ts): the host's policy copied when the booking was made, so a
+  // later change never alters it. Paid by the guest straight to the host's UPI after confirming;
+  // aangan only records each side's word: paid (the guest) and received (the host). Null percent
+  // means no advance was asked. Refund days null means the host does not return it.
+  advancePercent: integer('advance_percent'),
+  advanceAmount: integer('advance_amount'),
+  advanceRefundDays: integer('advance_refund_days'),
+  advancePaidAt: text('advance_paid_at'),
+  advanceReceivedAt: text('advance_received_at'),
 });
 
 export const favorites = pgTable('favorites', {

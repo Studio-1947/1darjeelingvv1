@@ -10,6 +10,7 @@ import { Bell, CircleNotch as Loader2, MapPin, X } from '@phosphor-icons/react';
 import { Button, ButtonA, FieldError, Status, TextArea } from '@/components/ag';
 import CancelSheet, { reasonLine, type CancelMode } from '@/components/CancelSheet';
 import { niceTime } from '@/lib/tripTime';
+import { refundRuleText, upiPayLink } from '@/lib/advance';
 
 const IconCheck = () => <AgIcon name="check" />;
 
@@ -20,6 +21,11 @@ const mapsUrl = (c: { latitude: number | null; longitude: number | null; address
   c.latitude != null && c.longitude != null
     ? `https://www.google.com/maps/dir/?api=1&destination=${c.latitude},${c.longitude}`
     : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(c.address || '')}`;
+
+const rupee = (n: number) => `₹${Number(n || 0).toLocaleString('en-IN')}`;
+/** When the advance is due, in the reader's language: "22 Nov, 6:30 pm". */
+const dueText = (iso: string, lang: string) =>
+  new Date(iso).toLocaleString(lang === 'en' ? 'en-IN' : lang, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
 
 const BAND_ICON: Record<string, 'home' | 'car' | 'trek' | 'cup' | 'bag'> = { homestay: 'home', driver: 'car', guide: 'trek', cafe: 'cup', shop: 'bag' };
 
@@ -85,6 +91,22 @@ export default function TripCard({ booking: b, testId, onReviewed }: {
       else setConfirmErr(e?.response?.data?.detail || e?.message || '');
     } finally {
       setConfirmBusy(false);
+    }
+  };
+  // The homestay advance (lib/advance.ts): paid straight to the host's UPI once confirmed; the guest
+  // says so here and the host marks it received. aangan never holds the money.
+  const [advanceBusy, setAdvanceBusy] = useState(false);
+  const [advanceErr, setAdvanceErr] = useState('');
+  const sayPaid = async () => {
+    setAdvanceBusy(true);
+    setAdvanceErr('');
+    try {
+      await api.post(`/bookings/${b.id}/advance/paid`);
+      onReviewed?.();
+    } catch (e: any) {
+      setAdvanceErr(e?.response?.data?.detail || e?.message || '');
+    } finally {
+      setAdvanceBusy(false);
     }
   };
   // "Report a problem" on a confirmed trip (host did not show up, wrong address, asked for more
@@ -244,6 +266,47 @@ export default function TripCard({ booking: b, testId, onReviewed }: {
             </div>
           )}
         </div>
+      )}
+
+      {/* Confirmed with an advance: pay it to the host by UPI, then say so. Before confirming the
+          rule is only described (the UPI ID opens with the host's number). */}
+      {b.advance && b.status === 'confirmed' && !isPast && !b.cancel_request && (
+        b.advance.received_at ? (
+          <p className="ag-small flex items-center gap-1.5 !text-[var(--ok)]" data-testid={`trip-advance-received-${b.id}`}>
+            <AgIcon name="check" /> {t('advance.received_guest', { amount: rupee(b.advance.amount) })}
+          </p>
+        ) : (
+          <div className="flex flex-col gap-2 rounded-[14px] px-3 py-3 bg-[var(--r-tint)]" data-testid={`trip-advance-${b.id}`}>
+            <p className="text-sm font-medium text-[var(--r)]">{t('advance.pay_title', { amount: rupee(b.advance.amount) })}</p>
+            <p className="ag-small">
+              {t('advance.pay_note', { pct: b.advance.percent })}{' '}
+              {b.advance.due_at ? t('advance.due', { when: dueText(b.advance.due_at, i18n.language) }) : ''}{' '}
+              {refundRuleText(t, b.advance.refund_days)}
+            </p>
+            {b.host_contact?.upi && (
+              <p className="text-sm text-[var(--ink-strong)]" data-testid={`trip-advance-upi-${b.id}`}>
+                {t('advance.upi_id')}: <b className="select-all">{b.host_contact.upi}</b>
+              </p>
+            )}
+            {/* No UPI ID saved any more (the host turned the advance off after this booking): ask them. */}
+            {!b.host_contact?.upi && !b.advance.paid_at && <p className="ag-small" data-testid={`trip-advance-no-upi-${b.id}`}>{t('advance.no_upi')}</p>}
+            {b.advance.paid_at ? (
+              <p className="ag-small" data-testid={`trip-advance-paid-${b.id}`}>{t('advance.paid_waiting')}</p>
+            ) : (
+              <div className="ag-account-tripbtns">
+                {b.host_contact?.upi && (
+                  <ButtonA href={upiPayLink(b.host_contact.upi, title || '', b.advance.amount, b.id)} variant="tonal" size="sm"
+                    icon={<AgIcon name="arrowne" />} data-testid={`trip-advance-pay-${b.id}`}>{t('advance.pay_upi')}</ButtonA>
+                )}
+                <Button size="sm" onClick={sayPaid} disabled={advanceBusy} data-testid={`trip-advance-said-${b.id}`}
+                  icon={advanceBusy ? <Loader2 className="animate-spin" /> : undefined}>
+                  {t('advance.i_paid')}
+                </Button>
+              </div>
+            )}
+            {advanceErr && <p className="ag-err" role="alert">{advanceErr}</p>}
+          </div>
+        )
       )}
 
       {b.awaiting_host && (

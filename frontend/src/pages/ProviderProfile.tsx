@@ -234,6 +234,10 @@ export default function ProviderProfile() {
       // An empty WhatsApp means "same as the phone" (the server and the public page read it so).
       sameWhatsapp: !e.whatsapp || last10(e.whatsapp) === last10(provider.contact_phone),
       available: e.available !== false,
+      // A homestay's advance, paid to the host's own UPI after confirming (server lib/advance.ts).
+      advance_percent: e.advance?.percent ? String(e.advance.percent) : '',
+      advance_refund: e.advance ? (e.advance.refund_days ? String(e.advance.refund_days) : 'none') : '7',
+      upi: e.upi || '',
       languages: (Array.isArray(e.languages) ? e.languages : []).join(', '),
       experience_years: e.experience_years ?? '',
       host_bio: e.host_bio || '',
@@ -347,6 +351,11 @@ export default function ProviderProfile() {
       setMsg({ ok: false, text: t('hostProfile.rooms_need_sleeps') });
       return;
     }
+    // The advance is paid to the host's UPI ID, so asking for one needs it.
+    if (type === 'homestay' && form.advance_percent && !form.upi.trim()) {
+      setMsg({ ok: false, text: t('hostProfile.advance_upi_needed') });
+      return;
+    }
     setBusy(true);
     setMsg(null);
     const num = (v: any) => (v === '' || v === null || v === undefined ? undefined : Number(v));
@@ -384,6 +393,9 @@ export default function ProviderProfile() {
       const fromRooms = roomsCapacity(form.rooms);
       if (fromRooms > 0) profile.capacity = fromRooms;
       else if (num(form.capacity) !== undefined) profile.capacity = num(form.capacity);
+      profile.advance = form.advance_percent
+        ? { percent: Number(form.advance_percent), refund_days: form.advance_refund === 'none' ? null : Number(form.advance_refund) }
+        : null;
     } else if (type === 'guide') {
       Object.assign(profile, { host_name: form.host_name.trim(), guide_types: form.guide_types, services: priced(form.services), seasons: form.seasons });
       if (form.gender) profile.gender = form.gender;
@@ -404,6 +416,8 @@ export default function ProviderProfile() {
     const body: Record<string, unknown> = { profile };
     // Rooms, food, occupancy and amenities go to the picked property only (the first one when none is picked).
     if (type === 'homestay' && propertyId) body.listing_id = propertyId;
+    // The UPI ID lives on the business, not the listing, and travellers see it only on a confirmed booking.
+    if (type === 'homestay' && form.upi.trim() !== (p?.extras?.upi || '')) body.upi = form.upi.trim();
     if (form.business_name.trim() && form.business_name.trim() !== p.business_name) body.business_name = form.business_name.trim();
     if (form.contact_phone.trim() && form.contact_phone.trim() !== p.contact_phone) body.contact_phone = form.contact_phone.trim();
     if (form.cover && form.cover !== (p.images || [])[0]) body.cover_image = form.cover;
@@ -682,6 +696,33 @@ export default function ProviderProfile() {
             <Group label={t('hostProfile.recommended_drivers')}>
               <DriverPicker selected={form.recommended_drivers} onChange={(recommended_drivers) => set({ recommended_drivers })} />
             </Group>
+          </Section>
+        )}
+
+        {/* An advance the guest pays straight to the host's UPI after confirming; aangan never holds it. */}
+        {type === 'homestay' && (
+          <Section title={t('hostProfile.advance')} note={t('hostProfile.advance_note')} testid="profile-advance">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <SelectField label={t('hostProfile.advance_percent')} value={form.advance_percent}
+                onChange={(e) => set({ advance_percent: e.target.value })} data-testid="profile-advance-percent">
+                <option value="">{t('hostProfile.advance_off')}</option>
+                {[10, 11, 12, 13, 14, 15].map((n) => <option key={n} value={String(n)}>{t('hostProfile.advance_pct', { n })}</option>)}
+              </SelectField>
+              {form.advance_percent && (
+                <SelectField label={t('hostProfile.advance_refund')} value={form.advance_refund}
+                  onChange={(e) => set({ advance_refund: e.target.value })} data-testid="profile-advance-refund">
+                  {[3, 7, 14].map((d) => <option key={d} value={String(d)}>{t('hostProfile.advance_refund_days', { count: d })}</option>)}
+                  <option value="none">{t('hostProfile.advance_refund_none')}</option>
+                </SelectField>
+              )}
+            </div>
+            {form.advance_percent && (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <TextField label={`${t('hostProfile.upi')} *`} hint={t('hostProfile.upi_hint')} value={form.upi}
+                  onChange={(e) => set({ upi: e.target.value })} placeholder="yourname@okaxis" autoComplete="off"
+                  autoCapitalize="none" spellCheck={false} data-testid="profile-upi" />
+              </div>
+            )}
           </Section>
         )}
 

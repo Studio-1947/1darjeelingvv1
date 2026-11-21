@@ -19,8 +19,10 @@ export const BAND_ICON: Record<string, IconName> = { homestay: 'home', driver: '
  * Declining or cancelling asks the host for a reason (prototype cancel.js); a guest's request to
  * cancel a confirmed booking shows here with Accept cancellation / Keep booking.
  */
-export default function BookingCard({ b, onCancel, onAccept, onCancelRequest, onNoShow, host }: {
+export default function BookingCard({ b, onCancel, onAccept, onCancelRequest, onNoShow, onAdvance, host }: {
   b: any;
+  /** The homestay advance: the host says it reached their UPI, or cancels once it is 24 h late. */
+  onAdvance?: (id: string, what: 'received' | 'unpaid') => Promise<void> | void;
   /** The guest never came: closes the booking so it does not count as a completed trip. */
   onNoShow?: (id: string) => Promise<void> | void;
   onCancel?: (id: string, reason: string, note: string) => Promise<void> | void;
@@ -36,6 +38,20 @@ export default function BookingCard({ b, onCancel, onAccept, onCancelRequest, on
   const [answering, setAnswering] = useState<'' | 'accept' | 'keep'>('');
   const [noShowAsk, setNoShowAsk] = useState(false);
   const [noShowBusy, setNoShowBusy] = useState(false);
+  const [unpaidAsk, setUnpaidAsk] = useState(false);
+  const [advanceBusy, setAdvanceBusy] = useState<'' | 'received' | 'unpaid'>('');
+  const advanceAct = async (what: 'received' | 'unpaid') => {
+    setAdvanceBusy(what);
+    setAcceptErr('');
+    try {
+      await onAdvance?.(b.id, what);
+      setUnpaidAsk(false);
+    } catch (e: any) {
+      setAcceptErr(e?.response?.data?.detail || t('cancel.failed', 'That did not work. Try again.'));
+    } finally {
+      setAdvanceBusy('');
+    }
+  };
   const markNoShow = async () => {
     setNoShowBusy(true);
     setAcceptErr('');
@@ -134,6 +150,18 @@ export default function BookingCard({ b, onCancel, onAccept, onCancelRequest, on
     </Button>
   );
 
+  const advanceReceivedBtn = onAdvance && b.advance && s === 2 && !b.advance.received_at && !request && (
+    <Button variant="primary" onClick={() => advanceAct('received')} disabled={!!advanceBusy} icon={<Icon name="check" />} data-testid={`booking-advance-received-${b.id}`}>
+      {advanceBusy === 'received' ? t('common.loading') : t('advance.mark_received')}
+    </Button>
+  );
+  // 24 hours after the guest confirmed and still no advance: the host may let the booking go.
+  const advanceUnpaidBtn = onAdvance && b.advance_unpaid_open && !request && !unpaidAsk && (
+    <Button onClick={() => setUnpaidAsk(true)} icon={<Icon name="close" />} data-testid={`booking-advance-unpaid-${b.id}`}>
+      {t('advance.unpaid_btn')}
+    </Button>
+  );
+
   const decline = onCancel && b.status !== 'cancelled' && !b.completed && !confirming && !request && (
     <Button variant="stop" onClick={() => setConfirming(true)} icon={<Icon name="close" />} data-testid={`booking-cancel-${b.id}`}>
       {b.status === 'confirmed' || b.status === 'accepted' ? t('ui.trips.cx_go', 'Cancel booking') : t('pd.decline')}
@@ -196,6 +224,20 @@ export default function BookingCard({ b, onCancel, onAccept, onCancelRequest, on
       {s === 2 && !request && b.cancel_request_kept && (
         <p className="ag-small" data-testid={`booking-cancel-kept-${b.id}`}>{t('cancel.kept_host', 'The guest asked to cancel; you kept the booking.')}</p>
       )}
+      {/* The homestay advance, paid by the guest straight to the host's UPI (lib/advance.ts). */}
+      {b.advance && s === 2 && (
+        <div className="ag-cxban" data-testid={`booking-advance-${b.id}`}>
+          <Icon name={b.advance.received_at ? 'check' : 'bell'} />
+          <span>
+            <b>{t('advance.host_line', { amount: `₹${Number(b.advance.amount).toLocaleString('en-IN')}`, pct: b.advance.percent })}</b><br />
+            <span className="ag-small">
+              {b.advance.received_at ? t('advance.host_received')
+                : b.advance.paid_at ? t('advance.host_guest_paid')
+                : t('advance.host_waiting')}
+            </span>
+          </span>
+        </div>
+      )}
       <p className="ag-host-guest">
         {t('host.guest', 'Guest')}: <b>{b.customer?.name || t('pd.guest_fallback')}</b>{phone ? ` · ${phone}` : ''}
         {' · '}{t('pd.placed')}: {new Date(b.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
@@ -236,6 +278,8 @@ export default function BookingCard({ b, onCancel, onAccept, onCancelRequest, on
               {t('ui.bookingCard.send_trip_details')}
             </ButtonA>
           )}
+          {advanceReceivedBtn}
+          {advanceUnpaidBtn}
           {noShowBtn}
           {decline}
         </div>
@@ -250,6 +294,17 @@ export default function BookingCard({ b, onCancel, onAccept, onCancelRequest, on
               {noShowBusy ? t('common.loading') : t('cancel.no_show_yes', 'Yes, they did not come')}
             </Button>
             <Button size="sm" disabled={noShowBusy} onClick={() => setNoShowAsk(false)}>{t('common.back', 'Back')}</Button>
+          </div>
+        </Box>
+      )}
+      {unpaidAsk && (
+        <Box tone="blush" flat data-testid={`booking-advance-unpaid-confirm-${b.id}`}>
+          <p className="text-sm text-[var(--ink-strong)]">{t('advance.unpaid_q')}</p>
+          <div className="ag-row">
+            <Button variant="stop" size="sm" disabled={!!advanceBusy} onClick={() => advanceAct('unpaid')} data-testid={`booking-advance-unpaid-yes-${b.id}`}>
+              {advanceBusy === 'unpaid' ? t('common.loading') : t('advance.unpaid_yes')}
+            </Button>
+            <Button size="sm" disabled={!!advanceBusy} onClick={() => setUnpaidAsk(false)}>{t('common.back', 'Back')}</Button>
           </div>
         </Box>
       )}

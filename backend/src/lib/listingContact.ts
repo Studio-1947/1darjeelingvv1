@@ -18,7 +18,10 @@ type Viewer = { id: string; role: string } | null;
  * phone there, and the profile adds a WhatsApp number. They are the same number `provider_phone`
  * gates, so they must never travel past that gate in the free-form extras.
  */
-const CONTACT_EXTRAS = ['contact_phone', 'host_phone', 'whatsapp', 'phone', 'mobile', 'email'];
+// `upi` too: a UPI ID is often the phone number itself ("98xxxxxxxx@ybl"). It lives on the provider
+// row, not the listing, and reaches a guest only on a confirmed booking (lib/advance.ts); this keeps
+// it off the listing should a copy ever land there.
+const CONTACT_EXTRAS = ['contact_phone', 'host_phone', 'whatsapp', 'phone', 'mobile', 'email', 'upi'];
 
 /**
  * Social links a traveller could message the host through (Instagram, Facebook, YouTube) follow

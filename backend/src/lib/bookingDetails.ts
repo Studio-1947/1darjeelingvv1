@@ -198,6 +198,8 @@ export const CANCEL_REASON_TEXT: Record<string, string> = {
   family_health: 'Family or health reason',
   // Set only by POST /bookings/{id}/no-show, never picked in the cancel sheet.
   no_show: 'The guest did not come',
+  // Set only by POST /bookings/{id}/advance/unpaid (lib/advance.ts).
+  advance_unpaid: 'The advance was not paid',
 };
 
 export type CancelSide = 'guest' | 'host' | 'admin';

@@ -159,6 +159,12 @@ function ProviderDashboardPage() {
     await loadDashboard();
   };
 
+  // The homestay advance: it reached the host's UPI, or it never came and the host lets the booking go.
+  const handleAdvance = async (bookingId: string, what: 'received' | 'unpaid') => {
+    await api.post(`/bookings/${bookingId}/advance/${what}`);
+    await loadDashboard();
+  };
+
   // A guest asked to cancel a confirmed booking: accept (it is cancelled) or keep it.
   const handleCancelRequest = async (bookingId: string, answer: 'accept' | 'keep') => {
     await api.post(`/bookings/${bookingId}/cancel-request/${answer}`);
@@ -320,7 +326,7 @@ function ProviderDashboardPage() {
               {provider.page_path && <ButtonLink to={provider.page_path} go>{t('host.my_site', 'My website')}</ButtonLink>}
             </Box>
           ) : (
-            scoped.map((b) => <BookingCard key={b.id} b={b} onCancel={handleCancelBooking} onAccept={handleAcceptBooking} onCancelRequest={handleCancelRequest} onNoShow={handleNoShow} host={hostInfo} />)
+            scoped.map((b) => <BookingCard key={b.id} b={b} onCancel={handleCancelBooking} onAccept={handleAcceptBooking} onCancelRequest={handleCancelRequest} onNoShow={handleNoShow} onAdvance={handleAdvance} host={hostInfo} />)
           )}
 
           {/* The board's per-type figures and points, for this listing or all of them. */}
