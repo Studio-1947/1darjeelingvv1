@@ -149,7 +149,8 @@ function CategoryPage({ typeOverride }: { typeOverride?: string }) {
   const [selectedCab, setSelectedCab] = useState<string>(() => sp.get('cab') || 'all');
   const [entryFilter, setEntryFilter] = useState<string>(() => sp.get('entry') || 'all');
   const [kind, setKind] = useState(() => sp.get('kind') || '');
-  const [delivers, setDelivers] = useState(() => sp.get('del') === '1');
+  // Home delivery is for cafes and shops only; a ?del=1 left on another category is ignored.
+  const [delivers, setDelivers] = useState(() => (type === 'cafe' || type === 'shop') && sp.get('del') === '1');
   // Board: "Filter > by proximity & by price". Where the traveller is, and how far they will go.
   const [near, setNear] = useState<{ lat: number; lng: number } | null>(null);
   const [radius, setRadius] = useState<number | null>(null);
@@ -300,7 +301,7 @@ function CategoryPage({ typeOverride }: { typeOverride?: string }) {
     }
 
     if (kind) list = list.filter((it) => kindOf(it) === kind);
-    if (delivers) list = list.filter((it) => it.extras?.home_delivery === true);
+    if (delivers) list = list.filter((it) => (it.type === 'cafe' || it.type === 'shop') && it.extras?.home_delivery === true);
 
     if (near) {
       list = list

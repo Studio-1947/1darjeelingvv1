@@ -10,8 +10,8 @@ import { isPlausiblePhone } from './phone';
  * - driver: routes with charges, vehicle number, driving licence number, car photos, passenger
  *   capacity (RC and licence uploads are KYC documents);
  * - homestay: property and host name, rooms and food with charges, recommended drivers,
- *   property photos, guest occupancy, amenities, home delivery (trade licence and homestay
- *   paper are KYC documents);
+ *   property photos, guest occupancy, amenities (trade licence and homestay paper are KYC
+ *   documents); no home delivery, that is for cafes and shops only (user decision 2026-11-21);
  * - guide: name, age, gender, type of guide, services and charges, seasons;
  * - cafe / restaurant: owner name, menu with prices, amenities, home delivery;
  * - local business (shop): type of business, goods and rates (at most 10 items), home delivery;
@@ -191,7 +191,6 @@ const BY_TYPE: Record<string, Record<string, (v: unknown) => unknown | ProfileEr
     ...PREMISES,
     capacity: (v) => int(v, 1, 100, 'Guest occupancy'),
     amenities: (v) => list(v, 30, 'Amenities', (x) => text(x, 60, 'Amenity')),
-    home_delivery: (v) => (typeof v === 'boolean' ? v : { error: 'Home delivery must be on or off' }),
     // Which photo shows what, keyed by the photo's URL, so the listing page can group them.
     // Optional: an untagged photo shows under "More photos".
     photo_kinds: (v) => {

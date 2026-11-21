@@ -531,7 +531,7 @@ function ProviderDashboardPage() {
           </Box>
         )}
 
-        <DeliveryRequestsPanel visible={['cafe', 'shop', 'homestay'].includes(type)} />
+        <DeliveryRequestsPanel visible={['cafe', 'shop'].includes(type)} />
         <HostReviewsCard stats={hostStats} />
 
         <div className="ag-host-links">

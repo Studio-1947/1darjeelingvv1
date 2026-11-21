@@ -286,7 +286,7 @@ export default function ProviderProfile() {
     } else if (type === 'homestay') {
       Object.assign(profile, {
         host_name: form.host_name.trim(), rooms: priced(form.rooms), meals: priced(form.meals),
-        amenities: form.amenities, recommended_drivers: form.recommended_drivers, home_delivery: form.home_delivery,
+        amenities: form.amenities, recommended_drivers: form.recommended_drivers,
         // Only labels for photos still in the gallery.
         photo_kinds: Object.fromEntries(Object.entries(form.photo_kinds || {}).filter(([url, k]) => k && form.images.includes(url))),
       });
@@ -377,7 +377,7 @@ export default function ProviderProfile() {
     items: previewItems(),
     gallery: form.images,
     available: form.available,
-    homeDelivery: form.home_delivery && (type === 'homestay' || type === 'cafe' || type === 'shop'),
+    homeDelivery: form.home_delivery && (type === 'cafe' || type === 'shop'),
   };
 
   return (
@@ -408,11 +408,11 @@ export default function ProviderProfile() {
           <Toggle on={form.available} onChange={(v) => set({ available: v })} testid="profile-available"
             label={t('hostProfile.available_on')}
             note={t('hostProfile.available_note')} />
-          {(type === 'homestay' || type === 'cafe' || type === 'shop') && (
+          {(type === 'cafe' || type === 'shop') && (
             <div>
               <Toggle on={form.home_delivery} onChange={(v) => set({ home_delivery: v })} testid="profile-home-delivery"
                 label={type === 'shop' ? t('hostProfile.home_delivery_shop') : t('hostProfile.home_delivery')}
-                note={type === 'shop' ? t('hostProfile.home_delivery_shop_note') : type === 'cafe' ? t('hostProfile.home_delivery_cafe_note') : t('hostProfile.home_delivery_note')} />
+                note={type === 'shop' ? t('hostProfile.home_delivery_shop_note') : t('hostProfile.home_delivery_cafe_note')} />
             </div>
           )}
         </Box>

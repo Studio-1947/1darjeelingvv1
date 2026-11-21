@@ -24,8 +24,10 @@ describe('host profile fields', () => {
     expect(profilePatchFrom('guide', { guide_types: ['astronaut'] })).toHaveProperty('error');
     expect(profilePatchFrom('driver', { rooms: [] })).toHaveProperty('error');
     expect(profilePatchFrom('driver', { seats: 7, license_number: 'wb-7420150012345' })).toEqual({ seats: 7, license_number: 'WB-7420150012345' });
-    expect(profilePatchFrom('homestay', { rooms: [{ name: 'Mountain-view double', price: 1800, unit: 'night' }], home_delivery: true }))
-      .toEqual({ rooms: [{ name: 'Mountain-view double', price: 1800, unit: 'night' }], home_delivery: true });
+    expect(profilePatchFrom('homestay', { rooms: [{ name: 'Mountain-view double', price: 1800, unit: 'night' }] }))
+      .toEqual({ rooms: [{ name: 'Mountain-view double', price: 1800, unit: 'night' }] });
+    // Home delivery is for cafes and shops; a homestay cannot switch it on.
+    expect(profilePatchFrom('homestay', { home_delivery: true })).toHaveProperty('error');
     expect(profilePatchFrom('homestay', { social: { instagram: '@norbu' }, whatsapp: '9876543210', available: false }))
       .toEqual({ social: { instagram: '@norbu' }, whatsapp: '9876543210', available: false });
   });

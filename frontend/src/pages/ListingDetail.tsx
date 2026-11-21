@@ -180,7 +180,7 @@ export default function ListingDetail() {
   const personSrc = host.avatar || personImageFor(item);
   const roomCount = Array.isArray(item.extras?.rooms) ? item.extras.rooms.length : 0;
   const showHost = !place && !ownPreview && (host.known || !!item.host_page_path);
-  const delivery = !ownPreview && ['cafe', 'shop', 'homestay'].includes(item.type) && !item.bookings_paused && item.extras?.home_delivery;
+  const delivery = !ownPreview && ['cafe', 'shop'].includes(item.type) && !item.bookings_paused && item.extras?.home_delivery;
   const spotFacts = isSpot && spotInfo.highlights.length > 0
     ? spotInfo.highlights.map((h: string) => ({ label: h }))
     : amenities.map((a) => ({ label: a.label, labelKey: a.labelKey }));
@@ -289,7 +289,6 @@ export default function ListingDetail() {
           <RoomsFoodSection
             rooms={Array.isArray(item.extras?.rooms) ? item.extras.rooms : []}
             meals={Array.isArray(item.extras?.meals) ? item.extras.meals : []}
-            homeDelivery={item.extras?.home_delivery === true}
           />
         )}
         {item.type === 'driver' && c.routes && c.routes.length > 0 && <RoutesSection routes={c.routes} />}

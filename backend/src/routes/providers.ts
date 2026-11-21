@@ -88,6 +88,8 @@ router.post('/onboard', authenticateToken, async (req: Request, res: Response) =
   const { business_name: rawBusinessName, business_type, description, location: rawLocation, latitude = null, longitude = null, contact_phone, price_from = 0, images = [], extras = {} } = req.body;
   // Location verification is granted only by POST /me/location/verify, never claimed by the caller.
   if (extras && typeof extras === 'object') delete extras.location_verification;
+  // Home delivery is for cafes and shops only (user decision 2026-11-21).
+  if (extras && typeof extras === 'object' && business_type !== 'cafe' && business_type !== 'shop') delete extras.home_delivery;
 
   // Profile fields sent at sign-up are checked the same way as later edits (lib/hostProfile.ts).
   // Other keys an older client sends (tags, address, upi...) pass through as before.

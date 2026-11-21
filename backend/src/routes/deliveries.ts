@@ -40,7 +40,7 @@ router.post('/', authenticateToken, requireTravellerMode, rateLimiter(20, 60 * 6
   const { listing_id, items, address, phone, note } = req.body || {};
   const [listing] = await db.select().from(schema.listings).where(eq(schema.listings.id, String(listing_id || ''))).limit(1);
   if (!listing) return res.status(404).json({ detail: 'Listing not found' });
-  if (!['cafe', 'shop', 'homestay'].includes(listing.type) || listing.extras?.home_delivery !== true) {
+  if (!['cafe', 'shop'].includes(listing.type) || listing.extras?.home_delivery !== true) {
     return res.status(400).json({ detail: 'This place does not offer home delivery' });
   }
   if (await isListingHostLapsed(listing.providerId)) return res.status(409).json({ detail: 'This place is not taking requests right now' });

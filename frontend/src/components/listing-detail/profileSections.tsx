@@ -109,7 +109,7 @@ export function ServicesSection({ services }: { services: Priced[] }) {
 }
 
 /** A homestay's rooms and food, each with its charge (prototype box "Rooms"). */
-export function RoomsFoodSection({ rooms, meals, homeDelivery }: { rooms: Priced[]; meals: Priced[]; homeDelivery?: boolean }) {
+export function RoomsFoodSection({ rooms, meals }: { rooms: Priced[]; meals: Priced[] }) {
   const { t } = useTranslation();
   if (!rooms.length && !meals.length) return null;
   return (
@@ -129,7 +129,6 @@ export function RoomsFoodSection({ rooms, meals, homeDelivery }: { rooms: Priced
           ))}
         </div>
       )}
-      {homeDelivery && <Line icon="bag">{t('profile.home_delivery_on')}</Line>}
     </Section>
   );
 }
