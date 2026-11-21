@@ -1357,6 +1357,17 @@
     "browse_stays": "Browse stays",
     "cultural_events": "Cultural events"
   },
+  "photoCrop": {
+    "title": "Adjust your photo",
+    "hint": "Drag to move it. Pinch or use the slider to zoom.",
+    "zoom": "Zoom",
+    "zoom_in": "Zoom in",
+    "zoom_out": "Zoom out",
+    "use": "Use photo",
+    "failed": "This photo could not be cropped. Please try another one.",
+    "change": "Change photo",
+    "uploading": "Uploading photo…"
+  },
   "widgets": {
     "upload_photo": "Upload Photo",
     "add_photos": "Add Photos",

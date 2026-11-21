@@ -235,9 +235,12 @@ export default function ProviderProfile() {
   };
   const set = (patch: any) => updateForm((f: any) => ({ ...f, ...patch }));
 
-  const upload = (field: 'cover' | 'host_avatar') => async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const upload = (field: 'cover' | 'host_avatar') => (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    e.target.value = '';
+    if (file) uploadFile(field)(file);
+  };
+  const uploadFile = (field: 'cover' | 'host_avatar') => async (file: File) => {
     setUploading(field);
     try { set({ [field]: await uploadImage(file) }); }
     catch (err) { setMsg({ ok: false, text: typeof err === 'string' ? err : t('kyc.uploadFailed') }); }
@@ -440,7 +443,7 @@ export default function ProviderProfile() {
 
         <Section title={t('hostProfile.about_you')}>
           <AvatarUploader src={form.host_avatar} initial={(form.host_name || form.business_name || '?').charAt(0).toUpperCase()}
-            uploading={uploading === 'host_avatar'} onFileSelected={upload('host_avatar')}
+            uploading={uploading === 'host_avatar'} onFile={uploadFile('host_avatar')} onRemove={() => set({ host_avatar: '' })}
             label={type === 'homestay' ? t('hostProfile.owner_photo') : t('hostProfile.your_photo')} />
           <TextField label={nameLabel} value={form.business_name} onChange={(e) => set({ business_name: e.target.value })} />
           {type === 'shop' && (
@@ -635,7 +638,7 @@ export default function ProviderProfile() {
             </div>
           ) : (
             <>
-              <Button onClick={save} disabled={busy} data-testid="profile-save">{busy ? t('common.loading') : t('hostProfile.save')}</Button>
+              <Button onClick={save} disabled={busy || !!uploading} data-testid="profile-save">{busy ? t('common.loading') : t('hostProfile.save')}</Button>
               <p className={`msg ${msg ? 'text-[var(--fail)]' : 'text-[var(--ink-muted)]'}`} role={msg ? 'alert' : undefined} data-testid="profile-msg">
                 {msg ? msg.text : t('hostProfile.save_hint')}
               </p>
