@@ -39,7 +39,8 @@ export type ChosenRoom = {
 export function roomFit(r: any): { occ: number | null; extraBeds: number; extraBedPrice: number; max: number | null } {
   const occ = Number.isInteger(Number(r?.occ)) && Number(r?.occ) > 0 ? Number(r.occ) : null;
   const extraBeds = occ ? Math.min(2, Math.max(0, Math.floor(Number(r?.extra_beds)) || 0)) : 0;
-  const extraBedPrice = extraBeds ? Math.max(0, Math.floor(Number(r?.extra_bed_price)) || 0) : 0;
+  // A room priced per head charges each extra guest the head price, so it has no mattress charge.
+  const extraBedPrice = extraBeds && r?.unit !== 'head' ? Math.max(0, Math.floor(Number(r?.extra_bed_price)) || 0) : 0;
   return { occ, extraBeds, extraBedPrice, max: occ ? occ + extraBeds : null };
 }
 

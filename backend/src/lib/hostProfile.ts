@@ -200,7 +200,8 @@ const BY_TYPE: Record<string, Record<string, (v: unknown) => unknown | ProfileEr
         if (extra > 0 && out.occ === undefined) return { error: 'Say how many people the room sleeps before adding an extra mattress' };
         if (extra > 0) out = { ...out, extra_beds: extra };
       }
-      if (!blank('extra_bed_price') && out.extra_beds) {
+      // Not kept on a per-head room: its extra guests pay the head price instead.
+      if (!blank('extra_bed_price') && out.extra_beds && out.unit !== 'head') {
         const fee = int(e.extra_bed_price, 0, MAX_PRICE, 'Extra mattress price');
         if (typeof fee !== 'number') return fee;
         if (fee > 0) out = { ...out, extra_bed_price: fee };

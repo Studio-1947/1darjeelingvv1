@@ -9,19 +9,20 @@ export type RoomFit = { occ: number | null; extraBeds: number; extraBedPrice: nu
 export function roomFit(r: any): RoomFit {
   const occ = Number.isInteger(Number(r?.occ)) && Number(r?.occ) > 0 ? Number(r.occ) : null;
   const extraBeds = occ ? Math.min(2, Math.max(0, Math.floor(Number(r?.extra_beds)) || 0)) : 0;
-  const extraBedPrice = extraBeds ? Math.max(0, Math.floor(Number(r?.extra_bed_price)) || 0) : 0;
+  // A room priced per head charges each extra guest the head price, so it has no mattress charge.
+  const extraBedPrice = extraBeds && r?.unit !== 'head' ? Math.max(0, Math.floor(Number(r?.extra_bed_price)) || 0) : 0;
   return { occ, extraBeds, extraBedPrice, max: occ ? occ + extraBeds : null };
 }
 
 /**
  * The home's guest occupancy worked out from its rooms: every named room's people plus its extra
- * mattresses, at most 100 (the profile's limit). 0 when no room says what it sleeps.
+ * mattresses, at most 100 (the profile's limit). 0 unless every named room says what it sleeps:
+ * a room that never said cannot be counted, so the host's own number stands then.
  */
 export function roomsCapacity(rooms: any[] | undefined): number {
-  const total = (Array.isArray(rooms) ? rooms : [])
-    .filter((r) => r && String(r.name || '').trim())
-    .reduce((n, r) => n + (roomFit(r).max || 0), 0);
-  return Math.min(100, total);
+  const named = (Array.isArray(rooms) ? rooms : []).filter((r) => r && String(r.name || '').trim());
+  if (!named.length || named.some((r) => !roomFit(r).max)) return 0;
+  return Math.min(100, named.reduce((n, r) => n + (roomFit(r).max || 0), 0));
 }
 
 /** What one night of this room costs a party of `guests`: per-night rooms add each extra guest's mattress charge. */

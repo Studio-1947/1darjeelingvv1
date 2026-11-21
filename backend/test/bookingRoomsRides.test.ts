@@ -40,6 +40,9 @@ describe('room rule on the host profile', () => {
     expect(ok.rooms[1]).toEqual({ name: 'Loft', price: 1800, unit: 'night', occ: 2, extra_beds: 2 });
     // No extra mattress: its price means nothing and is not kept.
     expect(ok.rooms[2]).toEqual({ name: 'Box', price: 900, unit: 'night', occ: 1 });
+    // A per-head room keeps its extra mattress but not a mattress price.
+    expect((profilePatchFrom('homestay', { rooms: [{ name: 'Dorm', price: 600, unit: 'head', occ: 4, extra_beds: 1, extra_bed_price: 300 }] }) as any).rooms[0])
+      .toEqual({ name: 'Dorm', price: 600, unit: 'head', occ: 4, extra_beds: 1 });
     expect(profilePatchFrom('homestay', { rooms: [{ name: 'X', price: 10, occ: 2, extra_beds: 3 }] })).toHaveProperty('error');
     expect(profilePatchFrom('homestay', { rooms: [{ name: 'X', price: 10, extra_beds: 1 }] })).toHaveProperty('error');
     expect(profilePatchFrom('homestay', { rooms: [{ name: 'X', price: 10, occ: 2, extra_beds: 1, extra_bed_price: 50001 }] })).toHaveProperty('error');
@@ -79,6 +82,9 @@ describe('booking amount with a room or a quoted fare', () => {
     expect(pickRoom(rooms, 'Free Extra', 4)).toMatchObject({ ok: true, room: { nightly: 2000, extraGuests: 2 } });
     // A room priced per head: the extra guest pays the head price, not a mattress charge on top.
     expect(pickRoom(rooms, 'Per Head', 3)).toMatchObject({ ok: true, room: { nightly: 2700 } });
+    // A free room with a paid mattress: the night is just the mattress, as the website shows.
+    expect(pickRoom([{ name: 'Free', price: 0, unit: 'night', occ: 2, extra_beds: 1, extra_bed_price: 300 }], 'Free', 3))
+      .toMatchObject({ ok: true, room: { nightly: 300 } });
   });
 
   it('works out a driver fare: per trip, day rate x days, else the listing price', () => {

@@ -16,13 +16,18 @@ describe('room size and extra mattress', () => {
     expect(roomNightly({ ...room, unit: 'head', price: 900 }, 3)).toBe(2700);
   });
 
-  it('adds the named rooms up into the guest occupancy', () => {
+  it('adds the named rooms up into the guest occupancy, only when every room says what it sleeps', () => {
     expect(roomsCapacity([
       { name: 'Valley', occ: 2, extra_beds: 1 },
       { name: 'Loft', occ: 4 },
       { name: '', occ: 9 },
-      { name: 'Attic' },
     ])).toBe(7);
-    expect(roomsCapacity([{ name: 'Attic' }])).toBe(0);
+    // One room that never said: the rooms cannot be counted, the host's own number stands.
+    expect(roomsCapacity([{ name: 'Valley', occ: 2 }, { name: 'Attic' }])).toBe(0);
+    expect(roomsCapacity([])).toBe(0);
+  });
+
+  it('never charges a mattress on a per-head room', () => {
+    expect(roomFit({ unit: 'head', occ: 2, extra_beds: 1, extra_bed_price: 400 }).extraBedPrice).toBe(0);
   });
 });

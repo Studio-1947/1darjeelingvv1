@@ -80,7 +80,9 @@ export function bookingTotal(item: any, form: BookingForm): number {
     const nights = form.check_in && form.check_out
       ? Math.max(0, Math.round((Date.parse(form.check_out) - Date.parse(form.check_in)) / 86_400_000)) : 0;
     const room = chosenRoom(item, form.room);
-    if (room && Number(room.price) > 0) return roomNightly(room, guests) * nights;
+    // The server uses the room whenever its night comes to more than 0 (a free room with a paid mattress too).
+    const nightly = room ? roomNightly(room, guests) : 0;
+    if (nightly > 0) return nightly * nights;
     return rate * guests * nights;
   }
   if (item?.type === 'driver') {

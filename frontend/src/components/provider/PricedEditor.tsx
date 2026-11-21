@@ -62,14 +62,16 @@ export default function PricedEditor({ rows, onChange, units, unitLabel, namePla
                 <select value={r.occ || ''} onChange={(e) => set(i, { occ: e.target.value ? Number(e.target.value) : '', ...(e.target.value ? {} : { extra_beds: 0 }) })}
                   aria-label={t('ui.pricedEditor.sleeps_label')} className="ag-in" data-testid={`${testid}-occ-${i}`}>
                   <option value="">{t('ui.pricedEditor.sleeps_unset')}</option>
-                  {SLEEPS.map((n) => <option key={n} value={n}>{t('ui.pricedEditor.sleeps', { count: n })}</option>)}
+                  {/* A room saved bigger than the list (the server allows 50) keeps its own number as an option. */}
+                  {(Number(r.occ) > SLEEPS.length ? [...SLEEPS, Number(r.occ)] : SLEEPS).map((n) => <option key={n} value={n}>{t('ui.pricedEditor.sleeps', { count: n })}</option>)}
                 </select>
                 <select value={r.extra_beds || 0} disabled={!r.occ} onChange={(e) => set(i, { extra_beds: Number(e.target.value) })}
                   aria-label={t('ui.pricedEditor.extra_label')} className="ag-in" data-testid={`${testid}-extra-${i}`}>
                   {EXTRA_BEDS.map((n) => <option key={n} value={n}>{n ? t('ui.pricedEditor.extra', { count: n }) : t('ui.pricedEditor.extra_none')}</option>)}
                 </select>
               </div>
-              {!!r.occ && (r.extra_beds || 0) > 0 && (
+              {/* A per-head room charges the extra guest the head price, so it has no mattress price. */}
+              {!!r.occ && (r.extra_beds || 0) > 0 && r.unit !== 'head' && (
                 <div className="grid gap-1">
                   <input type="number" min={0} max={MAX_PRICE} value={r.extra_bed_price ?? ''}
                     onChange={(e) => set(i, { extra_bed_price: e.target.value === '' ? '' : Math.min(MAX_PRICE, Math.max(0, Number(e.target.value))) })}
