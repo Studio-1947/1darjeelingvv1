@@ -464,7 +464,10 @@
     "fee_note_pass": "तपाईंको aangan पासले यो बुकिङ समेट्छ। कुनै शुल्क छैन, र तपाईंको अनुरोध प्रमाणित ब्याजसहित जान्छ।",
     "route_required": "कहाँबाट सुरु गर्ने र कहाँ जाने, छान्नुहोस्।",
     "vsend": "तपाईंको अनुरोध प्रमाणित ब्याजसहित जान्छ",
-    "vnudge": "वर्षको ₹1 मा प्रमाणित हुनुहोस् र बढी पुष्टि पाउनुहोस्"
+    "vnudge": "वर्षको ₹1 मा प्रमाणित हुनुहोस् र बढी पुष्टि पाउनुहोस्",
+    "extra_mattress_line_one": "थप गद्दा, {{count}} पाहुना",
+    "extra_mattress_line_other": "थप गद्दा, {{count}} पाहुना",
+    "extra_free": "निःशुल्क"
   },
   "responsible": {
     "title": "जिम्मेवार पर्यटन",
@@ -2027,7 +2030,8 @@
     "video_failed": "भिडियो अपलोड हुन सकेन",
     "video_old_link": "तपाईंको हालको भिडियो लिंक",
     "gallery_done": "{{have}} फोटो ({{goal}} चाहिने) ✓",
-    "gallery_short": "चाहिने {{goal}} मध्ये {{have}}"
+    "gallery_short": "चाहिने {{goal}} मध्ये {{have}}",
+    "capacity_from_rooms": "तपाईंका कोठाबाट गनिएको, थप गद्दा समेत।"
   },
   "owners": {
     "title": "मालिकहरू",
@@ -2649,7 +2653,17 @@
       "add_photo": "फोटो थप्नुहोस्",
       "price": "मूल्य",
       "unit": "एकाइ",
-      "remove": "हटाउनुहोस्"
+      "remove": "हटाउनुहोस्",
+      "sleeps_label": "कोठामा कति जना सुत्न सक्छन्",
+      "sleeps_unset": "कति जना: तोकिएको छैन",
+      "sleeps_one": "{{count}} जना",
+      "sleeps_other": "{{count}} जना",
+      "extra_label": "थप गद्दा",
+      "extra_none": "थप: छैन",
+      "extra_one": "थप: +{{count}}",
+      "extra_other": "थप: +{{count}}",
+      "extra_price": "₹ प्रति थप व्यक्ति, प्रति रात",
+      "extra_price_note": "हरेक थप पाहुनाले प्रति रात यति तिर्छन्। गद्दा निःशुल्क भए खाली छोड्नुहोस्।"
     },
     "providerProfile": {
       "could_not_save": "सुरक्षित गर्न सकिएन",
@@ -3265,7 +3279,9 @@
     "db_day_minus": "एक दिन कम",
     "db_day_plus": "एक दिन थप",
     "db_day1": "१ दिन",
-    "db_ndays_n": "{{n}} दिन"
+    "db_ndays_n": "{{n}} दिन",
+    "extra_mattress_one": "थप गद्दामा +{{count}}",
+    "extra_mattress_other": "थप गद्दामा +{{count}}"
   },
   "theme": {
     "title": "थिम रङ",

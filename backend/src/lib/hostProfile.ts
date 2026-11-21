@@ -39,6 +39,8 @@ export const GOODS_UNITS = ['item', 'piece', 'kg', 'gram', 'litre', 'pack', 'doz
 export const MAX_GOODS = 10;
 /** Most people one homestay room can sleep (a room's optional `occ`). */
 export const MAX_ROOM_OCC = 50;
+/** Most extra guests a room can take on an extra mattress (user decision 2026-11-21: +1 or +2). */
+export const MAX_EXTRA_BEDS = 2;
 export const SOCIAL_KEYS = ['instagram', 'facebook', 'youtube', 'website'] as const;
 /**
  * The business theme colour (prototype palette.js, "For my business"): the palette keys the website
@@ -179,13 +181,31 @@ const BY_TYPE: Record<string, Record<string, (v: unknown) => unknown | ProfileEr
     host_name: (v) => text(v, 80, 'Host name'),
     // Each room may say how many people it sleeps (`occ`, optional): a booking for that room
     // cannot be for more people than that (prototype staybook.js rooms[{name,price,occ}]).
+    // It may also take up to two more on an extra mattress (`extra_beds`, 0-2), each paying
+    // `extra_bed_price` a night (optional, 0 or absent = free); see lib/bookingDetails.ts pickRoom.
     rooms: (v) => list(v, 20, 'Rooms', (x) => {
       const r = priced(ROOM_UNITS, 'room', 'night')(x);
       if ('error' in r) return r;
-      const occRaw = (x as Record<string, unknown>).occ;
-      if (occRaw === undefined || occRaw === null || occRaw === '') return r;
-      const occ = int(occRaw, 1, MAX_ROOM_OCC, 'People per room');
-      return typeof occ === 'number' ? { ...r, occ } : occ;
+      const e = x as Record<string, unknown>;
+      const blank = (k: string) => e[k] === undefined || e[k] === null || e[k] === '';
+      let out: Record<string, unknown> = r;
+      if (!blank('occ')) {
+        const occ = int(e.occ, 1, MAX_ROOM_OCC, 'People per room');
+        if (typeof occ !== 'number') return occ;
+        out = { ...out, occ };
+      }
+      if (!blank('extra_beds')) {
+        const extra = int(e.extra_beds, 0, MAX_EXTRA_BEDS, 'Extra mattress');
+        if (typeof extra !== 'number') return extra;
+        if (extra > 0 && out.occ === undefined) return { error: 'Say how many people the room sleeps before adding an extra mattress' };
+        if (extra > 0) out = { ...out, extra_beds: extra };
+      }
+      if (!blank('extra_bed_price') && out.extra_beds) {
+        const fee = int(e.extra_bed_price, 0, MAX_PRICE, 'Extra mattress price');
+        if (typeof fee !== 'number') return fee;
+        if (fee > 0) out = { ...out, extra_bed_price: fee };
+      }
+      return out;
     }),
     meals: (v) => list(v, 20, 'Food', priced(['meal', 'day', 'head'], 'meal', 'meal')),
     ...PREMISES,

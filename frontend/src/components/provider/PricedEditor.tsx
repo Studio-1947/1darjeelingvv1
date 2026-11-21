@@ -5,14 +5,24 @@ import { Plus, Trash, Camera } from '@phosphor-icons/react';
 import { uploadImage } from '@/lib/uploadImage';
 import { Button, IconButton } from '@/components/ag';
 
-export type Priced = { name: string; price: number | ''; unit: string; photo?: string };
+export type Priced = {
+  name: string; price: number | ''; unit: string; photo?: string;
+  /** Homestay rooms only: people the room sleeps, extra mattresses (0-2) and what each extra person pays a night. */
+  occ?: number | ''; extra_beds?: number; extra_bed_price?: number | '';
+};
+
+/** Most people the "Sleeps" picker offers, and extra mattresses a room can take (backend lib/hostProfile.ts). */
+const SLEEPS = Array.from({ length: 20 }, (_, i) => i + 1);
+const EXTRA_BEDS = [0, 1, 2];
 
 /** Rows of a name, a price and a unit: rooms, food, a guide's services. */
-export default function PricedEditor({ rows, onChange, units, unitLabel, namePlaceholder, addLabel, testid, max, fullNote }: {
+export default function PricedEditor({ rows, onChange, units, unitLabel, namePlaceholder, addLabel, testid, max, fullNote, sleeps }: {
   rows: Priced[]; onChange: (r: Priced[]) => void; units: string[]; unitLabel: (u: string) => string;
   namePlaceholder: string; addLabel: string; testid: string;
   /** Most rows allowed (a shop's goods stop at ten); the add button gives way to `fullNote`. */
   max?: number; fullNote?: string;
+  /** Homestay rooms: each row also says how many it sleeps and how many more fit on an extra mattress. */
+  sleeps?: boolean;
 }) {
   const { t } = useTranslation();
   const full = max !== undefined && rows.length >= max;
@@ -46,12 +56,35 @@ export default function PricedEditor({ rows, onChange, units, unitLabel, namePla
               {units.map((u) => <option key={u} value={u}>{unitLabel(u)}</option>)}
             </select>
           </div>
+          {sleeps && (
+            <>
+              <div className="grid grid-cols-2 gap-2">
+                <select value={r.occ || ''} onChange={(e) => set(i, { occ: e.target.value ? Number(e.target.value) : '', ...(e.target.value ? {} : { extra_beds: 0 }) })}
+                  aria-label={t('ui.pricedEditor.sleeps_label')} className="ag-in" data-testid={`${testid}-occ-${i}`}>
+                  <option value="">{t('ui.pricedEditor.sleeps_unset')}</option>
+                  {SLEEPS.map((n) => <option key={n} value={n}>{t('ui.pricedEditor.sleeps', { count: n })}</option>)}
+                </select>
+                <select value={r.extra_beds || 0} disabled={!r.occ} onChange={(e) => set(i, { extra_beds: Number(e.target.value) })}
+                  aria-label={t('ui.pricedEditor.extra_label')} className="ag-in" data-testid={`${testid}-extra-${i}`}>
+                  {EXTRA_BEDS.map((n) => <option key={n} value={n}>{n ? t('ui.pricedEditor.extra', { count: n }) : t('ui.pricedEditor.extra_none')}</option>)}
+                </select>
+              </div>
+              {!!r.occ && (r.extra_beds || 0) > 0 && (
+                <div className="grid gap-1">
+                  <input type="number" min={0} max={MAX_PRICE} value={r.extra_bed_price ?? ''}
+                    onChange={(e) => set(i, { extra_bed_price: e.target.value === '' ? '' : Math.min(MAX_PRICE, Math.max(0, Number(e.target.value))) })}
+                    placeholder={t('ui.pricedEditor.extra_price')} aria-label={t('ui.pricedEditor.extra_price')} className="ag-in" data-testid={`${testid}-extra-price-${i}`} />
+                  <p className="ag-small">{t('ui.pricedEditor.extra_price_note')}</p>
+                </div>
+              )}
+            </>
+          )}
         </div>
       ))}
       {full ? (
         <p className="ag-small">{fullNote}</p>
       ) : (
-        <Button size="sm" icon={<Plus />} className="self-start" onClick={() => onChange([...rows, { name: '', price: '', unit: units[0] }])}>
+        <Button size="sm" icon={<Plus />} className="self-start" onClick={() => onChange([...rows, { name: '', price: '', unit: units[0], ...(sleeps ? { occ: 2 } : {}) }])}>
           {addLabel}
         </Button>
       )}

@@ -22,12 +22,26 @@ export type ChosenRoom = {
   price: number;
   unit: string;
   occ: number | null;
+  /** People on an extra mattress in this booking (beyond `occ`), 0 when none. */
+  extraGuests: number;
   /**
-   * What one night costs this booking: the room's price for a room let by the night, or the
-   * price x people for a room priced per head. Stored as `bookings.room_price`.
+   * What one night costs this booking: the room's price for a room let by the night, plus the
+   * extra mattress charge for each extra guest; or the price x people for a room priced per head
+   * (each extra guest already pays the head price there). Stored as `bookings.room_price`.
    */
   nightly: number;
 };
+
+/**
+ * How many people a room sleeps and takes in all: `occ`, plus up to two on an extra mattress, and
+ * what each extra person pays a night. `occ` null means the host never said (no cap).
+ */
+export function roomFit(r: any): { occ: number | null; extraBeds: number; extraBedPrice: number; max: number | null } {
+  const occ = Number.isInteger(Number(r?.occ)) && Number(r?.occ) > 0 ? Number(r.occ) : null;
+  const extraBeds = occ ? Math.min(2, Math.max(0, Math.floor(Number(r?.extra_beds)) || 0)) : 0;
+  const extraBedPrice = extraBeds ? Math.max(0, Math.floor(Number(r?.extra_bed_price)) || 0) : 0;
+  return { occ, extraBeds, extraBedPrice, max: occ ? occ + extraBeds : null };
+}
 
 /** The host's rooms: the listing's own copy of the profile, else the provider's profile. */
 export function roomsOf(listingExtras: Extras, providerExtras?: Extras): any[] {
@@ -51,12 +65,16 @@ export function pickRoom(rooms: any[], input: unknown, guests: number):
   if (!found) return fail('bad_room', 'This homestay has no room by that name. Pick one of its rooms.');
   const price = Math.max(0, Math.floor(Number(found.price)) || 0);
   const unit = found.unit === 'head' ? 'head' : 'night';
-  const occ = Number.isInteger(Number(found.occ)) && Number(found.occ) > 0 ? Number(found.occ) : null;
-  if (occ && guests > occ) {
-    return fail('room_too_small', `${String(found.name).trim()} sleeps up to ${occ} ${occ === 1 ? 'person' : 'people'}. Pick a bigger room or fewer people.`);
+  const { occ, extraBeds, extraBedPrice, max } = roomFit(found);
+  if (max && guests > max) {
+    const name = String(found.name).trim();
+    return fail('room_too_small', extraBeds
+      ? `${name} sleeps ${occ}, and up to ${max} with an extra mattress. Pick a bigger room or fewer people.`
+      : `${name} sleeps up to ${occ} ${occ === 1 ? 'person' : 'people'}. Pick a bigger room or fewer people.`);
   }
-  const nightly = unit === 'head' ? price * guests : price;
-  return { ok: true, room: { name: String(found.name).trim(), price, unit, occ, nightly } };
+  const extraGuests = occ ? Math.max(0, guests - occ) : 0;
+  const nightly = unit === 'head' ? price * guests : price + extraGuests * extraBedPrice;
+  return { ok: true, room: { name: String(found.name).trim(), price, unit, occ, extraGuests, nightly } };
 }
 
 // ---------------------------------------------------------------- driver trip

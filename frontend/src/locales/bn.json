@@ -464,7 +464,10 @@
     "fee_note_pass": "আপনার aangan পাস এই বুকিং কভার করে। কোনো ফি নেই, আর আপনার অনুরোধ যাচাইকৃত ব্যাজসহ যায়।",
     "route_required": "কোথা থেকে শুরু করবেন আর কোথায় যাবেন, বেছে নিন।",
     "vsend": "আপনার অনুরোধ যাচাই ব্যাজসহ যাবে",
-    "vnudge": "বছরে ₹1-এ যাচাই করুন, বেশি নিশ্চয়তা পান"
+    "vnudge": "বছরে ₹1-এ যাচাই করুন, বেশি নিশ্চয়তা পান",
+    "extra_mattress_line_one": "অতিরিক্ত গদি, {{count}} অতিথি",
+    "extra_mattress_line_other": "অতিরিক্ত গদি, {{count}} অতিথি",
+    "extra_free": "বিনামূল্যে"
   },
   "responsible": {
     "title": "দায়িত্বশীল পর্যটন",
@@ -2027,7 +2030,8 @@
     "video_failed": "ভিডিও আপলোড করা যায়নি",
     "video_old_link": "আপনার বর্তমান ভিডিও লিঙ্ক",
     "gallery_done": "{{have}}টি ছবি ({{goal}}টি দরকার) ✓",
-    "gallery_short": "দরকারি {{goal}}টির মধ্যে {{have}}টি"
+    "gallery_short": "দরকারি {{goal}}টির মধ্যে {{have}}টি",
+    "capacity_from_rooms": "আপনার ঘরগুলো থেকে হিসাব করা, অতিরিক্ত গদি সহ।"
   },
   "owners": {
     "title": "মালিক",
@@ -2649,7 +2653,17 @@
       "add_photo": "একটি ছবি যোগ করুন",
       "price": "দাম",
       "unit": "একক",
-      "remove": "সরান"
+      "remove": "সরান",
+      "sleeps_label": "ঘরে কতজন থাকতে পারেন",
+      "sleeps_unset": "কতজন: ঠিক করা নেই",
+      "sleeps_one": "{{count}} জন",
+      "sleeps_other": "{{count}} জন",
+      "extra_label": "অতিরিক্ত গদি",
+      "extra_none": "অতিরিক্ত: নেই",
+      "extra_one": "অতিরিক্ত: +{{count}}",
+      "extra_other": "অতিরিক্ত: +{{count}}",
+      "extra_price": "₹ প্রতি অতিরিক্ত জন, প্রতি রাত",
+      "extra_price_note": "প্রতিটি অতিরিক্ত অতিথি প্রতি রাতে এটা দেবেন। গদি বিনামূল্যে হলে খালি রাখুন।"
     },
     "providerProfile": {
       "could_not_save": "সেভ করা যায়নি",
@@ -3265,7 +3279,9 @@
     "db_day_minus": "এক দিন কম",
     "db_day_plus": "আরও এক দিন",
     "db_day1": "১ দিন",
-    "db_ndays_n": "{{n}} দিন"
+    "db_ndays_n": "{{n}} দিন",
+    "extra_mattress_one": "অতিরিক্ত গদিতে +{{count}}",
+    "extra_mattress_other": "অতিরিক্ত গদিতে +{{count}}"
   },
   "theme": {
     "title": "থিম রঙ",

@@ -9,6 +9,7 @@ import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { needsSupport } from '@/lib/support';
 import { niceTime } from '@/lib/tripTime';
+import { roomFit } from '@/lib/roomFit';
 
 /** Listing types whose bookings are requests the host accepts first (server: HOST_APPROVAL_TYPES). */
 const HOST_ASKED = new Set(['homestay', 'driver', 'guide']);
@@ -124,8 +125,8 @@ export function BookingScreen({ item, unit, step, booking, onNext }: {
     // A stay opens on the first room (prototype), and a draft's room the host no longer lists is dropped.
     if (isStay && rooms.length && !chosenRoom(item, form.room)) {
       patch.room = rooms[0].name;
-      const occ = Number(rooms[0].occ) || 0;
-      if (occ > 0 && Number(form.guests) > occ) patch.guests = occ;
+      const fits = roomFit(rooms[0]).max || 0;
+      if (fits > 0 && Number(form.guests) > fits) patch.guests = fits;
     }
     if (isDriver && !form.pickup_time) patch.pickup_time = '09:00';
     if (Object.keys(patch).length) updateForm(patch);
@@ -146,12 +147,15 @@ export function BookingScreen({ item, unit, step, booking, onNext }: {
   const pct = form.voucher_pct || 0;
   const off = Math.round((gross * pct) / 100);
   const baseMax = item.max_guests || (isDriver ? (item.extras?.seats || 6) : (item.extras?.capacity || 10));
-  const maxGuests = room?.occ && Number(room.occ) > 0 ? Math.min(baseMax, Number(room.occ)) : baseMax;
+  // A room takes what it sleeps plus its extra mattresses; each extra guest on a per-night room
+  // pays the mattress charge a night (lib/roomFit.ts, the server's rule).
+  const fit = roomFit(room);
+  const maxGuests = fit.max ? Math.min(baseMax, fit.max) : baseMax;
+  const extraGuests = isStay && room && room.unit !== 'head' && fit.occ ? Math.max(0, Math.min(guests, maxGuests) - fit.occ) : 0;
 
   const pickRoom = (name: string) => {
-    const r = chosenRoom(item, name);
-    const occ = Number(r?.occ) || 0;
-    updateForm({ room: name, ...(occ > 0 && guests > occ ? { guests: occ } : {}) });
+    const fits = roomFit(chosenRoom(item, name)).max || 0;
+    updateForm({ room: name, ...(fits > 0 && guests > fits ? { guests: fits } : {}) });
   };
   const pickRoute = (name: string) => {
     const ends = routeEnds(name);
@@ -173,6 +177,12 @@ export function BookingScreen({ item, unit, step, booking, onNext }: {
   const totalBox = (
     <Box data-testid="booking-breakdown">
       <div className="ag-listing-sum">
+        {extraGuests > 0 && nights > 0 && (
+          <>
+            <span data-testid="booking-extra-line">{t('booking.extra_mattress_line', { count: extraGuests, nights })}</span>
+            <span className="price">{fit.extraBedPrice > 0 ? `+${rs(extraGuests * fit.extraBedPrice * nights)}` : t('booking.extra_free')}</span>
+          </>
+        )}
         {pct > 0 && gross > 0 && (
           <>
             <span data-testid="booking-voucher-line">{t('booking.voucher_discount', { pct })}</span>
@@ -223,6 +233,7 @@ export function BookingScreen({ item, unit, step, booking, onNext }: {
                   {/* Short, as the prototype writes it, so it fits a phone: name · price · people. */}
                   {r.name}{Number(r.price) > 0 ? ` · ${rs(Number(r.price))}${r.unit === 'head' ? ` ${t('profile.unit_head')}` : ''}` : ''}
                   {Number(r.occ) > 0 ? ` · ${t('listing.ppl_many', '{{count}} people', { count: Number(r.occ) })}` : ''}
+                  {roomFit(r).extraBeds > 0 ? ` (+${roomFit(r).extraBeds})` : ''}
                 </option>
               ))}
             </SelectField>
