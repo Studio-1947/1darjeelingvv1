@@ -102,3 +102,6 @@ scratch_debug/
 
 # Local e2e server output
 backend/e2e-server.*.log
+
+# Database dumps taken in the repo root (the prod deploy runs git reset --hard here)
+/*.sql
