@@ -54,6 +54,16 @@ function Section({ title, note, children, testid, id }: { title: string; note?: 
 }
 
 /** A labelled group for controls that are not a single field (chips, priced rows, uploads). */
+/** Languages a host picks from: the four the app is offered in (src/i18n.ts). Saved as these English names. */
+const HOST_LANGUAGES = ['English', 'Hindi', 'Nepali', 'Bengali'];
+/** The saved list, with a known language in its usual spelling ("nepali" -> "Nepali") and no repeats. */
+const splitLangs = (v: unknown) => [...new Set(String(v ?? '').split(',').map((x) => x.trim()).filter(Boolean)
+  .map((x) => HOST_LANGUAGES.find((l) => l.toLowerCase() === x.toLowerCase()) || x))];
+function languageOptions(selected: string[]): string[] {
+  const known = (x: string) => HOST_LANGUAGES.some((l) => l.toLowerCase() === x.toLowerCase());
+  return [...HOST_LANGUAGES, ...selected.filter((x) => !known(x))];
+}
+
 /** Years of experience to pick from: 0-40, plus an older saved value above that (the server takes up to 80). */
 function experienceOptions(current: unknown): number[] {
   const opts = Array.from({ length: 41 }, (_, i) => i);
@@ -502,8 +512,14 @@ export default function ProviderProfile() {
               )}
             </div>
           </div>
+          {/* Tap to pick: the four languages the app itself speaks. One saved earlier outside them stays as a pill. */}
+          <div data-testid="profile-languages">
+            <Group label={t('hostProfile.languages')}>
+              <MultiChips options={languageOptions(splitLangs(form.languages))} selected={splitLangs(form.languages)}
+                onChange={(v) => set({ languages: v.join(', ') })} label={(o) => t(`hostProfile.lang_${o.toLowerCase()}`, o)} />
+            </Group>
+          </div>
           <div className="grid gap-4 sm:grid-cols-2">
-            <TextField label={t('hostProfile.languages')} hint={t('hostProfile.languages_hint')} value={form.languages} onChange={(e) => set({ languages: e.target.value })} />
             <SelectField label={t('hostProfile.experience')} value={String(form.experience_years ?? '')} onChange={(e) => set({ experience_years: e.target.value })} data-testid="profile-experience">
               <option value="">{t('hostProfile.seats_pick', 'Choose')}</option>
               {experienceOptions(form.experience_years).map((n) => (
