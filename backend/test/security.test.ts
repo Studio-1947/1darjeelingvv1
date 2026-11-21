@@ -9,7 +9,7 @@ vi.mock('../src/lib/s3', () => ({
     const { Readable } = await import('stream');
     return { stream: Readable.from([Buffer.from('test-file-bytes')]), contentType: 'image/png' };
   }),
-  deletePrivate: vi.fn(async () => {}),
+  deletePrivate: vi.fn(async () => { }),
 }));
 
 import { app } from '../src/app';
@@ -17,7 +17,7 @@ import { db, schema } from '../src/db';
 import { eq, inArray } from 'drizzle-orm';
 import { registerUser, onboardActiveProvider, loginAdmin, nextPhone } from './helpers';
 
-// 1x1 transparent PNG as a data URL — the smallest payload that is genuinely a PNG.
+// 1x1 transparent PNG as a data URL  the smallest payload that is genuinely a PNG.
 const PNG_DATA_URL =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
 
@@ -31,7 +31,7 @@ describe('privilege escalation', () => {
     expect(res.status).toBe(200);
     expect(res.body.user.role).toBe('tourist');
 
-    // The row itself must not be an admin either — the token is minted from it.
+    // The row itself must not be an admin either  the token is minted from it.
     const [stored] = await db.select().from(schema.users).where(eq(schema.users.phone, phone)).limit(1);
     expect(stored.role).toBe('tourist');
 
@@ -269,7 +269,7 @@ describe('account deletion cleanup', () => {
       .set('Authorization', `Bearer ${token}`)
       .send({ title: 'Ghost Homestay', type: 'homestay', description: 'x', location: 'Darjeeling' });
     expect(created.status).toBe(200);
-    // The listing is filed under the provider id, not the user id — which is what the old
+    // The listing is filed under the provider id, not the user id  which is what the old
     // delete missed entirely.
     expect(created.body.item.provider_id).toBe(providerId);
 

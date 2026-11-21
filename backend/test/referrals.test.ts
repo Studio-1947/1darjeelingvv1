@@ -6,13 +6,13 @@ import { db, schema } from '../src/db';
 import { eq } from 'drizzle-orm';
 import { registerUser, nextPhone } from './helpers';
 import { normaliseCode } from '../src/lib/referrals';
-import { REFERRAL_REWARD_DAYS } from '../src/config';
+import { LIFETIME_SUPPORT_EXPIRY, REFERRAL_REWARD_DAYS } from '../src/config';
 
 /**
  * Referrals: the reward the app has advertised since before anything could pay it out.
  *
- * The interesting cases are all abuse and all cheap to get wrong — self-referral, double
- * redemption, redeeming after the fact — so they are pinned here rather than left to the
+ * The interesting cases are all abuse and all cheap to get wrong  self-referral, double
+ * redemption, redeeming after the fact  so they are pinned here rather than left to the
  * happy path.
  */
 
@@ -49,7 +49,7 @@ describe('invite codes', () => {
     const first = await codeFor(token);
     const second = await codeFor(token);
 
-    expect(first).toMatch(/^[A-Z0-9]{6}$/);
+    expect(first).toMatch(/^ANG26-[A-Z0-9]{6}$/);
     expect(second).toBe(first);
   });
 
@@ -62,20 +62,58 @@ describe('invite codes', () => {
   it('uses an alphabet with no lookalike characters', async () => {
     // A code is read aloud across a table; O/0 and I/1 are how that goes wrong.
     const code = await codeFor((await registerUser({ name: 'Readable' })).token);
-    expect(code).not.toMatch(/[OISZ01]/);
+    expect(code.slice('ANG26-'.length)).not.toMatch(/[OISZ01]/);
+  });
+
+  it('starts every new code with ANG26-', async () => {
+    const code = await codeFor((await registerUser({ name: 'Prefixed' })).token);
+    expect(code).toMatch(/^ANG26-[A-Z0-9]{6}$/);
   });
 
   it('normalises what people actually paste', () => {
-    expect(normaliseCode('  ab2-c3d ')).toBe('AB2C3D');
-    expect(normaliseCode('ASHA-1D')).toBe('ASHA1D');
+    expect(normaliseCode('  ab2-c3d ')).toBe('ANG26-AB2C3D');
+    expect(normaliseCode('ASHA-1D-X')).toBe('ASHA1DX');
+    expect(normaliseCode(' ang26 k7q-4mx ')).toBe('ANG26-K7Q4MX');
+    expect(normaliseCode('ANG26K7Q4MX')).toBe('ANG26-K7Q4MX');
     expect(normaliseCode('')).toBeNull();
     expect(normaliseCode(undefined)).toBeNull();
   });
 });
 
+/** Unpaid time on the pass, as a referral reward would leave it. */
+async function giveTime(userId: string, days: number) {
+  await db.update(schema.users)
+    .set({ supportExpiresAt: new Date(Date.now() + days * DAY_MS).toISOString() })
+    .where(eq(schema.users.id, userId));
+}
+
 describe('redeeming a code', () => {
+  it('extends an active paid pass', async () => {
+    const referrer = await registerUser({ name: 'Paid Referrer' });
+    const code = await codeFor(referrer.token);
+    const before = await expiryOf(referrer.user.id);
+
+    await signUpWith(code, 'Friend Of Paid');
+
+    expect(Date.parse((await expiryOf(referrer.user.id))!) - Date.parse(before!))
+      .toBeCloseTo(REFERRAL_REWARD_DAYS * DAY_MS, -4);
+  });
+
+  it('leaves an old lifetime pass unchanged, in the usual date format', async () => {
+    const referrer = await registerUser({ name: 'Lifetime Referrer' });
+    await db.update(schema.users).set({ supportExpiresAt: LIFETIME_SUPPORT_EXPIRY }).where(eq(schema.users.id, referrer.user.id));
+    const code = await codeFor(referrer.token);
+
+    await signUpWith(code, 'Friend Of Lifetime');
+
+    expect(await expiryOf(referrer.user.id)).toBe(LIFETIME_SUPPORT_EXPIRY);
+  });
+
   it('extends both sides and records the referral', async () => {
-    const referrer = await registerUser({ name: 'Referrer' });
+    // A referrer who has not bought the ₹1 pass but holds some time still receives the same
+    // monotonic extension.
+    const referrer = await registerUser({ name: 'Referrer', paySupport: false });
+    await giveTime(referrer.user.id, 10);
     const code = await codeFor(referrer.token);
     const before = await expiryOf(referrer.user.id);
 
@@ -97,7 +135,8 @@ describe('redeeming a code', () => {
   });
 
   it('accepts a code typed in lower case with punctuation', async () => {
-    const referrer = await registerUser({ name: 'Sloppy Referrer' });
+    const referrer = await registerUser({ name: 'Sloppy Referrer', paySupport: false });
+    await giveTime(referrer.user.id, 10);
     const code = await codeFor(referrer.token);
     const before = await expiryOf(referrer.user.id);
 

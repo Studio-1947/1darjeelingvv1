@@ -21,7 +21,7 @@ Agent activated → Check frontmatter "skills:" → Read SKILL.md (INDEX) → Re
 
 ### 1.1 Skill Announcement (MANDATORY)
 
-**Every time you load and apply a skill, announce it BEFORE using it** — so the user can verify which knowledge is active.
+**Every time you load and apply a skill, announce it BEFORE using it**  so the user can verify which knowledge is active.
 
 ```markdown
 📚 **Using skill: `@[skill-name]`...**
@@ -53,7 +53,7 @@ Agent activated → Check frontmatter "skills:" → Read SKILL.md (INDEX) → Re
 
 > 🔴 **MANDATORY:** At session start, you MUST read `.agents/memory/MEMORY.md` to load persistent project conventions, user preferences, and decisions.
 
-> 📚 **Catalog lookup (on-demand, NOT every session):** Need the full list of Agents / Skills / Scripts? The `quick-reference` rule has the essentials. For the complete catalog, read `.agents/ARCHITECTURE.md` only when you actually need it (e.g. orchestration, or discovering a skill you're unsure exists) — do NOT load it on every request.
+> 📚 **Catalog lookup (on-demand, NOT every session):** Need the full list of Agents / Skills / Scripts? The `quick-reference` rule has the essentials. For the complete catalog, read `.agents/ARCHITECTURE.md` only when you actually need it (e.g. orchestration, or discovering a skill you're unsure exists)  do NOT load it on every request.
 
 **Path Awareness (Note: the project directory name is `.agents` plural):**
 

@@ -3,7 +3,7 @@
  *
  * Every auth route used to answer with the raw Drizzle row, which carries the `password` column.
  * For a tourist that column is null and nothing happened; for a DB-backed admin it is a real
- * PBKDF2 hash, and it was being handed back on every /auth/me poll — into client state, into
+ * PBKDF2 hash, and it was being handed back on every /auth/me poll  into client state, into
  * whatever the client logs, and into any front-end error reporter. An allowlist rather than a
  * `delete user.password`, so a column added to the schema later is excluded by default instead
  * of exposed because nobody remembered to redact it.
@@ -20,6 +20,15 @@ export interface UserRowLike {
   avatar?: string | null;
   createdAt: string;
   supportExpiresAt?: string | null;
+  interests?: string[] | null;
+  whatsapp?: string | null;
+  gender?: string | null;
+  birthYear?: number | null;
+  address?: string | null;
+  pincode?: string | null;
+  likedFoods?: string[] | null;
+  travellerType?: string | null;
+  diet?: string | null;
   [key: string]: unknown;
 }
 
@@ -34,6 +43,15 @@ export interface PublicUser {
   avatar: string | null;
   createdAt: string;
   supportExpiresAt: string | null;
+  interests: string[];
+  whatsapp: string | null;
+  gender: string | null;
+  birthYear: number | null;
+  address: string | null;
+  pincode: string | null;
+  likedFoods: string[];
+  travellerType: string | null;
+  diet: string | null;
 }
 
 export function toPublicUser(user: UserRowLike): PublicUser {
@@ -48,5 +66,14 @@ export function toPublicUser(user: UserRowLike): PublicUser {
     avatar: user.avatar ?? null,
     createdAt: user.createdAt,
     supportExpiresAt: user.supportExpiresAt ?? null,
+    interests: Array.isArray(user.interests) ? user.interests : [],
+    whatsapp: user.whatsapp ?? null,
+    gender: user.gender ?? null,
+    birthYear: user.birthYear ?? null,
+    address: user.address ?? null,
+    pincode: user.pincode ?? null,
+    likedFoods: Array.isArray(user.likedFoods) ? user.likedFoods : [],
+    travellerType: user.travellerType ?? null,
+    diet: user.diet ?? null,
   };
 }

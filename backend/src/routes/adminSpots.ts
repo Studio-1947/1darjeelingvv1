@@ -1,11 +1,14 @@
 import { Router, Request, Response } from 'express';
+import { MAX_PRICE } from '../lib/priceCap';
 import { v4 as uuidv4 } from 'uuid';
 import { db } from '../db';
 import * as schema from '../schema';
 import { and, eq, inArray } from 'drizzle-orm';
 import { authenticateToken, requireAdmin } from '../middleware/auth';
+import { addInAppNotification } from '../lib/inApp';
 import { storeBase64Image, ImageUploadError } from '../lib/imageUpload';
 import { routeParam } from '../lib/routeParam';
+import { googleMapsUrl, inServiceRegion, MapsLinkError, resolveMapsLink } from '../lib/mapsLink';
 import {
   SPOT_TYPE, parseSpotExtras, spotOrdering, SpotValidationError, isSpotPublished,
 } from '../lib/spots';
@@ -17,7 +20,7 @@ import {
  * the section admin-owned; the public side (routes/listings.ts) only ever reads, and
  * refuses spot writes from anyone who is not an admin. Spots are stored as rows in
  * `listings` with `type='spot'` so they keep search, favourites, reviews and the
- * public detail page — see lib/spots.ts for the extras contract.
+ * public detail page  see lib/spots.ts for the extras contract.
  */
 const router = Router();
 
@@ -31,10 +34,9 @@ const MAX_LOCATION_LEN = 160;
 const MAX_DESCRIPTION_LEN = 8000;
 const MAX_TAGS = 12;
 const MAX_TAG_LEN = 40;
-const MAX_PRICE = 1_000_000;
 
 /** Shapes a spot row into the JSON the admin console consumes. */
-function toAdminSpot(row: typeof schema.listings.$inferSelect, reviewCount = 0) {
+export function toAdminSpot(row: typeof schema.listings.$inferSelect, reviewCount = 0) {
   const extras = (row.extras || {}) as Record<string, any>;
   return {
     id: row.id,
@@ -80,12 +82,12 @@ function validateCore(body: any, { partial }: { partial: boolean }): string | nu
   if (body.price !== undefined && body.price !== null) {
     const price = Number(body.price);
     if (!Number.isInteger(price) || price < 0 || price > MAX_PRICE) {
-      return 'price must be a whole number of rupees (0 for free entry)';
+      return `price must be a whole number of rupees from 0 to ${MAX_PRICE} (0 for free entry)`;
     }
   }
   if (body.image !== undefined && body.image !== null && body.image !== '') {
     if (typeof body.image !== 'string' || !/^https?:\/\//i.test(body.image.trim())) {
-      return 'image must be an http(s) URL — upload the cover photo first';
+      return 'image must be an http(s) URL  upload the cover photo first';
     }
   }
   if (body.tags !== undefined) {
@@ -237,16 +239,47 @@ router.post('/admin/spots/upload', authenticateToken, requireAdmin, async (req: 
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
  */
-router.post('/admin/spots', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
-  const body = req.body || {};
+/**
+ * POST /api/admin/spots/resolve-pin  { maps_url }
+ *
+ * The pin behind a Google Maps link (a shared maps.app.goo.gl link, a full google.com/maps link,
+ * or a pasted "lat, lng"), for the spot form to fill its latitude and longitude. Nothing is saved:
+ * the admin still presses Save. A pin outside the Darjeeling area is returned with
+ * `in_region: false` so the form can warn; spots up in Sikkim are legitimate.
+ */
+router.post('/admin/spots/resolve-pin', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const pin = await resolveMapsLink(req.body?.maps_url);
+    res.json({
+      latitude: pin.latitude,
+      longitude: pin.longitude,
+      maps_url: googleMapsUrl(pin),
+      in_region: inServiceRegion(pin),
+    });
+  } catch (err) {
+    if (err instanceof MapsLinkError) return res.status(400).json({ detail: err.message });
+    throw err;
+  }
+});
+
+/**
+ * Creates a spot from an admin payload (the POST /admin/spots body). Shared with the place
+ * suggestions review (routes/placeSuggestions.ts), which turns an approved suggestion into an
+ * unpublished spot through exactly these checks. Returns the created row, or the status and
+ * message to answer with.
+ */
+export async function createSpot(body: any): Promise<
+  { row: typeof schema.listings.$inferSelect } | { status: 400 | 409; detail: string }
+> {
+  body = body || {};
   const coreError = validateCore(body, { partial: false });
-  if (coreError) return res.status(400).json({ detail: coreError });
+  if (coreError) return { status: 400, detail: coreError };
 
   let extras;
   try {
     extras = parseSpotExtras(body.extras);
   } catch (err) {
-    if (err instanceof SpotValidationError) return res.status(400).json({ detail: err.message });
+    if (err instanceof SpotValidationError) return { status: 400, detail: err.message };
     throw err;
   }
 
@@ -258,7 +291,7 @@ router.post('/admin/spots', authenticateToken, requireAdmin, async (req: Request
     .where(and(eq(schema.listings.type, SPOT_TYPE), eq(schema.listings.title, title)))
     .limit(1);
   if (duplicate) {
-    return res.status(409).json({ detail: `A tourist spot titled "${title}" already exists` });
+    return { status: 409, detail: `A tourist spot titled "${title}" already exists` };
   }
 
   const row = {
@@ -278,10 +311,16 @@ router.post('/admin/spots', authenticateToken, requireAdmin, async (req: Request
   };
 
   await db.insert(schema.listings).values(row);
-  res.json({ item: toAdminSpot(row as typeof schema.listings.$inferSelect) });
+  return { row: row as typeof schema.listings.$inferSelect };
+}
+
+router.post('/admin/spots', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
+  const out = await createSpot(req.body);
+  if ('detail' in out) return res.status(out.status).json({ detail: out.detail });
+  res.json({ item: toAdminSpot(out.row) });
 });
 
-/** Loads a spot by id, or answers 404 — a non-spot listing id is not addressable here. */
+/** Loads a spot by id, or answers 404  a non-spot listing id is not addressable here. */
 async function loadSpot(req: Request, res: Response) {
   const [row] = await db.select().from(schema.listings)
     .where(and(eq(schema.listings.id, routeParam(req, 'id')), eq(schema.listings.type, SPOT_TYPE)))
@@ -369,7 +408,7 @@ const updateSpot = async (req: Request, res: Response) => {
 
   await db.update(schema.listings).set(updates).where(eq(schema.listings.id, existing.id));
   const [updated] = await db.select().from(schema.listings).where(eq(schema.listings.id, existing.id)).limit(1);
-  // A second admin can delete the spot between the write and this read — 404 rather than throw.
+  // A second admin can delete the spot between the write and this read  404 rather than throw.
   if (!updated) return res.status(404).json({ detail: 'Tourist spot not found' });
   const counts = await reviewCounts([existing.id]);
   res.json({ item: toAdminSpot(updated, counts.get(existing.id) || 0) });
@@ -416,10 +455,25 @@ router.post('/admin/spots/:id/publish', authenticateToken, requireAdmin, async (
     return res.status(400).json({ detail: 'published must be a boolean' });
   }
 
+  const wasLive = ((existing.extras || {}) as Record<string, any>).published !== false;
   const extras = parseSpotExtras({ published }, (existing.extras || {}) as Record<string, any>);
   await db.update(schema.listings).set({ extras }).where(eq(schema.listings.id, existing.id));
   const [updated] = await db.select().from(schema.listings).where(eq(schema.listings.id, existing.id)).limit(1);
   if (!updated) return res.status(404).json({ detail: 'Tourist spot not found' });
+  // A place someone suggested going live for the first time: tell them, as the thank-you promised.
+  if (published && !wasLive) {
+    const [s] = await db.select().from(schema.placeSuggestions)
+      .where(and(eq(schema.placeSuggestions.listingId, existing.id), eq(schema.placeSuggestions.status, 'approved'))).limit(1);
+    if (s) {
+      await addInAppNotification(s.userId, {
+        kind: 'place_suggestion_live',
+        title: 'Your place is live',
+        body: `${s.name} is now on Offbeat Places. Thank you for adding it.`,
+        msg: { key: 'place_suggestion_live', params: { place: s.name } },
+        refId: existing.id,
+      });
+    }
+  }
   res.json({ item: toAdminSpot(updated) });
 });
 

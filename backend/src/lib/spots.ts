@@ -2,7 +2,7 @@ import { sql, SQL } from 'drizzle-orm';
 import * as schema from '../schema';
 
 /**
- * Tourist spots — the editorial "places to visit" section of the app.
+ * Tourist spots  the editorial "places to visit" section of the app.
  *
  * Unlike homestays/drivers/shops/cafes, a spot is not somebody's business: it is
  * curated content about a public place. Only an admin may create, edit, upload
@@ -16,13 +16,13 @@ import * as schema from '../schema';
  */
 export const SPOT_TYPE = 'spot';
 
-/** Roles allowed to write a spot. Deliberately a one-element list — admins only. */
+/** Roles allowed to write a spot. Deliberately a one-element list  admins only. */
 export function canWriteSpots(role: string | undefined): boolean {
   return role === 'admin';
 }
 
 export const SPOT_FORBIDDEN_MESSAGE =
-  'Tourist spots are curated content — only an admin can create or edit them';
+  'Tourist spots are curated content  only an admin can create or edit them';
 
 // ---------------------------------------------------------------------------
 // extras shape
@@ -39,6 +39,10 @@ export interface SpotExtras {
   how_to_reach?: string;
   altitude?: string;
   address?: string;
+  /** Who took the cover photo and its licence, e.g. "Jane Doe · CC BY-SA 4.0". Required by CC BY licences. */
+  photo_credit?: string;
+  /** Link to the photo's source page (its licence terms), shown with the credit. */
+  photo_source?: string;
   /** Drafts (false) are admin-visible only; anything without the key is published. */
   published: boolean;
   /** Featured spots sort to the front of the public /spots list. */
@@ -62,10 +66,12 @@ const TEXT_FIELDS = {
   altitude: MAX_SHORT_TEXT,
   address: MAX_SHORT_TEXT,
   how_to_reach: MAX_LONG_TEXT,
+  photo_credit: MAX_SHORT_TEXT,
+  photo_source: MAX_LONG_TEXT,
 } as const;
 
-/** Thrown for a caller-fixable payload problem — routes answer these with a 400. */
-export class SpotValidationError extends Error {}
+/** Thrown for a caller-fixable payload problem  routes answer these with a 400. */
+export class SpotValidationError extends Error { }
 
 function fail(message: string): never {
   throw new SpotValidationError(message);
@@ -160,6 +166,9 @@ export function parseSpotExtras(raw: unknown, previous: Record<string, any> = {}
     }
   }
 
+  // Rendered as a link on the public page, so it must be a web URL (never javascript: etc.).
+  if (out.photo_source && !/^https?:\/\//i.test(out.photo_source)) fail('photo_source must be an http(s) URL');
+
   // Anything not in the schema above is dropped rather than stored, so a caller
   // can't use extras as an open key/value store on a public row.
   return out;
@@ -185,7 +194,7 @@ export function publicSpotVisibility(): SQL {
  *
  * The COALESCE on `featured` is load-bearing, not defensive noise. A row written before
  * this module existed (the seeder's `extras: {}`) has no `featured` key, so `extras->>'featured'`
- * is NULL and the comparison yields NULL — and Postgres `ORDER BY ... DESC` defaults to
+ * is NULL and the comparison yields NULL  and Postgres `ORDER BY ... DESC` defaults to
  * NULLS FIRST, which sorted every legacy spot *ahead* of the ones an admin actually
  * featured. Folding NULL to 'false' first makes the expression a real boolean for every row.
  */

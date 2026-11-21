@@ -9,7 +9,7 @@ import {
 import { OTP_MAX_SENDS_PER_DAY, OTP_MAX_SENDS_PER_PHONE_PER_DAY } from '../src/config';
 
 // The budget is off under APP_ENV=test (it follows RATE_LIMIT_ENABLED), so every call here passes
-// `enabled: true` — the same seam middleware/rateLimiter.ts uses to stay testable without making
+// `enabled: true`  the same seam middleware/rateLimiter.ts uses to stay testable without making
 // every other test file account for its OTP spend.
 const ON = { enabled: true };
 
@@ -24,7 +24,7 @@ async function countFor(scope: string, day: string): Promise<number> {
 describe('utcDay / secondsUntilUtcMidnight', () => {
   it('keys on the UTC calendar day, not the local one', () => {
     // 23:30 UTC on the 5th is already the 6th in IST (UTC+5:30). The counter must not roll over
-    // early for an Indian operator, or late — the reset point has to be one fixed instant.
+    // early for an Indian operator, or late  the reset point has to be one fixed instant.
     expect(utcDay(new Date('2026-08-05T23:30:00.000Z'))).toBe('2026-08-05');
     expect(utcDay(new Date('2026-08-06T00:00:00.000Z'))).toBe('2026-08-06');
   });
@@ -57,7 +57,7 @@ describe('per-phone daily budget', () => {
     expect(overflow.retryAfterSeconds).toBe(secondsUntilUtcMidnight(now));
   });
 
-  it('budgets each phone separately — one number cannot exhaust another', async () => {
+  it('budgets each phone separately  one number cannot exhaust another', async () => {
     const now = new Date('2026-08-05T10:00:00.000Z');
     const victim = '+919000010002';
     const other = '+919000010003';
@@ -83,7 +83,7 @@ describe('per-phone daily budget', () => {
     expect((await reserveOtpSend(phone, { ...ON, now: day2 })).ok).toBe(true);
   });
 
-  it('survives a restart — the count is in the database, not in the process', async () => {
+  it('survives a restart  the count is in the database, not in the process', async () => {
     const phone = '+919000010005';
     const now = new Date('2026-08-05T10:00:00.000Z');
 
@@ -190,7 +190,7 @@ describe('housekeeping', () => {
     expect(await countFor('global', utcDay(yesterday))).toBe(1);
 
     // The first send of a new UTC day is the one moment the global counter comes back as 1, which
-    // is what triggers the sweep — no scheduled job, and no row per phone accumulating forever.
+    // is what triggers the sweep  no scheduled job, and no row per phone accumulating forever.
     await reserveOtpSend('+919000040002', { ...ON, now: today });
 
     expect(await countFor('global', utcDay(yesterday))).toBe(0);

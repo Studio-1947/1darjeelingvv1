@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import request from 'supertest';
 import { app } from '../src/app';
-import { registerUser, createListing, onboardActiveProvider } from './helpers';
+import { registerUser, createListing, onboardActiveProvider, inDays } from './helpers';
 
 async function createBooking(token: string, listingId: string) {
   const res = await request(app).post('/api/bookings')
     .set('Authorization', `Bearer ${token}`)
-    .send({ listing_id: listingId, listing_type: 'spot' });
+    .send({ listing_id: listingId, check_in: inDays(10), check_out: inDays(11) });
   expect(res.status).toBe(200);
   return res.body.booking.id as string;
 }
@@ -44,11 +44,11 @@ describe('booking cancellation', () => {
   it('lets the provider who owns the listing cancel (decline) a booking on it', async () => {
     const { token: providerToken } = await onboardActiveProvider({ name: 'Declining Provider' });
     // A homestay, not a spot: tourist spots are admin-owned curated content, so a provider
-    // cannot own one — see lib/spots.ts. The listing only has to be provider-owned here.
+    // cannot own one  see lib/spots.ts. The listing only has to be provider-owned here.
     const listingRes = await request(app)
       .post('/api/listings')
       .set('Authorization', `Bearer ${providerToken}`)
-      .send({ title: 'Provider Homestay For Cancel', type: 'homestay', description: 'x', location: 'y' });
+      .send({ title: 'Provider Homestay For Cancel', type: 'homestay', description: 'x', location: 'Darjeeling' });
     const listingId = listingRes.body.item.id;
 
     const { token: tourist } = await registerUser({ name: 'Booked Tourist' });
@@ -59,7 +59,7 @@ describe('booking cancellation', () => {
     expect(res.body.booking.status).toBe('cancelled');
   });
 
-  it('is idempotent — cancelling an already-cancelled booking succeeds', async () => {
+  it('is idempotent  cancelling an already-cancelled booking succeeds', async () => {
     const { token } = await registerUser({ name: 'Double Canceller' });
     const listing = await createListing();
     const bookingId = await createBooking(token, listing.id);

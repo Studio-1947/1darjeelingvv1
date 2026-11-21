@@ -15,16 +15,16 @@
 - Amount is **1200 paise (₹12)**, set server-side only. Never read an amount from a request body.
 - Duration is **365 days**, exported as `SUPPORT_DURATION_DAYS`.
 - Expiry arithmetic is **monotonic**: `max(now, existing) + 365d`. Expiry may only move forward.
-- Exemption is `role === 'admin' || (role === 'provider' && providerPaid === true)`. **Never `role === 'provider'` alone** — role flips to `provider` before the ₹99 is paid.
+- Exemption is `role === 'admin' || (role === 'provider' && providerPaid === true)`. **Never `role === 'provider'` alone**  role flips to `provider` before the ₹99 is paid.
 - The word **"membership"** must not appear in code, UI copy, or i18n keys. The word **"subscription"** must not appear in UI copy.
 - Naming is fixed: flow `platform_support`, column `supportExpiresAt` / `support_expires_at`, middleware `requireActiveSupport`, route `/support`, error code `support_required`.
 - The `/support` screen **must** carry a logout escape. A hard gate with no exit is a trap.
 - All user-facing strings go through i18next, in **all four** locales: `en`, `hi`, `bn`, `ne`.
-- Migrations are generated with `npm run db:generate` — never hand-write a file in `backend/drizzle/`.
+- Migrations are generated with `npm run db:generate`  never hand-write a file in `backend/drizzle/`.
 
 ## Deviation from the spec (Task 5 amends the spec to match)
 
-The spec's §6 table lists booking **cancel** as a guarded route. This plan guards **creates only** — `POST /bookings`, `POST /favorites`, `POST /reviews` — and leaves cancel, unfavourite, and review-delete open.
+The spec's §6 table lists booking **cancel** as a guarded route. This plan guards **creates only**  `POST /bookings`, `POST /favorites`, `POST /reviews`  and leaves cancel, unfavourite, and review-delete open.
 
 Reasoning: the gate exists to stop unpaid accounts consuming value, not to trap users in commitments or hold their content hostage. Blocking cancel on a lapsed account means the user cannot cancel and simply no-shows, which is strictly worse for the provider than letting them cancel. Task 5 updates the spec so the two documents agree.
 
@@ -32,30 +32,30 @@ Reasoning: the gate exists to stop unpaid accounts consuming value, not to trap 
 
 ## File Structure
 
-**Backend — create**
-- `backend/src/lib/support.ts` — pure predicates and expiry arithmetic. No DB, no Express.
-- `backend/src/middleware/support.ts` — `requireActiveSupport`.
-- `backend/test/support.test.ts` — unit tests for `lib/support.ts`.
-- `backend/test/platformSupport.test.ts` — integration tests for the payment flow and the middleware.
+**Backend  create**
+- `backend/src/lib/support.ts`  pure predicates and expiry arithmetic. No DB, no Express.
+- `backend/src/middleware/support.ts`  `requireActiveSupport`.
+- `backend/test/support.test.ts`  unit tests for `lib/support.ts`.
+- `backend/test/platformSupport.test.ts`  integration tests for the payment flow and the middleware.
 
-**Backend — modify**
-- `backend/src/config.ts` — `SUPPORT_DURATION_DAYS`, `AMOUNTS.platform_support`.
-- `backend/src/schema.ts` — `supportExpiresAt` on `users`.
-- `backend/src/routes/payments.ts` — ownership branch, settlement branch, OpenAPI enums.
-- `backend/src/routes/bookings.ts`, `favorites.ts`, `reviews.ts` — mount middleware on creates.
-- `backend/test/helpers.ts` — `activateSupport`, and `registerUser` pays by default.
+**Backend  modify**
+- `backend/src/config.ts`  `SUPPORT_DURATION_DAYS`, `AMOUNTS.platform_support`.
+- `backend/src/schema.ts`  `supportExpiresAt` on `users`.
+- `backend/src/routes/payments.ts`  ownership branch, settlement branch, OpenAPI enums.
+- `backend/src/routes/bookings.ts`, `favorites.ts`, `reviews.ts`  mount middleware on creates.
+- `backend/test/helpers.ts`  `activateSupport`, and `registerUser` pays by default.
 
-**Frontend — create**
-- `frontend/src/lib/support.ts` — client-side mirror of the predicates.
-- `frontend/src/lib/support.test.js` — unit tests for the above.
-- `frontend/src/pages/Support.tsx` — the fee screen.
-- `frontend/src/components/SupportGate.tsx` — the router gate.
+**Frontend  create**
+- `frontend/src/lib/support.ts`  client-side mirror of the predicates.
+- `frontend/src/lib/support.test.js`  unit tests for the above.
+- `frontend/src/pages/Support.tsx`  the fee screen.
+- `frontend/src/components/SupportGate.tsx`  the router gate.
 
-**Frontend — modify**
-- `frontend/src/lib/api.ts` — `isSupportRequiredError` + 402 response interceptor.
-- `frontend/src/lib/api.test.js` — tests for `isSupportRequiredError`.
-- `frontend/src/App.tsx` — `/support` route, `SupportGate` wrapper.
-- `frontend/src/locales/{en,hi,bn,ne}.json` — the `support` string block.
+**Frontend  modify**
+- `frontend/src/lib/api.ts`  `isSupportRequiredError` + 402 response interceptor.
+- `frontend/src/lib/api.test.js`  tests for `isSupportRequiredError`.
+- `frontend/src/App.tsx`  `/support` route, `SupportGate` wrapper.
+- `frontend/src/locales/{en,hi,bn,ne}.json`  the `support` string block.
 
 ---
 
@@ -110,7 +110,7 @@ describe('isExemptFromSupport', () => {
     expect(isExemptFromSupport({ role: 'provider', providerPaid: true })).toBe(true);
   });
 
-  it('does NOT exempt a provider who has not paid — role flips before payment', () => {
+  it('does NOT exempt a provider who has not paid  role flips before payment', () => {
     expect(isExemptFromSupport({ role: 'provider', providerPaid: false })).toBe(false);
     expect(isExemptFromSupport({ role: 'provider' })).toBe(false);
     expect(isExemptFromSupport({ role: 'provider', providerPaid: null })).toBe(false);
@@ -183,7 +183,7 @@ describe('computeSupportExpiry', () => {
 cd backend && npx vitest run test/support.test.ts
 ```
 
-Expected: FAIL — `Cannot find module '../src/lib/support'`.
+Expected: FAIL  `Cannot find module '../src/lib/support'`.
 
 - [ ] **Step 4: Write the implementation**
 
@@ -201,7 +201,7 @@ export interface SupportUser {
 }
 
 /**
- * Exemption means "has already paid us" — not "claims to be a business".
+ * Exemption means "has already paid us"  not "claims to be a business".
  *
  * `role` flips to 'provider' the moment /providers/onboard is submitted, which is BEFORE the
  * ₹99 registration fee is paid. Exempting on role alone would therefore let any tourist submit
@@ -213,7 +213,7 @@ export function isExemptFromSupport(user: SupportUser): boolean {
   return user.role === 'provider' && user.providerPaid === true;
 }
 
-/** A stored value that is absent or unparseable means "not active" — never throw on bad data. */
+/** A stored value that is absent or unparseable means "not active"  never throw on bad data. */
 export function isSupportActive(user: SupportUser, now: Date = new Date()): boolean {
   if (!user.supportExpiresAt) return false;
   const expiry = Date.parse(user.supportExpiresAt);
@@ -226,7 +226,7 @@ export function isSupportActive(user: SupportUser, now: Date = new Date()): bool
  *
  * Two consequences that are both deliberate. Renewing early extends the remaining window
  * rather than truncating it, so nobody is punished for paying ahead of time. And a payment
- * settled twice — the webhook and the browser callback race by design — can never shorten
+ * settled twice  the webhook and the browser callback race by design  can never shorten
  * someone's access, even if settlePaymentOnce's guard were ever bypassed.
  */
 export function computeSupportExpiry(
@@ -246,7 +246,7 @@ export function computeSupportExpiry(
 cd backend && npx vitest run test/support.test.ts
 ```
 
-Expected: PASS — 13 tests.
+Expected: PASS  13 tests.
 
 - [ ] **Step 6: Commit**
 
@@ -261,7 +261,7 @@ git commit -m "feat(support): add support-fee predicates and expiry arithmetic"
 
 **Files:**
 - Modify: `backend/src/schema.ts:3-14`
-- Create: `backend/drizzle/0008_*.sql` (generated — do not hand-write)
+- Create: `backend/drizzle/0008_*.sql` (generated  do not hand-write)
 - Test: `backend/test/platformSupport.test.ts`
 
 **Interfaces:**
@@ -299,7 +299,7 @@ describe('support column', () => {
 cd backend && npx vitest run test/platformSupport.test.ts
 ```
 
-Expected: FAIL — `supportExpiresAt` is `undefined`, not `null`.
+Expected: FAIL  `supportExpiresAt` is `undefined`, not `null`.
 
 - [ ] **Step 3: Add the column to the schema**
 
@@ -319,7 +319,7 @@ cd backend && npm run db:generate && npm run db:migrate && npm run test:setup
 ```
 
 Expected: a new `backend/drizzle/0008_*.sql` containing
-`ALTER TABLE "users" ADD COLUMN "support_expires_at" text;` — nullable, **no backfill**.
+`ALTER TABLE "users" ADD COLUMN "support_expires_at" text;`  nullable, **no backfill**.
 
 - [ ] **Step 5: Run the test to verify it passes**
 
@@ -335,7 +335,7 @@ Expected: PASS.
 cd backend && npm test
 ```
 
-Expected: all pre-existing tests still pass — the column is additive and nothing reads it yet.
+Expected: all pre-existing tests still pass  the column is additive and nothing reads it yet.
 
 - [ ] **Step 7: Commit**
 
@@ -361,14 +361,14 @@ git commit -m "feat(support): add users.support_expires_at column"
   - `activateSupport(token: string, userId: string): Promise<void>` in `test/helpers.ts`
   - `registerUser` gains `paySupport?: boolean` (default `true`, applied only when the role is `tourist`)
 
-The test-helper change lands here rather than with the middleware in Task 5. It cannot land earlier — there is no flow to pay. It must not land later — Task 3's own tests need `paySupport: false`, and TypeScript's excess-property check rejects an option the signature does not declare, which would break `npm run build`. Paying is harmless at this point because nothing is gated yet.
+The test-helper change lands here rather than with the middleware in Task 5. It cannot land earlier  there is no flow to pay. It must not land later  Task 3's own tests need `paySupport: false`, and TypeScript's excess-property check rejects an option the signature does not declare, which would break `npm run build`. Paying is harmless at this point because nothing is gated yet.
 
 - [ ] **Step 1: Write the failing tests**
 
 Append to `backend/test/platformSupport.test.ts`. Merge the helper import into the existing `import { nextPhone } from './helpers';` line at the top of the file rather than adding a second import from the same module:
 
 ```typescript
-// top of file — replace the existing helpers import with:
+// top of file  replace the existing helpers import with:
 import { nextPhone, registerUser } from './helpers';
 ```
 
@@ -471,7 +471,7 @@ These tests pass `paySupport: false` to `registerUser`. That option is added in 
 cd backend && npx vitest run test/platformSupport.test.ts
 ```
 
-Expected: FAIL — the order request returns 400 `Invalid payment flow`.
+Expected: FAIL  the order request returns 400 `Invalid payment flow`.
 
 - [ ] **Step 3: Add the amount**
 
@@ -497,7 +497,7 @@ Then inside `assertOwnsReference`, after the `booking_commission` block (ends li
 
 ```typescript
   if (flow === 'platform_support') {
-    // The reference is the payer themselves — there is no other entity to own. Requiring the
+    // The reference is the payer themselves  there is no other entity to own. Requiring the
     // match is what stops someone creating a ₹12 order that credits a different account.
     if (referenceId !== userId) {
       return { status: 403, detail: 'You can only pay the support fee for your own account' };
@@ -571,7 +571,7 @@ export async function registerUser(opts: {
   name: string;
   role?: 'tourist' | 'provider';
   phone?: string;
-  /** Set false to get a tourist who has NOT paid — for tests that exercise the gate itself. */
+  /** Set false to get a tourist who has NOT paid  for tests that exercise the gate itself. */
   paySupport?: boolean;
 }) {
   const phone = opts.phone || nextPhone();
@@ -604,7 +604,7 @@ export async function registerUser(opts: {
 cd backend && npx vitest run test/platformSupport.test.ts
 ```
 
-Expected: PASS — 6 tests.
+Expected: PASS  6 tests.
 
 - [ ] **Step 9: Run the full backend suite**
 
@@ -633,7 +633,7 @@ Built and unit-covered here; mounted on routes in Task 5. Splitting them means t
 
 **Interfaces:**
 - Consumes: `isExemptFromSupport`, `isSupportActive` from `../lib/support`
-- Produces: `requireActiveSupport(req, res, next)` — Express middleware. Mount **after** `authenticateToken`. Responds `402 { detail, code: 'support_required' }`.
+- Produces: `requireActiveSupport(req, res, next)`  Express middleware. Mount **after** `authenticateToken`. Responds `402 { detail, code: 'support_required' }`.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -706,7 +706,7 @@ describe('requireActiveSupport', () => {
 cd backend && npx vitest run test/support.test.ts
 ```
 
-Expected: FAIL — `Cannot find module '../src/middleware/support'`.
+Expected: FAIL  `Cannot find module '../src/middleware/support'`.
 
 - [ ] **Step 3: Write the middleware**
 
@@ -720,7 +720,7 @@ import { isExemptFromSupport, isSupportActive } from '../lib/support';
  * Blocks the actions that cost the platform something until the annual support fee is active.
  * Mount AFTER authenticateToken, which is what puts the user row on the request.
  *
- * 402 rather than 403: the request is well-formed and the caller is who they claim to be — the
+ * 402 rather than 403: the request is well-formed and the caller is who they claim to be  the
  * only thing missing is payment. That distinction matters to the client, which redirects on 402
  * but treats 403 as a genuine authorisation failure. The client keys on `code`, not the prose.
  */
@@ -747,7 +747,7 @@ export function requireActiveSupport(req: Request, res: Response, next: NextFunc
 cd backend && npx vitest run test/support.test.ts
 ```
 
-Expected: PASS — 20 tests total in the file.
+Expected: PASS  20 tests total in the file.
 
 - [ ] **Step 5: Commit**
 
@@ -771,7 +771,7 @@ This is the step that changes behaviour for existing users. Task 3 already made 
 
 **Interfaces:**
 - Consumes: `requireActiveSupport` from `../middleware/support`; `registerUser`, `createListing`, `onboardActiveProvider`, `activateSupport` from `./helpers`
-- Produces: nothing new — this task wires existing pieces together.
+- Produces: nothing new  this task wires existing pieces together.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -806,7 +806,7 @@ describe('support gate on tourist creates', () => {
   });
 
   it('402s a provider who has not paid the registration fee', async () => {
-    // role is already 'provider' but providerPaid is false — the loophole the exemption
+    // role is already 'provider' but providerPaid is false  the loophole the exemption
     // rule exists to close.
     const { token } = await registerUser({ name: 'Unpaid Provider', role: 'provider' });
     const listing = await createListing();
@@ -842,7 +842,7 @@ describe('support gate on tourist creates', () => {
       .set('Authorization', `Bearer ${token}`)
       .send({ listing_id: listing.id });
 
-    // Expire them. There is no API for this — the fee only ever moves the expiry forward — so
+    // Expire them. There is no API for this  the fee only ever moves the expiry forward  so
     // the test reaches into the DB directly, which is the only way to exercise a lapse without
     // waiting a year.
     await db.update(schema.users)
@@ -878,7 +878,7 @@ import { db, schema } from '../src/db';
 cd backend && npx vitest run test/platformSupport.test.ts
 ```
 
-Expected: FAIL — the unpaid-tourist and unpaid-provider cases return 200 because nothing is gated yet.
+Expected: FAIL  the unpaid-tourist and unpaid-provider cases return 200 because nothing is gated yet.
 
 - [ ] **Step 3: Mount the middleware on the three create routes**
 
@@ -906,7 +906,7 @@ In `backend/src/routes/reviews.ts`, add the same import and change line 77:
 router.post('/', authenticateToken, requireActiveSupport, async (req: Request, res: Response) => {
 ```
 
-Leave `bookings.ts:338` (cancel), `favorites.ts:142` (delete), and `reviews.ts:129` (delete) **ungated** — see the deviation note at the top of this plan.
+Leave `bookings.ts:338` (cancel), `favorites.ts:142` (delete), and `reviews.ts:129` (delete) **ungated**  see the deviation note at the top of this plan.
 
 - [ ] **Step 4: Add a 402 response to each route's OpenAPI block**
 
@@ -926,7 +926,7 @@ Each of the three routes has an `@openapi` comment listing responses. Add to all
 cd backend && npm test
 ```
 
-Expected: PASS — all files. If a test fails with 402, that call site needs a paid tourist and Task 3's helper change did not reach it — check whether it builds a user by some route other than `registerUser`.
+Expected: PASS  all files. If a test fails with 402, that call site needs a paid tourist and Task 3's helper change did not reach it  check whether it builds a user by some route other than `registerUser`.
 
 - [ ] **Step 6: Amend the spec to match the narrower gate**
 
@@ -945,7 +945,7 @@ And add immediately below the table:
 
 Booking cancel, un-favourite, and review delete stay open to lapsed accounts. The gate exists to
 stop unpaid accounts consuming value, not to trap users in commitments or hold their content
-hostage — a lapsed user who cannot cancel simply no-shows, which is worse for the provider than
+hostage  a lapsed user who cannot cancel simply no-shows, which is worse for the provider than
 the cancellation would have been.
 ```
 
@@ -968,8 +968,8 @@ git commit -m "feat(support): gate tourist creates behind the support fee"
 
 **Interfaces:**
 - Produces:
-  - `frontend/src/lib/support.ts` — `isExemptFromSupport(user)`, `isSupportActive(user)`, `needsSupport(user)`, `SUPPORT_ROUTE = '/support'`
-  - `frontend/src/lib/api.ts` — `isSupportRequiredError(error): boolean`, plus a response interceptor
+  - `frontend/src/lib/support.ts`  `isExemptFromSupport(user)`, `isSupportActive(user)`, `needsSupport(user)`, `SUPPORT_ROUTE = '/support'`
+  - `frontend/src/lib/api.ts`  `isSupportRequiredError(error): boolean`, plus a response interceptor
 
 Tests here are plain `.js` files run by `craco test`, matching the note at the top of the existing `api.test.js`: the repo has no `@types/jest`, and adding it churns ~1700 lines of lockfile.
 
@@ -978,7 +978,7 @@ Tests here are plain `.js` files run by `craco test`, matching the note at the t
 Create `frontend/src/lib/support.test.js`:
 
 ```javascript
-// Plain .js for the same reason as api.test.js — the repo has no @types/jest.
+// Plain .js for the same reason as api.test.js  the repo has no @types/jest.
 const { isExemptFromSupport, isSupportActive, needsSupport } = require('./support');
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -998,7 +998,7 @@ describe('isExemptFromSupport', () => {
 });
 
 describe('needsSupport', () => {
-  it('is false without a user — logged-out browsing is free', () => {
+  it('is false without a user  logged-out browsing is free', () => {
     expect(needsSupport(null)).toBe(false);
     expect(needsSupport(undefined)).toBe(false);
   });
@@ -1064,7 +1064,7 @@ describe('isSupportRequiredError', () => {
 cd frontend && CI=true npx craco test --testPathPattern "src/lib" --watchAll=false
 ```
 
-Expected: FAIL — `Cannot find module './support'`, and `isSupportRequiredError` is not a function.
+Expected: FAIL  `Cannot find module './support'`, and `isSupportRequiredError` is not a function.
 
 - [ ] **Step 3: Write the client predicates**
 
@@ -1081,7 +1081,7 @@ export interface SupportUser {
 
 /**
  * Mirrors backend/src/lib/support.ts. Kept in step deliberately: this one decides what the user
- * SEES, the server's decides what the user may DO. The server is always the authority — if the
+ * SEES, the server's decides what the user may DO. The server is always the authority  if the
  * two ever disagree, the 402 interceptor below corrects the client.
  */
 export function isExemptFromSupport(user: SupportUser): boolean {
@@ -1096,7 +1096,7 @@ export function isSupportActive(user: SupportUser): boolean {
   return expiry > Date.now();
 }
 
-/** Logged-out visitors never need it — public browsing stays free. */
+/** Logged-out visitors never need it  public browsing stays free. */
 export function needsSupport(user: SupportUser | null | undefined): boolean {
   if (!user) return false;
   return !isExemptFromSupport(user) && !isSupportActive(user);
@@ -1112,7 +1112,7 @@ import { SUPPORT_ROUTE } from './support';
 
 /**
  * True when the server is telling us the caller's support fee is not active. The status alone is
- * not enough — 402 could mean something else later — so the machine-readable code decides.
+ * not enough  402 could mean something else later  so the machine-readable code decides.
  */
 export function isSupportRequiredError(error: any): boolean {
   return error?.response?.status === 402 && error?.response?.data?.code === 'support_required';
@@ -1120,7 +1120,7 @@ export function isSupportRequiredError(error: any): boolean {
 
 // SupportGate is the primary gate, but client state goes stale: a window that lapsed mid-session,
 // or a second tab holding an older user object. A 402 is the server's authoritative answer, so
-// honour it. A full navigation rather than a router push, because axios has no router access —
+// honour it. A full navigation rather than a router push, because axios has no router access 
 // acceptable for a path that should be rare.
 api.interceptors.response.use(
   (response) => response,
@@ -1133,7 +1133,7 @@ api.interceptors.response.use(
 );
 ```
 
-Move the `import { SUPPORT_ROUTE } from './support';` line up to sit with the `axios` import at the top of the file — it is written inline above only to show where the block goes.
+Move the `import { SUPPORT_ROUTE } from './support';` line up to sit with the `axios` import at the top of the file  it is written inline above only to show where the block goes.
 
 - [ ] **Step 5: Run the tests to verify they pass**
 
@@ -1141,7 +1141,7 @@ Move the `import { SUPPORT_ROUTE } from './support';` line up to sit with the `a
 cd frontend && CI=true npx craco test --testPathPattern "src/lib" --watchAll=false
 ```
 
-Expected: PASS — both files.
+Expected: PASS  both files.
 
 - [ ] **Step 6: Commit**
 
@@ -1169,11 +1169,11 @@ Add a top-level `"support"` key to `frontend/src/locales/en.json`, as a sibling 
 ```json
   "support": {
     "title": "A small token to keep 1 Darjeeling running",
-    "amount_line": "₹12 for the year — a one-time platform support & convenience fee that goes toward maintenance, hosting and building costs.",
+    "amount_line": "₹12 for the year  a one-time platform support & convenience fee that goes toward maintenance, hosting and building costs.",
     "body": "That's ₹1 a month. It keeps the app running for travellers and keeps listings free for the small homestays, drivers and cafés on it.",
     "cta": "Pay ₹12 · valid 1 year",
-    "reassurance": "Valid for one year. Nothing auto-charges — we'll ask you again next year.",
-    "skip": "Not now — browse without an account",
+    "reassurance": "Valid for one year. Nothing auto-charges  we'll ask you again next year.",
+    "skip": "Not now  browse without an account",
     "modal_title": "Platform support fee",
     "modal_duration": "· 1 year",
     "privacy_link": "privacy policy",
@@ -1188,11 +1188,11 @@ Add the same key to `frontend/src/locales/hi.json`:
 ```json
   "support": {
     "title": "1 दार्जिलिंग को चलाए रखने के लिए एक छोटा सहयोग",
-    "amount_line": "साल भर के लिए ₹12 — रखरखाव, होस्टिंग और निर्माण लागत के लिए एक बार का प्लेटफ़ॉर्म सहयोग एवं सुविधा शुल्क।",
+    "amount_line": "साल भर के लिए ₹12  रखरखाव, होस्टिंग और निर्माण लागत के लिए एक बार का प्लेटफ़ॉर्म सहयोग एवं सुविधा शुल्क।",
     "body": "यानी ₹1 प्रति माह। इससे ऐप यात्रियों के लिए चलता रहता है और छोटे होमस्टे, ड्राइवरों और कैफ़े के लिए लिस्टिंग मुफ़्त रहती है।",
     "cta": "₹12 भुगतान करें · 1 वर्ष के लिए मान्य",
-    "reassurance": "एक वर्ष के लिए मान्य। कोई स्वतः शुल्क नहीं कटेगा — हम अगले साल फिर पूछेंगे।",
-    "skip": "अभी नहीं — बिना खाते के देखें",
+    "reassurance": "एक वर्ष के लिए मान्य। कोई स्वतः शुल्क नहीं कटेगा  हम अगले साल फिर पूछेंगे।",
+    "skip": "अभी नहीं  बिना खाते के देखें",
     "modal_title": "प्लेटफ़ॉर्म सहयोग शुल्क",
     "modal_duration": "· 1 वर्ष",
     "privacy_link": "गोपनीयता नीति",
@@ -1207,11 +1207,11 @@ Add the same key to `frontend/src/locales/bn.json`:
 ```json
   "support": {
     "title": "1 দার্জিলিং চালু রাখতে একটি ছোট সহযোগিতা",
-    "amount_line": "বছরের জন্য ₹12 — রক্ষণাবেক্ষণ, হোস্টিং ও নির্মাণ খরচের জন্য এককালীন প্ল্যাটফর্ম সহায়তা ও সুবিধা ফি।",
+    "amount_line": "বছরের জন্য ₹12  রক্ষণাবেক্ষণ, হোস্টিং ও নির্মাণ খরচের জন্য এককালীন প্ল্যাটফর্ম সহায়তা ও সুবিধা ফি।",
     "body": "অর্থাৎ মাসে ₹1। এতে অ্যাপটি ভ্রমণকারীদের জন্য চালু থাকে এবং ছোট হোমস্টে, চালক ও ক্যাফের জন্য তালিকাভুক্তি বিনামূল্যে থাকে।",
     "cta": "₹12 দিন · ১ বছরের জন্য বৈধ",
-    "reassurance": "এক বছরের জন্য বৈধ। স্বয়ংক্রিয়ভাবে কোনো টাকা কাটা হবে না — আগামী বছর আবার জিজ্ঞাসা করব।",
-    "skip": "এখন নয় — অ্যাকাউন্ট ছাড়াই দেখুন",
+    "reassurance": "এক বছরের জন্য বৈধ। স্বয়ংক্রিয়ভাবে কোনো টাকা কাটা হবে না  আগামী বছর আবার জিজ্ঞাসা করব।",
+    "skip": "এখন নয়  অ্যাকাউন্ট ছাড়াই দেখুন",
     "modal_title": "প্ল্যাটফর্ম সহায়তা ফি",
     "modal_duration": "· ১ বছর",
     "privacy_link": "গোপনীয়তা নীতি",
@@ -1226,11 +1226,11 @@ Add the same key to `frontend/src/locales/ne.json`:
 ```json
   "support": {
     "title": "1 दार्जिलिङ चलाइराख्न सानो सहयोग",
-    "amount_line": "वर्षभरका लागि ₹12 — मर्मतसम्भार, होस्टिङ र निर्माण खर्चका लागि एकपटकको प्लेटफर्म सहयोग तथा सुविधा शुल्क।",
+    "amount_line": "वर्षभरका लागि ₹12  मर्मतसम्भार, होस्टिङ र निर्माण खर्चका लागि एकपटकको प्लेटफर्म सहयोग तथा सुविधा शुल्क।",
     "body": "अर्थात् महिनाको ₹1। यसले एप यात्रुहरूका लागि चलिरहन्छ र साना होमस्टे, चालक र क्याफेहरूका लागि सूचीकरण नि:शुल्क रहन्छ।",
     "cta": "₹12 तिर्नुहोस् · १ वर्षका लागि मान्य",
-    "reassurance": "एक वर्षका लागि मान्य। स्वतः कुनै शुल्क कटिँदैन — अर्को वर्ष फेरि सोध्नेछौं।",
-    "skip": "अहिले होइन — खाता बिना हेर्नुहोस्",
+    "reassurance": "एक वर्षका लागि मान्य। स्वतः कुनै शुल्क कटिँदैन  अर्को वर्ष फेरि सोध्नेछौं।",
+    "skip": "अहिले होइन  खाता बिना हेर्नुहोस्",
     "modal_title": "प्लेटफर्म सहयोग शुल्क",
     "modal_duration": "· १ वर्ष",
     "privacy_link": "गोपनीयता नीति",
@@ -1247,7 +1247,7 @@ cd frontend/src/locales && for f in en hi bn ne; do node -e "
 "; done
 ```
 
-Expected: four identical key lists —
+Expected: four identical key lists 
 `amount_line,body,cta,error,modal_duration,modal_title,privacy_link,reassurance,skip,title`
 
 - [ ] **Step 6: Commit**
@@ -1337,7 +1337,7 @@ export default function Support() {
   };
 
   // The escape hatch. A hard gate on a logged-in user with no way out is a trap: they cannot
-  // pay, cannot browse, cannot leave. Public browsing was always free — this makes it reachable.
+  // pay, cannot browse, cannot leave. Public browsing was always free  this makes it reachable.
   const browseAnonymously = () => {
     logout();
     nav('/', { replace: true });
@@ -1445,11 +1445,11 @@ import { needsSupport } from '@/lib/support';
 /**
  * Paths that must stay reachable while gated.
  *
- * /support     — the screen that lifts the gate; redirecting it to itself is a loop.
- * /login       — Login has its own redirect-when-authenticated effect; letting the gate fight
+ * /support      the screen that lifts the gate; redirecting it to itself is a loop.
+ * /login        Login has its own redirect-when-authenticated effect; letting the gate fight
  *                it produces a loop, and a gated user may legitimately want to switch accounts.
- * /privacy     — linked from the support screen, and a policy page behind a paywall is absurd.
- * /provider/onboard — an unpaid provider needs support (providerPaid is false) but this is
+ * /privacy      linked from the support screen, and a policy page behind a paywall is absurd.
+ * /provider/onboard  an unpaid provider needs support (providerPaid is false) but this is
  *                exactly where Login sends them to pay the ₹99. Gating it would deadlock
  *                provider onboarding entirely.
  */
@@ -1479,7 +1479,7 @@ import SupportGate from '@/components/SupportGate';
 import Support from '@/pages/Support';
 ```
 
-Wrap `<Routes>` and add the route — the whole `<Layout>` block becomes:
+Wrap `<Routes>` and add the route  the whole `<Layout>` block becomes:
 
 ```tsx
           <Layout>
@@ -1528,15 +1528,15 @@ cd frontend && npm start
 
 Walk each case and confirm:
 
-1. Logged out, visit `/` — feed renders, **no** redirect.
-2. Log in as a new tourist — lands on `/support`, not the feed.
-3. From `/support`, click through to `/privacy` — reachable.
-4. Try to navigate to `/dashboard` — bounced back to `/support`.
-5. Pay ₹12 in the mock modal — lands on the destination that was intercepted, not `/`.
-6. Hard-refresh the page — **no** flash of the paywall.
-7. Log out, log back in — straight to the feed, no paywall.
-8. Log in as a new **provider** — lands on `/provider/onboard`, not `/support`.
-9. Click "Not now — browse without an account" from `/support` — logged out, on `/`, feed browsable.
+1. Logged out, visit `/`  feed renders, **no** redirect.
+2. Log in as a new tourist  lands on `/support`, not the feed.
+3. From `/support`, click through to `/privacy`  reachable.
+4. Try to navigate to `/dashboard`  bounced back to `/support`.
+5. Pay ₹12 in the mock modal  lands on the destination that was intercepted, not `/`.
+6. Hard-refresh the page  **no** flash of the paywall.
+7. Log out, log back in  straight to the feed, no paywall.
+8. Log in as a new **provider**  lands on `/provider/onboard`, not `/support`.
+9. Click "Not now  browse without an account" from `/support`  logged out, on `/`, feed browsable.
 
 - [ ] **Step 5: Commit**
 

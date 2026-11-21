@@ -1,43 +1,42 @@
-@import url('https://fonts.googleapis.com/css2?family=Google+Sans+Code:ital,wght@0,300..800;1,300..800&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;0,9..40,900;1,9..40,400;1,9..40,600&family=Noto+Sans+Bengali:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&family=Noto+Sans+Bengali:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap');
+@import './styles/aangan.css';
+@import './styles/screens/onboard.css';
+@import './styles/screens/home.css';
+@import './styles/screens/category.css';
+@import './styles/screens/feed.css';
+@import './styles/screens/account.css';
+@import './styles/screens/listing.css';
+@import './styles/screens/host.css';
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --bg: #FAFAF7;
-  --surface: #FFFFFF;
-  --ink: #14201A;
-  --ink-soft: #4B5C55;
-  --muted: #6B7C74;
-  --line: #E6E8E3;
-  --pine: #2C5E3B;
-  --pine-dark: #1F4429;
-  --flag: #C42E2E;
-  --gold: #F0B90B;
-  --mist: #EEF2ED;
+  /* Legacy names, now pointing at the red /7 system in styles/aangan.css. */
+  --bg: transparent;
+  --ink: var(--ink-strong);
+  --ink-soft: var(--ink-muted);
+  --muted: var(--ink-muted);
+  --line: var(--hairline);
+  --pine: var(--r);
+  --pine-dark: var(--r-press);
+  --flag: var(--fail);
+  --gold: #F5B400;
+  --mist: var(--creme2);
   /* Height of the mobile BottomNav, including the home-indicator inset.
      Anything fixed above the nav must offset by this, not a hardcoded 4rem. */
-  --bottom-nav-h: calc(3.25rem + env(safe-area-inset-bottom, 0px));
+  /* The floating pill bar: 64px tall, 8px of air above it, and the safe area (at least 10px) below. */
+  --bottom-nav-h: var(--tabbar-h);
+  /* Height of a page's own fixed bar above the nav (the listing page's "Request to book").
+     Set by that bar while it is on screen; the footer adds it to its bottom padding. */
+  --page-cta-h: 0px;
   /* Height of the site header. It carries the circular category rail, so it
      tracks the rail's size at each breakpoint - full-screen sections and the
      landing hero offset by this rather than a hardcoded height.
      Phones scroll icon-only tiles inside one pill; sm+ adds a single-line
      label under each and the whole row fits without scrolling. */
-  --header-h: 3.75rem;
-}
-
-@media (min-width: 640px) {
-  :root { --header-h: 4.75rem; }
-}
-
-@media (min-width: 1024px) {
-  :root { --header-h: 5rem; }
-}
-
-@media (min-width: 1280px) {
-  :root { --header-h: 5.25rem; }
+  --header-h: 64px;
 }
 
 @layer base {
@@ -48,7 +47,7 @@
     --card-foreground: 150 20% 10%;
     --popover: 0 0% 100%;
     --popover-foreground: 150 20% 10%;
-    --primary: 138 37% 27%;
+    --primary: 184 100% 26%;
     --primary-foreground: 0 0% 100%;
     --secondary: 0 62% 47%;
     --secondary-foreground: 0 0% 100%;
@@ -60,7 +59,7 @@
     --destructive-foreground: 0 0% 100%;
     --border: 90 12% 90%;
     --input: 90 12% 90%;
-    --ring: 138 37% 27%;
+    --ring: 184 100% 26%;
     --radius: 1rem;
   }
 }
@@ -69,31 +68,34 @@ html, body, #root {
   min-height: 100%;
 }
 
+/* `clip`, not `hidden`: hidden turns html/body into scroll containers, which silently breaks
+   every `position: sticky` on the site (the profile preview, the save bar). Old browsers that
+   do not know `clip` keep `hidden`. */
+html, body {
+  overflow-x: hidden;
+  overflow-x: clip;
+}
+
 body {
   margin: 0;
-  background: var(--bg);
-  color: var(--ink);
-  font-family: 'Google Sans', 'Google Sans Text', 'DM Sans', 'Noto Sans Bengali', 'Noto Sans Devanagari', system-ui, -apple-system, sans-serif;
-  font-feature-settings: "ss01";
+  background: transparent;
+  color: var(--ink7);
+  /* Noto Sans, with its Devanagari and Bengali siblings (the --font token), as the prototype renders. */
+  font-family: var(--font);
+  font-size: 16px;
+  line-height: 24px;
+  letter-spacing: .5px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 h1, h2, h3, h4 {
-  font-family: 'Google Sans', 'Google Sans Display', 'DM Sans', 'Noto Sans Bengali', 'Noto Sans Devanagari', system-ui, sans-serif;
+  font-family: var(--font);
+  font-weight: 500;
   letter-spacing: -0.015em;
 }
+b, strong { font-weight: 500; }
 
-html[lang="bn"] body,
-html[lang="bn"] h1, html[lang="bn"] h2, html[lang="bn"] h3, html[lang="bn"] h4 {
-  font-family: 'Google Sans', 'Noto Sans Bengali', 'DM Sans', system-ui, sans-serif;
-}
-
-html[lang="hi"] body, html[lang="ne"] body,
-html[lang="hi"] h1, html[lang="hi"] h2, html[lang="hi"] h3, html[lang="hi"] h4,
-html[lang="ne"] h1, html[lang="ne"] h2, html[lang="ne"] h3, html[lang="ne"] h4 {
-  font-family: 'Google Sans', 'Noto Sans Devanagari', 'DM Sans', system-ui, sans-serif;
-}
 
 /* Grain overlay utility */
 .grain::before {
@@ -107,11 +109,11 @@ html[lang="ne"] h1, html[lang="ne"] h2, html[lang="ne"] h3, html[lang="ne"] h4 {
 }
 
 /* Selection */
-::selection { background: #F0B90B; color: #14201A; }
+::selection { background: var(--r-tint); color: var(--ink-strong); }
 
 /* Scrollbar */
 ::-webkit-scrollbar { width: 10px; height: 10px; }
-::-webkit-scrollbar-thumb { background: #C9D3CC; border-radius: 8px; }
+::-webkit-scrollbar-thumb { background: var(--outline); border-radius: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
 
 .no-scrollbar::-webkit-scrollbar { display: none; }
@@ -119,7 +121,7 @@ html[lang="ne"] h1, html[lang="ne"] h2, html[lang="ne"] h3, html[lang="ne"] h4 {
 
 /* Utility */
 .btn-hover { transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease; }
-.btn-hover:hover { transform: translateY(-2px); box-shadow: 0 12px 24px -8px rgba(20,32,26,0.18); }
+.btn-hover:hover { box-shadow: none; }
 
 /* Border light: a short white streak orbiting the element's border in a loop.
    A conic gradient fills a pseudo-element, the XOR mask cuts everything but a
@@ -169,20 +171,48 @@ html[lang="ne"] h1, html[lang="ne"] h2, html[lang="ne"] h3, html[lang="ne"] h4 {
   .border-light::after { animation: none; opacity: 0; }
 }
 
+/* aangan wordmark: a one-shot reveal on mount. The clip-path wipes the mark
+   in from the left; each path's stroke is normalised to length 1 via its
+   `pathLength` attribute and traces in over the same span, so the outline
+   appears to be drawn right at the reveal edge rather than just sliding in. */
+.wordmark-draw {
+  clip-path: inset(0 100% 0 0);
+  animation: wordmark-reveal 1.8s ease-out forwards;
+}
+.wordmark-draw path {
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: wordmark-trace 1.8s ease-out forwards;
+}
+@keyframes wordmark-reveal { to { clip-path: inset(0 0 0 0); } }
+@keyframes wordmark-trace { to { stroke-dashoffset: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .wordmark-draw { animation: none; clip-path: none; }
+  .wordmark-draw path { animation: none; stroke-dashoffset: 0; }
+}
+
 .chip {
   display: inline-flex; align-items: center; padding: 4px 10px;
-  border-radius: 999px; background: #EEF2ED; color: #2C5E3B; font-weight: 600;
+  border-radius: 999px; background: var(--creme2); color: var(--ink-strong); font-weight: 500;
   font-size: 12px; letter-spacing: 0.02em;
 }
 
 .card-shell {
-  background: #fff; border: 1px solid var(--line); border-radius: 20px;
-  overflow: hidden; transition: transform 0.25s ease, box-shadow 0.25s ease;
+  background: linear-gradient(180deg, #FFFBF6 0%, var(--creme) 100%); border: 1px solid var(--warmline); border-radius: var(--r-card);
+  box-shadow: var(--warmshadow); overflow: hidden;
 }
-.card-shell:hover { transform: translateY(-4px); box-shadow: 0 24px 40px -20px rgba(20,32,26,0.18); }
 
 .mist-panel {
-  background: linear-gradient(180deg, #FFFFFF 0%, #EEF2ED 100%);
-  border: 1px solid var(--line);
-  border-radius: 24px;
+  background: linear-gradient(180deg, #FFFBF6 0%, var(--creme) 100%);
+  border: 1px solid var(--warmline);
+  border-radius: var(--r-card);
+  box-shadow: var(--warmshadow);
 }
+
+/* Buttons and pill links: the theme font at medium weight, as /7 sets every label.
+   Filled pine buttons read the brand red (--button is the legacy name). */
+button, [role="button"], a.rounded-full, input[type="submit"] { font-family: inherit; letter-spacing: normal; }
+:root { --button: var(--r); --button-hover: var(--r-press); }

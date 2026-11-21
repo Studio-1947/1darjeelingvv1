@@ -1,8 +1,9 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { optionLabel } from '@/lib/optionLabel';
+import { Chip, Chips } from '@/components/ag';
 
-/** Row of pill buttons; highlights the options present in `selected`. */
+/** Row of chips; the options present in `selected` show red. */
 export default function ChipToggleGroup({ options, selected, onToggle }: {
   options: string[];
   selected: string[];
@@ -10,24 +11,14 @@ export default function ChipToggleGroup({ options, selected, onToggle }: {
 }) {
   const { t } = useTranslation();
   return (
-    <div className="flex flex-wrap gap-1.5">
-      {options.map((option) => {
-        const active = selected.includes(option);
-        return (
-          <button
-            key={option}
-            type="button"
-            // The English value is what gets stored; only the label is translated.
-            onClick={() => onToggle(option)}
-            className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-colors ${
-              active ? 'bg-pine text-white border-pine' : 'bg-white text-ink-soft border-[var(--line)]'
-            }`}
-          >
-            {optionLabel(t, option)}
-          </button>
-        );
-      })}
-    </div>
+    <Chips>
+      {options.map((option) => (
+        // The English value is what gets stored; only the label is translated.
+        <Chip key={option} on={selected.includes(option)} onClick={() => onToggle(option)}>
+          {optionLabel(t, option)}
+        </Chip>
+      ))}
+    </Chips>
   );
 }
 

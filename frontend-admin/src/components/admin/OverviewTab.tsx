@@ -1,4 +1,5 @@
 import { Database } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 interface OverviewTabProps {
   stats: Record<string, any> | null;
@@ -11,14 +12,17 @@ interface OverviewTabProps {
 export default function OverviewTab({ stats, onSeed }: OverviewTabProps) {
   const usersCount = stats?.users || 0;
   const providersCount = stats?.providers || 0;
-  const listingsCount = stats?.listings || 0;
+  // Live business listings, not every row (spots, events, drafts and hosts not live are left out).
+  const listingsCount = stats?.active_services ?? stats?.listings ?? 0;
   const bookingsCount = stats?.bookings || 0;
-  const paymentsCount = stats?.payments || 0;
+
 
   // Compute metrics safely to avoid NaN division errors
   const providerRate = usersCount > 0 ? Math.round((providersCount / usersCount) * 100) : 0;
   const bookingsPerService = listingsCount > 0 ? (bookingsCount / listingsCount).toFixed(1) : '0';
-  const paymentRate = bookingsCount > 0 ? Math.round((paymentsCount / bookingsCount) * 100) : 0;
+  // Bookings whose fee was paid, over bookings (host plans and passes are payments too, but not bookings).
+  const paidBookings = stats?.paid_bookings ?? 0;
+  const paymentRate = bookingsCount > 0 ? Math.min(100, Math.round((paidBookings / bookingsCount) * 100)) : 0;
 
   return (
     <div className="space-y-6">
@@ -35,10 +39,30 @@ export default function OverviewTab({ stats, onSeed }: OverviewTabProps) {
               <span className="text-sm text-ink-soft">Bookings per Active Service</span>
               <span className="text-sm font-bold text-ink">{bookingsPerService}</span>
             </div>
-            <div className="flex justify-between items-center py-2">
+            <div className="flex justify-between items-center py-2 border-b border-[var(--line)]">
               <span className="text-sm text-ink-soft">Paid Bookings Rate</span>
               <span className="text-sm font-bold text-ink">{paymentRate}%</span>
             </div>
+            <div className="flex justify-between items-center py-2 border-b border-[var(--line)]">
+              <span className="text-sm text-ink-soft">Active aangan passes</span>
+              <span className="text-sm font-bold text-ink" data-testid="stat-active-passes">{stats?.active_passes ?? 0}</span>
+            </div>
+            <div className="flex justify-between items-center py-2 border-b border-[var(--line)]">
+              <span className="text-sm text-ink-soft">Travellers who set up their profile</span>
+              <span className="text-sm font-bold text-ink">{stats?.traveller_profiles ?? 0}</span>
+            </div>
+            <div className="flex justify-between items-center py-2 border-b border-[var(--line)]">
+              <span className="text-sm text-ink-soft">Comments on host posts</span>
+              <span className="text-sm font-bold text-ink">{stats?.post_comments ?? 0}</span>
+            </div>
+            <Link to="/feedback" className="flex justify-between items-center py-2 hover:text-flag" data-testid="stat-open-feedback">
+              <span className="text-sm text-ink-soft">Open feedback (travellers + hosts)</span>
+              <span className="text-sm font-bold text-flag">{stats?.open_feedback ?? 0} →</span>
+            </Link>
+            <Link to="/deliveries" className="flex justify-between items-center py-2 border-t border-[var(--line)] hover:text-flag" data-testid="stat-open-deliveries">
+              <span className="text-sm text-ink-soft">Home delivery requests waiting for a place</span>
+              <span className="text-sm font-bold text-flag">{stats?.open_deliveries ?? 0} →</span>
+            </Link>
           </div>
         </div>
 

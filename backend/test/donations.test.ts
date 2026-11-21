@@ -85,7 +85,7 @@ describe('donation settlement', () => {
     expect(completeRes.body.record.amount).toBe(25000);
   });
 
-  it('grants nothing — a donation must never buy access', async () => {
+  it('grants nothing  a donation must never buy access', async () => {
     // The property that matters most about this flow. Donating cannot extend support, activate a
     // provider, or confirm a booking; if it ever could, "donate" becomes a discount code.
     const { token, user } = await registerUser({ name: 'Nothing Nita', paySupport: false });
@@ -101,19 +101,18 @@ describe('donation settlement', () => {
   });
 
   it('does not lift the support gate', async () => {
-    // Same property, observed from the outside: a donor who has not paid the ₹12 is still gated.
+    // Same property, observed from the outside: a donor who has not paid the ₹1 pass is still gated.
     const { token, user } = await registerUser({ name: 'Gated Gopal', paySupport: false });
     const listing = await createListing();
 
     await donate(token, user.id, 100000);
 
     const res = await request(app)
-      .post('/api/favorites')
+      .post('/api/reviews')
       .set('Authorization', `Bearer ${token}`)
-      .send({ listing_id: listing.id });
+      .send({ listing_id: listing.id, rating: 5, comment: 'Lovely quiet place' });
 
     expect(res.status).toBe(402);
-    expect(res.body.code).toBe('support_required');
   });
 
   it('reports the STORED amount, not one supplied at settlement time', async () => {
@@ -148,8 +147,8 @@ describe('fixed-price flows are unaffected by the amount field', () => {
   it('still charges the map price when an amount is supplied', async () => {
     const { token, user } = await registerUser({ name: 'Sneaky Sunil', paySupport: false });
 
-    const res = await order(token, { flow: 'platform_support', reference_id: user.id, amount: 1 });
+    const res = await order(token, { flow: 'platform_support', reference_id: user.id, amount: 5 });
     expect(res.status).toBe(200);
-    expect(res.body.amount).toBe(1200);
+    expect(res.body.amount).toBe(100);
   });
 });

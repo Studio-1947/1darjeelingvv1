@@ -1,13 +1,14 @@
 import { AMOUNTS, DONATION_MIN_PAISE, DONATION_MAX_PAISE } from '../config';
+import { flowBreakup, type PriceBreakup } from './pricing';
 
 export type AmountResolution =
-  | { amount: number }
+  | { amount: number; breakup?: PriceBreakup }
   | { error: { status: number; detail: string } };
 
 const rupees = (paise: number) => (paise / 100).toLocaleString('en-IN');
 
 /**
- * Decides how much an order is for — the single place in the system permitted to do so.
+ * Decides how much an order is for  the single place in the system permitted to do so.
  *
  * Every flow but one has a fixed price, taken from AMOUNTS and never from the caller. A donation
  * is the exception by nature: the giver chooses. That makes it the only path where a
@@ -23,18 +24,21 @@ export function resolveAmount(flow: string, body: any): AmountResolution {
   }
 
   if (flow !== 'donation') {
-    const amount = AMOUNTS[flow];
-    if (!amount) {
+    const base = AMOUNTS[flow];
+    if (!base) {
       return { error: { status: 400, detail: 'Invalid payment flow' } };
     }
     // The body is not consulted. A fixed-price flow carrying an `amount` is either a confused
-    // client or a hostile one; either way the map wins.
-    return { amount };
+    // client or a hostile one; either way the map wins. The charge is the base plus GST (and the
+    // gateway fee on host flows); a donation (below) is a gift and carries neither. The pass
+    // renewal price is applied by the order route, which knows the payer.
+    const breakup = flowBreakup(flow);
+    return { amount: breakup.total, breakup };
   }
 
   const raw = body?.amount;
 
-  // Deliberately no coercion. Number('  5000  ') is 5000 and Number('1e9') is a billion — a
+  // Deliberately no coercion. Number('  5000  ') is 5000 and Number('1e9') is a billion  a
   // string that looks like money must be rejected, not quietly turned into a charge.
   if (typeof raw !== 'number' || !Number.isFinite(raw) || !Number.isInteger(raw)) {
     return {

@@ -1,86 +1,154 @@
 import React, { useState } from 'react';
-
-// The site header is sticky, so a "full screen" section is the viewport minus
-// its height, or each one would sit past the fold. --header-h tracks the real
-// height (the header carries the circular category rail).
-//
-// This is the hero's height. The stacked sections below it use SECTION_H, which
-// is deliberately shorter: a section is centred inside its box, so a heading and
-// three photos in a full-viewport frame left half a screen of empty white
-// between the description and the Photos block - which reads as a component
-// that failed to render rather than as breathing room (QA 4.4). Two thirds of
-// the viewport still gives each section the page to itself when its content
-// warrants it, and lets a short one close up behind the next.
-export const SCREEN_H = 'min-h-[calc(100svh-var(--header-h))]';
-export const SECTION_H = 'min-h-[min(66svh,calc(100svh-var(--header-h)))]';
+import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import { Icon } from '@/components/ag/Icon';
+import SmartImg from '@/components/SmartImg';
+import { listingImage } from '@/lib/listingContent';
+import { Box, cx } from '@/components/ag';
 
 /**
- * How the detail page's sections align their content. Every section in this
- * folder reads these rather than spelling the classes out, so the page can be
- * re-aligned from one place.
- *
- * TRIAL: currently flush-left at every width. To restore centred desktop
- * sections (mobile stays left either way), set them back to:
- *   ALIGN_TEXT  = 'text-left md:text-center'
- *   ALIGN_ROW   = 'justify-start md:justify-center'
- *   ALIGN_BLOCK = 'md:mx-auto'
+ * One block of the listing page (red /7 item view): a Box with an h2, inside the 720px column.
+ * Every section of the page is one of these, so they line up and space the same way.
  */
-export const ALIGN_TEXT = 'text-left';
-export const ALIGN_ROW = 'justify-start';
-export const ALIGN_BLOCK = '';
-
-/**
- * Full-viewport section. Each part of the page gets its own screen.
- *
- * One column width for every section, so their left edges line up as the
- * visitor scrolls. Sections used to pick between max-w-4xl and max-w-6xl, and
- * because both are centred that showed up as content starting at two different
- * indents down the page. Readable measure is set per block inside instead.
- */
-export const SCREEN_COL = 'mx-auto w-full max-w-6xl px-4 md:px-8';
-
-export function Screen({ tone = 'bg', children, testid }: {
-  tone?: 'bg' | 'white' | 'mist';
-  children: React.ReactNode;
+export function Section({ title, eyebrow, note, action, testid, id, className, tone, children }: {
+  title?: React.ReactNode;
+  eyebrow?: React.ReactNode;
+  note?: React.ReactNode;
+  /** Right of the title, e.g. a small button. */
+  action?: React.ReactNode;
   testid?: string;
+  id?: string;
+  className?: string;
+  tone?: 'blush';
+  children?: React.ReactNode;
 }) {
-  const bg = tone === 'white' ? 'bg-white' : tone === 'mist' ? 'bg-mist' : 'bg-[var(--bg)]';
   return (
-    <section data-testid={testid} className={`${SECTION_H} flex items-center ${bg}`}>
-      <div className={`${SCREEN_COL} py-16 md:py-20`}>{children}</div>
-    </section>
+    <Box as="section" tone={tone} data-testid={testid} id={id} className={cx('scroll-mt-20', className)}>
+      {(title != null || eyebrow != null) && (
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex flex-col gap-0.5">
+            {eyebrow != null && <span className="ag-eyebrow">{eyebrow}</span>}
+            {title != null && <h2>{title}</h2>}
+            {note != null && <p className="ag-small">{note}</p>}
+          </div>
+          {action}
+        </div>
+      )}
+      {children}
+    </Box>
   );
 }
 
-/** Section header: eyebrow, title, optional note. Aligned via ALIGN_*. */
-export function SectionHead({ label, title, note }: { label: string; title: string; note?: string }) {
+/** A priced line (prototype `.sum` rows): name and a small line on the left, price and unit right. */
+export function PriceRow({ name, sub, price, unit, photo, testid }: {
+  name: React.ReactNode;
+  sub?: React.ReactNode;
+  price?: number;
+  unit?: React.ReactNode;
+  icon?: React.ReactNode;
+  photo?: string;
+  testid?: string;
+}) {
   return (
-    <div className={`${ALIGN_TEXT} max-w-3xl ${ALIGN_BLOCK}`}>
-      {/* Several sections use the same string for both; showing it twice just
-          reads as a stutter, so the eyebrow drops out when it repeats. */}
-      {label !== title && (
-        <div className="inline-flex items-center gap-3 text-xs font-bold uppercase tracking-widest text-ink-soft">
-          {label}
-        </div>
+    <div className="flex items-start gap-3 py-1.5 text-[16px] leading-6 text-[var(--ink7)]" data-testid={testid}>
+      {photo && <img src={photo} alt="" loading="lazy" className="w-12 h-12 rounded-[12px] object-cover flex-none bg-[var(--creme2)]" />}
+      <span className="flex-1 min-w-0">
+        {name}
+        {sub != null && <span className="ag-small block">{sub}</span>}
+      </span>
+      {price != null && price > 0 && (
+        <span className="flex-none text-right tabular-nums">
+          <b className="font-medium text-[var(--ink-strong)]">₹{price.toLocaleString('en-IN')}</b>
+          {unit != null && <span className="ag-small"> {unit}</span>}
+        </span>
       )}
-      <h2 className="mt-5 font-display font-extrabold text-3xl sm:text-4xl md:text-5xl text-ink leading-tight">{title}</h2>
-      {note && <p className="mt-3 text-ink-soft">{note}</p>}
     </div>
   );
 }
 
-/** Real photo if it loads, otherwise the branded initial - never a broken face. */
-export function Avatar({ photo, initial }: { photo?: string; initial: string }) {
+/** One fact: red icon, small label, the value. */
+export function Fact({ icon, label, value, testid }: { icon: React.ReactNode; label: React.ReactNode; value: React.ReactNode; testid?: string }) {
+  return (
+    <li className="flex items-start gap-3" data-testid={testid}>
+      <span className="ag-micon">{icon}</span>
+      <span className="min-w-0 flex flex-col pt-0.5">
+        <span className="ag-small !text-[13px] !leading-[18px]">{label}</span>
+        <span className="text-[15px] leading-[22px] text-[var(--ink-strong)] whitespace-pre-line">{value}</span>
+      </span>
+    </li>
+  );
+}
+
+/** Real photo if it loads, otherwise the initial on the brand tint - never a broken face. */
+export function Avatar({ photo, initial, size = 64 }: { photo?: string; initial: string; size?: number }) {
   const [failed, setFailed] = useState(false);
-  // Follows the text it heads - a centred portrait over a left-aligned name
-  // reads as a layout mistake.
-  const base = `w-36 h-36 md:w-44 md:h-44 rounded-full overflow-hidden ${ALIGN_BLOCK} shadow-lg ring-4 ring-white`;
+  const style = { width: size, height: size };
   if (!photo || failed) {
     return (
-      <div className={`${base} bg-gradient-to-br from-pine to-pine-dark text-white grid place-items-center font-display font-extrabold text-6xl md:text-7xl`}>
+      <span style={style} className="flex-none rounded-full grid place-items-center bg-[var(--r-tint)] text-[var(--r)] text-[24px] font-medium" aria-hidden="true">
         {initial}
-      </div>
+      </span>
     );
   }
-  return <img src={photo} alt="" onError={() => setFailed(true)} className={`${base} object-cover`} />;
+  return <img src={photo} alt="" style={style} onError={() => setFailed(true)} className="flex-none rounded-full object-cover bg-[var(--creme2)]" />;
 }
+
+/** The person behind a listing: portrait, name, verified, place, then their story and facts. */
+export function PersonCard({ testid, title, name, photo, verified, place, chips, bio, children }: {
+  testid: string;
+  title: string;
+  name: string;
+  photo?: string;
+  verified?: boolean;
+  place?: string;
+  chips?: string[];
+  bio?: string;
+  children?: React.ReactNode;
+}) {
+  const { t } = useTranslation();
+  return (
+    <Section title={title} testid={testid}>
+      <div className="flex items-center gap-3">
+        <Avatar photo={photo} size={56} initial={(name || '?').trim().charAt(0).toUpperCase()} />
+        <div className="min-w-0 flex flex-col gap-1">
+          <span className="text-[18px] leading-6 font-medium text-[var(--ink-strong)]">{name}</span>
+          {verified && <span className="ag-listing-tag ok self-start">{t('listing.verified', 'Verified')}</span>}
+          {place && <span className="ag-small inline-flex items-center gap-1"><Icon name="pin" size={14} className="text-[var(--r)]" /> {place}</span>}
+        </div>
+      </div>
+      {chips && chips.length > 0 && (
+        <div className="ag-listing-langrow">
+          {chips.map((c) => <span key={c} className="ag-listing-langchip">{c}</span>)}
+        </div>
+      )}
+      {bio && <p className="m-0 text-[15px] leading-[22px] text-[var(--ink7)] whitespace-pre-line">{bio}</p>}
+      {children}
+    </Section>
+  );
+}
+
+/** A small listing card (`.ag-card`) for the nearby and recommended rows. */
+export function MiniCard({ item, badge }: { item: any; badge?: string }) {
+  const { t } = useTranslation();
+  const unit = item.type === 'homestay' ? t('common.per_head') : item.type === 'driver' || item.type === 'guide' ? t('common.per_day') : '';
+  return (
+    <Link to={`/listing/${item.id}`} className="ag-card flex flex-col">
+      <span className="relative block">
+        <SmartImg src={listingImage(item, 500, 375)} alt="" className="img" />
+        {badge && (
+          <span className="absolute left-2 bottom-2 ag-status !bg-[var(--surface)] !text-[var(--ink-strong)]">
+            <Icon name="pin" size={14} className="text-[var(--r)]" />{badge}
+          </span>
+        )}
+      </span>
+      <span className="body">
+        <span className="name line-clamp-1">{item.title}</span>
+        <span className="meta line-clamp-1">{item.location}</span>
+        {Number(item.price) > 0 && (
+          <span className="ag-price">₹{Number(item.price).toLocaleString('en-IN')} {unit && <span className="unit">{unit}</span>}</span>
+        )}
+      </span>
+    </Link>
+  );
+}
+

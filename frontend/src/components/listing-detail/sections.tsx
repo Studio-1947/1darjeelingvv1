@@ -1,262 +1,189 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import SmartImg from '@/components/SmartImg';
 import MapEmbed from '@/components/MapEmbed';
+import api from '@/lib/api';
 import { optionLabel } from '@/lib/optionLabel';
 import { RouteFare } from '@/lib/routeFares';
-import {
-  MapPin, Tag, Navigation, ArrowRight, Languages,
-  CalendarClock, Route, Crosshair, Clock, Ticket, Mountain, Sparkles, Compass,
-} from 'lucide-react';
-import { Screen, SectionHead, Avatar, ALIGN_TEXT, ALIGN_ROW, ALIGN_BLOCK } from './primitives';
-import VerifiedBadge from '@/components/provider/VerifiedBadge';
+import { distanceTo } from '@/lib/places';
+import { mapPinFor } from '@/lib/listingContent';
+import { Button, ButtonLink, SecHead, SeeAll } from '@/components/ag';
+import { Icon, type IconName } from '@/components/ag/Icon';
+import { StayCard } from '@/components/home/cards';
+import { Section, PriceRow } from './primitives';
 
-// One component per full-screen section of the listing detail page. The page
-// decides which sections a listing type gets; each section only renders it.
+// The blocks of the listing page, top to bottom as the prototype's item view lays them out. The
+// page decides which blocks a listing type gets; each block only renders it.
 
-/** Detailed "about" text plus the listing's tags. */
-export function AboutSection({ item, about, label }: { item: any; about?: string; label?: string }) {
-  const { t } = useTranslation();
+/** The prototype's facility icons (app.js FACI): the first pattern that matches the label wins. */
+const FACI: [RegExp, IconName][] = [
+  [/meal|food|kitchen|thali|momo|breakfast|dinner|cook|menu|coffee|tea\b|bakery/i, 'cup'],
+  [/wi-?fi|internet|language|speaks|lingual/i, 'globe'],
+  [/hot water|heat|geyser|fire|bonfire|heater|cosy|cozy/i, 'sun'],
+  [/park/i, 'car'],
+  [/garden|forest|tea|organic|farm|pine|nature|habitat|flora/i, 'leaf'],
+  [/pet|dog|cat|wildlife/i, 'heart'],
+  [/view|mountain|kanchenjunga|sunrise|photo/i, 'mountain'],
+  [/family|group|kid|child|walk-in|visitor/i, 'person'],
+  [/airport|pickup|drop|ride|vehicle|driver|fuel|luggage|transfer|hire/i, 'car'],
+  [/balcony|room|bed|home/i, 'home'],
+  [/upi|card|cash|pay|gift|made|owned|goods/i, 'bag'],
+  [/first aid|medic/i, 'plus'],
+  [/route|trek|walk|guide|sightseeing/i, 'trek'],
+];
+const facIcon = (label: string): IconName => (FACI.find(([r]) => r.test(label)) || [0, 'check' as IconName])[1];
+
+/** "About this": the description, the languages spoken and when it joined aangan. */
+export function AboutSection({ item, about, label, languages }: { item: any; about?: string; label?: string; languages?: string[] }) {
+  const { t, i18n } = useTranslation();
+  const joined = item.created_at ? new Date(item.created_at) : null;
+  const joinedText = joined && !isNaN(joined.getTime())
+    ? joined.toLocaleDateString(i18n.language === 'en' ? 'en-IN' : i18n.language, { day: 'numeric', month: 'long', year: 'numeric' })
+    : '';
+  if (!about && !languages?.length) return null;
   return (
-    <Screen tone="bg" testid="detail-about">
-      <SectionHead label={label || t('detail.about')} title={item.title} />
-      {/* whitespace-pre-line so an `about` written as multiple paragraphs
-          (separated by blank lines) keeps its breaks instead of collapsing.
-          The measure widens with the viewport rather than staying at 3xl, which
-          left a lot of empty column on a desktop screen. Phones are narrower
-          than 3xl to begin with, so the base cap is what they keep. */}
-      <p className={`mt-8 text-lg md:text-xl text-ink leading-relaxed ${ALIGN_TEXT} max-w-3xl md:max-w-4xl lg:max-w-5xl ${ALIGN_BLOCK} whitespace-pre-line`}>{about}</p>
-      {item.tags?.length > 0 && (
-        <div className={`mt-8 flex flex-wrap ${ALIGN_ROW} gap-2`}>
-          {item.tags.map((tg: string) => <span key={tg} className="chip"><Tag size={11} className="mr-1" /> {optionLabel(t, tg)}</span>)}
+    <Section title={label || t('listing.about', 'About this')} testid="detail-about">
+      {about && <p className="text-[16px] leading-6 text-[var(--ink7)] whitespace-pre-line">{about}</p>}
+      {languages && languages.length > 0 && (
+        <div className="ag-listing-langrow">
+          <span className="ag-listing-langlab"><Icon name="globe" /> {t('listing.speaks', 'Speaks')}</span>
+          {languages.map((l) => <span key={l} className="ag-listing-langchip">{l}</span>)}
         </div>
       )}
-    </Screen>
+      {joinedText && (
+        <p className="ag-small ag-listing-joined"><Icon name="check" /> {t('listing.joinedA', 'On aangan since')} {joinedText}</p>
+      )}
+    </Section>
   );
 }
 
 /**
- * "Why go" bullets for a tourist spot, written by an admin in the console
- * (extras.highlights). Renders nothing when the spot has none.
- */
-export function HighlightsSection({ highlights }: { highlights: string[] }) {
-  const { t } = useTranslation();
-  return (
-    <Screen tone="white" testid="detail-highlights">
-      <SectionHead label={t('detail.highlights')} title={t('detail.highlights')} note={t('detail.highlights_note')} />
-      <div className={`mt-10 grid sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5 max-w-5xl ${ALIGN_BLOCK}`}>
-        {/* Keyed by position, not by text: nothing stops an admin entering the same bullet twice,
-            and duplicate keys made React drop one of them. */}
-        {highlights.map((highlight, i) => (
-          <div key={i} className="flex items-start gap-4 p-5 rounded-2xl border border-[var(--line)] bg-[var(--bg)]">
-            <Sparkles size={22} className="text-pine flex-shrink-0 mt-0.5" />
-            <span className="text-ink font-semibold leading-snug">{highlight}</span>
-          </div>
-        ))}
-      </div>
-    </Screen>
-  );
-}
-
-/**
- * Practical visitor information for a tourist spot — the answers people look for
- * before setting out. Every field is optional; the section only renders when the
- * admin has filled at least one, and each card only appears when it has a value.
+ * The facts box for a tourist spot (each fact only when the admin filled it in): timings, best
+ * season, altitude and the way there, or the season of a festival.
  */
 export function VisitInfoSection({ facts, howToReach }: {
-  facts: { timings?: string; entryFee?: string; bestTime?: string; altitude?: string };
+  facts: { timings?: string; bestTime?: string; altitude?: string };
   howToReach?: string;
 }) {
   const { t } = useTranslation();
-  const cards = [
-    { key: 'timings', Icon: Clock, label: t('detail.timings'), value: facts.timings },
-    { key: 'entry_fee', Icon: Ticket, label: t('detail.entry_fee'), value: facts.entryFee },
-    { key: 'best_time', Icon: CalendarClock, label: t('detail.best_time'), value: facts.bestTime },
-    { key: 'altitude', Icon: Mountain, label: t('detail.altitude'), value: facts.altitude },
-  ].filter((card) => !!card.value);
-
+  const rows = [
+    { key: 'timings', icon: 'hourglass' as IconName, label: t('detail.timings'), value: facts.timings },
+    { key: 'best_time', icon: 'sun' as IconName, label: t('detail.best_time'), value: facts.bestTime },
+    { key: 'altitude', icon: 'mountain' as IconName, label: t('detail.altitude'), value: facts.altitude },
+    { key: 'how_to_reach', icon: 'pin' as IconName, label: t('detail.how_to_reach'), value: howToReach },
+  ].filter((r) => !!r.value);
+  if (!rows.length) return null;
   return (
-    <Screen tone="mist" testid="detail-visit-info">
-      <SectionHead label={t('detail.plan_visit')} title={t('detail.plan_visit')} note={t('detail.plan_visit_note')} />
+    <Section title={t('detail.plan_visit')} testid="detail-visit-info">
+      <ul className="grid gap-3 m-0 p-0 list-none">
+        {rows.map((r) => (
+          <li key={r.key} className="flex items-start gap-3" data-testid={r.key === 'how_to_reach' ? 'detail-how-to-reach' : `detail-fact-${r.key}`}>
+            <span className="ag-listing-ic40"><Icon name={r.icon} /></span>
+            <span className="min-w-0 flex flex-col">
+              <span className="ag-small">{r.label}</span>
+              <span className="text-[15px] leading-[22px] text-[var(--ink-strong)] whitespace-pre-line">{r.value}</span>
+            </span>
+          </li>
+        ))}
+      </ul>
+      <p className="ag-small !text-[12px] !leading-4">
+        * {t('detail.ticket_disclaimer', 'Note: Entry fees, ticket charges, and timings are set by local administration and subject to seasonal revision. We strive to keep details updated.')}
+      </p>
+    </Section>
+  );
+}
 
-      {cards.length > 0 && (
-        <div className={`mt-10 grid sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5 max-w-5xl ${ALIGN_BLOCK}`}>
-          {cards.map(({ key, Icon, label, value }) => (
-            <div key={key} className="p-6 rounded-2xl border border-[var(--line)] bg-white" data-testid={`detail-fact-${key}`}>
-              <Icon size={22} className="text-pine" />
-              <div className="mt-4 text-xs font-bold uppercase tracking-widest text-ink-soft">{label}</div>
-              <div className="mt-1 font-display font-extrabold text-xl text-ink leading-snug">{value}</div>
+/** The entry ticket box of a place to visit (prototype .tktbox). */
+export function TicketBox({ price, entryFee }: { price: number; entryFee?: string }) {
+  const { t } = useTranslation();
+  const paid = price > 0 || !!entryFee;
+  return (
+    <Section className="ag-listing-tkt" testid="detail-fact-entry_fee">
+      <div className="flex items-center gap-3">
+        <span className="ag-listing-ic40"><Icon name="t_trip" /></span>
+        <div className="min-w-0">
+          <b>
+            {price > 0
+              ? `${t('listing.ticket2', 'Entry ticket')} ₹${price.toLocaleString('en-IN')} ${t('listing.perperson', 'per person')}`
+              : entryFee ? `${t('listing.ticket2', 'Entry ticket')}: ${entryFee}` : t('listing.freeentry', 'Free entry')}
+          </b>
+          <p className="ag-small m-0">{paid ? t('listing.tktgate', 'Buy the ticket at the gate on the day.') : t('listing.tktfree', 'No ticket needed. Just go.')}</p>
+        </div>
+      </div>
+      <p className="ag-small">{t('listing.nobookspot', 'Tickets for places cannot be booked on aangan yet. You can book a stay or a driver nearby below.')}</p>
+    </Section>
+  );
+}
+
+/** When to go, for a festival. */
+export function BestTimeSection({ bestTime }: { bestTime: string }) {
+  const { t } = useTranslation();
+  return (
+    <Section testid="detail-besttime">
+      <div className="flex items-center gap-3">
+        <span className="ag-listing-ic40"><Icon name="hourglass" /></span>
+        <span className="flex flex-col"><span className="ag-small">{t('detail.best_time')}</span><b className="font-medium text-[var(--ink-strong)]">{bestTime}</b></span>
+      </div>
+    </Section>
+  );
+}
+
+/**
+ * "Facilities": three square cards a row with the prototype's icons; for a place to visit, a
+ * two-column list with checks.
+ */
+export function OffersSection({ amenities, list }: { amenities: { label: string; labelKey?: string }[]; list?: boolean }) {
+  const { t } = useTranslation();
+  // A translation that only changes the case ("Tea" -> "tea") keeps the host's own spelling.
+  const label = (a: { label: string; labelKey?: string }) => {
+    if (a.labelKey) return t(a.labelKey);
+    const shown = optionLabel(t, a.label);
+    return shown.trim().toLowerCase() === a.label.trim().toLowerCase() ? a.label : shown;
+  };
+  // Shown once each, however the stored labels were cased.
+  const seen = new Set<string>();
+  const shownList = amenities.filter((a) => {
+    const k = label(a).trim().toLowerCase();
+    if (!k || seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+  return (
+    <Section title={t('listing.facil', 'Facilities')} testid="detail-offers">
+      {list ? (
+        <ul className="ag-listing-facts">
+          {shownList.map((a) => <li key={a.label}><Icon name="check" />{label(a)}</li>)}
+        </ul>
+      ) : (
+        <div className="ag-listing-facgrid">
+          {/* Amenities are stored in English; only the display is localised. */}
+          {shownList.map((a) => (
+            <div key={a.label} className="ag-listing-facard">
+              <span className="ag-listing-ic40"><Icon name={facIcon(a.label)} /></span>
+              <span>{label(a)}</span>
             </div>
           ))}
         </div>
       )}
-
-      {howToReach && (
-        <div className={`mt-6 max-w-3xl ${ALIGN_BLOCK} p-6 md:p-8 rounded-2xl border border-[var(--line)] bg-white`} data-testid="detail-how-to-reach">
-          <div className={`flex items-center ${ALIGN_ROW} gap-2 text-xs font-bold uppercase tracking-widest text-ink-soft`}>
-            <Compass size={16} className="text-pine" /> {t('detail.how_to_reach')}
-          </div>
-          <p className={`mt-3 text-lg text-ink leading-relaxed whitespace-pre-line ${ALIGN_TEXT}`}>{howToReach}</p>
-        </div>
-      )}
-    </Screen>
+    </Section>
   );
 }
 
-/** Curated keyword-photo gallery (editorial content, not provider uploads). */
-export function PhotosSection({ item, gallery }: { item: any; gallery: string[] }) {
-  const { t } = useTranslation();
-  return (
-    <Screen tone="white" testid="detail-photos">
-      <SectionHead label={t('detail.photos')} title={t('detail.photos')} note={t('detail.gallery_note')} />
-      <div className="mt-10 grid sm:grid-cols-3 gap-4 md:gap-5">
-        {gallery.map((src, i) => (
-          <SmartImg key={src + i} src={src} alt={`${item.title} ${i + 1}`}
-            className="w-full aspect-[4/3] object-cover rounded-2xl border border-[var(--line)]" />
-        ))}
-      </div>
-    </Screen>
-  );
-}
-
-/** "What this place offers" amenity grid. */
-export function OffersSection({ amenities, title }: { amenities: { Icon: any; label: string }[]; title?: string }) {
-  const { t } = useTranslation();
-  const heading = title || t('detail.offers');
-  return (
-    <Screen tone="mist" testid="detail-offers">
-      <SectionHead label={heading} title={heading} />
-      <div className={`mt-10 grid sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5 max-w-4xl ${ALIGN_BLOCK}`}>
-        {amenities.map(({ Icon, label }) => (
-          <div key={label} className="flex items-center gap-4 p-5 rounded-2xl border border-[var(--line)] bg-white">
-            <Icon size={24} className="text-pine flex-shrink-0" />
-            {/* Amenities are stored in English; only the display is localised. */}
-            <span className="text-ink font-semibold">{optionLabel(t, label)}</span>
-          </div>
-        ))}
-      </div>
-    </Screen>
-  );
-}
-
-/** Provider-uploaded photo gallery (homestays). */
-export function StayGallerySection({ images }: { images: string[] }) {
-  const { t } = useTranslation();
-  return (
-    <Screen tone="white" testid="detail-gallery">
-      <SectionHead label={t('detail.photos')} title={t('detail.stay_gallery_title')} />
-      <div className="mt-10 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {images.map((url, index) => (
-          <div key={index} className="aspect-[4/3] rounded-3xl overflow-hidden border border-[var(--line)] bg-mist shadow-md hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
-            <SmartImg src={url} alt={t('detail.gallery_alt', { index: index + 1 })} className="w-full h-full object-cover" />
-          </div>
-        ))}
-      </div>
-    </Screen>
-  );
-}
-
-/** "Meet your host" (homestays). */
-export function HostSection({ item, host, personSrc }: { item: any; host: any; personSrc?: string }) {
-  const { t } = useTranslation();
-  return (
-    <Screen tone="bg" testid="detail-host">
-      <SectionHead label={t('detail.host')} title={t('detail.host')} />
-      <div className={`mt-10 ${ALIGN_TEXT} max-w-2xl ${ALIGN_BLOCK}`}>
-        <Avatar photo={personSrc} initial={host.initial} />
-        <div className={`mt-6 flex items-center ${ALIGN_ROW} gap-2 flex-wrap`}>
-          <span className="font-display font-extrabold text-2xl md:text-3xl text-ink">{host.name}</span>
-          {host.verified && <VerifiedBadge size="sm" />}
-        </div>
-        <p className={`mt-2 text-sm text-ink-soft flex items-center ${ALIGN_ROW} gap-1.5`}><MapPin size={13} /> {item.location}</p>
-        <p className="mt-6 text-lg text-ink leading-relaxed whitespace-pre-line">{host.bio}</p>
-        <p className={`mt-5 text-ink-soft flex items-center ${ALIGN_ROW} gap-2`}>
-          <Languages size={18} className="text-pine flex-shrink-0" /> {t('detail.speaks')}: {host.languages.join(', ')}
-        </p>
-      </div>
-    </Screen>
-  );
-}
-
-/** "Meet your driver" (drivers). */
-export function DriverSection({ item, about, personSrc, initial }: { item: any; about?: string; personSrc?: string; initial: string }) {
-  const { t } = useTranslation();
-  const carModel = item.extras?.car_model;
-  const vehicleType = item.extras?.vehicle_type;
-  const gender = item.extras?.gender;
-  return (
-    <Screen tone="bg" testid="detail-driver">
-      <SectionHead label={t('detail.meet_driver')} title={t('detail.meet_driver')} />
-      <div className={`mt-10 ${ALIGN_TEXT} max-w-2xl ${ALIGN_BLOCK}`}>
-        <Avatar photo={personSrc} initial={initial} />
-        <div className={`mt-6 flex items-center ${ALIGN_ROW} gap-2 flex-wrap`}>
-          <span className="font-display font-extrabold text-2xl md:text-3xl text-ink">{item.title}</span>
-          {item.provider_verified && <VerifiedBadge size="sm" />}
-        </div>
-        <div className={`mt-3 flex items-center ${ALIGN_ROW} gap-2 flex-wrap`}>
-          {carModel && (
-            <span className="chip bg-white border border-[var(--line)] text-ink font-bold text-xs">
-              🚘 {carModel}
-            </span>
-          )}
-          {vehicleType && (
-            <span className="chip bg-white border border-[var(--line)] text-pine font-bold text-xs capitalize">
-              {vehicleType}
-            </span>
-          )}
-          {gender && (
-            <span className="chip bg-white border border-[var(--line)] text-ink-soft font-semibold text-xs capitalize">
-              {gender}
-            </span>
-          )}
-        </div>
-        <p className="mt-6 text-lg text-ink leading-relaxed whitespace-pre-line">{about}</p>
-      </div>
-    </Screen>
-  );
-}
-
-/** Best time to visit (festivals / events). */
-export function BestTimeSection({ bestTime }: { bestTime: string }) {
-  const { t } = useTranslation();
-  return (
-    <Screen tone="white" testid="detail-besttime">
-      <SectionHead label={t('detail.best_time')} title={t('detail.best_time')} />
-      <div className={`mt-10 max-w-xl ${ALIGN_BLOCK} rounded-3xl border border-[var(--line)] bg-[var(--bg)] p-8 ${ALIGN_TEXT}`}>
-        <CalendarClock size={40} className={`text-pine ${ALIGN_BLOCK}`} />
-        <p className="mt-4 text-xl md:text-2xl font-display font-bold text-ink leading-snug">{bestTime}</p>
-      </div>
-    </Screen>
-  );
-}
-
-/** Routes a driver operates, each with its own fare (shown instead of a map). */
+/** Routes a driver operates, each with its own fare (prototype "Trips and fares"). */
 export function RoutesSection({ routes }: { routes: RouteFare[] }) {
   const { t } = useTranslation();
   return (
-    <Screen tone="mist" testid="detail-routes">
-      <SectionHead label={t('detail.routes_label')} title={t('detail.routes_title')} note={t('detail.routes_note')} />
-      <div className={`mt-10 max-w-2xl ${ALIGN_BLOCK} space-y-3`}>
+    <Section title={t('listing.fares', 'Trips and fares')} testid="detail-routes">
+      <div className="flex flex-col">
+        {/* Editorial routes carry no quote, so the fare is simply omitted rather than shown as ₹0. */}
         {routes.map((r, i) => (
-          <div key={i} className="flex items-center gap-4 p-5 rounded-2xl border border-[var(--line)] bg-white text-left">
-            <Route size={22} className="text-pine flex-shrink-0" />
-            <span className="flex-1 text-ink font-semibold">{optionLabel(t, r.route)}</span>
-            {/* Editorial routes carry no quote, so the fare is simply omitted
-                rather than rendered as a misleading ₹0. */}
-            {r.price > 0 && (
-              <span className="flex-shrink-0 text-right">
-                <span className="font-display font-extrabold text-lg text-ink">₹{r.price}</span>
-                <span className="block text-xs font-semibold text-ink-soft">{t(`widgets.per_${r.unit}`)}</span>
-              </span>
-            )}
-          </div>
+          <PriceRow key={i} name={optionLabel(t, r.route)} price={r.price} unit={t(`listing.per_${r.unit}`, r.unit === 'day' ? 'per day' : 'per trip')} />
         ))}
       </div>
-    </Screen>
+    </Section>
   );
 }
 
-/** Where you'll be / spotted locations - a real map with a directions CTA. */
+/** Where it is: the map, the place, and a directions button. Biodiversity lists where it is seen. */
 export function LocationSection({ item, coords, spotted, onOpenMaps }: {
   item: any;
   coords?: [number, number];
@@ -266,36 +193,88 @@ export function LocationSection({ item, coords, spotted, onOpenMaps }: {
   const { t } = useTranslation();
   const isBio = item.type === 'biodiversity';
   return (
-    <Screen tone="bg" testid={isBio ? 'detail-spotted' : 'detail-location'}>
-      {isBio
-        ? <SectionHead label={t('detail.spotted')} title={t('detail.spotted')} note={t('detail.spotted_note')} />
-        : <SectionHead label={t('detail.location')} title={t('detail.location')} />}
-
-      <div className="mt-10 rounded-3xl border border-[var(--line)] overflow-hidden bg-white">
-        <MapEmbed coords={coords!} title={item.location} className="w-full h-[42vh] min-h-[260px]" />
-        <div className="p-6 md:p-8">
-          {isBio && spotted && spotted.length > 0 ? (
-            <div className={`flex flex-wrap ${ALIGN_ROW} gap-2`}>
-              {spotted.map((s) => (
-                <span key={s} className="chip"><Crosshair size={12} className="mr-1" /> {s}</span>
-              ))}
-            </div>
-          ) : (
-            <>
-              <div className={`font-display font-extrabold text-2xl text-ink ${ALIGN_TEXT}`}>{item.location}</div>
-              {item.extras?.address && (
-                <div className={`mt-1 text-sm font-semibold text-ink-soft ${ALIGN_TEXT}`}>{item.extras.address}</div>
-              )}
-            </>
-          )}
-          <div className={`mt-6 flex ${ALIGN_ROW}`}>
-            <button onClick={onOpenMaps} data-testid="detail-open-maps"
-              className="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-white border border-[var(--line)] text-ink font-bold btn-hover">
-              {t('cta.get_directions')} <ArrowRight size={15} />
-            </button>
-          </div>
-        </div>
+    <Section title={isBio ? t('detail.spotted') : t('detail.location')} note={isBio ? t('detail.spotted_note') : undefined}
+      testid={isBio ? 'detail-spotted' : 'detail-location'}>
+      <div className="rounded-[16px] overflow-hidden border border-[var(--warmline)]">
+        <MapEmbed coords={coords!} title={item.location} className="w-full h-[200px]" />
       </div>
-    </Screen>
+      {isBio && spotted && spotted.length > 0 ? (
+        <div className="ag-listing-langrow">
+          {spotted.map((s) => <span key={s} className="ag-listing-langchip">{s}</span>)}
+        </div>
+      ) : (
+        <div className="flex flex-col">
+          <span className="ag-lead">{item.location}</span>
+          {item.extras?.address && <span className="ag-small">{item.extras.address}</span>}
+        </div>
+      )}
+      <Button variant="tonal" size="sm" className="self-start" onClick={onOpenMaps} data-testid="detail-open-maps" icon={<Icon name="pin" />}>
+        {t('listing.direction', 'Direction')}
+      </Button>
+    </Section>
+  );
+}
+
+/** Within 40 km of the place, nearest first (prototype nearbyFor). */
+const NEAR_KM = 40;
+
+function useNearby(type: string, from?: [number, number]) {
+  const [rows, setRows] = useState<{ item: any; km: number; approx: boolean }[] | null>(null);
+  useEffect(() => {
+    if (!from) { setRows([]); return undefined; }
+    let cancelled = false;
+    api.get('/listings', { params: { type, limit: 60 } })
+      .then(({ data }) => {
+        const here = { lat: from[0], lng: from[1] };
+        const near = ((data?.items || []) as any[])
+          .filter((l) => l?.extras?.available !== false)
+          .map((l) => ({ item: l, d: distanceTo(here, l) }))
+          .filter((r) => r.d && r.d.km <= NEAR_KM)
+          .sort((a, b) => a.d!.km - b.d!.km)
+          .slice(0, 4)
+          .map((r) => ({ item: r.item, km: r.d!.km, approx: r.d!.approx }));
+        if (!cancelled) setRows(near);
+      })
+      .catch(() => { if (!cancelled) setRows([]); });
+    return () => { cancelled = true; };
+  }, [type, from?.[0], from?.[1]]);
+  return rows;
+}
+
+function NearRow({ type, eyebrow, title, seeAll, from }: { type: string; eyebrow: string; title: string; seeAll: string; from?: [number, number] }) {
+  const { t } = useTranslation();
+  const rows = useNearby(type, from);
+  if (rows === null) return null;
+  return (
+    <section data-testid={`detail-near-${type}`}>
+      <SecHead eyebrow={eyebrow} title={title} action={<SeeAll to={seeAll}>{t('listing.seeall', 'See all')}</SeeAll>} className="!mt-0" />
+      {rows.length ? (
+        <div className="grid grid-cols-2 gap-2.5">
+          {rows.map((r) => <StayCard key={r.item.id} it={r.item} href={`/listing/${r.item.id}`} km={{ km: r.km, approx: r.approx }} />)}
+        </div>
+      ) : (
+        <p className="ag-small">{t('detail.nothing_near', 'Nothing within 40 km yet.')}</p>
+      )}
+    </section>
+  );
+}
+
+/**
+ * A place to visit leads on to the rest of the trip: stays and drivers within 40 km of its pin
+ * (prototype nearbyFor: "Stay nearby", "Drivers nearby"), and the guides.
+ */
+export function NearbySection({ item }: { item: any }) {
+  const { t } = useTranslation();
+  const pin = mapPinFor(item);
+  const place = encodeURIComponent(item.location || item.title);
+  return (
+    <div className="flex flex-col gap-4" data-testid="detail-getting-there">
+      {pin && <NearRow type="homestay" eyebrow={t('listing.stay_near', 'Stay nearby')} title={t('listing.stays', 'Homestay')} seeAll="/homestays" from={pin} />}
+      {pin && <NearRow type="driver" eyebrow={t('listing.ride_near', 'Drivers nearby')} title={t('listing.cars', 'Car & Driver')} seeAll={`/drivers?to=${place}`} from={pin} />}
+      <div className="ag-row">
+        <ButtonLink go to={`/drivers?to=${place}`} data-testid="getting-there-drivers">{t('detail.find_driver_here')}</ButtonLink>
+        <ButtonLink go to="/guides" icon={<Icon name="trek" />} data-testid="getting-there-guides">{t('detail.find_guide')}</ButtonLink>
+      </div>
+    </div>
   );
 }

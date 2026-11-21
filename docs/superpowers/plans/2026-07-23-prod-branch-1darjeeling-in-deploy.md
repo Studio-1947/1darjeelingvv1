@@ -4,7 +4,7 @@
 
 **Goal:** Add a second, fully-isolated production Docker stack that deploys from the `prod` branch to `1darjeeling.in` on the same VPS, without changing the existing `main` → `onedarjeeling.duckdns.org` pipeline in any way.
 
-**Architecture:** Three new files (a second compose file, a second GitHub Actions workflow, a system-Nginx reference site) plus runbook documentation. The new stack shares nothing with the existing one — distinct compose project name, container names, volumes, loopback port, and VPS checkout directory. The application code is domain-agnostic (frontend uses same-origin `/api`; backend reads its domain from `CORS_ORIGINS`/`MINIO_PUBLIC_URL` env), so the same commit deploys to both stacks and only each stack's `.env` differs. Nothing existing is edited except the runbook (documentation).
+**Architecture:** Three new files (a second compose file, a second GitHub Actions workflow, a system-Nginx reference site) plus runbook documentation. The new stack shares nothing with the existing one  distinct compose project name, container names, volumes, loopback port, and VPS checkout directory. The application code is domain-agnostic (frontend uses same-origin `/api`; backend reads its domain from `CORS_ORIGINS`/`MINIO_PUBLIC_URL` env), so the same commit deploys to both stacks and only each stack's `.env` differs. Nothing existing is edited except the runbook (documentation).
 
 **Tech Stack:** Docker Compose, GitHub Actions (`appleboy/ssh-action`), system Nginx + Certbot on the VPS, Postgres 15 + MinIO. No application code changes.
 
@@ -16,7 +16,7 @@
 - **Naming for the new stack (exact, verbatim):** compose project `1darjeeling-in`; containers `1darjeeling_in_postgres`, `1darjeeling_in_backend`, `1darjeeling_in_minio`, `1darjeeling_in_nginx`; volumes `pg_data_in`, `minio_data_in`; host port `127.0.0.1:8092:80`; VPS checkout dir `/var/www/1darjeeling-in`.
 - **Domains:** `1darjeeling.in` and `www.1darjeeling.in`.
 - **Branch:** all commits land on `ci/prod-branch-deploy` (already created from `origin/main`, current branch).
-- **No new GitHub secrets** — reuse `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY`, `VPS_PORT`.
+- **No new GitHub secrets**  reuse `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY`, `VPS_PORT`.
 - **The new stack must never leak the existing stack's identifiers.** No occurrence of `1darjeeling_prod_`, `pg_data_prod`, `minio_data_prod`, or host port `8091` in `docker-compose.in.yml`.
 - Validation runs on Windows via the Bash tool (Git Bash). Docker daemon is not running locally and there is no root `.env`, so local validation uses `grep`/`diff`/PyYAML only; daemon-based checks (`docker compose config`, image build) happen on the VPS at deploy time.
 
@@ -31,7 +31,7 @@
 
 ---
 
-### Task 1: `docker-compose.in.yml` — the second isolated stack
+### Task 1: `docker-compose.in.yml`  the second isolated stack
 
 **Files:**
 - Create: `docker-compose.in.yml`
@@ -44,7 +44,7 @@
 - [ ] **Step 1: Create `docker-compose.in.yml`**
 
 ```yaml
-# Production stack for 1darjeeling.in — the SECOND isolated stack on this VPS,
+# Production stack for 1darjeeling.in  the SECOND isolated stack on this VPS,
 # running ALONGSIDE the existing 1darjeeling-prod stack (onedarjeeling.duckdns.org,
 # docker-compose.prod.yml). The two stacks share NOTHING: distinct compose project
 # name, container names, volumes, and host port. That isolation is the whole reason
@@ -64,7 +64,7 @@
 # namespace, not project-scoped, so distinct container names are mandatory, not
 # optional.)
 #
-# Like the other stack, nginx here is bound to 127.0.0.1 only — the VPS's system
+# Like the other stack, nginx here is bound to 127.0.0.1 only  the VPS's system
 # Nginx + Certbot terminates TLS for 1darjeeling.in and reverse-proxies to this
 # container's loopback port (8092). See deploy/VPS-RUNBOOK.md.
 name: 1darjeeling-in
@@ -114,7 +114,7 @@ services:
     environment:
       - MINIO_ROOT_USER=${MINIO_ROOT_USER}
       - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
-    # No `ports:` on purpose — MinIO is internal-only. The backend reaches it over the
+    # No `ports:` on purpose  MinIO is internal-only. The backend reaches it over the
     # compose network (MINIO_ENDPOINT=http://minio:9000 in .env); the PUBLIC bucket is
     # served through nginx (deploy/nginx/app.conf), and the PRIVATE KYC bucket is never
     # exposed. See docker-compose.prod.yml / VPS-RUNBOOK.md §8 for the full rationale.
@@ -135,7 +135,7 @@ services:
     container_name: 1darjeeling_in_nginx
     restart: unless-stopped
     ports:
-      # Loopback-only — the VPS system Nginx proxy_passes 1darjeeling.in here.
+      # Loopback-only  the VPS system Nginx proxy_passes 1darjeeling.in here.
       # 8091 is the OTHER stack; 8092 is this one. Change the host port (left of the
       # colon) if 8092 is ever taken (verify with `sudo ss -tlnp | grep 8092`).
       - "127.0.0.1:8092:80"
@@ -180,7 +180,7 @@ Run:
 ```bash
 diff docker-compose.prod.yml docker-compose.in.yml
 ```
-Expected: differences are confined to the header comment, `name:`, the four `container_name`s, the nginx `ports:` value/comment, the `minio` no-ports comment, and the two volume names. If any *service structure* (images, healthchecks, depends_on, env keys, build contexts) differs, fix it — the two stacks must be structurally identical.
+Expected: differences are confined to the header comment, `name:`, the four `container_name`s, the nginx `ports:` value/comment, the `minio` no-ports comment, and the two volume names. If any *service structure* (images, healthchecks, depends_on, env keys, build contexts) differs, fix it  the two stacks must be structurally identical.
 
 - [ ] **Step 5: Commit**
 
@@ -191,7 +191,7 @@ git commit -m "feat(deploy): add isolated 1darjeeling-in compose stack for 1darj
 
 ---
 
-### Task 2: `.github/workflows/deploy-prod.yml` — gate + deploy on `prod`
+### Task 2: `.github/workflows/deploy-prod.yml`  gate + deploy on `prod`
 
 **Files:**
 - Create: `.github/workflows/deploy-prod.yml`
@@ -337,7 +337,7 @@ jobs:
           if [ -z "$VPS_USER" ]; then missing="$missing VPS_USER"; fi
           if [ -z "$VPS_SSH_KEY" ]; then missing="$missing VPS_SSH_KEY"; fi
           if [ -n "$missing" ]; then
-            echo "::error::Missing repository secret(s):$missing — add them under Settings > Secrets and variables > Actions. VPS_USER should be the SSH login (e.g. 'deploy')."
+            echo "::error::Missing repository secret(s):$missing  add them under Settings > Secrets and variables > Actions. VPS_USER should be the SSH login (e.g. 'deploy')."
             exit 1
           fi
           echo "All required secrets are present."
@@ -399,7 +399,7 @@ print("test + frontend gate jobs are identical to deploy.yml")
 PY
 ```
 Expected: `test + frontend gate jobs are identical to deploy.yml`
-(If it fails, reconcile `deploy-prod.yml`'s gate steps to match `deploy.yml` exactly — the deploy job legitimately differs and is not compared here.)
+(If it fails, reconcile `deploy-prod.yml`'s gate steps to match `deploy.yml` exactly  the deploy job legitimately differs and is not compared here.)
 
 - [ ] **Step 5: Commit**
 
@@ -410,7 +410,7 @@ git commit -m "feat(ci): add deploy-prod workflow (prod branch → 1darjeeling.i
 
 ---
 
-### Task 3: `deploy/host-nginx-site.in.conf.example` — system-Nginx reference
+### Task 3: `deploy/host-nginx-site.in.conf.example`  system-Nginx reference
 
 **Files:**
 - Create: `deploy/host-nginx-site.in.conf.example`
@@ -423,7 +423,7 @@ git commit -m "feat(ci): add deploy-prod workflow (prod branch → 1darjeeling.i
 - [ ] **Step 1: Create `deploy/host-nginx-site.in.conf.example`**
 
 ```nginx
-# Reference only — this is NOT used by Docker or docker-compose.in.yml.
+# Reference only  this is NOT used by Docker or docker-compose.in.yml.
 # It's the file to create on the VPS's system Nginx (not in this repo's
 # containers) at /etc/nginx/sites-available/1darjeeling.in, matching the exact
 # convention already used for every other app on this box (compare
@@ -438,7 +438,7 @@ git commit -m "feat(ci): add deploy-prod workflow (prod branch → 1darjeeling.i
 #
 # That last command edits this file in place to add the SSL block and the
 # HTTP->HTTPS redirect, exactly like it already did for the other certs on this
-# VPS — nothing more to do after that; Certbot's existing renewal timer covers
+# VPS  nothing more to do after that; Certbot's existing renewal timer covers
 # this cert too. DNS for 1darjeeling.in must resolve to this VPS before certbot
 # runs (see deploy/VPS-RUNBOOK.md).
 
@@ -496,7 +496,7 @@ git commit -m "docs(deploy): add system-Nginx site reference for 1darjeeling.in"
 
 ---
 
-### Task 4: `deploy/VPS-RUNBOOK.md` — inventory + bring-up runbook
+### Task 4: `deploy/VPS-RUNBOOK.md`  inventory + bring-up runbook
 
 **Files:**
 - Modify: `deploy/VPS-RUNBOOK.md`
@@ -521,7 +521,7 @@ Insert immediately **below** it:
 Find the heading `### This app's containers` and its table. Immediately **after** that table (before the `---` that closes §1), insert:
 ```markdown
 
-### This app's second stack — 1darjeeling.in (`1darjeeling-in`)
+### This app's second stack  1darjeeling.in (`1darjeeling-in`)
 
 Same shape as the table above, isolated from it (separate project, containers, volumes,
 port). Deployed from the `prod` branch by `.github/workflows/deploy-prod.yml`.
@@ -531,7 +531,7 @@ port). Deployed from the `prod` branch by `.github/workflows/deploy-prod.yml`.
 | `1darjeeling_in_nginx` | serves both frontend builds, proxies `/api` + `/api-docs` to backend, proxies the public MinIO bucket path | `127.0.0.1:8092->80` |
 | `1darjeeling_in_backend` | Express API | internal only |
 | `1darjeeling_in_postgres` | database (volume `pg_data_in`) | internal only |
-| `1darjeeling_in_minio` | object storage: public listing images + private KYC documents (volume `minio_data_in`) | internal only — no published host port, by design (see §8) |
+| `1darjeeling_in_minio` | object storage: public listing images + private KYC documents (volume `minio_data_in`) | internal only  no published host port, by design (see §8) |
 ```
 
 - [ ] **Step 3: Note the second deploy path in §3 ("Deploying")**
@@ -548,7 +548,7 @@ There are now **two** independent auto-deploy paths, one per stack:
 
 A push to `main` deploys the first stack and never touches the second; a push (or a
 `main` → `prod` merge) to `prod` deploys the second and never touches the first.
-**For the `1darjeeling.in` stack always pass `-f docker-compose.in.yml`** — a bare
+**For the `1darjeeling.in` stack always pass `-f docker-compose.in.yml`**  a bare
 `docker compose` in `/var/www/1darjeeling-in` would pick up the dev file, and
 `-f docker-compose.prod.yml` is the OTHER stack.
 ```
@@ -557,12 +557,12 @@ A push to `main` deploys the first stack and never touches the second; a push (o
 
 Find the `## See also` heading near the end of the file. Immediately **before** it, insert the following new section:
 ```markdown
-## 9. Bringing up the 1darjeeling.in (prod) stack — one-time
+## 9. Bringing up the 1darjeeling.in (prod) stack  one-time
 
 The `deploy-prod.yml` workflow assumes the clone and `.env` already exist at
 `/var/www/1darjeeling-in`, exactly as `deploy.yml` assumes `/var/www/1darjeelingvv1`
 does. These are the one-time steps to create them and go live. **Every step here is
-additive — none of it touches the existing `1darjeeling-prod` stack or its volumes.**
+additive  none of it touches the existing `1darjeeling-prod` stack or its volumes.**
 
 ### 9.1 Verify the port is free
 
@@ -579,12 +579,12 @@ sudo git clone git@github.com:Studio-1947/1darjeelingvv1.git /var/www/1darjeelin
 cd /var/www/1darjeeling-in
 git checkout prod
 cp .env.production.example .env
-# Then edit .env — the 1darjeeling.in stack has its OWN .env, distinct from the other
+# Then edit .env  the 1darjeeling.in stack has its OWN .env, distinct from the other
 # stack's. Set at minimum:
 #   APP_ENV=production
 #   CORS_ORIGINS=https://1darjeeling.in
 #   MINIO_PUBLIC_URL=https://1darjeeling.in
-#   MOCK_PAYMENTS / MESSAGING_PROVIDER — real values when going truly live
+#   MOCK_PAYMENTS / MESSAGING_PROVIDER  real values when going truly live
 # See §4 for the backend's startup refusals if a value is missing or left at a placeholder.
 ```
 
@@ -601,10 +601,10 @@ MinIO images) and is recommended; the **`pg_dump` + `mc mirror`** method avoids 
 the source but has more moving parts.
 
 **⚠️ The MinIO copy includes the PRIVATE KYC bucket (Aadhaar/PAN/licence scans).** Treat
-every archive and volume as sensitive personal data per §8 — encrypt at rest, restrict
+every archive and volume as sensitive personal data per §8  encrypt at rest, restrict
 access, delete temporaries when done. Never publish a MinIO port to do this.
 
-**Method A — volume tar-copy (recommended; brief source downtime):**
+**Method A  volume tar-copy (recommended; brief source downtime):**
 ```sh
 # 1. Create the in stack's volumes by bringing it up once, then stop it:
 cd /var/www/1darjeeling-in
@@ -633,7 +633,7 @@ cd /var/www/1darjeelingvv1 && docker compose -f docker-compose.prod.yml start po
 cd /var/www/1darjeeling-in && docker compose -f docker-compose.in.yml start postgres minio
 ```
 
-**Method B — no source downtime (`pg_dump` + `mc mirror`):**
+**Method B  no source downtime (`pg_dump` + `mc mirror`):**
 ```sh
 # Postgres: dump the live source DB, restore into a freshly-migrated in DB.
 # (Bring the in stack up first so migrations create the schema, then load data.)
@@ -658,7 +658,7 @@ Confirm before running Certbot:
 dig +short 1darjeeling.in
 dig +short www.1darjeeling.in
 ```
-Containers can be up before DNS resolves — only TLS issuance waits on it.
+Containers can be up before DNS resolves  only TLS issuance waits on it.
 
 ### 9.5 System Nginx + TLS
 
@@ -711,9 +711,9 @@ git commit -m "docs(runbook): document the 1darjeeling.in second stack and its b
 
 ## Post-implementation (operator / out of scope for this plan)
 
-These are **not** code steps — they are the human go-live actions, fully documented in runbook §9:
+These are **not** code steps  they are the human go-live actions, fully documented in runbook §9:
 
-1. Open a PR from `ci/prod-branch-deploy` into `main`; merge once green. (The existing `onedarjeeling.duckdns.org` site rebuilds identically — the new files are inert on `main`.)
+1. Open a PR from `ci/prod-branch-deploy` into `main`; merge once green. (The existing `onedarjeeling.duckdns.org` site rebuilds identically  the new files are inert on `main`.)
 2. On the VPS, run runbook §9.1–§9.5 (port check, clone + `.env`, data copy, DNS, Certbot).
 3. Merge `main` → `prod` to trigger the first `deploy-prod.yml` run (or bring the stack up manually per §9.6).
 4. Verify per §9.6.
@@ -721,4 +721,4 @@ These are **not** code steps — they are the human go-live actions, fully docum
 ## Self-Review Notes
 
 - **Spec coverage:** §3 architecture → Task 1 (compose) + Global Constraints (naming/isolation). §4.1 → Task 1. §4.2 → Task 2. §4.3 → Task 3. §4.4 → Task 4. §4.5 (env note) → folded into runbook §9.2 (Task 4, Step 4), as the spec permitted. §5 bring-up → Task 4 §9. §6 CI flow → Tasks 2 + 4 (§3 table). §7 verify/rollback → runbook §9.6. §9 risks (port, `-f`, KYC, password, inert-on-main) → all covered in Task 1/4 content.
-- **No new secrets, no edits to existing pipeline** — enforced by Global Constraints and the Task 1/2 leak-checks.
+- **No new secrets, no edits to existing pipeline**  enforced by Global Constraints and the Task 1/2 leak-checks.

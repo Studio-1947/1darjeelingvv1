@@ -10,7 +10,7 @@ const options: swaggerJsdoc.Options = {
       description: 'REST API for the aangan tourism + local marketplace platform (auth, providers, listings, bookings, payments, admin).',
     },
     servers: [
-      // Relative URL — resolves against whichever origin actually served
+      // Relative URL  resolves against whichever origin actually served
       // /api-docs, so "Try it out" hits the right host in both local dev
       // (http://localhost:8000) and production (https://<domain>) without
       // hardcoding either one.
@@ -62,7 +62,7 @@ const options: swaggerJsdoc.Options = {
           properties: {
             id: { type: 'string' },
             title: { type: 'string' },
-            type: { type: 'string', enum: ['spot', 'homestay', 'driver', 'shop', 'cafe', 'event', 'biodiversity'] },
+            type: { type: 'string', enum: ['spot', 'homestay', 'driver', 'guide', 'shop', 'cafe', 'event', 'biodiversity'] },
             description: { type: 'string' },
             location: { type: 'string' },
             price: { type: 'integer' },
@@ -86,6 +86,8 @@ const options: swaggerJsdoc.Options = {
             how_to_reach: { type: 'string' },
             altitude: { type: 'string' },
             address: { type: 'string' },
+            photo_credit: { type: 'string' },
+            photo_source: { type: 'string' },
             published: { type: 'boolean', description: 'false keeps the spot a draft, hidden from all public reads' },
             featured: { type: 'boolean' },
             sort_order: { type: 'integer' },

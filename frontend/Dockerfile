@@ -1,4 +1,4 @@
-FROM node:20-slim
+FROM node:22-slim
 
 WORKDIR /app
 
@@ -11,7 +11,7 @@ RUN yarn install --frozen-lockfile || yarn install || npm install
 # Copy application files
 COPY . .
 
-# Expose the port CRA/Craco uses by default
+# Expose the Vite development-server port
 EXPOSE 3000
 
 # Set environment variables for development
@@ -22,4 +22,4 @@ ENV CHOKIDAR_USEPOLLING=true
 ENV WATCHPACK_POLLING=true
 
 # Start the development server
-CMD ["yarn", "start"]
+CMD ["yarn", "start", "--host", "0.0.0.0"]

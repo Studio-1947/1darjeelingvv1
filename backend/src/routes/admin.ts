@@ -1,16 +1,24 @@
 import { Router, Request, Response } from 'express';
+import { travellerDashboard } from '../lib/travellerDashboard';
+import { missingMandatory } from '../lib/hostProfile';
 import { v4 as uuidv4 } from 'uuid';
 import { db } from '../db';
 import * as schema from '../schema';
-import { eq, and, count, inArray, desc } from 'drizzle-orm';
+import { eq, and, count, inArray, desc, isNull, isNotNull, gt, or, ne } from 'drizzle-orm';
 import { SEED_LISTINGS } from '../seed_data';
 import { authenticateToken, requireAdmin, hashPassword } from '../middleware/auth';
 import { rateLimiter } from '../middleware/rateLimiter';
-import { ADMIN_BOOTSTRAP_SECRET } from '../config';
-import { recomputeKycStatus } from './kyc';
+import { ADMIN_BOOTSTRAP_SECRET, log } from '../config';
+import { hostReadiness, recomputeKycStatus } from './kyc';
+import { approvalRequired, realHostIds } from '../lib/bookingApproval';
+import { requirementsFor } from '../lib/kycRequirements';
+import { kycTypesFor } from '../lib/kycTypes';
+import { notifyHostVerification } from '../lib/notifications';
 import { deleteListingsOwnedBy, deleteKycFilesOwnedBy } from '../lib/accountCleanup';
 import { listUnreturnedPayments, refundPayment } from '../lib/refunds';
 import { routeParam } from '../lib/routeParam';
+import { hostPlanVisibility } from '../lib/hostPlan';
+import { publicSpotVisibility } from '../lib/spots';
 
 const router = Router();
 
@@ -102,6 +110,8 @@ router.post('/admin/seed', authenticateToken, requireAdmin, async (req: Request,
  *                 listings: { type: integer }
  *                 bookings: { type: integer }
  *                 payments: { type: integer, description: "Count of payments with status=paid" }
+ *                 active_services: { type: integer, description: "Business listings (homestay, driver, guide, cafe, shop) travellers can see now" }
+ *                 paid_bookings: { type: integer, description: "Paid booking fees (flow booking_commission)" }
  *       403:
  *         description: Not an admin
  *         content:
@@ -115,13 +125,34 @@ router.get('/admin/stats', authenticateToken, requireAdmin, async (req: Request,
   const listingsCount = await db.select({ value: count() }).from(schema.listings);
   const bookingsCount = await db.select({ value: count() }).from(schema.bookings);
   const paymentsCount = await db.select({ value: count() }).from(schema.payments).where(eq(schema.payments.status, 'paid'));
+  // What travellers can book right now: the same visibility GET /listings applies, business kinds only.
+  const activeServices = await db.select({ value: count() }).from(schema.listings).where(and(
+    publicSpotVisibility(), hostPlanVisibility(),
+    inArray(schema.listings.type, ['homestay', 'driver', 'guide', 'cafe', 'shop']),
+  ));
+  const paidBookings = await db.select({ value: count() }).from(schema.payments)
+    .where(and(eq(schema.payments.status, 'paid'), eq(schema.payments.flow, 'booking_commission')));
+  const nowIso = new Date().toISOString();
+  const passCount = await db.select({ value: count() }).from(schema.users).where(gt(schema.users.supportExpiresAt, nowIso));
+  const appFeedbackOpen = await db.select({ value: count() }).from(schema.appFeedback).where(eq(schema.appFeedback.status, 'open'));
+  const hostFeedbackOpen = await db.select({ value: count() }).from(schema.hostFeedback).where(eq(schema.hostFeedback.status, 'open'));
+  const commentsCount = await db.select({ value: count() }).from(schema.postComments);
+  const profilesStarted = await db.select({ value: count() }).from(schema.users).where(isNotNull(schema.users.travellerType));
+  const deliveriesOpen = await db.select({ value: count() }).from(schema.deliveryRequests).where(eq(schema.deliveryRequests.status, 'open'));
 
   res.json({
     users: usersCount[0]?.value || 0,
     providers: providersCount[0]?.value || 0,
     listings: listingsCount[0]?.value || 0,
     bookings: bookingsCount[0]?.value || 0,
-    payments: paymentsCount[0]?.value || 0
+    payments: paymentsCount[0]?.value || 0,
+    active_services: activeServices[0]?.value || 0,
+    paid_bookings: paidBookings[0]?.value || 0,
+    active_passes: passCount[0]?.value || 0,
+    open_feedback: (appFeedbackOpen[0]?.value || 0) + (hostFeedbackOpen[0]?.value || 0),
+    post_comments: commentsCount[0]?.value || 0,
+    traveller_profiles: profilesStarted[0]?.value || 0,
+    open_deliveries: deliveriesOpen[0]?.value || 0,
   });
 });
 
@@ -269,12 +300,24 @@ router.get('/admin/users', authenticateToken, requireAdmin, async (req: Request,
     role: schema.users.role,
     email: schema.users.email,
     createdAt: schema.users.createdAt,
+    avatar: schema.users.avatar,
+    // The aangan pass and the traveller profile (board: Profile Setup), for the user drawer.
+    supportExpiresAt: schema.users.supportExpiresAt,
+    whatsapp: schema.users.whatsapp,
+    gender: schema.users.gender,
+    birthYear: schema.users.birthYear,
+    address: schema.users.address,
+    pincode: schema.users.pincode,
+    interests: schema.users.interests,
+    likedFoods: schema.users.likedFoods,
+    travellerType: schema.users.travellerType,
+    diet: schema.users.diet,
     providerId: schema.providers.id,
     providerStatus: schema.providers.status,
     businessName: schema.providers.businessName,
   })
-  .from(schema.users)
-  .leftJoin(schema.providers, eq(schema.users.id, schema.providers.userId));
+    .from(schema.users)
+    .leftJoin(schema.providers, eq(schema.users.id, schema.providers.userId));
   res.json({ items });
 });
 
@@ -305,6 +348,13 @@ router.get('/admin/users', authenticateToken, requireAdmin, async (req: Request,
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
  */
+/** One traveller's dashboard (pass, points, awards, totals), as they see it. */
+router.get('/admin/users/:id/dashboard', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
+  const [user] = await db.select().from(schema.users).where(eq(schema.users.id, routeParam(req, 'id'))).limit(1);
+  if (!user) return res.status(404).json({ detail: 'User not found' });
+  res.json(await travellerDashboard(user));
+});
+
 // Admin Users Delete
 router.delete('/admin/users/:id', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
   const id = routeParam(req, 'id');
@@ -361,7 +411,7 @@ router.delete('/admin/users/:id', authenticateToken, requireAdmin, async (req: R
  */
 // The real provider lifecycle: pending_payment (onboarded, awaiting the ₹99 registration
 // payment) -> active (paid, listings publish, KYC uploads accepted) -> suspended (an admin
-// has pulled the provider — the frontend's suspend action (Admin.tsx) sends exactly this
+// has pulled the provider  the frontend's suspend action (Admin.tsx) sends exactly this
 // value). All three must be allowed here or the admin console's suspend/reinstate actions 400.
 const ALLOWED_PROVIDER_STATUSES = ['pending_payment', 'active', 'suspended'] as const;
 
@@ -400,8 +450,83 @@ router.put('/admin/providers/:id/status', authenticateToken, requireAdmin, async
  */
 // Admin Bookings List
 router.get('/admin/bookings', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
-  const items = await db.select().from(schema.bookings);
+  // Raw rows (camelCase, like the rest of this console), newest first, plus what the team needs
+  // to act on one: the guest's name and phone, and whether it is a request waiting for its host.
+  const rows = await db.select().from(schema.bookings).orderBy(desc(schema.bookings.createdAt));
+  const listings = rows.length
+    ? await db.select({ id: schema.listings.id, type: schema.listings.type, providerId: schema.listings.providerId })
+      .from(schema.listings).where(inArray(schema.listings.id, [...new Set(rows.map((b) => b.listingId))]))
+    : [];
+  const listingById = new Map(listings.map((l) => [l.id, l]));
+  const hosts = await realHostIds(listings.map((l) => l.providerId));
+  const guests = rows.length
+    ? await db.select({ id: schema.users.id, name: schema.users.name, phone: schema.users.phone })
+      .from(schema.users).where(inArray(schema.users.id, [...new Set(rows.map((b) => b.userId))]))
+    : [];
+  const guestById = new Map(guests.map((g) => [g.id, g]));
+  const items = rows.map((b) => {
+    const l = listingById.get(b.listingId);
+    const g = guestById.get(b.userId);
+    return {
+      ...b,
+      guestName: g?.name ?? null,
+      guestPhone: g?.phone ?? null,
+      awaitingHost: b.status === 'pending_payment' && !!l && approvalRequired(l.type, l.providerId, hosts),
+    };
+  });
   res.json({ items });
+});
+
+/**
+ * @openapi
+ * /admin/hosts/waiting:
+ *   get:
+ *     summary: Hosts who are not live yet, and the one step holding each of them up
+ *     description: >
+ *       For the team's verification round: every host whose KYC is not verified, with their phone,
+ *       plan, required documents and their state, the mandatory profile items still missing, and
+ *       next_step - pay_plan, finish_profile, upload_documents, fix_rejected, review_documents
+ *       (the team's turn) or verify_location.
+ *     tags: [Admin]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: "`{ hosts, counts }`" }
+ */
+router.get('/admin/hosts/waiting', authenticateToken, requireAdmin, async (_req: Request, res: Response) => {
+  const providers = await db.select().from(schema.providers)
+    .where(ne(schema.providers.kycStatus, 'verified'))
+    .orderBy(desc(schema.providers.createdAt));
+  const owners = providers.length
+    ? await db.select({ id: schema.users.id, name: schema.users.name, phone: schema.users.phone })
+      .from(schema.users).where(inArray(schema.users.id, [...new Set(providers.map((p) => p.userId))]))
+    : [];
+  const ownerById = new Map(owners.map((u) => [u.id, u]));
+  const hosts = [];
+  for (const p of providers) {
+    const r = await hostReadiness(p);
+    const owner = ownerById.get(p.userId);
+    hosts.push({
+      provider_id: p.id,
+      business_name: p.businessName,
+      business_type: p.businessType,
+      owner_name: owner?.name ?? null,
+      phone: p.contactPhone || owner?.phone || null,
+      plan_status: p.status,
+      plan_expires_at: p.planExpiresAt,
+      // Live on the free start: has not paid yet (lib/hostGrace.ts).
+      on_free_start: p.status === 'active' && p.grace,
+      kyc_status: r.kycStatus,
+      created_at: p.createdAt,
+      next_step: r.nextStep,
+      profile_missing: r.profileMissing,
+      documents: r.checklist.filter((c) => c.kind === 'kyc')
+        .map((c) => ({ doc_type: c.key, label: c.label, required: c.required, state: c.state })),
+      profile_left: r.checklist.filter((c) => c.kind === 'profile' && c.state !== 'done').map((c) => ({ key: c.key, label: c.label })),
+    });
+  }
+  const counts: Record<string, number> = {};
+  for (const h of hosts) counts[h.next_step] = (counts[h.next_step] ?? 0) + 1;
+  res.json({ hosts, counts });
 });
 
 /**
@@ -429,7 +554,7 @@ router.get('/admin/payments', authenticateToken, requireAdmin, async (req: Reque
   res.json({ items });
 });
 
-// GET /admin/kyc?status=pending&limit=50&offset=0 — page through KYC documents with
+// GET /admin/kyc?status=pending&limit=50&offset=0  page through KYC documents with
 // provider/user context. `status` is optional (omit for all statuses); `limit`/`offset`
 // default to a sane page size and are capped so a caller can't force an unbounded scan.
 const KYC_LIST_DEFAULT_LIMIT = 50;
@@ -442,7 +567,7 @@ function parsePositiveInt(raw: unknown, fallback: number, max?: number): number 
   return max != null ? Math.min(n, max) : n;
 }
 
-/** Parses an offset query param — unlike limit, 0 is a valid, meaningful value. */
+/** Parses an offset query param  unlike limit, 0 is a valid, meaningful value. */
 function parseNonNegativeInt(raw: unknown, fallback: number): number {
   const n = parseInt(String(raw), 10);
   if (!Number.isFinite(n) || n < 0) return fallback;
@@ -459,7 +584,7 @@ router.get('/admin/kyc', authenticateToken, requireAdmin, async (req: Request, r
   const whereClause = statusFilter ? eq(schema.kycDocuments.status, statusFilter) : undefined;
 
   // Ordered explicitly (newest upload first) so that paging is stable and non-overlapping
-  // across requests — without an ORDER BY, row order across separate queries is not
+  // across requests  without an ORDER BY, row order across separate queries is not
   // guaranteed, which would make limit/offset paging unreliable.
   const [rows, totalRows] = await Promise.all([
     db.select().from(schema.kycDocuments).where(whereClause).orderBy(desc(schema.kycDocuments.uploadedAt), schema.kycDocuments.id).limit(limit).offset(offset),
@@ -491,6 +616,8 @@ router.get('/admin/kyc', authenticateToken, requireAdmin, async (req: Request, r
       reviewed_at: d.reviewedAt,
       business_name: p?.businessName || null,
       business_type: p?.businessType || null,
+      // Mandatory profile items this host has not filled in yet (lib/hostProfile.ts).
+      profile_missing: p ? missingMandatory(p.businessType, p.extras) : [],
       owner_name: u?.name || null,
       file_url: `/api/providers/kyc/${d.id}/file`,
     };
@@ -498,7 +625,7 @@ router.get('/admin/kyc', authenticateToken, requireAdmin, async (req: Request, r
   res.json({ documents, total, limit, offset });
 });
 
-// POST /admin/kyc/:id/review — approve or reject a document
+// POST /admin/kyc/:id/review  approve or reject a document
 router.post('/admin/kyc/:id/review', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
   const { decision, reason } = req.body || {};
   if (decision !== 'approve' && decision !== 'reject') {
@@ -516,14 +643,33 @@ router.post('/admin/kyc/:id/review', authenticateToken, requireAdmin, async (req
   if (!doc) return res.status(404).json({ detail: 'Not found' });
 
   const status = decision === 'approve' ? 'approved' : 'rejected';
+  const reviewedAt = new Date().toISOString();
+  const [before] = await db.select({ businessType: schema.providers.businessType })
+    .from(schema.providers).where(eq(schema.providers.id, doc.providerId)).limit(1);
   await db.update(schema.kycDocuments).set({
     status,
     rejectionReason: decision === 'reject' ? (reason || null) : null,
-    reviewedAt: new Date().toISOString(),
+    reviewedAt,
     reviewedBy: req.user.id,
   }).where(eq(schema.kycDocuments.id, doc.id));
 
+  await db.update(schema.providers)
+    .set({ kycReviewStartedAt: reviewedAt })
+    .where(and(eq(schema.providers.id, doc.providerId), isNull(schema.providers.kycReviewStartedAt)));
+
   const kycStatus = await recomputeKycStatus(doc.providerId);
+
+  // Tell the host (and any co-owners) straight away: what to fix, or that they are live.
+  // A document of a type no longer asked for (stored before the list was shortened) cannot be sent
+  // again, so rejecting it asks the host for nothing.
+  const requirement = before
+    ? requirementsFor(await kycTypesFor({ id: doc.providerId, businessType: before.businessType })).find((r) => r.docType === doc.docType)
+    : undefined;
+  if (decision === 'reject' && requirement) {
+    await notifyHostVerification(doc.providerId, { kind: 'changes_requested', document: requirement.label, reason: reason || null });
+  }
+  // Becoming verified is announced by recomputeKycStatus, whatever step completed it.
+
   res.json({
     document: { id: doc.id, doc_type: doc.docType, status, rejection_reason: decision === 'reject' ? (reason || null) : null },
     provider_kyc_status: kycStatus,
@@ -540,7 +686,7 @@ router.post('/admin/kyc/:id/review', authenticateToken, requireAdmin, async (req
  *     description: >
  *       The operator's work queue. A refund runs on paths that have already taken the money and
  *       already committed the cancellation, so it cannot fail the request when Razorpay is
- *       unreachable — it records the debt instead, and this is where those land. An empty list
+ *       unreachable  it records the debt instead, and this is where those land. An empty list
  *       means the platform is holding nothing it owes.
  *     tags: [Admin]
  *     security: [{ bearerAuth: [] }]
@@ -548,7 +694,7 @@ router.post('/admin/kyc/:id/review', authenticateToken, requireAdmin, async (req
  *       200: { description: Payments charged but not returned }
  */
 router.get('/admin/refunds/pending', authenticateToken, requireAdmin, async (_req: Request, res: Response) => {
-  // Raw rows, matching GET /admin/payments above — the admin console reads camelCase everywhere,
+  // Raw rows, matching GET /admin/payments above  the admin console reads camelCase everywhere,
   // and a second naming convention on a sibling endpoint is how a tab ends up rendering
   // `undefined` for every column.
   const items = await listUnreturnedPayments();
@@ -561,7 +707,7 @@ router.get('/admin/refunds/pending', authenticateToken, requireAdmin, async (_re
  *   post:
  *     summary: Refund a settled payment
  *     description: >
- *       Idempotent — a payment that is already refunded answers 200 with refunded=false and is
+ *       Idempotent  a payment that is already refunded answers 200 with refunded=false and is
  *       not sent to the gateway twice. Used both to retry a failed automatic refund and to return
  *       money for a case the app has no rule for (a goodwill refund, a disputed charge).
  *     tags: [Admin]
@@ -589,6 +735,113 @@ router.post('/admin/payments/:id/refund', authenticateToken, requireAdmin, async
   // told the money went back when it did not.
   if (outcome.error) return res.status(502).json({ detail: outcome.error, ...outcome });
   res.json(outcome);
+});
+
+// ============ DATA CLEAN-UP ============
+//
+// Clears live user data from the admin console without touching the database by hand. Built on
+// the same helpers as the single-user delete above, so listings go with their owners and the
+// uploaded KYC files are removed from storage too, which a SQL wipe cannot do.
+//
+// What is never touched: admin accounts, curated spots/events (owned by 'admin-seed-provider'),
+// promotions, and the env-based admin login (which has no database row).
+
+const DELETE_ALL_PHRASE = 'DELETE ALL USERS';
+
+async function nonAdminUserIds(): Promise<string[]> {
+  const rows = await db.select({ id: schema.users.id }).from(schema.users).where(ne(schema.users.role, 'admin'));
+  return rows.map(r => r.id);
+}
+
+/** GET /admin/cleanup/preview - what "delete all non-admin users" would remove. Changes nothing. */
+router.get('/admin/cleanup/preview', authenticateToken, requireAdmin, async (_req: Request, res: Response) => {
+  const userIds = await nonAdminUserIds();
+  const zero = { users: 0, travellers: 0, hosts: 0, listings: 0, bookings: 0, payments: 0, settled_payments: 0, kyc_documents: 0 };
+  if (userIds.length === 0) return res.json({ ...zero, phrase: DELETE_ALL_PHRASE });
+
+  const providers = await db.select({ id: schema.providers.id }).from(schema.providers).where(inArray(schema.providers.userId, userIds));
+  const providerIds = providers.map(p => p.id);
+  const ownerIds = [...userIds, ...providerIds];
+
+  const listings = await db.select({ id: schema.listings.id }).from(schema.listings).where(inArray(schema.listings.providerId, ownerIds));
+  const listingIds = listings.map(l => l.id);
+
+  const bookingWhere = listingIds.length
+    ? or(inArray(schema.bookings.userId, userIds), inArray(schema.bookings.listingId, listingIds))
+    : inArray(schema.bookings.userId, userIds);
+  const [bookings] = await db.select({ n: count() }).from(schema.bookings).where(bookingWhere);
+  const [payments] = await db.select({ n: count() }).from(schema.payments).where(inArray(schema.payments.userId, userIds));
+  const [settled] = await db.select({ n: count() }).from(schema.payments)
+    .where(and(inArray(schema.payments.userId, userIds), eq(schema.payments.status, 'paid')));
+  const [kyc] = providerIds.length
+    ? await db.select({ n: count() }).from(schema.kycDocuments).where(inArray(schema.kycDocuments.providerId, providerIds))
+    : [{ n: 0 }];
+  const [travellers] = await db.select({ n: count() }).from(schema.users).where(eq(schema.users.role, 'tourist'));
+
+  res.json({
+    users: userIds.length,
+    travellers: travellers.n,
+    hosts: providerIds.length,
+    listings: listingIds.length,
+    bookings: bookings.n,
+    payments: payments.n,
+    settled_payments: settled.n,
+    kyc_documents: kyc.n,
+    phrase: DELETE_ALL_PHRASE,
+  });
+});
+
+/**
+ * POST /admin/cleanup/users
+ *   { mode: 'all', confirm: 'DELETE ALL USERS' }   every non-admin account
+ *   { mode: 'selected', user_ids: [...] }          just those accounts (admins are skipped)
+ *
+ * Accounts are removed one at a time, so a failure part-way leaves the rest intact and is
+ * reported rather than hidden. Take a database backup first: this cannot be undone.
+ */
+router.post('/admin/cleanup/users', authenticateToken, requireAdmin, rateLimiter(5, 60_000, 'admin_cleanup'), async (req: Request, res: Response) => {
+  const { mode, user_ids, confirm } = req.body || {};
+
+  let targets: string[];
+  if (mode === 'all') {
+    if (confirm !== DELETE_ALL_PHRASE) {
+      return res.status(400).json({ detail: `Type "${DELETE_ALL_PHRASE}" to confirm.` });
+    }
+    targets = await nonAdminUserIds();
+  } else if (mode === 'selected') {
+    if (!Array.isArray(user_ids) || user_ids.length === 0 || user_ids.length > 500 || user_ids.some((id: unknown) => typeof id !== 'string')) {
+      return res.status(400).json({ detail: 'user_ids must be 1 to 500 account ids' });
+    }
+    const rows = await db.select({ id: schema.users.id }).from(schema.users)
+      .where(and(inArray(schema.users.id, user_ids as string[]), ne(schema.users.role, 'admin')));
+    targets = rows.map(r => r.id);
+  } else {
+    return res.status(400).json({ detail: 'mode must be "all" or "selected"' });
+  }
+
+  let deleted = 0;
+  const failed: string[] = [];
+  for (const id of targets) {
+    try {
+      await deleteListingsOwnedBy(id);
+      await deleteKycFilesOwnedBy(id);
+      await db.delete(schema.users).where(eq(schema.users.id, id));
+      deleted += 1;
+    } catch (err: any) {
+      failed.push(id);
+      log.error(`[admin-cleanup] could not delete user ${id}: ${err?.message || err}`);
+    }
+  }
+
+  if (mode === 'all') {
+    // Pending login codes and delivery logs belong to the people just removed.
+    await db.delete(schema.otps);
+    await db.delete(schema.otpSendCounters);
+    await db.delete(schema.interaktDeliveryEvents);
+  }
+
+  log.warn(`[admin-cleanup] admin=${req.user.id} mode=${mode} requested=${targets.length} deleted=${deleted} failed=${failed.length}`);
+  res.json({ deleted, failed: failed.length, failed_ids: failed });
 });
 
 export default router;

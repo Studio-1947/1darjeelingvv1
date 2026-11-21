@@ -16,7 +16,7 @@ function jsonResponse(body: unknown, status = 200): Response {
 
 const sent = (id = 'wamid.ABC') => ({ messaging_product: 'whatsapp', messages: [{ id }] });
 
-describe('whatsapp adapter — sending a code', () => {
+describe('whatsapp adapter  sending a code', () => {
   it('returns the message id on success', async () => {
     const fetchImpl = vi.fn().mockResolvedValue(jsonResponse(sent('wamid.XYZ')));
     const provider = createWhatsAppProvider(ENV, fetchImpl as unknown as typeof fetch);
@@ -79,7 +79,7 @@ describe('whatsapp adapter — sending a code', () => {
   });
 });
 
-describe('whatsapp adapter — refusing to claim a delivery it cannot vouch for', () => {
+describe('whatsapp adapter  refusing to claim a delivery it cannot vouch for', () => {
   it('throws on a Graph error body', async () => {
     // mockImplementation, not mockResolvedValue: a Response body can only be read once, so a
     // single shared Response would come back already-consumed on the second send and fail as a
@@ -142,7 +142,7 @@ describe('whatsapp adapter — refusing to claim a delivery it cannot vouch for'
   });
 });
 
-describe('whatsapp adapter — booking notifications', () => {
+describe('whatsapp adapter  booking notifications', () => {
   const NOTIFY_ENV = {
     ...ENV,
     WHATSAPP_BOOKING_CONFIRMED_GUEST_TEMPLATE: 'booking_confirmed_guest',
@@ -207,7 +207,7 @@ describe('whatsapp adapter — booking notifications', () => {
   });
 });
 
-describe('whatsapp adapter — configuration', () => {
+describe('whatsapp adapter  configuration', () => {
   it('rejects incomplete configuration at init', () => {
     const provider = createWhatsAppProvider({ WHATSAPP_ACCESS_TOKEN: 'tok' });
     expect(() => provider.init()).toThrow(/WHATSAPP_PHONE_NUMBER_ID, WHATSAPP_OTP_TEMPLATE/);
@@ -237,7 +237,7 @@ describe('whatsapp adapter — configuration', () => {
   it('warns, but still boots, on a token that looks short-lived', () => {
     // The dashboard's temporary token expires in ~24h and presents as "login stopped working
     // overnight". A warning is right; refusing to boot on a prefix heuristic is not.
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => { });
     try {
       const provider = createWhatsAppProvider({ ...ENV, WHATSAPP_ACCESS_TOKEN: 'EAAshortlivedtoken' });
       expect(() => provider.init()).not.toThrow();

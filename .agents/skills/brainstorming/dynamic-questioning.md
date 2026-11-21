@@ -1,6 +1,6 @@
 # Dynamic Question Generation
 
-> **PRINCIPLE:** Questions are not about gathering data—they are about **revealing architectural consequences**.
+> **PRINCIPLE:** Questions are not about gathering datathey are about **revealing architectural consequences**.
 >
 > Every question must connect to a concrete implementation decision that affects cost, complexity, or timeline.
 

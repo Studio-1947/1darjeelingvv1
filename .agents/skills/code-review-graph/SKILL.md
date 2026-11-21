@@ -6,21 +6,21 @@ allowed-tools: Read, Grep, Glob, Bash
 effort: medium
 ---
 
-# Code Review Graph — Token-Efficient Codebase Context via MCP
+# Code Review Graph  Token-Efficient Codebase Context via MCP
 
-> Cut AI token usage substantially on large codebases by giving the AI a structural map instead of letting it read everything. Savings scale with codebase size — marginal on small projects, large on monorepos.
+> Cut AI token usage substantially on large codebases by giving the AI a structural map instead of letting it read everything. Savings scale with codebase size  marginal on small projects, large on monorepos.
 
 ## Overview
 
-`code-review-graph` is an MCP server that uses **Tree-sitter** to parse your codebase into an AST graph stored in **SQLite**. When your AI assistant needs context for a task, it queries the graph first — getting only the files in the **blast radius** of your change — instead of reading every file in the directory.
+`code-review-graph` is an MCP server that uses **Tree-sitter** to parse your codebase into an AST graph stored in **SQLite**. When your AI assistant needs context for a task, it queries the graph first  getting only the files in the **blast radius** of your change  instead of reading every file in the directory.
 
-**Token Impact (illustrative — varies by codebase):**
+**Token Impact (illustrative  varies by codebase):**
 
 | Codebase Type | Pattern |
 |---------------|---------|
-| Large monorepo (10K+ files) | Biggest savings — graph reads a small fraction of files |
+| Large monorepo (10K+ files) | Biggest savings  graph reads a small fraction of files |
 | Mid-size app (1-5K files) | Meaningful reduction on multi-file changes |
-| Small project (<200 files) | Little benefit — graph overhead can exceed savings |
+| Small project (<200 files) | Little benefit  graph overhead can exceed savings |
 
 > **Quality angle:** scoping the AI to the blast radius reduces noise, which tends to improve review focus. Measure on your own repo rather than relying on a fixed multiplier.
 
@@ -46,12 +46,12 @@ When invoked during `/plan` or standard usage on a mid-to-large project, check w
 ### ❌ Skip it if:
 - Codebase is **under ~200 files** with isolated single-file changes
 - Heavy use of **dynamic patterns** (reflection, runtime code gen, dynamic imports)
-- You want **zero-maintenance** — the graph needs to stay in sync
+- You want **zero-maintenance**  the graph needs to stay in sync
 - Team hasn't standardized on an AI coding tool yet
 
 ### ⚠️ Evaluate first if:
-- Codebase is **200–500 files** — benchmark before committing
-- Mix of **static and dynamic patterns** — test on representative commits
+- Codebase is **200–500 files**  benchmark before committing
+- Mix of **static and dynamic patterns**  test on representative commits
 
 ---
 
@@ -68,7 +68,7 @@ Layer 4: SERVE    → MCP exposes graph to AI assistants
 - **Nodes:** Files, functions, methods, classes, imports, tests
 - **Edges:** "A calls B", "X imports Y", "TestZ covers FunctionW", "ClassA extends ClassB"
 - **Metadata:** Name, type, file path, line range per node
-- **Privacy:** Structural metadata only — NO source code content in the graph
+- **Privacy:** Structural metadata only  NO source code content in the graph
 
 ### Supported Languages (19)
 Python, TypeScript, JavaScript, Go, Rust, Java, C#, Ruby, Kotlin, Swift, PHP, C/C++, Vue SFC, Solidity, Dart, R, Perl, Lua, Jupyter/Databricks notebooks.
@@ -167,7 +167,7 @@ generated/**
 __fixtures__/**
 ```
 
-> Excluding generated files and build artifacts is critical — they inflate the graph with meaningless nodes.
+> Excluding generated files and build artifacts is critical  they inflate the graph with meaningless nodes.
 
 ### Multi-Repo Setup
 
@@ -210,7 +210,7 @@ Scores each uncommitted change by risk level:
 
 ### 3. Dead Code Detection
 
-The graph finds nodes with **no incoming edges** — no callers, no importers, no test coverage:
+The graph finds nodes with **no incoming edges**  no callers, no importers, no test coverage:
 
 ```bash
 # Surfaces functions/classes that are candidates for removal
@@ -242,7 +242,7 @@ Generates interactive visualization showing module clusters using community dete
 code-review-graph wiki
 ```
 
-Generates markdown wiki of codebase structure — every module, its public API, dependencies, and test coverage.
+Generates markdown wiki of codebase structure  every module, its public API, dependencies, and test coverage.
 
 ---
 
@@ -296,10 +296,10 @@ Generates markdown wiki of codebase structure — every module, its public API, 
 
 ## Best Practices
 
-1. **Always run watch mode** in development — stale graphs produce stale context
-2. **Exclude generated files** — they inflate the graph with noise
-3. **Benchmark first** — measure token usage for 1 week without, 1 week with
-4. **Combine with output constraints** — graph reduces input, prompt engineering reduces output
+1. **Always run watch mode** in development  stale graphs produce stale context
+2. **Exclude generated files**  they inflate the graph with noise
+3. **Benchmark first**  measure token usage for 1 week without, 1 week with
+4. **Combine with output constraints**  graph reduces input, prompt engineering reduces output
 5. **Use `.code-review-graphignore`** for build artifacts, `node_modules`, `dist/`
-6. **Keep sessions short** — fresh sessions + graph = optimal token efficiency
+6. **Keep sessions short**  fresh sessions + graph = optimal token efficiency
 7. **Multi-repo registration** for microservice architectures

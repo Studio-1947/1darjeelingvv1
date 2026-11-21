@@ -1,61 +1,59 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Heart, Mail } from 'lucide-react';
-import Logo from '@/components/Logo';
+import { FacebookLogo, InstagramLogo, EnvelopeSimple as Mail, Phone } from '@phosphor-icons/react';
+import Wordmark from '@/components/Wordmark';
+import { ButtonA } from '@/components/ag';
+
+/**
+ * A minimal footer: the wordmark, one row of links, the social icons and the copyright line.
+ * Delete account now lives on the Privacy page.
+ */
+const LINKS: { to: string; key: string }[] = [
+  { to: '/about', key: 'footer.about_aangan' },
+  { to: '/explore', key: 'nav.explore' },
+  { to: '/provider/onboard', key: 'nav.provider' },
+  { to: '/responsible', key: 'nav.responsible' },
+  { to: '/privacy', key: 'nav.privacy' },
+  { to: '/terms', key: 'nav.terms' },
+  { to: '/refunds', key: 'nav.refunds' },
+  { to: '/contact', key: 'nav.contact' },
+];
+
+/** Pages that end with the footer: the about, help and legal pages. */
+const FOOTER_PAGES = ['/about', '/responsible', '/privacy', '/terms', '/refunds', '/contact', '/policies', '/donate', '/delete-account'];
 
 export default function Footer() {
   const { t } = useTranslation();
+  const { pathname } = useLocation();
+  // The /7 app screens have no footer; it belongs to the about, help and legal pages only.
+  if (!FOOTER_PAGES.includes(pathname)) return null;
   return (
-    <footer className="mt-16 md:mt-24 border-t border-[var(--line)] bg-white pb-20 lg:pb-0" data-testid="site-footer">
-      {/* Every column heading was an <h4> under a page <h1>, so the outline read
-          H1 → H4 → H4 → H4 with H2 and H3 skipped entirely (QA 5.2). They are the
-          top-level sections of the footer, so h2 is the honest level; the visual
-          size is set by the class and is unchanged. */}
-      <div className="mx-auto max-w-7xl px-4 md:px-8 py-10 md:py-14 grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-10">
-        <div className="col-span-2 md:col-span-1">
-          <div className="flex items-center gap-2 mb-3">
-            <Logo className="w-9 h-9" />
-            <div>
-              <div className="font-display font-extrabold text-lg text-ink">{t('brand')}</div>
-              <div className="text-[10px] font-semibold tracking-wide text-ink-soft">By studio 1947</div>
-            </div>
-          </div>
-          <p className="text-sm text-ink-soft leading-relaxed">{t('brand_tagline')}</p>
-          <p className="mt-4 text-xs text-ink-soft flex items-center gap-1"><Heart size={12} className="text-flag" /> {t('footer.made')}</p>
+    <footer className="ag-foot" data-testid="site-footer">
+      <div className="ag-wrap flex flex-col gap-5">
+        <div className="flex items-center gap-3">
+          <Wordmark className="h-6 w-auto text-[var(--ink-strong)]" still />
+          <span className="ag-small">{t('ui.footer.by_studio', { name: 'studio 1947' })}</span>
         </div>
-        <div>
-          <h2 className="font-display font-bold text-sm mb-3 text-ink">{t('nav.discover')}</h2>
-          <ul className="space-y-2 text-sm text-ink-soft">
-            <li><Link to="/spots" className="hover:text-pine transition-colors">{t('nav.spots')}</Link></li>
-            <li><Link to="/homestays" className="hover:text-pine transition-colors">{t('nav.homestays')}</Link></li>
-            <li><Link to="/drivers" className="hover:text-pine transition-colors">{t('nav.drivers')}</Link></li>
-            <li><Link to="/cafes" className="hover:text-pine transition-colors">{t('nav.cafes')}</Link></li>
+        <div className="ag-row">
+          <ButtonA size="sm" variant="primary" href="tel:+919093277919" data-testid="footer-phone" icon={<Phone aria-hidden="true" />}
+            aria-label={t('ui.footer.call_us', { phone: '+91 90932 77919' })}>{t('ui.footer.call')}</ButtonA>
+          <ButtonA size="sm" href="mailto:aanganerp@gmail.com" icon={<Mail aria-hidden="true" />}
+            aria-label={t('ui.footer.email_us', { email: 'aanganerp@gmail.com' })}>{t('ui.footer.email')}</ButtonA>
+          <a href="https://www.instagram.com/aanganerp?dlrf=MWRnZ2tneHBqM2JiaQ%3D%3D" target="_blank" rel="noreferrer"
+            aria-label={t('ui.footer.follow_instagram')} className="ag-iconbtn"><InstagramLogo aria-hidden="true" /></a>
+          <a href="https://www.facebook.com/profile.php?id=61594349938326" target="_blank" rel="noreferrer"
+            aria-label={t('ui.footer.follow_facebook')} className="ag-iconbtn"><FacebookLogo aria-hidden="true" /></a>
+        </div>
+        <nav aria-label={t('footer.links')}>
+          <ul className="flex flex-wrap gap-x-5 gap-y-1">
+            {LINKS.map(({ to, key }) => (
+              <li key={to}><Link to={to} className="ag-small inline-flex items-center min-h-11 hover:text-[var(--r)]">{t(key)}</Link></li>
+            ))}
           </ul>
-        </div>
-        <div>
-          <h2 className="font-display font-bold text-sm mb-3 text-ink">{t('footer.darjeeling')}</h2>
-          <ul className="space-y-2 text-sm text-ink-soft">
-            <li><Link to="/events" className="hover:text-pine transition-colors">{t('nav.events')}</Link></li>
-            <li><Link to="/biodiversity" className="hover:text-pine transition-colors">{t('nav.biodiversity')}</Link></li>
-            <li><Link to="/responsible" className="hover:text-pine transition-colors">{t('nav.responsible')}</Link></li>
-            <li><Link to="/about" className="hover:text-pine transition-colors">{t('nav.about')}</Link></li>
-            <li><Link to="/provider/onboard" className="hover:text-pine transition-colors">{t('nav.provider')}</Link></li>
-          </ul>
-        </div>
-        <div>
-          <h2 className="font-display font-bold text-sm mb-3 text-ink">{t('footer.legal')}</h2>
-          <ul className="space-y-2 text-sm text-ink-soft">
-            <li><Link to="/privacy" className="hover:text-pine transition-colors">{t('nav.privacy')}</Link></li>
-            <li><Link to="/terms" className="hover:text-pine transition-colors">{t('nav.terms')}</Link></li>
-            <li><Link to="/refunds" className="hover:text-pine transition-colors">{t('nav.refunds')}</Link></li>
-            <li><Link to="/contact" className="hover:text-pine transition-colors">{t('nav.contact')}</Link></li>
-            <li><Link to="/delete-account" className="hover:text-pine transition-colors">{t('nav.delete_account')}</Link></li>
-            <li className="flex items-center gap-1 mt-2 text-ink/80 font-medium"><Mail size={12} className="text-pine flex-shrink-0" /> 1darjeelingapp@gmail.com</li>
-          </ul>
-        </div>
+        </nav>
+        <p className="ag-small">© 2026 {t('brand')}. {t('footer.rights')}.</p>
       </div>
-      <div className="border-t border-[var(--line)] py-5 text-center text-xs text-ink-soft">© 2026 {t('brand')}. {t('footer.rights')}.</div>
     </footer>
   );
 }

@@ -1,11 +1,11 @@
 ---
 name: frontend-design
-description: Anti-slop frontend design for web UI — landing pages, portfolios, marketing/product sites, and redesigns. Reads the brief, infers the right direction, and ships interfaces that don't look templated. Real design systems when applicable, audit-first on redesigns, strict pre-flight check. NOT for mobile apps.
-when_to_use: "When designing or building web UI — components, layouts, color, typography, landing pages, or redesigns. NOT for mobile apps (use mobile-design)."
+description: Anti-slop frontend design for web UI  landing pages, portfolios, marketing/product sites, and redesigns. Reads the brief, infers the right direction, and ships interfaces that don't look templated. Real design systems when applicable, audit-first on redesigns, strict pre-flight check. NOT for mobile apps.
+when_to_use: "When designing or building web UI  components, layouts, color, typography, landing pages, or redesigns. NOT for mobile apps (use mobile-design)."
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash
 ---
 
-> **Style variants & tools** — read the matching file only when the brief calls for it:
+> **Style variants & tools**  read the matching file only when the brief calls for it:
 >
 > | File | When to read |
 > |------|--------------|
@@ -18,7 +18,7 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash
 > _Design rules below adapted from [taste-skill](https://github.com/Leonxlnx/taste-skill) by Leonxlnx (MIT). Mobile UI lives in the separate `mobile-design` skill._
 
 
-# Frontend Design — Anti-Slop Web UI
+# Frontend Design  Anti-Slop Web UI
 
 > Landing pages, portfolios, and redesigns. Not dashboards, not data tables, not multi-step product UI.
 > Every rule below is **contextual**. None of it fires automatically. First read the brief, then pull only what fits.
@@ -190,7 +190,7 @@ LLMs default to clichés. Override these defaults proactively. Each rule has a c
   * **Serif is only acceptable when ONE of these is explicitly true:**
     - The brand brief literally names a serif font, OR
     - The aesthetic family is genuinely editorial / luxury / publication / manuscript / heritage / vintage AND you can articulate why this specific serif fits this specific brand
-  * For everything else (creative agency, design studio, modern brand, premium consumer, portfolio, lifestyle), **default sans-serif display** (Geist Display, ABC Diatype, Söhne Breit, Cabinet Grotesk Display, Migra Sans, GT Walsheim, Inter Display, PP Neue Montreal). Sans display fonts are not "boring" — they are the default for the same reason black is the default in fashion.
+  * For everything else (creative agency, design studio, modern brand, premium consumer, portfolio, lifestyle), **default sans-serif display** (Geist Display, ABC Diatype, Söhne Breit, Cabinet Grotesk Display, Migra Sans, GT Walsheim, Inter Display, PP Neue Montreal). Sans display fonts are not "boring"  they are the default for the same reason black is the default in fashion.
   * **EMPHASIS RULE (related):** When you want to emphasize a word within a headline (the kinetic "and `spatial` design" type move), use **italic or bold of the SAME font**. Do NOT inject a random serif word into a sans headline (or vice versa) just to add visual interest. Mixed-family emphasis is amateur. Italic/bold emphasis in the same family is the right move.
   * **Specifically BANNED as defaults:** `Fraunces` and `Instrument_Serif` (the two LLM-favorite display serifs).
   * **If a serif is justified** (rare, per the above), rotate from this pool, do NOT reuse the same serif across consecutive projects: PP Editorial New, GT Sectra Display, Cardinal Grotesque, Reckless Neue, Tiempos Headline, Recoleta, Cormorant Garamond, Playfair Display, EB Garamond, IvyPresto, Migra, Editorial Old, Saol Display, Söhne Breit Kursiv, Domaine Display, Canela, Schnyder, Tobias, NB Architekt, ITC Galliard.
@@ -661,7 +661,7 @@ These patterns came out of real LLM-generated landing-page tests. They are the s
 * **NO decorative colored status dots on every list/nav/badge.** A colored dot before "ONE Q4 SLOT OPEN" or before every nav link, or every task row - banned by default. Acceptable only when the dot conveys actual semantic state (a server status, an availability flag) and is used sparingly.
 
 **Em-dashes & typography flourishes**
-* **NO em-dash (`—`) as a design element OR anywhere else.** See Section 9.G below for the complete, non-negotiable ban. The em-dash character is forbidden in headlines, eyebrows, pills, body copy, quotes, attribution, captions, button text, and alt text. Use the regular hyphen (`-`).
+* **NO em-dash (``) as a design element OR anywhere else.** See Section 9.G below for the complete, non-negotiable ban. The em-dash character is forbidden in headlines, eyebrows, pills, body copy, quotes, attribution, captions, button text, and alt text. Use the regular hyphen (`-`).
 * **NO `<br>`-broken-and-italicized headlines** as a default "design move." "for thirty\<br\>*years.*" type splits. Headlines should read naturally first, get clever only when the brief demands it.
 * **NO vertical rotated text** ("INDEX OF WORK, 2018 - 2026" rotated 90°). Agency-portfolio cliché. Use it only when the brief is explicitly agency / Awwwards / experimental AND it serves a real composition purpose.
 * **NO crosshair / hairline grid lines as decoration.** Vertical and horizontal lines drawn just to make the page "feel designed" - banned. Use them only when they organize real content.
@@ -699,7 +699,7 @@ These patterns came out of real LLM-generated landing-page tests. They are the s
 
 ### 9.G EM-DASH BAN (the single most-violated Tell)
 
-**Em-dash (`—`) is COMPLETELY banned.** It is the LLM's signature stylistic crutch and it is the #1 visual Tell in production tests. There is no "limited use" allowance, no "natural language frequency" allowance, no "in body copy is fine" allowance. None.
+**Em-dash (``) is COMPLETELY banned.** It is the LLM's signature stylistic crutch and it is the #1 visual Tell in production tests. There is no "limited use" allowance, no "natural language frequency" allowance, no "in body copy is fine" allowance. None.
 
 * **Banned in headlines.** Use a period or a comma.
 * **Banned in eyebrows / labels / pills / button text / image captions / nav items.** Replace with line breaks, columns, or hairlines.
@@ -711,7 +711,7 @@ The ONLY permitted dash characters on the page are:
 * Regular hyphen `-` (for compound words, ranges, line dividers in markup)
 * Minus sign in math (`-5°C`)
 
-If your output contains a single `—` or `–` anywhere visible to the user, the output fails the Pre-Flight Check and must be rewritten.
+If your output contains a single `` or `–` anywhere visible to the user, the output fails the Pre-Flight Check and must be rewritten.
 
 This rule is non-negotiable. The agent has historically ignored em-dash limits when phrased as "use sparingly." The phrasing here is binary: zero em-dashes.
 
@@ -851,7 +851,7 @@ Never modify without explicit user approval:
 
 The Reference Vocabulary (Section 10) names patterns. The Block Library implements them with real props, real motion specs, and real code sketches.
 
-**Status:** schema defined here. Blocks will be added iteratively. **The `blocks/` directory does not exist yet — do not try to read it. Generate blocks inline following this schema; only create files under `blocks/` if you are deliberately seeding the library.** Do not freelance new blocks without following this schema.
+**Status:** schema defined here. Blocks will be added iteratively. **The `blocks/` directory does not exist yet  do not try to read it. Generate blocks inline following this schema; only create files under `blocks/` if you are deliberately seeding the library.** Do not freelance new blocks without following this schema.
 
 ### 12.A File Location
 ```
@@ -932,7 +932,7 @@ Run this matrix before outputting code. This is the last filter.
 - [ ] **Dial values** explicit and reasoned from the brief, not silently using baseline?
 - [ ] **Design system** chosen from Section 2 if applicable, or aesthetic labeled honestly?
 - [ ] **Redesign mode** detected and audit performed (if applicable, Section 11)?
-- [ ] **ZERO em-dashes (`—`) anywhere on the page.** Headlines, eyebrows, pills, body, quotes, attribution, captions, buttons, alt text. Zero. (Section 9.G - non-negotiable.)
+- [ ] **ZERO em-dashes (``) anywhere on the page.** Headlines, eyebrows, pills, body, quotes, attribution, captions, buttons, alt text. Zero. (Section 9.G - non-negotiable.)
 - [ ] **Page Theme Lock**: ONE theme (light, dark, or auto) for the whole page. No section flips to inverted mode mid-page (Section 4.11)?
 - [ ] **Color Consistency Lock**: one accent color used identically across all sections (Section 4.2)?
 - [ ] **Shape Consistency Lock**: one corner-radius system applied consistently (Section 4.4)?

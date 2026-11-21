@@ -1,4 +1,4 @@
-# Provider KYC & Profile Completion — Design
+# Provider KYC & Profile Completion  Design
 
 > Date: 2026-07-21
 > Status: Approved for planning
@@ -8,9 +8,9 @@
 
 ## 1. Goal
 
-Providers, after onboarding + paying the ₹99 fee (unchanged), are invited to **complete their profile** — a blended meter that mixes profile richness with KYC document verification. KYC is **optional and never blocks anything**; completing it earns a **"Verified" badge** shown on the dashboard and public listings. KYC document requirements **differ per provider type** (driver / homestay / cafe / shop). Documents are **manually reviewed by an admin** in the existing `frontend-admin` app.
+Providers, after onboarding + paying the ₹99 fee (unchanged), are invited to **complete their profile**  a blended meter that mixes profile richness with KYC document verification. KYC is **optional and never blocks anything**; completing it earns a **"Verified" badge** shown on the dashboard and public listings. KYC document requirements **differ per provider type** (driver / homestay / cafe / shop). Documents are **manually reviewed by an admin** in the existing `frontend-admin` app.
 
-Tourists get **no KYC and no forced profile step** — their flow (phone+OTP login → Discover feed → book → dashboard) stays simple and unchanged.
+Tourists get **no KYC and no forced profile step**  their flow (phone+OTP login → Discover feed → book → dashboard) stays simple and unchanged.
 
 ## 2. Confirmed end-to-end flows
 
@@ -18,43 +18,43 @@ Tourists get **no KYC and no forced profile step** — their flow (phone+OTP log
 Phone + OTP login (name on first verify) → Discover feed → category → listing detail → book (₹1 platform fee) → Tourist Dashboard. No profile-completion, no KYC.
 
 ### Provider (new profile/KYC layer added; onboarding + payment unchanged)
-1. `/provider/onboard` — type-specific form (driver / homestay / cafe / shop). Provider created `pending_payment`, user role → `provider`.
+1. `/provider/onboard`  type-specific form (driver / homestay / cafe / shop). Provider created `pending_payment`, user role → `provider`.
 2. Pay ₹99 → status `active` → listing auto-created (all unchanged).
-3. **New:** Provider Dashboard leads with a **"Complete your profile" card** — the blended progress bar + a checklist of missing items (profile fields + required KYC docs for that business type).
+3. **New:** Provider Dashboard leads with a **"Complete your profile" card**  the blended progress bar + a checklist of missing items (profile fields + required KYC docs for that business type).
 4. **New:** Provider uploads KYC docs → each doc row goes `pending`. Nothing is blocked while pending or missing.
 5. **New:** When **all required KYC docs are admin-approved**, provider gains `kycStatus = 'verified'` and a **"Verified" badge** appears on the dashboard and the provider's public listing(s).
 
 ### Admin (new KYC review)
 In `frontend-admin`: a **KYC review** view listing providers with pending docs; per-document **approve / reject (+ reason)**. Admin-JWT gated, consistent with existing `/admin/*` routes.
 
-## 3. KYC document matrix (v1 — approved)
+## 3. KYC document matrix (v1  approved)
 
-Required-doc config lives in **one shared module** (a plain TS map) that backend validation, the progress-bar computation, and admin review all import — single source of truth.
+Required-doc config lives in **one shared module** (a plain TS map) that backend validation, the progress-bar computation, and admin review all import  single source of truth.
 
 | Document (`docType`) | Driver | Homestay | Cafe | Shop |
 |---|:--:|:--:|:--:|:--:|
-| `aadhaar` — owner identity | required | required | required | required |
+| `aadhaar`  owner identity | required | required | required | required |
 | `pan` | required | required | required | required |
-| `owner_photo` — selfie/photo | required | required | required | required |
-| `driving_license` | required | — | — | — |
-| `vehicle_rc` | required | — | — | — |
-| `commercial_permit` | required | — | — | — |
-| `property_proof` (deed/rent/electricity bill) | — | required | — | — |
-| `tourism_registration` (WB Tourism) | — | required | — | — |
-| `fssai_license` | — | — | required | optional |
-| `trade_license` (Shop & Establishment) | — | — | required | required |
-| `gst_certificate` | — | optional | optional | optional |
+| `owner_photo`  selfie/photo | required | required | required | required |
+| `driving_license` | required |  |  |  |
+| `vehicle_rc` | required |  |  |  |
+| `commercial_permit` | required |  |  |  |
+| `property_proof` (deed/rent/electricity bill) |  | required |  |  |
+| `tourism_registration` (WB Tourism) |  | required |  |  |
+| `fssai_license` |  |  | required | optional |
+| `trade_license` (Shop & Establishment) |  |  | required | required |
+| `gst_certificate` |  | optional | optional | optional |
 
 Required-doc counts: **Driver 6, Homestay 5 (+1 optional), Cafe 5 (+1 optional), Shop 4 (+2 optional).** Optional docs do **not** gate 100% or the Verified badge; they contribute a small bonus and can show an extra chip.
 
-Business types `event`, `spot`, `biodiversity` (admin-seeded, not self-onboarded) have **no** KYC requirements — treated as empty config.
+Business types `event`, `spot`, `biodiversity` (admin-seeded, not self-onboarded) have **no** KYC requirements  treated as empty config.
 
 ## 4. Blended progress bar
 
 Computed **server-side**, returned with the provider profile so the client never re-derives the rule.
 
-- **Profile richness (~40%)** — presence checks: `avatar`/owner photo, `description` ≥ 60 chars, ≥ 1 gallery image, `priceFrom` > 0, location + map pin (`latitude`/`longitude`) set.
-- **KYC (~60%)** — each **required** doc that is `approved` counts equally toward the KYC portion. A doc that is uploaded-but-`pending` shows as "in review" in the checklist but does **not** fill the bar until approved. `rejected` shows with the reason and an action to re-upload.
+- **Profile richness (~40%)**  presence checks: `avatar`/owner photo, `description` ≥ 60 chars, ≥ 1 gallery image, `priceFrom` > 0, location + map pin (`latitude`/`longitude`) set.
+- **KYC (~60%)**  each **required** doc that is `approved` counts equally toward the KYC portion. A doc that is uploaded-but-`pending` shows as "in review" in the checklist but does **not** fill the bar until approved. `rejected` shows with the reason and an action to re-upload.
 - Optional docs: small bonus, capped so the bar can reach 100% on required items alone.
 - The endpoint returns both the numeric `completionPercent` and a structured `checklist` (each item: `key`, `label`, `state` ∈ `missing | in_review | done | rejected`, `kind` ∈ `profile | kyc`, `required`), so the UI renders the checklist without embedding the rules.
 
@@ -77,9 +77,9 @@ New table **`kyc_documents`**:
 | `reviewedAt` | text nullable | ISO |
 | `reviewedBy` | text nullable | admin user id |
 
-Uniqueness: **one active row per (`providerId`, `docType`)** — re-upload replaces the file/row and resets `status` to `pending`.
+Uniqueness: **one active row per (`providerId`, `docType`)**  re-upload replaces the file/row and resets `status` to `pending`.
 
-Add to **`providers`**: `kycStatus` text — `none` \| `partial` \| `submitted` \| `verified` (denormalized rollup, default `none`), recomputed whenever a doc is uploaded/deleted/reviewed. `verified` = every **required** doc for the business type is `approved`.
+Add to **`providers`**: `kycStatus` text  `none` \| `partial` \| `submitted` \| `verified` (denormalized rollup, default `none`), recomputed whenever a doc is uploaded/deleted/reviewed. `verified` = every **required** doc for the business type is `approved`.
 
 A Drizzle migration adds the table + column. `README`/`PRD` updated to reflect the new table and flow after implementation.
 
@@ -112,13 +112,13 @@ Cross-cutting rules:
 - The existing loose `POST /listings/upload` is left as-is for images but is **not** used for KYC.
 
 ### Upload-pipeline hardening (applies to the new KYC endpoint; noted for images)
-The current `/listings/upload` has no role/ownership check, no mime allow-list, and no size cap, and writes to a public bucket. The KYC endpoint **must not** inherit those looseness properties — it enforces role, ownership, mime allow-list, size cap, and private storage as tabled above. (Tightening `/listings/upload` itself is out of scope here but flagged.)
+The current `/listings/upload` has no role/ownership check, no mime allow-list, and no size cap, and writes to a public bucket. The KYC endpoint **must not** inherit those looseness properties  it enforces role, ownership, mime allow-list, size cap, and private storage as tabled above. (Tightening `/listings/upload` itself is out of scope here but flagged.)
 
 ## 8. Frontend
 
 **Public app (`frontend/`):**
-- **`ProfileCompletionBar`** — reusable bar + percentage.
-- **`KycSection`** — rendered on the Provider Dashboard "Business Profile" tab. Reads the per-type checklist from the shared config/endpoint; each row is an upload control (reusing `AvatarUploader`/`GalleryUploader` interaction patterns, but posting to the KYC endpoint and accepting PDF) with a status pill (`missing` / `in review` / `verified` / `rejected + reason → re-upload`).
+- **`ProfileCompletionBar`**  reusable bar + percentage.
+- **`KycSection`**  rendered on the Provider Dashboard "Business Profile" tab. Reads the per-type checklist from the shared config/endpoint; each row is an upload control (reusing `AvatarUploader`/`GalleryUploader` interaction patterns, but posting to the KYC endpoint and accepting PDF) with a status pill (`missing` / `in review` / `verified` / `rejected + reason → re-upload`).
 - **"Complete your profile" card** at the top of the dashboard surfacing the bar + count of remaining items, linking to `KycSection`.
 - **"Verified" badge** component surfaced on `ProviderDashboard`, `ListingCard`, and `ListingDetail` when `kycStatus === 'verified'`.
 - i18n: new strings added to `en/bn/hi/ne` locale files.
@@ -139,8 +139,8 @@ Backend Vitest + Supertest (matching the existing 45-test suite, isolated Postgr
 
 ## 10. Explicitly out of scope (v1)
 
-- Third-party / automated KYC (DigiLocker, Signzy, Aadhaar API) — manual admin review only.
-- KYC gating listings, bookings, or payouts — KYC is optional/badge-only.
+- Third-party / automated KYC (DigiLocker, Signzy, Aadhaar API)  manual admin review only.
+- KYC gating listings, bookings, or payouts  KYC is optional/badge-only.
 - Tourist KYC or forced tourist profile completion.
 - Retrofitting `/listings/upload` hardening (flagged, not done here).
 - Document expiry / re-verification cycles.
@@ -148,4 +148,4 @@ Backend Vitest + Supertest (matching the existing 45-test suite, isolated Postgr
 ## 11. Open items to finalize during planning
 
 - Exact numeric weights for the 40/60 blend and the per-item profile checks (documented next to the shared config).
-- Whether the "Verified" badge also requires the optional docs for a "fully verified plus" tier — v1: **no**, required-only.
+- Whether the "Verified" badge also requires the optional docs for a "fully verified plus" tier  v1: **no**, required-only.

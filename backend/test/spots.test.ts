@@ -9,7 +9,7 @@ vi.mock('../src/lib/s3', () => ({
     const { Readable } = await import('stream');
     return { stream: Readable.from([Buffer.from('test-file-bytes')]), contentType: 'image/png' };
   }),
-  deletePrivate: vi.fn(async () => {}),
+  deletePrivate: vi.fn(async () => { }),
 }));
 
 import { app } from '../src/app';
@@ -39,7 +39,7 @@ async function createSpot(token: string, overrides: Record<string, any> = {}) {
   return res.body.item;
 }
 
-describe('tourist spots — only an admin can write them', () => {
+describe('tourist spots  only an admin can write them', () => {
   it('rejects an active provider creating a spot through the listings route', async () => {
     const { token } = await onboardActiveProvider({ name: 'Spot Squatting Provider' });
     const res = await request(app)
@@ -82,7 +82,7 @@ describe('tourist spots — only an admin can write them', () => {
     const created = await request(app)
       .post('/api/admin/spots')
       .set('Authorization', `Bearer ${provider}`)
-      .send({ title: uniqueTitle('Nope'), description: 'x', location: 'y' });
+      .send({ title: uniqueTitle('Nope'), description: 'x', location: 'Darjeeling' });
     expect(created.status).toBe(403);
 
     const patched = await request(app)
@@ -125,7 +125,7 @@ describe('tourist spots — only an admin can write them', () => {
   });
 });
 
-describe('tourist spots — admin CRUD', () => {
+describe('tourist spots  admin CRUD', () => {
   it('creates a spot with its editorial fields and returns it in the admin list', async () => {
     const admin = await loginAdmin();
     const title = uniqueTitle('Tiger Hill');
@@ -174,14 +174,14 @@ describe('tourist spots — admin CRUD', () => {
     const missing = await request(app)
       .post('/api/admin/spots')
       .set('Authorization', `Bearer ${admin}`)
-      .send({ description: 'x', location: 'y' });
+      .send({ description: 'x', location: 'Darjeeling' });
     expect(missing.status).toBe(400);
 
     const spot = await createSpot(admin);
     const duplicate = await request(app)
       .post('/api/admin/spots')
       .set('Authorization', `Bearer ${admin}`)
-      .send({ title: spot.title, description: 'x', location: 'y' });
+      .send({ title: spot.title, description: 'x', location: 'Darjeeling' });
     expect(duplicate.status).toBe(409);
   });
 
@@ -193,6 +193,7 @@ describe('tourist spots — admin CRUD', () => {
       { extras: { sort_order: -3 } },
       { extras: { published: 'maybe' } },
       { extras: { best_time: 'x'.repeat(500) } },
+      { extras: { photo_source: 'javascript:alert(1)' } },
       { image: 'not-a-url' },
       { price: -10 },
       { latitude: 200 },
@@ -201,7 +202,7 @@ describe('tourist spots — admin CRUD', () => {
       const res = await request(app)
         .post('/api/admin/spots')
         .set('Authorization', `Bearer ${admin}`)
-        .send({ title: uniqueTitle('Invalid'), description: 'x', location: 'y', ...payload });
+        .send({ title: uniqueTitle('Invalid'), description: 'x', location: 'Darjeeling', ...payload });
       expect(res.status, `payload ${JSON.stringify(payload)} should be rejected`).toBe(400);
     }
   });
@@ -224,6 +225,20 @@ describe('tourist spots — admin CRUD', () => {
     expect(patched.body.item.extras.best_time).toBe('Spring');
   });
 
+  it('keeps a photo credit and its source through an edit that does not mention them', async () => {
+    const admin = await loginAdmin();
+    const spot = await createSpot(admin, {
+      extras: { photo_credit: 'Jane Doe · CC BY-SA 4.0 · Wikimedia Commons', photo_source: 'https://commons.wikimedia.org/wiki/File:X.jpg' },
+    });
+    const patched = await request(app)
+      .patch(`/api/admin/spots/${spot.id}`)
+      .set('Authorization', `Bearer ${admin}`)
+      .send({ extras: { best_time: 'Winter' } });
+    expect(patched.status).toBe(200);
+    expect(patched.body.item.extras.photo_credit).toBe('Jane Doe · CC BY-SA 4.0 · Wikimedia Commons');
+    expect(patched.body.item.extras.photo_source).toBe('https://commons.wikimedia.org/wiki/File:X.jpg');
+  });
+
   it('clears a text field when it is sent as an empty string', async () => {
     const admin = await loginAdmin();
     const spot = await createSpot(admin, { extras: { entry_fee: '₹50' } });
@@ -241,18 +256,18 @@ describe('tourist spots — admin CRUD', () => {
     const homestay = await request(app)
       .post('/api/listings')
       .set('Authorization', `Bearer ${token}`)
-      .send({ title: uniqueTitle('Not A Spot'), type: 'homestay', description: 'x', location: 'y' });
+      .send({ title: uniqueTitle('Not A Spot'), type: 'homestay', description: 'x', location: 'Darjeeling' });
 
     const unknown = await request(app)
       .patch('/api/admin/spots/does-not-exist')
       .set('Authorization', `Bearer ${admin}`)
-      .send({ title: 'x' });
+      .send({ title: 'Edited Title' });
     expect(unknown.status).toBe(404);
 
     const wrongType = await request(app)
       .patch(`/api/admin/spots/${homestay.body.item.id}`)
       .set('Authorization', `Bearer ${admin}`)
-      .send({ title: 'x' });
+      .send({ title: 'Edited Title' });
     expect(wrongType.status).toBe(404);
   });
 
@@ -283,7 +298,7 @@ describe('tourist spots — admin CRUD', () => {
   });
 });
 
-describe('tourist spots — publishing controls public visibility', () => {
+describe('tourist spots  publishing controls public visibility', () => {
   it('hides a draft spot from the public list and detail routes, and shows it again once published', async () => {
     const admin = await loginAdmin();
     const spot = await createSpot(admin, { extras: { published: false } });
@@ -295,7 +310,7 @@ describe('tourist spots — publishing controls public visibility', () => {
     const detail = await request(app).get(`/api/listings/${spot.id}`);
     expect(detail.status).toBe(404);
 
-    // The admin can still see it — that is the whole point of a draft.
+    // The admin can still see it  that is the whole point of a draft.
     const adminList = await request(app).get('/api/admin/spots').set('Authorization', `Bearer ${admin}`);
     expect(adminList.body.items.some((s: any) => s.id === spot.id)).toBe(true);
 
@@ -328,7 +343,7 @@ describe('tourist spots — publishing controls public visibility', () => {
     await request(app)
       .post('/api/listings')
       .set('Authorization', `Bearer ${token}`)
-      .send({ title, type: 'homestay', description: 'x', location: 'y', extras: { published: false } });
+      .send({ title, type: 'homestay', description: 'x', location: 'Darjeeling', extras: { published: false } });
 
     const res = await request(app).get('/api/listings').query({ q: title });
     expect(res.body.items.some((i: any) => i.title === title)).toBe(true);
@@ -348,7 +363,7 @@ describe('tourist spots — publishing controls public visibility', () => {
   });
 
   // Regression: a spot written before lib/spots.ts existed (the seeder inserts `extras: {}`)
-  // has no `featured` key, so `extras->>'featured' = 'true'` evaluates to NULL — and Postgres
+  // has no `featured` key, so `extras->>'featured' = 'true'` evaluates to NULL  and Postgres
   // sorts NULLS FIRST under DESC. That put every legacy spot ahead of the genuinely featured
   // ones on the live /spots feed. The test above missed it because all three of its rows carry
   // the key explicitly, so their order relative to each other was still correct.
@@ -361,7 +376,7 @@ describe('tourist spots — publishing controls public visibility', () => {
         id,
         title: uniqueTitle('Legacy Seeded Spot'),
         type: 'spot',
-        description: 'Inserted the way the seeder does it — bare extras.',
+        description: 'Inserted the way the seeder does it  bare extras.',
         location: 'Darjeeling',
         price: 0,
         image: '',

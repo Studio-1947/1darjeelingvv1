@@ -1,6 +1,6 @@
 # AG Kit Architecture
 
-> Comprehensive AI Agent Capability Expansion Toolkit — 2026.7.12
+> Comprehensive AI Agent Capability Expansion Toolkit  2026.7.12
 
 ---
 
@@ -69,9 +69,9 @@ Modular knowledge domains that agents can load on-demand based on task context. 
 
 | Skill                   | Description                                                           |
 | ----------------------- | --------------------------------------------------------------------- |
-| `design-spec`           | DESIGN.md token format — required design source-of-truth before UI    |
+| `design-spec`           | DESIGN.md token format  required design source-of-truth before UI    |
 | `nextjs-react-expert`   | React & Next.js performance optimization (Vercel - 58 rules)          |
-| `frontend-architecture` | Frontend code organization — layers, state tiers, services (React/Vue) |
+| `frontend-architecture` | Frontend code organization  layers, state tiers, services (React/Vue) |
 | `web-design-guidelines` | Web UI audit - 100+ rules for accessibility, UX, performance (Vercel) |
 | `tailwind-patterns`     | Tailwind CSS v4 utilities                                             |
 | `frontend-design`       | UI/UX patterns, design systems                                        |

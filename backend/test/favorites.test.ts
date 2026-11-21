@@ -30,7 +30,7 @@ describe('favorites', () => {
     expect(ids.body.ids).toEqual([listing.id]);
   });
 
-  it('is idempotent — saving the same listing twice keeps a single row', async () => {
+  it('is idempotent  saving the same listing twice keeps a single row', async () => {
     const { token } = await registerUser({ name: 'Double Saver' });
     const listing = await createListing({ title: 'Twice Saved' });
 

@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
 
 import { db, schema } from '../db';
-import { log, REFERRAL_REWARD_DAYS } from '../config';
+import { LIFETIME_SUPPORT_EXPIRY, log, REFERRAL_REWARD_DAYS } from '../config';
 
 /**
  * Invite codes and what redeeming one is worth.
@@ -26,27 +26,41 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 /**
  * Unambiguous when read aloud or off a screen: no O/0, I/1, S/5, or Z/2, which is the whole
  * point of a code a traveller reads to a friend across a table. Z was the one pair that got
- * missed — its own test caught it, but only on the ~18% of runs that happened to draw a Z.
- * 29^6 is ~6e8 — sparse enough that the retry loop below effectively never runs twice at this
+ * missed  its own test caught it, but only on the ~18% of runs that happened to draw a Z.
+ * 29^6 is ~6e8  sparse enough that the retry loop below effectively never runs twice at this
  * app's scale.
  */
 const ALPHABET = 'ABCDEFGHJKLMNPQRTUVWXY2346789';
 const CODE_LENGTH = 6;
 
+/**
+ * Every code reads `ANG26-XXXXXX`, so a code is recognisably aangan's when it turns up in a
+ * WhatsApp thread. Codes issued before the prefix were bare six-character strings; migration 0016
+ * prefixed them in place, and normaliseCode prefixes one typed bare, so a code shared before the
+ * change still redeems.
+ */
+export const CODE_PREFIX = 'ANG26';
+
 function randomCode(): string {
   const bytes = crypto.randomBytes(CODE_LENGTH);
   let out = '';
   for (let i = 0; i < CODE_LENGTH; i += 1) out += ALPHABET[bytes[i] % ALPHABET.length];
-  return out;
+  return `${CODE_PREFIX}-${out}`;
 }
 
 /**
  * Normalises a code as typed. People send these over WhatsApp, so they arrive with stray
- * spaces, in lower case, and sometimes with the old `NAME-1D` shape pasted around them.
+ * spaces, in lower case, without the hyphen, or as the bare six characters of a code shared
+ * before the prefix existed. All of those come back in the stored `ANG26-XXXXXX` form. Anything
+ * else is returned as cleaned, and will simply not match.
  */
 export function normaliseCode(raw: unknown): string | null {
   if (typeof raw !== 'string') return null;
   const cleaned = raw.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (cleaned.length === CODE_PREFIX.length + CODE_LENGTH && cleaned.startsWith(CODE_PREFIX)) {
+    return `${CODE_PREFIX}-${cleaned.slice(CODE_PREFIX.length)}`;
+  }
+  if (cleaned.length === CODE_LENGTH) return `${CODE_PREFIX}-${cleaned}`;
   return cleaned.length > 0 ? cleaned : null;
 }
 
@@ -74,7 +88,7 @@ export async function generateReferralCode(): Promise<string> {
 /**
  * Gives a user a code if they do not have one, and returns it.
  *
- * Idempotent, and safe to call on every read of the referral screen — which is how accounts
+ * Idempotent, and safe to call on every read of the referral screen  which is how accounts
  * created before this feature existed get one, without a backfill migration that would have to
  * generate a million unique strings in a single statement.
  */
@@ -99,17 +113,19 @@ export async function assignReferralCode(userId: string): Promise<string> {
   throw new Error('[referrals] could not assign a referral code');
 }
 
-/** Monotonic, exactly like computeSupportExpiry — a reward may only push the expiry outwards. */
-function extendedExpiry(existing: string | null | undefined, days: number, now: Date): string {
+/** Monotonic, like computeHostPlanExpiry  a reward may only push the expiry outwards. */
+export function extendedExpiry(existing: string | null | undefined, days: number, now: Date): string {
   const nowMs = now.getTime();
   const existingMs = existing ? Date.parse(existing) : NaN;
+  // An old lifetime pass has nothing left to extend (see LIFETIME_SUPPORT_EXPIRY in config.ts).
+  if (!Number.isNaN(existingMs) && existingMs >= Date.parse(LIFETIME_SUPPORT_EXPIRY)) return existing!;
   const base = Number.isNaN(existingMs) || existingMs < nowMs ? nowMs : existingMs;
   return new Date(base + days * DAY_MS).toISOString();
 }
 
 export interface RedemptionResult {
   ok: boolean;
-  /** Why it was declined. Server-side only — the route never blocks a signup on this. */
+  /** Why it was declined. Server-side only  the route never blocks a signup on this. */
   reason?: 'unknown_code' | 'self_referral' | 'already_referred';
   rewardDays?: number;
 }
@@ -119,7 +135,7 @@ export interface RedemptionResult {
  *
  * **Never throws, and never blocks registration.** This runs inside the signup path, after the
  * account exists. A mistyped code, a race, or a database hiccup must cost the user their reward
- * at worst — not their account. Every decline is returned as a reason and logged, so a support
+ * at worst  not their account. Every decline is returned as a reason and logged, so a support
  * question has an answer.
  */
 export async function redeemReferralCode(
@@ -178,7 +194,24 @@ export async function redeemReferralCode(
       .set({ supportExpiresAt: extendedExpiry(referee.supportExpiresAt, days, now) })
       .where(eq(schema.users.id, refereeId));
 
-    log.info(`[referrals] ${code} redeemed — both sides extended by ${days} days`);
+    // Calculate the new total referrals for the referrer to determine the voucher discount.
+    const total = await countReferrals(referrer.id);
+    let discount = 10;
+    if (total >= 50) discount = 30;
+    else if (total >= 30) discount = 25;
+    else if (total >= 15) discount = 20;
+    else if (total >= 5) discount = 15;
+
+    await db.insert(schema.vouchers).values({
+      id: uuidv4(),
+      userId: referrer.id,
+      discountPercentage: discount,
+      tier: total,
+      status: 'available',
+      createdAt: now.toISOString(),
+    });
+
+    log.info(`[referrals] ${code} redeemed  both sides extended by ${days} days, referrer got ${discount}% voucher`);
     return { ok: true, rewardDays: days };
   } catch (err) {
     // Includes the unique-violation race above, which is a correct outcome, not a fault.

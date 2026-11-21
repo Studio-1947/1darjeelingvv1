@@ -1,19 +1,28 @@
 import { Router, Request, Response } from 'express';
+import { missingMandatory } from '../lib/hostProfile';
 import { v4 as uuidv4 } from 'uuid';
 import path from 'path';
 import { db, schema } from '../db';
 import { eq, and } from 'drizzle-orm';
 import { authenticateToken } from '../middleware/auth';
-import { isAllowedDocType } from '../lib/kycRequirements';
+import { isAllowedDocType, isVideoDocType } from '../lib/kycRequirements';
+import { kycTypesFor } from '../lib/kycTypes';
 import { computeCompletion } from '../lib/profileCompletion';
 import { uploadPrivate, getPrivateObject, deletePrivate } from '../lib/s3';
-import { log } from '../config';
+import { log, VERIFICATION_SUPPORT_PHONE } from '../config';
 import { routeParam } from '../lib/routeParam';
+import { hostUserIds, myActiveProvider } from '../lib/hostAccess';
+import { notifyHostVerification } from '../lib/notifications';
 
 const router = Router();
 
 const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'application/pdf']);
 const MAX_BYTES = 5 * 1024 * 1024;
+// Verification videos are sent as the raw request body, not base64 in JSON: a phone clip would
+// be a third bigger encoded and have to be held in memory twice. 25 MB sits under the 30 MB
+// client_max_body_size on the production nginx, which would otherwise answer with a bare 413.
+export const VIDEO_MIME = new Set(['video/mp4', 'video/quicktime', 'video/webm']);
+export const MAX_VIDEO_BYTES = 25 * 1024 * 1024;
 // The 8mb JSON body limit for this path is applied in app.ts (mounted before the global
 // express.json(), which would otherwise consume the stream at its 100kb default).
 
@@ -29,13 +38,20 @@ const MAGIC_BYTES: Record<string, number[]> = {
 };
 
 // ISO 32000 (the PDF spec) permits the "%PDF-" header to appear anywhere within the first 1024
-// bytes of the file, not just at offset 0 — some scanners/tools prepend a UTF-8 BOM or leading
+// bytes of the file, not just at offset 0  some scanners/tools prepend a UTF-8 BOM or leading
 // whitespace before it, and such files are still legitimate PDFs. JPEG and PNG signatures, by
 // contrast, are always exactly byte 0, so those keep an exact offset-0 match.
 const PDF_SIGNATURE_SEARCH_WINDOW = 1024;
 
 /** Whether `buffer`'s leading bytes match the standard signature for `mime`. */
-function matchesDeclaredType(buffer: Buffer, mime: string): boolean {
+export function matchesDeclaredType(buffer: Buffer, mime: string): boolean {
+  // MP4 and QuickTime files open with a box whose type, at offset 4, is "ftyp". WebM is EBML.
+  if (mime === 'video/mp4' || mime === 'video/quicktime') {
+    return buffer.length >= 12 && buffer.subarray(4, 8).toString('latin1') === 'ftyp';
+  }
+  if (mime === 'video/webm') {
+    return buffer.length >= 4 && buffer[0] === 0x1a && buffer[1] === 0x45 && buffer[2] === 0xdf && buffer[3] === 0xa3;
+  }
   const signature = MAGIC_BYTES[mime];
   if (!signature) return false;
   if (mime === 'application/pdf') {
@@ -46,10 +62,8 @@ function matchesDeclaredType(buffer: Buffer, mime: string): boolean {
   return signature.every((byte, i) => buffer[i] === byte);
 }
 
-async function ownActiveProvider(userId: string) {
-  const rows = await db.select().from(schema.providers).where(eq(schema.providers.userId, userId));
-  return rows.find(p => p.status === 'active') || null;
-}
+// The business this person runs (as owner or co-owner), while it is active.
+const ownActiveProvider = myActiveProvider;
 
 function docOut(d: typeof schema.kycDocuments.$inferSelect) {
   return {
@@ -62,6 +76,51 @@ function docOut(d: typeof schema.kycDocuments.$inferSelect) {
   };
 }
 
+/** A provider-facing review state. It is derived from their own documents only, never from
+ * reviewer identity or internal queue detail. */
+function verificationOut(
+  provider: typeof schema.providers.$inferSelect,
+  docs: Array<typeof schema.kycDocuments.$inferSelect>,
+  checklist: ReturnType<typeof computeCompletion>['checklist'],
+  kycStatus: string
+) {
+  const requiredTypes = checklist.filter(item => item.kind === 'kyc' && item.required).map(item => item.key);
+  const requiredDocs = docs.filter(doc => requiredTypes.includes(doc.docType));
+  const submittedAt = requiredDocs.length ? requiredDocs.map(doc => doc.uploadedAt).sort().at(-1) ?? null : null;
+  const rejected = requiredDocs.find(doc => doc.status === 'rejected');
+  // Any rejected document on the list asks the host to fix it; only a required one holds up going
+  // live. A document of a type no longer asked for (stored before the list was shortened) cannot be
+  // uploaded again, so it never asks for a fix.
+  const asked = (docType: string) => checklist.some(item => item.kind === 'kyc' && item.key === docType);
+  const toFix = rejected ?? docs.find(doc => doc.status === 'rejected' && asked(doc.docType));
+  // "Documents sent" means every required document is in, not just the first one. A host who
+  // had sent four of five was told the team was reviewing while the fifth was still missing.
+  const uploaded = new Set(requiredDocs.map(doc => doc.docType));
+  const allSent = requiredTypes.every(type => uploaded.has(type));
+  const status = kycStatus === 'verified'
+    ? 'approved'
+    : rejected
+      ? 'changes_requested'
+      : provider.kycReviewStartedAt
+        ? 'in_review'
+        : allSent && submittedAt
+          ? 'submitted'
+          : 'not_ready';
+
+  return {
+    status,
+    submitted_at: submittedAt,
+    review_started_at: provider.kycReviewStartedAt,
+    action_required: !!toFix,
+    action_message: toFix?.rejectionReason ?? null,
+    // Which document to upload again, in the host's words (the checklist label).
+    action_document: toFix
+      ? checklist.find((item) => item.kind === 'kyc' && item.key === toFix.docType)?.label ?? toFix.docType
+      : null,
+    support_phone: VERIFICATION_SUPPORT_PHONE,
+  };
+}
+
 /** Recompute and persist providers.kycStatus from current docs. Returns the new status. */
 export async function recomputeKycStatus(providerId: string): Promise<string> {
   const [provider] = await db.select().from(schema.providers).where(eq(schema.providers.id, providerId)).limit(1);
@@ -70,6 +129,9 @@ export async function recomputeKycStatus(providerId: string): Promise<string> {
   const providerListings = await db.select().from(schema.listings).where(eq(schema.listings.providerId, providerId));
   const hasListingImage = providerListings.some(l => !!l.image || (Array.isArray(l.extras?.images) && l.extras.images.length > 0));
   const hasListingDescription = providerListings.some(l => !!l.description && l.description.trim().length >= 20);
+  const listingLocationSources = providerListings
+    .map(l => (l.extras as any)?.location_verified?.source)
+    .filter((s): s is string => typeof s === 'string');
 
   const { kycStatus } = computeCompletion(
     {
@@ -82,21 +144,34 @@ export async function recomputeKycStatus(providerId: string): Promise<string> {
       extras: provider.extras,
       hasListingImage,
       hasListingDescription,
+      listingLocationSources,
+      listingTypes: providerListings.map(l => l.type),
     },
     docs.map(d => ({ docType: d.docType, status: d.status as any }))
   );
   await db.update(schema.providers).set({ kycStatus }).where(eq(schema.providers.id, providerId));
+  // The moment a host becomes verified, whichever step got them there (an admin approving the
+  // last document, or the host's own live location capture), they and any co-owners hear it.
+  if (kycStatus === 'verified' && provider.kycStatus !== 'verified') {
+    await notifyHostVerification(providerId, { kind: 'approved' });
+  }
   return kycStatus;
 }
 
-// GET /providers/me/profile — profile + completion + checklist + kycStatus
-router.get('/me/profile', authenticateToken, async (req: Request, res: Response) => {
-  const provider = await ownActiveProvider(req.user.id);
-  if (!provider) return res.status(404).json({ detail: 'No active provider profile' });
+/**
+ * Where a host stands on the road to going live, worked out the same way their own dashboard
+ * does: the checklist (profile + documents), the rolled-up KYC status, the mandatory profile items
+ * still missing (which block document upload), and the single next step that is holding them up.
+ * Shared by the host's own GET /providers/me/profile and the admin "hosts waiting" list.
+ */
+export async function hostReadiness(provider: typeof schema.providers.$inferSelect) {
   const docs = await db.select().from(schema.kycDocuments).where(eq(schema.kycDocuments.providerId, provider.id));
   const providerListings = await db.select().from(schema.listings).where(eq(schema.listings.providerId, provider.id));
   const hasListingImage = providerListings.some(l => !!l.image || (Array.isArray(l.extras?.images) && l.extras.images.length > 0));
   const hasListingDescription = providerListings.some(l => !!l.description && l.description.trim().length >= 20);
+  const listingLocationSources = providerListings
+    .map(l => (l.extras as any)?.location_verified?.source)
+    .filter((s): s is string => typeof s === 'string');
 
   const { completionPercent, checklist, kycStatus } = computeCompletion(
     {
@@ -109,9 +184,32 @@ router.get('/me/profile', authenticateToken, async (req: Request, res: Response)
       extras: provider.extras,
       hasListingImage,
       hasListingDescription,
+      listingLocationSources,
+      listingTypes: providerListings.map(l => l.type),
     },
     docs.map(d => ({ docType: d.docType, status: d.status as any }))
   );
+  const profileMissing = missingMandatory(provider.businessType, provider.extras);
+  const requiredDocs = checklist.filter(c => c.kind === 'kyc' && c.required);
+  const profileLeft = checklist.filter(c => c.kind === 'profile' && c.state !== 'done');
+  // The one thing holding this host up, in the order they have to be done.
+  const nextStep =
+    kycStatus === 'verified' ? 'live'
+      : provider.status !== 'active' ? 'pay_plan'
+        : profileMissing.length ? 'finish_profile'
+          : requiredDocs.some(c => c.state === 'rejected') ? 'fix_rejected'
+            : requiredDocs.some(c => c.state === 'missing') ? 'upload_documents'
+              : requiredDocs.some(c => c.state === 'in_review') ? 'review_documents'
+                : profileLeft.length ? (profileLeft.some(c => c.key === 'location') ? 'verify_location' : 'finish_profile')
+                  : 'review_documents';
+  return { docs, completionPercent, checklist, kycStatus, profileMissing, nextStep };
+}
+
+// GET /providers/me/profile  profile + completion + checklist + kycStatus
+router.get('/me/profile', authenticateToken, async (req: Request, res: Response) => {
+  const provider = await ownActiveProvider(req.user.id);
+  if (!provider) return res.status(404).json({ detail: 'No active provider profile' });
+  const { docs, completionPercent, checklist, kycStatus } = await hostReadiness(provider);
   res.json({
     provider_id: provider.id,
     business_type: provider.businessType,
@@ -119,10 +217,11 @@ router.get('/me/profile', authenticateToken, async (req: Request, res: Response)
     kyc_status: kycStatus,
     checklist,
     documents: docs.map(docOut),
+    verification: verificationOut(provider, docs, checklist, kycStatus),
   });
 });
 
-// GET /providers/me/kyc — list own docs
+// GET /providers/me/kyc  list own docs
 router.get('/me/kyc', authenticateToken, async (req: Request, res: Response) => {
   const provider = await ownActiveProvider(req.user.id);
   if (!provider) return res.status(404).json({ detail: 'No active provider profile' });
@@ -130,39 +229,33 @@ router.get('/me/kyc', authenticateToken, async (req: Request, res: Response) => 
   res.json({ documents: docs.map(docOut) });
 });
 
-// POST /providers/me/kyc — upload/replace a doc
-router.post('/me/kyc', authenticateToken, async (req: Request, res: Response) => {
-  const provider = await ownActiveProvider(req.user.id);
-  if (!provider) return res.status(403).json({ detail: 'Only active providers can upload KYC documents' });
+const DEFAULT_EXT: Record<string, string> = {
+  'application/pdf': '.pdf',
+  'video/mp4': '.mp4',
+  'video/quicktime': '.mov',
+  'video/webm': '.webm',
+};
 
-  const { doc_type, file, filename } = req.body || {};
-  if (!doc_type || !file || !filename) {
-    return res.status(400).json({ detail: 'doc_type, file, and filename are required' });
-  }
-  if (!isAllowedDocType(provider.businessType, doc_type)) {
-    return res.status(400).json({ detail: `doc_type "${doc_type}" is not valid for a ${provider.businessType}` });
-  }
-
-  const match = String(file).match(/^data:([\w/+.-]+);base64,/);
-  const contentType = match ? match[1] : '';
-  if (!ALLOWED_MIME.has(contentType)) {
-    return res.status(400).json({ detail: 'File must be a JPEG, PNG, or PDF' });
-  }
-  const base64Data = String(file).replace(/^data:[\w/+.-]+;base64,/, '');
-  const buffer = Buffer.from(base64Data, 'base64');
-  if (buffer.length === 0) return res.status(400).json({ detail: 'Empty file' });
-  if (buffer.length > MAX_BYTES) return res.status(400).json({ detail: 'File exceeds 5 MB limit' });
-  if (!matchesDeclaredType(buffer, contentType)) {
-    return res.status(400).json({ detail: 'File contents do not match the declared file type' });
-  }
-
-  const ext = path.extname(filename) || (contentType === 'application/pdf' ? '.pdf' : '.jpg');
+/**
+ * Stores a verified file for a provider's document slot, replacing any previous one, and answers
+ * the request. Shared by the JSON upload (photos, PDFs) and the raw video upload so both get the
+ * same storage, locking, orphan clean-up and status recompute.
+ */
+async function storeKycDocument(
+  res: Response,
+  provider: typeof schema.providers.$inferSelect,
+  doc_type: string,
+  filename: string,
+  buffer: Buffer,
+  contentType: string
+) {
+  const ext = path.extname(filename) || DEFAULT_EXT[contentType] || '.jpg';
   const key = `${provider.id}/${doc_type}/${uuidv4()}${ext}`;
 
   try {
     await uploadPrivate(buffer, key, contentType);
   } catch (err: any) {
-    // The storage backend (MinIO) being down/misconfigured is not the provider's fault — a
+    // The storage backend (MinIO) being down/misconfigured is not the provider's fault  a
     // bare 500 here would read on the frontend as "your file was rejected". Log the real
     // cause server-side and answer with a 503 that says so, without leaking internals.
     log.error(`KYC storage upload failed for provider ${provider.id}, doc_type ${doc_type}: ${err?.message || err}`);
@@ -177,11 +270,11 @@ router.post('/me/kyc', authenticateToken, async (req: Request, res: Response) =>
     // taking a row lock (`FOR UPDATE`) so concurrent uploads of the same (providerId, docType)
     // serialize on that row. Without the lock, two concurrent requests can both read the same
     // pre-existing fileKey outside any transaction, both upload their own new object, and then
-    // race to write the row — whichever write loses that race has its own freshly-uploaded
+    // race to write the row  whichever write loses that race has its own freshly-uploaded
     // object referenced by nobody, an orphan that persists forever (the DB row only remembers
     // one fileKey, the winner's). Locking the row means the second request to actually run its
     // upsert necessarily observes the first request's already-committed fileKey as "the previous
-    // one", so each request cleans up exactly the object its own write replaced — never the
+    // one", so each request cleans up exactly the object its own write replaced  never the
     // object that ends up live in the row.
     doc = await db.transaction(async (tx) => {
       const [existing] = await tx.select().from(schema.kycDocuments)
@@ -221,7 +314,7 @@ router.post('/me/kyc', authenticateToken, async (req: Request, res: Response) =>
       return row;
     });
   } catch (err) {
-    // The DB write failed — the object we just uploaded is now orphaned (unreferenced by any
+    // The DB write failed  the object we just uploaded is now orphaned (unreferenced by any
     // row). Best-effort clean it up before propagating, so failed writes don't leak storage.
     try {
       await deletePrivate(key);
@@ -245,9 +338,101 @@ router.post('/me/kyc', authenticateToken, async (req: Request, res: Response) =>
 
   await recomputeKycStatus(provider.id);
   res.json({ document: docOut(doc) });
+}
+
+// POST /providers/me/kyc  upload/replace a doc
+router.post('/me/kyc', authenticateToken, async (req: Request, res: Response) => {
+  const provider = await ownActiveProvider(req.user.id);
+  if (!provider) return res.status(403).json({ detail: 'Only active providers can upload KYC documents' });
+
+  // A new host sends documents for approval only once the mandatory parts of their profile are in
+  // (lib/hostProfile.ts). Hosts who were live before approval existed are not held back.
+  if (provider.approvalRequired) {
+    const missing = missingMandatory(provider.businessType, provider.extras);
+    if (missing.length) {
+      return res.status(409).json({
+        detail: `Finish your profile before sending documents for approval: ${missing.map((m) => m.label).join('; ')}`,
+        code: 'profile_incomplete',
+        missing,
+      });
+    }
+  }
+
+  const { doc_type, file, filename } = req.body || {};
+  if (!doc_type || !file || !filename) {
+    return res.status(400).json({ detail: 'doc_type, file, and filename are required' });
+  }
+  const types = await kycTypesFor(provider);
+  if (!isAllowedDocType(types, doc_type)) {
+    return res.status(400).json({ detail: `doc_type "${doc_type}" is not valid for a ${provider.businessType}` });
+  }
+
+  if (isVideoDocType(types, doc_type)) {
+    return res.status(400).json({ detail: `"${doc_type}" is a video - upload it to /api/providers/me/kyc/video` });
+  }
+
+  const match = String(file).match(/^data:([\w/+.-]+);base64,/);
+  const contentType = match ? match[1] : '';
+  if (!ALLOWED_MIME.has(contentType)) {
+    return res.status(400).json({ detail: 'File must be a JPEG, PNG, or PDF' });
+  }
+  const base64Data = String(file).replace(/^data:[\w/+.-]+;base64,/, '');
+  const buffer = Buffer.from(base64Data, 'base64');
+  if (buffer.length === 0) return res.status(400).json({ detail: 'Empty file' });
+  if (buffer.length > MAX_BYTES) return res.status(400).json({ detail: 'File exceeds 5 MB limit' });
+  if (!matchesDeclaredType(buffer, contentType)) {
+    return res.status(400).json({ detail: 'File contents do not match the declared file type' });
+  }
+
+  return storeKycDocument(res, provider, doc_type, filename, buffer, contentType);
 });
 
-// DELETE /providers/me/kyc/:docType — owner removes a doc
+// POST /providers/me/kyc/video?doc_type=...  upload/replace a verification video. The body is the
+// raw file (Content-Type video/mp4, video/quicktime or video/webm); the original name travels in
+// the X-Filename header. Parsed by express.raw() in app.ts, mounted ahead of the JSON parser.
+router.post('/me/kyc/video', authenticateToken, async (req: Request, res: Response) => {
+  const provider = await ownActiveProvider(req.user.id);
+  if (!provider) return res.status(403).json({ detail: 'Only active providers can upload KYC documents' });
+
+  // A new host sends documents for approval only once the mandatory parts of their profile are in
+  // (lib/hostProfile.ts). Hosts who were live before approval existed are not held back.
+  if (provider.approvalRequired) {
+    const missing = missingMandatory(provider.businessType, provider.extras);
+    if (missing.length) {
+      return res.status(409).json({
+        detail: `Finish your profile before sending documents for approval: ${missing.map((m) => m.label).join('; ')}`,
+        code: 'profile_incomplete',
+        missing,
+      });
+    }
+  }
+
+  const doc_type = String(req.query.doc_type || '');
+  const types = await kycTypesFor(provider);
+  if (!doc_type || !isAllowedDocType(types, doc_type)) {
+    return res.status(400).json({ detail: `doc_type "${doc_type}" is not valid for a ${provider.businessType}` });
+  }
+  if (!isVideoDocType(types, doc_type)) {
+    return res.status(400).json({ detail: `"${doc_type}" is not a video document` });
+  }
+
+  const contentType = String(req.headers['content-type'] || '').split(';')[0].trim().toLowerCase();
+  if (!VIDEO_MIME.has(contentType)) {
+    return res.status(400).json({ detail: 'Video must be MP4, MOV or WebM' });
+  }
+  const buffer = Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0);
+  if (buffer.length === 0) return res.status(400).json({ detail: 'Empty file' });
+  if (buffer.length > MAX_VIDEO_BYTES) return res.status(400).json({ detail: 'Video exceeds 25 MB limit' });
+  if (!matchesDeclaredType(buffer, contentType)) {
+    return res.status(400).json({ detail: 'File contents do not match the declared file type' });
+  }
+
+  const filename =
+    path.basename(String(req.headers['x-filename'] || '')).slice(0, 120) || `${doc_type}${DEFAULT_EXT[contentType]}`;
+  return storeKycDocument(res, provider, doc_type, filename, buffer, contentType);
+});
+
+// DELETE /providers/me/kyc/:docType  owner removes a doc
 router.delete('/me/kyc/:docType', authenticateToken, async (req: Request, res: Response) => {
   const provider = await ownActiveProvider(req.user.id);
   if (!provider) return res.status(403).json({ detail: 'Only active providers can manage KYC documents' });
@@ -266,7 +451,7 @@ router.delete('/me/kyc/:docType', authenticateToken, async (req: Request, res: R
   res.json({ ok: true });
 });
 
-// GET /providers/kyc/:id/file — stream a private doc to owner or admin
+// GET /providers/kyc/:id/file  stream a private doc to owner or admin
 router.get('/kyc/:id/file', authenticateToken, async (req: Request, res: Response) => {
   const [doc] = await db.select().from(schema.kycDocuments).where(eq(schema.kycDocuments.id, routeParam(req, 'id'))).limit(1);
   if (!doc) return res.status(404).json({ detail: 'Not found' });
@@ -274,7 +459,7 @@ router.get('/kyc/:id/file', authenticateToken, async (req: Request, res: Respons
   let allowed = req.user.role === 'admin';
   if (!allowed) {
     const [provider] = await db.select().from(schema.providers).where(eq(schema.providers.id, doc.providerId)).limit(1);
-    allowed = !!provider && provider.userId === req.user.id;
+    allowed = !!provider && (await hostUserIds(provider.id)).includes(req.user.id);
   }
   if (!allowed) return res.status(403).json({ detail: 'Forbidden' });
 
@@ -290,7 +475,7 @@ router.get('/kyc/:id/file', authenticateToken, async (req: Request, res: Respons
   res.setHeader('Content-Type', resolvedType);
   res.setHeader('Cache-Control', 'private, no-store');
   // The content type is ultimately sourced from the uploader's own data-URL prefix, so a
-  // browser must never be allowed to sniff/reinterpret it (e.g. as HTML) — and it must never
+  // browser must never be allowed to sniff/reinterpret it (e.g. as HTML)  and it must never
   // render inline as a top-level navigation target for arbitrary content, only as an asset.
   res.setHeader('X-Content-Type-Options', 'nosniff');
   const ext = path.extname(doc.fileKey) || (resolvedType === 'application/pdf' ? '.pdf' : '');

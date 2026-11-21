@@ -1,0 +1,361 @@
+import { normaliseVehicleNumber } from './vehicleNumber';
+import { MAX_PRICE } from './priceCap';
+import { isPlausiblePhone } from './phone';
+
+/**
+ * The host profile: what each kind of host fills in about themselves and their business, beyond
+ * the basics on the provider row. Studio1947's lists (Nov 2026) are the source:
+ *
+ * - every host: photo, phone, WhatsApp, availability, languages, experience, a short bio or
+ *   video, social media and a cover photo;
+ * - driver: routes with charges, vehicle number, driving licence number, car photos, passenger
+ *   capacity (RC and licence uploads are KYC documents);
+ * - homestay: property and host name, rooms and food with charges, recommended drivers,
+ *   property photos, guest occupancy, amenities (trade licence and homestay paper are KYC
+ *   documents); no home delivery, that is for cafes and shops only (user decision 2026-11-21);
+ * - guide: name, age, gender, type of guide, services and charges, seasons;
+ * - cafe / restaurant: owner name, menu with prices, amenities, home delivery;
+ * - local business (shop): type of business, goods and rates (at most 10 items), home delivery;
+ * - the board's green list (host name, 8 property photos, recommended drivers, guest occupancy)
+ *   is linked to homestays, cafes and local businesses alike, so all three get those.
+ *
+ * Everything lives in the provider's `extras` (and is copied onto the host's listings, which is
+ * what travellers read). Each field is checked here, so a client can send any subset of them.
+ *
+ * Some items are mandatory before a new host can send their documents for approval
+ * (`missingMandatory`); hosts who were already live keep running and are only asked to finish.
+ */
+
+export const GUIDE_TYPES = ['trekking', 'heritage', 'nature', 'birding', 'tea', 'cultural', 'city', 'photography'] as const;
+export const SEASONS = ['spring', 'summer', 'monsoon', 'autumn', 'winter'] as const;
+/** What a homestay photo shows (board: property photos of the rooms, the outside and the front). */
+export const PHOTO_KINDS = ['front', 'outside', 'room', 'other'] as const;
+export const SERVICE_UNITS = ['day', 'trip', 'hour', 'person'] as const;
+export const ROOM_UNITS = ['night', 'head'] as const;
+export const GENDERS = ['male', 'female', 'other'] as const;
+export const MENU_UNITS = ['plate', 'item', 'cup', 'head'] as const;
+export const GOODS_UNITS = ['item', 'piece', 'kg', 'gram', 'litre', 'pack', 'dozen'] as const;
+/** The board caps a shop's goods list at ten items. */
+export const MAX_GOODS = 10;
+/** Most people one homestay room can sleep (a room's optional `occ`). */
+export const MAX_ROOM_OCC = 50;
+/** Most extra guests a room can take on an extra mattress (user decision 2026-11-21: +1 or +2). */
+export const MAX_EXTRA_BEDS = 2;
+/**
+ * Profile fields that belong to one property, not to the whole business (user decision 2026-11-21).
+ * A host can run several homestays: each listing keeps its own rooms, food, guest occupancy and
+ * amenities, and saving the profile writes them to one listing only (routes/providers.ts PATCH /me).
+ */
+export const PROPERTY_FIELDS: Record<string, readonly string[]> = {
+  homestay: ['rooms', 'meals', 'capacity', 'amenities'],
+};
+export const SOCIAL_KEYS = ['instagram', 'facebook', 'youtube', 'website'] as const;
+/**
+ * The business theme colour (prototype palette.js, "For my business"): the palette keys the website
+ * and app offer (frontend/src/lib/theme.ts PALETTES), or a "#RRGGBB" colour of the host's own.
+ * The host's dashboard and public page are painted in it.
+ */
+export const THEME_KEYS = [
+  'studio1947', 'mitti', 'rhodo', 'terracotta', 'saipatri', 'dhendo', 'maya',
+  'tea', 'turmeric', 'sandstone', 'indigo', 'monsoon', 'charcoal',
+] as const;
+const HEX_COLOUR = /^#[0-9a-f]{6}$/i;
+
+/** A valid stored theme, or undefined for none / anything unexpected. */
+export function themeOf(v: unknown): string | undefined {
+  if (typeof v !== 'string') return undefined;
+  if (HEX_COLOUR.test(v)) return v.toUpperCase();
+  return (THEME_KEYS as readonly string[]).includes(v) ? v : undefined;
+}
+
+/** Photos a host must have before approval, by type. */
+export const MIN_CAR_PHOTOS = 6;
+export const MIN_PROPERTY_PHOTOS = 8;
+
+
+export type ProfileError = { error: string };
+export type ProfilePatch = Record<string, unknown>;
+
+const isUrl = (v: unknown): v is string =>
+  typeof v === 'string' && v.length <= 1000 && (/^https?:\/\/\S+$/i.test(v.trim()) || /^\/\S+$/.test(v.trim()));
+
+function text(v: unknown, max: number, label: string): string | ProfileError {
+  if (typeof v !== 'string') return { error: `${label} must be text` };
+  const s = v.trim();
+  if (s.length > max) return { error: `${label} must be ${max} characters or fewer` };
+  return s;
+}
+
+function int(v: unknown, min: number, max: number, label: string): number | ProfileError {
+  const n = typeof v === 'string' && v.trim() !== '' ? Number(v) : v;
+  if (typeof n !== 'number' || !Number.isInteger(n) || n < min || n > max) {
+    return { error: `${label} must be a whole number from ${min} to ${max}` };
+  }
+  return n;
+}
+
+function list<T>(v: unknown, max: number, label: string, each: (x: unknown, i: number) => T | ProfileError): T[] | ProfileError {
+  if (!Array.isArray(v)) return { error: `${label} must be a list` };
+  if (v.length > max) return { error: `${label} can have at most ${max} items` };
+  const out: T[] = [];
+  for (let i = 0; i < v.length; i++) {
+    const r = each(v[i], i);
+    if (r && typeof r === 'object' && 'error' in (r as object)) return r as ProfileError;
+    out.push(r as T);
+  }
+  return out;
+}
+
+function oneOf<T extends string>(v: unknown, allowed: readonly T[], label: string): T | ProfileError {
+  return typeof v === 'string' && (allowed as readonly string[]).includes(v) ? (v as T) : { error: `${label} is not one of ${allowed.join(', ')}` };
+}
+
+function priced(unitList: readonly string[], label: string, defaultUnit: string) {
+  return (x: unknown) => {
+    if (!x || typeof x !== 'object') return { error: `Each ${label} needs a name and a price` };
+    const e = x as Record<string, unknown>;
+    const name = text(e.name ?? e.route, 120, `${label} name`);
+    if (typeof name !== 'string') return name;
+    if (!name) return { error: `Each ${label} needs a name` };
+    const price = e.price === undefined || e.price === '' ? 0 : int(e.price, 0, MAX_PRICE, `${label} price`);
+    if (typeof price !== 'number') return price;
+    const unit = e.unit === undefined ? defaultUnit : oneOf(e.unit, unitList, `${label} unit`);
+    if (typeof unit !== 'string') return unit;
+    // Optional photo of the room, dish, service or item: the board's "photos + rates" grid.
+    if (e.photo === undefined || e.photo === '' || e.photo === null) return { name, price, unit };
+    if (!isUrl(e.photo)) return { error: `The ${label} photo must be an uploaded image` };
+    return { name, price, unit, photo: (e.photo as string).trim() };
+  };
+}
+
+/** Fields every host type has. */
+const COMMON: Record<string, (v: unknown) => unknown | ProfileError> = {
+  host_avatar: (v) => (v === '' ? '' : isUrl(v) ? (v as string).trim() : { error: 'Photo must be an uploaded image' }),
+  whatsapp: (v) => (v === '' ? '' : isPlausiblePhone(v) ? String(v).trim() : { error: 'WhatsApp must be a phone number' }),
+  available: (v) => (typeof v === 'boolean' ? v : { error: 'Availability must be on or off' }),
+  languages: (v) => list(v, 10, 'Languages', (x) => {
+    const s = text(x, 30, 'Language');
+    return typeof s === 'string' && !s ? { error: 'A language cannot be empty' } : s;
+  }),
+  experience_years: (v) => int(v, 0, 80, 'Years of experience'),
+  host_bio: (v) => text(v, 2000, 'Bio'),
+  intro_video: (v) => (v === '' ? '' : isUrl(v) ? (v as string).trim() : { error: 'Video must be a link (YouTube, Instagram or an upload)' }),
+  social: (v) => {
+    if (!v || typeof v !== 'object' || Array.isArray(v)) return { error: 'Social media must be a set of links' };
+    const out: Record<string, string> = {};
+    for (const [k, raw] of Object.entries(v as Record<string, unknown>)) {
+      if (!(SOCIAL_KEYS as readonly string[]).includes(k)) return { error: `Unknown social link: ${k}` };
+      const s = text(raw, 200, k);
+      if (typeof s !== 'string') return s;
+      if (s) out[k] = s;
+    }
+    return out;
+  },
+  images: (v) => list(v, 30, 'Photos', (x) => (isUrl(x) ? (x as string).trim() : { error: 'Each photo must be an uploaded image' })),
+  // '' clears it, so the business follows aangan's own colours again.
+  theme: (v) => (v === '' ? '' : themeOf(v) ?? { error: 'Theme must be one of the palettes or a colour like #947C47' }),
+};
+
+/** The green-list fields a homestay, a cafe and a local business share. */
+const PREMISES: Record<string, (v: unknown) => unknown | ProfileError> = {
+  recommended_drivers: (v) => list(v, 10, 'Recommended drivers', (x) =>
+    typeof x === 'string' && x.trim() && x.length <= 64 ? x.trim() : { error: 'A recommended driver must be a driver listing' }),
+  capacity: (v) => int(v, 1, 500, 'Guest occupancy'),
+};
+
+/** Host types that are a place travellers come to, and share the green list's rules. */
+export const PREMISES_TYPES = ['homestay', 'cafe', 'shop'] as const;
+
+const BY_TYPE: Record<string, Record<string, (v: unknown) => unknown | ProfileError>> = {
+  driver: {
+    vehicle_number: (v) => {
+      if (v === '') return '';
+      const plate = normaliseVehicleNumber(v);
+      return plate || { error: 'That vehicle number does not look right. Copy it from your number plate, for example WB 74 A 1234.' };
+    },
+    license_number: (v) => {
+      const s = text(v, 30, 'Driving licence number');
+      if (typeof s !== 'string') return s;
+      return !s || /^[A-Za-z0-9][A-Za-z0-9 \-/]{5,29}$/.test(s) ? s.toUpperCase() : { error: 'That driving licence number does not look right' };
+    },
+    seats: (v) => int(v, 1, 30, 'Passenger capacity'),
+    routes: (v) => list(v, 30, 'Routes', (x) => {
+      if (typeof x === 'string') return x.trim() ? { route: x.trim(), price: 0, unit: 'trip' } : { error: 'A route cannot be empty' };
+      const r = priced(['trip', 'day'], 'route', 'trip')(x);
+      return 'error' in r ? r : { route: r.name, price: r.price, unit: r.unit, ...('photo' in r && r.photo ? { photo: r.photo } : {}) };
+    }),
+  },
+  homestay: {
+    host_name: (v) => text(v, 80, 'Host name'),
+    // A room has one price a night for the whole room (user decision 2026-11-21: never per person;
+    // an older client's "head" is accepted and stored as "night"). Each room may say how many people
+    // it sleeps (`occ`): a booking for that room cannot be for more than that (prototype staybook.js
+    // rooms[{name,price,occ}]), unless the host allows up to two more on an extra mattress
+    // (`extra_beds`, 0-2), each adding `extra_bed_price` to the night (optional, 0 or absent = free).
+    // See lib/bookingDetails.ts pickRoom.
+    rooms: (v) => list(v, 20, 'Rooms', (x) => {
+      const r = priced(ROOM_UNITS, 'room', 'night')(x);
+      if ('error' in r) return r;
+      const e = x as Record<string, unknown>;
+      const blank = (k: string) => e[k] === undefined || e[k] === null || e[k] === '';
+      let out: Record<string, unknown> = { ...r, unit: 'night' };
+      if (!blank('occ')) {
+        const occ = int(e.occ, 1, MAX_ROOM_OCC, 'People per room');
+        if (typeof occ !== 'number') return occ;
+        out = { ...out, occ };
+      }
+      if (!blank('extra_beds')) {
+        const extra = int(e.extra_beds, 0, MAX_EXTRA_BEDS, 'Extra mattress');
+        if (typeof extra !== 'number') return extra;
+        if (extra > 0 && out.occ === undefined) return { error: 'Say how many people the room sleeps before adding an extra mattress' };
+        if (extra > 0) out = { ...out, extra_beds: extra };
+      }
+      if (!blank('extra_bed_price') && out.extra_beds) {
+        const fee = int(e.extra_bed_price, 0, MAX_PRICE, 'Extra mattress price');
+        if (typeof fee !== 'number') return fee;
+        if (fee > 0) out = { ...out, extra_bed_price: fee };
+      }
+      // A room let outside the app is switched off by the host: travellers see it as full and cannot
+      // book it. Stored only when off; absent means taking bookings.
+      if (!blank('available')) {
+        if (typeof e.available !== 'boolean') return { error: 'A room is either taking bookings or full' };
+        if (!e.available) out = { ...out, available: false };
+      }
+      return out;
+    }),
+    meals: (v) => list(v, 20, 'Food', priced(['meal', 'day', 'head'], 'meal', 'meal')),
+    ...PREMISES,
+    capacity: (v) => int(v, 1, 100, 'Guest occupancy'),
+    amenities: (v) => list(v, 30, 'Amenities', (x) => text(x, 60, 'Amenity')),
+    // Which photo shows what, keyed by the photo's URL, so the listing page can group them.
+    // Optional: an untagged photo shows under "More photos".
+    photo_kinds: (v) => {
+      if (!v || typeof v !== 'object' || Array.isArray(v)) return { error: 'Photo kinds must be a set of photo labels' };
+      const entries = Object.entries(v as Record<string, unknown>);
+      if (entries.length > 30) return { error: 'Photo kinds accepts at most 30 photos' };
+      const out: Record<string, string> = {};
+      for (const [url, kind] of entries) {
+        if (!isUrl(url)) return { error: 'Each labelled photo must be an uploaded image' };
+        const k = oneOf(kind, PHOTO_KINDS, 'Photo kind');
+        if (typeof k !== 'string') return k;
+        out[url.trim()] = k;
+      }
+      return out;
+    },
+  },
+  guide: {
+    host_name: (v) => text(v, 80, 'Name'),
+    age: (v) => int(v, 18, 90, 'Age'),
+    gender: (v) => oneOf(v, GENDERS, 'Gender'),
+    guide_types: (v) => list(v, GUIDE_TYPES.length, 'Type of guide', (x) => oneOf(x, GUIDE_TYPES, 'Type of guide')),
+    services: (v) => list(v, 20, 'Services', priced(SERVICE_UNITS, 'service', 'day')),
+    seasons: (v) => list(v, SEASONS.length, 'Seasons', (x) => oneOf(x, SEASONS, 'Season')),
+  },
+  cafe: {
+    host_name: (v) => text(v, 80, 'Owner name'),
+    menu: (v) => list(v, 40, 'Menu', priced(MENU_UNITS, 'menu item', 'plate')),
+    ...PREMISES,
+    amenities: (v) => list(v, 30, 'Amenities', (x) => text(x, 60, 'Amenity')),
+    home_delivery: (v) => (typeof v === 'boolean' ? v : { error: 'Home delivery must be on or off' }),
+    // Free text the owner writes, e.g. "8 am - 9 pm, closed Tuesday" (persona test 2026-11-09).
+    opening_hours: (v) => text(v, 120, 'Opening hours'),
+  },
+  shop: {
+    host_name: (v) => text(v, 80, 'Owner name'),
+    shop_kind: (v) => text(v, 60, 'Type of business'),
+    goods: (v) => list(v, MAX_GOODS, 'Goods', priced(GOODS_UNITS, 'item', 'item')),
+    ...PREMISES,
+    home_delivery: (v) => (typeof v === 'boolean' ? v : { error: 'Home delivery must be on or off' }),
+    opening_hours: (v) => text(v, 120, 'Opening hours'),
+  },
+};
+
+/** The profile keys a host of this type may set. */
+export function profileKeysFor(businessType: string): string[] {
+  return [...Object.keys(COMMON), ...Object.keys(BY_TYPE[businessType] ?? {})];
+}
+
+/**
+ * Checks the profile fields in `input` for this type of host. Unknown keys are refused rather than
+ * stored, so a typo cannot silently go nowhere. Returns the cleaned values to merge into extras.
+ */
+export function profilePatchFrom(businessType: string, input: unknown): ProfilePatch | ProfileError {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return { error: 'profile must be an object' };
+  const rules = { ...COMMON, ...(BY_TYPE[businessType] ?? {}) };
+  const patch: ProfilePatch = {};
+  for (const [key, value] of Object.entries(input as Record<string, unknown>)) {
+    const rule = rules[key];
+    if (!rule) return { error: `"${key}" is not part of a ${businessType} profile` };
+    const out = rule(value);
+    if (out && typeof out === 'object' && !Array.isArray(out) && 'error' in (out as object)) return out as ProfileError;
+    patch[key] = out;
+  }
+  return patch;
+}
+
+/** `label` is English; `min`/`have` let the website and app word it in the reader's language. */
+export type MissingItem = { key: string; label: string; min?: number; have?: number };
+
+/** What a new host still has to fill in before their documents can go for approval. */
+export function missingMandatory(businessType: string, extras: Record<string, any> | null | undefined): MissingItem[] {
+  const e = extras ?? {};
+  const photos = Array.isArray(e.images) ? e.images.filter(Boolean).length : 0;
+  const missing: MissingItem[] = [];
+  if (businessType === 'driver') {
+    if (photos < MIN_CAR_PHOTOS) {
+      missing.push({ key: 'images', label: `Add at least ${MIN_CAR_PHOTOS} photos of your car (${photos} so far)`, min: MIN_CAR_PHOTOS, have: photos });
+    }
+  } else if ((PREMISES_TYPES as readonly string[]).includes(businessType)) {
+    const who = businessType === 'homestay' ? "the host's name" : "the owner's name";
+    const place = businessType === 'homestay' ? 'the property' : businessType === 'cafe' ? 'your cafe or restaurant' : 'your shop';
+    if (!String(e.host_name ?? '').trim()) missing.push({ key: 'host_name', label: `Add ${who}` });
+    if (photos < MIN_PROPERTY_PHOTOS) {
+      missing.push({ key: 'images', label: `Add at least ${MIN_PROPERTY_PHOTOS} photos of ${place} (${photos} so far)`, min: MIN_PROPERTY_PHOTOS, have: photos });
+    }
+  } else if (businessType === 'guide') {
+    const services = Array.isArray(e.services) ? e.services.filter((s: any) => s && s.name && Number(s.price) > 0) : [];
+    if (services.length === 0) missing.push({ key: 'services', label: 'Add at least one service with its charge' });
+  }
+  return missing;
+}
+
+/** A host who switched availability off takes no bookings until they switch it back on. */
+export function isAvailable(extras: Record<string, any> | null | undefined): boolean {
+  return extras?.available !== false;
+}
+
+/**
+ * The public "from" price a profile implies: the cheapest priced room, service or route.
+ * Null when the profile has none, so the host's own starting price stands.
+ */
+export function startingPriceFor(businessType: string, extras: Record<string, any>): number | null {
+  const field = ({ homestay: 'rooms', guide: 'services', driver: 'routes', cafe: 'menu', shop: 'goods' } as Record<string, string>)[businessType] ?? null;
+  if (!field || !Array.isArray(extras[field])) return null;
+  const prices = extras[field].map((x: any) => Number(x?.price)).filter((p: number) => Number.isFinite(p) && p > 0);
+  return prices.length ? Math.min(...prices) : null;
+}
+
+/**
+ * Darjeeling's seasons by month (1-12), the meaning of the seasons a guide picks on their profile.
+ * Spring Mar-Apr, summer May-Jun, monsoon Jul-Sep, autumn Oct-Nov, winter Dec-Feb.
+ */
+const SEASON_BY_MONTH: Record<number, (typeof SEASONS)[number]> = {
+  1: 'winter', 2: 'winter', 3: 'spring', 4: 'spring', 5: 'summer', 6: 'summer',
+  7: 'monsoon', 8: 'monsoon', 9: 'monsoon', 10: 'autumn', 11: 'autumn', 12: 'winter',
+};
+
+/** The season a YYYY-MM-DD date falls in, or null for a date that is not one. */
+export function seasonOf(date: string | null | undefined): (typeof SEASONS)[number] | null {
+  const m = /^\d{4}-(\d{2})-\d{2}/.exec(String(date ?? ''));
+  return m ? SEASON_BY_MONTH[Number(m[1])] ?? null : null;
+}
+
+/**
+ * Whether a guide works on this date. A guide who picked no seasons works all year; one who did
+ * only guides in those (board: "based on availability, confirm"). Undated requests are allowed.
+ */
+export function guideWorksOn(extras: Record<string, any> | null | undefined, date: string | null | undefined): boolean {
+  const seasons: string[] = Array.isArray(extras?.seasons) ? extras!.seasons : [];
+  const season = seasonOf(date);
+  return seasons.length === 0 || !season || seasons.includes(season);
+}

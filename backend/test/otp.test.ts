@@ -6,6 +6,7 @@ import { nextPhone } from './helpers';
 import { db, schema } from '../src/db';
 import { and, desc, eq, isNull } from 'drizzle-orm';
 import { OTP_MAX_ATTEMPTS } from '../src/config';
+import { hashOtp } from '../src/lib/otpHash';
 
 const realProvider = getProvider();
 
@@ -16,7 +17,7 @@ afterEach(() => {
 function failingProvider(message: string) {
   return {
     name: 'failing',
-    init() {},
+    init() { },
     async sendOtp(): Promise<{ ref?: string }> {
       throw new MessageDeliveryError('failing', message);
     },
@@ -79,9 +80,14 @@ describe('POST /auth/otp/send delivery', () => {
   });
 });
 
+// Mock mode returns the universal code 123456, which verify accepts before it looks at expiry or
+// the attempt cap. These tests need a code that only the stored row can validate, so plant one.
+const KNOWN_OTP = '654321';
+
 async function issueOtp(phone: string): Promise<string> {
-  const res = await request(app).post('/api/auth/otp/send').send({ phone });
-  return res.body.mock_otp as string;
+  await request(app).post('/api/auth/otp/send').send({ phone });
+  await db.update(schema.otps).set({ otpHash: await hashOtp(KNOWN_OTP) }).where(eq(schema.otps.phone, phone));
+  return KNOWN_OTP;
 }
 
 describe('POST /auth/otp/verify expiry', () => {
@@ -89,7 +95,7 @@ describe('POST /auth/otp/verify expiry', () => {
     const phone = nextPhone();
     const otp = await issueOtp(phone);
 
-    // Backdate the issue time past the 300s window.
+    // Move the expiry into the past, whatever the configured window.
     const stale = new Date(Date.now() - 301 * 1000).toISOString();
     await db.update(schema.otps).set({ expiresAt: stale }).where(eq(schema.otps.phone, phone));
 
@@ -154,7 +160,7 @@ describe('POST /auth/otp/verify attempt cap', () => {
     // Ordered exactly as /otp/verify orders it, and for the same reason. `phone` stopped being
     // the primary key when each send became its own challenge row: a resend no longer updates
     // the old row, it inserts a second one and leaves the first alive on purpose. An unordered
-    // limit(1) therefore returns whichever of the two rows the planner feels like — it was
+    // limit(1) therefore returns whichever of the two rows the planner feels like  it was
     // handing back the spent challenge (attempts: 1) and failing this assertion. The claim being
     // made is about the NEWEST unconsumed challenge, so the query has to say so.
     const [rec] = await db.select().from(schema.otps)
@@ -186,5 +192,48 @@ describe('POST /auth/otp/verify attempt cap', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.token).toBeTruthy();
+  });
+});
+
+// The web sign-in asks for the code on one screen and the new account's name on the next: it sends
+// the code alone first, and only a right code for a new number may answer `name_required`.
+describe('POST /auth/otp/verify code first, name second', () => {
+  it('a right code for a new number answers name_required and leaves the code usable', async () => {
+    const phone = nextPhone();
+    const otp = await issueOtp(phone);
+
+    const first = await request(app).post('/api/auth/otp/verify').send({ phone, otp });
+    expect(first.status).toBe(400);
+    expect(first.body.code).toBe('name_required');
+    expect(first.body.token).toBeUndefined();
+    const [rec] = await db.select().from(schema.otps).where(eq(schema.otps.phone, phone)).limit(1);
+    expect(rec).toBeTruthy();
+    expect(rec.attempts).toBe(0);
+
+    const second = await request(app).post('/api/auth/otp/verify').send({ phone, otp, name: 'Two Step' });
+    expect(second.status).toBe(200);
+    expect(second.body.user.name).toBe('Two Step');
+  });
+
+  it('a wrong code never answers name_required, and counts as a wrong guess', async () => {
+    const phone = nextPhone();
+    await issueOtp(phone);
+
+    const res = await request(app).post('/api/auth/otp/verify').send({ phone, otp: '000000' });
+    expect(res.status).toBe(400);
+    expect(res.body.code).toBeUndefined();
+    expect(res.body.detail).toMatch(/invalid/i);
+    const [rec] = await db.select().from(schema.otps).where(eq(schema.otps.phone, phone)).limit(1);
+    expect(rec.attempts).toBe(1);
+  });
+
+  it('an existing account signs straight in with the code alone', async () => {
+    const phone = nextPhone();
+    await request(app).post('/api/auth/otp/verify').send({ phone, otp: '123456', name: 'Already Here' });
+    const otp = await issueOtp(phone);
+
+    const res = await request(app).post('/api/auth/otp/verify').send({ phone, otp });
+    expect(res.status).toBe(200);
+    expect(res.body.user.name).toBe('Already Here');
   });
 });

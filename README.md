@@ -105,13 +105,13 @@ REACT_APP_BACKEND_URL=http://localhost:8000
 
 `backend/.env` also accepts MinIO/S3 object-storage variables. All are optional in dev — unset, they default to exactly what `docker-compose.yml`'s `minio` service already provides, so `docker compose up -d minio` + the defaults below is enough to exercise uploads locally with no extra config:
 
-| Var | Default | Purpose |
-| --- | --- | --- |
-| `MINIO_ENDPOINT` | `http://localhost:9000` | S3-compatible endpoint the backend talks to |
-| `MINIO_ACCESS_KEY` / `MINIO_SECRET_KEY` | `minioadmin` / `minioadminpassword` | Credentials for that endpoint |
-| `MINIO_BUCKET` | `one-darjeeling` | **Public** bucket for listing images — bootstrapped on first upload with a public-read policy so the browser loads images directly from MinIO |
-| `MINIO_PUBLIC_URL` | `http://localhost:9000` | Base URL returned to the browser for objects in the public bucket |
-| `MINIO_KYC_BUCKET` | `one-darjeeling-kyc` | **Private** bucket for provider KYC documents (Aadhaar/PAN/business licences) — a separate bucket from `MINIO_BUCKET`, bootstrapped with *no* public-read policy. KYC objects are never returned as a direct URL; the only way to fetch one is the token-authenticated `GET /api/providers/kyc/:id/file` proxy, which allows only the owning provider or an admin |
+| Var                                     | Default                             | Purpose                                                                                                                                                                                                                                                                                                                                                           |
+| --------------------------------------- | ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `MINIO_ENDPOINT`                        | `http://localhost:9000`             | S3-compatible endpoint the backend talks to                                                                                                                                                                                                                                                                                                                       |
+| `MINIO_ACCESS_KEY` / `MINIO_SECRET_KEY` | `minioadmin` / `minioadminpassword` | Credentials for that endpoint                                                                                                                                                                                                                                                                                                                                     |
+| `MINIO_BUCKET`                          | `one-darjeeling`                    | **Public** bucket for listing images — bootstrapped on first upload with a public-read policy so the browser loads images directly from MinIO                                                                                                                                                                                                                     |
+| `MINIO_PUBLIC_URL`                      | `http://localhost:9000`             | Base URL returned to the browser for objects in the public bucket                                                                                                                                                                                                                                                                                                 |
+| `MINIO_KYC_BUCKET`                      | `one-darjeeling-kyc`                | **Private** bucket for provider KYC documents (Aadhaar/PAN/business licences) — a separate bucket from `MINIO_BUCKET`, bootstrapped with _no_ public-read policy. KYC objects are never returned as a direct URL; the only way to fetch one is the token-authenticated `GET /api/providers/kyc/:id/file` proxy, which allows only the owning provider or an admin |
 
 Both buckets are created automatically by the backend the first time something is uploaded to them — no manual `mc`/console setup needed for local dev.
 
@@ -141,13 +141,12 @@ The migration is what runs in production (`backend/Dockerfile`'s `CMD` runs `dri
 
 ```sh
 cd backend
-npm run test:setup   # creates one_darjeeling_test + applies migrations (idempotent, needs Postgres up)
-npm test             # vitest
+npm test             # creates/migrates one_darjeeling_test, then runs Vitest
 ```
 
 Tests run against `one_darjeeling_test`, a **separate database** from your dev one, because the suite truncates every table between tests. Re-run `test:setup` after adding a migration.
 
-`test:setup` applies **migrations**, deliberately — not `db:push`. Building the test schema straight from `schema.ts` would mean a forgotten `db:generate` still produced a green suite while production came up missing the column. Tests therefore run against exactly what production runs. CI additionally fails if `schema.ts` has changes with no committed migration, and a red suite blocks the deploy (`.github/workflows/deploy.yml`).
+`test:setup` applies **migrations**, deliberately — not `db:push`. Building the test schema straight from `schema.ts` would mean a forgotten `db:generate` still produced a green suite while production came up missing the column. Tests therefore run against exactly what production runs. CI additionally fails if `schema.ts` has changes with no committed migration, and a red suite blocks the deploy (`.github/workflows/deploy-prod.yml`).
 
 ## API documentation
 
@@ -204,7 +203,7 @@ Dashboard → **Settings → Webhooks → Add New Webhook**:
 
 | Field         | Value                                                     |
 | ------------- | --------------------------------------------------------- |
-| Webhook URL   | `https://onedarjeeling.duckdns.org/api/payments/webhook`  |
+| Webhook URL   | `https://aanganerp.in/api/payments/webhook`               |
 | Secret        | Any long random string you generate — **you choose this** |
 | Active Events | `payment.captured` and `order.paid`                       |
 
@@ -334,35 +333,44 @@ webhook receiver. Keep that receiver as a dispatcher and forward the raw body pl
 
 This VPS already runs a **system-level Nginx + Certbot** in front of several other apps (each its own `sites-available` file, each with its own DuckDNS domain and Let's Encrypt cert via `certbot --nginx`). This app follows the exact same convention rather than introducing its own — it does **not** run its own Nginx/Certbot on ports 80/443.
 
-The app itself deploys as three containers: `postgres`, `backend` (Express API), and an `nginx` container that bakes in both frontend static builds (public app at `/`, admin console at `/admin`) and reverse-proxies `/api` + `/api-docs` to the backend. That `nginx` container is bound to `127.0.0.1:8091` only — never exposed directly. The VPS's existing system Nginx is what actually terminates TLS and is reachable from the internet; it reverse-proxies `onedarjeeling.duckdns.org` to `127.0.0.1:8091`, exactly like it already does for the other apps on this box (compare `/etc/nginx/sites-available/s47-task.duckdns.org`).
+The app itself deploys as three containers: `postgres`, `backend` (Express API), and an `nginx` container that bakes in both frontend static builds (public app at `/`, admin console at `/admin`) and reverse-proxies `/api` + `/api-docs` to the backend. That `nginx` container is bound to `127.0.0.1:8092` only — never exposed directly. The VPS's existing system Nginx is what actually terminates TLS and is reachable from the internet; it reverse-proxies `aanganerp.in` to `127.0.0.1:8092`, exactly like it already does for the other apps on this box (compare `/etc/nginx/sites-available/s47-task.duckdns.org`).
 
 ### One-time VPS setup
 
-1. **Clone the repo** to `/var/www/1darjeelingvv1` (already done) and `cd` into it.
+1. **Clone the repo** to `/var/www/1darjeeling-in` (already done) and `cd` into it.
 2. **Create `.env`** from the template: `cp .env.production.example .env`, then fill in real values — a strong `POSTGRES_PASSWORD`, `JWT_SECRET`, `ADMIN_BOOTSTRAP_SECRET`, a changed `ADMIN_PASSWORD`, and your Razorpay live keys (or leave `MOCK_PAYMENTS=true` until you're ready to charge real money). This file is gitignored — it stays on the server and is never pulled from or pushed to GitHub.
-3. **Confirm 8091 is free**: `sudo ss -tlnp | grep 8091` should print nothing. If it's taken, pick a different port in `docker-compose.prod.yml`'s `nginx.ports` and in step 5 below.
-4. **Bring the app containers up**:
+3. **Confirm 8092 is free**: `sudo ss -tlnp | grep 8092` should print nothing. If it's taken, pick a different port in `docker-compose.in.yml`'s `nginx.ports` and in step 5 below.
+4. **Bring the app containers up** from the images CI publishes:
    ```sh
-   docker compose -f docker-compose.prod.yml up -d --build
-   curl -I http://127.0.0.1:8091/   # sanity check — should be 200, straight from this container
+   docker login ghcr.io -u <your-github-user>   # PAT with read:packages as the password
+   docker compose -f docker-compose.in.yml pull
+   docker compose -f docker-compose.in.yml up -d --wait
+   curl -I http://127.0.0.1:8092/   # sanity check — should be 200, straight from this container
    ```
+   This takes `:latest`. Push to `prod` once afterwards so the stack lands on a SHA-tagged image.
+   If GHCR is unreachable, `docker compose -f docker-compose.in.yml build` still works — see the
+   escape hatch in `deploy/VPS-RUNBOOK.md` §3.
 5. **Add the host Nginx site** (this is the one step that touches the shared system Nginx — it only _adds_ a new file, never edits an existing one):
    ```sh
-   sudo cp deploy/host-nginx-site.conf.example /etc/nginx/sites-available/onedarjeeling.duckdns.org
-   sudo ln -s /etc/nginx/sites-available/onedarjeeling.duckdns.org /etc/nginx/sites-enabled/
+   sudo cp deploy/host-nginx-site.in.conf.example /etc/nginx/sites-available/aanganerp.in
+   sudo ln -s /etc/nginx/sites-available/aanganerp.in /etc/nginx/sites-enabled/
    sudo nginx -t && sudo systemctl reload nginx
    ```
    `nginx -t` must print "syntax is ok" / "test is successful" before you reload — if it doesn't, stop and fix the config rather than reloading anyway (a bad reload here would affect every other app on this box, not just this one).
 6. **Issue the TLS cert** via the same Certbot already managing the other domains' certs:
    ```sh
-   sudo certbot --nginx -d onedarjeeling.duckdns.org
+   sudo certbot --nginx -d aanganerp.in
    ```
    This edits the site file in place to add the SSL block and HTTP→HTTPS redirect — the same thing it already did for the other five certs visible in `sudo certbot certificates`. No separate renewal setup needed; the existing Certbot timer on this VPS picks it up automatically.
-7. **Seed + bootstrap admin** (first time only): once containers are up, follow the same `/api/admin/bootstrap` flow described earlier in this README, but against `https://onedarjeeling.duckdns.org/api/...` instead of localhost.
+7. **Seed + bootstrap admin** (first time only): once containers are up, follow the same `/api/admin/bootstrap` flow described earlier in this README, but against `https://aanganerp.in/api/...` instead of localhost.
 
 ### Ongoing deploys (GitHub Actions)
 
-`.github/workflows/deploy.yml` SSHes into the VPS on every push to `main` and runs `git reset --hard origin/main && docker compose -f docker-compose.prod.yml up -d --build --remove-orphans`. It needs these **GitHub repo secrets** (Settings → Secrets and variables → Actions):
+`.github/workflows/deploy-prod.yml` runs on every push to `prod`: backend suite + typechecks, then it **builds both images on the runner** and pushes them to GHCR as `ghcr.io/studio-1947/1darjeelingvv1-{backend,nginx}:<commit-sha>`, then SSHes into the VPS to `git reset --hard origin/prod`, `docker compose pull` and restart.
+
+The VPS does **not** build images. It used to, which meant a full `yarn install` and two frontend bundles ran over the VPS's uplink on the critical path of every deploy — slow, and flaky enough that a yarn `ESOCKETTIMEDOUT` killed a release outright. Registry auth on the box is the workflow's own ephemeral `GITHUB_TOKEN`, so no permanent credential is stored there.
+
+It needs these **GitHub repo secrets** (Settings → Secrets and variables → Actions):
 
 | Secret        | Value                                               |
 | ------------- | --------------------------------------------------- |
@@ -370,6 +378,14 @@ The app itself deploys as three containers: `postgres`, `backend` (Express API),
 | `VPS_USER`    | The SSH user (e.g. `deploy`)                        |
 | `VPS_SSH_KEY` | The **private** key of a deploy keypair (see below) |
 | `VPS_PORT`    | Optional, defaults to `22`                          |
+
+No registry secret is needed — `GITHUB_TOKEN` is issued per run. One optional repo **variable** (Settings → Secrets and variables → Actions → Variables):
+
+| Variable              | Value                                                                             |
+| --------------------- | --------------------------------------------------------------------------------- |
+| `FRONTEND_SENTRY_DSN` | Sentry DSN inlined into the frontend bundles at build time. Unset ⇒ no reporting. |
+
+It is a variable rather than a secret deliberately: a DSN is a write-only ingestion endpoint and ships in the shipped JS by design. It moved here from the VPS's `.env` because the bundles are now built in CI, and a build arg cannot come from the deploy host.
 
 **Generating the deploy key** (run once, on the VPS, as the `deploy` user):
 
@@ -390,7 +406,9 @@ Check what's currently trusted with `ssh-keygen -lf ~/.ssh/authorized_keys`; any
 
 Paste that private key output as the `VPS_SSH_KEY` GitHub secret (the full `-----BEGIN OPENSSH PRIVATE KEY-----` block, unmodified). This is a _separate_ keypair from whatever SSH key the VPS already uses to `git clone`/`git pull` from GitHub — that one lets the VPS talk to GitHub; this new one lets GitHub Actions talk to the VPS, the opposite direction. Never reuse the VPS's own GitHub-facing key for this.
 
-Once the secrets are set, just `git push` to `main` and the workflow redeploys automatically — no manual SSH needed for routine updates. The workflow only touches this app's own containers (`docker compose -f docker-compose.prod.yml up -d --build`); it never touches the host Nginx config, so routine deploys can't affect other apps on the box. Re-run steps 5–6 above manually only if you ever need to set this app up on a fresh VPS.
+Once the secrets are set, just `git push` to `prod` and the workflow redeploys automatically — no manual SSH needed for routine updates. The workflow only touches this app's own containers (`docker compose -f docker-compose.in.yml up -d`); it never touches the host Nginx config, so routine deploys can't affect other apps on the box. Re-run steps 5–6 above manually only if you ever need to set this app up on a fresh VPS.
+
+To **roll back**, re-run the deploy with an earlier commit's SHA as `IMAGE_TAG` — see `deploy/VPS-RUNBOOK.md` §3. The old images stay in GHCR, so nothing is rebuilt.
 
 ## Bookings, notifications and refunds
 
@@ -398,7 +416,7 @@ Three behaviours are worth knowing before touching the booking or payment code, 
 replaced a defect that failed quietly. All three are covered by `backend/test/bookingIntegrity.test.ts`.
 
 **Homestay dates are held, then re-checked.** `POST /bookings` refuses dates that overlap a
-confirmed booking *or* another guest's checkout still inside its hold window
+confirmed booking _or_ another guest's checkout still inside its hold window
 (`BOOKING_HOLD_MINUTES`, default 15). Because two checkouts can both be legitimately open when they
 start, confirmation re-checks under a `FOR UPDATE` lock on the listing row — an overlap query alone
 cannot serialise them. If a paid booking loses that race it is cancelled, refunded, and the guest is
@@ -418,12 +436,12 @@ queue at `GET /api/admin/refunds/pending`; retry with `POST /api/admin/payments/
 
 ## Monitoring
 
-`1darjeeling.in` was down for 25 hours in August 2026 and nobody knew. Two independent things
+`aanganerp.in` was down for 25 hours in August 2026 and nobody knew. Two independent things
 have to be in place, because **neither one would have caught it alone**.
 
 ### 1. Uptime checks — the half that catches an outage
 
-Point an external monitor at **`https://1darjeeling.in/api/health`**, not at `/api`.
+Point an external monitor at **`https://aanganerp.in/api/health`**, not at `/api`.
 
 That distinction is the whole reason the endpoint exists. `GET /api` answers `{"status":"ok"}`
 from a bare JSON literal — it is true whenever the process is answering, and stays true with the
@@ -432,9 +450,18 @@ every booking, login and listing request failed. `GET /api/health` actually asks
 and answers **503** with the failing component named:
 
 ```json
-{"app":"1 Darjeeling","status":"degraded",
- "checks":{"database":{"ok":true,"ms":3},
-           "storage":{"ok":false,"ms":51,"error":"connect ECONNREFUSED 172.20.0.4:9000"}}}
+{
+  "app": "1 Darjeeling",
+  "status": "degraded",
+  "checks": {
+    "database": { "ok": true, "ms": 3 },
+    "storage": {
+      "ok": false,
+      "ms": 51,
+      "error": "connect ECONNREFUSED 172.20.0.4:9000"
+    }
+  }
+}
 ```
 
 Any monitor will do — UptimeRobot's free tier gives 5-minute checks and is enough. Configure it to
@@ -450,20 +477,22 @@ assumption only discovered to be false during the incident it was supposed to he
 
 Use a **separate Sentry project per side** — a noisy browser extension will otherwise bury your
 server errors. `FRONTEND_SENTRY_DSN` is inlined into the JS bundle at image build time, so changing
-it needs a rebuild (`docker compose -f <file> up -d --build nginx`), not a restart.
+it needs a new image, not a restart: update the `FRONTEND_SENTRY_DSN` repo variable and re-run the
+deploy workflow. (It is a repo variable, not the VPS's `.env`, because the bundles are built in CI.)
 
-**Both stacks share one pair of projects, separated by environment.** Both run
-`APP_ENV=production` — staging has to exercise production behaviour to be worth anything — so
-`APP_ENV` cannot tell them apart. Set **`SENTRY_ENVIRONMENT=staging`** in the duckdns stack's
-`.env`; without it, staging errors arrive tagged `production` and sit in the same stream as real
-incidents, which is the one distinction an alert at 2am has to make. The browser side derives this
-from the hostname at runtime (the same bundle ships to both stacks, so a build-time value would be
-wrong on one of them) and needs no configuration.
+**`SENTRY_ENVIRONMENT` separates streams within one pair of projects.** There is only one stack
+now that the duckdns one is retired, so nothing needs setting — but if a staging stack is ever
+added, set **`SENTRY_ENVIRONMENT=staging`** in its `.env`. It would run `APP_ENV=production` too
+(staging has to exercise production behaviour to be worth anything), so `APP_ENV` cannot tell them
+apart, and without the override staging errors arrive tagged `production` and sit in the same
+stream as real incidents — the one distinction an alert at 2am has to make. The browser side
+derives this from the hostname at runtime, so the same bundle is correct on every host and needs
+no configuration.
 
 **On personal data.** This platform holds Aadhaar/PAN scans, phone numbers and the JWTs that
 authenticate them, and an error report is assembled from exactly the material most likely to carry
 them. Everything is scrubbed before send — see `backend/src/lib/scrub.ts` and its test:
-Authorization headers, phone numbers, OTPs, uploaded documents and query-string *values* are
+Authorization headers, phone numbers, OTPs, uploaded documents and query-string _values_ are
 replaced; stack-frame local variables are dropped wholesale; browser Session Replay and
 performance tracing are deliberately not enabled at all. Read that test before loosening anything.
 
@@ -487,11 +516,13 @@ This repo carries some rough edges from a rapid AI-assisted build. See **`INVEST
 for the full audit — what's been fixed and what is still open. Read it before any public
 deployment. The two open items as of 2026-08-04 are both operational rather than code:
 
-- **§8.G — the `1darjeeling.in` backend is down.** The SPA serves, but every `/api` path returns
+- **§8.G — the `aanganerp.in` backend is down.** The SPA serves, but every `/api` path returns
   502; the `1darjeeling_in_backend` container is not running. Start with
   `docker logs 1darjeeling_in_backend --tail 50`.
 - **§8.H — test content is live.** A spot titled "admin test" is in the public feed on
-  `onedarjeeling.duckdns.org`.
+  `aanganerp.in`.
 
 The long-standing §6.A (booking confirmations notified nobody) is **closed** — see the section
 above.
+
+![![alt text](image-1.png)](image.png)

@@ -6,7 +6,7 @@ allowed-tools: Read, Write, Edit, Grep, Glob, Bash
 effort: medium
 ---
 
-# Batch Operations — Multi-File Changes
+# Batch Operations  Multi-File Changes
 
 > Apply consistent changes across many files at once. One pattern, many targets.
 
@@ -98,8 +98,8 @@ npm run build
 
 ## Safety Rules
 
-1. **Preview first** — always show affected files before modifying
-2. **Git safety** — ensure clean working directory (`git stash` or commit first)
-3. **Exclude tests** — often tests need different treatment than source
-4. **Verify after** — run build + tests after every batch operation
-5. **Report changes** — list every file modified with change summary
+1. **Preview first**  always show affected files before modifying
+2. **Git safety**  ensure clean working directory (`git stash` or commit first)
+3. **Exclude tests**  often tests need different treatment than source
+4. **Verify after**  run build + tests after every batch operation
+5. **Report changes**  list every file modified with change summary

@@ -2,8 +2,9 @@ import { describe, it, expect } from 'vitest';
 import {
   isExemptFromSupport,
   isSupportActive,
-  computeSupportExpiry,
+  computeSupportPassExpiry,
 } from '../src/lib/support';
+import { LIFETIME_SUPPORT_EXPIRY, SUPPORT_PASS_DAYS } from '../src/config';
 import { requireActiveSupport } from '../src/middleware/support';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -17,7 +18,7 @@ describe('isExemptFromSupport', () => {
     expect(isExemptFromSupport({ role: 'provider', providerPaid: true })).toBe(true);
   });
 
-  it('does NOT exempt a provider who has not paid — role flips before payment', () => {
+  it('does NOT exempt a provider who has not paid  role flips before payment', () => {
     expect(isExemptFromSupport({ role: 'provider', providerPaid: false })).toBe(false);
     expect(isExemptFromSupport({ role: 'provider' })).toBe(false);
     expect(isExemptFromSupport({ role: 'provider', providerPaid: null })).toBe(false);
@@ -51,35 +52,28 @@ describe('isSupportActive', () => {
   });
 });
 
-describe('computeSupportExpiry', () => {
+describe('computeSupportPassExpiry', () => {
   const now = new Date('2026-07-22T00:00:00.000Z');
 
-  it('grants 365 days from now for a first payment', () => {
-    const result = computeSupportExpiry(null, now);
-    expect(Date.parse(result) - now.getTime()).toBe(365 * DAY_MS);
+  it('grants one year from settlement when there is no active pass', () => {
+    const expiry = computeSupportPassExpiry(null, now);
+    expect(Date.parse(expiry) - now.getTime()).toBe(SUPPORT_PASS_DAYS * DAY_MS);
   });
 
-  it('extends an existing future window instead of restarting it', () => {
-    const existing = new Date(now.getTime() + 100 * DAY_MS).toISOString();
-    const result = computeSupportExpiry(existing, now);
-    expect(Date.parse(result) - now.getTime()).toBe(465 * DAY_MS);
+  it('extends from an active expiry when renewed early', () => {
+    const existing = new Date(now.getTime() + 30 * DAY_MS).toISOString();
+    const expiry = computeSupportPassExpiry(existing, now);
+    expect(Date.parse(expiry) - Date.parse(existing)).toBe(SUPPORT_PASS_DAYS * DAY_MS);
   });
 
-  it('restarts from now when the existing window has already lapsed', () => {
-    const existing = new Date(now.getTime() - 30 * DAY_MS).toISOString();
-    const result = computeSupportExpiry(existing, now);
-    expect(Date.parse(result) - now.getTime()).toBe(365 * DAY_MS);
+  it('leaves an old lifetime pass as it is', () => {
+    expect(computeSupportPassExpiry(LIFETIME_SUPPORT_EXPIRY, now)).toBe(LIFETIME_SUPPORT_EXPIRY);
   });
 
-  it('never moves an expiry backwards', () => {
-    const existing = new Date(now.getTime() + 500 * DAY_MS).toISOString();
-    const result = computeSupportExpiry(existing, now);
-    expect(Date.parse(result)).toBeGreaterThan(Date.parse(existing));
-  });
-
-  it('ignores an unparseable existing value and grants a full window', () => {
-    const result = computeSupportExpiry('garbage', now);
-    expect(Date.parse(result) - now.getTime()).toBe(365 * DAY_MS);
+  it('restarts from settlement once the pass has lapsed', () => {
+    const expired = new Date(now.getTime() - DAY_MS).toISOString();
+    const expiry = computeSupportPassExpiry(expired, now);
+    expect(Date.parse(expiry) - now.getTime()).toBe(SUPPORT_PASS_DAYS * DAY_MS);
   });
 });
 

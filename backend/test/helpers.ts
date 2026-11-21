@@ -1,5 +1,8 @@
 import request from 'supertest';
+import { eq } from 'drizzle-orm';
 import { app } from '../src/app';
+import { db, schema } from '../src/db';
+import { addDays, todayInIndia } from '../src/lib/bookingRules';
 
 let phoneCounter = 0;
 
@@ -30,7 +33,7 @@ export async function registerUser(opts: {
   name: string;
   role?: 'tourist' | 'provider';
   phone?: string;
-  /** Set false to get a tourist who has NOT paid — for tests that exercise the gate itself. */
+  /** Set false to get a tourist who has NOT paid  for tests that exercise the gate itself. */
   paySupport?: boolean;
 }) {
   const phone = opts.phone || nextPhone();
@@ -66,7 +69,18 @@ export async function loginAdmin() {
   return res.body.token as string;
 }
 
-export async function onboardActiveProvider(opts: { name: string; businessType?: string }) {
+export async function onboardActiveProvider(opts: {
+  name: string;
+  businessType?: string;
+  /**
+   * New hosts stay out of the public feed until an admin verifies their KYC. Most tests are about
+   * something else and want a host who is simply live, so the helper clears the requirement
+   * (as if the host pre-dated the rule). Set true to keep the real new-host behaviour.
+   */
+  awaitingApproval?: boolean;
+  /** Give the business the Verified tick (documents approved), which posting in the Feed needs. */
+  verified?: boolean;
+}) {
   const businessType = opts.businessType || 'homestay';
   const { token, phone } = await registerUser({ name: opts.name, role: 'provider' });
 
@@ -85,18 +99,48 @@ export async function onboardActiveProvider(opts: { name: string; businessType?:
   }
   const providerId = onboardRes.body.provider.id as string;
 
-  const orderRes = await request(app)
-    .post('/api/payments/order')
-    .set('Authorization', `Bearer ${token}`)
-    .send({ flow: 'provider_registration', reference_id: providerId });
-  const orderId = orderRes.body.order.id as string;
+  if (businessType === 'shop') {
+    // Local shops list free: they go live on the free start, which never runs out.
+    await request(app).post('/api/providers/me/start-free').set('Authorization', `Bearer ${token}`);
+  } else {
+    const orderRes = await request(app)
+      .post('/api/payments/order')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ flow: 'provider_registration', reference_id: providerId });
+    const orderId = orderRes.body.order.id as string;
 
-  await request(app)
-    .post('/api/payments/mock/complete')
-    .set('Authorization', `Bearer ${token}`)
-    .send({ order_id: orderId, flow: 'provider_registration', reference_id: providerId });
+    await request(app)
+      .post('/api/payments/mock/complete')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ order_id: orderId, flow: 'provider_registration', reference_id: providerId });
+  }
+
+  if (!opts.awaitingApproval) {
+    await db.update(schema.providers).set({ approvalRequired: false }).where(eq(schema.providers.id, providerId));
+  }
+  if (opts.verified) {
+    await db.update(schema.providers).set({ kycStatus: 'verified' }).where(eq(schema.providers.id, providerId));
+  }
 
   return { token, providerId, phone };
+}
+
+/**
+ * Pays the ₹1 fee that sends a saved request (a traveller without the aangan pass), with the mock
+ * gateway. Returns what the settlement said.
+ */
+export async function payToSend(token: string, bookingId: string) {
+  const order = await request(app)
+    .post('/api/payments/order')
+    .set('Authorization', `Bearer ${token}`)
+    .send({ flow: 'booking_commission', reference_id: bookingId });
+  if (order.status !== 200) throw new Error(`fee order failed: ${order.status} ${JSON.stringify(order.body)}`);
+  const res = await request(app)
+    .post('/api/payments/mock/complete')
+    .set('Authorization', `Bearer ${token}`)
+    .send({ order_id: order.body.order.id, flow: 'booking_commission', reference_id: bookingId });
+  if (res.status !== 200) throw new Error(`fee payment failed: ${res.status} ${JSON.stringify(res.body)}`);
+  return res.body;
 }
 
 export async function createConfirmedBooking(opts: {
@@ -119,32 +163,45 @@ export async function createConfirmedBooking(opts: {
     throw new Error(`booking failed: ${bookingRes.status} ${JSON.stringify(bookingRes.body)}`);
   }
   const bookingId = bookingRes.body.booking.id as string;
+  // Without the pass the request goes out only once the ₹1 fee is paid.
+  if (bookingRes.body.fee_due) await payToSend(opts.token, bookingId);
 
-  const orderRes = await request(app)
-    .post('/api/payments/order')
-    .set('Authorization', `Bearer ${opts.token}`)
-    .send({ flow: 'booking_commission', reference_id: bookingId });
-  const orderId = orderRes.body.order.id as string;
+  // A request on a real host's driver/homestay/guide waits for the host (board); accept it the
+  // way the team can on a host's behalf, so tests about something else get a confirmed booking.
+  if (bookingRes.body.booking.awaiting_host) {
+    const accept = await request(app)
+      .patch(`/api/bookings/${bookingId}/confirm`)
+      .set('Authorization', `Bearer ${await loginAdmin()}`);
+    if (accept.status !== 200) {
+      throw new Error(`accept failed: ${accept.status} ${JSON.stringify(accept.body)}`);
+    }
+  }
 
-  const completeRes = await request(app)
-    .post('/api/payments/mock/complete')
-    .set('Authorization', `Bearer ${opts.token}`)
-    .send({ order_id: orderId, flow: 'booking_commission', reference_id: bookingId });
-  if (completeRes.status !== 200) {
-    throw new Error(`complete failed: ${completeRes.status} ${JSON.stringify(completeRes.body)}`);
+  // Confirming is free (the ₹1, when due, was paid to send the request).
+  const checkoutRes = await request(app)
+    .post(`/api/bookings/${bookingId}/checkout`)
+    .set('Authorization', `Bearer ${opts.token}`);
+  if (checkoutRes.status !== 200) {
+    throw new Error(`checkout failed: ${checkoutRes.status} ${JSON.stringify(checkoutRes.body)}`);
   }
 
   return bookingId;
 }
 
-export async function createListing(opts: { title?: string } = {}) {
+/** A date n days from today in India, as YYYY-MM-DD: booking dates must be today or later. */
+export function inDays(n: number): string {
+  return addDays(todayInIndia(), n);
+}
+
+export async function createListing(opts: { title?: string; type?: string; extras?: Record<string, unknown> } = {}) {
   const admin = await loginAdmin();
   const res = await request(app)
     .post('/api/listings')
     .set('Authorization', `Bearer ${admin}`)
     .send({
       title: opts.title || 'Test Spot',
-      type: 'spot',
+      type: opts.type || 'spot',
+      ...(opts.extras ? { extras: opts.extras } : {}),
       description: 'A test listing',
       location: 'Darjeeling',
       provider_id: 'admin-seed-provider',
@@ -153,4 +210,62 @@ export async function createListing(opts: { title?: string } = {}) {
     throw new Error(`createListing failed: ${res.status} ${JSON.stringify(res.body)}`);
   }
   return res.body.item;
+}
+
+// 1x1 PNG and the smallest thing the video route accepts as MP4 (a box whose type at offset 4 is
+// "ftyp"). Good enough for the KYC routes, which check the type and the magic bytes, not the picture.
+const TINY_PNG_DATA_URL =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+const TINY_MP4 = Buffer.concat([Buffer.from([0, 0, 0, 0x18]), Buffer.from('ftypmp42'), Buffer.alloc(32)]);
+
+/** A new host's mandatory profile items (lib/hostProfile.ts), so their documents can go for approval. */
+export async function completeMandatoryProfile(token: string): Promise<void> {
+  const me = await request(app).get('/api/providers/me').set('Authorization', `Bearer ${token}`);
+  const type = me.body.provider?.business_type;
+  const photos = (n: number) => Array.from({ length: n }, (_, i) => `https://example.com/photo-${i + 1}.jpg`);
+  const profile =
+    type === 'driver' ? { images: photos(6) }
+    : type === 'homestay' || type === 'cafe' || type === 'shop' ? { host_name: 'Test Host', images: photos(8) }
+    : type === 'guide' ? { services: [{ name: 'Day hike', price: 1500, unit: 'day' }] }
+    : null;
+  if (!profile) return;
+  const res = await request(app).patch('/api/providers/me').set('Authorization', `Bearer ${token}`).send({ profile });
+  if (res.status !== 200) throw new Error(`completeMandatoryProfile failed: ${res.status} ${JSON.stringify(res.body)}`);
+}
+
+/**
+ * Uploads every document this provider's business type currently requires, reading the list from
+ * the profile checklist so a change to the matrix does not mean editing every test. Fills in the
+ * mandatory profile first, as a new host has to. Returns the document types it uploaded.
+ */
+export async function uploadRequiredDocs(token: string): Promise<string[]> {
+  await completeMandatoryProfile(token);
+  const profile = await request(app).get('/api/providers/me/profile').set('Authorization', `Bearer ${token}`);
+  const required = profile.body.checklist.filter((c: any) => c.kind === 'kyc' && c.required);
+  for (const item of required) {
+    const up =
+      item.media === 'video'
+        ? await request(app)
+            .post(`/api/providers/me/kyc/video?doc_type=${item.key}`)
+            .set('Authorization', `Bearer ${token}`)
+            .set('Content-Type', 'video/mp4')
+            .send(TINY_MP4)
+        : await request(app)
+            .post('/api/providers/me/kyc')
+            .set('Authorization', `Bearer ${token}`)
+            .send({ doc_type: item.key, file: TINY_PNG_DATA_URL, filename: `${item.key}.png` });
+    if (up.status !== 200) throw new Error(`upload failed for ${item.key}: ${up.status} ${JSON.stringify(up.body)}`);
+  }
+  return required.map((c: any) => c.key as string);
+}
+
+/** A live capture from a phone standing in Darjeeling, the way a café or shop proves where it is. */
+export async function captureLiveLocation(
+  token: string,
+  reading: { latitude?: number; longitude?: number; accuracy?: number } = {}
+) {
+  return request(app)
+    .post('/api/providers/me/location/live')
+    .set('Authorization', `Bearer ${token}`)
+    .send({ latitude: 27.036, longitude: 88.2627, accuracy: 12, ...reading });
 }

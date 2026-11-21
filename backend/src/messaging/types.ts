@@ -15,7 +15,15 @@ export interface OtpMessage {
 export type NotificationTemplate =
   | 'booking_confirmed_guest'
   | 'booking_confirmed_host'
-  | 'booking_cancelled_guest';
+  | 'booking_cancelled_guest'
+  // Host verification: a document needs changing, and the host is approved and live. Optional:
+  // see OPTIONAL_TEMPLATES in providerConfig.ts.
+  | 'host_changes_requested'
+  | 'host_approved'
+  // Host approval of bookings: a new request for the host to accept, and the host's yes to the
+  // guest. Optional too, for the same reason.
+  | 'booking_request_host'
+  | 'booking_accepted_guest';
 
 export interface NotificationMessage {
   phone: string;
@@ -42,16 +50,16 @@ export interface MessagingProvider {
 
   /**
    * Resolves only on confirmed handoff to the provider. Throws MessageDeliveryError on
-   * any failure — a resolved promise is what allows the route to report `sent: true`.
+   * any failure  a resolved promise is what allows the route to report `sent: true`.
    * The returned `channel` is the channel actually used for delivery, which may differ
-   * from the one requested in `msg` — the caller must report what happened, not what was
+   * from the one requested in `msg`  the caller must report what happened, not what was
    * asked for.
    */
   sendOtp(msg: OtpMessage): Promise<{ ref?: string; channel: string }>;
 
   /**
    * Delivers a transactional notification. Same contract as sendOtp: resolves only on confirmed
-   * handoff, throws MessageDeliveryError otherwise — so a caller can never record "notified"
+   * handoff, throws MessageDeliveryError otherwise  so a caller can never record "notified"
    * for a message that was not sent. This is the half of the messaging layer that booking
    * confirmations needed and did not have (INVESTIGATION.md §6.A).
    */

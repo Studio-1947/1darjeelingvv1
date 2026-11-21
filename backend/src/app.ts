@@ -1,12 +1,13 @@
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import swaggerUi from 'swagger-ui-express';
-import { IS_PROD, CORS_ORIGINS, TRUST_PROXY_HOPS, log } from './config';
+import { IS_PROD, API_DOCS_ENABLED, CORS_ORIGINS, TRUST_PROXY_HOPS, log } from './config';
 import { swaggerSpec } from './swagger';
 
 // Import router modules
 import authRouter from './routes/auth';
 import googleAuthRouter from './routes/googleAuth';
+import appleAuthRouter from './routes/appleAuth';
 import usersRouter from './routes/users';
 import providersRouter from './routes/providers';
 import listingsRouter from './routes/listings';
@@ -14,47 +15,70 @@ import bookingsRouter from './routes/bookings';
 import paymentsRouter from './routes/payments';
 import adminRouter from './routes/admin';
 import adminSpotsRouter from './routes/adminSpots';
+import placeSuggestionsRouter from './routes/placeSuggestions';
+import referralCampaignsRouter from './routes/referralCampaigns';
+import adminMaintenanceRouter from './routes/adminMaintenance';
+import adminBroadcastsRouter from './routes/adminBroadcasts';
 import geocodeRouter from './routes/geocode';
+import mapTilesRouter from './routes/mapTiles';
 import kycRouter from './routes/kyc';
 import favoritesRouter from './routes/favorites';
 import reviewsRouter from './routes/reviews';
-import weatherRouter from './routes/weather';
+import postsRouter from './routes/posts';
+import plansRouter from './routes/plans';
 import routeEstimatorRouter from './routes/routeEstimator';
+import weatherRouter from './routes/weather';
+import notificationsRouter from './routes/notifications';
+import promotionsRouter from './routes/promotions';
+import appVersionRouter from './routes/appVersion';
+import reportsRouter from './routes/reports';
 import interaktWebhookRouter from './routes/interaktWebhook';
+import feedbackRouter from './routes/feedback';
+import deliveriesRouter from './routes/deliveries';
 import { rateLimiter } from './middleware/rateLimiter';
+import { antiScraper } from './middleware/antiScraper';
 import { reportError } from './observability';
 import { checkStorage } from './lib/s3';
 import { pool } from './db';
 
 export const app = express();
 
+// Don't announce the framework on every reply ("X-Powered-By: Express").
+app.disable('x-powered-by');
+
 // Without this, req.ip is the address of the nearest proxy rather than the real client, so every
 // request behind the production Nginx chain shares one rate-limit bucket (see middleware/rateLimiter.ts).
-// A hop count — not `true` — so a client-forged X-Forwarded-For prefix can't spoof its way past limits.
+// A hop count  not `true`  so a client-forged X-Forwarded-For prefix can't spoof its way past limits.
 app.set('trust proxy', TRUST_PROXY_HOPS);
 
 // A backstop limit across the whole API, mounted before every route-specific one below.
 //
-// Until this existed only a handful of named endpoints were limited — OTP, uploads, admin login,
-// geocode — and everything else (listing search, the public feed, listing detail, reviews) could
+// Until this existed only a handful of named endpoints were limited  OTP, uploads, admin login,
+// geocode  and everything else (listing search, the public feed, listing detail, reviews) could
 // be called without any ceiling at all. That is the surface that gets scraped or hammered, and on
 // a single small VPS shared with other projects it does not take much to matter.
 //
 // 300/min/IP is far above anything a person browsing generates (a page load is a handful of
-// calls), so it never fights the tighter per-route limits below — those still bite first for the
+// calls), so it never fights the tighter per-route limits below  those still bite first for the
 // paths that need it. It is a ceiling on automation, not a throttle on use.
 app.use('/api', rateLimiter(300, 60 * 1000, 'api_global'));
 
+// Scraping tools announcing themselves (python-requests, Scrapy, headless browsers...) are refused
+// on public reads in production; see middleware/antiScraper.ts. Listing reads, the data worth
+// copying, get a tighter ceiling than the global one.
+app.use('/api', antiScraper({ enabled: IS_PROD }));
+app.use('/api/listings', rateLimiter(120, 60 * 1000, 'listings_read'));
+
 // Razorpay signs the raw bytes of the webhook body, so this route must keep them verbatim.
 // It has to be mounted BEFORE express.json(), which would otherwise consume the stream and leave
-// only a parsed object — re-serialising that yields different bytes and the HMAC never matches.
+// only a parsed object  re-serialising that yields different bytes and the HMAC never matches.
 // express.json() then skips this request because express.raw() has already marked the body read.
 app.use('/api/payments/webhook', express.raw({ type: '*/*' }));
 app.use('/api/webhooks/interakt', express.raw({ type: '*/*' }));
 
 // Rate limit the KYC upload path before the 8mb JSON parser below buffers anything, so an
 // unauthenticated caller looping requests gets a 429 instead of the server repeatedly
-// allocating up to 8MB per request. 20/min/IP mirrors geocode's search limit — generous for a
+// allocating up to 8MB per request. 20/min/IP mirrors geocode's search limit  generous for a
 // human uploading a handful of documents, tight enough to blunt an automated flood.
 app.use('/api/providers/me/kyc', rateLimiter(20, 60 * 1000, 'kyc_upload'));
 
@@ -63,8 +87,18 @@ app.use('/api/providers/me/kyc', rateLimiter(20, 60 * 1000, 'kyc_upload'));
 // which would otherwise consume the stream at its 100kb default.
 app.use('/api/providers/me/kyc', express.json({ limit: '8mb' }));
 
+// Verification videos arrive as the raw request body (no base64), up to the 25 MB the route
+// enforces. Only video types are consumed here; anything else falls through to a 400 in the route.
+app.use('/api/providers/me/kyc/video', express.raw({ type: ['video/mp4', 'video/quicktime', 'video/webm'], limit: '26mb' }));
+
+// A host's intro video (the board: "Short Bio / Video") is an uploaded file, not a link. Same raw
+// body and 25 MB cap as verification videos, but stored in the public bucket so travellers can
+// play it on the host's page.
+app.use('/api/providers/me/intro-video', rateLimiter(10, 60 * 1000, 'intro_video_upload'));
+app.use('/api/providers/me/intro-video', express.raw({ type: ['video/mp4', 'video/quicktime', 'video/webm'], limit: '26mb' }));
+
 // Listing image uploads (POST /api/listings/upload) also carry a base64 data URL, but were never
-// given a raised limit — so they fell through to the global express.json() default of 100kb and
+// given a raised limit  so they fell through to the global express.json() default of 100kb and
 // answered any real photo with a bare 413 `request entity too large`. Mirror the KYC path: rate
 // limit first (so a flood gets a 429 instead of the server buffering the body), then parse with a
 // limit sized to admit a 20MB image after base64 inflation (~27MB) plus the small JSON envelope.
@@ -73,7 +107,7 @@ app.use('/api/listings/upload', rateLimiter(20, 60 * 1000, 'listing_upload'));
 app.use('/api/listings/upload', express.json({ limit: '28mb' }));
 
 // Tourist-spot photo uploads carry the same base64 payload as listing uploads, so they need the
-// same raised parser limit — without it every real photo the admin picks would 413 against the
+// same raised parser limit  without it every real photo the admin picks would 413 against the
 // global 100kb default. The rate limit is looser than the provider path because an admin filling
 // a spot legitimately uploads a whole gallery in one sitting.
 app.use('/api/admin/spots/upload', rateLimiter(60, 60 * 1000, 'spot_upload'));
@@ -99,7 +133,8 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("X-Frame-Options", "DENY");
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
-  res.setHeader("Permissions-Policy", "geolocation=(), microphone=(), camera=()");
+  // Same as deploy/nginx/snippets/headers-common.conf: location and microphone for this site only.
+  res.setHeader("Permissions-Policy", "geolocation=(self), microphone=(self), camera=()");
   if (IS_PROD) {
     res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
   }
@@ -118,7 +153,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   // Not a meaningful loss of speed - the client holds its own 60s in-memory cache
   // (see the QueryClient in frontend/src/index.tsx), which is where the repeat
   // reads were actually being served from.
-  // `/api/` and bare `/api`, but deliberately NOT a startsWith('/api') test —
+  // `/api/` and bare `/api`, but deliberately NOT a startsWith('/api') test 
   // that also catches /api-docs and /api-docs.json, which are static Swagger
   // assets that benefit from being cached and are not user data.
   if (req.path === '/api' || req.path.startsWith('/api/')) {
@@ -128,12 +163,15 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 });
 
 // ============ API DOCS ============
-app.get('/api-docs.json', (req: Request, res: Response) => {
-  res.json(swaggerSpec);
-});
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
-  customSiteTitle: 'aangan API Docs',
-}));
+// Off in production unless API_DOCS=true (config.ts API_DOCS_ENABLED).
+if (API_DOCS_ENABLED) {
+  app.get('/api-docs.json', (req: Request, res: Response) => {
+    res.json(swaggerSpec);
+  });
+  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+    customSiteTitle: 'aangan API Docs',
+  }));
+}
 
 /**
  * @openapi
@@ -155,7 +193,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
 // ============ ROOT / HEALTH ============
 // Liveness: "this process is answering". Deliberately touches nothing else, so it stays a valid
 // answer to "is the container up?" even while a dependency is broken. Do NOT point an uptime
-// monitor at this one — see /api/health below for why.
+// monitor at this one  see /api/health below for why.
 app.get('/api', (req: Request, res: Response) => {
   res.json({ app: "aangan", status: "ok" });
 });
@@ -164,7 +202,7 @@ app.get('/api', (req: Request, res: Response) => {
  * @openapi
  * /health:
  *   get:
- *     summary: Readiness check — is this server able to serve real traffic?
+ *     summary: Readiness check  is this server able to serve real traffic?
  *     description: >
  *       Answers 200 only when every dependency the app needs is reachable, and 503 with the
  *       failing component named otherwise. This is the endpoint an uptime monitor should watch.
@@ -173,7 +211,7 @@ app.get('/api', (req: Request, res: Response) => {
  *       200: { description: Every dependency is reachable }
  *       503: { description: At least one dependency is down; `checks` names which }
  */
-// Readiness, as distinct from the liveness check above — and the distinction is the whole point.
+// Readiness, as distinct from the liveness check above  and the distinction is the whole point.
 // GET /api answers `{"status":"ok"}` from a bare JSON literal, so it keeps saying "ok" with the
 // database on fire. A monitor watching it would have reported this platform perfectly healthy
 // while every booking, login and listing request failed. This one actually asks.
@@ -208,20 +246,34 @@ app.get('/api/health', async (_req: Request, res: Response) => {
 // ============ MOUNT ROUTERS ============
 app.use('/api/auth', authRouter);
 app.use('/api/auth/google', googleAuthRouter);
+app.use('/api/auth/apple', appleAuthRouter);
 app.use('/api/users', usersRouter);
 app.use('/api/providers', kycRouter);
 app.use('/api/providers', providersRouter);
 app.use('/api/listings', listingsRouter);
 app.use('/api/bookings', bookingsRouter);
+app.use('/api/deliveries', deliveriesRouter);
 app.use('/api/favorites', favoritesRouter);
 app.use('/api/reviews', reviewsRouter);
+app.use('/api/posts', postsRouter);
+app.use('/api/plans', plansRouter); // Trip plans in the Feed
 app.use('/api/payments', paymentsRouter);
 app.use('/api/webhooks/interakt', interaktWebhookRouter);
 app.use('/api/geocode', geocodeRouter);
-app.use('/api/weather', weatherRouter);
+app.use('/api/maps/tiles', mapTilesRouter);
 app.use('/api/routes', routeEstimatorRouter);
+app.use('/api/weather', weatherRouter);
+app.use('/api/notifications', notificationsRouter);
+app.use('/api/promotions', promotionsRouter);
+app.use('/api', feedbackRouter);
+app.use('/api', placeSuggestionsRouter); // Suggest a place: /api/spots/suggestions, /api/admin/spots/suggestions
+app.use('/api', referralCampaignsRouter); // Admin referral codes and their report: /api/admin/referrals
+app.use('/api/app', appVersionRouter);
+app.use('/api', reportsRouter); // /api/reports, /api/users/me/blocks, /api/admin/reports
 app.use('/api', adminRouter); // Mount admin routes directly under /api (e.g. /api/admin/seed, /api/admin/stats)
 app.use('/api', adminSpotsRouter); // Admin-only tourist-spot CRUD (e.g. /api/admin/spots)
+app.use('/api', adminMaintenanceRouter); // Admin Clean-up tab (e.g. /api/admin/maintenance/demo)
+app.use('/api', adminBroadcastsRouter); // Admin Notifications page (e.g. /api/admin/broadcasts)
 
 // ============ 404 + ERROR HANDLING ============
 // Must stay last: Express matches in order, so anything reaching here matched no route.
@@ -229,11 +281,11 @@ app.use((req: Request, res: Response) => {
   res.status(404).json({ detail: 'Not found' });
 });
 
-// Central error handler. Express identifies this as one *only* because it declares 4 arguments —
+// Central error handler. Express identifies this as one *only* because it declares 4 arguments 
 // dropping `next` silently turns it into ordinary middleware that never runs on errors.
 //
 // Without this, Express's built-in handler answers instead, and it decides whether to include the
-// stack trace by reading NODE_ENV — which this app never sets (it uses APP_ENV). The result was a
+// stack trace by reading NODE_ENV  which this app never sets (it uses APP_ENV). The result was a
 // 500 returning an HTML page containing the failing SQL statement and its parameters, in
 // production as much as in development.
 app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
@@ -244,7 +296,7 @@ app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
   // The detail always survives here, in the server log, where it's useful and not attacker-visible.
   log.error(`${req.method} ${req.originalUrl} -> ${status}: ${err?.stack || err?.message || err}`);
 
-  // Only 5xx is reported. A 400 or 403 is the API working correctly — telling a caller no — and
+  // Only 5xx is reported. A 400 or 403 is the API working correctly  telling a caller no  and
   // reporting those would bury a real fault under a stream of rejected requests. Payload scrubbing
   // happens inside observability.ts; nothing sensitive is passed here beyond the method and a
   // query-stripped path.
@@ -258,7 +310,7 @@ app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
   }
 
   // 4xx are the caller's own fault and their messages are ours (CORS, malformed JSON body, etc.),
-  // so they're safe to echo. 5xx messages come from deeper internals — always generic.
+  // so they're safe to echo. 5xx messages come from deeper internals  always generic.
   res.status(status).json({
     detail: status < 500 ? (err?.message || 'Bad request') : 'Internal server error',
   });

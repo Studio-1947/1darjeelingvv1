@@ -361,7 +361,7 @@ function TodoList() {
 }
 ```
 
-The first callback is recreated every time `items` changes, which can cause child components to re-render unnecessarily. The second callback has a stale closure bug—it will always reference the initial `items` value.
+The first callback is recreated every time `items` changes, which can cause child components to re-render unnecessarily. The second callback has a stale closure bugit will always reference the initial `items` value.
 
 **Correct (stable callbacks, no stale closures):**
 

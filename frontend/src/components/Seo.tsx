@@ -28,7 +28,7 @@ import { useTranslation } from 'react-i18next';
 const SITE_URL =
   import.meta.env.VITE_SITE_URL ||
   (typeof process !== 'undefined' && process.env ? process.env.REACT_APP_SITE_URL : undefined) ||
-  'https://aangan.in';
+  'https://aanganerp.in';
 
 /** Upserts <meta {attr}="{key}" content="…">, or removes it when content is empty. */
 function setMeta(attr: 'name' | 'property', key: string, content?: string) {
@@ -89,7 +89,7 @@ export function useSeo({ title, description, image, canonical, ogType = 'website
 
   const brand = t('brand');
   const tagline = t('brand_tagline');
-  const fullTitle = title ? `${title} — ${brand}` : `${brand} — ${tagline}`;
+  const fullTitle = title ? `${title}  ${brand}` : `${brand}  ${tagline}`;
   const desc = description || t('seo.default_description');
   // Query strings are tracking and filter state, never a distinct document; a
   // canonical that carried them would split one listing across a dozen URLs.

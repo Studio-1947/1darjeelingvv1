@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
-import { useNavigate, Navigate, Link } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { HeartHandshake, Check, ArrowLeft } from 'lucide-react';
+import { Check } from '@phosphor-icons/react';
+import { Box, Button, ButtonLink, Chip, Chips, PageHead, TextField } from '@/components/ag';
 import { useAuth } from '@/context/AuthContext';
 import { createPaymentOrder, completeMockPayment, payWithRazorpay } from '@/lib/api';
 import MockPaymentModal from '@/components/MockPaymentModal';
 import { useSeo } from '@/components/Seo';
 
 // Mirrors DONATION_MIN_PAISE / DONATION_MAX_PAISE in backend/src/config.ts. This copy exists to
-// give immediate feedback, not to enforce anything — the server's check is the real one, and it
+// give immediate feedback, not to enforce anything  the server's check is the real one, and it
 // re-validates every amount regardless of what happens here.
 const MIN_PAISE = 1000;
 const MAX_PAISE = 10_000_000;
@@ -32,7 +33,7 @@ export default function Donate() {
   // destination so logging in returns them here rather than dumping them on the feed.
   if (!user) return <Navigate to={`/login?next=${encodeURIComponent('/donate')}`} replace />;
 
-  // A custom entry always wins over a preset — it is the field the user touched most recently in
+  // A custom entry always wins over a preset  it is the field the user touched most recently in
   // any flow that reaches here, and silently charging the preset instead would be theft-adjacent.
   const customPaise = custom.trim() === '' ? null : Math.round(Number(custom) * 100);
   const amountPaise = customPaise !== null ? customPaise : selected;
@@ -98,108 +99,50 @@ export default function Donate() {
 
   if (thanks !== null) {
     return (
-      <div className="mx-auto max-w-md px-4 md:px-8 py-10 md:py-16">
-        <div className="mist-panel p-8 text-center" data-testid="donate-thanks">
-          <div className="mx-auto w-14 h-14 rounded-2xl bg-pine text-white grid place-items-center">
-            <Check size={26} />
+      <div className="ag-wrap">
+        <div className="ag-main">
+          <div className="ag-done" data-testid="donate-thanks">
+            <span className="big"><Check weight="bold" /></span>
+            <h1 className="m-0 font-medium text-[28px] leading-[34px] text-[var(--ink7)]">{t('donate.thanks', { amount: rupees(thanks) })}</h1>
+            <Button variant="primary" go block onClick={() => nav('/', { replace: true })} data-testid="donate-done">{t('donate.back')}</Button>
           </div>
-          <p className="mt-5 font-display font-extrabold text-2xl text-ink">
-            {t('donate.thanks', { amount: rupees(thanks) })}
-          </p>
-          <button
-            onClick={() => nav('/', { replace: true })}
-            data-testid="donate-done"
-            className="mt-7 w-full py-3 rounded-full bg-pine text-white font-extrabold btn-hover"
-          >
-            {t('donate.back')}
-          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-md px-4 md:px-8 py-8 md:py-14">
-      <div className="mist-panel p-6 md:p-8" data-testid="donate-screen">
-        <div className="text-center">
-          <div className="mx-auto w-14 h-14 rounded-2xl bg-pine text-white grid place-items-center">
-            <HeartHandshake size={26} />
-          </div>
-          <h1 className="mt-4 font-display font-extrabold text-2xl md:text-3xl text-ink leading-tight">
-            {t('donate.title')}
-          </h1>
+    <div className="ag-wrap">
+      <div className="ag-main" data-testid="donate-screen">
+        <PageHead eyebrow={t('ui.donate.eyebrow', 'Support aangan')} title={t('donate.title')} />
+        <p className="text-[var(--ink7)]">{t('donate.lead')}</p>
+
+        <Box>
+          <span className="ag-eyebrow">{t('donate.choose')}</span>
+          <Chips>
+            {PRESETS_PAISE.map((p) => (
+              <Chip key={p} on={custom.trim() === '' && selected === p} onClick={() => { setSelected(p); setCustom(''); setErr(''); }}
+                data-testid={`donate-preset-${p}`}>
+                ₹{rupees(p)}
+              </Chip>
+            ))}
+          </Chips>
+          <TextField label={t('donate.custom')} value={custom} onChange={(e) => { setCustom(e.target.value); setErr(''); }}
+            inputMode="decimal" data-testid="donate-custom" placeholder="₹ 500" />
+        </Box>
+
+        <div className="flex flex-col gap-2">
+          <Button variant="primary" go block onClick={donate} disabled={busy || !valid} data-testid="donate-pay">
+            {busy
+              ? t('common.loading')
+              : t('donate.cta', { amount: valid && amountPaise !== null ? rupees(amountPaise) : '' })}
+          </Button>
+          <p className="ag-small !text-xs text-center">{t('donate.note')}</p>
         </div>
 
-        <p className="mt-4 text-sm text-ink-soft">{t('donate.lead')}</p>
+        {err && <p data-testid="donate-error" role="alert" className="ag-err !text-sm text-center">{err}</p>}
 
-        <div className="mt-6">
-          <div className="text-xs font-bold uppercase tracking-wider text-ink-soft mb-2">
-            {t('donate.choose')}
-          </div>
-          <div className="grid grid-cols-4 gap-2">
-            {PRESETS_PAISE.map((p) => {
-              const active = custom.trim() === '' && selected === p;
-              return (
-                <button
-                  key={p}
-                  type="button"
-                  onClick={() => { setSelected(p); setCustom(''); setErr(''); }}
-                  data-testid={`donate-preset-${p}`}
-                  aria-pressed={active}
-                  className={`py-2.5 rounded-xl border font-bold text-sm ${
-                    active ? 'border-pine bg-pine/10 text-pine' : 'border-[var(--line)] text-ink-soft'
-                  }`}
-                >
-                  ₹{rupees(p)}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        <label className="block mt-4">
-          <span className="text-xs font-bold uppercase tracking-wider text-ink-soft">
-            {t('donate.custom')}
-          </span>
-          <div className="mt-1 flex items-center gap-2 px-3 py-2 rounded-xl border border-[var(--line)] bg-white">
-            <span className="text-ink-soft">₹</span>
-            <input
-              value={custom}
-              onChange={(e) => { setCustom(e.target.value); setErr(''); }}
-              inputMode="decimal"
-              data-testid="donate-custom"
-              placeholder="500"
-              className="flex-1 bg-transparent outline-none py-1 text-ink"
-            />
-          </div>
-        </label>
-
-        <button
-          onClick={donate}
-          disabled={busy || !valid}
-          data-testid="donate-pay"
-          className="mt-6 w-full py-3 rounded-full bg-pine text-white font-extrabold btn-hover disabled:opacity-50"
-        >
-          {busy
-            ? t('common.loading')
-            : t('donate.cta', { amount: valid && amountPaise !== null ? rupees(amountPaise) : '—' })}
-        </button>
-
-        <p className="mt-3 text-[11px] text-center text-ink-soft">{t('donate.note')}</p>
-
-        {err && (
-          <p data-testid="donate-error" className="mt-4 text-sm text-flag font-semibold text-center">
-            {err}
-          </p>
-        )}
-
-        <Link
-          to="/"
-          data-testid="donate-back"
-          className="mt-6 w-full text-xs text-ink-soft flex items-center justify-center gap-1"
-        >
-          <ArrowLeft size={12} /> {t('donate.back')}
-        </Link>
+        <ButtonLink to="/" variant="text" className="self-center" data-testid="donate-back">{t('donate.back')}</ButtonLink>
       </div>
 
       <MockPaymentModal

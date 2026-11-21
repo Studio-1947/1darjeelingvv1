@@ -6,7 +6,7 @@ allowed-tools: Read, Write, Glob, Grep
 effort: low
 ---
 
-# Skillify — Auto-Create Skills from Workflows
+# Skillify  Auto-Create Skills from Workflows
 
 > Turn repetitive patterns into reusable skills. If you've done it three times, it should be a skill.
 
@@ -44,11 +44,11 @@ Use this template:
 name: [kebab-case-name]
 description: [One sentence describing what this skill does]
 when_to_use: "[When the user asks X, works with Y files, or Z domain. NOT for A.]"
-allowed-tools: [Read, Write, Edit, Grep, Glob, Bash — only what's needed]
+allowed-tools: [Read, Write, Edit, Grep, Glob, Bash  only what's needed]
 effort: [low | medium | high]
 ---
 
-# [Skill Name] — [Short Subtitle]
+# [Skill Name]  [Short Subtitle]
 
 > [One-line philosophy or principle]
 

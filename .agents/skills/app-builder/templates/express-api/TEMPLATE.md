@@ -28,7 +28,7 @@ project-name/
 │   └── schema.prisma
 ├── src/
 │   ├── app.ts           # Express app + middleware wiring (no listen)
-│   ├── server.ts        # Bootstrap: listen() — split for testability
+│   ├── server.ts        # Bootstrap: listen()  split for testability
 │   ├── config/          # Environment
 │   ├── routes/          # Route definitions only
 │   ├── controllers/     # HTTP layer (req/res, calls services)
@@ -84,6 +84,6 @@ project-name/
 - Split `app.ts` (wiring) from `server.ts` (`listen`) so the app imports cleanly into tests
 - Layer architecture (routes → controllers → services)
 - Validate all inputs with Zod at the route boundary
-- Centralized error handler last (Express 5 auto-forwards rejected promises — no manual catch wrapper needed)
+- Centralized error handler last (Express 5 auto-forwards rejected promises  no manual catch wrapper needed)
 - Environment-based config
 - Use Prisma for type-safe DB access

@@ -8,8 +8,7 @@ import {
   LayoutList,
   Database,
   ShieldCheck,
-  Mountain,
-  LogOut
+  Mountain
 } from 'lucide-react';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
@@ -20,19 +19,22 @@ import OverviewTab from '@/components/admin/OverviewTab';
 import UsersTab from '@/components/admin/UsersTab';
 import ListingsTab from '@/components/admin/ListingsTab';
 import SpotsTab, { type AdminSpot } from '@/components/admin/SpotsTab';
+import PlaceSuggestionsTab from '@/components/admin/PlaceSuggestionsTab';
+import ReferralsTab from '@/components/admin/ReferralsTab';
 import SpotFormModal, { type SpotFormPayload } from '@/components/admin/SpotFormModal';
 import BookingsTab from '@/components/admin/BookingsTab';
 import PaymentsTab from '@/components/admin/PaymentsTab';
+import MaintenanceTab from '@/components/admin/MaintenanceTab';
 
 /**
  * Admin Console page acts as the state manager and layout shell.
  * It coordinates data fetching and renders the appropriate subcomponent tab.
  */
 export default function Admin() {
-  const { user, loading: authLoading, logout } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const nav = useNavigate();
 
-  // Tab state: 'overview' | 'users' | 'listings' | 'spots' | 'bookings' | 'payments'
+  // Tab state: 'overview' | 'users' | 'listings' | 'spots' | 'bookings' | 'payments' | 'cleanup'
   const [activeTab, setActiveTab] = useState('overview');
 
   // Database lists
@@ -61,8 +63,8 @@ export default function Admin() {
   // Fetch all admin tables from the backend API.
   //
   // `background` refetches without raising the full-page loading state. Every row action used to
-  // trigger the blocking path, which unmounted the whole dashboard — and with it the Spots tab's
-  // own search text and filter — so publishing one spot silently cleared what the admin had
+  // trigger the blocking path, which unmounted the whole dashboard  and with it the Spots tab's
+  // own search text and filter  so publishing one spot silently cleared what the admin had
   // typed. The blocking screen is only right for the very first load, when there is nothing
   // on screen to preserve.
   const loadAdminData = useCallback(async ({ background = false }: { background?: boolean } = {}) => {
@@ -97,9 +99,9 @@ export default function Admin() {
   // Check authorization and load data
   useEffect(() => {
     if (authLoading) return;
-    if (!user) { 
-      nav('/login'); 
-      return; 
+    if (!user) {
+      nav('/login');
+      return;
     }
     if (user.role !== 'admin') {
       setErr('Admin authorization required');
@@ -111,11 +113,11 @@ export default function Admin() {
 
   // Seeding action
   const handleSeed = async () => {
-    if (!confirm('Are you sure you want to seed default sample listings?')) return;
+    if (!confirm('Add the curated tourist spots, events and nature entries that are missing? No businesses are added.')) return;
     setActionMsg('Seeding...');
     try {
       const { data } = await api.post('/admin/seed');
-      setActionMsg(`Successfully seeded ${data.seeded} listings!`);
+      setActionMsg(`Added ${data.seeded} spots, events and nature entries.`);
       loadAdminData({ background: true });
     } catch (e) {
       setActionMsg('Failed to seed listings.');
@@ -183,7 +185,7 @@ export default function Admin() {
     markSpotBusy(spot.id);
     try {
       await api.post(`/admin/spots/${spot.id}/publish`, { published: !spot.published });
-      setActionMsg(`"${spot.title}" is now ${spot.published ? 'a draft — hidden from visitors' : 'live on the site'}.`);
+      setActionMsg(`"${spot.title}" is now ${spot.published ? 'a draft  hidden from visitors' : 'live on the site'}.`);
       await loadAdminData({ background: true });
     } catch (e: any) {
       setActionMsg(e?.response?.data?.detail || 'Failed to change that spot’s visibility.');
@@ -220,12 +222,6 @@ export default function Admin() {
     }
   };
 
-  // Logout action
-  const handleLogout = () => {
-    logout();
-    nav('/login');
-  };
-
   if (authLoading || loading) {
     return <div className="p-16 text-center text-ink-soft">Loading Admin Dashboard...</div>;
   }
@@ -256,11 +252,8 @@ export default function Admin() {
           <button onClick={() => loadAdminData()} className="px-4 py-2 text-xs font-bold border border-[var(--line)] rounded-full text-ink hover:bg-mist transition-all">
             Refresh Data
           </button>
-          <button onClick={handleSeed} className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold bg-pine text-white rounded-full btn-hover transition-all">
-            <Database size={13} /> Seed Listings
-          </button>
-          <button onClick={handleLogout} className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold bg-ink text-white rounded-full btn-hover transition-all">
-            <LogOut size={13} /> Log Out
+          <button onClick={handleSeed} title="Adds back any built-in spots and events that are missing (also ones deleted on purpose)" className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold border border-[var(--line)] text-ink rounded-full hover:bg-mist transition-all">
+            <Database size={13} /> Seed spots &amp; events
           </button>
         </div>
       </div>
@@ -277,8 +270,8 @@ export default function Admin() {
         <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
           <StatCard label="Total Users" value={stats.users} icon={UsersIcon} color="text-pine bg-pine/10" />
           <StatCard label="Service Providers" value={stats.providers} icon={Store} color="text-flag bg-flag/10" />
-          <StatCard label="Active Services" value={stats.listings} icon={LayoutList} color="text-blue-500 bg-blue-50" />
-          {/* Live spots only — drafts aren't visible to anyone but this console. */}
+          <StatCard label="Active Services" value={stats.active_services ?? stats.listings} icon={LayoutList} color="text-blue-500 bg-blue-50" />
+          {/* Live spots only  drafts aren't visible to anyone but this console. */}
           <StatCard label="Tourist Spots" value={spotsList.filter((s) => s.published).length} icon={Mountain} color="text-emerald-600 bg-emerald-50" />
           <StatCard label="Bookings Made" value={stats.bookings} icon={CalendarCheck} color="text-orange-500 bg-orange-50" />
           <StatCard label="Paid Transactions" value={stats.payments} icon={Wallet} color="text-yellow-600 bg-yellow-50" />
@@ -292,15 +285,17 @@ export default function Admin() {
           { id: 'users', label: 'Users & Businesses' },
           { id: 'listings', label: 'Services (Listings)' },
           { id: 'spots', label: 'Tourist Spots' },
+          { id: 'suggestions', label: 'Place suggestions' },
           { id: 'bookings', label: 'Bookings' },
-          { id: 'payments', label: 'Payments' }
+          { id: 'payments', label: 'Payments' },
+          { id: 'referrals', label: 'Referrals' },
+          { id: 'cleanup', label: 'Clean-up' }
         ].map((tab) => (
           <button
             key={tab.id}
             onClick={() => { setActiveTab(tab.id); setActionMsg(''); }}
-            className={`px-5 py-3 font-bold text-sm border-b-2 transition-all ${
-              activeTab === tab.id ? 'border-flag text-flag' : 'border-transparent text-ink-soft hover:text-ink'
-            }`}
+            className={`px-5 py-3 font-bold text-sm border-b-2 transition-all ${activeTab === tab.id ? 'border-flag text-flag' : 'border-transparent text-ink-soft hover:text-ink'
+              }`}
           >
             {tab.label}
           </button>
@@ -309,7 +304,7 @@ export default function Admin() {
 
       {/* Tab Panels */}
       {activeTab === 'overview' && <OverviewTab stats={stats} onSeed={handleSeed} />}
-      {activeTab === 'users' && <UsersTab users={usersList} onDeleteUser={handleDeleteUser} onToggleProviderStatus={handleToggleProviderStatus} />}
+      {activeTab === 'users' && <UsersTab users={usersList} onDeleteUser={handleDeleteUser} onToggleProviderStatus={handleToggleProviderStatus} onCleaned={() => loadAdminData({ background: true })} />}
       {/* Spots have their own authoring tab, so they're kept out of the provider-services table
           rather than appearing in two places with two different sets of controls. */}
       {activeTab === 'listings' && (
@@ -326,7 +321,10 @@ export default function Admin() {
           onToggleFeatured={handleToggleSpotFeatured}
         />
       )}
-      {activeTab === 'bookings' && <BookingsTab bookings={bookingsList} />}
+      {activeTab === 'suggestions' && <PlaceSuggestionsTab onApproved={() => loadAdminData({ background: true })} />}
+      {activeTab === 'referrals' && <ReferralsTab />}
+      {activeTab === 'cleanup' && <MaintenanceTab onChanged={() => loadAdminData({ background: true })} />}
+      {activeTab === 'bookings' && <BookingsTab bookings={bookingsList} onChanged={() => loadAdminData({ background: true })} />}
       {/* Background refetch after a refund: the blocking path would unmount the dashboard and
           lose the operator's place, same reasoning as the row actions above. */}
       {activeTab === 'payments' && (

@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { SUPPORT_PASS_DAYS } from '../src/config';
 import crypto from 'crypto';
 import request from 'supertest';
 import { app } from '../src/app';
@@ -86,23 +87,19 @@ describe('razorpay webhook', () => {
     expect(res.body.unknown_order).toBe(true);
   });
 
-  it('confirms a booking when the browser callback never arrives', async () => {
-    const { token } = await registerUser({ name: 'Webhook Tourist' });
-    const listing = await createListing({ title: 'Webhook Spot' });
-    const bookingRes = await request(app)
-      .post('/api/bookings')
-      .set('Authorization', `Bearer ${token}`)
-      .send({ listing_id: listing.id, listing_type: 'spot' });
-    const bookingId = bookingRes.body.booking.id as string;
-    const orderId = await createOrder(token, 'booking_commission', bookingId);
+  it('settles a pass when the browser callback never arrives', async () => {
+    const { token, user } = await registerUser({ name: 'Webhook Tourist', paySupport: false });
+    const orderId = await createOrder(token, 'platform_support', user.id);
 
-    // Customer pays, then closes the tab — only Razorpay reports it.
+    // Customer pays, then closes the tab  only Razorpay reports it.
     const res = await deliver(paymentCaptured(orderId));
     expect(res.status).toBe(200);
     expect(res.body.already).toBe(false);
 
-    const bookings = await request(app).get('/api/bookings/me').set('Authorization', `Bearer ${token}`);
-    expect(bookings.body.items.find((b: any) => b.id === bookingId).status).toBe('confirmed');
+    const me = await request(app).get('/api/auth/me').set('Authorization', `Bearer ${token}`);
+    const expiry = Date.parse(me.body.user.supportExpiresAt);
+    expect(expiry - Date.now()).toBeGreaterThan((SUPPORT_PASS_DAYS - 1) * 24 * 60 * 60 * 1000);
+    expect(expiry - Date.now()).toBeLessThanOrEqual(SUPPORT_PASS_DAYS * 24 * 60 * 60 * 1000);
   });
 
   it('activates a provider on payment.captured', async () => {
@@ -116,7 +113,7 @@ describe('razorpay webhook', () => {
     expect(me.body.provider.status).toBe('active');
   });
 
-  it('is idempotent across repeated deliveries — no duplicate listing', async () => {
+  it('is idempotent across repeated deliveries  no duplicate listing', async () => {
     const { token, providerId } = await onboardPendingProvider('Duplicate Provider');
     const orderId = await createOrder(token, 'provider_registration', providerId);
 

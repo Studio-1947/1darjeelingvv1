@@ -1,6 +1,10 @@
 {
   "summary": "Full backend smoke of 1 Darjeeling API against public URL. 23/23 checks passed. Seed is idempotent (27 items), auth (mock OTP + universal 123456 + invalid rejection + user reuse) works, JWT/me route correct, provider onboarding + role escalation to 'provider' works, Razorpay LIVE test order creation succeeds for both flows with correct paise amounts (9900 / 100), signature verify correctly rejects fake HMAC (400), listings CRUD/search/404 all correct, bookings + bookings/me correct, admin stats returns expected keys.",
-  "tested_scope": ["backend", "auth", "integration"],
+  "tested_scope": [
+    "backend",
+    "auth",
+    "integration"
+  ],
   "passed": [
     "GET /api/ returns {app:'1 Darjeeling', status:'ok'}",
     "POST /api/admin/seed idempotent; total_in_seed=27; second call inserted 0",
@@ -23,12 +27,15 @@
   ],
   "failed": [],
   "action_items": [],
-  "success_rate": {"backend": "100%", "frontend": "not tested (skipped per request)"},
+  "success_rate": {
+    "backend": "100%",
+    "frontend": "not tested (skipped per request)"
+  },
   "retest_needed": false,
   "full_testing_deferred": true,
   "notes": {
-    "mocked": "WhatsApp OTP delivery is MOCKED — mock_otp returned in response body; universal code '123456' always accepted.",
+    "mocked": "WhatsApp OTP delivery is MOCKED  mock_otp returned in response body; universal code '123456' always accepted.",
     "razorpay": "Live Razorpay TEST keys used; order creation hits real Razorpay API and works; signature verify uses HMAC-SHA256 and correctly rejects invalid signature.",
-    "test_credentials_file": "/app/memory/test_credentials.md is present but empty — no persistent admin accounts documented; auth tests used mock OTP phones (+919999999999, +919888777666)."
+    "test_credentials_file": "/app/memory/test_credentials.md is present but empty  no persistent admin accounts documented; auth tests used mock OTP phones (+919999999999, +919888777666)."
   }
 }

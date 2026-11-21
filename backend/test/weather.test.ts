@@ -1,27 +1,46 @@
-import { describe, it, expect } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import request from 'supertest';
 import { app } from '../src/app';
 
-describe('Weather API (/api/weather)', () => {
-  it('returns default Darjeeling weather when no location is passed', async () => {
-    const res = await request(app).get('/api/weather');
+const originalFetch = globalThis.fetch;
+
+afterEach(() => {
+  globalThis.fetch = originalFetch;
+});
+
+describe('GET /api/weather', () => {
+  it('returns the mobile weather contract for a supported location', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        current: {
+          temperature_2m: 14.6,
+          relative_humidity_2m: 82.1,
+          weather_code: 2,
+          wind_speed_10m: 7.8,
+        },
+        daily: { sunrise: ['2030-01-01T06:21'] },
+      }),
+    } as Response);
+
+    const res = await request(app).get('/api/weather?location=darjeeling');
+
     expect(res.status).toBe(200);
-    expect(res.body.name).toBe('Darjeeling Town');
-    expect(res.body.temp).toBeDefined();
-    expect(res.body.kanchenjungaIndex).toBe('clear');
+    expect(res.body).toEqual({
+      location: 'darjeeling',
+      name: 'Darjeeling',
+      altitude: '2,042 m',
+      temp: 15,
+      condition: 'Partly cloudy',
+      humidity: 82,
+      wind: '8 km/h',
+      kanchenjungaIndex: 'partial',
+      sunriseTime: '2030-01-01T06:21',
+    });
   });
 
-  it('returns Kalimpong weather when location=kalimpong', async () => {
-    const res = await request(app).get('/api/weather?location=kalimpong');
-    expect(res.status).toBe(200);
-    expect(res.body.name).toBe('Kalimpong Ridge');
-    expect(res.body.altitude).toBe('1,250m');
-  });
-
-  it('returns Kurseong weather when location=kurseong', async () => {
-    const res = await request(app).get('/api/weather?location=kurseong');
-    expect(res.status).toBe(200);
-    expect(res.body.name).toBe('Kurseong Dow Hill');
-    expect(res.body.kanchenjungaIndex).toBe('partial');
+  it('rejects locations outside the supported destination list', async () => {
+    const res = await request(app).get('/api/weather?location=London');
+    expect(res.status).toBe(400);
   });
 });

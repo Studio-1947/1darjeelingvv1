@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { resolveAmount } from '../src/lib/payments';
 import { AMOUNTS, DONATION_MIN_PAISE, DONATION_MAX_PAISE } from '../src/config';
+import { flowBreakup } from '../src/lib/pricing';
 
 function ok(result: ReturnType<typeof resolveAmount>): number {
   if ('error' in result) {
@@ -16,19 +17,30 @@ function err(result: ReturnType<typeof resolveAmount>) {
   return result.error;
 }
 
-describe('resolveAmount — fixed-price flows', () => {
+describe('resolveAmount  fixed-price flows', () => {
   it('takes the amount from the server-side map', () => {
-    expect(ok(resolveAmount('provider_registration', {}))).toBe(AMOUNTS.provider_registration);
-    expect(ok(resolveAmount('booking_commission', {}))).toBe(AMOUNTS.booking_commission);
-    expect(ok(resolveAmount('platform_support', {}))).toBe(AMOUNTS.platform_support);
+    expect(ok(resolveAmount('provider_registration', {}))).toBe(flowBreakup('provider_registration').total);
+    expect(ok(resolveAmount('provider_renewal', {}))).toBe(flowBreakup('provider_renewal').total);
+    expect(ok(resolveAmount('platform_support', {}))).toBe(flowBreakup('platform_support').total);
+  });
+
+  it('charges ₹1 for the pass (GST included) and ₹499 + GST + 2% fee (₹598.80) for a host year', () => {
+    expect(ok(resolveAmount('platform_support', {}))).toBe(100);
+    expect(ok(resolveAmount('provider_registration', {}))).toBe(59880);
+    expect(ok(resolveAmount('provider_renewal', {}))).toBe(59880);
   });
 
   it('ignores an amount supplied by the client', () => {
     // The whole point of the map. A client that names its own price for a fixed flow is
     // either confused or hostile; either way the body is not consulted.
-    expect(ok(resolveAmount('platform_support', { amount: 1 }))).toBe(1200);
-    expect(ok(resolveAmount('provider_registration', { amount: 1 }))).toBe(9900);
-    expect(ok(resolveAmount('booking_commission', { amount: 999999 }))).toBe(100);
+    expect(ok(resolveAmount('platform_support', { amount: 1 }))).toBe(100);
+    expect(ok(resolveAmount('provider_registration', { amount: 1 }))).toBe(59880);
+    expect(ok(resolveAmount('provider_renewal', { amount: 1 }))).toBe(59880);
+  });
+
+  it('prices the ₹1 booking fee (₹1.20 with GST and the 2% platform fee) from the server, not the body', () => {
+    expect(ok(resolveAmount('booking_commission', {}))).toBe(120);
+    expect(ok(resolveAmount('booking_commission', { amount: 1 }))).toBe(120);
   });
 
   it('rejects an unknown flow', () => {
@@ -41,7 +53,7 @@ describe('resolveAmount — fixed-price flows', () => {
   });
 });
 
-describe('resolveAmount — donation', () => {
+describe('resolveAmount  donation', () => {
   it('accepts a valid client-supplied amount', () => {
     expect(ok(resolveAmount('donation', { amount: 50000 }))).toBe(50000);
   });
@@ -62,7 +74,7 @@ describe('resolveAmount — donation', () => {
     expect(err(resolveAmount('donation', { amount: undefined })).status).toBe(400);
   });
 
-  it('rejects a non-integer amount — paise are indivisible', () => {
+  it('rejects a non-integer amount  paise are indivisible', () => {
     expect(err(resolveAmount('donation', { amount: 1050.5 })).status).toBe(400);
   });
 
@@ -91,7 +103,7 @@ describe('resolveAmount — donation', () => {
     expect(err(resolveAmount('donation', { amount: 1 })).detail).toMatch(/10 and .*1,?00,?000|1000 and 10000000/);
   });
 
-  it('is not present in the AMOUNTS map — a donation has no fixed price', () => {
+  it('is not present in the AMOUNTS map  a donation has no fixed price', () => {
     expect(AMOUNTS.donation).toBeUndefined();
   });
 

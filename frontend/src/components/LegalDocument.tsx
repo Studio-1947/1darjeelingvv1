@@ -1,9 +1,11 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import Seo from '@/components/Seo';
+import { Box, PageHead } from '@/components/ag';
 
 /**
- * The renderer shared by every policy page — Privacy, Terms, Refunds and Contact.
+ * The renderer shared by every policy page  Privacy, Terms, Refunds and Contact: readable text in
+ * the one column, 16px body and 500-weight headings. `children` follow the last section.
  *
  * All four are the same document shape (title, updated stamp, intro paragraphs, numbered
  * sections, an optional contact card) differing only in which i18n namespace they read, so they
@@ -22,34 +24,34 @@ export interface Block {
   /** Trailing paragraph, for the "you can control cookies…" style closers. */
   note?: string;
   sub?: Block[];
-  contact?: { name: string; email: string; address: string };
+  contact?: { name: string; email: string; phone?: string; address: string };
 }
 
-/** Paragraph + bullets + closer — the body shared by sections and sub-sections. */
+/** Paragraph + bullets + closer  the body shared by sections and sub-sections. */
 function Body({ block }: { block: Block }) {
   return (
     <>
-      {block.p && <p className="mt-2 text-sm md:text-base text-ink-soft leading-relaxed">{block.p}</p>}
+      {block.p && <p className="m-0 text-base leading-[26px] text-[var(--ink7)]">{block.p}</p>}
       {block.items && block.items.length > 0 && (
-        <ul className="mt-3 space-y-2 text-sm md:text-base text-ink-soft leading-relaxed">
+        <ul className="m-0 p-0 list-none flex flex-col gap-2 text-base leading-[26px] text-[var(--ink7)]">
           {block.items.map((it, i) => (
             <li key={i} className="flex gap-3">
-              <span aria-hidden="true" className="mt-2 w-1.5 h-1.5 rounded-full bg-pine flex-shrink-0" />
+              <span aria-hidden="true" className="mt-[10px] w-1.5 h-1.5 rounded-full bg-[var(--r)] flex-none" />
               <span>{it}</span>
             </li>
           ))}
         </ul>
       )}
-      {block.note && <p className="mt-3 text-sm md:text-base text-ink-soft leading-relaxed">{block.note}</p>}
+      {block.note && <p className="m-0 text-base leading-[26px] text-[var(--ink7)]">{block.note}</p>}
     </>
   );
 }
 
-export default function LegalDocument({ ns, testId }: { ns: string; testId: string }) {
+export default function LegalDocument({ ns, testId, children }: { ns: string; testId: string; children?: React.ReactNode }) {
   const { t } = useTranslation();
 
   // These documents are authored in English only and reach the other languages through i18next's
-  // fallback. If a lookup ever fails to resolve, t() hands back the key as a string — guard so a
+  // fallback. If a lookup ever fails to resolve, t() hands back the key as a string  guard so a
   // legal page degrades to empty rather than throwing.
   const rawIntro = t(`${ns}.intro`, { returnObjects: true });
   const intro: string[] = Array.isArray(rawIntro) ? rawIntro : [];
@@ -57,48 +59,53 @@ export default function LegalDocument({ ns, testId }: { ns: string; testId: stri
   const sections: Block[] = Array.isArray(rawSections) ? rawSections : [];
 
   return (
-    <div className="mx-auto max-w-3xl px-4 md:px-8 py-10 md:py-14" data-testid={testId}>
+    <div className="ag-wrap" data-testid={testId}>
       {/* Razorpay and the Consumer Protection rules both require these pages to be
           findable, so they carry their own title and description rather than the
           site-wide default. The first intro paragraph is the document's own summary. */}
       <Seo title={t(`${ns}.title`)} description={intro[0]} />
-      <h1 className="font-display font-extrabold text-3xl sm:text-4xl md:text-5xl text-ink leading-tight">{t(`${ns}.title`)}</h1>
-      <p className="text-sm text-ink-soft mt-2">{t(`${ns}.updated`)}</p>
+      <article className="ag-main">
+        <PageHead eyebrow={t('policies.title')} title={t(`${ns}.title`)} sub={t(`${ns}.updated`)} />
 
-      <div className="mt-6 space-y-4">
         {intro.map((p, i) => (
-          <p key={i} className="text-sm md:text-base text-ink-soft leading-relaxed">{p}</p>
+          <p key={i} className="m-0 text-base leading-[26px] text-[var(--ink7)]">{p}</p>
         ))}
-      </div>
 
-      <div className="mt-8 md:mt-10 space-y-8 md:space-y-10">
         {sections.map((s, i) => (
-          <section key={i}>
-            <h2 className="font-display font-bold text-xl md:text-2xl text-ink">{s.h}</h2>
+          <section key={i} className="flex flex-col gap-3 pt-2">
+            <h2 className="m-0 text-xl leading-7 font-medium tracking-[-0.01em] text-[var(--ink-strong)]">{s.h}</h2>
             <Body block={s} />
 
             {s.sub?.map((sub, j) => (
-              <div key={j} className="mt-5 pl-4 border-l-2 border-[var(--line)]">
-                <h3 className="font-display font-bold text-base md:text-lg text-ink">{sub.h}</h3>
+              <div key={j} className="flex flex-col gap-2 pl-4 border-l-2 border-[var(--warmline)]">
+                <h3 className="m-0 text-base leading-6 font-medium text-[var(--ink-strong)]">{sub.h}</h3>
                 <Body block={sub} />
               </div>
             ))}
 
             {s.contact && (
-              <address className="mt-4 not-italic rounded-2xl border border-[var(--line)] bg-white p-4 md:p-5 text-sm md:text-base text-ink-soft leading-relaxed">
-                <div className="font-bold text-ink">{s.contact.name}</div>
-                <div className="mt-1">
-                  {t('privacy.email_label')}{' '}
-                  <a href={`mailto:${s.contact.email}`} className="font-semibold text-pine hover:underline">
-                    {s.contact.email}
-                  </a>
-                </div>
-                <div className="mt-1">{t('privacy.address_label')} {s.contact.address}</div>
-              </address>
+              <Box className="!gap-1 text-base leading-[26px] text-[var(--ink7)]">
+                <address className="not-italic flex flex-col gap-1">
+                  <b className="font-medium text-[var(--ink-strong)]">{s.contact.name}</b>
+                  <span>
+                    {t('privacy.email_label')}{' '}
+                    <a href={`mailto:${s.contact.email}`} className="font-medium text-[var(--r)] hover:underline">{s.contact.email}</a>
+                  </span>
+                  {s.contact.phone && (
+                    <span>
+                      {t('privacy.phone_label')}{' '}
+                      <a href={`tel:${s.contact.phone.replace(/\s/g, '')}`} className="font-medium text-[var(--r)] hover:underline">{s.contact.phone}</a>
+                    </span>
+                  )}
+                  <span>{t('privacy.address_label')} {s.contact.address}</span>
+                </address>
+              </Box>
             )}
           </section>
         ))}
-      </div>
+
+        {children}
+      </article>
     </div>
   );
 }

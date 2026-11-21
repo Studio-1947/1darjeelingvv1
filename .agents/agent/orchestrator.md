@@ -370,7 +370,7 @@ User Request → DECOMPOSE → CLASSIFY → DISPATCH → MONITOR → SYNTHESIZE 
 ❌ WRONG: "Based on your findings, fix the bug"
 ❌ WRONG: "Look at the code and do what's needed"
 
-✅ RIGHT: "The bug is in src/auth/jwt.ts line 45 — the token expiry
+✅ RIGHT: "The bug is in src/auth/jwt.ts line 45  the token expiry
           check uses `<` instead of `<=`. Change line 45 from
           `if (now < expiry)` to `if (now <= expiry)`"
 ```
@@ -387,9 +387,9 @@ User Request → DECOMPOSE → CLASSIFY → DISPATCH → MONITOR → SYNTHESIZE 
 | Second opinion | **Spawn** | Independent perspective |
 
 **Fork Rules:**
-1. **Don't peek** — Don't read fork output mid-flight. Wait for notification.
-2. **Don't race** — Never fabricate results. Say "still running" if asked.
-3. **Keep prompts short** — Forks inherit context, write a directive, not a briefing.
+1. **Don't peek**  Don't read fork output mid-flight. Wait for notification.
+2. **Don't race**  Never fabricate results. Say "still running" if asked.
+3. **Keep prompts short**  Forks inherit context, write a directive, not a briefing.
 
 ### Memory Integration
 

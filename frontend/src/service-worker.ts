@@ -1,9 +1,7 @@
 /// <reference lib="webworker" />
 import { clientsClaim } from 'workbox-core';
-import { ExpirationPlugin } from 'workbox-expiration';
 import { createHandlerBoundToURL, precacheAndRoute } from 'workbox-precaching';
 import { registerRoute } from 'workbox-routing';
-import { StaleWhileRevalidate } from 'workbox-strategies';
 
 declare const self: ServiceWorkerGlobalScope;
 
@@ -29,15 +27,16 @@ declare const self: ServiceWorkerGlobalScope;
  * therefore cannot be talked out of it from the page side - it can only be told
  * by the incoming worker, which is what this is.
  *
- * Safe here specifically because the build emits a single bundle with no lazy
- * chunks (the precache manifest is index.html + one JS + one CSS). If code
- * splitting is ever turned on, revisit: an open page could then request a chunk
- * the newly-claimed worker's precache no longer has.
+ * The build is code-split, so an open page could ask the newly-claimed worker
+ * for a chunk from the old build that its precache no longer has. That page
+ * never gets the chance: serviceWorkerRegistration.ts reloads it on the
+ * controller change, onto the new index.html and its own chunks.
  */
 self.skipWaiting();
 clientsClaim();
 
-// Precache everything the build emitted (JS/CSS/HTML chunks, manifest, icons).
+// Precache the app shell (HTML, every JS/CSS chunk, manifest, icons). The list
+// is written in at build time by scripts/build-sw.mjs.
 precacheAndRoute(self.__WB_MANIFEST);
 
 // SPA navigation fallback so client-side routes keep working offline. API
@@ -48,23 +47,18 @@ const fileExtensionRegexp = /\/[^/?]+\.[^/]+$/;
 registerRoute(
   ({ request, url }: { request: Request; url: URL }) => {
     if (request.mode !== 'navigate') return false;
-    if (url.pathname.startsWith('/api')) return false;
+    // /api and /api-docs belong to the backend and /admin is a separate app;
+    // answering them with this site's index.html would break all three.
+    if (url.pathname.startsWith('/api') || url.pathname.startsWith('/admin')) return false;
     if (fileExtensionRegexp.test(url.pathname)) return false;
     return true;
   },
   createHandlerBoundToURL('/index.html')
 );
 
-// Cache remote listing images (Cloudinary/Unsplash/Pexels) so previously-seen
-// photos still render offline.
-registerRoute(
-  ({ url }: { url: URL }) =>
-    url.origin !== self.location.origin && /\.(?:png|jpg|jpeg|webp|gif|svg)$/i.test(url.pathname),
-  new StaleWhileRevalidate({
-    cacheName: 'remote-images',
-    plugins: [new ExpirationPlugin({ maxEntries: 100, maxAgeSeconds: 30 * 24 * 60 * 60 })],
-  })
-);
+// Photos from Cloudinary and other hosts are left to the browser. The site's
+// CSP (connect-src) also applies to fetches this worker makes, so caching them
+// here would block every remote listing photo.
 
 /**
  * Hand over to the new worker on request.

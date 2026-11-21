@@ -1,7 +1,7 @@
 {
   "short_name": "aangan",
-  "name": "aangan — By studio 1947",
-  "description": "Tourism spots, homestays, drivers, cafes, cultural events and Himalayan biodiversity — in a single app.",
+  "name": "aangan  By studio 1947",
+  "description": "Tourism spots, homestays, drivers, cafes, cultural events and Himalayan biodiversity  in a single app.",
   "icons": [
     {
       "src": "/logo192.png",
@@ -22,5 +22,9 @@
   "orientation": "portrait-primary",
   "theme_color": "#2C5E3B",
   "background_color": "#FAFAF7",
-  "categories": ["travel", "lifestyle", "food"]
+  "categories": [
+    "travel",
+    "lifestyle",
+    "food"
+  ]
 }

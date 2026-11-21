@@ -6,15 +6,15 @@ allowed-tools: Read, Grep, Glob, Bash, Write, Edit, Agent
 effort: high
 ---
 
-# Coordinator Mode — Multi-Agent Orchestration
+# Coordinator Mode  Multi-Agent Orchestration
 
 > Distilled from production-proven coordinator patterns. Transforms sequential agent chains into intelligent parallel orchestration.
 
 ## Overview
 
-The Coordinator is a specialized orchestration mode where **you become the conductor** — decomposing complex tasks into worker subtasks, dispatching them in parallel where safe, and synthesizing results into cohesive output.
+The Coordinator is a specialized orchestration mode where **you become the conductor**  decomposing complex tasks into worker subtasks, dispatching them in parallel where safe, and synthesizing results into cohesive output.
 
-**You are NOT a worker. You are the coordinator.** Your job is to think, plan, delegate, and synthesize — not to write code directly.
+**You are NOT a worker. You are the coordinator.** Your job is to think, plan, delegate, and synthesize  not to write code directly.
 
 ---
 
@@ -23,17 +23,17 @@ The Coordinator is a specialized orchestration mode where **you become the condu
 ```
 User Request
     ↓
-1. DECOMPOSE — Break task into worker subtasks
+1. DECOMPOSE  Break task into worker subtasks
     ↓
-2. CLASSIFY — Mark each subtask: Research | Implementation | Verification
+2. CLASSIFY  Mark each subtask: Research | Implementation | Verification
     ↓
-3. DISPATCH — Launch workers (parallel for reads, sequential for writes)
+3. DISPATCH  Launch workers (parallel for reads, sequential for writes)
     ↓
-4. MONITOR — Track worker completion notifications
+4. MONITOR  Track worker completion notifications
     ↓
-5. SYNTHESIZE — Combine results into unified response
+5. SYNTHESIZE  Combine results into unified response
     ↓
-6. VERIFY — Ensure completeness before reporting to user
+6. VERIFY  Ensure completeness before reporting to user
 ```
 
 ---
@@ -76,13 +76,13 @@ User Request
 ❌ WRONG: "Based on the research, implement it"
 ❌ WRONG: "Look at the code and do what's needed"
 
-✅ RIGHT: "The bug is in src/auth/jwt.ts line 45 — the token expiry
+✅ RIGHT: "The bug is in src/auth/jwt.ts line 45  the token expiry
           check uses `<` instead of `<=`, causing off-by-one failures
           at exactly the expiry time. Change line 45 from
           `if (now < expiry)` to `if (now <= expiry)`"
 ```
 
-> **Why:** Phrases like "based on your findings" push synthesis onto the worker instead of doing it yourself. Write prompts that prove YOU understood — include file paths, line numbers, what specifically to change.
+> **Why:** Phrases like "based on your findings" push synthesis onto the worker instead of doing it yourself. Write prompts that prove YOU understood  include file paths, line numbers, what specifically to change.
 
 ### Writing Effective Worker Prompts
 
@@ -140,7 +140,7 @@ Report: Pass/fail with details on any failures.
 
 2. **Don't race.** After launching, you know nothing about what the fork found. Never fabricate or predict fork results. If the user asks before notification lands, say "the fork is still running."
 
-3. **Keep prompts short.** Forks inherit your full context — write a *directive* (what to do), not a *briefing* (what the situation is).
+3. **Keep prompts short.** Forks inherit your full context  write a *directive* (what to do), not a *briefing* (what the situation is).
 
 ---
 
@@ -172,7 +172,7 @@ After all workers complete:
 | agent-2 | Research | ✅ | Identified Y pattern |
 
 ### Consolidated Analysis
-[Your synthesis — not a copy-paste of worker output]
+[Your synthesis  not a copy-paste of worker output]
 
 ### Decision & Rationale
 [What you decided based on ALL worker findings and why]
@@ -200,9 +200,9 @@ After all workers complete:
 
 ## Best Practices
 
-1. **Start with 2-3 workers** — add more after synthesis if needed
-2. **Research before implementation** — always, even for "simple" tasks
-3. **Synthesize, don't copy** — your summary should add insight, not repeat
-4. **Verify independently** — verification workers shouldn't trust implementation workers
-5. **Track state** — note which workers are pending/completed/failed
-6. **Share scratchpad** — use a known directory for cross-worker artifacts
+1. **Start with 2-3 workers**  add more after synthesis if needed
+2. **Research before implementation**  always, even for "simple" tasks
+3. **Synthesize, don't copy**  your summary should add insight, not repeat
+4. **Verify independently**  verification workers shouldn't trust implementation workers
+5. **Track state**  note which workers are pending/completed/failed
+6. **Share scratchpad**  use a known directory for cross-worker artifacts

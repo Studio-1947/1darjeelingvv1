@@ -1,7 +1,8 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Phone, MessageCircle, Navigation, CalendarPlus } from 'lucide-react';
-import { Screen, SectionHead, ALIGN_TEXT, ALIGN_BLOCK } from './primitives';
+import { Icon } from '@/components/ag/Icon';
+import { Button, ButtonA } from '@/components/ag';
+import { Section } from './primitives';
 
 /**
  * A Google Calendar "add event" link, but only when the listing carries a real ISO date in
@@ -40,40 +41,30 @@ export default function ContactSection({ item, onOpenMaps }: { item: any; onOpen
   const waText = encodeURIComponent(t('contact.wa_message', { title: item.title }));
 
   return (
-    <Screen tone="white" testid="detail-contact">
-      <SectionHead label={t('detail.reserve')} title={title} note={note} />
-      <div className={`mt-10 max-w-xl ${ALIGN_BLOCK}`}>
-        <div className="mist-panel p-6 md:p-8 space-y-3">
-          {phone ? (
-            <>
-              <a href={`tel:${phone}`} data-testid="contact-call"
-                className="w-full py-4 rounded-full font-bold btn-hover inline-flex items-center justify-center gap-2 bg-pine text-white">
-                <Phone size={18} /> {isEvent ? t('contact.call_organizer') : t('cta.call_now')}
-              </a>
-              <a href={`https://wa.me/${waNumber}?text=${waText}`} target="_blank" rel="noreferrer" data-testid="contact-whatsapp"
-                className="w-full py-4 rounded-full font-bold btn-hover inline-flex items-center justify-center gap-2 bg-[#25D366] text-white">
-                <MessageCircle size={18} /> {t('contact.whatsapp')}
-              </a>
-            </>
-          ) : (
-            <p className={`${ALIGN_TEXT} text-sm text-ink-soft`}>
-              {t('contact.no_contact')}
-            </p>
-          )}
-
-          {calUrl && (
-            <a href={calUrl} target="_blank" rel="noreferrer" data-testid="contact-calendar"
-              className="w-full py-4 rounded-full font-bold btn-hover inline-flex items-center justify-center gap-2 bg-flag text-white">
-              <CalendarPlus size={18} /> {t('contact.add_to_calendar')}
-            </a>
-          )}
-
-          <button onClick={onOpenMaps} data-testid="contact-directions"
-            className="w-full py-4 rounded-full font-bold btn-hover inline-flex items-center justify-center gap-2 bg-white border border-[var(--line)] text-ink">
-            <Navigation size={18} /> {t('cta.get_directions')}
-          </button>
-        </div>
+    <Section title={title} note={note} testid="detail-contact">
+      {!phone && <p className="ag-small">{t('contact.no_contact')}</p>}
+      {/* The prototype's contact row (trip card .sitebtns): Call, WhatsApp, Direction as tonal pills. */}
+      <div className="ag-listing-acts">
+        {phone && (
+          <ButtonA variant="tonal" href={`tel:${phone}`} data-testid="contact-call" icon={<Icon name="phone" />}>
+            {isEvent ? t('contact.call_organizer') : t('listing.call', 'Call')}
+          </ButtonA>
+        )}
+        {phone && (
+          <ButtonA variant="tonal" href={`https://wa.me/${waNumber}?text=${waText}`} target="_blank" rel="noreferrer" data-testid="contact-whatsapp"
+            icon={<Icon name="wa" />}>
+            WhatsApp
+          </ButtonA>
+        )}
+        <Button variant="tonal" onClick={onOpenMaps} data-testid="contact-directions" icon={<Icon name="pin" />}>
+          {t('listing.direction', 'Direction')}
+        </Button>
+        {calUrl && (
+          <ButtonA variant="tonal" href={calUrl} target="_blank" rel="noreferrer" data-testid="contact-calendar" icon={<Icon name="t_trip" />}>
+            {t('contact.add_to_calendar')}
+          </ButtonA>
+        )}
       </div>
-    </Screen>
+    </Section>
   );
 }

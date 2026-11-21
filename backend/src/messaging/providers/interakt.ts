@@ -8,12 +8,12 @@ import {
 import { requireCredentials, requireNotificationTemplates } from '../providerConfig';
 
 /**
- * Interakt — WhatsApp, through a Meta Business Solution Provider rather than Meta directly.
+ * Interakt  WhatsApp, through a Meta Business Solution Provider rather than Meta directly.
  *
  * Same messages and the same Meta-approved templates as providers/whatsapp.ts; a different
  * account to hold them and a different envelope to send them in. Worth having as a choice
- * because a BSP takes the Cloud API setup off your hands — the number registration, the
- * two-step PIN, the system-user token, the template submissions all happen in their console —
+ * because a BSP takes the Cloud API setup off your hands  the number registration, the
+ * two-step PIN, the system-user token, the template submissions all happen in their console 
  * at the cost of a per-message margin and one more company between you and delivery.
  *
  * Pick with MESSAGING_PROVIDER=interakt. Nothing else in the app changes: the templates are the
@@ -27,6 +27,10 @@ const TEMPLATE_ENV_VARS: Record<NotificationTemplate, string> = {
   booking_confirmed_guest: 'INTERAKT_BOOKING_CONFIRMED_GUEST_TEMPLATE',
   booking_confirmed_host: 'INTERAKT_BOOKING_CONFIRMED_HOST_TEMPLATE',
   booking_cancelled_guest: 'INTERAKT_BOOKING_CANCELLED_GUEST_TEMPLATE',
+  host_changes_requested: 'INTERAKT_HOST_CHANGES_REQUESTED_TEMPLATE',
+  host_approved: 'INTERAKT_HOST_APPROVED_TEMPLATE',
+  booking_request_host: 'INTERAKT_BOOKING_REQUEST_HOST_TEMPLATE',
+  booking_accepted_guest: 'INTERAKT_BOOKING_ACCEPTED_GUEST_TEMPLATE',
 };
 
 const REQUEST_TIMEOUT_MS = 10_000;
@@ -34,14 +38,15 @@ const MAX_QUOTED_BODY = 200;
 
 /**
  * WhatsApp caps an authentication code at 15 characters. Ours are six digits, so this only ever
- * fires if the generator changes — which is exactly when you want to hear about it, rather than
+ * fires if the generator changes  which is exactly when you want to hear about it, rather than
  * discovering that codes silently stopped arriving on some handsets.
  */
 const MAX_OTP_LENGTH = 15;
+const SUPPORTED_COUNTRY_CODES = ['+977', '+975', '+880', '+91'] as const;
 
 /**
  * Interakt wants the country code and the subscriber number as separate fields, and this app
- * stores whatever the user typed — see lib/phone.ts, which is deliberately permissive because
+ * stores whatever the user typed  see lib/phone.ts, which is deliberately permissive because
  * real accounts exist under every spelling.
  *
  * The split is therefore a guess unless the number is one we can recognise, so it only makes the
@@ -51,9 +56,8 @@ const MAX_OTP_LENGTH = 15;
  *   9876543210     → (default, as typed)     a bare national number
  *   09876543210    → (default, minus trunk)  the domestic dialling spelling
  *
- * Anything else carrying a different country code is REFUSED rather than guessed at. Splitting
- * an arbitrary E.164 needs a numbering-plan table, and a wrong guess here does not fail — it
- * delivers a code to a real person in another country. A loud failure is the safer wrong answer.
+ * Explicit E.164 numbers are matched against the supported regional calling codes. Other country
+ * codes are refused rather than guessed: a wrong split can deliver a login code to a stranger.
  */
 export function splitPhone(
   raw: string,
@@ -61,21 +65,20 @@ export function splitPhone(
 ): { countryCode: string; phoneNumber: string } {
   const trimmed = raw.trim().replace(/[\s()\-.]/g, '');
   const cc = defaultCountryCode.startsWith('+') ? defaultCountryCode : `+${defaultCountryCode}`;
-  const ccDigits = cc.slice(1);
 
   if (trimmed.startsWith('+')) {
     const digits = trimmed.slice(1);
     if (!/^[0-9]+$/.test(digits)) {
       throw new MessageDeliveryError('interakt', `not a phone number: "${raw}"`);
     }
-    if (digits.startsWith(ccDigits)) {
-      return { countryCode: cc, phoneNumber: digits.slice(ccDigits.length) };
+    const supportedCode = SUPPORTED_COUNTRY_CODES.find((code) => digits.startsWith(code.slice(1)));
+    if (supportedCode) {
+      return { countryCode: supportedCode, phoneNumber: digits.slice(supportedCode.length - 1) };
     }
     throw new MessageDeliveryError(
       'interakt',
-      `cannot split "${raw}" into country code and subscriber number: it is not ${cc}, and ` +
-      `guessing where the country code ends would risk delivering a login code to the wrong ` +
-      `person. Set INTERAKT_COUNTRY_CODE if this app now serves another country.`
+      `cannot split "${raw}": supported country codes are ${SUPPORTED_COUNTRY_CODES.join(', ')}, ` +
+      `and guessing where the country code ends would risk delivering a login code to the wrong person.`
     );
   }
 
@@ -95,7 +98,7 @@ interface InteraktResponse {
 
 /**
  * `fetchImpl` is injectable purely so the suite can exercise every failure branch without a
- * network — the same reason the other two adapters take one.
+ * network  the same reason the other two adapters take one.
  */
 export function createInteraktProvider(
   env: NodeJS.ProcessEnv,
@@ -146,7 +149,7 @@ export function createInteraktProvider(
       );
     }
 
-    // Interakt reports application-level failures under HTTP 200 with result:false — the same
+    // Interakt reports application-level failures under HTTP 200 with result:false  the same
     // trap MSG91 sets with type:"error". A 2xx alone must never be read as an accepted message.
     if (body.result !== true) {
       throw new MessageDeliveryError(
@@ -165,7 +168,7 @@ export function createInteraktProvider(
       requireCredentials('interakt', env, ['INTERAKT_API_KEY', 'INTERAKT_OTP_TEMPLATE']);
 
       // Adapter-specific: splitPhone leans on this being a real dialling code, and a wrong one
-      // does not fail at send time — it puts the split in the wrong place.
+      // does not fail at send time  it puts the split in the wrong place.
       if (!/^\+?[0-9]{1,3}$/.test(countryCode)) {
         throw new Error(
           `[messaging] INTERAKT_COUNTRY_CODE must be a dialling code like "+91", got "${countryCode}".`
@@ -219,13 +222,13 @@ export function createInteraktProvider(
       if (!templateName) {
         throw new MessageDeliveryError(
           'interakt',
-          `no Interakt template configured for "${template}" — set ${templateEnvVar}.`
+          `no Interakt template configured for "${template}"  set ${templateEnvVar}.`
         );
       }
 
       const { countryCode: cc, phoneNumber } = splitPhone(phone, countryCode);
 
-      // Positional, in the order lib/notifications.ts builds them — the same contract the direct
+      // Positional, in the order lib/notifications.ts builds them  the same contract the direct
       // Cloud API adapter honours, and the one backend/test/notificationVars.test.ts pins.
       const payload = {
         countryCode: cc,

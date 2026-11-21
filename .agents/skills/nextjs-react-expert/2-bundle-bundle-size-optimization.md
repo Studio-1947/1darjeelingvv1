@@ -63,7 +63,7 @@ import { Check, X, Menu } from 'lucide-react'
 // Automatically transformed to direct imports at build time
 ```
 
-Direct imports (or `optimizePackageImports`) cut cold-boot and build times measurably — see Vercel's writeup below for benchmarks on real apps.
+Direct imports (or `optimizePackageImports`) cut cold-boot and build times measurably  see Vercel's writeup below for benchmarks on real apps.
 
 Libraries commonly affected: `lucide-react`, `@mui/material`, `@mui/icons-material`, `@tabler/icons-react`, `react-icons`, `@headlessui/react`, `@radix-ui/react-*`, `lodash`, `ramda`, `date-fns`, `rxjs`, `react-use`.
 

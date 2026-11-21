@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
+import { MAX_PRICE } from '@/lib/hostFormChecks';
 import { useTranslation } from 'react-i18next';
-import { X, Upload } from 'lucide-react';
+import { Upload } from '@phosphor-icons/react';
+import { Button, FieldError, TextArea, TextField } from '@/components/ag';
+import { Sheet } from './widgets';
 import api from '@/lib/api';
 import { uploadImage, uploadImages } from '@/lib/uploadImage';
 import { VEHICLE_TYPES, HOMESTAY_AMENITIES, HOMESTAY_TAGS } from '@/constants/listingOptions';
@@ -56,7 +59,10 @@ export default function EditListingModal({ listing, onClose, onSave }: {
     apply: (url: string) => void,
   ) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    e.target.value = '';
+    if (file) await uploadFileOne(file, setFlag, apply);
+  };
+  const uploadFileOne = async (file: File, setFlag: (b: boolean) => void, apply: (url: string) => void) => {
     setFlag(true);
     setError('');
     try {
@@ -90,25 +96,25 @@ export default function EditListingModal({ listing, onClose, onSave }: {
     try {
       const extrasPayload = isDriver
         ? {
-            ...listing.extras,
-            images: gallery,
-            host_avatar: driverAvatar,
-            car_model: carModel,
-            gender,
-            vehicle_type: vehicleType,
-            routes,
-          }
+          ...listing.extras,
+          images: gallery,
+          host_avatar: driverAvatar,
+          car_model: carModel,
+          gender,
+          vehicle_type: vehicleType,
+          routes,
+        }
         : {
-            ...listing.extras,
-            images: gallery,
-            host_name: hostName,
-            host_bio: hostBio,
-            host_avatar: hostAvatar,
-            gender,
-            address,
-            amenities: selectedAmenities,
-            tags: selectedTags,
-          };
+          ...listing.extras,
+          images: gallery,
+          host_name: hostName,
+          host_bio: hostBio,
+          host_avatar: hostAvatar,
+          gender,
+          address,
+          amenities: selectedAmenities,
+          tags: selectedTags,
+        };
 
       // A driver's headline price tracks their cheapest route, so it can't drift
       // from the per-route fares. Other types keep the manual price field.
@@ -132,233 +138,116 @@ export default function EditListingModal({ listing, onClose, onSave }: {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm grid place-items-center p-4 overflow-y-auto" data-testid="edit-listing-modal">
-      <div className="bg-white rounded-3xl w-full max-w-2xl border border-[var(--line)] overflow-hidden shadow-2xl animate-fade-up">
-        {/* Header */}
-        <div className="flex justify-between items-center px-6 py-5 border-b border-[var(--line)]">
-          <h2 className="font-display font-extrabold text-2xl text-ink">{t('el.title')}</h2>
-          <button type="button" onClick={onClose} className="p-1 rounded-full hover:bg-mist text-ink-soft transition-colors" data-testid="close-edit-modal">
-            <X size={20} />
-          </button>
+    <Sheet title={t('el.title')} onClose={onClose} closeTestId="close-edit-modal" testId="edit-listing-modal">
+      <form onSubmit={handleSave} className="grid gap-4 p-4">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <TextField label={t('lf.title')} required value={title} onChange={(e) => setTitle(e.target.value)} />
+          {/* Drivers don't get a single price - theirs is derived from the cheapest route rate
+              below, so an editable field here would just be a second, losing source of truth. */}
+          {isDriver ? (
+            <div className="ag-field">
+              <span>{t('el.starting_price')}</span>
+              <p className="ag-in flex items-center gap-1 bg-[var(--soft)]">
+                {startingPriceFrom(routes) > 0 ? `₹${startingPriceFrom(routes)}` : ''}
+                <span className="text-sm text-[var(--ink-muted)]">· {t('el.starting_price_note')}</span>
+              </p>
+            </div>
+          ) : (
+            <TextField label={t('el.price')} required type="number" min="0" max={MAX_PRICE} value={price} onChange={(e) => setPrice(Math.min(MAX_PRICE, Number(e.target.value) || 0))} />
+          )}
         </div>
 
-        {/* Scrollable Form */}
-        <form onSubmit={handleSave} className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
-          <div className="grid md:grid-cols-2 gap-4">
-            <label className="block">
-              <span className="text-xs font-semibold text-ink-soft">{t('lf.title')}</span>
-              <input required type="text" value={title} onChange={(e) => setTitle(e.target.value)}
-                className="mt-1 w-full px-3.5 py-2.5 rounded-xl border border-[var(--line)] bg-white outline-none text-sm text-ink font-semibold" />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <TextField label={t('lf.location')} required value={location} onChange={(e) => setLocation(e.target.value)} />
+          <TextField label={t('el.address')} value={address} onChange={(e) => setAddress(e.target.value)} placeholder={t('el.address_ph')} />
+        </div>
+
+        <TextArea label={isDriver ? t('el.driver_bio') : t('pd.description')} required rows={4} value={description} onChange={(e) => setDescription(e.target.value)} />
+
+        {isDriver && (
+          <>
+            <TextField label={t('el.car_model')} value={carModel} onChange={(e) => setCarModel(e.target.value)} placeholder={t('el.car_model_ph')} />
+            <Part title={t('el.vehicle_type')}>
+              <ChipToggleGroup options={VEHICLE_TYPES} selected={vehicleType ? [vehicleType] : []} onToggle={setVehicleType} />
+            </Part>
+            <Part title={t('el.driver_photo')}>
+              <AvatarUploader src={driverAvatar} initial={title || 'D'} uploading={uploadingDriverPic}
+                onFile={(f) => uploadFileOne(f, setUploadingDriverPic, setDriverAvatar)} onRemove={() => setDriverAvatar('')}
+                label={t('el.upload_driver_photo')} />
+            </Part>
+            <Part title={t('el.routes_covered')} note={t('el.routes_note')}>
+              <RouteListEditor routes={routes} onChange={setRoutes} />
+            </Part>
+            <Part title={t('el.route_rates')} note={t('el.route_rates_note')}>
+              <RouteFareTable routes={routes} onChange={setRoutes} emptyNote={t('el.route_rates_empty')} />
+            </Part>
+          </>
+        )}
+
+        {isHomestay && (
+          <Part title={t('el.listing_tags')}>
+            <ChipToggleGroup options={HOMESTAY_TAGS} selected={selectedTags} onToggle={(tag) => setSelectedTags((prev) => toggleIn(prev, tag))} />
+          </Part>
+        )}
+
+        <Part title={t('el.cover_image')} note={t('el.cover_note')}>
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="relative aspect-[4/3] w-44 overflow-hidden rounded-[18px] border border-[var(--warmline)] bg-[var(--creme2)]">
+              {image ? <img src={image} alt="" className="h-full w-full object-cover" /> : <span className="ag-small grid h-full place-items-center">{t('el.no_cover')}</span>}
+              {uploading && <div className="absolute inset-0 grid place-items-center bg-black/40 text-xs text-white">{t('common.uploading')}</div>}
+            </div>
+            {/* A label styled as a small button, so the file picker opens from it. */}
+            <label className="ag-btn sm cursor-pointer">
+              <Upload />
+              <span>{t('el.choose_cover')}</span>
+              <input type="file" accept="image/*" onChange={(e) => uploadOne(e, setUploading, setImage)} className="sr-only" />
             </label>
-            {/* Drivers don't get a single price - theirs is derived from the
-                cheapest route rate below, so showing an editable field here
-                would just be a second, losing source of truth. */}
-            {isDriver ? (
-              <div className="block">
-                <span className="text-xs font-semibold text-ink-soft">{t('el.starting_price')}</span>
-                <div className="mt-1 w-full px-3.5 py-2.5 rounded-xl border border-[var(--line)] bg-mist text-sm text-ink font-semibold">
-                  {startingPriceFrom(routes) > 0 ? `₹${startingPriceFrom(routes)}` : '—'}
-                  <span className="text-ink-soft font-normal"> · {t('el.starting_price_note')}</span>
-                </div>
-              </div>
-            ) : (
-              <label className="block">
-                <span className="text-xs font-semibold text-ink-soft">{t('el.price')}</span>
-                <input required type="number" min="0" value={price} onChange={(e) => setPrice(Number(e.target.value) || 0)}
-                  className="mt-1 w-full px-3.5 py-2.5 rounded-xl border border-[var(--line)] bg-white outline-none text-sm text-ink font-semibold" />
-              </label>
-            )}
           </div>
+        </Part>
 
-          <div className="grid md:grid-cols-2 gap-4">
-            <label className="block">
-              <span className="text-xs font-semibold text-ink-soft">{t('lf.location')}</span>
-              <input required type="text" value={location} onChange={(e) => setLocation(e.target.value)}
-                className="mt-1 w-full px-3.5 py-2.5 rounded-xl border border-[var(--line)] bg-white outline-none text-sm text-ink font-semibold" />
-            </label>
-            <label className="block">
-              <span className="text-xs font-semibold text-ink-soft">{t('el.address')}</span>
-              <input type="text" value={address} onChange={(e) => setAddress(e.target.value)}
-                placeholder={t('el.address_ph')}
-                className="mt-1 w-full px-3.5 py-2.5 rounded-xl border border-[var(--line)] bg-white outline-none text-sm text-ink font-semibold" />
-            </label>
-          </div>
+        <Part title={t('el.photo_gallery')} note={t('el.gallery_note')}>
+          <GalleryUploader images={gallery} uploading={uploading} onFilesSelected={handleAddGalleryImages}
+            onRemove={(i) => setGallery((prev) => prev.filter((_, idx) => idx !== i))} />
+        </Part>
 
-          <label className="block">
-            <span className="text-xs font-semibold text-ink-soft">{isDriver ? t('el.driver_bio') : t('pd.description')}</span>
-            <textarea required value={description} onChange={(e) => setDescription(e.target.value)} rows={4}
-              className="mt-1 w-full px-3.5 py-2.5 rounded-xl border border-[var(--line)] bg-white outline-none text-sm text-ink" />
-          </label>
+        {isHomestay && (
+          <Part title={t('el.amenities')}>
+            <AmenityPicker presets={HOMESTAY_AMENITIES} selected={selectedAmenities} onChange={setSelectedAmenities} />
+          </Part>
+        )}
 
-          {/* ===== DRIVER-SPECIFIC FIELDS ===== */}
-          {isDriver && (
-            <>
-              <div>
-                <label className="block mb-3">
-                  <span className="text-xs font-semibold text-ink-soft uppercase block mb-1">{t('el.car_model')}</span>
-                  <input
-                    type="text"
-                    value={carModel}
-                    onChange={(e) => setCarModel(e.target.value)}
-                    placeholder={t('el.car_model_ph')}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--line)] bg-white outline-none text-sm font-semibold text-ink"
-                  />
-                </label>
-                <span className="text-xs font-semibold text-ink-soft uppercase block mb-2">{t('el.vehicle_type')}</span>
-                <ChipToggleGroup
-                  options={VEHICLE_TYPES}
-                  selected={vehicleType ? [vehicleType] : []}
-                  onToggle={setVehicleType}
-                />
-              </div>
+        {isHomestay && (
+          <Part title={t('el.host_info')}>
+            <AvatarUploader src={hostAvatar} initial={hostName || 'Host'} uploading={uploadingHostPic}
+              onFile={(f) => uploadFileOne(f, setUploadingHostPic, setHostAvatar)} onRemove={() => setHostAvatar('')}
+              label={t('el.upload_host_photo')} />
+            <TextField label={t('el.host_name')} value={hostName} onChange={(e) => setHostName(e.target.value)} />
+            <TextArea label={t('el.host_bio')} rows={3} value={hostBio} onChange={(e) => setHostBio(e.target.value)} />
+          </Part>
+        )}
 
-              <div className="border-t border-[var(--line)] pt-5">
-                <span className="text-xs font-extrabold uppercase tracking-widest text-ink-soft block mb-3">{t('el.driver_photo')}</span>
-                <AvatarUploader
-                  src={driverAvatar}
-                  initial={title || 'D'}
-                  size="sm"
-                  uploading={uploadingDriverPic}
-                  onFileSelected={(e) => uploadOne(e, setUploadingDriverPic, setDriverAvatar)}
-                  label={t('el.upload_driver_photo')}
-                />
-              </div>
+        <FieldError>{error}</FieldError>
 
-              <div className="border-t border-[var(--line)] pt-5">
-                <span className="text-xs font-extrabold uppercase tracking-widest text-ink-soft block mb-1">{t('el.routes_covered')}</span>
-                <p className="text-xs text-ink-soft mb-3">{t('el.routes_note')}</p>
-                <RouteListEditor routes={routes} onChange={setRoutes} compact />
-              </div>
+        <div className="ag-row justify-end border-t border-[var(--hairline)] pt-4">
+          <Button onClick={onClose}>{t('common.cancel')}</Button>
+          <Button type="submit" variant="primary" disabled={saving || uploading || uploadingHostPic || uploadingDriverPic} data-testid="save-edit-listing">
+            {saving ? t('common.saving') : t('common.save_changes')}
+          </Button>
+        </div>
+      </form>
+    </Sheet>
+  );
+}
 
-              <div className="border-t border-[var(--line)] pt-5">
-                <span className="text-xs font-extrabold uppercase tracking-widest text-ink-soft block mb-1">{t('el.route_rates')}</span>
-                <p className="text-xs text-ink-soft mb-3">{t('el.route_rates_note')}</p>
-                <RouteFareTable routes={routes} onChange={setRoutes} compact emptyNote={t('el.route_rates_empty')} />
-              </div>
-            </>
-          )}
-
-          {isHomestay && (
-            <div className="pt-2">
-              <span className="text-xs font-semibold text-ink-soft uppercase block mb-2">{t('el.listing_tags')}</span>
-              <ChipToggleGroup
-                options={HOMESTAY_TAGS}
-                selected={selectedTags}
-                onToggle={(tag) => setSelectedTags((prev) => toggleIn(prev, tag))}
-              />
-            </div>
-          )}
-
-          {/* Hero Image Section */}
-          <div className="border-t border-[var(--line)] pt-5">
-            <span className="text-xs font-extrabold uppercase tracking-widest text-ink-soft block mb-3">{t('el.cover_image')}</span>
-            <div className="flex flex-col md:flex-row gap-4 items-start">
-              <div className="w-full md:w-48 h-32 rounded-xl bg-mist overflow-hidden border border-[var(--line)] flex-shrink-0 relative">
-                {image ? (
-                  <img src={image} alt="" className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full grid place-items-center text-xs text-ink-soft">{t('el.no_cover')}</div>
-                )}
-                {uploading && <div className="absolute inset-0 bg-black/40 grid place-items-center text-xs text-white">{t('common.uploading')}</div>}
-              </div>
-              <div className="flex-1">
-                <p className="text-xs text-ink-soft mb-3">{t('el.cover_note')}</p>
-                <label className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-white border border-[var(--line)] text-ink font-bold text-xs btn-hover cursor-pointer">
-                  <Upload size={14} /> {t('el.choose_cover')}
-                  <input type="file" accept="image/*" onChange={(e) => uploadOne(e, setUploading, setImage)} className="hidden" />
-                </label>
-              </div>
-            </div>
-          </div>
-
-          {/* Gallery Images Section */}
-          <div className="border-t border-[var(--line)] pt-5">
-            <span className="text-xs font-extrabold uppercase tracking-widest text-ink-soft block mb-1">{t('el.photo_gallery')}</span>
-            <p className="text-xs text-ink-soft mb-4">{t('el.gallery_note')}</p>
-            <GalleryUploader
-              images={gallery}
-              uploading={uploading}
-              onFilesSelected={handleAddGalleryImages}
-              onRemove={(i) => setGallery((prev) => prev.filter((_, idx) => idx !== i))}
-              compact
-            />
-          </div>
-
-          {/* Amenities Section */}
-          {isHomestay && (
-            <div className="border-t border-[var(--line)] pt-5 space-y-4">
-              <span className="text-xs font-extrabold uppercase tracking-widest text-ink-soft block mb-1">{t('el.amenities')}</span>
-              <AmenityPicker
-                presets={HOMESTAY_AMENITIES}
-                selected={selectedAmenities}
-                onChange={setSelectedAmenities}
-                compact
-              />
-            </div>
-          )}
-
-          {/* Host Settings */}
-          {isHomestay && (
-            <div className="border-t border-[var(--line)] pt-5 space-y-4">
-              <span className="text-xs font-extrabold uppercase tracking-widest text-ink-soft block mb-1">{t('el.host_info')}</span>
-
-              <div className="flex flex-col md:flex-row gap-4 items-start">
-                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-pine to-pine-dark text-white overflow-hidden shadow-md flex items-center justify-center font-display font-extrabold text-2xl flex-shrink-0 relative">
-                  {hostAvatar ? (
-                    <img src={hostAvatar} alt="" className="w-full h-full object-cover" />
-                  ) : (
-                    (hostName || 'Host').charAt(0).toUpperCase()
-                  )}
-                  {uploadingHostPic && <div className="absolute inset-0 bg-black/40 grid place-items-center text-[10px] text-white">...</div>}
-                </div>
-                <div className="flex-1 space-y-3 w-full">
-                  <label className="block">
-                    <span className="text-xs font-semibold text-ink-soft">{t('el.host_name')}</span>
-                    <input type="text" value={hostName} onChange={(e) => setHostName(e.target.value)}
-                      className="mt-1 w-full px-3 py-2 rounded-xl border border-[var(--line)] bg-white outline-none text-sm font-semibold text-ink" />
-                  </label>
-
-                  <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-[var(--line)] text-ink font-bold text-xs btn-hover cursor-pointer">
-                    <Upload size={12} /> {uploadingHostPic ? t('common.uploading') : t('el.upload_host_photo')}
-                    <input type="file" accept="image/*" onChange={(e) => uploadOne(e, setUploadingHostPic, setHostAvatar)} className="hidden" />
-                  </label>
-                </div>
-              </div>
-
-              <label className="block">
-                <span className="text-xs font-semibold text-ink-soft">{t('el.host_bio')}</span>
-                <textarea rows={3} value={hostBio} onChange={(e) => setHostBio(e.target.value)}
-                  className="mt-1 w-full px-3.5 py-2.5 rounded-xl border border-[var(--line)] bg-white outline-none text-sm text-ink leading-relaxed" />
-              </label>
-            </div>
-          )}
-
-          {error && (
-            <div className="p-3 bg-flag/10 border border-flag/20 rounded-xl text-xs text-flag font-semibold text-center animate-pulse">
-              {error}
-            </div>
-          )}
-
-          {/* Footer */}
-          <div className="border-t border-[var(--line)] pt-5 flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-5 py-2.5 rounded-full border border-[var(--line)] text-ink font-bold text-sm btn-hover"
-            >
-              {t('common.cancel')}
-            </button>
-            <button
-              type="submit"
-              disabled={saving || uploading}
-              data-testid="save-edit-listing"
-              className="px-6 py-2.5 rounded-full bg-flag text-white font-bold text-sm btn-hover disabled:opacity-60"
-            >
-              {saving ? t('common.saving') : t('common.save_changes')}
-            </button>
-          </div>
-        </form>
+/** One titled part of the edit form, separated by a hairline. */
+function Part({ title, note, children }: { title: string; note?: string; children: React.ReactNode }) {
+  return (
+    <section className="grid gap-2.5 border-t border-[var(--hairline)] pt-4">
+      <div>
+        <h3 className="m-0 text-base font-medium text-[var(--ink-strong)]">{title}</h3>
+        {note && <p className="ag-small">{note}</p>}
       </div>
-    </div>
+      {children}
+    </section>
   );
 }

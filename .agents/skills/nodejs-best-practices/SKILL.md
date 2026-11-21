@@ -70,7 +70,7 @@ What are you building?
 ```
 Node.js 24+ (Active LTS): type-stripping ON by default
 ├── Run .ts files directly: node file.ts (no flag, stable since 24.12)
-├── Erasable syntax only — enums, runtime namespaces, param properties error out
+├── Erasable syntax only  enums, runtime namespaces, param properties error out
 ├── For those, use tsx (--experimental-transform-types was removed in Node 26)
 └── Consider for: scripts, simple APIs
 ```

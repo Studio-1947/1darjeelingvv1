@@ -1,9 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  X, Loader2, Upload, Plus, Trash2, ImageIcon, MapPin, Info, Star, Eye, EyeOff,
+  X, Loader2, Upload, Plus, Trash2, ImageIcon, MapPin, Info, Star, Eye, EyeOff, ExternalLink,
 } from 'lucide-react';
 import { uploadSpotImages, PartialUploadError } from '@/lib/uploadImage';
+import api from '@/lib/api';
 import type { AdminSpot } from './SpotsTab';
+
+/** Same cap as the backend (backend/src/lib/priceCap.ts): no price above ₹50,000. */
+const MAX_PRICE = 50_000;
 
 // Mirrors the server-side caps in backend/src/lib/spots.ts, so the admin is stopped here with a
 // clear message rather than by a 400 after filling in a whole form.
@@ -81,7 +85,7 @@ function initialState(spot?: AdminSpot | null): FormState {
 const inputClass =
   'mt-1 w-full rounded-xl border border-[var(--line)] bg-white px-3.5 py-2.5 text-sm text-ink outline-none focus:ring-2 focus:ring-flag/20 transition-all';
 
-/** Labelled field wrapper — keeps every row of the form on the same rhythm. */
+/** Labelled field wrapper  keeps every row of the form on the same rhythm. */
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
     <label className="block">
@@ -175,7 +179,7 @@ function ChipInput({ values, onChange, placeholder, max, testId }: {
 }
 
 /**
- * Create/edit form for a tourist spot — the only place a spot is authored.
+ * Create/edit form for a tourist spot  the only place a spot is authored.
  *
  * Photos upload straight to the admin-only endpoint and are stored as URLs, so the
  * form always holds hosted images rather than pending files: closing mid-edit can
@@ -190,6 +194,11 @@ export default function SpotFormModal({ open, spot, onClose, onSubmit }: {
 }) {
   const isEdit = !!spot?.id;
   const [form, setForm] = useState<FormState>(() => initialState(spot));
+  // A Google Maps link (or "lat, lng") turned into the pin by the server, which follows short
+  // maps.app.goo.gl links. It only fills the two fields; Save still decides.
+  const [mapsLink, setMapsLink] = useState('');
+  const [pinBusy, setPinBusy] = useState(false);
+  const [pinMsg, setPinMsg] = useState<{ tone: 'ok' | 'warn' | 'error'; text: string } | null>(null);
   const [gallery, setGallery] = useState<string[]>(() => ((spot?.extras?.images as string[]) || []));
   const [highlights, setHighlights] = useState<string[]>(() => ((spot?.extras?.highlights as string[]) || []));
   const [tags, setTags] = useState<string[]>(() => spot?.tags || []);
@@ -208,6 +217,8 @@ export default function SpotFormModal({ open, spot, onClose, onSubmit }: {
   useEffect(() => {
     if (!open) return;
     setForm(initialState(spot));
+    setMapsLink('');
+    setPinMsg(null);
     setGallery(((spot?.extras?.images as string[]) || []));
     setHighlights(((spot?.extras?.highlights as string[]) || []));
     setTags(spot?.tags || []);
@@ -215,7 +226,7 @@ export default function SpotFormModal({ open, spot, onClose, onSubmit }: {
     titleRef.current?.focus();
   }, [open, spot]);
 
-  // Escape closes — but never mid-save, which would leave the admin unsure whether it landed,
+  // Escape closes  but never mid-save, which would leave the admin unsure whether it landed,
   // and never mid-upload either: the backdrop, the X and Cancel all already refuse while a photo
   // is in flight, and closing here discarded the form while stranding the uploaded image on the
   // server with its URL lost.
@@ -267,7 +278,7 @@ export default function SpotFormModal({ open, spot, onClose, onSubmit }: {
       const urls = await uploadSpotImages(accepted, (done, total) => setGalleryUploading({ done, total }));
       setGallery((prev) => [...prev, ...urls]);
       if (files.length > accepted.length) {
-        setError(`Only ${accepted.length} photo(s) were added — the gallery holds at most ${MAX_GALLERY_IMAGES}.`);
+        setError(`Only ${accepted.length} photo(s) were added  the gallery holds at most ${MAX_GALLERY_IMAGES}.`);
       }
     } catch (err: any) {
       // Keep whatever made it up before the failure, so a batch that breaks on photo 7 of 10
@@ -300,6 +311,25 @@ export default function SpotFormModal({ open, spot, onClose, onSubmit }: {
       throw new Error(`${label} must be a number between -${limit} and ${limit}.`);
     }
     return n;
+  };
+
+  const getPin = async () => {
+    if (!mapsLink.trim() || pinBusy) return;
+    setPinBusy(true);
+    setPinMsg(null);
+    try {
+      const { data } = await api.post('/admin/spots/resolve-pin', { maps_url: mapsLink.trim() });
+      const lat = Number(data.latitude).toFixed(6).replace(/0+$/, '').replace(/\.$/, '');
+      const lng = Number(data.longitude).toFixed(6).replace(/0+$/, '').replace(/\.$/, '');
+      setForm((f) => ({ ...f, latitude: lat, longitude: lng }));
+      setPinMsg(data.in_region
+        ? { tone: 'ok', text: `Pin set: ${lat}, ${lng}. Open it below to check it is the right place.` }
+        : { tone: 'warn', text: `Pin set: ${lat}, ${lng}, but it is outside the Darjeeling area. Check it is the right place.` });
+    } catch (err: any) {
+      setPinMsg({ tone: 'error', text: err?.response?.data?.detail || 'Could not read a pin from that link.' });
+    } finally {
+      setPinBusy(false);
+    }
   };
 
   const submit = async (e: React.FormEvent) => {
@@ -335,8 +365,8 @@ export default function SpotFormModal({ open, spot, onClose, onSubmit }: {
     }
 
     const price = Number(form.price || 0);
-    if (!Number.isInteger(price) || price < 0) {
-      setError('Entry price must be a whole number of rupees (0 for free).');
+    if (!Number.isInteger(price) || price < 0 || price > MAX_PRICE) {
+      setError(`Entry price must be a whole number of rupees from 0 to ${MAX_PRICE.toLocaleString('en-IN')} (0 for free).`);
       return;
     }
     const sortOrder = Number(form.sortOrder || 0);
@@ -395,7 +425,7 @@ export default function SpotFormModal({ open, spot, onClose, onSubmit }: {
               {isEdit ? 'Edit spot' : 'Add a tourist spot'}
             </h2>
             <p className="mt-1 text-xs text-ink-soft">
-              Curated by admins only — providers can never create or edit these.
+              Curated by admins only  providers can never create or edit these.
             </p>
           </div>
           <button
@@ -426,7 +456,7 @@ export default function SpotFormModal({ open, spot, onClose, onSubmit }: {
             </Field>
 
             <div className="grid sm:grid-cols-2 gap-4">
-              <Field label="Area" hint="Shown on cards — e.g. Ghum, Darjeeling.">
+              <Field label="Area" hint="Shown on cards  e.g. Ghum, Darjeeling.">
                 <input
                   required
                   value={form.location}
@@ -445,7 +475,7 @@ export default function SpotFormModal({ open, spot, onClose, onSubmit }: {
               </Field>
             </div>
 
-            <Field label="Description" hint="A few paragraphs — this is the 'About this place' text.">
+            <Field label="Description" hint="A few paragraphs  this is the 'About this place' text.">
               <textarea
                 required
                 rows={5}
@@ -456,7 +486,7 @@ export default function SpotFormModal({ open, spot, onClose, onSubmit }: {
               />
             </Field>
 
-            <Field label="Highlights" hint="Short bullets shown as chips — e.g. “Kanchenjunga sunrise”.">
+            <Field label="Highlights" hint="Short bullets shown as chips  e.g. “Kanchenjunga sunrise”.">
               <ChipInput
                 values={highlights}
                 onChange={setHighlights}
@@ -522,9 +552,8 @@ export default function SpotFormModal({ open, spot, onClose, onSubmit }: {
                 ))}
 
                 {gallery.length < MAX_GALLERY_IMAGES && (
-                  <label className={`aspect-[4/3] rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors ${
-                    galleryUploading ? 'border-pine/50 bg-pine/5 text-pine' : 'border-[var(--line)] text-ink-soft hover:border-flag/50 hover:text-flag'
-                  }`}>
+                  <label className={`aspect-[4/3] rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors ${galleryUploading ? 'border-pine/50 bg-pine/5 text-pine' : 'border-[var(--line)] text-ink-soft hover:border-flag/50 hover:text-flag'
+                    }`}>
                     {galleryUploading ? (
                       <>
                         <Upload size={18} className="animate-pulse" />
@@ -559,13 +588,13 @@ export default function SpotFormModal({ open, spot, onClose, onSubmit }: {
               </Field>
             </div>
 
-            <Field label="How to reach" hint="Directions from town — transport, distance, rough travel time.">
+            <Field label="How to reach" hint="Directions from town  transport, distance, rough travel time.">
               <textarea rows={3} value={form.howToReach} onChange={(e) => set('howToReach', e.target.value)} className={`${inputClass} resize-y`} />
             </Field>
 
             <div className="grid sm:grid-cols-2 gap-4">
-              <Field label="Entry price (₹)" hint="Numeric — 0 shows the spot as free. Used on cards.">
-                <input type="number" min="0" step="1" value={form.price} onChange={(e) => set('price', e.target.value)} data-testid="spot-form-price" className={inputClass} />
+              <Field label="Entry price (₹)" hint="Numeric  0 shows the spot as free. Used on cards.">
+                <input type="number" min="0" max={MAX_PRICE} step="1" value={form.price} onChange={(e) => set('price', e.target.value)} data-testid="spot-form-price" className={inputClass} />
               </Field>
               <Field label="Tags">
                 <ChipInput values={tags} onChange={setTags} max={MAX_TAGS} placeholder="e.g. sunrise" testId="spot-form-tag-input" />
@@ -573,7 +602,35 @@ export default function SpotFormModal({ open, spot, onClose, onSubmit }: {
             </div>
           </Section>
 
-          <Section icon={MapPin} title="Map pin" note="Both fields, or neither — the public page falls back to central Darjeeling.">
+          <Section icon={MapPin} title="Map pin" note="Paste the spot's Google Maps link to fill the pin. Leave it empty and the public page falls back to central Darjeeling.">
+            <Field label="Google Maps link" hint="In Google Maps open the spot, tap Share and copy the link. If a link has no pin, right-click the spot on a computer, click the numbers at the top to copy them, and paste those here.">
+              <div className="mt-1 flex flex-wrap items-center gap-2">
+                <input
+                  value={mapsLink}
+                  onChange={(e) => { setMapsLink(e.target.value); setPinMsg(null); }}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void getPin(); } }}
+                  placeholder="https://maps.app.goo.gl/…  or  27.0410, 88.2663"
+                  data-testid="spot-form-maps-link"
+                  className={`${inputClass} !mt-0 flex-1 min-w-[14rem]`}
+                />
+                <button
+                  type="button"
+                  onClick={() => void getPin()}
+                  disabled={pinBusy || !mapsLink.trim()}
+                  data-testid="spot-form-get-pin"
+                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full border border-[var(--line)] text-xs font-bold text-ink disabled:opacity-40 hover:bg-mist transition-colors"
+                >
+                  {pinBusy ? <Loader2 size={14} className="animate-spin" /> : <MapPin size={14} />}
+                  Get pin
+                </button>
+              </div>
+            </Field>
+            {pinMsg && (
+              <p data-testid="spot-form-pin-msg" role={pinMsg.tone === 'error' ? 'alert' : 'status'}
+                className={`text-xs font-semibold ${pinMsg.tone === 'error' ? 'text-flag' : pinMsg.tone === 'warn' ? 'text-gold-dark' : 'text-pine'}`}>
+                {pinMsg.text}
+              </p>
+            )}
             <div className="grid sm:grid-cols-2 gap-4">
               <Field label="Latitude" hint="e.g. 27.0028">
                 <input value={form.latitude} onChange={(e) => set('latitude', e.target.value)} inputMode="decimal" data-testid="spot-form-latitude" className={inputClass} />
@@ -582,6 +639,18 @@ export default function SpotFormModal({ open, spot, onClose, onSubmit }: {
                 <input value={form.longitude} onChange={(e) => set('longitude', e.target.value)} inputMode="decimal" data-testid="spot-form-longitude" className={inputClass} />
               </Field>
             </div>
+            {/* Check the pin where it will show: opens the exact point in Google Maps. */}
+            {form.latitude.trim() && form.longitude.trim() && (
+              <a
+                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${form.latitude.trim()},${form.longitude.trim()}`)}`}
+                target="_blank"
+                rel="noreferrer"
+                data-testid="spot-form-open-map"
+                className="inline-flex items-center gap-1 text-xs font-bold text-pine hover:underline"
+              >
+                <ExternalLink size={13} /> Open this pin in Google Maps
+              </a>
+            )}
           </Section>
 
           <Section icon={Star} title="Publishing" note="Drafts are invisible to visitors until you publish them.">
@@ -590,9 +659,8 @@ export default function SpotFormModal({ open, spot, onClose, onSubmit }: {
                 type="button"
                 onClick={() => set('published', !form.published)}
                 data-testid="spot-form-published"
-                className={`flex items-center gap-3 p-4 rounded-xl border text-left transition-all ${
-                  form.published ? 'border-pine bg-pine/5' : 'border-[var(--line)] hover:bg-mist'
-                }`}
+                className={`flex items-center gap-3 p-4 rounded-xl border text-left transition-all ${form.published ? 'border-pine bg-pine/5' : 'border-[var(--line)] hover:bg-mist'
+                  }`}
               >
                 {form.published ? <Eye size={18} className="text-pine" /> : <EyeOff size={18} className="text-ink-soft" />}
                 <span>
@@ -607,9 +675,8 @@ export default function SpotFormModal({ open, spot, onClose, onSubmit }: {
                 type="button"
                 onClick={() => set('featured', !form.featured)}
                 data-testid="spot-form-featured"
-                className={`flex items-center gap-3 p-4 rounded-xl border text-left transition-all ${
-                  form.featured ? 'border-gold bg-gold/10' : 'border-[var(--line)] hover:bg-mist'
-                }`}
+                className={`flex items-center gap-3 p-4 rounded-xl border text-left transition-all ${form.featured ? 'border-gold bg-gold/10' : 'border-[var(--line)] hover:bg-mist'
+                  }`}
               >
                 <Star size={18} className={form.featured ? 'text-gold fill-gold' : 'text-ink-soft'} />
                 <span>

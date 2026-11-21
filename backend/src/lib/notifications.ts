@@ -3,6 +3,7 @@ import { db, schema } from '../db';
 import { NOTIFY_BOOKINGS, log } from '../config';
 import { sendNotification } from '../messaging';
 import type { NotificationTemplate } from '../messaging';
+import { emailEnabled, renderEmail, sendEmail } from './email';
 
 /**
  * Telling people what happened to their booking.
@@ -21,7 +22,7 @@ import type { NotificationTemplate } from '../messaging';
  *     notification is a queryable fact rather than an absence nobody can see.
  */
 
-const SIGNATURE = '— aangan · By studio 1947';
+const SIGNATURE = ' aangan · By studio 1947';
 
 /**
  * A date range rendered for a human, tolerant of the non-homestay bookings that have no dates.
@@ -29,7 +30,7 @@ const SIGNATURE = '— aangan · By studio 1947';
  * Returns a bare noun phrase with no leading preposition, because the caller supplies that. The
  * two single-date branches used to carry their own "on", which read correctly nowhere it was
  * actually used: every call site says "confirmed for {stay}", so a taxi booking announced itself
- * as "confirmed for on a date to be arranged". Worth fixing now rather than later — this string
+ * as "confirmed for on a date to be arranged". Worth fixing now rather than later  this string
  * goes into WhatsApp templates, and changing an approved template means another review.
  */
 function formatStay(checkIn: string | null, checkOut: string | null): string {
@@ -44,9 +45,12 @@ export interface BookingParties {
   booking: BookingRow;
   guestName: string;
   guestPhone: string;
-  /** Null when the listing has no reachable owner — an admin-authored listing, typically. */
+  /** Null when the listing has no reachable owner  an admin-authored listing, typically. */
   hostName: string | null;
   hostPhone: string | null;
+  /** Optional email copies, sent whenever SMTP is configured, independent of NOTIFY_BOOKINGS. */
+  guestEmail?: string | null;
+  hostEmail?: string | null;
 }
 
 /**
@@ -70,57 +74,89 @@ async function deliver(
 /**
  * Tells the guest and the host that a booking is confirmed, and records what happened.
  *
- * Each recipient is attempted independently — a host with no phone number on file, or a gateway
- * that rejects one number, must not cost the other party their message.
+ * Two channels, each optional and independent: WhatsApp/SMS when NOTIFY_BOOKINGS is on, and email
+ * whenever SMTP is configured and the person has an address. A party counts as told if either
+ * reached them. Each recipient is attempted on its own, so one failure never costs the other.
  */
 export async function notifyBookingConfirmed(parties: BookingParties): Promise<void> {
-  const { booking, guestName, guestPhone, hostName, hostPhone } = parties;
-
-  if (!NOTIFY_BOOKINGS) {
-    // An explicit operator choice (see config.ts), which startup already logged loudly. Recorded
-    // on the row too, so a booking with no notification has a stated reason rather than a blank.
-    await db.update(schema.bookings)
-      .set({ notifyError: 'NOTIFY_BOOKINGS=false — notifications are switched off' })
-      .where(eq(schema.bookings.id, booking.id));
-    return;
-  }
+  const { booking, guestName, guestPhone, hostName, hostPhone, guestEmail, hostEmail } = parties;
 
   const stay = formatStay(booking.checkIn, booking.checkOut);
   const errors: string[] = [];
   const stamps: Partial<typeof schema.bookings.$inferInsert> = {};
+  const now = () => new Date().toISOString();
+  const guestContact = hostName && hostPhone ? `Host: ${hostName}, ${hostPhone}.` : 'The host will contact you.';
 
-  if (guestPhone) {
-    const contact = hostName && hostPhone ? `Host: ${hostName}, ${hostPhone}.` : 'The host will contact you.';
-    const result = await deliver(
-      guestPhone,
-      'booking_confirmed_guest',
-      { name: guestName, listing: booking.listingTitle, stay, host: contact },
-      `Your booking at ${booking.listingTitle} is confirmed for ${stay}. ${contact} ${SIGNATURE}`
-    );
-    if (result.ok) stamps.touristNotifiedAt = new Date().toISOString();
-    else errors.push(`guest: ${result.error}`);
-  } else {
-    errors.push('guest: no phone number on the account');
+  // ── Email ──
+  if (emailEnabled()) {
+    if (guestEmail) {
+      const r = await sendEmail({
+        to: guestEmail,
+        subject: `Booking confirmed: ${booking.listingTitle}`,
+        text: `Hi ${guestName}, your booking at ${booking.listingTitle} is confirmed for ${stay}. ${guestContact}`,
+        html: renderEmail('Your booking is confirmed', [
+          `Hi ${guestName},`,
+          `Your booking at ${booking.listingTitle} is confirmed for ${stay}.`,
+          guestContact,
+        ], 'You are receiving this because you booked on aangan.'),
+      });
+      if (r.ok) stamps.touristNotifiedAt = now();
+      else errors.push(`guest email: ${r.error}`);
+    }
+    if (hostEmail) {
+      const r = await sendEmail({
+        to: hostEmail,
+        subject: `New confirmed booking: ${booking.listingTitle}`,
+        text: `New confirmed booking at ${booking.listingTitle}: ${guestName} (${guestPhone}), ${stay}, ${booking.guests} guest(s).`,
+        html: renderEmail('You have a new booking', [
+          `${guestName} confirmed a booking at ${booking.listingTitle}.`,
+          `Dates: ${stay}. Guests: ${booking.guests}.`,
+          `Guest's phone: ${guestPhone || 'not shared'}.`,
+        ], 'You are receiving this because you host on aangan.'),
+      });
+      if (r.ok) stamps.providerNotifiedAt = now();
+      else errors.push(`host email: ${r.error}`);
+    }
   }
 
-  if (hostPhone) {
-    const result = await deliver(
-      hostPhone,
-      'booking_confirmed_host',
-      {
-        listing: booking.listingTitle,
-        guest: guestName,
-        guest_phone: guestPhone,
-        stay,
-        guests: String(booking.guests),
-      },
-      `New confirmed booking at ${booking.listingTitle}: ${guestName} (${guestPhone}), ` +
-      `${stay}, ${booking.guests} guest(s). ${SIGNATURE}`
-    );
-    if (result.ok) stamps.providerNotifiedAt = new Date().toISOString();
-    else errors.push(`host: ${result.error}`);
+  // ── WhatsApp / SMS ──
+  if (!NOTIFY_BOOKINGS) {
+    // An explicit operator choice (see config.ts), which startup already logged loudly. Recorded
+    // on the row too, so a booking with no message has a stated reason rather than a blank.
+    errors.push('NOTIFY_BOOKINGS=false  WhatsApp/SMS notifications are switched off');
   } else {
-    errors.push('host: no contact number for this listing');
+    if (guestPhone) {
+      const result = await deliver(
+        guestPhone,
+        'booking_confirmed_guest',
+        { name: guestName, listing: booking.listingTitle, stay, host: guestContact },
+        `Your booking at ${booking.listingTitle} is confirmed for ${stay}. ${guestContact} ${SIGNATURE}`
+      );
+      if (result.ok) stamps.touristNotifiedAt = now();
+      else errors.push(`guest: ${result.error}`);
+    } else {
+      errors.push('guest: no phone number on the account');
+    }
+
+    if (hostPhone) {
+      const result = await deliver(
+        hostPhone,
+        'booking_confirmed_host',
+        {
+          listing: booking.listingTitle,
+          guest: guestName,
+          guest_phone: guestPhone,
+          stay,
+          guests: String(booking.guests),
+        },
+        `New confirmed booking at ${booking.listingTitle}: ${guestName} (${guestPhone}), ` +
+        `${stay}, ${booking.guests} guest(s). ${SIGNATURE}`
+      );
+      if (result.ok) stamps.providerNotifiedAt = now();
+      else errors.push(`host: ${result.error}`);
+    } else {
+      errors.push('host: no contact number for this listing');
+    }
   }
 
   // One write for both outcomes. `notifyError` is cleared on a fully successful run so a
@@ -129,8 +165,8 @@ export async function notifyBookingConfirmed(parties: BookingParties): Promise<v
     .set({ ...stamps, notifyError: errors.length > 0 ? errors.join('; ').slice(0, 500) : null })
     .where(eq(schema.bookings.id, booking.id));
 
-  if (errors.length > 0) {
-    log.error(`[notify] booking ${booking.id} confirmed but not fully announced — ${errors.join('; ')}`);
+  if (errors.length > 0 && NOTIFY_BOOKINGS) {
+    log.error(`[notify] booking ${booking.id} confirmed but not fully announced  ${errors.join('; ')}`);
   }
 }
 
@@ -138,20 +174,34 @@ export async function notifyBookingConfirmed(parties: BookingParties): Promise<v
  * Tells the guest their booking was cancelled, and whether their money is coming back.
  *
  * Used by the cancel route and by the double-booking guard in payments.ts, which cancels a
- * booking the guest has already paid for — the one case where silence would be indefensible.
+ * booking the guest has already paid for  the one case where silence would be indefensible.
  */
 export async function notifyBookingCancelled(
   booking: BookingRow,
   guestPhone: string,
   guestName: string,
-  refunded: boolean
+  refunded: boolean,
+  guestEmail?: string | null
 ): Promise<void> {
-  if (!NOTIFY_BOOKINGS || !guestPhone) return;
-
   const stay = formatStay(booking.checkIn, booking.checkOut);
   const refundLine = refunded
     ? 'Your payment has been refunded and will reach your account in 5-7 working days.'
     : 'If you were charged, our team will contact you about the refund.';
+
+  if (guestEmail && emailEnabled()) {
+    await sendEmail({
+      to: guestEmail,
+      subject: `Booking cancelled: ${booking.listingTitle}`,
+      text: `Hi ${guestName}, your booking at ${booking.listingTitle} for ${stay} has been cancelled. ${refundLine}`,
+      html: renderEmail('Your booking was cancelled', [
+        `Hi ${guestName},`,
+        `Your booking at ${booking.listingTitle} for ${stay} has been cancelled.`,
+        refundLine,
+      ], 'You are receiving this because you booked on aangan.'),
+    });
+  }
+
+  if (!NOTIFY_BOOKINGS || !guestPhone) return;
 
   const result = await deliver(
     guestPhone,
@@ -161,9 +211,154 @@ export async function notifyBookingCancelled(
   );
 
   if (!result.ok) {
-    log.error(`[notify] could not tell the guest that booking ${booking.id} was cancelled — ${result.error}`);
+    log.error(`[notify] could not tell the guest that booking ${booking.id} was cancelled  ${result.error}`);
     await db.update(schema.bookings)
       .set({ notifyError: `cancellation: ${result.error}`.slice(0, 500) })
       .where(eq(schema.bookings.id, booking.id));
+  }
+}
+
+export type HostVerificationNews =
+  | { kind: 'changes_requested'; document: string; reason: string | null }
+  | { kind: 'approved' };
+
+/**
+ * Tells everyone who runs a business (the main owner and co-owners) how their verification moved:
+ * a document needs changing (with the team's reason), or they are approved and live.
+ *
+ * Three channels, each independent: in-app (which also sends a phone push), WhatsApp when
+ * NOTIFY_BOOKINGS is on and the template is configured, and email when SMTP is set and the person
+ * has an address. Never throws: the admin's decision is already saved, and a message that did not
+ * go out must not undo it. Failures are logged.
+ */
+export async function notifyHostVerification(providerId: string, news: HostVerificationNews): Promise<void> {
+  try {
+    const { hostUserIds } = await import('./hostAccess');
+    const { addInAppNotification } = await import('./inApp');
+    const [provider] = await db.select().from(schema.providers).where(eq(schema.providers.id, providerId)).limit(1);
+    if (!provider) return;
+    const business = provider.businessName;
+    const ids = await hostUserIds(providerId);
+
+    const title = news.kind === 'approved' ? 'You are verified and live' : 'A document needs changing';
+    const body = news.kind === 'approved'
+      ? `${business} is approved. Travellers can now find and book you on aangan.`
+      : `Please upload "${news.document}" again.${news.reason ? ` Reason: ${news.reason}` : ''}`;
+
+    for (const userId of ids) {
+      await addInAppNotification(userId, {
+        kind: news.kind === 'approved' ? 'kyc_approved' : 'kyc_changes', title, body, refId: providerId,
+        msg: news.kind === 'approved'
+          ? { key: 'kyc_approved', params: { business } }
+          : { key: news.reason ? 'kyc_changes_reason' : 'kyc_changes', params: { document: news.document || '', reason: news.reason || '' } },
+      });
+      const [u] = await db.select({ name: schema.users.name, phone: schema.users.phone, email: schema.users.email })
+        .from(schema.users).where(eq(schema.users.id, userId)).limit(1);
+      if (!u) continue;
+
+      if (NOTIFY_BOOKINGS && u.phone) {
+        const template: NotificationTemplate = news.kind === 'approved' ? 'host_approved' : 'host_changes_requested';
+        // Positional, in the order docs/WHATSAPP_TEMPLATES.md declares them.
+        const vars: Record<string, string> = news.kind === 'approved'
+          ? { name: u.name, business }
+          : { name: u.name, business, document: news.document, reason: news.reason || 'see the app for details' };
+        const r = await deliver(u.phone, template, vars, `Hi ${u.name}. ${body}${SIGNATURE}`);
+        if (!r.ok) log.warn(`[notify] host verification ${template} to ****${u.phone.slice(-4)} failed: ${r.error}`);
+      }
+      if (emailEnabled() && u.email) {
+        const r = await sendEmail({
+          to: u.email,
+          subject: `${title}: ${business}`,
+          text: `Hi ${u.name}, ${body}`,
+          html: renderEmail(title, [`Hi ${u.name},`, body], 'You are receiving this because you host on aangan.'),
+        });
+        if (!r.ok) log.warn(`[notify] host verification email failed: ${r.error}`);
+      }
+    }
+  } catch (err) {
+    log.warn(`[notify] host verification for ${providerId} failed: ${(err as Error).message}`);
+  }
+}
+
+/**
+ * Tells the host (owner and co-owners) that a guest asked to book and is waiting for their Accept.
+ *
+ * Before this the request only reached the in-app feed, and the push copy only reaches the mobile
+ * app, so a host on the website heard nothing and the guest waited until the host happened to open
+ * the dashboard. WhatsApp when NOTIFY_BOOKINGS is on and the template is set up, email when SMTP is
+ * set and the host has an address. Never throws: the request is already saved.
+ */
+export async function notifyBookingRequest(
+  booking: Pick<BookingRow, 'id' | 'listingTitle' | 'checkIn' | 'checkOut'>,
+  providerId: string, guestName: string): Promise<void> {
+  try {
+    const { hostUserIds } = await import('./hostAccess');
+    const stay = formatStay(booking.checkIn, booking.checkOut);
+    const [provider] = await db.select({ contactPhone: schema.providers.contactPhone })
+      .from(schema.providers).where(eq(schema.providers.id, providerId)).limit(1);
+    const ids = await hostUserIds(providerId);
+    const people = ids.length
+      ? await Promise.all(ids.map(async (id) => (await db.select({ name: schema.users.name, phone: schema.users.phone, email: schema.users.email })
+        .from(schema.users).where(eq(schema.users.id, id)).limit(1))[0]))
+      : [];
+    const text = `${guestName} asked to book ${booking.listingTitle} for ${stay}. Open your aangan dashboard to accept or decline.`;
+
+    // One WhatsApp per phone number: the listing's contact line, plus each owner's own number.
+    const phones = new Set<string>();
+    if (provider?.contactPhone) phones.add(provider.contactPhone);
+    for (const u of people) if (u?.phone) phones.add(u.phone);
+    if (NOTIFY_BOOKINGS) {
+      for (const phone of phones) {
+        // Positional, in the order docs/WHATSAPP_TEMPLATES.md declares them.
+        const r = await deliver(phone, 'booking_request_host',
+          { listing: booking.listingTitle, guest: guestName, stay }, `${text}${SIGNATURE}`);
+        if (!r.ok) log.warn(`[notify] booking_request_host to ****${phone.slice(-4)} failed: ${r.error}`);
+      }
+    }
+    if (emailEnabled()) {
+      for (const u of people) {
+        if (!u?.email) continue;
+        const r = await sendEmail({
+          to: u.email,
+          subject: `New booking request: ${booking.listingTitle}`,
+          text: `Hi ${u.name}, ${text}`,
+          html: renderEmail('You have a new booking request', [`Hi ${u.name},`, text],
+            'You are receiving this because you host on aangan.'),
+        });
+        if (!r.ok) log.warn(`[notify] booking request email failed: ${r.error}`);
+      }
+    }
+  } catch (err) {
+    log.warn(`[notify] booking request ${booking.id} failed: ${(err as Error).message}`);
+  }
+}
+
+/**
+ * Tells the guest the host said yes, so they come back and confirm (free with the pass, or the
+ * small fee). Same channels and same never-throws rule as notifyBookingRequest.
+ */
+export async function notifyBookingAccepted(booking: BookingRow): Promise<void> {
+  try {
+    const [u] = await db.select({ name: schema.users.name, phone: schema.users.phone, email: schema.users.email })
+      .from(schema.users).where(eq(schema.users.id, booking.userId)).limit(1);
+    if (!u) return;
+    const stay = formatStay(booking.checkIn, booking.checkOut);
+    const text = `Your host accepted your request for ${booking.listingTitle} (${stay}). Open My Trips on aangan and confirm it to lock it in.`;
+    if (NOTIFY_BOOKINGS && u.phone) {
+      const r = await deliver(u.phone, 'booking_accepted_guest',
+        { name: u.name, listing: booking.listingTitle, stay }, `Hi ${u.name}. ${text}${SIGNATURE}`);
+      if (!r.ok) log.warn(`[notify] booking_accepted_guest to ****${u.phone.slice(-4)} failed: ${r.error}`);
+    }
+    if (emailEnabled() && u.email) {
+      const r = await sendEmail({
+        to: u.email,
+        subject: `Your host said yes: ${booking.listingTitle}`,
+        text: `Hi ${u.name}, ${text}`,
+        html: renderEmail('Your host said yes', [`Hi ${u.name},`, text], 'You are receiving this because you booked on aangan.'),
+      });
+      if (!r.ok) log.warn(`[notify] booking accepted email failed: ${r.error}`);
+    }
+  } catch (err) {
+    log.warn(`[notify] booking accepted ${booking.id} failed: ${(err as Error).message}`);
   }
 }

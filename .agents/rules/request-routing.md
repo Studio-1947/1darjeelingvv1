@@ -22,7 +22,7 @@ trigger: always_on
 | **DESIGN/UI**    | "design", "UI", "page", "dashboard"        | TIER 0 + TIER 1 + Agent        | **{task-slug}.md Required** |
 | **SLASH CMD**    | /create, /orchestrate, /debug              | Command-specific flow          | Variable                    |
 
-> 🔴 **NEW APP / scaffold from scratch:** route through `project-planner` or `orchestrator` (both load `app-builder`), NOT a lone specialist like `frontend-specialist`. A specialist alone has no project-detection, tech-stack selection, or template knowledge — `app-builder` does. Or run `/create`.
+> 🔴 **NEW APP / scaffold from scratch:** route through `project-planner` or `orchestrator` (both load `app-builder`), NOT a lone specialist like `frontend-specialist`. A specialist alone has no project-detection, tech-stack selection, or template knowledge  `app-builder` does. Or run `/create`.
 
 ---
 

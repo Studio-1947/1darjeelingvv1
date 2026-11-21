@@ -17,7 +17,7 @@ const accepted = (id = 'itk-1') => ({ result: true, id, message: 'Message sent s
 
 describe('splitting a stored number into what Interakt wants', () => {
   // This is the sharp edge of the adapter: Interakt takes country code and subscriber number as
-  // separate fields, and a wrong split does not error — it messages a real person somewhere else.
+  // separate fields, and a wrong split does not error  it messages a real person somewhere else.
   it('splits the canonical +91 form both clients send', () => {
     expect(splitPhone('+919876543210', '+91')).toEqual({ countryCode: '+91', phoneNumber: '9876543210' });
   });
@@ -39,11 +39,20 @@ describe('splitting a stored number into what Interakt wants', () => {
     expect(splitPhone('+9771234567', '+977')).toEqual({ countryCode: '+977', phoneNumber: '1234567' });
   });
 
+  it.each([
+    ['+919876543210', '+91', '9876543210'],
+    ['+9779812345678', '+977', '9812345678'],
+    ['+8801712345678', '+880', '1712345678'],
+    ['+97517123456', '+975', '17123456'],
+  ])('recognises supported regional number %s', (raw, countryCode, phoneNumber) => {
+    expect(splitPhone(raw, '+91')).toEqual({ countryCode, phoneNumber });
+  });
+
   it('accepts a code configured without its plus', () => {
     expect(splitPhone('+919876543210', '91')).toEqual({ countryCode: '+91', phoneNumber: '9876543210' });
   });
 
-  it('REFUSES a foreign number rather than guessing where the country code ends', () => {
+  it('refuses an unsupported foreign number rather than guessing where the country code ends', () => {
     // Guessing would send someone else's login code to a stranger. Failing is the safer answer.
     expect(() => splitPhone('+447700900123', '+91')).toThrow(MessageDeliveryError);
     expect(() => splitPhone('+447700900123', '+91')).toThrow(/cannot split/);
@@ -55,7 +64,7 @@ describe('splitting a stored number into what Interakt wants', () => {
   });
 });
 
-describe('interakt adapter — sending a code', () => {
+describe('interakt adapter  sending a code', () => {
   it('returns the provider reference on success', async () => {
     const fetchImpl = vi.fn().mockResolvedValue(jsonResponse(accepted('itk-99')));
     const provider = createInteraktProvider(ENV, fetchImpl as unknown as typeof fetch);
@@ -121,9 +130,9 @@ describe('interakt adapter — sending a code', () => {
   });
 });
 
-describe('interakt adapter — refusing to claim a send it cannot vouch for', () => {
+describe('interakt adapter  refusing to claim a send it cannot vouch for', () => {
   it('throws when Interakt answers 200 with result:false', async () => {
-    // The same trap MSG91 sets with type:"error" — a 2xx alone is not an accepted message.
+    // The same trap MSG91 sets with type:"error"  a 2xx alone is not an accepted message.
     const fetchImpl = vi.fn().mockResolvedValue(
       jsonResponse({ result: false, message: 'Template not found' })
     );
@@ -161,7 +170,7 @@ describe('interakt adapter — refusing to claim a send it cannot vouch for', ()
   });
 });
 
-describe('interakt adapter — booking notifications', () => {
+describe('interakt adapter  booking notifications', () => {
   const NOTIFY_ENV = {
     ...ENV,
     INTERAKT_BOOKING_CONFIRMED_GUEST_TEMPLATE: 'booking_confirmed_guest',
@@ -200,7 +209,7 @@ describe('interakt adapter — booking notifications', () => {
   });
 });
 
-describe('interakt adapter — configuration', () => {
+describe('interakt adapter  configuration', () => {
   it('rejects incomplete configuration at init', () => {
     const provider = createInteraktProvider({ INTERAKT_API_KEY: 'k' });
     expect(() => provider.init()).toThrow(/INTERAKT_OTP_TEMPLATE/);

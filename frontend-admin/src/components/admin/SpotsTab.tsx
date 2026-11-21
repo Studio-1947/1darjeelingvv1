@@ -30,7 +30,7 @@ const FILTERS: { key: Filter; label: string }[] = [
   { key: 'featured', label: 'Featured' },
 ];
 
-/** How complete a spot's editorial content is — nudges the admin to fill the gaps. */
+/** How complete a spot's editorial content is  nudges the admin to fill the gaps. */
 function completeness(spot: AdminSpot): { filled: number; total: number; missing: string[] } {
   const extras = spot.extras || {};
   const checks: [string, boolean][] = [
@@ -48,7 +48,7 @@ function completeness(spot: AdminSpot): { filled: number; total: number; missing
 }
 
 /**
- * Tourist spots tab — the admin-only authoring surface for the /spots section.
+ * Tourist spots tab  the admin-only authoring surface for the /spots section.
  *
  * Spots are curated content rather than a business someone lists, so this is the
  * only place they can be created, edited, published or removed; the backend
@@ -91,9 +91,8 @@ export default function SpotsTab({ spots, busyIds, onCreate, onEdit, onDelete, o
               key={key}
               onClick={() => setFilter(key)}
               data-testid={`spots-filter-${key}`}
-              className={`px-4 py-1.5 rounded-full text-xs font-bold border transition-colors ${
-                filter === key ? 'bg-pine text-white border-pine' : 'text-ink-soft border-[var(--line)] hover:bg-mist'
-              }`}
+              className={`px-4 py-1.5 rounded-full text-xs font-bold border transition-colors ${filter === key ? 'bg-pine text-white border-pine' : 'text-ink-soft border-[var(--line)] hover:bg-mist'
+                }`}
             >
               {label}
               {key === 'draft' && draftCount > 0 && <span className="ml-1.5 text-[10px] opacity-80">({draftCount})</span>}
@@ -124,7 +123,7 @@ export default function SpotsTab({ spots, busyIds, onCreate, onEdit, onDelete, o
 
       <div className="text-xs text-ink-soft">
         {spots.length} spot{spots.length === 1 ? '' : 's'} · {publishedCount} live · {draftCount} draft
-        {draftCount === 1 ? '' : 's'}. Only admins can create or edit these — providers never can.
+        {draftCount === 1 ? '' : 's'}. Only admins can create or edit these  providers never can.
       </div>
 
       <div className="mist-panel overflow-hidden border border-[var(--line)]">
@@ -175,7 +174,7 @@ export default function SpotsTab({ spots, busyIds, onCreate, onEdit, onDelete, o
 
                     <td className="p-4 text-xs text-ink-soft">{spot.location}</td>
 
-                    {/* Content completeness — a spot can be published with gaps, so surface them. */}
+                    {/* Content completeness  a spot can be published with gaps, so surface them. */}
                     <td className="p-4">
                       <div className="flex items-center gap-2" title={missing.length ? `Missing: ${missing.join(', ')}` : 'All fields filled'}>
                         <div className="w-16 h-1.5 rounded-full bg-mist overflow-hidden">
@@ -189,9 +188,8 @@ export default function SpotsTab({ spots, busyIds, onCreate, onEdit, onDelete, o
                     </td>
 
                     <td className="p-4">
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide ${
-                        spot.published ? 'bg-pine/10 text-pine' : 'bg-gold/20 text-[#8a6b04]'
-                      }`}>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide ${spot.published ? 'bg-pine/10 text-pine' : 'bg-gold/20 text-[#8a6b04]'
+                        }`}>
                         {spot.published ? 'Live' : 'Draft'}
                       </span>
                     </td>
@@ -214,9 +212,8 @@ export default function SpotsTab({ spots, busyIds, onCreate, onEdit, onDelete, o
                             </button>
                             <button
                               onClick={() => onToggleFeatured(spot)}
-                              className={`p-1.5 rounded-lg border transition-all ${
-                                spot.featured ? 'border-gold text-gold bg-gold/10' : 'border-[var(--line)] text-ink-soft hover:bg-mist'
-                              }`}
+                              className={`p-1.5 rounded-lg border transition-all ${spot.featured ? 'border-gold text-gold bg-gold/10' : 'border-[var(--line)] text-ink-soft hover:bg-mist'
+                                }`}
                               title={spot.featured ? 'Remove from featured' : 'Feature this spot'}
                             >
                               <Star size={14} className={spot.featured ? 'fill-gold' : ''} />
@@ -252,7 +249,7 @@ export default function SpotsTab({ spots, busyIds, onCreate, onEdit, onDelete, o
               <Mountain size={28} className="mx-auto text-ink-soft" />
               <p className="mt-3 text-ink-soft text-sm">
                 {spots.length === 0
-                  ? 'No tourist spots yet. Add the first one — it appears under /spots as soon as you publish it.'
+                  ? 'No tourist spots yet. Add the first one  it appears under /spots as soon as you publish it.'
                   : 'No spots match this filter.'}
               </p>
               {spots.length === 0 && (

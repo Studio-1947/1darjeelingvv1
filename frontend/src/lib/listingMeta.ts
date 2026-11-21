@@ -1,11 +1,11 @@
-import {
-  Wifi, Utensils, Flame, Mountain, TreePine, Home, ParkingCircle, Coffee, Croissant,
-  Car, Languages, Clock, ShieldCheck, Luggage, Fuel, Store, Gift, CreditCard, Package,
-  Leaf, Landmark, Users, PawPrint, Camera, Sunrise, Music, Ticket, Sparkles, Check,
-  Binoculars, Route,
-} from 'lucide-react';
+import i18n from '@/i18n';
+import { WifiHigh as Wifi, ForkKnife as Utensils, Fire as Flame, Mountains as Mountain, Tree as TreePine, House as Home, Park as ParkingCircle, Coffee, Bread as Croissant, Car, Translate as Languages, Clock, ShieldCheck, Suitcase as Luggage, GasPump as Fuel, Storefront as Store, Gift, CreditCard, Package, Leaf, Bank as Landmark, Users, PawPrint, Camera, Sun as Sunrise, MusicNote as Music, Ticket, Tag, Check, Binoculars, Path as Route } from '@phosphor-icons/react';
 
-export type Amenity = { Icon: any; label: string };
+/**
+ * `label` is the canonical English value (also the de-duplication key); OffersSection shows it
+ * through `options.*`. Built-in labels with no `options.*` entry carry `labelKey` instead.
+ */
+export type Amenity = { Icon: any; label: string; labelKey?: string };
 
 /**
  * Listings only carry `tags` - there is no amenities column. We map known tags to
@@ -50,6 +50,12 @@ const TYPE_AMENITIES: Record<string, Amenity[]> = {
     { Icon: Fuel, label: 'Fuel & tolls included' },
     { Icon: Luggage, label: 'Luggage space' },
   ],
+  guide: [
+    { Icon: ShieldCheck, label: 'Local guide', labelKey: 'ui.listingMeta.local_guide' },
+    { Icon: Route, label: 'Routes planned for you', labelKey: 'ui.listingMeta.routes_planned_for_you' },
+    { Icon: Languages, label: 'Speaks the local languages', labelKey: 'ui.listingMeta.speaks_the_local_languages' },
+    { Icon: Camera, label: 'Knows the photo spots', labelKey: 'ui.listingMeta.knows_the_photo_spots' },
+  ],
   shop: [
     { Icon: Store, label: 'Locally owned' },
     { Icon: Package, label: 'Made in Darjeeling' },
@@ -83,11 +89,16 @@ const TYPE_AMENITIES: Record<string, Amenity[]> = {
 const prettify = (tag: string) =>
   tag.replace(/[-_]+/g, ' ').replace(/^\w/, (c) => c.toUpperCase());
 
+/** Kinds a host lists and runs themselves: their page shows only the facilities they picked. */
+const HOST_LISTED = new Set(['homestay', 'driver', 'guide', 'cafe', 'shop']);
+
 export function amenitiesFor(item: any, max = 8): Amenity[] {
   const out: Amenity[] = [];
   const seen = new Set<string>();
+  // One entry per facility whatever its case or spacing ("Tea" and "tea" are the same thing).
   const push = (a: Amenity) => {
-    if (a && !seen.has(a.label)) { seen.add(a.label); out.push(a); }
+    const key = a?.label?.trim().toLowerCase();
+    if (key && !seen.has(key)) { seen.add(key); out.push(a); }
   };
 
   const custom: string[] = item?.extras?.amenities || [];
@@ -98,10 +109,14 @@ export function amenitiesFor(item: any, max = 8): Amenity[] {
 
   (item?.tags || []).forEach((tag: string) => {
     const rule = TAG_AMENITIES.find((r) => r.match.test(tag));
-    push(rule ? { Icon: rule.Icon, label: rule.label } : { Icon: Sparkles, label: prettify(tag) });
+    push(rule ? { Icon: rule.Icon, label: rule.label } : { Icon: Tag, label: prettify(tag) });
   });
 
-  (TYPE_AMENITIES[item?.type] || []).forEach(push);
+  if ((item?.type === 'cafe' || item?.type === 'shop') && item?.extras?.home_delivery === true) push({ Icon: Package, label: 'Home delivery', labelKey: 'ui.listingMeta.home_delivery' });
+  // The type's stock list fills out the team's own listings only. A host's page lists what the host
+  // picked and nothing else: a shop that chose "Tea" must not also claim "Gift wrapping".
+  const hostOwned = HOST_LISTED.has(item?.type) && !!item?.provider_id && item.provider_id !== 'admin-seed-provider';
+  if (!hostOwned) (TYPE_AMENITIES[item?.type] || []).forEach(push);
 
   return out.slice(0, max);
 }
@@ -114,15 +129,18 @@ export function amenitiesFor(item: any, max = 8): Amenity[] {
 export function hostFor(item: any) {
   const e = item?.extras || {};
   const isRealProvider = !!item?.provider_id && item.provider_id !== 'admin-seed-provider';
-  const name: string = e.host_name || (isRealProvider ? item.title : 'Your local host');
+  const name: string = e.host_name || (isRealProvider ? item.title : '');
   return {
+    // False for a team-added listing with no host on record: the page then leaves "Meet your
+    // host" out rather than showing a made-up name, initial and bio.
+    known: !!name,
     name,
     initial: name.trim().charAt(0).toUpperCase(),
     // The "Verified" chip must reflect the real KYC signal, not merely "has a provider row" -
     // isRealProvider stays in use above for the name fallback, which is a separate concern.
     verified: !!item?.provider_verified,
     phone: e.host_phone || e.contact_phone || '',
-    bio: e.host_bio || 'This home is run by a Darjeeling family who live on site and look after guests themselves.',
+    bio: e.host_bio || i18n.t('ui.listingMeta.default_host_bio'),
     languages: e.languages || ['Nepali', 'Hindi', 'English'],
     avatar: e.host_avatar || '',
   };
@@ -132,14 +150,14 @@ export function hostFor(item: any) {
 export function areaNoteFor(type: string): string {
   switch (type) {
     case 'homestay':
-      return 'The exact address is shared with you once your booking is confirmed.';
+      return i18n.t('ui.listingMeta.area_note.homestay');
     case 'driver':
-      return 'Your driver picks you up anywhere in and around this area.';
+      return i18n.t('ui.listingMeta.area_note.driver');
     case 'event':
-      return 'Timings vary by year - confirm locally before you travel.';
+      return i18n.t('ui.listingMeta.area_note.event');
     case 'biodiversity':
-      return 'A protected habitat. Visit with a registered guide and keep your distance.';
+      return i18n.t('ui.listingMeta.area_note.biodiversity');
     default:
-      return 'Tap below for turn-by-turn directions in Google Maps.';
+      return i18n.t('ui.listingMeta.area_note.default');
   }
 }

@@ -1,148 +1,71 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Home, Ticket, Store, LayoutGrid, User, ChevronUp } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import CategorySheet from '@/components/CategorySheet';
+import { useFavorites } from '@/context/FavoritesContext';
+import { Icon, type IconName } from '@/components/ag/Icon';
+
+type Tab = { key: string; to: string; match: string[]; label: string; icon: IconName; badge?: number };
 
 /**
- * Mobile bottom tab bar - the app's primary navigation below `lg`.
- *
- * Destinations: Home, My Trips / My Listings, Type, Account.
- * Service providers get "My Listings" (/my-listings) while tourists get "My Trips" (/my-trips).
- * Account routes to the user dashboard (/dashboard or /provider/dashboard).
+ * Bottom tab bar (red /7), on every screen size, drawn with the prototype's own tab icons
+ * (t_home, t_feed, t_trip, t_saved, t_me). Active = brand red; inactive = faint grey.
+ * Traveller: Home, Feed, My trip, Saved, Account. Hosts: Home (dashboard), Feed, Bookings, Saved, Account.
+ * Signed out, My trip and Saved still open their screens (an empty box and a way to log in), as the
+ * prototype does, instead of the sign-in page.
  */
 export default function BottomNav() {
   const { t } = useTranslation();
-  const { user } = useAuth();
-  const { pathname } = useLocation();
-  const [typeOpen, setTypeOpen] = useState(false);
+  const { user, isHostMode } = useAuth();
+  const { pathname, search } = useLocation();
+  // A tab matches its path, or its path plus query (?s=bookings); the bare path only when no sub-screen is open.
+  const here = pathname + search;
+  const isActive = (m: string[]) => m.some((x) => (x.includes('?') ? here.startsWith(x) : pathname === x && !new URLSearchParams(search).get('s')));
+  const savedCount = useFavorites().ids.size;
+  const [avatarError, setAvatarError] = useState(false);
+  useEffect(() => { setAvatarError(false); }, [user?.avatar]);
 
-  // Close the Type sheet whenever route changes
-  useEffect(() => {
-    setTypeOpen(false);
-  }, [pathname]);
-
-  const isProvider = user?.role === 'provider';
-
-  const tripsOrListingsTarget = isProvider
-    ? '/my-listings'
-    : (user ? '/my-trips' : '/login?next=/my-trips');
-
-  const accountTarget = user
-    ? (isProvider ? '/provider/dashboard' : '/dashboard')
-    : '/login?next=/dashboard';
-
-  const handleNavClick = () => {
-    setTypeOpen(false);
-  };
-
-  /**
-   * Which routes each tab represents - deliberately separate from where the tab
-   * *sends* you.
-   *
-   * NavLink derives "active" from the link's own pathname, and while logged out
-   * both Trips and Account point at /login?next=... . On /login that matched
-   * twice, so two tabs lit up at once and neither was where the visitor was.
-   * Matching on the destination a tab stands for fixes that: /login belongs to
-   * no tab, so none highlight - which is honest, since sign-in isn't one of the
-   * four places this bar navigates to.
-   */
-  const homeMatch = ['/'];
-  const tripsMatch = isProvider ? ['/my-listings'] : ['/my-trips'];
-  const accountMatch = ['/dashboard', '/provider/dashboard'];
-
-  // An open sheet is the current context, so it owns the highlight outright -
-  // otherwise Home and Type both read as selected while the sheet covers Home.
-  const activeFor = (routes: string[]) => !typeOpen && routes.includes(pathname);
-
-  const tabCls = (isActive: boolean) =>
-    `flex flex-col items-center justify-center gap-0.5 py-2.5 min-w-0 text-[10px] font-bold transition-all duration-150 active:scale-95 ${
-      isActive ? 'text-flag font-extrabold' : 'text-ink-soft hover:text-ink'
-    }`;
-
-  const homeActive = activeFor(homeMatch);
-  const tripsActive = activeFor(tripsMatch);
-  const accountActive = activeFor(accountMatch);
+  // Hosts keep the traveller's five tabs, as in the prototype; My trip becomes Bookings and Home is
+  // the business dashboard. My listings is reached from the dashboard's "Your listings · See all".
+  const tabs: Tab[] = isHostMode
+    ? [
+        { key: 'home', to: '/provider/dashboard', match: ['/provider/dashboard'], label: t('nav.home'), icon: 't_home' },
+        { key: 'feed', to: '/feed', match: ['/feed'], label: t('nav.feed_tab'), icon: 't_feed' },
+        { key: 'trips', to: '/provider/dashboard?s=bookings', match: ['/provider/dashboard?s=bookings'], label: t('host.bookings_tab', 'Bookings'), icon: 't_trip' },
+        { key: 'saved', to: '/saved', match: ['/saved'], label: t('nav.saved'), icon: 't_saved', badge: savedCount },
+        { key: 'account', to: '/provider/profile', match: ['/provider/profile', '/my-listings'], label: t('nav.account'), icon: 't_me' },
+      ]
+    : [
+        { key: 'home', to: '/', match: ['/'], label: t('nav.home'), icon: 't_home' },
+        { key: 'feed', to: '/feed', match: ['/feed'], label: t('nav.feed_tab'), icon: 't_feed' },
+        { key: 'trips', to: '/my-trips', match: ['/my-trips'], label: t('nav.trips'), icon: 't_trip' },
+        { key: 'saved', to: '/saved', match: ['/saved'], label: t('nav.saved'), icon: 't_saved', badge: savedCount },
+        { key: 'account', to: '/dashboard', match: ['/dashboard'], label: t('nav.account'), icon: 't_me' },
+      ];
 
   return (
-    <>
-      <CategorySheet open={typeOpen} onClose={() => setTypeOpen(false)} />
-
-      <nav
-        data-testid="bottom-nav"
-        className="lg:hidden fixed bottom-0 inset-x-0 z-50 bg-white/95 backdrop-blur-xl border-t border-[var(--line)] shadow-[0_-4px_20px_rgba(0,0,0,0.06)]"
-        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
-      >
-        <div className="grid grid-cols-4">
-          {/* Plain Link rather than NavLink throughout: the active state is
-              computed above, so NavLink's own pathname matching would only
-              fight it. aria-current carries the state to assistive tech. */}
-          <Link
-            to="/"
-            data-testid="bottom-nav-home"
-            onClick={handleNavClick}
-            aria-current={homeActive ? 'page' : undefined}
-            className={tabCls(homeActive)}
-          >
-            <Home size={20} strokeWidth={homeActive ? 2.6 : 2} className="flex-shrink-0" />
-            <span className="truncate max-w-full px-0.5">{t('nav.home')}</span>
-          </Link>
-
-          <Link
-            to={tripsOrListingsTarget}
-            data-testid="bottom-nav-trips"
-            onClick={handleNavClick}
-            aria-current={tripsActive ? 'page' : undefined}
-            className={tabCls(tripsActive)}
-          >
-            {isProvider ? (
-              <Store size={20} strokeWidth={tripsActive ? 2.6 : 2} className="flex-shrink-0" />
-            ) : (
-              <Ticket size={20} strokeWidth={tripsActive ? 2.6 : 2} className="flex-shrink-0" />
-            )}
-            <span className="truncate max-w-full px-0.5">
-              {isProvider ? (t('nav.my_listings') || 'My Listings') : (t('nav.trips') || 'My Trips')}
-            </span>
-          </Link>
-
-          {/* A toggle, not a route - it opens the category sheet. Labelled
-              "Categories" to match the sheet it opens, which is headed
-              "DISCOVER / Categories"; the tab used to say "Type" and nothing on
-              the other side of the tap repeated the word (QA 4.1). */}
-          <button
-            type="button"
-            onClick={() => setTypeOpen((v) => !v)}
-            data-testid="bottom-nav-type"
-            aria-expanded={typeOpen}
-            aria-haspopup="dialog"
-            className={tabCls(typeOpen)}
-          >
-            <span className="relative flex-shrink-0">
-              <LayoutGrid size={20} strokeWidth={typeOpen ? 2.6 : 2} />
-              <ChevronUp
-                size={11}
-                strokeWidth={2.6}
-                className={`absolute -top-2 left-1/2 -translate-x-1/2 transition-transform duration-200 ${
-                  typeOpen ? 'rotate-180' : ''
-                }`}
-              />
-            </span>
-            <span className="truncate max-w-full px-0.5">{t('nav.categories')}</span>
-          </button>
-
-          <Link
-            to={accountTarget}
-            data-testid="bottom-nav-account"
-            onClick={handleNavClick}
-            aria-current={accountActive ? 'page' : undefined}
-            className={tabCls(accountActive)}
-          >
-            <User size={20} strokeWidth={accountActive ? 2.6 : 2} className="flex-shrink-0" />
-            <span className="truncate max-w-full px-0.5">{t('nav.account')}</span>
-          </Link>
-        </div>
-      </nav>
-    </>
+    <nav className="ag-tabbar" data-testid="bottom-nav" aria-label={t('nav.menu')}>
+      <div className="ag-wrap">
+        {tabs.map((tab) => {
+          const active = isActive(tab.match);
+          const isAccount = tab.key === 'account';
+          return (
+            <Link key={tab.key} to={tab.to} className="ag-tab" data-testid={`bottom-nav-${tab.key}`} aria-current={active ? 'page' : undefined}>
+              <span className="ind">
+                {isAccount && user?.avatar && !avatarError ? (
+                  <img src={user.avatar} alt="" className="av" onError={() => setAvatarError(true)} data-testid="bottom-nav-avatar" />
+                ) : isAccount && user?.name ? (
+                  <span className="av" data-testid="bottom-nav-initial">{user.name.trim().charAt(0).toUpperCase()}</span>
+                ) : (
+                  <Icon name={tab.icon} />
+                )}
+                {!!tab.badge && <span className="ag-badge">{tab.badge > 99 ? '99+' : tab.badge}</span>}
+              </span>
+              <span className="truncate max-w-full">{tab.label}</span>
+            </Link>
+          );
+        })}
+      </div>
+    </nav>
   );
 }

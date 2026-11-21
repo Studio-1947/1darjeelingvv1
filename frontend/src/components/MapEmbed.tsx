@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { MapPin } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { MapPin } from '@phosphor-icons/react';
 
 /**
  * Real, interactive map via OpenStreetMap's embed - no API key required.
@@ -17,7 +18,8 @@ import { MapPin } from 'lucide-react';
  * The IntersectionObserver half also preserves the `loading="lazy"` behaviour it
  * replaces: a map below the fold still costs nothing until it is scrolled to.
  */
-export default function MapEmbed({ coords, title = 'Map', className = '' }: { coords: [number, number], title?: string, className?: string }) {
+export default function MapEmbed({ coords, title, className = '' }: { coords: [number, number], title?: string, className?: string }) {
+  const { t } = useTranslation();
   const [lat, lng] = coords;
   const d = 0.02; // ~2km half-window
   const bbox = [lng - d, lat - d, lng + d, lat + d].map((n) => n.toFixed(5)).join('%2C');
@@ -62,13 +64,13 @@ export default function MapEmbed({ coords, title = 'Map', className = '' }: { co
   }, [live, src]);
 
   return (
-    <div ref={holderRef} className={`relative bg-mist ${className}`} data-testid="map-embed">
+    <div ref={holderRef} className={`relative bg-[var(--creme2)] ${className}`} data-testid="map-embed">
       {live ? (
         // Keyed on src so moving the pin remounts the frame rather than leaving a
         // Leaflet instance sized for the previous listing.
         <iframe
           key={src}
-          title={title}
+          title={title ?? t('ui.mapEmbed.title')}
           src={src}
           className="absolute inset-0 w-full h-full"
           style={{ border: 0 }}
@@ -76,8 +78,8 @@ export default function MapEmbed({ coords, title = 'Map', className = '' }: { co
       ) : (
         // Something deliberate rather than the white box the bug produced, so a
         // map that genuinely can't load still reads as "map here", not "broken".
-        <div className="absolute inset-0 grid place-items-center text-ink-soft" aria-hidden="true">
-          <MapPin size={28} className="text-pine/50" />
+        <div className="absolute inset-0 grid place-items-center" aria-hidden="true">
+          <MapPin size={28} className="text-[var(--r)] opacity-50" />
         </div>
       )}
     </div>

@@ -1,30 +1,54 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Heart, Share2, Map, Check, Sparkles, X, Copy, ExternalLink } from 'lucide-react';
+import { Check, X, Copy, WhatsappLogo } from '@phosphor-icons/react';
+import { Icon } from '@/components/ag/Icon';
 import { useAuth } from '@/context/AuthContext';
 import { fetchFavorites, SavedListing } from '@/lib/favorites';
 import api from '@/lib/api';
-import ListingCard from '@/components/ListingCard';
-import TripPlannerModal from '@/components/TripPlannerModal';
+import ListingCard, { CatSpotCard, CatStayCard } from '@/components/ListingCard';
+import { distanceTo, placeFor } from '@/lib/places';
+import PlanCard from '@/components/feed/PlanCard';
+import { SaveHeart } from '@/components/home/cards';
+import { useFavorites } from '@/context/FavoritesContext';
+import { fetchMyPlans, type TripPlan } from '@/lib/plans';
 import { useSeo } from '@/components/Seo';
+import { Box, Button, ButtonLink, Chip, Chips, IconButton, PageHead, TextField } from '@/components/ag';
+
+/** Prototype order of the saved groups: places to see, stays, rides, guides, food, shops, events. */
+const TYPE_ORDER = ['spot', 'biodiversity', 'homestay', 'driver', 'guide', 'cafe', 'shop', 'event'];
+/** The same cards the category lists use: stay cards (who it fits, rating, price, heart) and tall spot cards. */
+const STAY_TYPES = new Set(['homestay', 'driver', 'guide', 'cafe', 'shop']);
+const SPOT_TYPES = new Set(['spot', 'biodiversity']);
+const BOOKABLE = new Set(['homestay', 'driver', 'guide']);
+/** Stay cards measure from town, as the category lists do. */
+const TOWN = placeFor('darjeeling') as { lat: number; lng: number };
 
 /**
- * Wishlist / Saved places with shareable Trip Plan itinerary feature.
+ * Saved (prototype V.saved): the places you kept, two to a row, with Plan a trip and a shareable
+ * trip plan link. /saved?plan=id,id shows a shared plan to anyone.
  */
 export default function Saved() {
   const { t } = useTranslation();
   useSeo({ title: t('saved.title'), noindex: true });
   const { user, loading: authLoading } = useAuth();
-  const nav = useNavigate();
   const [searchParams] = useSearchParams();
 
   const [items, setItems] = useState<SavedListing[]>([]);
+  const [plans, setPlans] = useState<TripPlan[]>([]);
+  const { isFavorite, loading: favLoading } = useFavorites();
+  const [kind, setKind] = useState('');
+  // The prototype's group names (Homestay, Car & Driver, Places to see...), as the category pages title them.
+  const TYPE_LABEL: Record<string, [string, string]> = {
+    spot: ['filter.t_spots', 'Places to see'], biodiversity: ['home.nature_title', 'Nature'],
+    homestay: ['home.tile.stays', 'Homestay'], driver: ['home.tile.cars', 'Car & Driver'], guide: ['home.tile.guides', 'Tour Guides'],
+    cafe: ['home.cafes_title', 'Cafes & Restaurants'], shop: ['home.shops_title', 'Local Shops'], event: ['home.tile.events', 'Festivals'],
+  };
+  const typeLabel = (k: string) => (TYPE_LABEL[k] ? t(TYPE_LABEL[k][0], TYPE_LABEL[k][1]) : k);
   const [loading, setLoading] = useState(true);
 
-  // Share modal state
+  // Share sheet state
   const [showPlanModal, setShowPlanModal] = useState(false);
-  const [showItineraryModal, setShowItineraryModal] = useState(false);
   const [copied, setCopied] = useState(false);
   const [tripTitle, setTripTitle] = useState(() => t('saved.default_trip_name'));
 
@@ -42,13 +66,18 @@ export default function Saved() {
     }
 
     if (authLoading) return;
-    if (!user) {
-      nav('/login?next=/saved', { replace: true });
-      return;
-    }
+    if (!user) { setLoading(false); return; }
     setLoading(true);
     fetchFavorites().then(setItems).finally(() => setLoading(false));
-  }, [user, authLoading, nav, sharedPlanParam]);
+    // Trip plans saved with their heart (prototype plans.js "Trip plans" section).
+    fetchMyPlans().then((m) => setPlans(m.saved)).catch(() => setPlans([]));
+  }, [user, authLoading, sharedPlanParam]);
+
+  // A card whose heart is turned off here leaves the list at once.
+  useEffect(() => {
+    if (sharedPlanParam || favLoading) return;
+    setItems((list) => (list.every((i) => isFavorite(i.id)) ? list : list.filter((i) => isFavorite(i.id))));
+  }, [isFavorite, favLoading, sharedPlanParam]);
 
   const getShareableUrl = () => {
     const ids = items.map((i) => i.id).join(',');
@@ -68,136 +97,147 @@ export default function Saved() {
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
   };
 
-  if (authLoading || (user && loading && !sharedPlanParam)) {
-    return <div className="mx-auto max-w-6xl px-4 md:px-6 py-8 text-ink-soft">{t('common.loading')}</div>;
-  }
-  if (!user && !sharedPlanParam) return null;
+  const head = (
+    <PageHead eyebrow={sharedPlanParam ? t('saved.shared_label') : t('ui.saved.eyebrow', 'Your favourites')}
+      title={sharedPlanParam ? t('saved.shared_title') : t('nav.saved')} />
+  );
 
-  // Group items by category for trip plan view
+  if (authLoading || (user && loading && !sharedPlanParam)) {
+    return <div className="ag-wrap"><div className="ag-main">{head}<p className="ag-small">{t('common.loading')}</p></div></div>;
+  }
+  // Signed out: the prototype's empty box (V.saved with nothing saved), with a quiet way to log in.
+  if (!user && !sharedPlanParam) {
+    return (
+      <div className="ag-wrap">
+        <div className="ag-main">
+          {head}
+          <Box className="ag-account-empty" data-testid="saved-guest">
+            <Icon name="heart" />
+            <p>{t('ui.saved.none', 'Nothing saved yet. Tap Save on any place.')}</p>
+            <p className="ag-small">{t('ui.saved.empty_hint', 'Tap the heart on any place, homestay or driver to keep it here.')}</p>
+            <ButtonLink to="/" go data-testid="saved-find-place">{t('ui.trips.find', 'Find a place')}</ButtonLink>
+            <ButtonLink to="/login?next=/saved" variant="text" size="sm" data-testid="saved-login">{t('nav.login', 'Log in')}</ButtonLink>
+          </Box>
+        </div>
+      </div>
+    );
+  }
+
+  // Category pills (prototype svpills): Everything, then each kind of place you saved.
+  const kinds = TYPE_ORDER.filter((k) => items.some((i) => i.type === k))
+    .concat([...new Set(items.map((i) => i.type))].filter((k) => !TYPE_ORDER.includes(k)));
+  const pick = kinds.includes(kind) ? kind : '';
+  const groups = kinds.filter((k) => !pick || k === pick);
+
+  // Group items by category for the share sheet
   const homestays = items.filter((i) => i.type === 'homestay');
   const drivers = items.filter((i) => i.type === 'driver');
   const spotsAndCafes = items.filter((i) => i.type !== 'homestay' && i.type !== 'driver');
 
   return (
-    <div className="mx-auto max-w-6xl px-4 md:px-6 py-6 md:py-8 pb-24 lg:pb-12">
-      <div className="flex flex-wrap items-end justify-between gap-4 mb-6">
-        <div>
-          <div className="text-[11px] font-bold uppercase tracking-widest text-flag flex items-center gap-1.5">
-            <Heart size={14} /> {sharedPlanParam ? t('saved.shared_label') : t('saved.label')}
-          </div>
-          <h1 className="font-display font-extrabold text-3xl sm:text-4xl md:text-5xl text-ink leading-tight">
-            {sharedPlanParam ? t('saved.shared_title') : t('saved.title')}
-          </h1>
-          <p className="mt-1 text-sm text-ink-soft">{t('saved.count', { count: items.length })}</p>
-        </div>
+    <div className="ag-wrap">
+      <div className="ag-main">
+        {head}
 
         {items.length > 0 && (
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowItineraryModal(true)}
-              data-testid="build-itinerary-cta"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-gold text-ink font-extrabold text-sm btn-hover shadow-sm"
-            >
-              <Sparkles size={16} /> Build Day 1/2/3 Trip
-            </button>
-            <button
-              onClick={() => setShowPlanModal(true)}
-              data-testid="plan-trip-cta"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-pine text-white font-bold text-sm btn-hover shadow-sm"
-            >
-              <Share2 size={16} /> {t('saved.plan_cta')}
-            </button>
+          <Chips scroll className="ag-account-pills" role="group" aria-label={t('ui.saved.filter', 'Show saved')} data-testid="saved-pills">
+            <Chip on={!pick} onClick={() => setKind('')}>{t('ui.trips.all', 'Everything')} <span className="n">{items.length}</span></Chip>
+            {kinds.map((k) => (
+              <Chip key={k} on={pick === k} onClick={() => setKind(k)} data-testid={`saved-pill-${k}`}>
+                {typeLabel(k)} <span className="n">{items.filter((i) => i.type === k).length}</span>
+              </Chip>
+            ))}
+          </Chips>
+        )}
+
+        {items.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            <ButtonLink to="/plan" go size="sm" icon={<Icon name="t_trip" />} data-testid="build-itinerary-cta">
+              {t('ui.saved.plan', 'Plan a trip')}
+            </ButtonLink>
+            <Button size="sm" icon={<Icon name="share" />} onClick={() => setShowPlanModal(true)} data-testid="plan-trip-cta">
+              {t('saved.plan_cta')}
+            </Button>
           </div>
+        )}
+
+        {items.length === 0 && plans.length === 0 ? (
+          <Box className="ag-account-empty" data-testid="saved-empty">
+            <Icon name="heart" />
+            <p>{t('saved.empty')}</p>
+            <p className="ag-small">{t('ui.saved.empty_hint', 'Tap the heart on any place, homestay or driver to keep it here.')}</p>
+            <ButtonLink to="/explore" go>{t('ui.trips.find', 'Find a place')}</ButtonLink>
+          </Box>
+        ) : (
+          groups.map((k) => {
+            const list = items.filter((i) => i.type === k);
+            return (
+              <section key={k} className="ag-account-savesec" data-testid={`saved-group-${k}`}>
+                {!pick && <h2>{typeLabel(k)} <span className="ag-small">{list.length}</span></h2>}
+                <div className="ag-category-grid">
+                  {list.map((it) => {
+                    const href = `/listing/${it.id}`;
+                    if (STAY_TYPES.has(it.type)) {
+                      return (
+                        <CatStayCard key={it.id} it={it} href={href} km={distanceTo(TOWN, it)} testId={`saved-card-${it.id}`}
+                          ctaLabel={BOOKABLE.has(it.type) ? t('cta.reserve', 'Reserve') : t('cta.view', 'View')} />
+                      );
+                    }
+                    return (
+                      <div key={it.id} className="relative">
+                        {SPOT_TYPES.has(it.type) ? <CatSpotCard it={it} href={href} testId={`saved-card-${it.id}`} /> : <ListingCard item={it} />}
+                        {!sharedPlanParam && <SaveHeart id={it.id} testId={`saved-heart-${it.id}`} className="!absolute right-2 top-2 z-[3]" />}
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            );
+          })
+        )}
+
+        {!sharedPlanParam && plans.length > 0 && (
+          <section className="ag-account-savesec flex flex-col gap-3" data-testid="saved-plans">
+            <h2>{t('ui.saved.plans', 'Trip plans')} <span className="ag-small">{plans.length}</span></h2>
+            {plans.map((p) => (
+              <PlanCard key={p.id} plan={p} onChange={(np) => setPlans((list) => (np.viewer?.saved === false ? list.filter((x) => x.id !== np.id) : list.map((x) => (x.id === np.id ? np : x))))} />
+            ))}
+          </section>
         )}
       </div>
 
-      {items.length === 0 ? (
-        <div className="mist-panel p-8 md:p-10 text-center">
-          <Heart size={28} className="mx-auto text-ink-soft/50" />
-          <p className="mt-3 text-ink-soft">{t('saved.empty')}</p>
-        </div>
-      ) : (
-        <div className="space-y-8">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-            {items.map((it) => <ListingCard key={it.id} item={it} />)}
-          </div>
-        </div>
-      )}
-
-      {/* Shareable Trip Plan Modal */}
+      {/* Shareable trip plan sheet */}
       {showPlanModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm grid place-items-center p-4">
-          <div className="bg-white rounded-3xl border border-[var(--line)] max-w-lg w-full p-6 md:p-8 shadow-2xl relative animate-in fade-in zoom-in-95 duration-200">
-            <button
-              onClick={() => setShowPlanModal(false)}
-              className="absolute top-5 right-5 text-ink-soft hover:text-ink p-1 rounded-full hover:bg-mist transition-colors"
-            >
-              <X size={20} />
-            </button>
-
-            <div className="flex items-center gap-2 text-pine font-extrabold text-xs uppercase tracking-wider mb-1">
-              <Map size={16} /> {t('saved.modal_label')}
-            </div>
-            <h2 className="font-display font-extrabold text-2xl text-ink">{t('saved.modal_title')}</h2>
-            <p className="text-sm text-ink-soft mt-1">
-              {t('saved.modal_note')}
-            </p>
-
-            <div className="mt-5 space-y-4">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" role="dialog" aria-modal="true" aria-labelledby="share-plan-title">
+          <div className="absolute inset-0 bg-black/55" onClick={() => setShowPlanModal(false)} />
+          <div className="relative z-10 w-full max-w-[720px] sm:max-w-lg max-h-[90dvh] overflow-y-auto rounded-t-[22px] sm:rounded-[22px] bg-[var(--surface)] p-4 pb-6 flex flex-col gap-4">
+            <div className="flex items-start justify-between gap-3">
               <div>
-                <label className="block text-xs font-semibold text-ink-soft uppercase mb-1">{t('saved.trip_name')}</label>
-                <input
-                  type="text"
-                  value={tripTitle}
-                  onChange={(e) => setTripTitle(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--line)] bg-white text-sm font-semibold text-ink outline-none"
-                />
+                <span className="ag-eyebrow">{t('saved.modal_label')}</span>
+                <h2 id="share-plan-title" className="font-medium text-2xl text-[var(--ink7)]">{t('saved.modal_title')}</h2>
+                <p className="ag-small">{t('saved.modal_note')}</p>
               </div>
-
-              {/* Summary breakdown */}
-              <div className="mist-panel p-4 space-y-2 text-xs font-semibold text-ink">
-                {homestays.length > 0 && <div>🏡 {t('saved.stays')}: {homestays.map(h => h.title).join(', ')}</div>}
-                {drivers.length > 0 && <div>🚗 {t('saved.drivers')}: {drivers.map(d => d.title).join(', ')}</div>}
-                {spotsAndCafes.length > 0 && <div>📍 {t('saved.spots_cafes')}: {spotsAndCafes.map(s => s.title).join(', ')}</div>}
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-ink-soft uppercase mb-1">{t('saved.share_link')}</label>
-                <div className="flex items-center gap-2">
-                  <input
-                    readOnly
-                    type="text"
-                    value={getShareableUrl()}
-                    className="flex-1 px-3.5 py-2.5 rounded-xl border border-[var(--line)] bg-mist text-xs text-ink font-mono outline-none truncate"
-                  />
-                  <button
-                    onClick={handleCopyLink}
-                    className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-ink text-white font-bold text-xs btn-hover whitespace-nowrap"
-                  >
-                    {copied ? <Check size={14} className="text-pine" /> : <Copy size={14} />}
-                    {copied ? t('saved.copied') : t('saved.copy')}
-                  </button>
-                </div>
-              </div>
-
-              <div className="pt-2 flex gap-3">
-                <button
-                  onClick={handleWhatsAppShare}
-                  className="flex-1 py-3 rounded-full bg-[#25D366] text-white font-bold text-sm btn-hover inline-flex items-center justify-center gap-2 shadow-sm"
-                >
-                  <Share2 size={16} /> {t('saved.share_whatsapp')}
-                </button>
-              </div>
+              <IconButton label={t('common.close')} onClick={() => setShowPlanModal(false)}><X /></IconButton>
             </div>
+
+            <TextField label={t('saved.trip_name')} value={tripTitle} onChange={(e) => setTripTitle(e.target.value)} />
+
+            <Box flat className="!gap-1 text-sm text-[var(--ink7)]">
+              {homestays.length > 0 && <p><b className="font-medium text-[var(--ink-strong)]">{t('saved.stays')}:</b> {homestays.map((h) => h.title).join(', ')}</p>}
+              {drivers.length > 0 && <p><b className="font-medium text-[var(--ink-strong)]">{t('saved.drivers')}:</b> {drivers.map((d) => d.title).join(', ')}</p>}
+              {spotsAndCafes.length > 0 && <p><b className="font-medium text-[var(--ink-strong)]">{t('saved.spots_cafes')}:</b> {spotsAndCafes.map((s) => s.title).join(', ')}</p>}
+            </Box>
+
+            <div className="flex items-end gap-2">
+              <TextField label={t('saved.share_link')} readOnly value={getShareableUrl()} className="flex-1 min-w-0" />
+              <Button onClick={handleCopyLink} icon={copied ? <Check /> : <Copy />}>{copied ? t('saved.copied') : t('saved.copy')}</Button>
+            </div>
+
+            <Button variant="primary" block center icon={<WhatsappLogo />} onClick={handleWhatsAppShare}>{t('saved.share_whatsapp')}</Button>
           </div>
         </div>
       )}
 
-      <TripPlannerModal
-        open={showItineraryModal}
-        onClose={() => setShowItineraryModal(false)}
-        savedTitles={items.map((i) => i.title)}
-      />
     </div>
   );
 }

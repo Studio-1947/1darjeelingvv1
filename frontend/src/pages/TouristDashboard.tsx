@@ -1,189 +1,247 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
-import { LogOut, Store, Compass, Phone, ArrowRight, Ticket, Calendar, Sparkles, XCircle, Loader2 } from 'lucide-react';
 import { useSeo } from '@/components/Seo';
+import { isSupportActive } from '@/lib/support';
+import { rupees, usePassPrice } from '@/lib/prices';
+import { LANGUAGES, setLanguage, type LangCode } from '@/i18n';
+import { PALETTES, accentOf, mix, useTheme, useMode } from '@/lib/theme';
+import { Box, Button, ButtonA, ButtonLink, PageHead, Status } from '@/components/ag';
+import { Icon, type IconName } from '@/components/ag/Icon';
+import Wordmark from '@/components/Wordmark';
+import TravellerPanels, { Avatar } from '@/components/TravellerPanels';
 
-function StatusPill({ status }) {
-  const { t } = useTranslation();
-  const map = {
-    confirmed: 'bg-pine/10 text-pine',
-    pending_payment: 'bg-gold/20 text-[#8a6b04]',
-    cancelled: 'bg-flag/10 text-flag',
-  };
-  // Unknown statuses fall back to the raw value rather than an empty pill.
-  const label = t(`booking.status.${status}`, { defaultValue: status?.replace('_', ' ') });
-  return <span className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${map[status] || 'bg-mist text-ink-soft'}`}>{label}</span>;
+/** Prototype language order and labels (V.language). */
+const LANG_ORDER: LangCode[] = ['en', 'hi', 'ne', 'bn'];
+const langName = (code: string) => LANGUAGES.find((l) => l.code === code)?.label || 'English';
+
+const GoLink = () => <span className="ag-account-golink" aria-hidden="true"><Icon name="arrowne" /></span>;
+
+/** One row of the menu card: icon circle, label with a small line under it, then the grey arrow. */
+function Row({ icon, title, sub, end }: { icon: IconName; title: React.ReactNode; sub?: React.ReactNode; end?: React.ReactNode }) {
+  return (
+    <>
+      <span className="ag-micon" aria-hidden="true"><Icon name={icon} /></span>
+      <span className="ag-mlab">
+        {title}
+        {sub != null && sub !== '' && <span className="ag-small">{sub}</span>}
+      </span>
+      {end ?? <GoLink />}
+    </>
+  );
 }
 
-export default function TouristDashboard() {
-  const { t, i18n } = useTranslation();
-  useSeo({ title: t('nav.dashboard'), noindex: true });
-  const { user, loading: authLoading, logout } = useAuth();
-  const nav = useNavigate();
-  const [bookings, setBookings] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [confirmingId, setConfirmingId] = useState<string | null>(null); // booking awaiting cancel confirmation
-  const [busyId, setBusyId] = useState<string | null>(null);
-
-  const loadBookings = useCallback(() => api.get('/bookings/me').then((r) => setBookings(r.data.items || [])), []);
-
-  useEffect(() => {
-    if (authLoading) return;
-    if (!user) { nav('/login?next=/dashboard'); return; }
-    loadBookings().finally(() => setLoading(false));
-  }, [user, authLoading, nav, loadBookings]);
-
-  const cancelBooking = async (id: string) => {
-    setBusyId(id);
-    try {
-      await api.patch(`/bookings/${id}/cancel`);
-      await loadBookings();
-      setConfirmingId(null);
-    } finally {
-      setBusyId(null);
-    }
-  };
-
-  if (authLoading || loading || !user) return <div className="p-10 text-center text-ink-soft">{t('common.loading')}</div>;
-
-  const upcoming = bookings.filter((b) => b.status !== 'cancelled' && (b.check_in ? new Date(b.check_in) >= new Date(new Date().setHours(0, 0, 0, 0)) : true));
-  const past = bookings.filter((b) => b.check_in && new Date(b.check_in) < new Date(new Date().setHours(0, 0, 0, 0)));
-
+/** The help card that closes the Account tab (prototype footer({hours:true})). */
+function AccountFoot() {
+  const { t } = useTranslation();
+  const links: Array<{ to: string; label: string; ext?: boolean; testId?: string }> = [
+    { to: '/about', label: t('footer.about_aangan'), testId: 'account-about' },
+    { to: 'https://www.1947.io', label: t('about.know_studio', 'Know Studio 1947'), ext: true },
+    { to: '/responsible', label: t('ui.account.travel_resp', 'Travel responsibly') },
+    { to: '/policies', label: t('ui.account.policies', 'Terms, Privacy & Refund Policy') },
+  ];
   return (
-    <div className="mx-auto max-w-6xl px-4 md:px-6 py-6 md:py-10">
-      {/* Profile header */}
-      <div className="flex items-center gap-4 md:gap-5 mb-8">
-        <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-gradient-to-br from-pine to-pine-dark text-white grid place-items-center font-display font-extrabold text-3xl">
-          {user.name?.trim().charAt(0).toUpperCase() || 'T'}
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="text-[11px] font-bold uppercase tracking-widest text-flag">{t('dashboard.traveller')}</div>
-          <h1 className="font-display font-extrabold text-2xl sm:text-3xl md:text-4xl text-ink leading-tight">{user.name || t('dashboard.traveller')}</h1>
-          <p className="text-sm text-ink-soft mt-0.5 flex items-center gap-1"><Phone size={12} /> {user.phone}</p>
-        </div>
-        <button onClick={() => { logout(); nav('/'); }} data-testid="tourist-logout"
-          className="hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[var(--line)] text-ink font-semibold text-sm btn-hover">
-          <LogOut size={14} /> {t('nav.logout')}
-        </button>
+    <footer className="ag-account-foot" data-testid="account-foot">
+      <div className="brand">
+        <Wordmark className="h-[18px] w-auto text-[var(--ink-strong)]" still />
+        <span className="ag-small">{t('ui.account.by_studio', 'A Product by Studio 1947')}</span>
       </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-3 md:gap-4 mb-8">
-        <div className="rounded-2xl p-4 bg-gradient-to-br from-flag to-[#8a1e1e] text-white">
-          <div className="text-[11px] uppercase tracking-widest font-bold opacity-90">{t('dashboard.bookings')}</div>
-          <div className="mt-1 font-display font-extrabold text-3xl leading-none">{bookings.length}</div>
-        </div>
-        <div className="rounded-2xl p-4 bg-gradient-to-br from-pine to-pine-dark text-white">
-          <div className="text-[11px] uppercase tracking-widest font-bold opacity-90">{t('dashboard.upcoming')}</div>
-          <div className="mt-1 font-display font-extrabold text-3xl leading-none">{upcoming.length}</div>
-        </div>
-        <div className="rounded-2xl p-4 bg-gradient-to-br from-gold to-[#c69108] text-white">
-          <div className="text-[11px] uppercase tracking-widest font-bold opacity-90">{t('dashboard.trips_taken')}</div>
-          <div className="mt-1 font-display font-extrabold text-3xl leading-none">{past.length}</div>
-        </div>
-      </div>
-
-      {/* Bookings list */}
-      <div>
-        <h2 className="font-display font-extrabold text-xl md:text-2xl text-ink mb-4 flex items-center gap-2">
-          <Calendar size={18} className="text-pine" /> {t('dashboard.my_bookings')}
-        </h2>
-        {bookings.length === 0 ? (
-          <div className="mist-panel p-8 md:p-10 text-center">
-            <p className="text-ink-soft">{t('dashboard.no_bookings')}</p>
-            <div className="mt-4 flex flex-wrap gap-2 justify-center">
-              <Link to="/homestays" data-testid="empty-book-stay" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-flag text-white font-bold text-sm btn-hover">
-                {t('dashboard.book_homestay')} <ArrowRight size={14} />
-              </Link>
-              <Link to="/drivers" data-testid="empty-book-driver" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-pine text-white font-bold text-sm btn-hover">
-                {t('dashboard.find_driver')} <ArrowRight size={14} />
-              </Link>
-            </div>
-          </div>
+      <nav className="ag-account-footlinks" aria-label={t('footer.links')}>
+        {links.map((l) => l.ext ? (
+          <a key={l.to} href={l.to} target="_blank" rel="noopener noreferrer">{l.label}<GoLink /></a>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {bookings.map((b) => (
-              <article key={b.id} data-testid={`my-booking-${b.id}`}
-                className="bg-white rounded-2xl border border-[var(--line)] p-4 md:p-5 flex gap-4">
-                <div className="w-20 h-20 rounded-xl overflow-hidden bg-mist flex-shrink-0">
-                  {b.listing?.image && <img src={b.listing.image} alt="" className="w-full h-full object-cover" />}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <div className="font-display font-bold text-ink line-clamp-1">{b.listing?.title || b.listing_title}</div>
-                      <div className="text-xs text-ink-soft capitalize">{b.listing_type}{b.listing?.location ? ` · ${b.listing.location}` : ''}</div>
-                    </div>
-                    <StatusPill status={b.status} />
-                  </div>
-                  <div className="mt-2 text-xs text-ink-soft space-y-0.5">
-                    {b.check_in && <div>{t('booking.checkin')}: <b className="text-ink">{b.check_in}</b>{b.check_out && <> → <b className="text-ink">{b.check_out}</b></>}</div>}
-                    <div>{t('booking.guests')}: <b className="text-ink">{b.guests}</b> · {t('dashboard.booked_on')}: {new Date(b.created_at).toLocaleDateString(i18n.language)}</div>
-                  </div>
-                  <div className="mt-3 flex items-center justify-between gap-2">
-                    <Link to={`/listing/${b.listing_id}`} data-testid={`revisit-${b.id}`}
-                      className="inline-flex items-center gap-1.5 text-xs font-bold text-pine">
-                      {t('dashboard.view_listing')} <ArrowRight size={12} />
-                    </Link>
-                    {b.status !== 'cancelled' && (
-                      confirmingId === b.id ? (
-                        <span className="inline-flex items-center gap-2 text-xs">
-                          <span className="text-ink-soft">{t('dashboard.cancel_confirm')}</span>
-                          <button onClick={() => cancelBooking(b.id)} disabled={busyId === b.id}
-                            data-testid={`confirm-cancel-${b.id}`} className="inline-flex items-center gap-1 font-bold text-flag disabled:opacity-50">
-                            {busyId === b.id ? <Loader2 size={12} className="animate-spin" /> : null} {t('common.yes')}
-                          </button>
-                          <button onClick={() => setConfirmingId(null)} className="font-bold text-ink-soft">{t('common.no')}</button>
-                        </span>
-                      ) : (
-                        <button onClick={() => setConfirmingId(b.id)} data-testid={`cancel-booking-${b.id}`}
-                          className="inline-flex items-center gap-1 text-xs font-bold text-flag hover:text-[#8a1e1e]">
-                          <XCircle size={12} /> {t('common.cancel')}
-                        </button>
-                      )
-                    )}
-                  </div>
-                </div>
-              </article>
-            ))}
-          </div>
-        )}
+          <Link key={l.to} to={l.to} data-testid={l.testId}>{l.label}<GoLink /></Link>
+        ))}
+      </nav>
+      <p className="ag-account-help">
+        {t('ui.account.help1', 'Need help? Call us on')} <b>+91 90932 77919</b><br />
+        <span className="hrs"><Icon name="bell" /> {t('ui.account.callhrs', 'Calls: Monday to Friday, 9 am to 6 pm')}</span><br />
+        {t('ui.account.help2', 'or email:')} <a href="mailto:aanganerp@gmail.com" data-testid="account-help-email"><b>aanganerp@gmail.com</b></a>
+      </p>
+      <div className="ag-account-contact">
+        <ButtonA href="tel:+919093277919" icon={<Icon name="phone" />} data-testid="account-help"
+          aria-label={t('ui.footer.call_us', { phone: '+91 90932 77919' })}>{t('ui.footer.call')}</ButtonA>
+        <ButtonA href="mailto:aanganerp@gmail.com" icon={<Icon name="mail" />}
+          aria-label={t('ui.footer.email_us', { email: 'aanganerp@gmail.com' })}>{t('ui.footer.email')}</ButtonA>
+        <a className="ag-iconbtn" href="https://www.instagram.com/aanganerp?dlrf=MWRnZ2tneHBqM2JiaQ%3D%3D" target="_blank" rel="noreferrer"
+          aria-label={t('ui.footer.follow_instagram')}><Icon name="insta" /></a>
+        <a className="ag-iconbtn" href="https://www.facebook.com/profile.php?id=61594349938326" target="_blank" rel="noreferrer"
+          aria-label={t('ui.footer.follow_facebook')}><Icon name="fb" /></a>
       </div>
+    </footer>
+  );
+}
 
-      {/* Quick actions */}
-      <div className="mt-10">
-        <h2 className="font-display font-extrabold text-xl md:text-2xl text-ink mb-4 flex items-center gap-2">
-          <Sparkles size={18} className="text-flag" /> {t('dashboard.quick_actions')}
-        </h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <Link to="/homestays" className="rounded-2xl p-4 bg-white border border-[var(--line)] btn-hover">
-            <div className="w-10 h-10 rounded-full bg-mist text-pine grid place-items-center mb-2"><Compass size={18} /></div>
-            <div className="font-display font-bold text-ink">{t('dashboard.browse_stays')}</div>
-          </Link>
-          <Link to="/drivers" className="rounded-2xl p-4 bg-white border border-[var(--line)] btn-hover">
-            <div className="w-10 h-10 rounded-full bg-mist text-pine grid place-items-center mb-2"><Phone size={18} /></div>
-            <div className="font-display font-bold text-ink">{t('dashboard.find_driver')}</div>
-          </Link>
-          <Link to="/events" className="rounded-2xl p-4 bg-white border border-[var(--line)] btn-hover">
-            <div className="w-10 h-10 rounded-full bg-mist text-pine grid place-items-center mb-2"><Ticket size={18} /></div>
-            <div className="font-display font-bold text-ink">{t('dashboard.cultural_events')}</div>
-          </Link>
-          {user.role === 'provider' ? (
-            <Link to="/provider/dashboard" className="rounded-2xl p-4 bg-gradient-to-br from-pine to-pine-dark text-white btn-hover">
-              <div className="w-10 h-10 rounded-full bg-white/15 text-white grid place-items-center mb-2"><Store size={18} /></div>
-              <div className="font-display font-bold">{t('nav.business_dashboard')}</div>
-            </Link>
-          ) : (
-            <Link to="/provider/onboard" className="rounded-2xl p-4 bg-gradient-to-br from-pine to-pine-dark text-white btn-hover">
-              <div className="w-10 h-10 rounded-full bg-white/15 text-white grid place-items-center mb-2"><Store size={18} /></div>
-              <div className="font-display font-bold">{t('provider.onboard_title')}</div>
-            </Link>
-          )}
+/** Account → Language (prototype V.language): one pill per language, the current one filled. */
+function LanguageScreen() {
+  const { t, i18n } = useTranslation();
+  return (
+    <div className="ag-wrap">
+      <div className="ag-main">
+        <PageHead eyebrow={t('ui.account.eyebrow', 'Your account')} title={t('lang.choose', 'Language')} />
+        <div className="ag-account-langs" role="group" aria-label={t('lang.choose', 'Language')} data-testid="language-switcher">
+          {LANG_ORDER.map((code) => {
+            const on = i18n.language === code;
+            return (
+              <button key={code} type="button" lang={code} aria-pressed={on} data-testid={`lang-option-${code}`} onClick={() => setLanguage(code)}>
+                <span className="dot" aria-hidden="true">{on && <Icon name="check" />}</span>
+                {langName(code)}
+              </button>
+            );
+          })}
         </div>
       </div>
     </div>
   );
 }
+
+/** Account -> Traveller dashboard (prototype V.tdash): its own screen at /dashboard?s=tdash. */
+function TravellerDashScreen() {
+  const { t } = useTranslation();
+  const { user, loading } = useAuth();
+  const nav = useNavigate();
+  React.useEffect(() => { if (!loading && !user) nav('/login?next=' + encodeURIComponent('/dashboard?s=tdash'), { replace: true }); }, [loading, user, nav]);
+  if (loading || !user) return <div className="ag-wrap"><div className="ag-main"><p className="ag-small">{t('common.loading')}</p></div></div>;
+  return (
+    <div className="ag-wrap">
+      <div className="ag-main" id="traveller-dashboard" data-testid="traveller-dashboard">
+        <PageHead eyebrow={t('ui.account.eyebrow', 'Your account')} title={t('ui.account.tdash', 'Traveller dashboard')} />
+        <TravellerPanels />
+      </div>
+    </div>
+  );
+}
+
+/** "+918012345678" -> "+91 8012345678", as the prototype writes a number. */
+const shownPhone = (p?: string | null) => (p && /^\+91\d{10}$/.test(p) ? `+91 ${p.slice(3)}` : p || '');
+
+/**
+ * The Account tab (prototype V.me): who you are, the menu (profile, theme colour, language, traveller
+ * dashboard, membership), the business card, then the help card. Always reachable, so a signed-out
+ * visitor gets the guest version with a Log in button. The traveller dashboard and Language open as
+ * their own screens (/dashboard?s=tdash, ?s=language); Log out and blocked people live on Profile.
+ */
+export default function TouristDashboard() {
+  const { t, i18n } = useTranslation();
+  useSeo({ title: t('nav.account'), noindex: true });
+  const { user, loading, setMode, provider } = useAuth();
+  const nav = useNavigate();
+  const [sp] = useSearchParams();
+  const pass = usePassPrice(user);
+  const [theme] = useTheme();
+  const [colourMode, setColourMode] = useMode();
+
+  if (sp.get('s') === 'language') return <LanguageScreen />;
+  if (sp.get('s') === 'tdash') return <TravellerDashScreen />;
+  if (loading) return <div className="ag-wrap"><div className="ag-main"><p className="ag-small">{t('common.loading')}</p></div></div>;
+
+  const passOn = !!user && isSupportActive(user);
+  const isHost = user?.role === 'provider';
+  // Live = travellers can find it: active (same rule as the Business Dashboard and the public
+  // listing filter; the team's document check earns the Verified tick, it does not hide anyone).
+  const live = provider?.status === 'active';
+
+  const pal = PALETTES.find((p) => p.key === theme);
+  const accent = accentOf(theme);
+  const themeName = pal ? `${pal.name} · ${pal.en}` : accent;
+
+  return (
+    <div className="ag-wrap">
+      <div className="ag-main">
+        <PageHead eyebrow={t('ui.account.eyebrow', 'Your account')} title={t('nav.account')} />
+
+        {/* Who you are */}
+        <Box className="ag-account-head" data-testid={user ? 'account-me' : 'account-guest'}>
+          <div className="row">
+            <Avatar name={user?.name} src={user?.avatar} size={64} />
+            <div className="min-w-0 flex-1">
+              <h2>{user?.name || t('dashboard.traveller')}</h2>
+              {user ? (
+                passOn ? (
+                  <Status tone="ok" className="mt-1" data-testid="account-mode"><Icon name="check" size={14} /> {t('ui.travellerPanels.pass_title')}</Status>
+                ) : (
+                  <p className="ag-small" data-testid="account-mode">
+                  {user.phone ? t('ui.account.signed_wa', 'Signed in with WhatsApp') : user.email ? t('ui.account.signed_gg', 'Signed in with Google') : t('dashboard.traveller')}
+                </p>
+                )
+              ) : (
+                <p className="ag-small">{t('ui.account.not_in', 'Not logged in')}</p>
+              )}
+            </div>
+          </div>
+          {!user && (
+            <ButtonLink to="/login?next=/dashboard" go className="self-start" data-testid="account-login">{t('nav.login')}</ButtonLink>
+          )}
+        </Box>
+
+        {/* Menu */}
+        <nav className="ag-box ag-account-menu" aria-label={t('nav.account')}>
+          <Link to={user ? '/profile/edit' : '/login?next=/profile/edit'} data-testid="account-edit-profile">
+            <Row icon="person" title={t('nav.profile')} sub={shownPhone(user?.phone)} />
+          </Link>
+          <Link to="/theme" data-testid="account-theme">
+            <Row icon="sun" title={t('theme.title', 'Theme colour')} sub={themeName}
+              end={(
+                <span className="ag-account-palmini" aria-hidden="true">
+                  {[accent, mix(accent, '#0B0A08', 0.68), mix(accent, '#FFFFFF', 0.86)].map((c, i) => <i key={i} style={{ background: c }} />)}
+                </span>
+              )} />
+          </Link>
+          <Link to="/dashboard?s=language" data-testid="account-language">
+            <Row icon="globe" title={t('lang.choose', 'Language')} sub={langName(i18n.language)} />
+          </Link>
+          <button type="button" role="switch" aria-checked={colourMode === 'dark'} onClick={() => setColourMode(colourMode === 'dark' ? 'light' : 'dark')} data-testid="account-dark-mode">
+            <Row icon="moon" title={t('theme.dark', 'Dark mode')} sub={colourMode === 'dark' ? t('theme.on', 'On') : t('theme.off', 'Off')}
+              end={<span className={`ag-account-tog${colourMode === 'dark' ? ' on' : ''}`} aria-hidden="true"><i /></span>} />
+          </button>
+          <Link to={user ? '/dashboard?s=tdash' : '/login?next=' + encodeURIComponent('/dashboard?s=tdash')} data-testid="account-traveller-dashboard">
+            <Row icon="t_trip" title={t('ui.account.tdash', 'Traveller dashboard')} />
+          </Link>
+          <Link to="/support" data-testid="account-pass">
+            <Row icon="badge" title={t('ui.account.member', 'Membership')}
+              sub={passOn ? `${t('ui.travellerPanels.pass_title')} · ${t('ui.travellerPanels.pass_active')}` : t('ui.travellerPanels.get_pass', { price: rupees(pass.total) })} />
+          </Link>
+        </nav>
+
+        {/* For businesses */}
+        <span className="ag-eyebrow ag-account-bizeye">{t('ui.account.for_business', 'For businesses')}</span>
+        <section className="ag-account-biz" aria-label={t('ui.account.for_business', 'For businesses')}>
+          <div className="row">
+            <span className="ag-micon" aria-hidden="true"><Icon name="bag" /></span>
+            <div className="min-w-0 flex-1">
+              {isHost ? (
+                <>
+                  <b className="truncate">{provider?.business_name || t('nav.mode_business')}</b>
+                  <span className="ag-small">{t('nav.business_dashboard')}</span>
+                </>
+              ) : (
+                <>
+                  <b>{t('ui.account.biz_start', 'Start your business on aangan')}</b>
+                  <span className="ag-small">{t('ui.account.biz_box_s', 'Homestay, driver, guide, cafe or shop. Free to list, no booking commission.')}</span>
+                </>
+              )}
+            </div>
+            {isHost && provider && (
+              <Status tone={live ? 'ok' : 'pending'} data-testid="account-business-status">
+                {live ? t('verify.step_live') : t('provider.pending_review')}
+              </Status>
+            )}
+          </div>
+          {isHost ? (
+            <Button go onClick={() => { setMode('provider'); nav('/provider/dashboard'); }} data-testid="account-switch-business">
+              {t('ui.account.check_biz', 'Check your business')}
+            </Button>
+          ) : (
+            <ButtonLink to="/provider/onboard" go data-testid="account-switch-business">
+              {t('ui.account.list_now', 'List now')}
+            </ButtonLink>
+          )}
+        </section>
+
+        <AccountFoot />
+      </div>
+    </div>
+  );
+}
+

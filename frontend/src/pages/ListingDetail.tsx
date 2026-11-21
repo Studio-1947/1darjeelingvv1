@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import api from '@/lib/api';
 import { shareLink } from '@/lib/share';
@@ -7,46 +7,57 @@ import { openDirections } from '@/lib/directions';
 import { ListingDetailSkeleton, LoadingStatus } from '@/components/skeletons';
 import { amenitiesFor, hostFor } from '@/lib/listingMeta';
 import { contentFor, listingImage, galleryImagesFor, personImageFor, spotInfoFor } from '@/lib/listingContent';
+import { groupPhotos } from '@/lib/photoGroups';
 import Seo from '@/components/Seo';
-import MockPaymentModal from '@/components/MockPaymentModal';
 import BookingConfirmation from '@/components/BookingConfirmation';
-import DetailHero from '@/components/listing-detail/DetailHero';
+import DeliveryRequestButton from '@/components/DeliveryRequestButton';
+import { Box, ButtonLink, Status } from '@/components/ag';
+import { Icon } from '@/components/ag/Icon';
+import BookingFeeModal from '@/components/listing-detail/BookingFeeModal';
+import RequestSent from '@/components/listing-detail/RequestSent';
+import DetailHero, { ItemActions } from '@/components/listing-detail/DetailHero';
 import type { ShareOutcome } from '@/lib/share';
 import {
-  AboutSection, PhotosSection, OffersSection, StayGallerySection,
-  HostSection, DriverSection, BestTimeSection, RoutesSection, LocationSection,
-  HighlightsSection, VisitInfoSection,
+  AboutSection, OffersSection, BestTimeSection, RoutesSection, TicketBox,
+  LocationSection, VisitInfoSection, NearbySection,
 } from '@/components/listing-detail/sections';
-import { ReserveSection, MobileStickyBar } from '@/components/listing-detail/ReserveSection';
+import { BookingScreen, BookBar, bookingSteps } from '@/components/listing-detail/ReserveSection';
 import ContactSection from '@/components/listing-detail/ContactSection';
 import ReviewsSection from '@/components/listing-detail/ReviewsSection';
-import AudioGuide from '@/components/AudioGuide';
-import { ctaFor } from '@/components/listing-detail/cta';
-import { useBookingFlow } from '@/components/listing-detail/useBookingFlow';
+import {
+  GuideSection, ServicesSection, RoomsFoodSection, RecommendedDriversSection, PriceListSection, OwnerSection,
+  HostSection, DriverSection, UnavailableNotice,
+} from '@/components/listing-detail/profileSections';
+import { roomsOf, useBookingFlow } from '@/components/listing-detail/useBookingFlow';
+import { roomOpen } from '@/lib/roomFit';
+import { useAuth } from '@/context/AuthContext';
+import { BusinessModeNotice } from '@/components/TravellerOnly';
 
 /**
- * Public listing detail page: a stack of full-screen sections chosen by the
- * listing's type. Booking/payment state lives in useBookingFlow; each section
- * is its own component under components/listing-detail.
+ * Public listing page, laid out as the prototype's item view: photo, photo strip, name, place,
+ * verified and rating, host, price, Website, Listen / Direction / save / share, then About,
+ * Facilities, the host, rooms or fares or menu, the map, nearby, reviews and Report a problem,
+ * with the fixed price + "Book now" bar. "Book now" opens the booking screen (prototype V.book),
+ * one step per screen, kept in the URL as ?book=<step> so Back and the login round trip work.
+ * Booking state lives in useBookingFlow; each block is its own component under listing-detail.
  */
 export default function ListingDetail() {
   const { id } = useParams();
   const { t } = useTranslation();
   const nav = useNavigate();
   const { hash } = useLocation();
+  const [params, setParams] = useSearchParams();
   const [item, setItem] = useState(null);
   const [loading, setLoading] = useState(true);
   const booking = useBookingFlow(item, id);
+  const { isHostMode, provider } = useAuth();
+  const step = Math.max(0, Math.floor(Number(params.get('book')) || 0));
 
   useEffect(() => {
-    // `cancelled` guards against the responses arriving out of order: navigating from one
-    // listing to another could otherwise let the first, slower response overwrite the second
-    // and leave the previous listing rendered under the new URL (with the booking flow then
-    // holding one listing's data and the other's id).
+    // `cancelled` guards against out-of-order responses when moving from one listing to another.
     let cancelled = false;
     setLoading(true);
-    // Clearing the item first means a failed or missing listing shows "not found" rather than
-    // silently leaving the previously viewed one on screen.
+    // Cleared first so a failed or missing listing shows "not found", not the previous one.
     setItem(null);
     api.get(`/listings/${id}`)
       .then((r) => { if (!cancelled) setItem(r.data.item); })
@@ -55,33 +66,23 @@ export default function ListingDetail() {
     return () => { cancelled = true; };
   }, [id]);
 
-  // Arriving on /listing/:id#reviews (the star on a feed card) used to land at
-  // the top of the hero: the page renders a loading placeholder first, so at
-  // navigation time there is no #reviews element for anything to scroll to.
-  // Once the listing is in, the section exists - jump to it then.
+  // /listing/:id#reviews (the star on a feed card): jump to the section once the listing is in.
   useEffect(() => {
-    if (loading || !item || !hash) return;
-    // getElementById, not querySelector: a hash is arbitrary user-controlled text, and anything
-    // that isn't a valid CSS selector (/listing/<id>#1, or a percent-encoded one) makes
-    // querySelector throw, which took the whole page down to a blank screen.
+    if (loading || !item || !hash || step) return;
+    // getElementById, not querySelector: a hash is arbitrary text and an invalid selector throws.
     const el = document.getElementById(decodeURIComponent(hash.slice(1)));
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }, [loading, item, hash]);
+  }, [loading, item, hash, step]);
 
-  // Every directions CTA on this page - the one under the map, the walk-in
-  // action, the mobile sticky bar, the contact screen - routes to this listing's
-  // own pin through here.
+  // Each booking step is its own screen: start it at the top.
+  useEffect(() => { if (step) window.scrollTo(0, 0); }, [step]);
+
   const openMaps = () => openDirections(item);
 
   const shareIt = async (): Promise<ShareOutcome> => {
     if (!item) return 'failed';
-    // Share the canonical listing URL rather than window.location.href, which would
-    // carry an incidental #reviews hash into whatever the visitor pastes it into.
-    return shareLink({
-      title: item.title,
-      text: item.description,
-      url: `${window.location.origin}/listing/${item.id}`,
-    });
+    // The canonical listing URL, not window.location.href (which may carry #reviews).
+    return shareLink({ title: item.title, text: item.description, url: `${window.location.origin}/listing/${item.id}` });
   };
 
   if (loading) {
@@ -92,137 +93,49 @@ export default function ListingDetail() {
       </>
     );
   }
-  if (!item) return <div className="mx-auto max-w-5xl p-10">{t('common.not_found')}</div>;
+  if (!item) {
+    return (
+      <div className="ag-wrap"><div className="ag-main">
+        <Box><h2>{t('common.not_found')}</h2></Box>
+      </div></div>
+    );
+  }
 
-  const bookable = item.type === 'homestay' || item.type === 'driver';
-  // Booked online (homestay/driver) get the reserve form; shops, cafes and events instead get a
-  // direct-contact/action screen. Spots and biodiversity stay purely informational.
-  const contactable = ['shop', 'cafe', 'event'].includes(item.type);
+  // On the business side a host sees only their own listing, as a preview with booking off.
+  const ownPreview = isHostMode && !!provider && item.provider_id === provider.id;
+  if (isHostMode && !ownPreview) return <BusinessModeNotice />;
 
-  // A homestay's price is per person, not per night - the provider onboarding asks
-  // for "Starting Price (₹/Head)". The `common.per_night` key said "/ head" in
-  // English and "per night" in Hindi, Nepali and Bengali, so the same listing made
-  // two different commercial claims depending on the language (QA 3.1).
-  const unit = item.type === 'homestay' ? t('common.per_head') : item.type === 'driver' ? t('common.per_day') : '';
-  const cta = ctaFor(item.type);
+  // Off when the host switched availability off, or their free start is used up and not paid yet
+  // (backend lib/hostGrace.ts); the page stays up either way.
+  // A homestay whose every room the host marked full (let outside the app) takes no request either.
+  const stayRooms = item.type === 'homestay' ? roomsOf(item) : [];
+  const roomsFull = stayRooms.length > 0 && !stayRooms.some(roomOpen);
+  const available = item.extras?.available !== false && item.bookings_paused !== true && !roomsFull;
+  const reservable = item.type === 'homestay' || item.type === 'driver' || item.type === 'guide';
+  const bookable = !ownPreview && available && reservable;
+  const contactable = !ownPreview && ['shop', 'cafe', 'event'].includes(item.type);
+  const place = item.type === 'spot' || item.type === 'event' || item.type === 'biodiversity';
+  const isSpot = item.type === 'spot';
+
+  // A homestay is priced per person per night; drivers and guides by the day.
+  const unit = item.type === 'homestay' ? t('common.per_head') : (item.type === 'driver' || item.type === 'guide') ? t('common.per_day') : '';
   const amenities = amenitiesFor(item);
   const host = hostFor(item);
   const c = contentFor(item);
-  // Admin-authored visitor info — only tourist spots carry it (see the admin console).
   const spotInfo = spotInfoFor(item);
-  const isSpot = item.type === 'spot';
-  const initial = (item.title || '?').trim().charAt(0).toUpperCase();
+  // Only the languages the host gave (never a default list).
+  const languages: string[] = Array.isArray(item.extras?.languages) ? item.extras.languages.filter(Boolean) : [];
 
-  const gallery = galleryImagesFor(item);
-  const personSrc = host.avatar || personImageFor(item);
-  // Drivers show the same photo here as the hero, so the face you scrolled past
-  // is the face you meet - no second stock person.
-  const driverSrc = listingImage(item, 600, 600);
-  // Driver titles read "Tenzing - Local Taxi Driver"; the heading wants the
-  // person, not the role, so keep only what precedes the dash.
-  const driverName = (item.title || '').split(/\s+[-–-]\s+/)[0].trim();
-  const offersTitle = item.type === 'driver' && driverName
-    ? t('detail.offers_by', { name: driverName })
-    : t('detail.offers');
+  // ---------- the booking screen (prototype V.book) and the "Request sent" screen ----------
+  const goStep = (n: number) => setParams((p) => { const q = new URLSearchParams(p); if (n) q.set('book', String(n)); else q.delete('book'); return q; });
 
-  return (
-    <div className="pb-28 lg:pb-0">
-      {/* Every listing used to inherit the site-wide title and description, so
-          Ghum Monastery and a Lebong homestay were indistinguishable to Google
-          and to a WhatsApp link preview - only the <h1> differed (QA 3.4). The
-          canonical is spelled out because a listing is reached with a trip's
-          dates attached, and those must not fragment it into separate URLs. */}
-      <Seo
-        title={item.title}
-        description={c.about || item.description}
-        image={listingImage(item, 1200, 630)}
-        canonical={`${window.location.origin}/listing/${item.id}`}
-        ogType={bookable ? 'product' : 'place'}
-      />
-
-      <DetailHero item={item} unit={unit} onShare={shareIt} />
-
-      <AboutSection item={item} about={c.about}
-        label={item.type === 'driver' ? t('detail.about_driver') : t('detail.about')} />
-
-      {/* Multilingual Heritage Audio Guide */}
-      <div className="mx-auto max-w-5xl px-4 sm:px-6 my-6">
-        <AudioGuide
-          title={item.title}
-          transcripts={{
-            en: c.about || item.description || 'Welcome to this historic spot in Darjeeling hills.',
-            bn: `${item.title} - দার্জিলিং পাহাড়ের একটি অনন্য ঐতিহাসিক স্থান।`,
-            hi: `${item.title} - दार्जिलिंग पहाड़ियों का एक प्रसिद्ध और सुंदर स्थल।`,
-            ne: `${item.title} - दार्जिलिङ पहाडको ऐतिहासिक तथा सुन्दर स्थान।`,
-          }}
-        />
-      </div>
-
-      {/* A curated spot leads with why it's worth the trip, before the photos. */}
-      {isSpot && spotInfo.highlights.length > 0 && <HighlightsSection highlights={spotInfo.highlights} />}
-
-      {/* Drivers get their portrait and routes instead of a place gallery. */}
-      {item.type !== 'driver' && gallery.length > 0 && (
-        <PhotosSection item={item} gallery={gallery} />
-      )}
-
-      {/* Timings, entry fee, best season, altitude and directions — all admin-entered, so
-          the section is skipped entirely for a spot that has none of them filled in. */}
-      {isSpot && spotInfo.has && (
-        <VisitInfoSection
-          facts={{
-            timings: spotInfo.timings,
-            entryFee: spotInfo.entryFee,
-            bestTime: spotInfo.bestTime,
-            altitude: spotInfo.altitude,
-          }}
-          howToReach={spotInfo.howToReach}
-        />
-      )}
-
-      {/* Biodiversity entries are a species or habitat, not somewhere with
-          facilities - "what this place offers" has nothing to say about them.
-          A spot whose admin wrote real highlights skips it too: the generic
-          type-level amenities would only restate them less specifically. */}
-      {item.type !== 'biodiversity' && !(isSpot && spotInfo.highlights.length > 0) && amenities.length > 0 && (
-        <OffersSection amenities={amenities} title={offersTitle} />
-      )}
-
-      {item.type === 'homestay' && item.extras?.images && item.extras.images.length > 0 && (
-        <StayGallerySection images={item.extras.images} />
-      )}
-
-      {item.type === 'homestay' && <HostSection item={item} host={host} personSrc={personSrc} />}
-
-      {item.type === 'driver' && <DriverSection item={item} about={c.about} personSrc={driverSrc} initial={initial} />}
-
-      {item.type === 'event' && c.bestTime && <BestTimeSection bestTime={c.bestTime} />}
-
-      {item.type === 'driver' && c.routes && c.routes.length > 0 && <RoutesSection routes={c.routes} />}
-
-      {item.type !== 'driver' && (
-        <LocationSection item={item} coords={c.coords} spotted={c.spotted} onOpenMaps={openMaps} />
-      )}
-
-      {bookable && (
-        <ReserveSection item={item} unit={unit} bookable={bookable} cta={cta} booking={booking} onOpenMaps={openMaps} />
-      )}
-
-      {contactable && <ContactSection item={item} onOpenMaps={openMaps} />}
-
-      <ReviewsSection item={item} />
-
-      <MobileStickyBar item={item} unit={unit} bookable={bookable} cta={cta} busy={booking.busy}
-        onBook={booking.doBook} onOpenMaps={openMaps} />
-
-      <MockPaymentModal
-        open={!!booking.payModal}
-        onClose={() => booking.setPayModal(null)}
-        amount={booking.payModal?.amount || 0}
-        title={t('booking.pay_confirm')}
-        description={booking.payModal?.description || ''}
-        onPay={booking.finishMockPayment}
-        prefill={{ upi: `${(booking.user?.name || 'traveller').toLowerCase().replace(/\s+/g, '')}@ybl` }}
+  const modals = (
+    <>
+      <BookingFeeModal
+        bookingId={booking.feeFor}
+        // Closing it leaves the request unsent, on the booking screen, ready to send again.
+        onClose={() => booking.setFeeFor(null)}
+        onConfirmed={(b) => { void booking.afterSent(b); }}
       />
       <BookingConfirmation
         open={!!booking.confirm?.open}
@@ -231,6 +144,189 @@ export default function ListingDetail() {
         data={booking.confirm?.data}
         onView={() => { booking.setConfirm(null); nav('/dashboard'); }}
       />
+    </>
+  );
+
+  if (booking.requested) {
+    return (
+      <div className="ag-wrap ag-listing">
+        <RequestSent booking={booking.requested} title={item.title} onTrips={() => { booking.setRequested(null); nav('/my-trips'); }} />
+      </div>
+    );
+  }
+
+  if (step > 0 && bookable) {
+    const total = bookingSteps(item.type);
+    return (
+      <div className="ag-wrap ag-listing">
+        <Seo title={item.title} canonical={`${window.location.origin}/listing/${item.id}`} />
+        <BookingScreen item={item} unit={unit} step={Math.min(step, total)} booking={booking} onNext={() => goStep(Math.min(step + 1, total))} />
+        {modals}
+      </div>
+    );
+  }
+
+  // ---------- the listing ----------
+  const ownPhotos: string[] = Array.isArray(item.extras?.images) ? item.extras.images.filter((u: unknown) => typeof u === 'string' && u) : [];
+  // Drivers show the car photos they uploaded (never a stand-in); a homestay labels its own photos
+  // by what they show (front, outside, room); everyone else gets their own photos or the curated set.
+  const ownStay = item.type === 'homestay' && ownPhotos.length > 0;
+  const strip = (() => {
+    if (item.type === 'driver') return ownPhotos.map((src) => ({ src }));
+    if (ownStay) {
+      const groups = groupPhotos(ownPhotos, item.extras?.photo_kinds);
+      const labelled = groups.length > 1 || groups[0]?.kind !== 'other';
+      return groups.flatMap(({ kind, urls }) => urls.map((src, i) => ({
+        src, tag: labelled ? t(`photoKind.${kind}`) : undefined, groupTestid: i === 0 ? `gallery-group-${kind}` : undefined,
+      })));
+    }
+    return galleryImagesFor(item).map((src) => ({ src }));
+  })();
+  const personSrc = host.avatar || personImageFor(item);
+  const roomCount = Array.isArray(item.extras?.rooms) ? item.extras.rooms.length : 0;
+  const showHost = !place && !ownPreview && (host.known || !!item.host_page_path);
+  const delivery = !ownPreview && ['cafe', 'shop'].includes(item.type) && !item.bookings_paused && item.extras?.home_delivery;
+  const spotFacts = isSpot && spotInfo.highlights.length > 0
+    ? spotInfo.highlights.map((h: string) => ({ label: h }))
+    : amenities.map((a) => ({ label: a.label, labelKey: a.labelKey }));
+
+  const hostLine = showHost ? (
+    <p className="ag-small">
+      {t('listing.pf_host', 'Host')}:{' '}
+      {item.host_page_path ? (
+        <Link to={item.host_page_path} data-testid="listing-host-page" className="ag-listing-plink">
+          <b>{host.known ? host.name : t('ui.listingDetail.see_host_page')}</b><Icon name="arrowne" />
+        </Link>
+      ) : <b className="font-medium text-[var(--ink-strong)]">{host.name}</b>}
+    </p>
+  ) : null;
+
+  return (
+    <div className="ag-wrap ag-listing">
+      {/* Each listing gets its own title, description and canonical (QA 3.4). */}
+      <Seo
+        title={item.title}
+        description={c.about || item.description}
+        image={listingImage(item, 1200, 630)}
+        canonical={`${window.location.origin}/listing/${item.id}`}
+        ogType={bookable ? 'product' : 'place'}
+      />
+
+      <div className="ag-main">
+        {ownPreview && (
+          <Box tone="blush" flat data-testid="own-listing-preview" className="!flex-row !items-center !py-3">
+            <Icon name="search" size={20} className="text-[var(--r)]" />
+            <p className="ag-small !text-[var(--ink-strong)]">{t('business_gate.preview')}</p>
+          </Box>
+        )}
+        {item.not_live && (
+          <Box flat data-testid="listing-not-live" className="!py-3 !gap-2">
+            <Status className="self-start">{t('detail.not_live_tag', 'Not live yet')}</Status>
+            <p className="ag-small !text-[var(--ink-strong)]">{t('business_gate.not_live')}</p>
+          </Box>
+        )}
+
+        <DetailHero item={item} photos={strip} host={hostLine}
+          stripTestid={ownStay ? 'detail-gallery' : 'detail-photos'}
+          stripLabel={item.type === 'driver' ? t('detail.car_photos') : t('listing.photos', 'Photos')} />
+
+        {/* A tourist spot's photo from Wikimedia Commons: its licence (CC BY / BY-SA) asks for the author's credit. */}
+        {isSpot && typeof item.extras?.photo_credit === 'string' && item.extras.photo_credit.trim() && (
+          <p className="ag-small" data-testid="detail-photo-credit">
+            {t('detail.photo_credit', 'Photo')}:{' '}
+            {typeof item.extras.photo_source === 'string' && /^https?:\/\//i.test(item.extras.photo_source) ? (
+              <a href={item.extras.photo_source} target="_blank" rel="noreferrer" className="ag-listing-plink">
+                <b>{item.extras.photo_credit}</b><Icon name="arrowne" />
+              </a>
+            ) : item.extras.photo_credit}
+          </p>
+        )}
+
+        {/* Places to visit: the entry ticket box. Everything else: the price line. */}
+        {(isSpot || item.type === 'biodiversity') ? (
+          <TicketBox price={Number(item.price) || 0} entryFee={spotInfo.entryFee && !(Number(item.price) > 0) ? spotInfo.entryFee : undefined} />
+        ) : Number(item.price) > 0 ? (
+          <p className="ag-listing-lead">
+            {(!unit || roomCount > 1) && <span className="ag-small">{t('listing.from', 'From')} </span>}
+            <span className="price">₹{Number(item.price).toLocaleString('en-IN')}</span>
+            {unit && <span className="ag-small"> {unit}</span>}
+          </p>
+        ) : item.type === 'event' ? <p className="ag-listing-lead"><span className="ag-small">{t('common.entry_varies')}</span></p> : null}
+
+        {/* Website beside Ask to book (the fixed bar carries Book now), then the "asking is free" line. */}
+        {reservable && !ownPreview && !available && <UnavailableNotice roomsFull={roomsFull} />}
+        {(item.host_page_path || bookable) && (
+          <div className="ag-listing-stack">
+            {item.host_page_path && (
+              <div className="ag-row">
+                <ButtonLink variant="tonal" go className="ag-listing-web" to={item.host_page_path} icon={<Icon name="globe" />} data-testid="listing-website">
+                  {t('listing.pf_site', 'Website')}
+                </ButtonLink>
+              </div>
+            )}
+            {bookable && <p className="ag-small">{t('listing.askfee', 'Sending a request costs ₹1, or nothing with the aangan pass.')} {t('listing.numlater', 'You get the phone number after you book.')}</p>}
+          </div>
+        )}
+
+        {delivery && (
+          <div className="ag-listing-dlv" data-testid="listing-host-links">
+            <span className="ag-listing-dlvtag"><svg className="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5.5 18a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM18.5 18a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM5.5 15.5h5l3-6h3l2 6M13.5 9.5L12 6H9" /></svg> {t('listing.hasdlv', 'Home delivery')}</span>
+            <DeliveryRequestButton listing={item} />
+          </div>
+        )}
+
+        <ItemActions item={item} about={c.about || item.description} onDirections={openMaps} onShare={shareIt} />
+
+        <AboutSection item={item} about={c.about} languages={languages} />
+
+        {isSpot && <VisitInfoSection facts={{ timings: spotInfo.timings, bestTime: spotInfo.bestTime, altitude: spotInfo.altitude }} howToReach={spotInfo.howToReach} />}
+        {item.type === 'event' && c.bestTime && <BestTimeSection bestTime={c.bestTime} />}
+
+        {/* Biodiversity entries are a species or habitat, not somewhere with facilities. */}
+        {item.type !== 'biodiversity' && spotFacts.length > 0 && <OffersSection amenities={spotFacts} list={isSpot} />}
+
+        {item.type === 'homestay' && host.known && <HostSection item={item} host={host} personSrc={personSrc} />}
+        {item.type === 'driver' && <DriverSection item={item} personSrc={listingImage(item, 600, 600)} />}
+        {item.type === 'guide' && <GuideSection item={item} photo={host.avatar || listingImage(item, 600, 600)} />}
+        {(item.type === 'cafe' || item.type === 'shop') && <OwnerSection item={item} verified={!!item.provider_verified} />}
+
+        {item.type === 'homestay' && (
+          <RoomsFoodSection
+            rooms={Array.isArray(item.extras?.rooms) ? item.extras.rooms : []}
+            meals={Array.isArray(item.extras?.meals) ? item.extras.meals : []}
+          />
+        )}
+        {item.type === 'driver' && c.routes && c.routes.length > 0 && <RoutesSection routes={c.routes} />}
+        {(item.type === 'cafe' || item.type === 'shop') && (
+          <PriceListSection
+            kind={item.type === 'cafe' ? 'menu' : 'goods'}
+            rows={Array.isArray(item.extras?.[item.type === 'cafe' ? 'menu' : 'goods']) ? item.extras[item.type === 'cafe' ? 'menu' : 'goods'] : []}
+            homeDelivery={item.extras?.home_delivery === true}
+            capacity={Number(item.extras?.capacity) || 0}
+            openingHours={typeof item.extras?.opening_hours === 'string' ? item.extras.opening_hours : ''}
+            shopKind={item.type === 'shop' ? item.extras?.shop_kind : undefined}
+          />
+        )}
+        {item.type === 'guide' && <ServicesSection services={Array.isArray(item.extras?.services) ? item.extras.services : []} />}
+
+        {(item.type === 'homestay' || item.type === 'cafe' || item.type === 'shop') && Array.isArray(item.extras?.recommended_drivers) && item.extras.recommended_drivers.length > 0 && (
+          <RecommendedDriversSection ids={item.extras.recommended_drivers} />
+        )}
+
+        {item.type !== 'driver' && item.type !== 'guide' && (
+          <LocationSection item={item} coords={c.coords} spotted={c.spotted} onOpenMaps={openMaps} />
+        )}
+
+        {/* A place to visit leads on to stays and drivers near it, and to the guides. */}
+        {place && <NearbySection item={item} />}
+
+        {contactable && <ContactSection item={item} onOpenMaps={openMaps} />}
+
+        <ReviewsSection item={item} />
+      </div>
+
+      {bookable && <BookBar item={item} unit={unit} onBook={() => goStep(1)} />}
+      {modals}
     </div>
   );
 }

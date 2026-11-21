@@ -1,4 +1,4 @@
-# Messaging Provider Layer — Design
+# Messaging Provider Layer  Design
 
 **Date:** 2026-07-20
 **Status:** Approved, pending implementation
@@ -11,11 +11,11 @@ places that need to send a message to a user, and both are stubbed with a dev-on
 
 | Site | Dev behaviour | Production behaviour |
 |---|---|---|
-| `routes/auth.ts:69` — OTP delivery | returns the code in the response | nothing sent; returns `{ sent: true }` |
-| `routes/payments.ts:63` — booking confirmation | logs `[MOCK NOTIFY]` | nothing sent; no error |
+| `routes/auth.ts:69`  OTP delivery | returns the code in the response | nothing sent; returns `{ sent: true }` |
+| `routes/payments.ts:63`  booking confirmation | logs `[MOCK NOTIFY]` | nothing sent; no error |
 
 No SMS, WhatsApp, or email provider exists anywhere in `backend/`. MSG91's absence is one
-symptom of this, not the root cause — which is why this design is scoped as a *messaging*
+symptom of this, not the root cause  which is why this design is scoped as a *messaging*
 layer rather than an OTP-specific one.
 
 Consequences of the OTP site:
@@ -30,7 +30,7 @@ Consequences of the OTP site:
 Consequences of the notification site:
 
 3. **Confirmed bookings notify nobody.** A tourist pays, the payment settles, the booking
-   row is written and both dashboards render correctly — but neither the tourist nor the
+   row is written and both dashboards render correctly  but neither the tourist nor the
    provider is told. This failure mode is worse than the OTP one precisely because it
    *looks* successful end to end: the OTP gap strands users on a visible dead end and gets
    reported on day one, while this one surfaces when a guest arrives at a homestay that
@@ -46,7 +46,7 @@ travel over SMS:
 
 ## Goals
 
-- Real OTP delivery becomes a **config change, not a code change** — mirroring the
+- Real OTP delivery becomes a **config change, not a code change**  mirroring the
   existing `MOCK_PAYMENTS` switch.
 - The provider is **not assumed to be MSG91**. Swapping to Twilio, Gupshup, or anything
   else must be a small, contained, testable addition.
@@ -58,7 +58,7 @@ travel over SMS:
 ## Non-goals
 
 - **Implementing booking notifications.** The seam accommodates them; building them is
-  separate work needing its own product decisions — who is notified (tourist, provider, or
+  separate work needing its own product decisions  who is notified (tourist, provider, or
   both), on what events (confirmation, cancellation, reminder), and in which of the four
   supported locales. Designing that here would stall the OTP fix. It is recorded as a
   pre-launch blocker in `INVESTIGATION.md` instead.
@@ -72,7 +72,7 @@ travel over SMS:
 backend/src/messaging/
   types.ts              MessagingProvider interface, MessageDeliveryError
   registry.ts           name → provider map, selection, boot validation
-  index.ts              sendOtp() — the only export routes import today
+  index.ts              sendOtp()  the only export routes import today
   providers/
     mock.ts             logs the code and returns it (current dev behaviour)
     msg91.ts            real HTTP delivery
@@ -99,13 +99,13 @@ export interface MessagingProvider {
 
 **Why `sendOtp` as a named method rather than a generic `send(message)`:** OTP and
 transactional notifications are genuinely different provider endpoints, not one endpoint
-with different payloads — MSG91, for instance, exposes a dedicated OTP API distinct from
+with different payloads  MSG91, for instance, exposes a dedicated OTP API distinct from
 its transactional SMS API, with its own template semantics. Collapsing them behind one
 generic method would force each adapter to re-derive which endpoint to call from message
 shape, which is exactly the kind of implicit coupling this layer exists to prevent.
 
-What *is* genuinely shared — credentials, HTTP client, timeout policy, error
-classification, boot validation — lives in the adapter and is reused as-is. Adding
+What *is* genuinely shared  credentials, HTTP client, timeout policy, error
+classification, boot validation  lives in the adapter and is reused as-is. Adding
 notifications later means adding a `sendBookingConfirmation()` method to the interface and
 implementing it in each adapter; no new module, no second credential set, no duplicated
 error handling.
@@ -113,7 +113,7 @@ error handling.
 Adding a provider is one file implementing this interface plus one entry in the registry
 map. Per-provider adapters (rather than a single config-templated HTTP sender) are the
 deliberate choice: authentication schemes, request encodings, and error-reporting
-conventions differ substantially between providers — MSG91 returns HTTP 200 with an error
+conventions differ substantially between providers  MSG91 returns HTTP 200 with an error
 `type` in the body, which a generic templated sender would read as success. Encoding those
 quirks in typed, tested code is both safer and faster to extend than encoding them as
 string templates in `.env`.
@@ -127,9 +127,9 @@ Added to `backend/src/config.ts`:
 | `MESSAGING_PROVIDER` | `mock` | `mock` \| `msg91` |
 | `OTP_TTL_SECONDS` | `300` | verification window |
 | `OTP_MAX_ATTEMPTS` | `5` | wrong guesses per issued code |
-| `MSG91_AUTH_KEY` | — | required when `MESSAGING_PROVIDER=msg91` |
-| `MSG91_TEMPLATE_ID` | — | required when `MESSAGING_PROVIDER=msg91` |
-| `MSG91_SENDER_ID` | — | required when `MESSAGING_PROVIDER=msg91` |
+| `MSG91_AUTH_KEY` |  | required when `MESSAGING_PROVIDER=msg91` |
+| `MSG91_TEMPLATE_ID` |  | required when `MESSAGING_PROVIDER=msg91` |
+| `MSG91_SENDER_ID` |  | required when `MESSAGING_PROVIDER=msg91` |
 
 Boot behaviour, matching the payments precedent:
 
@@ -182,7 +182,7 @@ production-configured staging deployment to remain usable.
 
 **Accepted risk, explicitly:** with `MESSAGING_PROVIDER=mock` on a publicly reachable
 deployment, any caller can log in as any phone number. This is inherent to staging with
-mocked authentication and is not introduced by this design — the current `mock_otp`
+mocked authentication and is not introduced by this design  the current `mock_otp`
 response field has the same property. It is acceptable pre-launch provided no real user
 data is present. Setting `MESSAGING_PROVIDER=msg91` closes it.
 
@@ -254,7 +254,7 @@ the sections above:
 
 - **Booking confirmation notifications are not implemented** (`payments.ts:63`). This is a
   pre-launch blocker, not a nicety: a paid, confirmed booking currently notifies neither
-  party in production. The messaging layer built here is the foundation for it — the
+  party in production. The messaging layer built here is the foundation for it  the
   remaining work is a `sendBookingConfirmation()` method per adapter plus the product
   decisions listed under Non-goals. To be recorded in `INVESTIGATION.md`.
 - `README.md`'s "Known issues" section still cites the production rate limiter and

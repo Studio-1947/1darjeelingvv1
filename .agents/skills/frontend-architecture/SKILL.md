@@ -1,7 +1,7 @@
 ---
 name: frontend-architecture
-description: How to organize frontend code — separation of concerns (UI / logic / data / type), file responsibility, state tiers, API services, schema validation, and framework conventions for React/Next and Vue. Structural rules, not visual design.
-when_to_use: "When structuring a frontend codebase or reviewing how frontend code is organized — where logic, API calls, state, types, and validation should live; component vs hook/composable boundaries; Next.js server/client split; Vue Composition API. NOT for visual design (use frontend-design) and NOT for React/Next performance rules (use nextjs-react-expert)."
+description: How to organize frontend code  separation of concerns (UI / logic / data / type), file responsibility, state tiers, API services, schema validation, and framework conventions for React/Next and Vue. Structural rules, not visual design.
+when_to_use: "When structuring a frontend codebase or reviewing how frontend code is organized  where logic, API calls, state, types, and validation should live; component vs hook/composable boundaries; Next.js server/client split; Vue Composition API. NOT for visual design (use frontend-design) and NOT for React/Next performance rules (use nextjs-react-expert)."
 allowed-tools: Read, Write, Edit, Glob, Grep
 ---
 
@@ -12,7 +12,7 @@ allowed-tools: Read, Write, Edit, Glob, Grep
 
 ---
 
-## 1. Separation of Concerns — the core rule
+## 1. Separation of Concerns  the core rule
 
 Split code into four layers by responsibility. A unit of code does ONE of these, not several:
 
@@ -24,13 +24,13 @@ Split code into four layers by responsibility. A unit of code does ONE of these,
 | **Type** | TypeScript types, domain models | `types.ts` / `*.types.ts` |
 | **Validation** | Form/data schemas | `*.schema.ts` (zod/yup/valibot) |
 
-> **Directory layout** (top-level folders) follows the project's scaffolding skill — do not invent a competing structure here. This skill is about *which layer code belongs to*, not where the folders sit.
+> **Directory layout** (top-level folders) follows the project's scaffolding skill  do not invent a competing structure here. This skill is about *which layer code belongs to*, not where the folders sit.
 
 ---
 
 ## 2. File Responsibility & Size
 
-One clear responsibility per file. Size is a **signal, not a hard limit** — a clear 230-line file beats a 90-line file that fetches, validates, renders, and juggles modals + toasts.
+One clear responsibility per file. Size is a **signal, not a hard limit**  a clear 230-line file beats a 90-line file that fetches, validates, renders, and juggles modals + toasts.
 
 | File type | Comfortable range |
 |-----------|-------------------|
@@ -69,7 +69,7 @@ function ProductList() {
 
 ---
 
-## 4. Next.js — Server Components by default
+## 4. Next.js  Server Components by default
 
 In the App Router, `page.tsx` and `layout.tsx` are Server Components. Reach for `"use client"` only when you actually need the client.
 
@@ -79,11 +79,11 @@ In the App Router, `page.tsx` and `layout.tsx` are Server Components. Reach for 
 | Handle secret tokens | Event handlers, animation |
 | Render static/semi-static layout | `useState`/`useEffect`, browser APIs (`window`, `localStorage`) |
 
-Keep client components small. Don't `"use client"` a whole page for one interactive button — extract the button into its own client component and keep the page a Server Component.
+Keep client components small. Don't `"use client"` a whole page for one interactive button  extract the button into its own client component and keep the page a Server Component.
 
 ---
 
-## 5. Vue — Composition API + composables
+## 5. Vue  Composition API + composables
 
 For full production apps, prefer the Composition API with `<script setup>` Single File Components. (Options API is fine for simple cases / progressive enhancement.)
 
@@ -95,7 +95,7 @@ Use a composable for reusable pure logic; use a component when reusing both logi
 
 ---
 
-## 6. State — start local, escalate only when needed
+## 6. State  start local, escalate only when needed
 
 | Need | Use |
 |------|-----|
@@ -196,7 +196,7 @@ Page
 
 - If a `className` runs past ~5–8 logical groups, extract a component.
 - Repeated patterns → a reusable component or variant helper.
-- No complex conditional logic inline in `className` — use `cn()`.
+- No complex conditional logic inline in `className`  use `cn()`.
 
 ```tsx
 // ✅
@@ -215,7 +215,7 @@ const cardClassName = cn(
 - Avoid `any`.
 - Type props, API responses, and domain models explicitly.
 - Prefer union types over enums when a union suffices.
-- Validate external data with schemas (zod) — types alone don't guard runtime input.
+- Validate external data with schemas (zod)  types alone don't guard runtime input.
 
 ---
 
@@ -228,7 +228,7 @@ Don't test everything up front; do cover:
 - main forms → validation tests
 - critical flows → e2e
 
-Colocate (`useBooking.test.ts` next to `useBooking.ts`) or keep `tests/unit` + `tests/e2e` — pick one and stay consistent.
+Colocate (`useBooking.test.ts` next to `useBooking.ts`) or keep `tests/unit` + `tests/e2e`  pick one and stay consistent.
 
 ---
 

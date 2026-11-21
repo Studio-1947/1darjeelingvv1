@@ -1,34 +1,57 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation, Navigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { HeartHandshake, Check } from 'lucide-react';
+import { Check } from '@phosphor-icons/react';
+import { Button, PageHead, SecHead } from '@/components/ag';
 import { useAuth } from '@/context/AuthContext';
 import { createPaymentOrder, completeMockPayment, payWithRazorpay } from '@/lib/api';
 import { needsSupport } from '@/lib/support';
 import MockPaymentModal from '@/components/MockPaymentModal';
+import PriceBreakup from '@/components/PriceBreakup';
+import { rupees, usePassPrice } from '@/lib/prices';
+import { BusinessPassCard, MemberCard, PassJoinCard } from '@/components/Membership';
 import { useSeo } from '@/components/Seo';
+
+/** A pass holder (or a host whose plan includes it): the membership card, then For businesses. */
+function MembershipScreen() {
+  const { t } = useTranslation();
+  return (
+    <div className="ag-wrap">
+      <div className="ag-main" data-testid="membership-screen">
+        <PageHead eyebrow={t('ui.account.eyebrow', 'Your account')} title={t('member.title_short', 'Membership')} />
+        <MemberCard />
+        <SecHead title={t('member.forbiz', 'For businesses')} />
+        <BusinessPassCard />
+      </div>
+    </div>
+  );
+}
 
 export default function Support() {
   const { t } = useTranslation();
   useSeo({ title: t('support.title'), noindex: true });
-  const { user, refresh, logout } = useAuth();
+  const { user, refresh } = useAuth();
   const nav = useNavigate();
   const location = useLocation();
 
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [payModal, setPayModal] = useState<any>(null);
+  const pass = usePassPrice(user);
+  // Set the instant "not now" is clicked  see browseAnonymously below for why the
+  // `!user` redirect needs this to stay off during that specific transition.
+  const [leaving, setLeaving] = useState(false);
 
   // Where SupportGate intercepted them. Rebuilt from pathname + search + hash so a query-bearing
   // URL like /search?q=momo survives the round trip; falling back to the feed keeps a direct
   // visit sensible.
   const from = (location.state as any)?.from;
 
-  // The 402 interceptor (frontend/src/lib/api.ts) has no router access — it does a full page
-  // navigation — so it can't carry state.from and instead appends the destination as a `next`
+  // The 402 interceptor (frontend/src/lib/api.ts) has no router access  it does a full page
+  // navigation  so it can't carry state.from and instead appends the destination as a `next`
   // query param. Unlike state.from (which only this app's own SupportGate produces), `next` is
   // attacker-suppliable: anyone can send a link to /support?next=.... Only accept it if it is a
-  // same-origin relative path — starting with a single '/' and NOT with '//' or '/\', both of
+  // same-origin relative path  starting with a single '/' and NOT with '//' or '/\', both of
   // which a browser/URL parser treats as protocol-relative and resolves to a different host.
   // Anything else is rejected and we fall back to '/'.
   const rawNext = new URLSearchParams(location.search).get('next');
@@ -49,9 +72,21 @@ export default function Support() {
     refresh();
   }, [refresh]);
 
-  if (!user) return <Navigate to="/login" replace />;
+  // `leaving` guards this: clicking "not now" below calls logout() then navigate('/'), and
+  // React doesn't commit those two updates as one atomic step  a render can land in between
+  // where user is already null but the location hasn't moved off /support yet (confirmed by
+  // driving a real browser: without this guard that render hits this branch, mounts
+  // <Navigate to="/login">, and its effect fires navigate('/login') a beat after our own
+  // navigate('/'), overwriting it  "not now" silently lands on the login screen instead of
+  // the homepage). leaving suppresses the branch for exactly that window; once the location
+  // actually changes, Support unmounts and the flag stops mattering.
+  if (!user && !leaving) return <Navigate to="/login" replace />;
 
-  // Fee already active (paid just now in another tab, settled by webhook while away, etc.) —
+  // Opened on its own (Account → Membership, or just paid from there): a pass holder sees their
+  // membership card. Sent here on the way to something else: carry on to it.
+  if (!needsSupport(user) && !from?.pathname && !next) return <MembershipScreen />;
+
+  // Fee already active (paid just now in another tab, settled by webhook while away, etc.) 
   // don't show the pay screen again, just send them on to where they were headed.
   if (!needsSupport(user)) return <Navigate to={destination} replace />;
 
@@ -109,60 +144,39 @@ export default function Support() {
   };
 
   // The escape hatch. A hard gate on a logged-in user with no way out is a trap: they cannot
-  // pay, cannot browse, cannot leave. Public browsing was always free — this makes it reachable.
+  // pay, cannot browse, cannot leave. Public browsing was always free  this makes it reachable.
+  // Not now: the pass is optional (board: "Don't take pass", ₹1 per booking instead).
   const browseAnonymously = () => {
-    logout();
-    nav('/', { replace: true });
+    setLeaving(true);
+    nav(destination, { replace: true });
   };
 
   return (
-    <div className="mx-auto max-w-md px-4 md:px-8 py-8 md:py-14">
-      <div className="mist-panel p-6 md:p-8" data-testid="support-screen">
-        <div className="text-center">
-          <div className="mx-auto w-14 h-14 rounded-2xl bg-pine text-white grid place-items-center">
-            <HeartHandshake size={26} />
+    <div className="ag-wrap">
+      <div className="ag-main" data-testid="support-screen">
+        <PageHead eyebrow={t('ui.account.eyebrow', 'Your account')} title={t('member.title_short', 'Membership')} />
+
+        <PassJoinCard price={pass.total} renewing={!!user?.supportExpiresAt}>
+          <PriceBreakup breakup={pass} label={user?.supportExpiresAt ? t('price.pass') : t('price.pass_first_year')} />
+          <div className="flex flex-col gap-2">
+            <Button variant="primary" go block onClick={startPayment} disabled={busy} data-testid="support-pay">
+              {busy ? t('common.loading') : t('support.cta', { total: rupees(pass.total) })}
+            </Button>
+            <p className="ag-small !text-xs flex items-center justify-center gap-1 m-0">
+              <Check size={14} aria-hidden="true" /> {t('support.reassurance')}
+            </p>
           </div>
-          <h1 className="mt-4 font-display font-extrabold text-2xl md:text-3xl text-ink leading-tight">
-            {t('support.title')}
-          </h1>
-        </div>
+          {err && <p data-testid="support-error" role="alert" className="ag-err !text-sm text-center m-0">{err}</p>}
+          <Button variant="text" className="self-center" onClick={browseAnonymously} data-testid="support-skip">{t('support.skip2', 'Not now')}</Button>
+        </PassJoinCard>
 
-        <p className="mt-5 text-sm text-ink font-semibold">{t('support.amount_line')}</p>
-        <p className="mt-3 text-sm text-ink-soft">{t('support.body')}</p>
+        <SecHead title={t('member.forbiz', 'For businesses')} />
+        <BusinessPassCard />
 
-        <button
-          onClick={startPayment}
-          disabled={busy}
-          data-testid="support-pay"
-          className="mt-7 w-full py-3 rounded-full bg-pine text-white font-extrabold btn-hover disabled:opacity-60"
-        >
-          {busy ? t('common.loading') : t('support.cta')}
-        </button>
-
-        <p className="mt-3 text-[11px] text-center text-ink-soft flex items-center justify-center gap-1">
-          <Check size={11} /> {t('support.reassurance')}
-        </p>
-
-        {err && (
-          <p data-testid="support-error" className="mt-4 text-sm text-flag font-semibold text-center">
-            {err}
-          </p>
-        )}
-
-        <button
-          type="button"
-          onClick={browseAnonymously}
-          data-testid="support-skip"
-          className="mt-6 w-full text-xs text-ink-soft underline"
-        >
-          {t('support.skip')}
-        </button>
-
-        <p className="mt-6 text-xs text-center text-ink-soft">
+        <p className="ag-small !text-xs text-center">
           <Link to="/privacy" className="underline">{t('support.privacy_link')}</Link>
         </p>
       </div>
-
       <MockPaymentModal
         open={!!payModal}
         onClose={() => setPayModal(null)}

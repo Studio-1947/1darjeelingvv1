@@ -3,11 +3,12 @@ import { useTranslation } from 'react-i18next';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import BottomNav from '@/components/BottomNav';
+import { Toaster } from 'sonner';
 
 export default function Layout({ children }) {
   const { t } = useTranslation();
   return (
-    <div className="App min-h-screen flex flex-col bg-[var(--bg)]">
+    <div className="App min-h-screen flex flex-col">
       {/* First thing in the tab order, hidden until it has focus. Without it a
           keyboard visitor tabbed through the brand, seven category circles, the
           language menu and sign-in before reaching the page - on every page
@@ -25,9 +26,10 @@ export default function Layout({ children }) {
       <Header />
       {/* tabIndex={-1} so the skip link can actually move focus here; browsers
           will not focus a plain <main> and the link would only scroll. */}
-      <main id="main" tabIndex={-1} className="flex-1 pb-[var(--bottom-nav-h)] lg:pb-0 focus:outline-none">{children}</main>
+      <main id="main" tabIndex={-1} className="flex-1 focus:outline-none pb-[var(--tabbar-h)]">{children}</main>
       <Footer />
       <BottomNav />
+      <Toaster position="top-center" richColors closeButton />
     </div>
   );
 }

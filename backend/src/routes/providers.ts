@@ -1,11 +1,34 @@
 import { Router, Request, Response } from 'express';
+import { MAX_PRICE } from '../lib/priceCap';
+import { listExtras } from '../lib/listingContact';
+import { assignSlug, pagePath, PAGE_TYPES } from '../lib/providerSlug';
+import { buildHostPage, hostBadges, hostIsPublic } from '../lib/hostPage';
+import { hostStats } from '../lib/hostStats';
+import { optionalUser } from '../middleware/auth';
+import { missingMandatory, profileKeysFor, profilePatchFrom, PROPERTY_FIELDS, startingPriceFor, themeOf } from '../lib/hostProfile';
+import { isHostApprovalPending, isHostPlanLive } from '../lib/hostPlan';
+import { graceStateFor, publishFirstListing } from '../lib/hostGrace';
+import { hostPlanBreakup } from '../lib/pricing';
+import { serializeProvider } from '../lib/providerShape';
 import { v4 as uuidv4 } from 'uuid';
 import { db, schema } from '../db';
-import { eq } from 'drizzle-orm';
+import { eq, inArray, like, or } from 'drizzle-orm';
 import { authenticateToken } from '../middleware/auth';
 import { KYC_REQUIREMENTS } from '../lib/kycRequirements';
 
 import { isPlausiblePhone } from '../lib/phone';
+import { rateLimiter } from '../middleware/rateLimiter';
+import { normaliseVehicleNumber, VEHICLE_TYPE_MAX_LENGTH } from '../lib/vehicleNumber';
+import { recomputeKycStatus } from './kyc';
+import { googleMapsUrl, inServiceRegion, MapsLinkError, resolveMapsLink } from '../lib/mapsLink';
+import {
+  MAX_CO_OWNERS, claimCoOwnerInvites, dropHostRoleIfUnused, hostAccessFor, myProvider, newMemberId, ownListingIds, ownersOf,
+} from '../lib/hostAccess';
+import { phoneKey } from '../lib/phone';
+import { MAX_VIDEO_BYTES, VIDEO_MIME, matchesDeclaredType } from './kyc';
+import { uploadToMinIO } from '../lib/s3';
+import { checkNameLike } from '../lib/contentRules';
+import { coverAfterPhotosChange } from '../lib/listingCover';
 
 const SELF_ONBOARDABLE_BUSINESS_TYPES = Object.keys(KYC_REQUIREMENTS);
 
@@ -30,7 +53,7 @@ const router = Router();
  *             required: [business_name, business_type, description, location, contact_phone]
  *             properties:
  *               business_name: { type: string }
- *               business_type: { type: string, enum: [homestay, driver, shop, cafe], description: "Self-onboardable types only — admin-seeded types (spot, event, biodiversity) are rejected here." }
+ *               business_type: { type: string, enum: [homestay, driver, guide, shop, cafe], description: "Self-onboardable types only  admin-seeded types (spot, event, biodiversity) are rejected here." }
  *               description: { type: string }
  *               location: { type: string }
  *               contact_phone: { type: string }
@@ -40,7 +63,7 @@ const router = Router();
  *     responses:
  *       200:
  *         description: Provider profile created, or (if the caller already had a pending_payment
- *           row) that same row updated in place with the newly submitted details — onboarding is
+ *           row) that same row updated in place with the newly submitted details  onboarding is
  *           idempotent for a user resuming after abandoning payment, so this can be a create or
  *           an update.
  *         content:
@@ -56,18 +79,74 @@ const router = Router();
  *             schema: { $ref: '#/components/schemas/Error' }
  *       409:
  *         description: Caller already has an active or suspended provider profile (a pending_payment
- *           profile is resumed instead of rejected — see the 200 response above)
+ *           profile is resumed instead of rejected  see the 200 response above)
  *         content:
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
  */
 // Register/Onboard a provider
 router.post('/onboard', authenticateToken, async (req: Request, res: Response) => {
-  const { business_name, business_type, description, location, latitude = null, longitude = null, contact_phone, price_from = 0, images = [], extras = {} } = req.body;
+  const { business_name: rawBusinessName, business_type, description, location: rawLocation, latitude = null, longitude = null, contact_phone, price_from = 0, images = [], extras = {} } = req.body;
+  // Location verification is granted only by POST /me/location/verify, never claimed by the caller.
+  if (extras && typeof extras === 'object') delete extras.location_verification;
+  // A number or a numeric string (an older app may send "1500"), at most MAX_PRICE.
+  const priceFromN = Number(price_from ?? 0);
+  if (!Number.isInteger(priceFromN) || priceFromN < 0 || priceFromN > MAX_PRICE) {
+    return res.status(400).json({ detail: `price_from must be a whole number of rupees from 0 to ${MAX_PRICE}` });
+  }
+  // Home delivery is for cafes and shops only (user decision 2026-11-21).
+  if (extras && typeof extras === 'object' && business_type !== 'cafe' && business_type !== 'shop') delete extras.home_delivery;
 
-  if (!business_name || !business_name.trim() || !business_type || !description || !description.trim() || !location || !location.trim() || !contact_phone || !contact_phone.trim()) {
+  // Profile fields sent at sign-up are checked the same way as later edits (lib/hostProfile.ts).
+  // Other keys an older client sends (tags, address, upi...) pass through as before.
+  if (extras && typeof extras === 'object' && typeof business_type === 'string') {
+    const known = profileKeysFor(business_type).filter((k) => k !== 'vehicle_number' && extras[k] !== undefined);
+    if (known.length) {
+      const checked = profilePatchFrom(business_type, Object.fromEntries(known.map((k) => [k, extras[k]])));
+      if ('error' in checked) return res.status(400).json({ detail: checked.error });
+      Object.assign(extras, checked);
+    }
+  }
+
+  // A driver can say what they drive and its number. Both are optional here (older apps never sent
+  // them) but checked when present, so a mistyped plate is refused instead of shown to travellers.
+  if (extras && typeof extras === 'object') {
+    if (business_type === 'driver') {
+      if (extras.vehicle_number !== undefined && String(extras.vehicle_number).trim() !== '') {
+        const plate = normaliseVehicleNumber(extras.vehicle_number);
+        if (!plate) {
+          return res.status(400).json({ detail: 'That vehicle number does not look right. Copy it from your number plate, for example WB 74 A 1234.' });
+        }
+        extras.vehicle_number = plate;
+      } else {
+        delete extras.vehicle_number;
+      }
+      if (extras.vehicle !== undefined && String(extras.vehicle).trim() !== '') {
+        const vehicle = String(extras.vehicle).trim();
+        if (vehicle.length > VEHICLE_TYPE_MAX_LENGTH) {
+          return res.status(400).json({ detail: `Vehicle type must be ${VEHICLE_TYPE_MAX_LENGTH} characters or fewer` });
+        }
+        extras.vehicle = vehicle;
+      } else {
+        delete extras.vehicle;
+      }
+    } else {
+      // Only a driver has a vehicle; anything else sent under these names is dropped, not stored.
+      delete extras.vehicle_number;
+      delete extras.vehicle;
+    }
+  }
+
+  if (!rawBusinessName || !String(rawBusinessName).trim() || !business_type || !description || !description.trim() || !rawLocation || !String(rawLocation).trim() || !contact_phone || !contact_phone.trim()) {
     return res.status(400).json({ detail: 'Business name, type, description, location, and contact phone are required' });
   }
+  // The name and place travellers will see: real ones, tidily spaced (lib/contentRules.ts).
+  const nameChecked = checkNameLike(rawBusinessName, 'Business name', 120);
+  if ('error' in nameChecked) return res.status(400).json({ detail: nameChecked.error, code: 'bad_name' });
+  const placeChecked = checkNameLike(rawLocation, 'Location', 200);
+  if ('error' in placeChecked) return res.status(400).json({ detail: placeChecked.error, code: 'bad_location' });
+  const business_name = nameChecked.value;
+  const location = placeChecked.value;
 
   // This is the number that reaches a traveller as `provider_phone` on the listing detail, and
   // calling it is the entire transaction the platform charges for. A provider who fat-fingers
@@ -78,7 +157,7 @@ router.post('/onboard', authenticateToken, async (req: Request, res: Response) =
 
   // business_type gates the KYC matrix (requirementsFor). Anything outside the self-onboardable
   // set falls through to requirementsFor() returning [], which awards the full KYC weight for
-  // free and silently renders an empty KYC checklist — so validate against the same matrix.
+  // free and silently renders an empty KYC checklist  so validate against the same matrix.
   if (!SELF_ONBOARDABLE_BUSINESS_TYPES.includes(business_type)) {
     return res.status(400).json({
       detail: `business_type must be one of: ${SELF_ONBOARDABLE_BUSINESS_TYPES.join(', ')}`,
@@ -86,20 +165,29 @@ router.post('/onboard', authenticateToken, async (req: Request, res: Response) =
   }
 
   // A DB-level unique index on providers.user_id (see drizzle/0005) means each user has at most
-  // one provider row, ever — enforced by Postgres, not just this read-then-write check. That
+  // one provider row, ever  enforced by Postgres, not just this read-then-write check. That
   // collapses what to do with an existing row to three cases:
   //   - pending_payment: the caller onboarded but never finished paying. Rejecting this with 409
-  //     used to strand them — the frontend only creates a payment order from a *successful*
+  //     used to strand them  the frontend only creates a payment order from a *successful*
   //     onboard response, so there was no way back in. Instead, treat this as a resume: update
   //     the row in place with the newly submitted details and return 200 in the normal shape, so
   //     the existing frontend flow proceeds straight to creating the payment order.
-  //   - active: a real second onboard attempt. Genuinely conflicting — 409.
+  //   - active: a real second onboard attempt. Genuinely conflicting  409.
   //   - suspended: an admin pulled this provider. Also conflicting, but with a distinct message
   //     since "onboard again" is not a fix here.
   //   - anything else (shouldn't occur, but not trusted to be exhaustive): treated as
   //     conflicting rather than silently allowed through as a fresh insert would attempt (and
   //     the unique index would then reject anyway).
   const [existing] = await db.select().from(schema.providers).where(eq(schema.providers.userId, req.user.id)).limit(1);
+
+  // A co-owner already runs a business here; a second one of their own would split every screen.
+  if (!existing) {
+    const [coOwned] = await db.select({ id: schema.providerMembers.id }).from(schema.providerMembers)
+      .where(eq(schema.providerMembers.userId, req.user.id)).limit(1);
+    if (coOwned) {
+      return res.status(409).json({ detail: 'You are a co-owner of a business on aangan. Leave it first to start your own.' });
+    }
+  }
 
   if (existing && existing.status === 'active') {
     return res.status(409).json({ detail: 'You already have a provider profile. Only one provider profile is allowed per user.' });
@@ -113,6 +201,17 @@ router.post('/onboard', authenticateToken, async (req: Request, res: Response) =
 
   const normalizedLatitude = typeof latitude === 'number' ? latitude : null;
   const normalizedLongitude = typeof longitude === 'number' ? longitude : null;
+  // A pin sent at signup is the host's own claim, so it has to land where aangan operates. The
+  // verify routes below apply the same box; without it a listing could be pinned on another
+  // continent and still be published.
+  if (
+    (normalizedLatitude !== null || normalizedLongitude !== null) &&
+    (normalizedLatitude === null ||
+      normalizedLongitude === null ||
+      !inServiceRegion({ latitude: normalizedLatitude, longitude: normalizedLongitude }))
+  ) {
+    return res.status(400).json({ detail: 'That map pin is outside the area aangan covers. Pick a place in the Darjeeling region.' });
+  }
 
   let provider: typeof schema.providers.$inferSelect;
   if (existing) {
@@ -130,6 +229,8 @@ router.post('/onboard', authenticateToken, async (req: Request, res: Response) =
         priceFrom: price_from,
         images,
         extras,
+        // An unpaid draft that predates the approval rule is brought under it before it goes live.
+        approvalRequired: true,
       })
       .where(eq(schema.providers.id, existing.id))
       .returning();
@@ -149,6 +250,7 @@ router.post('/onboard', authenticateToken, async (req: Request, res: Response) =
       images,
       extras,
       status: 'pending_payment',
+      approvalRequired: true,
       createdAt: new Date().toISOString(),
       activatedAt: null,
     }).returning();
@@ -156,6 +258,7 @@ router.post('/onboard', authenticateToken, async (req: Request, res: Response) =
   }
 
   await db.update(schema.users).set({ role: 'provider' }).where(eq(schema.users.id, req.user.id));
+  provider.slug = await assignSlug(provider.id, provider.businessName);
 
   const providerReturn = {
     id: provider.id,
@@ -199,8 +302,8 @@ router.post('/onboard', authenticateToken, async (req: Request, res: Response) =
  */
 // Retrieve current user's provider info
 router.get('/me', authenticateToken, async (req: Request, res: Response) => {
-  const providersList = await db.select().from(schema.providers).where(eq(schema.providers.userId, req.user.id));
-  const provider = providersList.find(p => p.status === 'active') || providersList[0];
+  const host = await hostAccessFor(req.user.id);
+  const provider = host?.provider;
   if (!provider) {
     return res.json({ provider: null });
   }
@@ -208,7 +311,11 @@ router.get('/me', authenticateToken, async (req: Request, res: Response) => {
   const providerReturn = {
     id: provider.id,
     user_id: provider.userId,
+    access: host?.access ?? 'owner',
     business_name: provider.businessName,
+    slug: provider.slug,
+    page_path: pagePath(provider.businessType, provider.slug),
+    badges: hostBadges(provider),
     business_type: provider.businessType,
     description: provider.description,
     location: provider.location,
@@ -218,12 +325,600 @@ router.get('/me', authenticateToken, async (req: Request, res: Response) => {
     price_from: provider.priceFrom,
     images: provider.images,
     extras: provider.extras,
+    // The business theme colour (palette key or "#RRGGBB"; null is aangan's own), from profile.theme.
+    theme: themeOf((provider.extras as Record<string, unknown> | null)?.theme) ?? null,
     status: provider.status,
     created_at: provider.createdAt,
-    activated_at: provider.activatedAt
+    activated_at: provider.activatedAt,
+    // The host's yearly plan: when the current year ends, and whether it is live right now.
+    // A registered host whose plan has lapsed renews through the `provider_renewal` flow.
+    plan_expires_at: provider.planExpiresAt,
+    plan_active: isHostPlanLive(provider),
+    // What this host pays for a year: ₹499 + GST and fee, or ₹99 for a cafe, shop or guide.
+    plan_price: hostPlanBreakup(provider.businessType),
+    kyc_status: provider.kycStatus,
+    approval_pending: isHostApprovalPending(provider),
+    // What a new host still has to fill in before their documents can go for approval.
+    profile_missing: missingMandatory(provider.businessType, provider.extras),
+    // The free start: bookings used so far, the limit, and whether new bookings are paused until
+    // the host pays (lib/hostGrace.ts). Null once the host has paid.
+    grace: await graceStateFor(provider),
   };
 
   res.json({ provider: providerReturn });
+});
+
+/**
+ * @openapi
+ * /providers/me/start-free:
+ *   post:
+ *     summary: Go live without paying (the free start)
+ *     description: >
+ *       Turns the caller's unpaid sign-up (status pending_payment) into an active host on the free
+ *       start and puts their first listing up. It is still hidden until their documents are
+ *       approved. After HOST_GRACE_BOOKINGS completed bookings (plus delivered orders) new bookings
+ *       pause until they pay the first year (provider_registration). Calling it again while on the
+ *       free start changes nothing.
+ *     tags: [Providers]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: The host, now on the free start }
+ *       403: { description: The business is suspended }
+ *       404: { description: No sign-up to start }
+ *       409: { description: Already registered and paid }
+ */
+router.post('/me/start-free', authenticateToken, rateLimiter(20, 60 * 60 * 1000, 'host_start_free'), async (req: Request, res: Response) => {
+  type Outcome = { status: number; body?: Record<string, unknown>; provider?: typeof schema.providers.$inferSelect };
+  const outcome: Outcome = await db.transaction(async (tx) => {
+    // Locked, so a double tap (or a payment settling at the same moment) cannot make two listings.
+    const [p] = await tx.select().from(schema.providers)
+      .where(eq(schema.providers.userId, req.user.id)).limit(1).for('update');
+    if (!p) return { status: 404, body: { detail: 'Sign up your business first.' } };
+    if (p.status === 'suspended') return { status: 403, body: { detail: 'This business is suspended. Contact support.' } };
+    if (p.status === 'active') {
+      if (p.grace) return { status: 200, provider: p };
+      return { status: 409, body: { detail: 'Your business is already registered.', code: 'already_registered' } };
+    }
+    if (p.status !== 'pending_payment') return { status: 409, body: { detail: 'Your business is already registered.' } };
+
+    const [started] = await tx.update(schema.providers)
+      .set({ status: 'active', grace: true, activatedAt: new Date().toISOString(), approvalRequired: true })
+      .where(eq(schema.providers.id, p.id))
+      .returning();
+    // Made once: an older sign-up may already have a listing an admin added for them.
+    const [existing] = await tx.select({ id: schema.listings.id }).from(schema.listings)
+      .where(eq(schema.listings.providerId, p.id)).limit(1);
+    if (!existing) await publishFirstListing(tx, started);
+    return { status: 200, provider: started };
+  });
+
+  if (!outcome.provider) return res.status(outcome.status).json(outcome.body);
+  res.json({ provider: serializeProvider(outcome.provider), grace: await graceStateFor(outcome.provider) });
+});
+
+// Public mini-site payload. The provider id is a stable, unguessable share identifier; the
+// frontend renders every listing under this host as one shareable business page.
+router.get('/public/:id', async (req: Request, res: Response) => {
+  const [provider] = await db.select().from(schema.providers).where(eq(schema.providers.id, String(req.params.id))).limit(1);
+  // The same rule as the public feed: a host awaiting approval, or whose plan has lapsed, is not
+  // shown to travellers, so their business page is not either.
+  if (!provider || provider.status !== 'active' || isHostApprovalPending(provider) || !isHostPlanLive(provider)) {
+    return res.status(404).json({ detail: 'Business not found' });
+  }
+  const listings = await db.select().from(schema.listings).where(or(eq(schema.listings.providerId, provider.id), eq(schema.listings.providerId, provider.userId)));
+  res.json({ business: { id: provider.id, name: provider.businessName, type: provider.businessType, slug: provider.slug, page_path: pagePath(provider.businessType, provider.slug), description: provider.description, location: provider.location, images: provider.images, created_at: provider.createdAt }, listings: listings.map((l) => ({ id: l.id, title: l.title, type: l.type, description: l.description, location: l.location, price: l.price, image: l.image, extras: listExtras(l.type, l.extras) })) });
+});
+
+/**
+ * @openapi
+ * /providers/page/{type}/{slug}:
+ *   get:
+ *     summary: A host's public page (aanganerp.in/<type>/<slug>)
+ *     description: >
+ *       The mini-site data, the host's listings, the latest reviews and the contact line (phone
+ *       numbers follow the same rule as listings). Hidden like the feed while a host awaits
+ *       approval or their plan has lapsed, except to the host themselves (not_live: true). A wrong
+ *       type in the address answers 404 with the right path, so old links can be redirected.
+ *     tags: [Providers]
+ */
+router.get('/page/:type/:slug', async (req: Request, res: Response) => {
+  const type = String(req.params.type);
+  const slug = String(req.params.slug).toLowerCase();
+  if (!(PAGE_TYPES as readonly string[]).includes(type)) return res.status(404).json({ detail: 'Page not found' });
+  const [provider] = await db.select().from(schema.providers).where(eq(schema.providers.slug, slug)).limit(1);
+  if (!provider) return res.status(404).json({ detail: 'Page not found' });
+  const viewer = await optionalUser(req);
+  const own = viewer ? (await hostAccessFor(viewer.id))?.provider?.id === provider.id : false;
+  if (!hostIsPublic(provider) && !own && viewer?.role !== 'admin') return res.status(404).json({ detail: 'Page not found' });
+  if (provider.businessType !== type) {
+    return res.status(404).json({ detail: 'Page not found', path: pagePath(provider.businessType, provider.slug) });
+  }
+  const page = await buildHostPage(provider, viewer);
+  res.json({ ...page, not_live: !hostIsPublic(provider), own });
+});
+
+/**
+ * @openapi
+ * /providers/me/stats:
+ *   get:
+ *     summary: Headline numbers for the caller's own business
+ *     description: Listing count, review count and average rating across the caller's listings, and their bookings by state.
+ *     tags: [Providers]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: The numbers; all zero for a business with no listings yet }
+ */
+router.get('/me/stats', authenticateToken, async (req: Request, res: Response) => {
+  // listings.provider_id holds either a provider row id or a user id, so match both.
+  const ownIds = await ownListingIds(req.user.id);
+  const listings = await db.select({ id: schema.listings.id })
+    .from(schema.listings).where(inArray(schema.listings.providerId, ownIds));
+  const listingIds = listings.map(l => l.id);
+
+  const empty = {
+    listings: 0, review_count: 0, average_rating: 0,
+    bookings: { total: 0, confirmed: 0, accepted: 0, pending: 0, cancelled: 0 },
+  };
+  if (listingIds.length === 0) return res.json(empty);
+
+  const reviews = await db.select({ rating: schema.reviews.rating })
+    .from(schema.reviews).where(inArray(schema.reviews.listingId, listingIds));
+  const bookings = await db.select({ status: schema.bookings.status })
+    .from(schema.bookings).where(inArray(schema.bookings.listingId, listingIds));
+
+  const count = (s: string) => bookings.filter(b => b.status === s).length;
+  const me = (await hostAccessFor(req.user.id))?.provider;
+  const extra = await hostStats(listingIds, {
+    verified: me ? hostBadges(me).verified : false,
+    profileComplete: me ? missingMandatory(me.businessType, me.extras).length === 0 : false,
+  });
+  res.json({
+    ...extra,
+    listings: listingIds.length,
+    review_count: reviews.length,
+    average_rating: reviews.length
+      ? Math.round((reviews.reduce((a, r) => a + r.rating, 0) / reviews.length) * 10) / 10
+      : 0,
+    bookings: {
+      total: bookings.length,
+      confirmed: count('confirmed'),
+      accepted: count('accepted'),
+      pending: count('pending_payment'),
+      cancelled: count('cancelled'),
+    },
+  });
+});
+
+/**
+ * @openapi
+ * /providers/me:
+ *   patch:
+ *     summary: Edit the caller's provider profile
+ *     description: Business name, description, location, contact phone, starting price, map pin and UPI id. Type and status are not editable here.
+ *     tags: [Providers]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: The updated provider }
+ *       400: { description: A field failed validation }
+ *       404: { description: The caller has no provider profile }
+ */
+/**
+ * POST /api/providers/me/location/verify  { maps_url }
+ *
+ * The host pastes the Google Maps link for their place (or "lat, lng"). We read the pin out of
+ * it, check it falls inside the area aangan serves, and save it on the provider and on every
+ * listing they own, flagged as verified. The flag can only be set here; listing and provider
+ * edits cannot grant it, and moving a pin by hand clears it.
+ */
+router.post(
+  '/me/location/verify',
+  authenticateToken,
+  rateLimiter(10, 60_000, 'maps_verify'),
+  async (req: Request, res: Response) => {
+    const provider = await myProvider(req.user.id);
+    if (!provider) return res.status(404).json({ detail: 'No provider profile to verify' });
+
+    let pin;
+    try {
+      pin = await resolveMapsLink(req.body?.maps_url);
+    } catch (err) {
+      if (err instanceof MapsLinkError) return res.status(400).json({ detail: err.message });
+      throw err;
+    }
+    if (!inServiceRegion(pin)) {
+      return res.status(400).json({
+        detail: 'That pin is outside the Darjeeling area we serve. Check you picked the right place in Google Maps.',
+      });
+    }
+
+    const verifiedAt = new Date().toISOString();
+    const verification = {
+      source: 'google_maps_link',
+      latitude: pin.latitude,
+      longitude: pin.longitude,
+      maps_url: googleMapsUrl(pin),
+      verified_at: verifiedAt,
+    };
+
+    await db.transaction(async (tx) => {
+      await tx
+        .update(schema.providers)
+        .set({
+          latitude: pin.latitude,
+          longitude: pin.longitude,
+          extras: { ...(provider.extras || {}), location_verification: verification },
+        })
+        .where(eq(schema.providers.id, provider.id));
+      const owned = await tx.select().from(schema.listings).where(eq(schema.listings.providerId, provider.id));
+      for (const listing of owned) {
+        await tx
+          .update(schema.listings)
+          .set({
+            latitude: pin.latitude,
+            longitude: pin.longitude,
+            extras: { ...(listing.extras || {}), location_verified: { verified_at: verifiedAt, source: 'google_maps_link' } },
+          })
+          .where(eq(schema.listings.id, listing.id));
+      }
+    });
+
+    // A homestay is only "verified" once its pin is, so the status is worked out again now that it is.
+    await recomputeKycStatus(provider.id);
+
+    res.json({ location: { verified: true, ...verification } });
+  }
+);
+
+/** A reading less precise than this says nothing about which building the phone is in. */
+export const LIVE_CAPTURE_MAX_ACCURACY_M = 100;
+
+/**
+ * POST /api/providers/me/location/live  { latitude, longitude, accuracy }
+ *
+ * The host's phone reports where it is, standing in their café or shop, and that becomes the
+ * verified pin on the provider and on every listing they own. It is the proof a pasted Google Maps
+ * link cannot give: the link shows a place the host chose, the capture shows where they actually are.
+ *
+ * The server cannot see the GPS, so it checks what it can: the position is inside the area aangan
+ * serves, the phone says it is accurate enough to tell one building from the next, and the time is
+ * the server's own. A phone running a mock-location app can still lie; the premises photos and
+ * video that sit beside this in the verification are what an admin checks it against.
+ */
+router.post(
+  '/me/location/live',
+  authenticateToken,
+  rateLimiter(10, 60_000, 'live_location'),
+  async (req: Request, res: Response) => {
+    const provider = await myProvider(req.user.id);
+    if (!provider) return res.status(404).json({ detail: 'No provider profile to verify' });
+
+    const { latitude, longitude, accuracy, mocked } = req.body ?? {};
+    // Android marks a reading that came from a mock-location app. The phone is the only thing that
+    // can say so, and a determined cheat will not, but an honest tester with a spoofer left on will.
+    if (mocked === true) {
+      return res.status(400).json({ detail: 'Your phone is using a mock location. Turn it off and capture your real location.' });
+    }
+    if (typeof latitude !== 'number' || typeof longitude !== 'number' || !Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+      return res.status(400).json({ detail: 'Send the latitude and longitude your phone reports.' });
+    }
+    if (typeof accuracy !== 'number' || !Number.isFinite(accuracy) || accuracy <= 0) {
+      return res.status(400).json({ detail: 'Send how accurate the reading is, in metres.' });
+    }
+    if (accuracy > LIVE_CAPTURE_MAX_ACCURACY_M) {
+      return res.status(400).json({
+        detail: `Your phone could only place you within ${Math.round(accuracy)} m. Go outside or near a window, wait a few seconds and try again.`,
+      });
+    }
+    const pin = { latitude, longitude };
+    if (!inServiceRegion(pin)) {
+      return res.status(400).json({
+        detail: 'Your phone says you are outside the Darjeeling area we serve. Capture your location while you are at your premises.',
+      });
+    }
+
+    const verifiedAt = new Date().toISOString();
+    const verification = {
+      source: 'live_capture',
+      latitude,
+      longitude,
+      accuracy_m: Math.round(accuracy),
+      maps_url: googleMapsUrl(pin),
+      verified_at: verifiedAt,
+    };
+
+    await db.transaction(async (tx) => {
+      await tx
+        .update(schema.providers)
+        .set({
+          latitude,
+          longitude,
+          extras: { ...(provider.extras || {}), location_verification: verification },
+        })
+        .where(eq(schema.providers.id, provider.id));
+      const owned = await tx.select().from(schema.listings).where(eq(schema.listings.providerId, provider.id));
+      for (const listing of owned) {
+        await tx
+          .update(schema.listings)
+          .set({
+            latitude,
+            longitude,
+            extras: { ...(listing.extras || {}), location_verified: { verified_at: verifiedAt, source: 'live_capture' } },
+          })
+          .where(eq(schema.listings.id, listing.id));
+      }
+    });
+
+    await recomputeKycStatus(provider.id);
+
+    res.json({ location: { verified: true, ...verification } });
+  }
+);
+
+router.patch('/me', authenticateToken, async (req: Request, res: Response) => {
+  const host = await hostAccessFor(req.user.id);
+  const provider = host?.provider;
+  if (!provider) return res.status(404).json({ detail: 'No provider profile to edit' });
+
+  const body = req.body || {};
+  const set: Partial<typeof schema.providers.$inferInsert> = {};
+
+  const text = (key: string, label: string): string | null | 'bad' => {
+    if (body[key] === undefined) return null;
+    if (typeof body[key] !== 'string' || !body[key].trim() || body[key].length > 2000) return 'bad';
+    return body[key].trim();
+  };
+  for (const [key, col, label] of [
+    ['business_name', 'businessName', 'Business name'],
+    ['description', 'description', 'Description'],
+    ['location', 'location', 'Location'],
+  ] as const) {
+    const v = text(key, label);
+    if (v === 'bad') return res.status(400).json({ detail: `${label} cannot be empty` });
+    if (v !== null && key !== 'description') {
+      // Name and place: real ones, tidily spaced (lib/contentRules.ts), as at sign-up.
+      const checked = checkNameLike(v, label, key === 'business_name' ? 120 : 200);
+      if ('error' in checked) return res.status(400).json({ detail: checked.error });
+      set[col] = checked.value;
+    } else if (v !== null) set[col] = v;
+  }
+
+  if (body.contact_phone !== undefined) {
+    if (!isPlausiblePhone(body.contact_phone)) {
+      return res.status(400).json({ detail: 'Contact phone must be a phone number travellers can call' });
+    }
+    set.contactPhone = String(body.contact_phone).trim();
+  }
+  if (body.price_from !== undefined) {
+    if (!Number.isInteger(body.price_from) || body.price_from < 0 || body.price_from > MAX_PRICE) {
+      return res.status(400).json({ detail: `price_from must be a whole number of rupees from 0 to ${MAX_PRICE}` });
+    }
+    set.priceFrom = body.price_from;
+  }
+  for (const [key, col] of [['latitude', 'latitude'], ['longitude', 'longitude']] as const) {
+    if (body[key] === undefined) continue;
+    if (body[key] !== null && (typeof body[key] !== 'number' || !Number.isFinite(body[key]))) {
+      return res.status(400).json({ detail: `${key} must be a number or null` });
+    }
+    set[col] = body[key];
+  }
+  if (body.latitude !== undefined || body.longitude !== undefined) {
+    // Moving the pin by hand voids the Google Maps verification that was done for the old one.
+    const withoutVerification = { ...(provider.extras || {}) };
+    delete withoutVerification.location_verification;
+    set.extras = withoutVerification;
+  }
+  if (body.upi !== undefined) {
+    if (typeof body.upi !== 'string' || body.upi.length > 100 || (body.upi && !/^[\w.\-]{2,}@[a-zA-Z]{2,}$/.test(body.upi.trim()))) {
+      return res.status(400).json({ detail: 'UPI id must look like name@bank' });
+    }
+    const extras = { ...(set.extras ?? provider.extras ?? {}) };
+    if (body.upi.trim()) extras.upi = body.upi.trim();
+    else delete extras.upi;
+    set.extras = extras;
+  }
+
+  // The host profile (lib/hostProfile.ts): photos, WhatsApp, availability, languages, rooms and
+  // food, services, routes and the rest, checked per type and merged into extras.
+  // A host can run several properties. The fields of one property (PROPERTY_FIELDS: a homestay's
+  // rooms, food, occupancy, amenities) are saved to one listing only: `listing_id`, else the host's
+  // first listing, the one set up at sign-up, which the business profile mirrors. Everything else in
+  // the profile is the whole business's and goes to every listing (user decision 2026-11-21).
+  const own = await db.select().from(schema.listings).where(eq(schema.listings.providerId, provider.id));
+  own.sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)));
+  // The first listing of the business's own type (the profile page's first property is its oldest homestay).
+  const firstId = own.find((l) => l.type === provider.businessType)?.id ?? own[0]?.id ?? null;
+  let targetId = firstId;
+  if (body.listing_id !== undefined && body.listing_id !== null) {
+    if (typeof body.listing_id !== 'string' || !own.some((l) => l.id === body.listing_id)) {
+      return res.status(400).json({ detail: 'That property is not one of yours' });
+    }
+    targetId = body.listing_id;
+  }
+  const propKeys = PROPERTY_FIELDS[provider.businessType] ?? [];
+  const perProperty = propKeys.length > 0;
+  let profilePatch: Record<string, unknown> | null = null;
+  let businessPatch: Record<string, unknown> = {};
+  let propertyPatch: Record<string, unknown> = {};
+  if (body.profile !== undefined) {
+    const checked = profilePatchFrom(provider.businessType, body.profile);
+    if ('error' in checked) return res.status(400).json({ detail: checked.error });
+    profilePatch = checked;
+    businessPatch = Object.fromEntries(Object.entries(checked).filter(([k]) => !propKeys.includes(k)));
+    propertyPatch = Object.fromEntries(Object.entries(checked).filter(([k]) => propKeys.includes(k)));
+    const onFirst = targetId === firstId;
+    const extras = { ...(set.extras ?? provider.extras ?? {}), ...businessPatch, ...(onFirst ? propertyPatch : {}) };
+    set.extras = extras;
+    const derived = startingPriceFor(provider.businessType, extras);
+    if (derived !== null && body.price_from === undefined && (onFirst || !perProperty)) set.priceFrom = derived;
+  }
+  if (body.cover_image !== undefined) {
+    const cover = typeof body.cover_image === 'string' ? body.cover_image.trim() : '';
+    if (!/^(https?:\/\/|\/)\S+$/.test(cover)) {
+      return res.status(400).json({ detail: 'Cover photo must be an uploaded image' });
+    }
+    set.images = [cover, ...(provider.images || []).filter((u) => u !== cover)];
+  }
+
+  if (Object.keys(set).length === 0) return res.status(400).json({ detail: 'Nothing to update' });
+
+  const [updated] = await db.update(schema.providers).set(set).where(eq(schema.providers.id, provider.id)).returning();
+  if (set.businessName || !updated.slug) updated.slug = await assignSlug(updated.id, updated.businessName);
+  // Travellers read the listing, not the provider row. The business fields, the cover photo and the
+  // name go onto every listing this host runs; one property's fields (and the price they make) go
+  // onto that property's listing only.
+  if (profilePatch || set.images || set.businessName) {
+    for (const l of own) {
+      const next: Partial<typeof schema.listings.$inferInsert> = {};
+      if (profilePatch) next.extras = { ...(l.extras || {}), ...businessPatch, ...(l.id === targetId ? propertyPatch : {}) };
+      if (set.images) next.image = set.images[0];
+      // No chosen cover: the listing shows the host's first photo, and follows it when photos change.
+      else if (profilePatch && 'images' in profilePatch && !(provider.images || [])[0]) {
+        next.image = coverAfterPhotosChange(l.image, l.extras, next.extras);
+      }
+      if (set.businessName && l.title === provider.businessName) next.title = set.businessName;
+      if (profilePatch && !perProperty) {
+        if (set.priceFrom !== undefined) next.price = set.priceFrom;
+      } else if (profilePatch && l.id === targetId) {
+        // This property's own "from" price: a typed one, else its cheapest room.
+        const price = body.price_from !== undefined ? set.priceFrom : startingPriceFor(provider.businessType, next.extras as Record<string, unknown>);
+        if (price !== null && price !== undefined) next.price = price;
+      }
+      if (Object.keys(next).length) await db.update(schema.listings).set(next).where(eq(schema.listings.id, l.id));
+    }
+  }
+  // Moving the pin voided its verification, which a homestay's "verified" status depends on.
+  if (body.latitude !== undefined || body.longitude !== undefined) {
+    updated.kycStatus = await recomputeKycStatus(provider.id);
+  }
+  res.json({
+    provider: {
+      id: updated.id,
+      user_id: updated.userId,
+      business_name: updated.businessName,
+      business_type: updated.businessType,
+      slug: updated.slug,
+      page_path: pagePath(updated.businessType, updated.slug),
+      badges: hostBadges(updated),
+      description: updated.description,
+      location: updated.location,
+      latitude: updated.latitude,
+      longitude: updated.longitude,
+      contact_phone: updated.contactPhone,
+      price_from: updated.priceFrom,
+      images: updated.images,
+      extras: updated.extras,
+      theme: themeOf((updated.extras as Record<string, unknown> | null)?.theme) ?? null,
+      status: updated.status,
+      created_at: updated.createdAt,
+      activated_at: updated.activatedAt,
+      plan_expires_at: updated.planExpiresAt,
+      plan_active: updated.status === 'active' && (!updated.planExpiresAt || Date.parse(updated.planExpiresAt) > Date.now()),
+      kyc_status: updated.kycStatus,
+      approval_pending: isHostApprovalPending(updated),
+      profile_missing: missingMandatory(updated.businessType, updated.extras),
+    },
+  });
+});
+
+/**
+ * Co-owners (the board's "Multiple Owners").
+ *
+ * GET    /providers/me/owners          everyone who runs this business; any owner may look
+ * POST   /providers/me/owners {phone, name?}  main owner adds a co-owner by phone number
+ * DELETE /providers/me/owners/:id      main owner removes a co-owner, or a co-owner leaves
+ *
+ * A co-owner signs in with their own WhatsApp OTP and runs the same business. Paying for the plan
+ * and changing who the owners are stay with the main owner.
+ */
+router.get('/me/owners', authenticateToken, async (req: Request, res: Response) => {
+  const host = await hostAccessFor(req.user.id);
+  if (!host) return res.status(404).json({ detail: 'No business to show owners for' });
+  res.json({ access: host.access, max_co_owners: MAX_CO_OWNERS, owners: await ownersOf(host.provider, req.user.id) });
+});
+
+router.post('/me/owners', authenticateToken, rateLimiter(20, 60 * 60 * 1000, 'add_co_owner'), async (req: Request, res: Response) => {
+  const host = await hostAccessFor(req.user.id);
+  if (!host) return res.status(404).json({ detail: 'No business to add an owner to' });
+  if (host.access !== 'owner') return res.status(403).json({ detail: 'Only the main owner can add co-owners' });
+
+  const key = phoneKey(req.body?.phone);
+  if (!key) return res.status(400).json({ detail: 'Enter the co-owner\'s phone number, for example +91 98765 43210' });
+  const name = typeof req.body?.name === 'string' ? req.body.name.trim().slice(0, 80) : '';
+
+  const [me] = await db.select({ phone: schema.users.phone }).from(schema.users).where(eq(schema.users.id, req.user.id)).limit(1);
+  if (me && phoneKey(me.phone) === key) return res.status(400).json({ detail: 'That is your own number' });
+
+  const existing = await db.select().from(schema.providerMembers).where(eq(schema.providerMembers.providerId, host.provider.id));
+  if (existing.some((m) => m.phoneKey === key)) return res.status(409).json({ detail: 'That number is already a co-owner' });
+  if (existing.length >= MAX_CO_OWNERS) return res.status(409).json({ detail: `A business can have at most ${MAX_CO_OWNERS} co-owners` });
+
+  // Someone who already runs a business of their own cannot also co-own this one: every "my
+  // business" screen would have to pick between the two.
+  // users.phone holds the number as it was typed, so look up by its last ten digits and compare
+  // canonical forms, rather than trusting one spelling.
+  const candidates = await db.select().from(schema.users).where(like(schema.users.phone, `%${key.slice(-10)}`));
+  const invitee = candidates.find((u) => phoneKey(u.phone) === key) || null;
+  if (invitee) {
+    const [ownsOne] = await db.select({ id: schema.providers.id }).from(schema.providers).where(eq(schema.providers.userId, invitee.id)).limit(1);
+    if (ownsOne) return res.status(409).json({ detail: 'That number already runs its own business on aangan' });
+    const [elsewhere] = await db.select({ id: schema.providerMembers.id }).from(schema.providerMembers).where(eq(schema.providerMembers.userId, invitee.id)).limit(1);
+    if (elsewhere) return res.status(409).json({ detail: 'That number is already a co-owner of another business' });
+  }
+
+  await db.insert(schema.providerMembers).values({
+    id: newMemberId(),
+    providerId: host.provider.id,
+    phoneKey: key,
+    userId: null,
+    name: name || null,
+    role: 'co_owner',
+    addedBy: req.user.id,
+    createdAt: new Date().toISOString(),
+  });
+  if (invitee) await claimCoOwnerInvites(invitee);
+
+  res.status(201).json({ owners: await ownersOf(host.provider, req.user.id) });
+});
+
+router.delete('/me/owners/:id', authenticateToken, async (req: Request, res: Response) => {
+  const host = await hostAccessFor(req.user.id);
+  if (!host) return res.status(404).json({ detail: 'No business found' });
+  const [member] = await db.select().from(schema.providerMembers)
+    .where(eq(schema.providerMembers.id, String(req.params.id))).limit(1);
+  if (!member || member.providerId !== host.provider.id) return res.status(404).json({ detail: 'No such co-owner' });
+  const leavingSelf = member.userId === req.user.id;
+  if (host.access !== 'owner' && !leavingSelf) return res.status(403).json({ detail: 'Only the main owner can remove co-owners' });
+
+  await db.delete(schema.providerMembers).where(eq(schema.providerMembers.id, member.id));
+  if (member.userId) await dropHostRoleIfUnused(member.userId);
+  res.json({ owners: leavingSelf ? [] : await ownersOf(host.provider, req.user.id) });
+});
+
+/**
+ * POST /providers/me/intro-video  (raw MP4, MOV or WebM body, at most 25 MB)
+ *
+ * Stores the host's intro video in the public bucket and returns its URL. The client then saves
+ * it as the profile's `intro_video` (PATCH /providers/me), which copies it onto the listings.
+ * Owners and co-owners alike may upload.
+ */
+router.post('/me/intro-video', authenticateToken, async (req: Request, res: Response) => {
+  const provider = await myProvider(req.user.id);
+  if (!provider) return res.status(404).json({ detail: 'No business to add a video to' });
+  const contentType = String(req.headers['content-type'] || '').split(';')[0].trim().toLowerCase();
+  if (!VIDEO_MIME.has(contentType)) return res.status(400).json({ detail: 'Video must be MP4, MOV or WebM' });
+  const buffer = Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0);
+  if (buffer.length === 0) return res.status(400).json({ detail: 'Empty file' });
+  if (buffer.length > MAX_VIDEO_BYTES) return res.status(400).json({ detail: 'Video must be 25 MB or smaller. Try a shorter clip.' });
+  if (!matchesDeclaredType(buffer, contentType)) {
+    return res.status(400).json({ detail: 'That file is not a video' });
+  }
+  const ext = contentType === 'video/quicktime' ? '.mov' : contentType === 'video/webm' ? '.webm' : '.mp4';
+  try {
+    const url = await uploadToMinIO(buffer, `videos/${uuidv4()}${ext}`, contentType);
+    res.json({ url });
+  } catch (err: any) {
+    res.status(503).json({ detail: 'Could not store the video right now. Please try again.' });
+  }
 });
 
 export default router;

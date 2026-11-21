@@ -4,7 +4,7 @@ import { REDACTED, scrubHeaders, scrubUrl, scrubValue } from '../src/lib/scrub';
 /**
  * These are the assertions standing between a crash and a government ID document in a third
  * party's database. An error report is assembled from precisely the material most likely to carry
- * personal data — the request body that failed, the header that authorised it — so redaction here
+ * personal data  the request body that failed, the header that authorised it  so redaction here
  * is a correctness property, not a nicety.
  *
  * Cases are written from the shapes this app actually produces: the KYC upload body, the OTP

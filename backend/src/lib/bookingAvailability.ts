@@ -3,7 +3,7 @@ import { schema } from '../db';
 import { BOOKING_HOLD_MINUTES } from '../config';
 
 /**
- * Homestay availability — the single source of truth for "are these dates taken?".
+ * Homestay availability  the single source of truth for "are these dates taken?".
  *
  * Two callers need the same answer and must not drift apart:
  *   - POST /bookings, deciding whether to let a checkout start at all;
@@ -11,7 +11,7 @@ import { BOOKING_HOLD_MINUTES } from '../config';
  *     actually be confirmed.
  *
  * Only homestays are date-exclusive. A driver can be hired by two people on the same day, a
- * café does not run out of dates, and a spot is a public place — so every other listing type
+ * café does not run out of dates, and a spot is a public place  so every other listing type
  * is always available and this module is not consulted for them.
  */
 
@@ -36,7 +36,7 @@ export function holdCutoff(now: Date = new Date()): string {
  * The SQL predicate for "this row blocks the requested range on this listing".
  *
  * Half-open interval comparison (`existing.checkIn < requested.checkOut AND existing.checkOut >
- * requested.checkIn`) so a checkout on the same day as the next guest's check-in is NOT a clash —
+ * requested.checkIn`) so a checkout on the same day as the next guest's check-in is NOT a clash 
  * that is a normal back-to-back turnover, and the pre-existing test for it stays green.
  *
  * `excludeBookingId` exists for the settlement path, where the booking being confirmed is itself
@@ -53,12 +53,12 @@ function blockingPredicate(
     lt(schema.bookings.checkIn, checkOut),
     gt(schema.bookings.checkOut, checkIn),
     or(
-      // Paid for and belonging to a guest — blocks unconditionally.
+      // Paid for and belonging to a guest  blocks unconditionally.
       eq(schema.bookings.status, 'confirmed'),
       // The host has agreed to take these nights. Blocks unconditionally too, and deliberately
       // NOT subject to the hold window: a host who accepts has promised the room, and a promise
       // that silently expires fifteen minutes later is worse than no acceptance at all. If the
-      // guest never pays, the host cancels — which is a decision someone makes, not a timeout.
+      // guest never pays, the host cancels  which is a decision someone makes, not a timeout.
       eq(schema.bookings.status, 'accepted'),
       // A checkout still in flight. `createdAt` is an ISO-8601 UTC string for every row this app
       // writes, so lexicographic ordering is chronological ordering and a text comparison is a
@@ -77,7 +77,7 @@ function blockingPredicate(
 
 type BookingRow = typeof schema.bookings.$inferSelect;
 
-/** Anything with `.select()` — the live db, or a transaction handle from db.transaction(). */
+/** Anything with `.select()`  the live db, or a transaction handle from db.transaction(). */
 type Queryable = {
   select: (typeof import('../db'))['db']['select'];
 };
@@ -85,7 +85,7 @@ type Queryable = {
 /**
  * Returns the booking that blocks this range, or null when the dates are free.
  *
- * Pass a transaction handle as `runner` to have the read participate in that transaction — which
+ * Pass a transaction handle as `runner` to have the read participate in that transaction  which
  * is what makes the settlement check meaningful (see lockListingForBooking).
  */
 export async function findBlockingBooking(
@@ -104,6 +104,42 @@ export async function findBlockingBooking(
 }
 
 /**
+ * The date ranges on a listing that are not free, for a calendar to draw.
+ *
+ * Uses the same blocking rule as `findBlockingBooking` (confirmed, accepted, and checkouts still
+ * inside their hold window) so a calendar can never show a night as free that a booking would
+ * then refuse. Returns dates and a coarse state only: no guest, no booking id.
+ */
+export async function blockedRanges(
+  runner: Queryable,
+  listingId: string,
+  from: string,
+  to: string,
+  /** The signed-in viewer, if any: their own bookings come back marked `mine`, nobody else's do. */
+  viewerId?: string | null
+): Promise<{ check_in: string; check_out: string; state: 'booked' | 'hold'; mine?: true }[]> {
+  const rows = await runner
+    .select({
+      checkIn: schema.bookings.checkIn,
+      checkOut: schema.bookings.checkOut,
+      status: schema.bookings.status,
+      userId: schema.bookings.userId,
+    })
+    .from(schema.bookings)
+    .where(blockingPredicate(listingId, from, to))
+    .orderBy(schema.bookings.checkIn);
+  return rows
+    .filter((r) => r.checkIn && r.checkOut)
+    .map((r) => ({
+      check_in: r.checkIn as string,
+      check_out: r.checkOut as string,
+      state: r.status === 'pending_payment' ? ('hold' as const) : ('booked' as const),
+      // So a traveller who already asked for these nights is told that, not "someone else booked".
+      ...(viewerId && r.userId === viewerId ? { mine: true as const } : {}),
+    }));
+}
+
+/**
  * Serialises every concurrent confirmation for one listing.
  *
  * The overlap check alone cannot prevent a double booking: two transactions confirming DIFFERENT
@@ -112,11 +148,32 @@ export async function findBlockingBooking(
  * them into a queue, so the second one reads the first one's committed result and correctly finds
  * the clash.
  *
- * The listing row is used purely as the mutex — nothing about it is modified.
+ * The listing row is used purely as the mutex  nothing about it is modified.
  */
 export async function lockListingForBooking(
   tx: { execute: (query: any) => Promise<unknown> },
   listingId: string
 ): Promise<void> {
   await tx.execute(sql`SELECT id FROM listings WHERE id = ${listingId} FOR UPDATE`);
+}
+
+/**
+ * Locks a booking for a status change and returns it as it is now, or null if it does not exist.
+ *
+ * Every change of a booking's status (host accept, guest confirm, cancel) goes through this, so
+ * two of them on the same booking run one after the other and the second decides on what the
+ * first left behind. Without it, a guest could cancel while the host accepted (or while their own
+ * confirm went through) and the slower write silently undid the cancel.
+ *
+ * The listing is locked before the booking, in every caller, so two changes can never wait on
+ * each other in opposite orders.
+ */
+export async function lockBookingForChange(tx: any, bookingId: string): Promise<BookingRow | null> {
+  const [peek] = await tx.select({ listingId: schema.bookings.listingId })
+    .from(schema.bookings).where(eq(schema.bookings.id, bookingId)).limit(1);
+  if (!peek) return null;
+  await lockListingForBooking(tx, peek.listingId);
+  const [row] = await tx.select().from(schema.bookings)
+    .where(eq(schema.bookings.id, bookingId)).limit(1).for('update');
+  return row ?? null;
 }

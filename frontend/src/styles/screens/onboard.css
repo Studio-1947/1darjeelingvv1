@@ -1,0 +1,154 @@
+/* onboard screens: host sign-up wizard, laid out as the Aangan 2.0 prototype's V.biz / V.bizsetup
+   (provider.js, menu.js). Classes here are prefixed ag-onboard-. Theme variables only. */
+
+.ag-onboard > .ag-small:first-of-type { margin: 0; }
+.ag-onboard-h1 { margin: 0; font: 500 24px/32px var(--font); letter-spacing: -.02em; color: var(--ink7); text-wrap: balance; outline: 0; }
+.ag-onboard-sub { margin: -6px 0 6px; }
+
+/* Next: auto-width red pill, circled arrow at the end */
+.ag-onboard-next.ag-btn { align-self: flex-start; min-width: 180px; padding: 0 8px 0 28px; gap: 14px; font-size: 16px; }
+.ag-onboard-next.ag-btn .ag-go { width: 36px; height: 36px; margin-left: auto; }
+
+/* 1. business type tiles (biztile2): 2 columns, an odd last tile spans the row */
+.ag-onboard-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.ag-onboard-tile { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-height: 132px; padding: 16px; border: 1px solid var(--hairline); border-radius: 18px; background: var(--surface); color: var(--ink-strong); text-align: left; cursor: pointer; transition: border-color .15s, background-color .15s; }
+.ag-onboard-tile:hover, .ag-onboard-tile:focus-visible { border-color: var(--r); }
+.ag-onboard-tile .ic { width: 52px; height: 52px; margin-bottom: 8px; border-radius: 16px; border: 1px solid var(--blush2); border-color: color-mix(in srgb, var(--r) 55%, transparent); color: var(--r); display: grid; place-items: center; }
+.ag-onboard-tile .ic svg.i { width: 28px; height: 28px; stroke-width: 1.5; }
+.ag-onboard-tile b { font: 500 16px/22px var(--font); letter-spacing: -.01em; color: var(--ink-strong); }
+.ag-onboard-tile .ag-small { color: var(--ink-muted); }
+.ag-onboard-tile .radio { position: absolute; top: 16px; right: 16px; width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--hairline); display: grid; place-items: center; }
+.ag-onboard-tile .radio::before { content: ""; width: 12px; height: 12px; border-radius: 50%; background: var(--r); transform: scale(0); transition: transform .12s; }
+.ag-onboard-tile[aria-checked="true"] { border-color: var(--r); background: var(--r-tint); }
+.ag-onboard-tile[aria-checked="true"] .radio { border-color: var(--r); }
+.ag-onboard-tile[aria-checked="true"] .radio::before { transform: scale(1); }
+.ag-onboard-tile:last-child:nth-child(odd) { grid-column: 1 / -1; min-height: 0; display: grid; grid-template-columns: 52px minmax(0, 1fr); column-gap: 14px; row-gap: 2px; align-items: center; padding: 14px 52px 14px 16px; }
+.ag-onboard-tile:last-child:nth-child(odd) .ic { grid-row: 1 / span 2; margin: 0; }
+.ag-onboard-tile:last-child:nth-child(odd) .radio { top: 50%; margin-top: -12px; }
+.ag-onboard-tile:last-child:nth-child(odd) b { align-self: end; }
+.ag-onboard-tile:last-child:nth-child(odd) .ag-small { align-self: start; }
+
+/* charges box */
+.ag-onboard-charge { margin-top: 14px; gap: 10px; }
+.ag-onboard-fees { list-style: none; margin: 6px 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.ag-onboard-fees li { display: flex; align-items: flex-start; gap: 10px; font: 500 14px/20px var(--font); color: var(--ink-strong); }
+.ag-onboard-fees li svg.i { width: 20px; height: 20px; flex: none; padding: 3px; border-radius: 50%; background: var(--r-tint); color: var(--r); stroke-width: 2.6; }
+.ag-onboard-fees li.hl { margin-top: 4px; padding: 10px 12px; border-radius: 12px; background: var(--r-tint); color: var(--r); font-weight: 600; }
+.ag-onboard-fees.plain { gap: 6px; margin: 0; }
+.ag-onboard-fees.plain li { display: block; position: relative; padding-left: 14px; }
+.ag-onboard-fees.plain li::before { content: ""; position: absolute; left: 2px; top: 8px; width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+.ag-onboard-fees.plain li.hl { padding: 10px 12px; background: var(--blush2); }
+.ag-onboard-fees.plain li.hl::before { display: none; }
+
+/* when to pay: two cards side by side */
+.ag-onboard-chopts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-items: stretch; }
+.ag-onboard-chopt { display: flex; flex-direction: column; gap: 4px; padding: 12px; border: 1px solid var(--hairline); border-radius: 14px; background: var(--surface); color: var(--ink-strong); text-align: left; cursor: pointer; }
+.ag-onboard-chopt .top { display: flex; align-items: center; justify-content: space-between; }
+.ag-onboard-chopt .top svg.i { width: 20px; height: 20px; color: var(--r); }
+.ag-onboard-chopt .rdot { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--hairline); }
+.ag-onboard-chopt b { min-height: 36px; font: 500 14px/18px var(--font); letter-spacing: -.01em; }
+.ag-onboard-chopt[aria-checked="true"] { border-color: var(--r); background: var(--r-tint); }
+.ag-onboard-chopt[aria-checked="true"] .rdot { border-color: var(--r); background: radial-gradient(circle, var(--r) 0 45%, transparent 50%); }
+
+/* 2. place */
+.ag-onboard-loc { display: flex; flex-direction: column; gap: 8px; margin-bottom: 6px; }
+.ag-onboard-search { display: flex; align-items: center; gap: 8px; height: 52px; padding: 0 16px; border: 1px solid var(--hairline); border-radius: 26px; background: var(--surface); }
+.ag-onboard-search:focus-within { border-color: var(--r); }
+.ag-onboard-search svg.i { width: 18px; height: 18px; color: var(--r); }
+.ag-onboard-search input { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--ink-strong); font: 400 15px/20px var(--font); outline: none; }
+.ag-onboard-search input::placeholder { color: var(--ink-muted); }
+.ag-onboard-myloc.ag-btn { align-self: flex-start; padding-left: 16px; border-color: var(--blush2); }
+.ag-onboard-picked { display: flex; align-items: center; gap: 6px; margin: 0; }
+.ag-onboard-picked svg.i { width: 14px; height: 14px; }
+.ag-onboard-pin { display: flex; flex-direction: column; gap: 10px; }
+.ag-onboard-pin .where { display: flex; align-items: flex-start; gap: 8px; margin: 0; color: var(--ink-strong); font: 500 15px/20px var(--font); }
+.ag-onboard-pin .where svg.i { flex: none; width: 18px; height: 18px; margin-top: 1px; color: var(--r); }
+.ag-onboard-pin .meta { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; margin: 0; }
+.ag-onboard-pin .meta .ll { font-variant-numeric: tabular-nums; }
+.ag-onboard-pin .weak { color: var(--ink-strong); }
+.ag-onboard-acc { stroke: var(--r); fill: var(--r); }
+
+/* place / offer / quick-dish pills (pchip) */
+.ag-onboard-pchips { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 4px; }
+.ag-onboard-pchip { display: inline-flex; align-items: center; gap: 6px; height: 44px; padding: 0 16px; border: 1px solid var(--blush2); border-radius: var(--pill); background: var(--blush); color: var(--ink-strong); font: 500 14px/20px var(--font); white-space: nowrap; cursor: pointer; }
+.ag-onboard-pchip svg.i { width: 16px; height: 16px; color: var(--r); }
+.ag-onboard-pchip[aria-pressed="true"] { background: var(--r); border-color: var(--r); color: var(--on-r); }
+.ag-onboard-pchip[aria-pressed="true"] svg.i { color: var(--on-r); }
+
+/* 4. price: small chips, stepper with a typed amount */
+.ag-onboard-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.ag-onboard-chip { height: 32px; padding: 0 16px; border: 1px solid var(--blush2); border-radius: var(--pill); background: var(--blush); color: var(--ink-strong); font: 500 14px/20px var(--font); letter-spacing: .1px; cursor: pointer; }
+.ag-onboard-chip[aria-pressed="true"] { background: var(--r); border-color: var(--r); color: var(--on-r); }
+.ag-onboard-stepper { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.ag-onboard-stepper .round { width: 40px; height: 40px; flex: none; border: 0; border-radius: 50%; background: var(--r-tint); color: var(--r); font: 400 22px/22px var(--font); cursor: pointer; }
+.ag-onboard-priceedit { display: flex; align-items: center; gap: 2px; font: 600 28px/1 var(--font); color: var(--r); }
+.ag-onboard-priceedit input { width: 130px; padding: 2px 0; border: 0; border-bottom: 2px dashed var(--blush2); border-bottom-color: color-mix(in srgb, var(--r) 50%, transparent); background: transparent; color: var(--r); font: inherit; text-align: center; -moz-appearance: textfield; appearance: textfield; }
+.ag-onboard-priceedit input::-webkit-inner-spin-button, .ag-onboard-priceedit input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.ag-onboard-priceedit input:focus { outline: none; border-bottom-color: var(--r); }
+.ag-onboard-roomrow { display: grid; grid-template-columns: minmax(0, 1fr) 92px 64px 36px; gap: 6px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--hairline); }
+.ag-onboard-roomrow .ag-in { height: 44px; padding: 0 12px; font-size: 14px; }
+.ag-onboard-roomin { display: flex; align-items: center; gap: 3px; height: 44px; padding: 0 8px; border: 1px solid var(--hairline); border-radius: 8px; background: var(--surface); color: var(--ink-muted); }
+.ag-onboard-roomin input { width: 100%; min-width: 0; border: 0; background: transparent; color: var(--ink-strong); font: 600 14px/20px var(--font); outline: none; }
+.ag-onboard-x.ag-iconbtn { width: 36px; height: 36px; border: 0; background: transparent; color: var(--ink-muted); }
+.ag-onboard-x.ag-iconbtn svg { width: 20px; height: 20px; }
+
+/* 4b. menu rows */
+.ag-onboard-mnrow { display: grid; grid-template-columns: 64px minmax(0, 1fr) 36px; gap: 10px; align-items: center; }
+.ag-onboard-mnph { width: 64px; height: 64px; border-radius: 12px; border: 1px dashed var(--hairline); display: grid; place-items: center; background: var(--surface) center / cover no-repeat; color: var(--r); cursor: pointer; }
+.ag-onboard-mnph.has { border-style: solid; }
+.ag-onboard-mnph svg.i { width: 20px; height: 20px; }
+.ag-onboard-mnrow .fields { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 8px; }
+.ag-onboard-mnrow .fields .ag-in { height: 48px; padding: 0 14px; }
+/* A shop item: the name across, then price and its unit (per kg, per pack...) side by side. */
+.ag-onboard-mnrow .fields.unit { grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); }
+.ag-onboard-mnrow .fields.unit > :first-child { grid-column: 1 / -1; }
+/* Prices are short, unit names ("per dozen", "प्रति पैकेट") are not: the unit gets the wider half. */
+.ag-onboard-mnrow .fields select.ag-in { padding: 0 26px 0 10px; background-position: right 8px center; background-size: 14px; font-size: 14px; text-overflow: ellipsis; }
+
+/* 5. photos */
+.ag-onboard-photos { gap: 10px; }
+.ag-onboard-photos .head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.ag-onboard-photos .head b { font: 500 16px/24px var(--font); color: var(--ink-strong); }
+.ag-onboard-photos .stat { display: inline-flex; align-items: center; gap: 4px; font: 600 12px/16px var(--font); color: var(--ink-muted); }
+.ag-onboard-photos .stat.ok { color: var(--r); }
+.ag-onboard-photos .stat svg.i { width: 14px; height: 14px; }
+.ag-onboard-photos .grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.ag-onboard-photos .cell, .ag-onboard-photos .add { position: relative; aspect-ratio: 1; border-radius: 12px; overflow: hidden; background: var(--creme2) center / cover no-repeat; }
+.ag-onboard-photos .add { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; background: transparent; border: 1px dashed var(--r); color: var(--r); font: 600 12px/16px var(--font); text-align: center; cursor: pointer; }
+.ag-onboard-photos .add svg.i { width: 22px; height: 22px; }
+.ag-onboard-photos .cover { position: absolute; left: 6px; bottom: 6px; padding: 2px 8px; border-radius: 8px; background: rgb(0 0 0 / .55); color: #fff; font: 600 11px/16px var(--font); }
+.ag-onboard-photos .x { position: absolute; right: 6px; top: 6px; width: 28px; height: 28px; border: 0; border-radius: 50%; background: rgb(0 0 0 / .55); color: #fff; display: grid; place-items: center; cursor: pointer; }
+.ag-onboard-photos .x svg.i { width: 16px; height: 16px; }
+
+/* 6. review: compact listing card, ticked facts */
+.ag-onboard-card { display: grid; grid-template-columns: 104px minmax(0, 1fr); gap: 14px; align-items: center; padding: 10px; border: 1px solid var(--hairline); border-radius: 12px; background: var(--surface); }
+.ag-onboard-card .pic { position: relative; width: 104px; height: 104px; border-radius: 10px; background: var(--creme2) center / cover no-repeat; color: var(--r); display: grid; place-items: center; }
+.ag-onboard-card .pic > svg.i { width: 36px; height: 36px; }
+.ag-onboard-card .tag { position: absolute; left: 6px; bottom: 6px; width: 24px; height: 24px; border-radius: 8px; background: rgb(0 0 0 / .55); color: #fff; display: grid; place-items: center; }
+.ag-onboard-card .tag svg.i { width: 14px; height: 14px; }
+.ag-onboard-card .body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ag-onboard-card .name { font: 500 16px/22px var(--font); color: var(--ink-strong); overflow-wrap: anywhere; }
+.ag-onboard-card .price { font: 500 16px/24px var(--font); color: var(--ink-strong); }
+.ag-onboard-facts { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; font: 400 14px/24px var(--font); color: var(--ink7); }
+.ag-onboard-facts li { display: flex; align-items: center; gap: 8px; }
+.ag-onboard-facts svg.i { width: 18px; height: 18px; color: var(--r); }
+.ag-onboard-muted { margin: 0; font: 400 16px/24px var(--font); color: var(--ink-muted); }
+
+/* done */
+.ag-onboard-done { align-items: center; gap: 12px; padding: 28px 12px; text-align: center; }
+.ag-onboard-done .big { width: 64px; height: 64px; border-radius: 50%; border: 2px solid var(--r); background: var(--blush); color: var(--r); display: grid; place-items: center; }
+.ag-onboard-done .big svg.i { width: 32px; height: 32px; stroke-width: 1.6; }
+.ag-onboard-done h1 { margin: 0; font: 500 24px/32px var(--font); letter-spacing: -.02em; color: var(--ink7); outline: 0; }
+.ag-onboard-done p { margin: 0; font: 400 16px/24px var(--font); color: var(--ink7); }
+.ag-onboard-done .ag-btn { width: 260px; max-width: 100%; padding-right: 6px; }
+.ag-onboard-done .ag-btn .ag-go { margin-left: auto; }
+
+/* help on WhatsApp (QuickFill) */
+/* A quiet underlined link beside Next, so it never competes with the main action. */
+.ag-onboard-ctarow { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; }
+.ag-onboard-ctarow .ag-onboard-next.ag-btn { align-self: auto; }
+.ag-onboard-help { flex: 1 1 120px; min-width: 0; display: inline-flex; align-items: center; gap: 6px; min-height: 44px; color: var(--ink-strong); font: 500 14px/20px var(--font); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--outline); }
+.ag-onboard-help:hover { text-decoration-color: currentColor; }
+.ag-onboard-help > span { text-wrap: balance; }
+.ag-onboard-help > svg.i { width: 18px; height: 18px; flex: none; color: var(--ok); }
+.ag-onboard-roomin svg.i { width: 14px; height: 14px; flex: none; }

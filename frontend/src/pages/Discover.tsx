@@ -1,457 +1,458 @@
-import React, { useEffect, useState, useRef, useMemo } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { useHostSignupInfo } from '@/components/provider/onboard/QuickFill';
 import api from '@/lib/api';
-import { listingImage, sizedImage } from '@/lib/listingContent';
-import FeedCard from '@/components/FeedCard';
-import SmartImg from '@/components/SmartImg';
+import { sizedImage } from '@/lib/listingContent';
+import { pickRail } from '@/lib/homeRail';
 import Seo from '@/components/Seo';
 import BookingWidget from '@/components/BookingWidget';
-import HeroMedia from '@/components/HeroMedia';
-import WeatherWidget from '@/components/WeatherWidget';
 import RouteEstimator from '@/components/RouteEstimator';
-import { CATEGORIES } from '@/constants/categories';
-import { FeedCardSkeleton, SpotTileSkeleton, StayTileSkeleton, LoadingStatus, repeat } from '@/components/skeletons';
-import { Mountain, ArrowRight, Sparkles, TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react';
+import SuggestPlace from '@/components/spots/SuggestPlace';
+import { Icon, type IconName } from '@/components/ag/Icon';
+import { cx } from '@/components/ag';
+import { GuideCard, ShopCard, SpotCard, StayCard } from '@/components/home/cards';
+import { SpotTileSkeleton, StayTileSkeleton, LoadingStatus, repeat } from '@/components/skeletons';
 
-const RED_PANDA = 'https://images.unsplash.com/photo-1542880941-1abfea46bba6';
-const HERO_POSTER = 'https://images.unsplash.com/photo-1544735716-392fe2489ffa';
+/*
+ * Home, as the Aangan 2.0 prototype draws it (V.home + v7.js): the photo carousel, the red search
+ * row, six category cards, List your Business, then one section per kind of listing, each under a
+ * wavy rule, and the List your Business card and the six cards again at the end.
+ * Styles: styles/screens/home.css (ag-home-*).
+ */
 
-// Each deal sits on a real photo of what it sells rather than a flat colour
-// block; the gradient stays underneath as the fallback while the image loads.
-// Copy lives in the locale files under home.deals.<key> - resolved at render so
-// it follows the language switcher.
-const DEALS = [
-  { key: 'monsoon', color: 'from-pine to-pine-dark', to: '/homestays', image: 'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05' },
-  { key: 'sunrise', color: 'from-flag to-[#8a1e1e]', to: '/drivers', image: 'https://images.unsplash.com/photo-1544735716-392fe2489ffa' },
-  { key: 'tea', color: 'from-gold to-[#c69108]', to: '/spots', image: 'https://images.pexels.com/photos/103875/pexels-photo-103875.jpeg' },
-];
-
-// Six fills three rows of the two-column desktop grid exactly, and is about as
-// far as anyone scrolls a phone before wanting a control rather than more feed.
-const FEED_PAGE_SIZE = 6;
-
-// The pills use the short nav.* labels rather than the editorial categories.*
-// ones, which are too long to sit in a row of chips.
-const NAV_LABEL_KEY: Record<string, string> = {
-  spot: 'spots',
-  homestay: 'homestays',
-  driver: 'drivers',
-  shop: 'shops',
-  cafe: 'cafes',
-  event: 'events',
-  biodiversity: 'biodiversity',
+// Offers an admin has switched on (GET /api/promotions), the same as the app's DealsStrip. With no
+// live promotions the section is simply not shown.
+type Promotion = { id: string; tag: string; title: string; subtitle: string; image: string; link: string };
+// Promotions are shared with the app, whose links read "/category/<type>"; the website's pages are
+// "/homestays", "/drivers" and so on.
+const dealHref = (link: string) => {
+  const m = /^\/category\/([a-z]+)\/?$/.exec(link || '');
+  if (!m) return link || '/explore';
+  return m[1] === 'biodiversity' ? '/biodiversity' : `/${m[1]}s`;
 };
 
+/* ---------- photo carousel ---------- */
+
+type Slide = { to: string; img: string; title: [string, string]; sub: [string, string] };
+const SLIDES: Slide[] = [
+  { to: '/spots', img: '/media/spots/tiger.jpg', title: ['home.bn1', 'Offbeat places'], sub: ['home.bn1s', 'Sunrise points, monasteries, quiet trails'] },
+  { to: '/homestays', img: '/media/biz/homestays/1.jpg', title: ['home.bn2', 'Stay with a local family'], sub: ['home.bn2s', 'Homestays across the hills'] },
+  { to: '/drivers', img: '/media/cars/mahindra-bolero-1.jpg', title: ['home.bn3', 'Find a ride'], sub: ['home.bn3s', 'Airport, station and day trips'] },
+  { to: '/provider/onboard', img: '/media/list-business.jpg', title: ['home.bn4', 'List your business'], sub: ['home.bn4s', 'Free to list, no commission'] },
+];
+const reducedMotion = () => typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
+/** How long a photo slide stays, and the video's limit when it cannot play. */
+const PHOTO_MS = 6000;
+
 /**
- * Page numbers to render, with `null` standing in for a gap.
- * Everything fits while there are few pages; past that it stays a fixed width
- * by windowing around the current page so the control never wraps on a phone.
+ * The banner carousel: the hill video, then four photo slides. Swipe or tap a dot; on its own it
+ * moves on once the whole video has played, and after 6 s on each photo. The active dot is a small
+ * progress bar that fills as the slide runs (the video's own playback, or the photo's 6 s).
  */
-function pageWindow(current: number, count: number): (number | null)[] {
-  if (count <= 7) return Array.from({ length: count }, (_, i) => i);
-  const around = [current - 1, current, current + 1].filter((p) => p > 0 && p < count - 1);
-  const pages = Array.from(new Set([0, ...around, count - 1])).sort((a, b) => a - b);
-  return pages.flatMap((p, i) => (i > 0 && p - pages[i - 1] > 1 ? [null, p] : [p]));
+function Banners() {
+  const { t } = useTranslation();
+  const track = useRef<HTMLDivElement>(null);
+  const video = useRef<HTMLVideoElement>(null);
+  const fill = useRef<HTMLSpanElement>(null);
+  const elapsed = useRef(0);
+  const [at, setAt] = useState(0);
+  const count = SLIDES.length + 1;
+  const still = reducedMotion();
+
+  useEffect(() => {
+    const v = video.current;
+    elapsed.current = 0;
+    if (at === 0 && v && !still) {
+      // Back on the video: play it from the start.
+      v.currentTime = 0;
+      v.play().catch(() => { /* autoplay blocked (e.g. battery saver): runs as a 6 s photo below */ });
+    } else {
+      v?.pause(); // not playing unseen
+    }
+    if (still) return undefined;
+
+    let raf = 0;
+    let last = performance.now();
+    const frame = (now: number) => {
+      // Time on this slide, counted per frame so a hidden tab (no frames) does not count; a long gap counts as one frame.
+      elapsed.current += Math.min(now - last, 100);
+      last = now;
+      let p = elapsed.current / PHOTO_MS;
+      if (at === 0 && v) {
+        const dur = Number.isFinite(v.duration) && v.duration > 0 ? v.duration : 0;
+        const playing = !v.paused && !v.ended;
+        if (v.ended) p = 1;
+        else if (playing && dur) p = v.currentTime / dur;
+        // Playing but stuck loading: move on once well past its length.
+        else if (playing) p = elapsed.current >= (dur * 1000 || 20000) + 4000 ? 1 : 0;
+      }
+      if (fill.current) fill.current.style.transform = `scaleX(${Math.min(1, p)})`;
+      if (p >= 1) {
+        const el = track.current;
+        if (el) el.scrollTo({ left: el.clientWidth * ((at + 1) % count), behavior: 'smooth' });
+        return;
+      }
+      raf = requestAnimationFrame(frame);
+    };
+    raf = requestAnimationFrame(frame);
+    return () => cancelAnimationFrame(raf);
+  }, [at, count, still]);
+
+  const go = (k: number) => {
+    elapsed.current = 0;
+    const el = track.current;
+    if (el) el.scrollTo({ left: el.clientWidth * k, behavior: still ? 'auto' : 'smooth' });
+  };
+
+  return (
+    <section className="ag-home-banners" aria-roledescription="carousel" aria-label={t('home.banners', 'Highlights')} data-testid="home-banners">
+      <div
+        ref={track}
+        className="track"
+        onScroll={(e) => { const el = e.currentTarget; setAt(Math.round(el.scrollLeft / Math.max(1, el.clientWidth))); }}
+        // A touch on a photo starts its 6 s again, so it does not slide away under the finger.
+        onPointerDown={() => { elapsed.current = 0; }}
+      >
+        <div className="slide vid" aria-hidden="true">
+          <video ref={video} autoPlay={!still} muted playsInline preload="metadata" poster="/media/hero-poster.jpg">
+            <source src="/video-hero/S_47_July_26_web_cover_video_e1wiyd.webm" type="video/webm" />
+          </video>
+        </div>
+        {SLIDES.map((s, i) => (
+          <Link key={s.to} to={s.to} className="slide" style={{ backgroundImage: `url(${s.img})` }} data-testid={`home-banner-${i + 1}`}>
+            <span className="bt"><b>{t(s.title[0], s.title[1])}</b><span>{t(s.sub[0], s.sub[1])}</span></span>
+          </Link>
+        ))}
+      </div>
+      <div className="dots">
+        {Array.from({ length: count }, (_, k) => (
+          <button key={k} type="button" className={cx('dot', k === at && 'on', still && 'still')} aria-label={t('home.slide_n', 'Slide {{n}}', { n: k + 1 })}
+            aria-current={k === at ? 'true' : undefined} onClick={() => go(k)}>
+            {k === at && <span ref={fill} className="fill" aria-hidden="true" />}
+          </button>
+        ))}
+      </div>
+    </section>
+  );
 }
+
+/* ---------- category cards ---------- */
+
+type HomeTile = { key: string; to: string; icon: IconName; title: [string, string] };
+const TILES: HomeTile[] = [
+  { key: 'stays', to: '/homestays', icon: 'home', title: ['home.tile.stays', 'Homestay'] },
+  { key: 'cars', to: '/drivers', icon: 'car', title: ['home.tile.cars', 'Car & Driver'] },
+  { key: 'spots', to: '/spots', icon: 'mountain', title: ['home.tile.spots', 'Offbeat Places'] },
+  { key: 'food', to: '/cafes', icon: 'cup', title: ['home.cafes_title', 'Cafes & Restaurants'] },
+  { key: 'guides', to: '/guides', icon: 'trek', title: ['home.tile.guides', 'Tour Guides'] },
+  { key: 'shops', to: '/shops', icon: 'bag', title: ['home.shops_title', 'Local Shops'] },
+];
+
+/** Every label on exactly two lines, split the way v7.js splits them ("Car &" / "Driver", "Home" / "Stays"). */
+function twoLines(label: string): [string, string] | [string] {
+  const s = label.trim();
+  const words = s.split(/\s+/);
+  if (words.length > 1) {
+    const k = ['&', 'और', 'र', 'ও'].includes(words[1]) ? 2 : 1;
+    return [words.slice(0, k).join(' '), words.slice(k).join(' ')];
+  }
+  if (/^homestay$/i.test(s)) return ['Home', 'Stays'];
+  if (/^[\x00-\x7F]+$/.test(s) && s.length > 9) { const h = Math.ceil(s.length / 2); return [s.slice(0, h), s.slice(h)]; }
+  return [s];
+}
+
+function HomeTiles({ testIdPrefix }: { testIdPrefix?: string }) {
+  const { t } = useTranslation();
+  return (
+    <nav className="ag-home-tiles" aria-label={t('nav.categories')}>
+      {TILES.map(({ key, to, icon, title }) => {
+        const [a, b] = twoLines(t(title[0], title[1]));
+        return (
+          <Link key={key} to={to} className="ag-home-tile" data-testid={testIdPrefix ? `${testIdPrefix}${key}` : undefined}>
+            <Icon name={icon} />
+            <b>{a}{b !== undefined && <><br />{b}</>}</b>
+            <span className="go" aria-hidden="true"><Icon name="arrowne" /></span>
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
+
+/* ---------- List your Business ---------- */
+
+/** The photos among `urls` that actually load; a host photo gone from storage is left out, not drawn empty. */
+function useLoadedImages(urls: string[]): string[] {
+  const [ok, setOk] = useState<string[]>([]);
+  const key = urls.join('|');
+  useEffect(() => {
+    let live = true;
+    setOk([]);
+    urls.forEach((u) => {
+      const img = new Image();
+      img.onload = () => { if (live) setOk((prev) => (prev.includes(u) ? prev : [...prev, u])); };
+      img.src = u;
+    });
+    return () => { live = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+  return urls.filter((u) => ok.includes(u));
+}
+
+/**
+ * The card's footer row, as the prototype draws it: a few host faces and "N are in" (GET
+ * /app/host-signup: active hosts, and up to three public hosts who set a photo), with the free start
+ * (server lib/hostGrace.ts) under it. Before any host is live only the free start shows.
+ */
+function HostFreeNote({ testId }: { testId?: string }) {
+  const { t } = useTranslation();
+  const { grace_bookings, live_hosts = 0, recent_hosts = [] } = useHostSignupInfo();
+  const faces = useLoadedImages(recent_hosts.slice(0, 3).map((h) => sizedImage(h.avatar, 96)));
+  return (
+    <span className="joined">
+      {live_hosts > 0 && (
+        <span className="arein" data-testid={testId ? 'host-count' : undefined}>
+          {faces.length > 0 && (
+            <span className="faces" aria-hidden="true">
+              {faces.map((u) => <span key={u} style={{ backgroundImage: `url(${u})` }} />)}
+            </span>
+          )}
+          <span><b>{live_hosts}</b> {t('home.are_in', 'are in')}</span>
+        </span>
+      )}
+      <span className="free" data-testid={testId}>{t('ob.free.chip', { count: grace_bookings })}</span>
+    </span>
+  );
+}
+
+function JoinCard({ img, end }: { img: string; end?: boolean }) {
+  const { t } = useTranslation();
+  return (
+    <div className={cx('ag-home-join', end && 'end')} data-testid={end ? 'home-join-card-end' : 'home-join-card'}>
+      <span className="joinimg" role="img" aria-label={t('home.join_title', 'List your Business')} style={{ backgroundImage: `url(${img})` }} />
+      <div className="joinbody">
+        <h2>{t('home.join_title', 'List your Business')}</h2>
+        <p>{t('home.join_sub', 'Homestays, drivers, cafes, shops and guides. Free to list, bookings come to you.')}</p>
+        <div className="joinrow">
+          <Link to="/provider/onboard" className="ag-home-redbtn" data-testid={end ? 'banner-provider-cta-end' : 'banner-provider-cta'}>
+            {t('home.join_cta', 'List now')}<span className="go" aria-hidden="true"><Icon name="arrowne" /></span>
+          </Link>
+          <HostFreeNote testId={end ? undefined : 'host-fee-chip'} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- sections ---------- */
+
+function SeeAllLink({ to, children, icon }: { to: string; children: React.ReactNode; icon?: IconName }) {
+  return (
+    <Link to={to} className="ag-home-seeall">
+      {icon && <Icon name={icon} className="circ" />}
+      {children}
+      <Icon name="arrowne" className="circ" />
+    </Link>
+  );
+}
+
+/** One Home section: a wavy rule, red eyebrow, big title, See all. `band` and `soft` are the tinted ones. */
+function Section({ id, eyebrow, title, action, tone, testId, children }: {
+  id: string; eyebrow: string; title: string; action?: React.ReactNode; tone?: 'band' | 'soft'; testId?: string; children: React.ReactNode;
+}) {
+  return (
+    <section aria-labelledby={id} className={cx('ag-home-sec', tone)} data-testid={testId}>
+      <div className="ag-home-sechead">
+        <div>
+          <p className="eyebrow">{eyebrow}</p>
+          <h2 id={id}>{title}</h2>
+        </div>
+        {action}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+/* ---------- page ---------- */
+
+const PER = { spot: 4, homestay: 5, guide: 9, driver: 4, cafe: 9, shop: 9, biodiversity: 4, event: 4 } as const;
+type Kind = keyof typeof PER;
+// Hosts' own listings: a business approved in the last two weeks is always given a place in its rail
+// (lib/homeRail.ts), so these read a longer page to find it. Spots, nature and festivals stay curated.
+const HOST_KINDS: readonly Kind[] = ['homestay', 'guide', 'driver', 'cafe', 'shop'];
+const HOST_PAGE = 60;
 
 export default function Discover() {
   const { t } = useTranslation();
-  const [feed, setFeed] = useState([]);
-  const [spots, setSpots] = useState([]);
-  const [homestays, setHomestays] = useState([]);
+  const [lists, setLists] = useState<Partial<Record<Kind, any[]>>>({});
+  const [fresh, setFresh] = useState<Set<string>>(() => new Set());
   const [loading, setLoading] = useState(true);
-  const [feedType, setFeedType] = useState('all');
-  const [feedPage, setFeedPage] = useState(0);
-  const spotsScrollRef = useRef<HTMLDivElement>(null);
-  const feedTopRef = useRef<HTMLElement>(null);
-  const pointerRestoreRef = useRef<number>(undefined);
-
-  // Only offer a pill for a type the feed actually contains, in the canonical
-  // category order - an "Events" tab that always lands on an empty grid is
-  // worse than no tab. Counts come along so each pill can show its weight.
-  const feedTabs = useMemo(() => {
-    const counts = feed.reduce((acc, it) => {
-      acc[it.type] = (acc[it.type] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-    return [
-      { key: 'all', label: t('home.filter_all'), count: feed.length },
-      ...CATEGORIES
-        .filter(({ key }) => counts[key])
-        .map(({ key }) => ({ key, label: t(`nav.${NAV_LABEL_KEY[key]}`), count: counts[key] })),
-    ];
-  }, [feed, t]);
-
-  const filteredFeed = useMemo(
-    () => (feedType === 'all' ? feed : feed.filter((it) => it.type === feedType)),
-    [feed, feedType],
-  );
-
-  const pageCount = Math.max(1, Math.ceil(filteredFeed.length / FEED_PAGE_SIZE));
-  // Clamped rather than stored blindly: switching from a 24-item tab on page 4
-  // to a 3-item tab would otherwise render an empty grid.
-  const page = Math.min(feedPage, pageCount - 1);
-  const visibleFeed = filteredFeed.slice(page * FEED_PAGE_SIZE, (page + 1) * FEED_PAGE_SIZE);
-
-  const goToPage = (next: number) => {
-    setFeedPage(next);
-    // Paging without this leaves you at the bottom of the old page, looking at
-    // the last two cards of the new one.
-    feedTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
-
-  const selectTab = (key: string) => {
-    setFeedType(key);
-    setFeedPage(0);
-  };
-
-  const scrollSpots = (direction: 'left' | 'right') => {
-    if (spotsScrollRef.current) {
-      const container = spotsScrollRef.current;
-      const scrollAmount = container.clientWidth * 0.75;
-      // As cards glide under a stationary cursor, :hover flips on/off per card,
-      // each firing a 200ms box-shadow/transform transition that repaints the
-      // tile. Suspend pointer events until the smooth scroll settles.
-      container.style.pointerEvents = 'none';
-      window.clearTimeout(pointerRestoreRef.current);
-      pointerRestoreRef.current = window.setTimeout(() => { container.style.pointerEvents = ''; }, 650);
-      container.scrollBy({ left: direction === 'left' ? -scrollAmount : scrollAmount, behavior: 'smooth' });
-    }
-  };
+  const [deals, setDeals] = useState<Promotion[]>([]);
 
   useEffect(() => {
-    (async () => {
-      try {
-        const load = async () => {
-          const [f, s, h] = await Promise.all([
-            api.get('/listings', { params: { limit: 40 } }),
-            api.get('/listings', { params: { type: 'spot', limit: 8 } }),
-            api.get('/listings', { params: { type: 'homestay', limit: 8 } }),
-          ]);
-          setSpots(s.data.items || []);
-          setHomestays(h.data.items || []);
-          // interleave a feed with variety: homestay, spot, cafe, biodiversity...
-          const all = f.data.items || [];
-          const ordered = [
-            ...all.filter((x) => x.type === 'homestay'),
-            ...all.filter((x) => x.type === 'spot'),
-            ...all.filter((x) => x.type === 'cafe'),
-            ...all.filter((x) => x.type === 'biodiversity'),
-            ...all.filter((x) => x.type === 'driver'),
-            ...all.filter((x) => x.type === 'shop'),
-            ...all.filter((x) => x.type === 'event'),
-          ];
-          setFeed(ordered);
-          return ordered.length;
-        };
-        // An empty feed is not something a visitor can fix: seeding now lives
-        // behind POST /api/admin/seed (auth + admin) and is triggered from the
-        // admin panel. The old unauthenticated /dev/seed route was removed on
-        // purpose - backend/test/admin.test.ts asserts it stays a 404.
-        await load();
-      } catch (e) {
-        if (process.env.NODE_ENV !== 'production') console.error(e);
-      } finally {
-        setLoading(false);
-      }
-    })();
+    let live = true;
+    api.get('/promotions')
+      .then((r) => { if (live) setDeals(Array.isArray(r.data?.items) ? r.data.items : []); })
+      .catch(() => { /* no section without the server's list */ });
+    return () => { live = false; };
   }, []);
 
+  useEffect(() => {
+    let live = true;
+    const kinds = Object.keys(PER) as Kind[];
+    const isHost = (k: Kind) => HOST_KINDS.includes(k);
+    Promise.allSettled(kinds.map((type) => api.get('/listings', { params: { type, limit: isHost(type) ? HOST_PAGE : PER[type] } })))
+      .then((res) => {
+        if (!live) return;
+        const next: Partial<Record<Kind, any[]>> = {};
+        const newIds = new Set<string>();
+        res.forEach((r, i) => {
+          const k = kinds[i];
+          const items: any[] = r.status === 'fulfilled' ? (r.value.data?.items || []) : [];
+          if (!isHost(k)) { next[k] = items.slice(0, PER[k]); return; }
+          const picked = pickRail(items, PER[k]);
+          next[k] = picked.items;
+          picked.fresh.forEach((id) => newIds.add(String(id)));
+        });
+        setLists(next);
+        setFresh(newIds);
+      })
+      .finally(() => { if (live) setLoading(false); });
+    return () => { live = false; };
+  }, []);
+
+  const of = (k: Kind) => lists[k] || [];
+  const spots = of('spot');
+  const stays = of('homestay');
+  const guides = of('guide');
+  const drivers = of('driver');
+  const cafes = of('cafe');
+  const shops = of('shop');
+  const nature = of('biodiversity');
+  const events = of('event');
+  const seeAll = t('home.see_all', 'See all');
+
   return (
-    <div>
-      <Seo description={t('seo.home_description')} />
+    <div className="ag-wrap">
+      <div className="ag-home">
+        <Seo description={t('seo.home_description')} />
+        <h1 className="sr-only">{t('hero.title_1')} {t('hero.title_2')}</h1>
 
-      {/* HERO / Booking widget - starts at y=0 and carries the header height as
-          padding, since the bar is drawn on top of the video. */}
-      <section className="relative min-h-[100dvh] flex flex-col justify-center" data-hero>
-        <HeroMedia poster={HERO_POSTER} />
-        {/* Bottom padding outweighs the top on purpose: it lifts the centered
-            block above the hero's midline so the search panel that opens under
-            the bar has breathing space before the fold. */}
-        <div className="relative z-10 mx-auto max-w-6xl w-full px-4 sm:px-6 md:px-8 pt-[calc(var(--header-h)+1rem)] pb-20 md:pt-[calc(var(--header-h)+2rem)] md:pb-28 flex-1 flex flex-col justify-center">
-          <div className="text-white max-w-2xl">
-            {/* data-hero-cutoff: the header drops its transparency the moment
-                it would overlap this headline, instead of waiting for the whole
-                hero to scroll away. */}
-            <h1 data-hero-cutoff className="font-display font-extrabold text-[2.4rem] leading-[1.08] sm:text-5xl md:text-6xl tracking-tight drop-shadow-lg">
-              {t('hero.title_1')}<br />{t('hero.title_2')}
-            </h1>
-            <p className="mt-4 md:mt-5 text-white/90 text-base sm:text-lg md:text-xl max-w-xl leading-relaxed drop-shadow">
-              {t('hero.subtitle')}
-            </p>
-          </div>
-          <div className="mt-7 md:mt-10">
-            <BookingWidget />
-          </div>
+        <Banners />
+        <BookingWidget />
+        <HomeTiles testIdPrefix="home-tile-" />
+        <JoinCard img="/media/list-business.jpg" />
 
-          <div className="mt-6">
-            <WeatherWidget />
-          </div>
-        </div>
-      </section>
-
-      {/* Deals strip (MMT-style) */}
-      <section className="mx-auto max-w-6xl px-4 md:px-6 pt-6 md:pt-8">
-        <div className="flex items-center gap-2 mb-3">
-          <TrendingUp size={18} className="text-flag" />
-          <h2 className="font-display font-extrabold text-lg md:text-xl text-ink">{t('home.trending')}</h2>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-          {DEALS.map((d) => (
-            <Link key={d.key} to={d.to} data-testid={`deal-${d.key}`}
-              className={`relative overflow-hidden rounded-2xl p-4 md:p-5 text-white bg-gradient-to-br ${d.color} btn-hover min-h-[110px] flex flex-col justify-between`}>
-              <img src={sizedImage(d.image, 600)} alt="" aria-hidden="true" loading="lazy"
-                className="absolute inset-0 w-full h-full object-cover" />
-              {/* Keeps the title and tag legible over whatever the photo does. */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/35 to-black/20" />
-              <span className="relative inline-block w-fit px-2 py-0.5 rounded-full bg-white/25 backdrop-blur text-[10px] font-extrabold tracking-wider">{t(`home.deals.${d.key}.tag`)}</span>
-              <div className="relative">
-                <div className="font-display font-extrabold text-xl md:text-2xl leading-tight">{t(`home.deals.${d.key}.title`)}</div>
-                <div className="text-sm text-white/90 mt-0.5">{t(`home.deals.${d.key}.sub`)}</div>
-              </div>
-              <ArrowRight size={18} className="absolute top-4 right-4 opacity-80" />
-            </Link>
-          ))}
-        </div>
-
-        {/* Route Estimator Section */}
-        <div className="mt-8">
-          <RouteEstimator />
-        </div>
-      </section>
-
-      {/* Featured Spots - horizontal scroll (MMT style) */}
-      <section className="mx-auto max-w-6xl px-4 md:px-6 pt-8 md:pt-10">
-        <div className="flex items-end justify-between mb-4">
-          <div>
-            <div className="text-[11px] font-bold uppercase tracking-widest text-flag">{t('home.must_visit')}</div>
-            <h2 className="font-display font-extrabold text-2xl md:text-3xl text-ink mt-0.5">{t('categories.spot')}</h2>
-          </div>
-          <Link to="/spots" className="text-sm font-bold text-pine whitespace-nowrap">{t('home.see_all')} →</Link>
-        </div>
-        <div className="relative group">
-          {/* Left Navigation Arrow */}
-          <button
-            onClick={() => scrollSpots('left')}
-            className="absolute -left-5 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-white shadow-lg border border-[var(--line)] text-ink flex items-center justify-center transition-all hover:bg-mist active:scale-95 hidden md:flex"
-            aria-label={t('home.scroll_left')}
-          >
-            <ChevronLeft size={20} className="text-ink" />
-          </button>
-
-          {/* Scroll Container */}
-          <div
-            ref={spotsScrollRef}
-            className="flex gap-3 md:gap-4 overflow-x-auto no-scrollbar -mx-4 px-4 md:mx-0 md:px-0 pb-2"
-          >
-            {loading && repeat(4, (i) => <SpotTileSkeleton key={i} />)}
-            {spots.map((s) => (
-              <Link key={s.id} to={`/listing/${s.id}`} data-testid={`spot-tile-${s.id}`}
-                className="flex-shrink-0 w-[70%] sm:w-[45%] md:w-[30%] rounded-2xl overflow-hidden bg-white border border-[var(--line)] btn-hover">
-                <div className="aspect-[4/5] relative bg-mist overflow-hidden">
-                  {/* Per-listing, not the raw seed image five listings share - see
-                      the note in Category.tsx's grid tile. */}
-                  <SmartImg src={listingImage(s, 800, 1000)} alt={s.title} className="w-full h-full object-cover" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
-                  <div className="absolute bottom-0 inset-x-0 p-3 md:p-4 text-white">
-                    <div className="text-[10px] uppercase tracking-widest opacity-90">{s.location}</div>
-                    <div className="font-display font-extrabold text-lg md:text-xl leading-tight drop-shadow line-clamp-2">{s.title}</div>
-                    <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white text-pine font-bold text-xs">
-                      <Mountain size={12} /> {t('cta.explore')}
-                    </div>
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-
-          {/* Right Navigation Arrow */}
-          <button
-            onClick={() => scrollSpots('right')}
-            className="absolute -right-5 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-white shadow-lg border border-[var(--line)] text-ink flex items-center justify-center transition-all hover:bg-mist active:scale-95 hidden md:flex"
-            aria-label={t('home.scroll_right')}
-          >
-            <ChevronRight size={20} className="text-ink" />
-          </button>
-        </div>
-      </section>
-
-      {/* Homestays quick pick */}
-      <section className="mx-auto max-w-6xl px-4 md:px-6 pt-8 md:pt-10">
-        <div className="flex items-end justify-between mb-4">
-          <div>
-            <div className="text-[11px] font-bold uppercase tracking-widest text-flag">{t('home.stay_local')}</div>
-            <h2 className="font-display font-extrabold text-2xl md:text-3xl text-ink mt-0.5">{t('categories.homestay')}</h2>
-          </div>
-          <Link to="/homestays" className="text-sm font-bold text-pine whitespace-nowrap">{t('home.see_all')} →</Link>
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-          {loading && repeat(4, (i) => <StayTileSkeleton key={i} />)}
-          {homestays.slice(0, 4).map((h) => (
-            <div key={h.id} data-testid={`stay-tile-${h.id}`} className="flex flex-col rounded-2xl overflow-hidden bg-white border border-[var(--line)] btn-hover">
-              <Link to={`/listing/${h.id}`} className="block aspect-square bg-mist overflow-hidden">
-                <SmartImg src={listingImage(h, 500, 500)} alt={h.title} className="w-full h-full object-cover" />
-              </Link>
-              <div className="p-3 flex-1 flex flex-col">
-                <div className="font-display font-bold text-sm md:text-base text-ink line-clamp-1">{h.title}</div>
-                <div className="text-[11px] text-ink-soft line-clamp-1 mt-0.5">{h.location}</div>
-                <div className="mt-1.5 flex items-baseline gap-1">
-                  <span className="font-extrabold text-pine text-sm md:text-base">₹{h.price}</span>
-                  <span className="text-[10px] text-ink-soft">{t('common.per_head')}</span>
-                </div>
-                <Link to={`/listing/${h.id}`} data-testid={`stay-book-${h.id}`}
-                  className="mt-3 inline-flex items-center justify-center gap-1.5 py-2 rounded-full bg-flag text-white font-bold text-xs btn-hover">
-                  {t('cta.book_now')} <ArrowRight size={12} />
+        {deals.length > 0 && (
+          <Section id="home-deals-h" eyebrow={t('home.eyebrow_deals', 'Offers')} title={t('home.trending')}>
+            <div className="ag-home-spots" data-testid="deals-strip">
+              {deals.map((d) => (
+                <Link key={d.id} to={dealHref(d.link)} data-testid={`deal-${d.id}`} className="ag-home-spot">
+                  {d.image && <img src={sizedImage(d.image, 600)} alt="" loading="lazy" className="ag-home-photo" />}
+                  <span className="info">
+                    {d.tag && <span className="loc">{d.tag}</span>}
+                    <b>{d.title}</b>
+                    {d.subtitle && <span className="best">{d.subtitle}</span>}
+                  </span>
                 </Link>
-              </div>
+              ))}
             </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Instagram-style feed */}
-      {/* scroll-mt clears the sticky header when paging jumps back up here. */}
-      <section ref={feedTopRef} className="mx-auto max-w-6xl px-4 md:px-6 pt-10 md:pt-14 scroll-mt-[calc(var(--header-h)+1rem)]">
-        <div className="flex items-center gap-2">
-          <Sparkles size={18} className="text-flag" />
-          <h2 className="font-display font-extrabold text-2xl md:text-3xl text-ink">{t('home.explore_darjeeling')}</h2>
-        </div>
-
-        {/* Type filter. A horizontal scroller rather than a wrap, so the row
-            stays one line on a phone and the header below it doesn't move as
-            the selection changes. */}
-        {!loading && feedTabs.length > 1 && (
-          <div
-            role="group"
-            aria-label={t('home.filter_label')}
-            data-testid="feed-filter"
-            className="mt-4 flex items-center gap-2 overflow-x-auto no-scrollbar -mx-4 px-4 md:mx-0 md:px-0 pb-1"
-          >
-            {feedTabs.map(({ key, label, count }) => {
-              const active = feedType === key;
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => selectTab(key)}
-                  aria-pressed={active}
-                  data-testid={`feed-filter-${key}`}
-                  className={`flex-shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-sm font-bold
-                    border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine
-                    ${active
-                      ? 'bg-pine text-white border-pine'
-                      : 'bg-white text-ink border-[var(--line)] hover:border-pine/40'}`}
-                >
-                  {label}
-                  <span className={`text-[11px] font-extrabold ${active ? 'text-white/70' : 'text-ink-soft'}`}>{count}</span>
-                </button>
-              );
-            })}
-          </div>
+          </Section>
         )}
 
-        <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
-          {loading ? (
-            <>
-              <LoadingStatus label={t('common.loading')} />
-              {repeat(FEED_PAGE_SIZE, (i) => <FeedCardSkeleton key={i} />)}
-            </>
-          ) : (
-            visibleFeed.map((it, idx) => (
-              // Only the first page's opening cards are above the fold; the rest
-              // stay lazy so paging doesn't eagerly fetch six full-size images.
-              <FeedCard key={it.id} item={it} priority={page === 0 && idx < 2} />
-            ))
+        {loading && <LoadingStatus label={t('common.loading')} />}
+
+        {(loading || spots.length > 0) && (
+          <Section id="home-spots-h" eyebrow={t('home.must_visit')} title={t('home.tile.spots', 'Offbeat Places')}
+            action={<SeeAllLink to="/spots">{seeAll}</SeeAllLink>}>
+            <div className="ag-home-spots">
+              {loading && repeat(4, (i) => <SpotTileSkeleton key={i} />)}
+              {spots.map((s) => <SpotCard key={s.id} it={s} href={`/listing/${s.id}`} testId={`spot-tile-${s.id}`} />)}
+            </div>
+            <SuggestPlace />
+          </Section>
+        )}
+
+        {(loading || stays.length > 0) && (
+          <Section id="home-stays-h" tone="band" eyebrow={t('home.stay_local')} title={t('home.tile.stays', 'Homestay')}
+            action={<SeeAllLink to="/homestays">{seeAll}</SeeAllLink>}>
+            <div className="ag-home-stays">
+              {loading && repeat(2, (i) => <StayTileSkeleton key={i} />)}
+              {stays.map((h, i) => (
+                <StayCard key={h.id} it={h} href={`/listing/${h.id}`} wide={i === 0} ctaLabel={t('cta.book_now')}
+                  testId={`stay-tile-${h.id}`} ctaTestId={`stay-book-${h.id}`} saveTestId={`stay-save-${h.id}`} />
+              ))}
+            </div>
+          </Section>
+        )}
+
+        {guides.length > 0 && (
+          <Section id="home-guides-h" tone="soft" eyebrow={t('home.eyebrow_guides', 'Go with a local')} title={t('home.tile.guides', 'Tour Guides')}
+            action={<SeeAllLink to="/guides">{seeAll}</SeeAllLink>}>
+            <div className="ag-home-three">
+              {guides.map((g) => <GuideCard key={g.id} it={g} fresh={fresh.has(String(g.id))} href={`/listing/${g.id}`} testId={`guide-tile-${g.id}`} />)}
+            </div>
+          </Section>
+        )}
+
+        <Section id="home-cars-h" eyebrow={t('home.eyebrow_cars', 'Ride local')} title={t('home.tile.cars', 'Car & Driver')}
+          action={<SeeAllLink to="/drivers" icon="search">{t('home.find_ride', 'Find a ride')}</SeeAllLink>}>
+          {drivers.length > 0 && (
+            <div className="ag-home-stays">
+              {drivers.map((d, i) => (
+                <StayCard key={d.id} it={d} href={`/listing/${d.id}`} wide={i === 0} selfie ctaLabel={t('cta.book_now')} testId={`driver-tile-${d.id}`} />
+              ))}
+            </div>
           )}
-        </div>
+          {/* The fare guide: the prototype opens a ride search from "Find a ride"; ours lives here. */}
+          <div className="mt-3"><RouteEstimator /></div>
+        </Section>
 
-        {!loading && filteredFeed.length === 0 && (
-          <div className="mist-panel p-8 text-center" data-testid="feed-empty">
-            <p className="text-ink-soft">{t('category.empty')}</p>
-          </div>
+        {cafes.length > 0 && (
+          <Section id="home-cafes-h" tone="band" eyebrow={t('home.eyebrow_eat', 'Eat local')} title={t('home.cafes_title', 'Cafes & Restaurants')}
+            action={<SeeAllLink to="/cafes">{seeAll}</SeeAllLink>}>
+            <div className="ag-home-three">
+              {cafes.map((c) => <ShopCard key={c.id} it={c} fresh={fresh.has(String(c.id))} href={`/listing/${c.id}`} testId={`cafe-tile-${c.id}`} />)}
+            </div>
+          </Section>
         )}
 
-        {!loading && pageCount > 1 && (
-          <nav
-            aria-label={t('home.pagination_label')}
-            data-testid="feed-pagination"
-            className="mt-8 flex items-center justify-center gap-1.5"
-          >
-            <button
-              type="button"
-              onClick={() => goToPage(page - 1)}
-              disabled={page === 0}
-              aria-label={t('home.prev_page')}
-              data-testid="feed-page-prev"
-              className="w-10 h-10 rounded-full grid place-items-center border border-[var(--line)] bg-white text-ink
-                         disabled:opacity-40 disabled:cursor-not-allowed hover:border-pine/40 transition-colors"
-            >
-              <ChevronLeft size={18} />
-            </button>
-
-            {pageWindow(page, pageCount).map((p, i) =>
-              p === null ? (
-                <span key={`gap-${i}`} aria-hidden="true" className="w-6 text-center text-ink-soft">…</span>
-              ) : (
-                <button
-                  key={p}
-                  type="button"
-                  onClick={() => goToPage(p)}
-                  aria-label={t('home.page_n', { page: p + 1 })}
-                  aria-current={p === page ? 'page' : undefined}
-                  data-testid={`feed-page-${p + 1}`}
-                  className={`w-10 h-10 rounded-full text-sm font-bold border transition-colors
-                    ${p === page
-                      ? 'bg-pine text-white border-pine'
-                      : 'bg-white text-ink border-[var(--line)] hover:border-pine/40'}`}
-                >
-                  {p + 1}
-                </button>
-              ),
-            )}
-
-            <button
-              type="button"
-              onClick={() => goToPage(page + 1)}
-              disabled={page >= pageCount - 1}
-              aria-label={t('home.next_page')}
-              data-testid="feed-page-next"
-              className="w-10 h-10 rounded-full grid place-items-center border border-[var(--line)] bg-white text-ink
-                         disabled:opacity-40 disabled:cursor-not-allowed hover:border-pine/40 transition-colors"
-            >
-              <ChevronRight size={18} />
-            </button>
-          </nav>
+        {shops.length > 0 && (
+          <Section id="home-shops-h" tone="band" eyebrow={t('home.eyebrow_shop', 'Shop local')} title={t('home.shops_title', 'Local Shops')}
+            action={<SeeAllLink to="/shops">{seeAll}</SeeAllLink>}>
+            <div className="ag-home-three">
+              {shops.map((s) => <ShopCard key={s.id} it={s} fresh={fresh.has(String(s.id))} href={`/listing/${s.id}`} testId={`shop-tile-${s.id}`} />)}
+            </div>
+          </Section>
         )}
 
-        {/* Announced to screen readers on every page change; the numbers above
-            convey this visually but never as a live update. */}
-        {!loading && filteredFeed.length > 0 && (
-          <p role="status" aria-live="polite" data-testid="feed-range" className="mt-3 text-center text-xs text-ink-soft">
-            {t('home.showing_range', {
-              from: page * FEED_PAGE_SIZE + 1,
-              to: Math.min((page + 1) * FEED_PAGE_SIZE, filteredFeed.length),
-              total: filteredFeed.length,
-            })}
-          </p>
+        {nature.length > 0 && (
+          <Section id="home-nature-h" eyebrow={t('home.eyebrow_nature', 'Wild side')} title={t('home.nature_title', 'Nature')}
+            action={<SeeAllLink to="/biodiversity">{seeAll}</SeeAllLink>}>
+            <div className="ag-home-spots">
+              {nature.map((n) => <SpotCard key={n.id} it={n} href={`/listing/${n.id}`} testId={`nature-tile-${n.id}`} />)}
+            </div>
+          </Section>
         )}
-      </section>
 
-      {/* Provider CTA banner */}
-      <section className="mx-auto max-w-6xl px-4 md:px-6 pt-10 md:pt-14">
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-pine to-pine-dark text-white p-6 md:p-10">
-          <div className="max-w-lg relative z-10">
-            <span className="chip bg-white/15 !text-black backdrop-blur">{t('home.one_time_fee')}</span>
-            <h3 className="mt-3 font-display font-extrabold text-2xl sm:text-3xl md:text-4xl leading-tight">{t('provider.onboard_title')}</h3>
-            <p className="mt-2 text-white/90 text-sm md:text-base">{t('provider.onboard_sub')}</p>
-            <Link to="/provider/onboard" data-testid="banner-provider-cta" className="mt-5 inline-flex items-center gap-2 px-5 py-3 rounded-full bg-white text-pine font-extrabold btn-hover">
-              {t('hero.cta_provider')} <ArrowRight size={16} />
-            </Link>
-          </div>
-          <img src={sizedImage(RED_PANDA, 400)} alt="" className="absolute -right-8 -bottom-8 md:right-6 md:bottom-6 w-40 h-40 md:w-52 md:h-52 rounded-full object-cover border-4 border-white/20 opacity-90" />
-        </div>
-      </section>
+        {events.length > 0 && (
+          <Section id="home-events-h" eyebrow={t('home.eyebrow_events', 'Celebrate')} title={t('home.tile.events', 'Festivals')}
+            action={<SeeAllLink to="/events">{seeAll}</SeeAllLink>} testId="home-events">
+            <div className="ag-home-spots">
+              {events.map((n) => <SpotCard key={n.id} it={n} href={`/listing/${n.id}`} testId={`event-tile-${n.id}`} />)}
+            </div>
+          </Section>
+        )}
+
+        {/* The List your Business card and the six categories again at the end, as v7.js repeats them. */}
+        <section className="ag-home-end" aria-label={t('nav.categories')}>
+          <JoinCard img="/media/list-business-2.jpg" end />
+          <HomeTiles />
+        </section>
+      </div>
     </div>
   );
 }

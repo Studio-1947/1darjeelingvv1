@@ -83,7 +83,7 @@ describe('admin login hash upgrade', () => {
 
     const [after] = await db.select().from(schema.users).where(eq(schema.users.id, id)).limit(1);
     expect(needsRehash(after.password!)).toBe(false);
-    // Upgraded in place — the same password must still work against the new hash.
+    // Upgraded in place  the same password must still work against the new hash.
     expect(verifyPassword(password, after.password!)).toBe(true);
 
     const again = await request(app).post('/api/auth/admin/login').send({ phone, password });

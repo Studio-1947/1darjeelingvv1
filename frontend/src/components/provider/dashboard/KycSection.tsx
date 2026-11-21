@@ -1,11 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Upload, CheckCircle2, Clock, XCircle, Circle } from 'lucide-react';
-import { getMyProfile, uploadKycDoc, deleteKycDoc, KycApiError, KycProfile, ChecklistItem } from '@/lib/kyc';
-import ProfileCompletionBar from '../ProfileCompletionBar';
+import { checklistLabel } from '@/lib/serverText';
+import { useAuth } from '@/context/AuthContext';
+import { CheckCircle as CheckCircle2, Clock, XCircle, Circle, MapPin } from '@phosphor-icons/react';
+import { Icon } from '@/components/ag/Icon';
+import { Box, Button, FieldError, Status, TextField } from '@/components/ag';
+import { getMyProfile, uploadKycDoc, uploadKycVideo, deleteKycDoc, KycApiError, KycProfile, ChecklistItem, verifyMapsLink, captureLiveLocation } from '@/lib/kyc';
 
 export default function KycSection({ onProfileChange }: { onProfileChange?: (p: KycProfile) => void }) {
   const { t } = useTranslation();
+  const businessType = (useAuth() as any).provider?.business_type as string | undefined;
   const [profile, setProfile] = useState<KycProfile | null>(null);
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -16,11 +20,11 @@ export default function KycSection({ onProfileChange }: { onProfileChange?: (p: 
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<{ status?: number; message: string } | null>(null);
 
-  const stateMeta: Record<ChecklistItem['state'], { icon: React.ReactNode; label: string; cls: string }> = {
-    done: { icon: <CheckCircle2 size={16} />, label: t('kyc.verified'), cls: 'text-pine' },
-    in_review: { icon: <Clock size={16} />, label: t('kyc.inReview'), cls: 'text-gold' },
-    rejected: { icon: <XCircle size={16} />, label: t('kyc.rejected'), cls: 'text-flag' },
-    missing: { icon: <Circle size={16} />, label: t('kyc.missing'), cls: 'text-ink-soft' },
+  const stateMeta: Record<ChecklistItem['state'], { icon: React.ReactNode; label: string; tone: 'ok' | 'pending' | 'no'; cls: string }> = {
+    done: { icon: <CheckCircle2 size={18} weight="fill" />, label: t('kyc.verified'), tone: 'ok', cls: 'text-[var(--ok)]' },
+    in_review: { icon: <Clock size={18} />, label: t('kyc.inReview'), tone: 'pending', cls: 'text-[var(--pending)]' },
+    rejected: { icon: <XCircle size={18} />, label: t('kyc.rejected'), tone: 'no', cls: 'text-[var(--fail)]' },
+    missing: { icon: <Circle size={18} />, label: t('kyc.missing'), tone: 'pending', cls: 'text-[var(--ink-muted)]' },
   };
 
   const load = async () => {
@@ -47,12 +51,12 @@ export default function KycSection({ onProfileChange }: { onProfileChange?: (p: 
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: load once on mount; "Try again" re-runs it explicitly
   }, []);
 
-  const onPick = async (docType: string, file?: File) => {
+  const onPick = async (docType: string, file?: File, video = false) => {
     if (!file) return;
     setBusyKey(docType);
     setError(null);
     try {
-      await uploadKycDoc(docType, file);
+      await (video ? uploadKycVideo(docType, file) : uploadKycDoc(docType, file));
     } catch (e) {
       const err = e as KycApiError;
       setError(err?.message || t('kyc.uploadFailed'));
@@ -85,79 +89,86 @@ export default function KycSection({ onProfileChange }: { onProfileChange?: (p: 
     }
   };
 
-  if (loading) return <div className="text-sm text-ink-soft">{t('kyc.loading')}</div>;
+  if (loading) return <Box><p className="ag-small">{t('kyc.loading')}</p></Box>;
 
   if (loadError) {
     // A 404 here means "no active provider profile yet" - completely normal for a provider
-    // who onboarded but hasn't paid/activated yet. That's not a failure, so it gets a plain
+    // who onboarded but has not paid/activated yet. That is not a failure, so it gets a plain
     // explanatory message rather than the alarming error panel + retry button.
     if (loadError.status === 404) {
-      return (
-        <div className="mist-panel rounded-2xl border border-[var(--line)] p-4 text-sm text-ink-soft">
-          {t('kyc.notActiveYet')}
-        </div>
-      );
+      return <Box><p className="ag-small">{t('kyc.notActiveYet')}</p></Box>;
     }
     return (
-      <div className="mist-panel rounded-2xl border border-[var(--line)] p-4 space-y-3">
-        <div className="text-sm text-flag font-semibold">{loadError.message}</div>
-        <button type="button" className="text-xs font-bold text-pine" onClick={loadInitial}>
-          {t('kyc.tryAgain')}
-        </button>
-      </div>
+      <Box tone="blush">
+        <FieldError>{loadError.message}</FieldError>
+        <Button size="sm" className="self-start" onClick={loadInitial}>{t('kyc.tryAgain')}</Button>
+      </Box>
     );
   }
 
   if (!profile) return null;
 
-  const kycItems = profile.checklist.filter(c => c.kind === 'kyc');
+  // Only the documents that are needed (the prototype's short list: an ID and one photo).
+  const kycItems = profile.checklist.filter(c => c.kind === 'kyc' && c.required);
   const profileItems = profile.checklist.filter(c => c.kind === 'profile');
+  const pct = Math.max(0, Math.min(100, Math.round(profile.completion_percent || 0)));
 
   return (
-    <div className="space-y-6">
-      <ProfileCompletionBar percent={profile.completion_percent} />
-      {error && <div className="text-sm text-flag font-semibold">{error}</div>}
+    <>
+      {/* provider.js documents screen: "Profile completion" with the bar and what is left. */}
+      <Box as="section" data-testid="kyc-completion">
+        <h2>{t('kyc.verifyProgress', 'Getting the Verified tick')}</h2>
+        <div className="ag-host-pct">
+          <span className="ag-host-bar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} aria-label={t('kyc.verifyProgress', 'Getting the Verified tick')}><i style={{ width: `${pct}%` }} /></span>
+          <b>{pct}%</b>
+        </div>
+        <FieldError>{error}</FieldError>
+        {profileItems.length > 0 && (
+          <>
+            <span className="ag-small">{t('kyc.completeYourListing')}</span>
+            <ul className="ag-host-dots">
+              {profileItems.map(item => (
+                <li key={item.key} className={item.state === 'done' ? 'done' : undefined}>
+                  <span className="d" aria-hidden="true">{item.state === 'done' ? <Icon name="check" /> : '•'}</span>
+                  <div className="min-w-0 flex-1">
+                    <span>{checklistLabel(t, item, businessType)}</span>
+                    {item.action && item.state !== 'done' && (
+                      <LocationCheck action={item.action} onDone={async () => { await load().catch(() => {}); }} />
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+      </Box>
 
-      <div>
-        <h3 className="font-bold text-ink mb-2">{t('kyc.completeYourListing')}</h3>
-        <ul className="space-y-2">
-          {profileItems.map(item => {
-            const m = stateMeta[item.state];
-            return (
-              <li key={item.key} className="flex items-center gap-2 text-sm">
-                <span className={m.cls}>{m.icon}</span>
-                <span className={item.state === 'done' ? 'text-ink-soft line-through' : 'text-ink'}>{item.label}</span>
-              </li>
-            );
-          })}
-        </ul>
-      </div>
-
-      <div>
-        <h3 className="font-bold text-ink mb-1">{t('kyc.verification')}</h3>
-        <p className="text-xs text-ink-soft mb-3">{t('kyc.verificationHelp')}</p>
-        <ul className="space-y-3">
+      <Box as="section">
+        <h2>{t('kyc.verification')}</h2>
+        {/* What the upload takes, before a host picks a file (the server's own limits, routes/kyc.ts). */}
+        <p className="ag-small" data-testid="kyc-docs-help">{t('kyc.verificationHelp')}</p>
+        <ul className="grid" data-testid="kyc-docs">
           {kycItems.map(item => {
             const m = stateMeta[item.state];
             const doc = profile.documents.find(d => d.doc_type === item.key);
             return (
-              <li key={item.key} className="rounded-2xl border border-[var(--line)] p-3">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <span className={m.cls}>{m.icon}</span>
-                    <div>
-                      <div className="text-sm font-semibold text-ink">
-                        {item.label}{!item.required && <span className="text-ink-soft font-normal"> ({t('kyc.optional')})</span>}
-                      </div>
-                      <div className={`text-xs ${m.cls}`}>{m.label}</div>
-                    </div>
+              <li key={item.key} className="ag-host-docrow">
+                <div className="top">
+                  <div className="min-w-0">
+                    <b>{checklistLabel(t, item, businessType)}</b>
+                    <Status tone={m.tone}>{m.label}</Status>
+                    {item.media === 'video' && item.state === 'missing' && (
+                      <p className="ag-small mt-1">{t('kyc.videoHint')}</p>
+                    )}
                   </div>
-                  <div className="flex items-center gap-2">
-                    <label className="inline-flex items-center gap-1 text-xs font-bold text-pine cursor-pointer">
-                      <Upload size={12} /> {busyKey === item.key ? t('kyc.uploading') : (item.state === 'missing' ? t('kyc.upload') : t('kyc.replace'))}
+                  <div className="acts">
+                    {/* A label styled as a button, so the file picker opens from it. */}
+                    <label className="ag-btn ag-host-upl cursor-pointer">
+                      <Icon name="download" />
+                      <span>{busyKey === item.key ? t('kyc.uploading') : (item.state === 'missing' ? t('kyc.upload') : t('kyc.replace'))}</span>
                       <input
                         type="file"
-                        accept="image/jpeg,image/png,application/pdf"
+                        accept={item.media === 'video' ? 'video/mp4,video/quicktime,video/webm' : 'image/jpeg,image/png,application/pdf'}
                         className="sr-only"
                         aria-label={
                           busyKey === item.key
@@ -173,25 +184,64 @@ export default function KycSection({ onProfileChange }: { onProfileChange?: (p: 
                           // otherwise retrying the same document after a failed upload does
                           // nothing, silently.
                           e.target.value = '';
-                          onPick(item.key, file);
+                          onPick(item.key, file, item.media === 'video');
                         }}
                       />
                     </label>
-                    {doc && (
-                      <button className="text-xs text-flag font-semibold" onClick={() => onDelete(item.key)} disabled={busyKey === item.key}>
+                    {/* A verified document stays: removing it would take a live business off verified. */}
+                    {doc && item.state !== 'done' && (
+                      <Button variant="text" className="!text-[var(--fail)]" onClick={() => onDelete(item.key)} disabled={busyKey === item.key}>
                         {t('kyc.remove')}
-                      </button>
+                      </Button>
                     )}
                   </div>
                 </div>
                 {item.state === 'rejected' && doc?.rejection_reason && (
-                  <div className="mt-2 text-xs text-flag">{t('kyc.rejectionReason', { reason: doc.rejection_reason })}</div>
+                  <p className="text-sm text-[var(--fail)]">{t('kyc.rejectionReason', { reason: doc.rejection_reason })}</p>
                 )}
               </li>
             );
           })}
         </ul>
-      </div>
+      </Box>
+    </>
+  );
+}
+
+/**
+ * The location check the board's verification needs (server: providers.ts /me/location/*).
+ * A homestay pastes its Google Maps link; a cafe or shop taps once while standing there.
+ */
+function LocationCheck({ action, onDone }: { action: 'maps_link' | 'live_capture'; onDone: () => Promise<void> }) {
+  const { t } = useTranslation();
+  const [url, setUrl] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const run = async () => {
+    setBusy(true);
+    setErr(null);
+    try {
+      if (action === 'maps_link') await verifyMapsLink(url.trim());
+      else await captureLiveLocation();
+      await onDone();
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="mt-2 grid gap-2 rounded-[18px] border border-[var(--warmline)] bg-[var(--surface)] p-3" data-testid={`location-check-${action}`}>
+      {action === 'maps_link' ? (
+        <TextField hint={t('kyc.mapsLinkHelp')} value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://maps.app.goo.gl/..."
+          inputMode="url" aria-label={t('kyc.mapsLinkHelp')} data-testid="location-maps-url" />
+      ) : (
+        <p className="ag-small">{t('kyc.liveHelp')}</p>
+      )}
+      <Button size="sm" className="self-start" icon={<MapPin />} onClick={run} disabled={busy || (action === 'maps_link' && !url.trim())} data-testid="location-check-run">
+        {busy ? t('kyc.locationChecking') : action === 'maps_link' ? t('kyc.mapsLinkVerify') : t('kyc.liveCapture')}
+      </Button>
+      <FieldError id="location-check-error">{err}</FieldError>
     </div>
   );
 }

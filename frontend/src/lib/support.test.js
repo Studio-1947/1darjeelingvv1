@@ -1,5 +1,5 @@
 // Plain .js for the same reason as api.test.js — the repo has no @types/jest.
-const { isExemptFromSupport, isSupportActive, needsSupport } = require('./support');
+import { isExemptFromSupport, isSupportActive, needsSupport } from './support';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const future = () => new Date(Date.now() + 30 * DAY_MS).toISOString();
@@ -18,7 +18,7 @@ describe('isExemptFromSupport', () => {
 });
 
 describe('needsSupport', () => {
-  it('is false without a user — logged-out browsing is free', () => {
+  it('is false without a user  logged-out browsing is free', () => {
     expect(needsSupport(null)).toBe(false);
     expect(needsSupport(undefined)).toBe(false);
   });

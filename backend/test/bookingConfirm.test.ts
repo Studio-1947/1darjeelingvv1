@@ -1,14 +1,14 @@
 import { describe, it, expect } from 'vitest';
 import request from 'supertest';
 import { app } from '../src/app';
-import { registerUser, onboardActiveProvider, loginAdmin } from './helpers';
+import { registerUser, onboardActiveProvider, loginAdmin, inDays } from './helpers';
 
 /**
- * Host acceptance — PATCH /api/bookings/:id/confirm.
+ * Host acceptance  PATCH /api/bookings/:id/confirm.
  *
  * The rule this suite pins down: accepting is the host saying yes, and it is NOT the same thing
  * as the booking being confirmed. Payment still confirms. What acceptance buys the guest is that
- * the dates stop being available to anyone else, unconditionally — a pending booking only holds
+ * the dates stop being available to anyone else, unconditionally  a pending booking only holds
  * them for the length of the checkout window.
  */
 
@@ -52,7 +52,7 @@ describe('host acceptance of a booking request', () => {
   it('lets the host accept a request, without confirming it', async () => {
     const { hostToken, listing } = await homestayWithHost('Accepting Host');
     const { token: guest } = await registerUser({ name: 'Hopeful Guest' });
-    const bookingId = await requestBooking(guest, listing.id, '2030-01-10', '2030-01-12');
+    const bookingId = await requestBooking(guest, listing.id, inDays(10), inDays(12));
 
     const res = await request(app)
       .patch(`/api/bookings/${bookingId}/confirm`)
@@ -68,7 +68,7 @@ describe('host acceptance of a booking request', () => {
   it('refuses a guest trying to accept their own request', async () => {
     const { listing } = await homestayWithHost('Unamused Host');
     const { token: guest } = await registerUser({ name: 'Self Approver' });
-    const bookingId = await requestBooking(guest, listing.id, '2030-02-10', '2030-02-12');
+    const bookingId = await requestBooking(guest, listing.id, inDays(32), inDays(34));
 
     const res = await request(app)
       .patch(`/api/bookings/${bookingId}/confirm`)
@@ -80,7 +80,7 @@ describe('host acceptance of a booking request', () => {
     const { listing } = await homestayWithHost('Rightful Host');
     const { token: otherHost } = await onboardActiveProvider({ name: 'Other Host' });
     const { token: guest } = await registerUser({ name: 'Guest Three' });
-    const bookingId = await requestBooking(guest, listing.id, '2030-03-10', '2030-03-12');
+    const bookingId = await requestBooking(guest, listing.id, inDays(54), inDays(56));
 
     const res = await request(app)
       .patch(`/api/bookings/${bookingId}/confirm`)
@@ -91,7 +91,7 @@ describe('host acceptance of a booking request', () => {
   it('lets an admin accept on a host\'s behalf', async () => {
     const { listing } = await homestayWithHost('Absent Host');
     const { token: guest } = await registerUser({ name: 'Guest Four' });
-    const bookingId = await requestBooking(guest, listing.id, '2030-04-10', '2030-04-12');
+    const bookingId = await requestBooking(guest, listing.id, inDays(76), inDays(78));
 
     const admin = await loginAdmin();
     const res = await request(app)
@@ -101,10 +101,10 @@ describe('host acceptance of a booking request', () => {
     expect(res.body.booking.status).toBe('accepted');
   });
 
-  it('is idempotent — accepting twice is not an error', async () => {
+  it('is idempotent  accepting twice is not an error', async () => {
     const { hostToken, listing } = await homestayWithHost('Twice Host');
     const { token: guest } = await registerUser({ name: 'Guest Five' });
-    const bookingId = await requestBooking(guest, listing.id, '2030-05-10', '2030-05-12');
+    const bookingId = await requestBooking(guest, listing.id, inDays(98), inDays(100));
 
     const first = await request(app).patch(`/api/bookings/${bookingId}/confirm`).set('Authorization', `Bearer ${hostToken}`);
     const second = await request(app).patch(`/api/bookings/${bookingId}/confirm`).set('Authorization', `Bearer ${hostToken}`);
@@ -116,7 +116,7 @@ describe('host acceptance of a booking request', () => {
   it('409s on a cancelled booking', async () => {
     const { hostToken, listing } = await homestayWithHost('Too Late Host');
     const { token: guest } = await registerUser({ name: 'Guest Six' });
-    const bookingId = await requestBooking(guest, listing.id, '2030-06-10', '2030-06-12');
+    const bookingId = await requestBooking(guest, listing.id, inDays(120), inDays(122));
 
     await request(app).patch(`/api/bookings/${bookingId}/cancel`).set('Authorization', `Bearer ${guest}`);
 
@@ -127,15 +127,14 @@ describe('host acceptance of a booking request', () => {
   it('treats an already-confirmed booking as a success, not a race to lose', async () => {
     const { hostToken, listing } = await homestayWithHost('Fast Guest Host');
     const { token: guest } = await registerUser({ name: 'Guest Seven' });
-    const bookingId = await requestBooking(guest, listing.id, '2030-07-10', '2030-07-12');
+    const bookingId = await requestBooking(guest, listing.id, inDays(142), inDays(144));
 
-    // The guest pays before the host gets to the request — normal on an instant-confirm rate.
-    const order = await request(app).post('/api/payments/order')
-      .set('Authorization', `Bearer ${guest}`)
-      .send({ flow: 'booking_commission', reference_id: bookingId });
-    await request(app).post('/api/payments/mock/complete')
-      .set('Authorization', `Bearer ${guest}`)
-      .send({ order_id: order.body.order.id, flow: 'booking_commission', reference_id: bookingId });
+    // A real host's request waits for them now (board), so the guest can only confirm after the
+    // accept. A second accept from the host afterwards (a double tap, two devices) must not fail.
+    await request(app).patch(`/api/bookings/${bookingId}/confirm`).set('Authorization', `Bearer ${hostToken}`).expect(200);
+    const confirmed = await request(app).post(`/api/bookings/${bookingId}/checkout`)
+      .set('Authorization', `Bearer ${guest}`);
+    expect(confirmed.status).toBe(200);
 
     const res = await request(app).patch(`/api/bookings/${bookingId}/confirm`).set('Authorization', `Bearer ${hostToken}`);
     expect(res.status).toBe(200);
@@ -147,14 +146,14 @@ describe('host acceptance of a booking request', () => {
     const { token: first } = await registerUser({ name: 'First Guest' });
     const { token: second } = await registerUser({ name: 'Second Guest' });
 
-    const bookingId = await requestBooking(first, listing.id, '2030-08-10', '2030-08-12');
+    const bookingId = await requestBooking(first, listing.id, inDays(164), inDays(166));
     const accept = await request(app).patch(`/api/bookings/${bookingId}/confirm`).set('Authorization', `Bearer ${hostToken}`);
     expect(accept.status).toBe(200);
 
     const clash = await request(app)
       .post('/api/bookings')
       .set('Authorization', `Bearer ${second}`)
-      .send({ listing_id: listing.id, listing_type: 'homestay', check_in: '2030-08-11', check_out: '2030-08-13' });
+      .send({ listing_id: listing.id, listing_type: 'homestay', check_in: inDays(165), check_out: inDays(167) });
     expect(clash.status).toBe(409);
   });
 
@@ -163,42 +162,38 @@ describe('host acceptance of a booking request', () => {
     const { token: first } = await registerUser({ name: 'Leaving Guest' });
     const { token: second } = await registerUser({ name: 'Arriving Guest' });
 
-    const bookingId = await requestBooking(first, listing.id, '2030-09-10', '2030-09-12');
+    const bookingId = await requestBooking(first, listing.id, inDays(187), inDays(189));
     await request(app).patch(`/api/bookings/${bookingId}/confirm`).set('Authorization', `Bearer ${hostToken}`);
 
     const next = await request(app)
       .post('/api/bookings')
       .set('Authorization', `Bearer ${second}`)
-      .send({ listing_id: listing.id, listing_type: 'homestay', check_in: '2030-09-12', check_out: '2030-09-14' });
+      .send({ listing_id: listing.id, listing_type: 'homestay', check_in: inDays(189), check_out: inDays(191) });
     expect(next.status).toBe(200);
   });
 
-  it('confirms normally once the accepted booking is paid for', async () => {
+  it('confirms normally once the guest checks out an accepted booking', async () => {
     const { hostToken, listing } = await homestayWithHost('Paid Host');
     const { token: guest } = await registerUser({ name: 'Paying Guest' });
-    const bookingId = await requestBooking(guest, listing.id, '2030-10-10', '2030-10-12');
+    const bookingId = await requestBooking(guest, listing.id, inDays(211), inDays(213));
 
     await request(app).patch(`/api/bookings/${bookingId}/confirm`).set('Authorization', `Bearer ${hostToken}`);
 
-    const order = await request(app).post('/api/payments/order')
-      .set('Authorization', `Bearer ${guest}`)
-      .send({ flow: 'booking_commission', reference_id: bookingId });
-    const done = await request(app).post('/api/payments/mock/complete')
-      .set('Authorization', `Bearer ${guest}`)
-      .send({ order_id: order.body.order.id, flow: 'booking_commission', reference_id: bookingId });
+    const done = await request(app).post(`/api/bookings/${bookingId}/checkout`)
+      .set('Authorization', `Bearer ${guest}`);
     expect(done.status).toBe(200);
 
     const mine = await request(app).get('/api/bookings/me').set('Authorization', `Bearer ${guest}`);
     const row = mine.body.items.find((b: any) => b.id === bookingId);
     expect(row.status).toBe('confirmed');
-    // The acceptance is still on the record after payment — it is history, not a transient flag.
+    // The acceptance is still on the record after checkout  it is history, not a transient flag.
     expect(row.accepted_at).toBeTruthy();
   });
 
   it('lets the host decline instead, which cancels', async () => {
     const { hostToken, listing } = await homestayWithHost('Declining Host');
     const { token: guest } = await registerUser({ name: 'Rejected Guest' });
-    const bookingId = await requestBooking(guest, listing.id, '2030-11-10', '2030-11-12');
+    const bookingId = await requestBooking(guest, listing.id, inDays(233), inDays(235));
 
     const res = await request(app).patch(`/api/bookings/${bookingId}/cancel`).set('Authorization', `Bearer ${hostToken}`);
     expect(res.status).toBe(200);
@@ -209,8 +204,8 @@ describe('host acceptance of a booking request', () => {
     const { hostToken, listing } = await homestayWithHost('Counting Host');
     const { token: guest } = await registerUser({ name: 'Counted Guest' });
 
-    const accepted = await requestBooking(guest, listing.id, '2030-12-01', '2030-12-03');
-    await requestBooking(guest, listing.id, '2030-12-20', '2030-12-22');
+    const accepted = await requestBooking(guest, listing.id, inDays(254), inDays(256));
+    await requestBooking(guest, listing.id, inDays(273), inDays(275));
     await request(app).patch(`/api/bookings/${accepted}/confirm`).set('Authorization', `Bearer ${hostToken}`);
 
     const inbox = await request(app).get('/api/bookings/provider').set('Authorization', `Bearer ${hostToken}`);

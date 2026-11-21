@@ -6,7 +6,7 @@ allowed-tools: Read, Write, Grep, Glob
 effort: low
 ---
 
-# Memory System — Persistent Cross-Session Memory
+# Memory System  Persistent Cross-Session Memory
 
 > Enables agents to remember across sessions. Never re-discover what was already learned.
 
@@ -34,7 +34,7 @@ The Memory System provides **persistent, searchable memory** that survives acros
 
 ## MEMORY.md Index Format
 
-The index is a **lightweight pointer file** — short entries that reference topic files for details.
+The index is a **lightweight pointer file**  short entries that reference topic files for details.
 
 **Rules:**
 - Maximum **200 lines** total
@@ -113,7 +113,7 @@ updated: 2026-04-01
 | Secrets, credentials, tokens, passwords, private keys, or API keys | Memory is persistent and may be shared across sessions |
 | Information derivable from code | Read `package.json` instead of memorizing deps |
 | Temporary debug context | Clutters memory, not useful later |
-| Exact code snippets | Code changes — memory becomes stale |
+| Exact code snippets | Code changes  memory becomes stale |
 | File paths that may move | Use glob patterns or descriptions instead |
 | Entire conversation transcripts | Memory is for distilled insights only |
 
@@ -148,7 +148,7 @@ updated: 2026-04-01
 1. Warn: "Memory index is getting large (X lines). Review recommended."
 2. Suggest merging related entries
 3. Suggest archiving old entries to `memory/archive/`
-4. Never auto-delete — always ask user first
+4. Never auto-delete  always ask user first
 
 ---
 

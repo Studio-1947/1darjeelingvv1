@@ -16,9 +16,50 @@ function onboardPayload(overrides: Record<string, any> = {}) {
   };
 }
 
+describe('provider onboarding map pin', () => {
+  it('accepts a pin inside the service region and stores it', async () => {
+    const { token } = await registerUser({ name: 'Pinned Onboarder', role: 'provider' });
+    const res = await request(app)
+      .post('/api/providers/onboard')
+      .set('Authorization', `Bearer ${token}`)
+      .send(onboardPayload({ latitude: 27.0447, longitude: 88.2677 }));
+    expect(res.status).toBe(200);
+    expect(res.body.provider.latitude).toBeCloseTo(27.0447, 4);
+    expect(res.body.provider.longitude).toBeCloseTo(88.2677, 4);
+  });
+
+  it('refuses a pin outside the service region', async () => {
+    const { token } = await registerUser({ name: 'Far Away Onboarder', role: 'provider' });
+    const res = await request(app)
+      .post('/api/providers/onboard')
+      .set('Authorization', `Bearer ${token}`)
+      .send(onboardPayload({ latitude: 37.422, longitude: -122.084 }));
+    expect(res.status).toBe(400);
+    expect(res.body.detail).toMatch(/outside the area/i);
+  });
+
+  it('refuses half a pin', async () => {
+    const { token } = await registerUser({ name: 'Half Pin Onboarder', role: 'provider' });
+    const res = await request(app)
+      .post('/api/providers/onboard')
+      .set('Authorization', `Bearer ${token}`)
+      .send(onboardPayload({ latitude: 27.0447 }));
+    expect(res.status).toBe(400);
+  });
+
+  it('still allows onboarding with no pin at all', async () => {
+    const { token } = await registerUser({ name: 'Unpinned Onboarder', role: 'provider' });
+    const res = await request(app)
+      .post('/api/providers/onboard')
+      .set('Authorization', `Bearer ${token}`)
+      .send(onboardPayload());
+    expect(res.status).toBe(200);
+  });
+});
+
 describe('provider onboarding guards', () => {
   // Onboarding a second time while the first provider is still pending_payment (onboarded, but
-  // payment never completed) used to 409 unconditionally — stranding the user, since the
+  // payment never completed) used to 409 unconditionally  stranding the user, since the
   // frontend only creates a payment order from a *successful* onboard response, so there was no
   // way to resume. It must now be idempotent: the existing row is updated in place and returned
   // with 200, and no second row is created (the DB's unique index on providers.user_id would
@@ -29,7 +70,7 @@ describe('provider onboarding guards', () => {
     const first = await request(app)
       .post('/api/providers/onboard')
       .set('Authorization', `Bearer ${token}`)
-      .send(onboardPayload({ business_name: 'First Business' }));
+      .send(onboardPayload({ business_name: 'First Business', business_type: 'cafe' }));
     expect(first.status).toBe(200);
     expect(first.body.provider.status).toBe('pending_payment');
     const firstProviderId = first.body.provider.id;
@@ -37,21 +78,21 @@ describe('provider onboarding guards', () => {
     const second = await request(app)
       .post('/api/providers/onboard')
       .set('Authorization', `Bearer ${token}`)
-      .send(onboardPayload({ business_name: 'Resumed Business', description: 'Updated on resume' }));
+      .send(onboardPayload({ business_name: 'Resumed Business', description: 'Updated on resume', business_type: 'cafe' }));
     expect(second.status).toBe(200);
     expect(second.body.provider.id).toBe(firstProviderId);
     expect(second.body.provider.business_name).toBe('Resumed Business');
     expect(second.body.provider.description).toBe('Updated on resume');
     expect(second.body.provider.status).toBe('pending_payment');
 
-    // Exactly one row for this user, with the resumed details — not two.
+    // Exactly one row for this user, with the resumed details  not two.
     const rows = await db.select().from(schema.providers).where(eq(schema.providers.userId, user.id));
     expect(rows.length).toBe(1);
     expect(rows[0].id).toBe(firstProviderId);
     expect(rows[0].businessName).toBe('Resumed Business');
 
     // The now-resumed provider can proceed straight to creating the payment order, same as a
-    // fresh onboard — the frontend flow (useProviderOnboard.ts) needs no special-casing.
+    // fresh onboard  the frontend flow (useProviderOnboard.ts) needs no special-casing.
     const orderRes = await request(app)
       .post('/api/payments/order')
       .set('Authorization', `Bearer ${token}`)

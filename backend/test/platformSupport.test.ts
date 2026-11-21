@@ -4,6 +4,7 @@ import { eq } from 'drizzle-orm';
 import { app } from '../src/app';
 import { db, schema } from '../src/db';
 import { nextPhone, registerUser, createListing, onboardActiveProvider } from './helpers';
+import { SUPPORT_PASS_DAYS } from '../src/config';
 
 describe('support column', () => {
   // Registers through the raw endpoint rather than the registerUser helper on purpose: a later
@@ -44,7 +45,7 @@ async function me(token: string) {
 }
 
 describe('platform_support payment flow', () => {
-  it('charges 1200 paise regardless of anything in the request body', async () => {
+  it('charges exactly ₹1 (GST included) for a first pass, regardless of anything in the request body', async () => {
     const { token, user } = await registerUser({ name: 'Support Payer', paySupport: false });
     const res = await request(app)
       .post('/api/payments/order')
@@ -52,8 +53,20 @@ describe('platform_support payment flow', () => {
       .send({ flow: 'platform_support', reference_id: user.id, amount: 1 });
 
     expect(res.status).toBe(200);
-    expect(res.body.amount).toBe(1200);
-    expect(res.body.order.amount).toBe(1200);
+    expect(res.body.amount).toBe(100);
+    expect(res.body.order.amount).toBe(100);
+    expect(res.body.breakup).toMatchObject({ total: 100, platform_fee: 0, gst_included: true });
+  });
+
+  it('charges exactly ₹1 (GST included) again once a pass has been held before', async () => {
+    const { token, user } = await registerUser({ name: 'Returning Rinzing', paySupport: false });
+    await paySupport(token, user.id);
+    const res = await request(app)
+      .post('/api/payments/order')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ flow: 'platform_support', reference_id: user.id });
+    expect(res.status).toBe(200);
+    expect(res.body.amount).toBe(100);
   });
 
   it('refuses an order that references another user', async () => {
@@ -68,32 +81,31 @@ describe('platform_support payment flow', () => {
     expect(res.status).toBe(403);
   });
 
-  it('stamps an expiry 365 days out when settled', async () => {
+  it('grants the pass for one year when settled', async () => {
     const { token, user } = await registerUser({ name: 'First Timer', paySupport: false });
-    const before = Date.now();
 
     const { completeRes } = await paySupport(token, user.id);
     expect(completeRes.status).toBe(200);
 
     const expiry = Date.parse((await me(token)).supportExpiresAt);
-    expect(expiry - before).toBeGreaterThan(364 * DAY_MS);
-    expect(expiry - before).toBeLessThan(366 * DAY_MS);
+    expect(expiry - Date.now()).toBeGreaterThan((SUPPORT_PASS_DAYS - 1) * DAY_MS);
+    expect(expiry - Date.now()).toBeLessThanOrEqual(SUPPORT_PASS_DAYS * DAY_MS);
   });
 
-  it('extends the existing window when paid a second time', async () => {
-    const { token, user } = await registerUser({ name: 'Renewer', paySupport: false });
+  it('extends time a user already had when settled early', async () => {
+    const { token, user } = await registerUser({ name: 'Upgrader', paySupport: false });
+    await db.update(schema.users)
+      .set({ supportExpiresAt: new Date(Date.now() + 30 * DAY_MS).toISOString() })
+      .where(eq(schema.users.id, user.id));
 
+    const before = (await me(token)).supportExpiresAt;
     await paySupport(token, user.id);
-    const first = Date.parse((await me(token)).supportExpiresAt);
+    const after = (await me(token)).supportExpiresAt;
 
-    await paySupport(token, user.id);
-    const second = Date.parse((await me(token)).supportExpiresAt);
-
-    expect(second - first).toBeGreaterThan(364 * DAY_MS);
-    expect(second - first).toBeLessThan(366 * DAY_MS);
+    expect(Date.parse(after) - Date.parse(before)).toBeCloseTo(SUPPORT_PASS_DAYS * DAY_MS, -4);
   });
 
-  it('does not extend the window when the same order settles twice', async () => {
+  it('does not change the expiry when the same order settles twice', async () => {
     const { token, user } = await registerUser({ name: 'Double Settler', paySupport: false });
     const { orderId } = await paySupport(token, user.id);
     const afterFirst = (await me(token)).supportExpiresAt;
@@ -115,12 +127,21 @@ describe('support gate on tourist creates', () => {
     const listing = await createListing();
 
     const res = await request(app)
+      .post('/api/reviews')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ listing_id: listing.id, rating: 5, comment: 'Lovely quiet place' });
+
+    expect(res.status).toBe(402);
+  });
+
+  it('saves a place without the pass (saving is free)', async () => {
+    const { token } = await registerUser({ name: 'Free Saver', paySupport: false });
+    const listing = await createListing();
+    const res = await request(app)
       .post('/api/favorites')
       .set('Authorization', `Bearer ${token}`)
       .send({ listing_id: listing.id });
-
-    expect(res.status).toBe(402);
-    expect(res.body.code).toBe('support_required');
+    expect(res.status).toBe(200);
   });
 
   it('lets a tourist through once the fee is paid', async () => {
@@ -137,15 +158,15 @@ describe('support gate on tourist creates', () => {
   });
 
   it('402s a provider who has not paid the registration fee', async () => {
-    // role is already 'provider' but providerPaid is false — the loophole the exemption
+    // role is already 'provider' but providerPaid is false  the loophole the exemption
     // rule exists to close.
     const { token } = await registerUser({ name: 'Unpaid Provider', role: 'provider' });
     const listing = await createListing();
 
     const res = await request(app)
-      .post('/api/favorites')
+      .post('/api/reviews')
       .set('Authorization', `Bearer ${token}`)
-      .send({ listing_id: listing.id });
+      .send({ listing_id: listing.id, rating: 5, comment: 'Lovely quiet place' });
 
     expect(res.status).toBe(402);
   });
@@ -173,18 +194,17 @@ describe('support gate on tourist creates', () => {
       .set('Authorization', `Bearer ${token}`)
       .send({ listing_id: listing.id });
 
-    // Expire them. There is no API for this — the fee only ever moves the expiry forward — so
-    // the test reaches into the DB directly, which is the only way to exercise a lapse without
-    // waiting a year.
+    // Expire them. There is no API for this (a paid pass never lapses; only unpaid time such as
+    // a referral reward does) so the test reaches into the DB directly.
     await db.update(schema.users)
       .set({ supportExpiresAt: new Date(Date.now() - DAY_MS).toISOString() })
       .where(eq(schema.users.id, user.id));
 
     // Confirm the lapse actually took effect, so a silent no-op cannot make this test vacuous.
     const blocked = await request(app)
-      .post('/api/favorites')
+      .post('/api/reviews')
       .set('Authorization', `Bearer ${token}`)
-      .send({ listing_id: listing.id });
+      .send({ listing_id: listing.id, rating: 5, comment: 'Lovely quiet place' });
     expect(blocked.status).toBe(402);
 
     const res = await request(app)
@@ -192,5 +212,45 @@ describe('support gate on tourist creates', () => {
       .set('Authorization', `Bearer ${token}`);
 
     expect(res.status).toBe(200);
+  });
+});
+
+describe('membership card and ending it', () => {
+  it('shows a member since date, what was paid and a stable member ID', async () => {
+    const { token, user } = await registerUser({ name: 'Card Holder', paySupport: false });
+    const none = await request(app).get('/api/payments/membership').set('Authorization', `Bearer ${token}`);
+    expect(none.status).toBe(200);
+    expect(none.body).toMatchObject({ active: false, since: null, paid: null });
+
+    const { completeRes } = await paySupport(token, user.id);
+    expect(completeRes.status).toBe(200);
+    const res = await request(app).get('/api/payments/membership').set('Authorization', `Bearer ${token}`);
+    expect(res.body.active).toBe(true);
+    expect(res.body.paid).toBe(100);
+    expect(typeof res.body.since).toBe('string');
+    expect(res.body.member_id).toMatch(/^AG-\d{2}-[0-9A-F]{5}$/);
+    const again = await request(app).get('/api/payments/membership').set('Authorization', `Bearer ${token}`);
+    expect(again.body.member_id).toBe(res.body.member_id);
+  });
+
+  it('ends the pass now, and the next pass is the same ₹1 a year', async () => {
+    const { token, user } = await registerUser({ name: 'Leaver', paySupport: false });
+    await paySupport(token, user.id);
+    expect(Date.parse((await me(token)).supportExpiresAt)).toBeGreaterThan(Date.now());
+
+    const end = await request(app).post('/api/payments/membership/end').set('Authorization', `Bearer ${token}`);
+    expect(end.status).toBe(200);
+    expect(Date.parse((await me(token)).supportExpiresAt)).toBeLessThanOrEqual(Date.now());
+    const card = await request(app).get('/api/payments/membership').set('Authorization', `Bearer ${token}`);
+    expect(card.body.active).toBe(false);
+
+    const order = await request(app).post('/api/payments/order').set('Authorization', `Bearer ${token}`)
+      .send({ flow: 'platform_support', reference_id: user.id });
+    expect(order.body.amount).toBe(100);
+  });
+
+  it('needs a signed-in user', async () => {
+    expect((await request(app).get('/api/payments/membership')).status).toBe(401);
+    expect((await request(app).post('/api/payments/membership/end')).status).toBe(401);
   });
 });

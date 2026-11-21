@@ -1,223 +1,160 @@
 import React from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/context/AuthContext';
-import StoryCircle from '@/components/StoryCircle';
-import Logo from '@/components/Logo';
+import Wordmark from '@/components/Wordmark';
 import useGoBack from '@/hooks/useGoBack';
-import useHeroOverlay from '@/hooks/useHeroOverlay';
-import { CATEGORIES } from '@/constants/categories';
-import { User, Heart, ArrowLeft } from 'lucide-react';
+import api from '@/lib/api';
+import { APP_STORE_URLS } from '@/constants/app';
+import AppComingSoon, { phonePlatform } from '@/components/AppComingSoon';
+import { Icon } from '@/components/ag/Icon';
+import { useMode } from '@/lib/theme';
 
+/** When the bell last asked for the unread count (shared across page changes). */
+let lastUnreadCheck = 0;
+let lastUnreadCount = 0;
+
+/** Roots of the tab bar: nothing to go back to from these. */
+const ROOTS = ['/', '/feed', '/my-trips', '/saved', '/dashboard', '/provider/dashboard', '/my-listings', '/provider/profile'];
+
+/** On Home the search button appears once the page's own search box has scrolled under the bar. */
+function useHomeSearchScrolledAway(active: boolean) {
+  const [away, setAway] = React.useState(false);
+  React.useEffect(() => {
+    if (!active) { setAway(false); return undefined; }
+    const check = () => {
+      const box = document.querySelector('[data-home-search]');
+      setAway(!!box && box.getBoundingClientRect().bottom < 70);
+    };
+    check();
+    window.addEventListener('scroll', check, { passive: true });
+    return () => window.removeEventListener('scroll', check);
+  }, [active]);
+  return away;
+}
+
+/**
+ * Top bar, as the red /7 prototype draws it (app.js render()):
+ * Back on every screen except the tab roots; the full wordmark always; then App (Home only for now,
+ * while the app is coming soon; shrinking to its icon when Search is showing), Search (everywhere but Home, where it appears
+ * once the home search has scrolled away), the bell (always), and Log in (tab roots, signed out).
+ */
 export default function Header() {
   const { t } = useTranslation();
-  const { user, logout } = useAuth();
-  const [dropdownOpen, setDropdownOpen] = React.useState(false);
-  const [avatarError, setAvatarError] = React.useState(false);
-  const dropdownRef = React.useRef(null);
-  const nav = useNavigate();
-  const { pathname } = useLocation();
+  const { user } = useAuth();
+  const { pathname, search: query } = useLocation();
+  const navigate = useNavigate();
   const goBack = useGoBack();
-  // The landing page is the root of the mobile tab bar - nothing to go back to.
-  const showBack = pathname !== '/';
-  // Sign-in and the onboarding form are single-task pages; a browse rail there
-  // only invites the visitor to abandon what they came to do.
-  const showCategories = !['/login', '/provider/onboard'].includes(pathname);
-  // The landing hero plays a full-bleed video; the bar rides on top of it and
-  // stays out of the flow so the footage runs right up to the top of the page.
-  const isLanding = pathname === '/';
-  const onVideo = useHeroOverlay(isLanding);
+  const [mode, setMode] = useMode();
+  const [appSoon, setAppSoon] = React.useState(false);
+  const closeAppSoon = React.useCallback(() => setAppSoon(false), []);
 
+  // Unread notifications, for the badge on the bell. Re-read on every page change and when the
+  // notifications page marks something read.
+  const [unread, setUnread] = React.useState(lastUnreadCount);
+  // Who the count is for. A reply is kept if the same person is still signed in, even when the
+  // effect has re-run meanwhile (a fresh /auth/me gives a new user object); dropping it left the
+  // badge empty until the next 60 s check.
+  const unreadFor = React.useRef<string | undefined>(undefined);
+  unreadFor.current = user?.id;
   React.useEffect(() => {
-    if (!dropdownOpen) return;
-    const handler = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
-        setDropdownOpen(false);
-      }
+    if (!user) { lastUnreadCount = 0; lastUnreadCheck = 0; setUnread(0); return undefined; }
+    const forUser = user.id;
+    const read = () => {
+      lastUnreadCheck = Date.now();
+      api.get('/notifications', { params: { limit: 1 } })
+        .then(({ data }) => { if (unreadFor.current !== forUser) return; lastUnreadCount = Number(data.unread_count) || 0; setUnread(lastUnreadCount); }).catch(() => {});
     };
-    window.addEventListener('click', handler);
-    return () => window.removeEventListener('click', handler);
-  }, [dropdownOpen]);
+    if (Date.now() - lastUnreadCheck > 30_000) read();
+    window.addEventListener('aangan:notifications', read);
+    const every = window.setInterval(() => { if (document.visibilityState === 'visible') read(); }, 60_000);
+    return () => { window.clearInterval(every); window.removeEventListener('aangan:notifications', read); };
+  }, [user?.id, pathname]);
 
-  // A route change must not leave the profile menu hanging open over the page.
-  React.useEffect(() => { setDropdownOpen(false); }, [pathname]);
+  // A sub-screen inside a tab root (e.g. /dashboard?s=language) gets Back, as in the prototype.
+  const isRoot = ROOTS.includes(pathname) && !new URLSearchParams(query).get('s');
+  const onHome = pathname === '/';
+  const homeSearchAway = useHomeSearchScrolledAway(onHome);
+  const showSearch = !onHome || homeSearchAway;
 
-  const goProfile = () => {
-    if (!user) return nav('/login');
-    if (user.role === 'provider') nav('/provider/dashboard');
-    else nav('/dashboard');
+  // A phone whose store already has the app goes straight there; otherwise the "coming soon" sheet.
+  const getApp = () => {
+    const mine = phonePlatform();
+    const url = mine ? APP_STORE_URLS[mine] : '';
+    if (url) window.open(url, '_blank', 'noopener');
+    else setAppSoon(true);
+  };
+
+  const search = () => {
+    const box = document.querySelector<HTMLElement>('[data-home-search]');
+    if (onHome && box) {
+      box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      window.setTimeout(() => box.querySelector<HTMLInputElement>('input')?.focus(), 350);
+    } else {
+      navigate('/search');
+    }
   };
 
   return (
-    <header
-      className={`z-40 transition-all duration-300 ${
-        isLanding ? 'fixed top-0 inset-x-0' : 'sticky top-0'
-      } ${
-        onVideo
-          ? 'bg-transparent border-b border-transparent'
-          : 'bg-white/90 backdrop-blur-md border-b border-[var(--line)] shadow-sm'
-      }`}
-      data-testid="site-header"
-    >
-      <div className="mx-auto max-w-6xl px-2 sm:px-4 md:px-6 h-[var(--header-h)] flex items-center gap-1.5 sm:gap-3 lg:gap-5 xl:gap-8">
-        {/* Back - mobile/tablet only; desktop keeps the brand plus in-page controls */}
-        {showBack && (
-          <button
-            onClick={goBack}
-            data-testid="header-back"
-            aria-label={t('common.back')}
-            className={`lg:hidden w-9 h-9 -ml-1 rounded-full grid place-items-center flex-shrink-0 btn-hover ${onVideo ? 'text-white hover:bg-white/20' : 'text-ink hover:bg-mist'}`}
-          >
-            <ArrowLeft size={20} />
+    <header className="ag-header" data-testid="site-header">
+      <div className="ag-wrap">
+        {!isRoot && (
+          <button type="button" className="ag-iconbtn" onClick={goBack} aria-label={t('common.back')} data-testid="header-back">
+            <Icon name="back" />
           </button>
         )}
 
-        {/* Brand - the mark and the name together at every width.
-            The wordmark reads t('brand') rather than a hardcoded "1 Darjeeling":
-            the login card and the footer already render the translated form, so
-            in Hindi the page showed the brand in Devanagari while the bar above
-            it stayed in Latin script (QA 3.6).
-            It also stops truncating. At 390px it shared the row with a back
-            button, the language menu and sign-in, and rendered as "1 Darj…"
-            (QA 4.6) - a clipped brand name is worse than a smaller one, so below
-            sm it drops a size and holds its whole width instead. */}
-        <Link
-          to="/"
-          className="flex items-center gap-1.5 sm:gap-2 min-w-0"
-          data-testid="brand-link"
-          aria-label={t('brand')}
-        >
-          {/* Background is keyed out, so the mark sits directly on the bar with
-              no tile. Scales with --header-h (3.75/4.75/5rem). */}
-          <Logo className="w-8 h-8 sm:w-14 sm:h-14 lg:w-16 lg:h-16 flex-shrink-0" />
-          <div className="leading-none min-w-0">
-            <div className={`font-display font-extrabold text-sm sm:text-lg whitespace-nowrap ${onVideo ? 'text-white drop-shadow' : 'text-ink'}`}>
-              {t('brand')}
-            </div>
-            <div className={`mt-0.5 text-[8px] sm:text-[10px] font-semibold tracking-wide whitespace-nowrap ${onVideo ? 'text-white/85' : 'text-ink-soft'}`}>
-              By studio 1947
-            </div>
-          </div>
+        <Link to="/" className="ag-brand" data-testid="brand-link" aria-label={t('brand', 'aangan')}>
+          <Wordmark className="word" still />
         </Link>
 
-        {/* Category rail - desktop only. Below lg the categories live in the
-            bottom tab bar instead, so the header there is just brand + menu. */}
-        {showCategories ? (
-          <nav
-            aria-label={t('nav.categories')}
-            data-testid="header-categories"
-            className="hidden lg:block flex-1 min-w-0"
-          >
-            {/* This element is the scroll container, so on phones the white
-                pill stays pinned to the viewport while the icons slide inside
-                it. From sm up the tiles all fit, the pill dissolves and each
-                item carries its own plate. */}
-            <div
-              className="flex items-center gap-1.5 overflow-x-auto no-scrollbar
-                         rounded-full bg-white border border-[var(--line)] shadow-sm px-1.5 py-1
-                         sm:justify-center sm:gap-0.5 sm:rounded-none sm:bg-transparent sm:border-0 sm:shadow-none sm:px-0 sm:py-1
-                         lg:gap-2"
+        <div className="ag-topact">
+          {onHome && (
+            <button
+              type="button"
+              className={`ag-getapp${showSearch && !user ? ' compact' : ''}`}
+              onClick={getApp}
+              data-testid="header-download-app"
+              aria-label={t('nav.download_app')}
             >
-              {CATEGORIES.map(({ key, to, Icon }) => (
-                <StoryCircle
-                  key={key}
-                  to={to}
-                  label={t(`categories.${key}`)}
-                  image={null}
-                  icon={Icon}
-                  active={pathname === to}
-                  onDark={onVideo}
-                />
-              ))}
-            </div>
-          </nav>
-        ) : (
-          // Keeps the right-hand cluster pinned to the edge where the rail sat.
-          <div className="flex-1" />
-        )}
-
-        {/* Right cluster - shown at every width. The hamburger it used to hide
-            behind on phones held nothing the bottom tab bar doesn't already
-            reach, so the control a visitor actually looks for up here -
-            sign-in - now sits in the bar itself. */}
-        <div className="flex items-center gap-1.5 sm:gap-2.5 flex-shrink-0 ml-auto">
-          {/* Saved has its own route from the profile menu and the tab bar, so
-              below lg this shortcut only competes for the width login needs. */}
-          {user && (
-            <Link to="/saved" data-testid="header-saved" aria-label={t('nav.saved')}
-              className={`hidden lg:grid w-9 h-9 rounded-full place-items-center btn-hover ${onVideo ? 'text-white hover:bg-white/20' : 'text-ink hover:bg-mist'}`}>
-              <Heart size={18} />
-            </Link>
+              <Icon name="download" />
+              <span>{t('ui.header.app')}</span>
+            </button>
           )}
-          {user ? (
-            <div className="relative" ref={dropdownRef}>
-              <button onClick={() => setDropdownOpen(!dropdownOpen)} data-testid="header-profile"
-                className="w-9 h-9 rounded-full bg-gradient-to-br from-pine to-pine-dark text-white grid place-items-center font-bold btn-hover focus:outline-none overflow-hidden">
-                {user.avatar && !avatarError ? (
-                  <img src={user.avatar} alt={user.name} onError={() => setAvatarError(true)} className="w-full h-full object-cover" />
-                ) : user.name ? (
-                  user.name.trim().charAt(0).toUpperCase()
-                ) : (
-                  <User size={16} />
-                )}
-              </button>
-
-              {dropdownOpen && (
-                <div className="absolute right-0 mt-2 w-52 bg-white/95 backdrop-blur-xl border border-[var(--line)] rounded-2xl shadow-2xl py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200" data-testid="header-profile-dropdown">
-                  <div className="px-4 py-2 border-b border-[var(--line)]">
-                    <p className="text-sm font-bold text-ink truncate">{user.name}</p>
-                    <p className="text-[10px] uppercase tracking-wider font-bold text-ink-soft mt-0.5 capitalize">{user.role}</p>
-                  </div>
-                  
-                  {user.role === 'provider' ? (
-                    <>
-                      <button onClick={() => { setDropdownOpen(false); nav('/my-listings'); }}
-                        className="w-full text-left px-4 py-2.5 text-sm text-ink hover:bg-mist font-semibold transition-colors">
-                        {t('nav.my_listings') || 'My Listings'}
-                      </button>
-                      <button onClick={() => { setDropdownOpen(false); nav('/provider/dashboard'); }}
-                        className="w-full text-left px-4 py-2.5 text-sm text-ink hover:bg-mist font-semibold transition-colors">
-                        {t('nav.business_dashboard')}
-                      </button>
-                      <button onClick={() => { setDropdownOpen(false); nav('/my-trips'); }}
-                        className="w-full text-left px-4 py-2.5 text-sm text-ink hover:bg-mist font-semibold transition-colors">
-                        {t('nav.my_trips') || 'My Trips'}
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <button onClick={() => { setDropdownOpen(false); nav('/my-trips'); }}
-                        className="w-full text-left px-4 py-2.5 text-sm text-ink hover:bg-mist font-semibold transition-colors">
-                        {t('nav.my_trips') || 'My Trips'}
-                      </button>
-                      <button onClick={() => { setDropdownOpen(false); goProfile(); }}
-                        className="w-full text-left px-4 py-2.5 text-sm text-ink hover:bg-mist font-semibold transition-colors">
-                        {t('nav.dashboard') || 'Dashboard'}
-                      </button>
-                    </>
-                  )}
-                  
-                  <button onClick={() => { setDropdownOpen(false); nav('/saved'); }}
-                    data-testid="header-dropdown-saved"
-                    className="w-full text-left px-4 py-2.5 text-sm text-ink hover:bg-mist font-semibold transition-colors flex items-center gap-2">
-                    <Heart size={14} /> {t('nav.saved')}
-                  </button>
-
-                  <button onClick={() => { setDropdownOpen(false); nav('/login'); logout(); }}
-                    className="w-full text-left px-4 py-2.5 text-sm text-flag hover:bg-mist font-bold border-t border-[var(--line)] transition-colors">
-                    {t('nav.logout') || 'Log out'}
-                  </button>
-                </div>
-              )}
-            </div>
-          ) : (
-            <Link to="/login" data-testid="header-login"
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-flag text-white font-semibold text-xs md:text-sm btn-hover">
-              {t('nav.login')}
+          {showSearch && (
+            <button type="button" className="ag-iconbtn" onClick={search} aria-label={t('widget.search')} data-testid="header-search">
+              <Icon name="search" />
+            </button>
+          )}
+          <button
+            type="button"
+            className="ag-iconbtn"
+            role="switch"
+            aria-checked={mode === 'dark'}
+            onClick={() => setMode(mode === 'dark' ? 'light' : 'dark')}
+            aria-label={t('theme.dark', 'Dark mode')}
+            data-testid="header-mode"
+          >
+            <Icon name={mode === 'dark' ? 'sun' : 'moon'} />
+          </button>
+          <Link
+            to="/notifications"
+            className="ag-iconbtn"
+            data-testid="header-notifications"
+            aria-label={t('notes.title')}
+          >
+            <Icon name="bell" />
+            {unread > 0 && <span className="ag-badge" data-testid="header-unread">{unread > 9 ? '9+' : unread}</span>}
+          </Link>
+          {isRoot && !user && (
+            <Link to={`/login?next=${encodeURIComponent(pathname)}`} className="ag-loginbtn" data-testid="header-login">
+              <span>{t('nav.login')}</span>
+              <Icon name="arrowne" />
             </Link>
           )}
         </div>
       </div>
+      <AppComingSoon open={appSoon} onClose={closeAppSoon} />
     </header>
   );
 }

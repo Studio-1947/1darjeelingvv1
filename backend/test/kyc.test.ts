@@ -7,14 +7,14 @@ vi.mock('../src/lib/s3', () => ({
     const { Readable } = await import('stream');
     return { stream: Readable.from([Buffer.from('test-file-bytes')]), contentType: 'image/png' };
   }),
-  deletePrivate: vi.fn(async () => {}),
+  deletePrivate: vi.fn(async () => { }),
 }));
 
 import { app } from '../src/app';
 import { db, schema } from '../src/db';
 import { and, eq } from 'drizzle-orm';
 import { deletePrivate, uploadPrivate, getPrivateObject } from '../src/lib/s3';
-import { onboardActiveProvider, registerUser, loginAdmin } from './helpers';
+import { onboardActiveProvider, registerUser, loginAdmin, uploadRequiredDocs, captureLiveLocation } from './helpers';
 
 // 1x1 transparent PNG as a data URL
 const PNG_DATA_URL =
@@ -24,16 +24,10 @@ const PNG_DATA_URL =
 const PDF_DATA_URL =
   'data:application/pdf;base64,' + Buffer.from('%PDF-1.4\n%mock pdf for tests\n').toString('base64');
 
-const SHOP_REQUIRED_DOC_TYPES = ['aadhaar', 'pan', 'owner_photo', 'trade_license'];
-
 // Uploads and admin-approves every required shop doc for `providerId`, leaving the provider
 // verified. Used by the revocation/downgrade tests, which all need to start from "verified".
 async function verifyShopProvider(token: string, providerId: string) {
-  for (const t of SHOP_REQUIRED_DOC_TYPES) {
-    const up = await request(app).post('/api/providers/me/kyc').set('Authorization', `Bearer ${token}`)
-      .send({ doc_type: t, file: PNG_DATA_URL, filename: `${t}.png` });
-    if (up.status !== 200) throw new Error(`upload failed for ${t}: ${up.status} ${JSON.stringify(up.body)}`);
-  }
+  await uploadRequiredDocs(token);
   const adminToken = await loginAdmin();
   const list = await request(app).get('/api/admin/kyc?status=pending').set('Authorization', `Bearer ${adminToken}`);
   const mine = list.body.documents.filter((d: any) => d.provider_id === providerId);
@@ -42,10 +36,13 @@ async function verifyShopProvider(token: string, providerId: string) {
       .set('Authorization', `Bearer ${adminToken}`).send({ decision: 'approve' });
     if (r.status !== 200) throw new Error(`approve failed for ${d.doc_type}: ${r.status} ${JSON.stringify(r.body)}`);
   }
+  // A shop is only verified once its location has been captured live as well.
+  const live = await captureLiveLocation(token);
+  if (live.status !== 200) throw new Error(`live capture failed: ${live.status} ${JSON.stringify(live.body)}`);
 }
 
 // Recursively scans a serialized response for values shaped like a storage object key
-// (`<providerId>/<docType>/<uuid>.<ext>`), catching a leak anywhere in the payload — not just
+// (`<providerId>/<docType>/<uuid>.<ext>`), catching a leak anywhere in the payload  not just
 // at a hardcoded top-level property name.
 const STORAGE_KEY_SHAPE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/[a-zA-Z0-9_]+\/[0-9a-f-]{8,}\.[a-zA-Z0-9]+/i;
 function findLeakedKeys(value: unknown, path = '$'): string[] {
@@ -114,11 +111,11 @@ describe('provider KYC', () => {
   it('re-uploading replaces the doc and keeps it pending', async () => {
     const { token } = await onboardActiveProvider({ name: 'Kyc Five', businessType: 'shop' });
     await request(app).post('/api/providers/me/kyc').set('Authorization', `Bearer ${token}`)
-      .send({ doc_type: 'pan', file: PNG_DATA_URL, filename: 'pan.png' });
+      .send({ doc_type: 'premises_photo_front', file: PNG_DATA_URL, filename: 'pan.png' });
     await request(app).post('/api/providers/me/kyc').set('Authorization', `Bearer ${token}`)
-      .send({ doc_type: 'pan', file: PNG_DATA_URL, filename: 'pan2.png' });
+      .send({ doc_type: 'premises_photo_front', file: PNG_DATA_URL, filename: 'pan2.png' });
     const list = await request(app).get('/api/providers/me/kyc').set('Authorization', `Bearer ${token}`);
-    const panDocs = list.body.documents.filter((d: any) => d.doc_type === 'pan');
+    const panDocs = list.body.documents.filter((d: any) => d.doc_type === 'premises_photo_front');
     expect(panDocs.length).toBe(1);
     expect(panDocs[0].status).toBe('pending');
   });
@@ -202,10 +199,10 @@ describe('provider KYC', () => {
 
   it('accepts an upload just over the old 100 KB body-parser limit (regression guard)', async () => {
     const { token } = await onboardActiveProvider({ name: 'Kyc Nine', businessType: 'shop' });
-    // ~200 KB payload — well over body-parser's 100kb default, well under the 5 MB MAX_BYTES /
+    // ~200 KB payload  well over body-parser's 100kb default, well under the 5 MB MAX_BYTES /
     // 8mb JSON limit. Catches a regression to the global 100kb express.json() default. Must
     // start with a real PNG signature (0x89 0x50 0x4E 0x47 0x0D 0x0A 0x1A 0x0A) so it also
-    // clears the magic-byte content-type check — the padding after that is arbitrary.
+    // clears the magic-byte content-type check  the padding after that is arbitrary.
     const mediumBuffer = Buffer.concat([
       Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
       Buffer.alloc(200_000, 0x00),
@@ -222,14 +219,14 @@ describe('provider KYC', () => {
     const { token, providerId } = await onboardActiveProvider({ name: 'Kyc Ten', businessType: 'shop' });
     const upload = (filename: string) =>
       request(app).post('/api/providers/me/kyc').set('Authorization', `Bearer ${token}`)
-        .send({ doc_type: 'pan', file: PNG_DATA_URL, filename });
+        .send({ doc_type: 'premises_photo_front', file: PNG_DATA_URL, filename });
 
     const [r1, r2] = await Promise.all([upload('pan-a.png'), upload('pan-b.png')]);
     expect(r1.status).toBe(200);
     expect(r2.status).toBe(200);
 
     const rows = await db.select().from(schema.kycDocuments)
-      .where(and(eq(schema.kycDocuments.providerId, providerId), eq(schema.kycDocuments.docType, 'pan')));
+      .where(and(eq(schema.kycDocuments.providerId, providerId), eq(schema.kycDocuments.docType, 'premises_photo_front')));
     expect(rows.length).toBe(1);
     expect(rows[0].status).toBe('pending');
   });
@@ -237,11 +234,11 @@ describe('provider KYC', () => {
   it('two concurrent re-uploads of an already-existing doc leave exactly one row and orphan no storage object', async () => {
     // This is the exact scenario the bug was about: a docType that already has a row (and an
     // object in storage, key0) gets re-uploaded by two concurrent requests. Both read key0,
-    // both upload their own new object, and only one write wins the row — without the
+    // both upload their own new object, and only one write wins the row  without the
     // transaction + row lock in kyc.ts, the *loser's* freshly-uploaded object is never
     // referenced by the row and never deleted, leaking forever. A prior version of this test
     // only asserted the row count, which the DB-level unique constraint already guaranteed on
-    // its own — it would have stayed green even with the object-leak bug still present.
+    // its own  it would have stayed green even with the object-leak bug still present.
     const { token, providerId } = await onboardActiveProvider({ name: 'Kyc Ten', businessType: 'shop' });
 
     const uploadPrivateMock = uploadPrivate as unknown as ReturnType<typeof vi.fn>;
@@ -250,25 +247,25 @@ describe('provider KYC', () => {
 
     // Establish the pre-existing row/object (key0) sequentially first.
     const initial = await request(app).post('/api/providers/me/kyc').set('Authorization', `Bearer ${token}`)
-      .send({ doc_type: 'pan', file: PNG_DATA_URL, filename: 'pan-0.png' });
+      .send({ doc_type: 'premises_photo_front', file: PNG_DATA_URL, filename: 'pan-0.png' });
     expect(initial.status).toBe(200);
 
     const upload = (filename: string) =>
       request(app).post('/api/providers/me/kyc').set('Authorization', `Bearer ${token}`)
-        .send({ doc_type: 'pan', file: PNG_DATA_URL, filename });
+        .send({ doc_type: 'premises_photo_front', file: PNG_DATA_URL, filename });
 
     const [r1, r2] = await Promise.all([upload('pan-a.png'), upload('pan-b.png')]);
     expect(r1.status).toBe(200);
     expect(r2.status).toBe(200);
 
     const rows = await db.select().from(schema.kycDocuments)
-      .where(and(eq(schema.kycDocuments.providerId, providerId), eq(schema.kycDocuments.docType, 'pan')));
+      .where(and(eq(schema.kycDocuments.providerId, providerId), eq(schema.kycDocuments.docType, 'premises_photo_front')));
     expect(rows.length).toBe(1);
     expect(rows[0].status).toBe('pending');
     const survivingKey = rows[0].fileKey;
 
     // Every object uploaded during this test (key0 plus both concurrent re-uploads) except
-    // whichever one ended up stored on the row must have had deletePrivate called on it —
+    // whichever one ended up stored on the row must have had deletePrivate called on it 
     // nothing should be orphaned in storage.
     const uploadedKeys = uploadPrivateMock.mock.calls.slice(uploadCallsBefore).map((call: any[]) => call[1] as string);
     expect(uploadedKeys.length).toBe(3);
@@ -287,7 +284,7 @@ describe('provider KYC', () => {
 
     // The existing-row read and the upsert now happen inside db.transaction(...) (see kyc.ts),
     // so simulating "the DB write failed" means failing the transaction itself rather than a
-    // bare db.insert call — db.insert is invoked on a per-transaction `tx` object, not on `db`,
+    // bare db.insert call  db.insert is invoked on a per-transaction `tx` object, not on `db`,
     // so spying on db.insert would silently never fire.
     const txSpy = vi.spyOn(db, 'transaction').mockImplementationOnce(() => {
       throw new Error('simulated DB failure');
@@ -435,7 +432,7 @@ describe('provider KYC', () => {
       expect(before.body.kyc_status).toBe('verified');
 
       const reupload = await request(app).post('/api/providers/me/kyc').set('Authorization', `Bearer ${token}`)
-        .send({ doc_type: 'pan', file: PNG_DATA_URL, filename: 'pan-v2.png' });
+        .send({ doc_type: 'premises_photo_front', file: PNG_DATA_URL, filename: 'pan-v2.png' });
       expect(reupload.status).toBe(200);
       expect(reupload.body.document.status).toBe('pending');
 
@@ -480,7 +477,7 @@ describe('provider KYC', () => {
     it('deleting a docType the provider never uploaded is a no-op: 200, no deletePrivate call, other docs unaffected', async () => {
       const { token } = await onboardActiveProvider({ name: 'Kyc Never Uploaded', businessType: 'shop' });
       await request(app).post('/api/providers/me/kyc').set('Authorization', `Bearer ${token}`)
-        .send({ doc_type: 'pan', file: PNG_DATA_URL, filename: 'pan.png' });
+        .send({ doc_type: 'premises_photo_front', file: PNG_DATA_URL, filename: 'pan.png' });
 
       const deletePrivateMock = deletePrivate as unknown as ReturnType<typeof vi.fn>;
       const callsBefore = deletePrivateMock.mock.calls.length;
@@ -491,7 +488,7 @@ describe('provider KYC', () => {
       expect(deletePrivateMock.mock.calls.length).toBe(callsBefore);
 
       const list = await request(app).get('/api/providers/me/kyc').set('Authorization', `Bearer ${token}`);
-      const panDocs = list.body.documents.filter((d: any) => d.doc_type === 'pan');
+      const panDocs = list.body.documents.filter((d: any) => d.doc_type === 'premises_photo_front');
       expect(panDocs.length).toBe(1);
       expect(list.body.documents.find((d: any) => d.doc_type === 'aadhaar')).toBeUndefined();
     });
@@ -501,21 +498,21 @@ describe('provider KYC', () => {
     it('re-uploading an existing doc calls deletePrivate with the OLD fileKey, not the new one', async () => {
       const { token, providerId } = await onboardActiveProvider({ name: 'Kyc Old Key', businessType: 'shop' });
       await request(app).post('/api/providers/me/kyc').set('Authorization', `Bearer ${token}`)
-        .send({ doc_type: 'pan', file: PNG_DATA_URL, filename: 'pan-v1.png' });
+        .send({ doc_type: 'premises_photo_front', file: PNG_DATA_URL, filename: 'pan-v1.png' });
 
       const [rowBefore] = await db.select().from(schema.kycDocuments)
-        .where(and(eq(schema.kycDocuments.providerId, providerId), eq(schema.kycDocuments.docType, 'pan')));
+        .where(and(eq(schema.kycDocuments.providerId, providerId), eq(schema.kycDocuments.docType, 'premises_photo_front')));
       const oldKey = rowBefore.fileKey;
 
       const deletePrivateMock = deletePrivate as unknown as ReturnType<typeof vi.fn>;
       const callsBefore = deletePrivateMock.mock.calls.length;
 
       const reupload = await request(app).post('/api/providers/me/kyc').set('Authorization', `Bearer ${token}`)
-        .send({ doc_type: 'pan', file: PNG_DATA_URL, filename: 'pan-v2.png' });
+        .send({ doc_type: 'premises_photo_front', file: PNG_DATA_URL, filename: 'pan-v2.png' });
       expect(reupload.status).toBe(200);
 
       const [rowAfter] = await db.select().from(schema.kycDocuments)
-        .where(and(eq(schema.kycDocuments.providerId, providerId), eq(schema.kycDocuments.docType, 'pan')));
+        .where(and(eq(schema.kycDocuments.providerId, providerId), eq(schema.kycDocuments.docType, 'premises_photo_front')));
       const newKey = rowAfter.fileKey;
       expect(newKey).not.toBe(oldKey);
 

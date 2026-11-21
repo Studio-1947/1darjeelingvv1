@@ -3,7 +3,7 @@ import { describe, it, expect, afterEach, vi } from 'vitest';
 // The boot-time validation on REVIEW_PHONE / REVIEW_OTP.
 //
 // This is a standing credential with no expiry, and the verify rate limiter that would otherwise
-// slow an attacker down is per-process and in-memory — so it resets on every deploy and is blind
+// slow an attacker down is per-process and in-memory  so it resets on every deploy and is blind
 // to a second container. The length of the code is what actually protects it, which is why a
 // weak value fails the boot instead of producing a warning nobody reads.
 //

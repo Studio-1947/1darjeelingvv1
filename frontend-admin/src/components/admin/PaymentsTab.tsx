@@ -7,11 +7,32 @@ interface PaymentsTabProps {
   onRefunded?: () => void;
 }
 
+/** Paise as rupees, with paise only when there are some. */
+const inr = (paise: number) => {
+  const whole = paise % 100 === 0;
+  return `₹${(paise / 100).toLocaleString('en-IN', { minimumFractionDigits: whole ? 0 : 2, maximumFractionDigits: 2 })}`;
+};
+
+/** What a payment was for, in words. The pass is ₹12 the first time and ₹99 after that. */
+const flowLabel = (pm: any) => {
+  if (pm.flow === 'platform_support') {
+    if (pm.breakup?.base === 9900) return 'aangan pass · renewal';
+    if (pm.breakup?.base === 1200) return 'aangan pass · first year';
+    return 'aangan pass';
+  }
+  return ({
+    booking_commission: 'Booking fee (₹1)',
+    provider_registration: 'Host plan · first year',
+    provider_renewal: 'Host plan · renewal',
+    donation: 'Donation',
+  } as Record<string, string>)[pm.flow] || pm.flow;
+};
+
 /**
  * PaymentsTab displays payment logs, order references, dates and amounts, and is where an
  * operator returns money.
  *
- * The refund column is not decoration. `lib/refunds.ts` deliberately never throws — it runs after
+ * The refund column is not decoration. `lib/refunds.ts` deliberately never throws  it runs after
  * the money has moved and the cancellation has already committed, so a Razorpay outage records the
  * debt instead of failing the request. A payment left `paid` with a refund reason on it is money
  * the platform owes and has not returned, which is why those rows are called out here rather than
@@ -20,6 +41,7 @@ interface PaymentsTabProps {
 export default function PaymentsTab({ payments, onRefunded }: PaymentsTabProps) {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [msg, setMsg] = useState('');
+  const [owedOnly, setOwedOnly] = useState(false);
 
   /** A payment that was charged, is owed back, and whose refund has not gone through. */
   const isOwed = (pm: any) => pm.status === 'paid' && pm.refundReason && !pm.refundedAt;
@@ -36,10 +58,10 @@ export default function PaymentsTab({ payments, onRefunded }: PaymentsTabProps) 
       const res = await api.post(`/admin/payments/${pm.id}/refund`, { reason: 'refunded by admin' });
       // The endpoint is idempotent: an already-refunded payment answers 200 with refunded=false
       // rather than sending a second refund to the gateway. Say which of the two happened.
-      setMsg(res.data?.refunded ? `Refunded ${label}.` : `${label} was already refunded — nothing sent.`);
+      setMsg(res.data?.refunded ? `Refunded ${label}.` : `${label} was already refunded  nothing sent.`);
       onRefunded?.();
     } catch (e: any) {
-      // A gateway refusal is a 502 here, never a silent success — the money really is still held.
+      // A gateway refusal is a 502 here, never a silent success  the money really is still held.
       setMsg(e?.response?.data?.detail || 'Refund failed. The payment is still marked as owed; try again.');
     } finally {
       setBusyId(null);
@@ -53,6 +75,10 @@ export default function PaymentsTab({ payments, onRefunded }: PaymentsTabProps) 
           <span className="font-bold text-flag">{owedCount} payment{owedCount === 1 ? '' : 's'} owed a refund.</span>{' '}
           A refund was attempted and the gateway refused it, so this money is still with the platform.
           Retry each one below.
+          <button type="button" onClick={() => setOwedOnly((v) => !v)} data-testid="payments-owed-only"
+            className="ml-2 font-bold text-flag underline underline-offset-2">
+            {owedOnly ? 'Show all payments' : 'Show only these'}
+          </button>
         </div>
       )}
 
@@ -74,11 +100,11 @@ export default function PaymentsTab({ payments, onRefunded }: PaymentsTabProps) 
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--line)] text-sm text-ink">
-              {payments.map((pm) => (
+              {payments.filter((pm) => !owedOnly || isOwed(pm)).map((pm) => (
                 <tr key={pm.id} className={`transition-colors ${isOwed(pm) ? 'bg-flag/5' : 'hover:bg-mist/40'}`}>
                   {/* Flow type and Order Id */}
                   <td className="p-4">
-                    <div className="font-bold capitalize">{pm.flow}</div>
+                    <div className="font-bold">{flowLabel(pm)}</div>
                     <div className="text-xs text-ink-soft font-mono select-all">{pm.orderId}</div>
                   </td>
 
@@ -86,15 +112,23 @@ export default function PaymentsTab({ payments, onRefunded }: PaymentsTabProps) 
                   <td className="p-4 font-mono text-xs text-ink-soft select-all">{pm.referenceId}</td>
 
                   {/* Transaction Amount (converted from paisa) */}
-                  <td className="p-4 font-bold text-ink">₹{(pm.amount / 100).toLocaleString('en-IN')}</td>
+                  <td className="p-4 text-ink">
+                    <div className="font-bold">{inr(pm.amount)}</div>
+                    {/* Stored at order time: base, 18% GST and the 2% platform fee. */}
+                    {pm.breakup ? (
+                      <div className="text-[11px] text-ink-soft leading-snug mt-0.5" data-testid={`payment-breakup-${pm.id}`}>
+                        {inr(pm.breakup.base)} + GST {inr(pm.breakup.gst)}
+                        {pm.breakup.platform_fee ? ` + fee ${inr(pm.breakup.platform_fee)}` : ''}
+                      </div>
+                    ) : null}
+                  </td>
 
                   {/* Payment status badge */}
                   <td className="p-4">
-                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
-                      pm.status === 'refunded' ? 'bg-ink/10 text-ink-soft'
-                      : pm.status === 'paid' ? 'bg-pine/10 text-pine'
-                      : 'bg-flag/10 text-flag'
-                    }`}>
+                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${pm.status === 'refunded' ? 'bg-ink/10 text-ink-soft'
+                        : pm.status === 'paid' ? 'bg-pine/10 text-pine'
+                          : 'bg-flag/10 text-flag'
+                      }`}>
                       {pm.status}
                     </span>
                   </td>
@@ -134,7 +168,7 @@ export default function PaymentsTab({ payments, onRefunded }: PaymentsTabProps) 
                       </button>
                     ) : (
                       // Never settled, so there is nothing to send back.
-                      <span className="text-ink-soft">—</span>
+                      <span className="text-ink-soft"></span>
                     )}
                   </td>
                 </tr>

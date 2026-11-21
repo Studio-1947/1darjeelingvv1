@@ -1,0 +1,32 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /backend
+    schedule:
+      interval: weekly
+    groups:
+      backend-dependencies:
+        patterns: ['*']
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: weekly
+    groups:
+      web-dependencies:
+        patterns: ['*']
+    # Both frontends are written for Tailwind 3 (`@tailwind` directives, tailwindcss as a PostCSS
+    # plugin). Tailwind 4 needs a migration, not a bump: the grouped admin bump took it to v4 twice
+    # (fixed in 97bbc16, broken again by f7894dc) and failed the nginx image build each time.
+    ignore:
+      - dependency-name: tailwindcss
+        update-types: ['version-update:semver-major']
+  - package-ecosystem: npm
+    directory: /frontend-admin
+    schedule:
+      interval: weekly
+    groups:
+      admin-dependencies:
+        patterns: ['*']
+    ignore:
+      - dependency-name: tailwindcss
+        update-types: ['version-update:semver-major']

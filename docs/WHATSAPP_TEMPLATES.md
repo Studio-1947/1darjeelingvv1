@@ -1,24 +1,86 @@
-# WhatsApp message templates — ready to submit
+# WhatsApp message templates  ready to submit
 
-The four templates 1 Darjeeling needs, with their bodies written to match the code that fills
+The four templates aangan needs, with their bodies written to match the code that fills
 them. Create these in WhatsApp Manager or with the curl calls below, then put the approved names
 into the `WHATSAPP_*_TEMPLATE` environment variables.
 
 **Read this before editing any body text.** Meta fills `{{1}}`, `{{2}}`, … strictly by position,
 and the adapter passes the variables in the order `backend/src/lib/notifications.ts` builds them.
 Nothing checks that the two agree. Get the order wrong and the message sends successfully with
-the values in the wrong slots — a host is told a booking is for "Asha" when Asha is the listing —
+the values in the wrong slots  a host is told a booking is for "Asha" when Asha is the listing 
 and no error appears anywhere. The tables below are the contract; if you reorder a body, reorder
 the caller too.
 
 Second reason not to improvise: **an approved template that you edit goes back for review.** Get
 the copy right before you submit rather than after.
 
+
+## Using Interakt (what production uses)
+
+Production sends WhatsApp through **Interakt** (`MESSAGING_PROVIDER=interakt`); the login code
+already goes out this way with the template `aagan_otp`. The three booking templates below are
+created the same way. The curl calls further down are for the direct Meta Cloud API adapter and
+are not needed with Interakt.
+
+**1. Create each template in Interakt** (Templates → Create new template):
+
+| Interakt field | Value |
+|---|---|
+| Template name | `aangan_booking_confirmed_guest`, `aangan_booking_confirmed_host`, `aangan_booking_cancelled_guest` |
+| Category | **Utility** |
+| Language | English |
+| Header | none |
+| Body | copy the **Body** block of that template below *exactly*, including blank lines |
+| Variables | Interakt asks for a sample for each `{{n}}`: use the Example column |
+| Footer | `aangan` |
+| Buttons | none |
+
+Submit all three. Utility templates are usually approved within a few hours; Meta may ask for
+changes. **Do not reorder the `{{n}}` slots**: the server fills them strictly by position.
+
+**2. Put the approved names in the VPS `.env`** (`/var/www/1darjeeling-in/.env`):
+
+```
+INTERAKT_BOOKING_CONFIRMED_GUEST_TEMPLATE=aangan_booking_confirmed_guest
+INTERAKT_BOOKING_CONFIRMED_HOST_TEMPLATE=aangan_booking_confirmed_host
+INTERAKT_BOOKING_CANCELLED_GUEST_TEMPLATE=aangan_booking_cancelled_guest
+```
+
+The optional templates (#5 to #8) go in the same file, each under the exact name Interakt approved:
+
+```
+INTERAKT_HOST_CHANGES_REQUESTED_TEMPLATE=<approved name>
+INTERAKT_HOST_APPROVED_TEMPLATE=<approved name>
+INTERAKT_BOOKING_REQUEST_HOST_TEMPLATE=<approved name>
+INTERAKT_BOOKING_ACCEPTED_GUEST_TEMPLATE=<approved name>
+```
+
+`npm run notify:test` (step 3) accepts all seven template keys.
+
+Leave `NOTIFY_BOOKINGS=false` for now and recreate the backend
+(`docker compose -f docker-compose.in.yml up -d --force-recreate backend`).
+
+**3. Send yourself one of each, before turning anything on:**
+
+```
+docker compose -f docker-compose.in.yml exec backend npm run notify:test -- +91XXXXXXXXXX booking_confirmed_guest
+docker compose -f docker-compose.in.yml exec backend npm run notify:test -- +91XXXXXXXXXX booking_confirmed_host
+docker compose -f docker-compose.in.yml exec backend npm run notify:test -- +91XXXXXXXXXX booking_cancelled_guest
+```
+
+Each sends the template with the example values from this file to your own number. Check that
+every value lands in the right place. If Interakt rejects one, the command prints Interakt's
+reason (usually a template name typo or a template that is still in review).
+
+**4. Switch booking alerts on:** set `NOTIFY_BOOKINGS=true` and recreate the backend again. The
+server refuses to start if any of the three names is missing, so a half-done setup cannot go live
+silently. The boot log then says `whatsapp/sms: on`.
+
 ---
 
-## 1. Login code — `one_darjeeling_login`
+## 1. Login code  `one_darjeeling_login`
 
-Category **AUTHENTICATION**. You do not write this body — Meta supplies "*{{1}}* is your
+Category **AUTHENTICATION**. You do not write this body  Meta supplies "*{{1}}* is your
 verification code." and you choose only the options around it.
 
 ```bash
@@ -50,16 +112,16 @@ Sets `WHATSAPP_OTP_TEMPLATE`.
 
 ---
 
-## 2. Booking confirmed, to the guest — `booking_confirmed_guest`
+## 2. Booking confirmed, to the guest  `booking_confirmed_guest`
 
 Category **UTILITY**. Filled from `notifyBookingConfirmed()`.
 
 | Slot | Variable | Example |
 |---|---|---|
-| `{{1}}` | `name` — the guest's own name | `Asha Rai` |
-| `{{2}}` | `listing` — what they booked | `Peak View Homestay` |
-| `{{3}}` | `stay` — dates, or `a date to be arranged` | `2026-09-01 to 2026-09-03` |
-| `{{4}}` | `host` — host contact, or a fallback sentence | `Host: Tenzing Bhutia, +919876543210.` |
+| `{{1}}` | `name`  the guest's own name | `Asha Rai` |
+| `{{2}}` | `listing`  what they booked | `Peak View Homestay` |
+| `{{3}}` | `stay`  dates, or `a date to be arranged` | `2026-09-01 to 2026-09-03` |
+| `{{4}}` | `host`  host contact, or a fallback sentence | `Host: Tenzing Bhutia, +919876543210.` |
 
 **Body**
 
@@ -68,16 +130,16 @@ Hello {{1}}, your booking at {{2}} is confirmed for {{3}}.
 
 {{4}}
 
-Show this message on arrival. You pay the host directly — 1 Darjeeling only collected the booking fee.
+Show this message on arrival. You pay the host directly for your stay.
 ```
 
 **Footer**
 
 ```
-1 Darjeeling
+aangan
 ```
 
-`{{4}}` is a whole sentence, not a name — it arrives as either `Host: <name>, <phone>.` or
+`{{4}}` is a whole sentence, not a name  it arrives as either `Host: <name>, <phone>.` or
 `The host will contact you.` depending on whether the listing has a reachable owner. Give it its
 own line and do not wrap it in punctuation of your own.
 
@@ -91,9 +153,9 @@ curl -X POST "https://graph.facebook.com/v21.0/<WABA_ID>/message_templates" \
     "category": "UTILITY",
     "components": [
       { "type": "BODY",
-        "text": "Hello {{1}}, your booking at {{2}} is confirmed for {{3}}.\n\n{{4}}\n\nShow this message on arrival. You pay the host directly — 1 Darjeeling only collected the booking fee.",
+        "text": "Hello {{1}}, your booking at {{2}} is confirmed for {{3}}.\n\n{{4}}\n\nShow this message on arrival. You pay the host directly for your stay.",
         "example": { "body_text": [["Asha Rai", "Peak View Homestay", "2026-09-01 to 2026-09-03", "Host: Tenzing Bhutia, +919876543210."]] } },
-      { "type": "FOOTER", "text": "1 Darjeeling" }
+      { "type": "FOOTER", "text": "aangan" }
     ]
   }'
 ```
@@ -102,18 +164,18 @@ Sets `WHATSAPP_BOOKING_CONFIRMED_GUEST_TEMPLATE`.
 
 ---
 
-## 3. Booking confirmed, to the host — `booking_confirmed_host`
+## 3. Booking confirmed, to the host  `booking_confirmed_host`
 
 Category **UTILITY**. Note this one has **five** variables and a different order from the guest
-message — the listing comes first, not the person.
+message  the listing comes first, not the person.
 
 | Slot | Variable | Example |
 |---|---|---|
 | `{{1}}` | `listing` | `Peak View Homestay` |
-| `{{2}}` | `guest` — the guest's name | `Asha Rai` |
+| `{{2}}` | `guest`  the guest's name | `Asha Rai` |
 | `{{3}}` | `guest_phone` | `+919876543210` |
 | `{{4}}` | `stay` | `2026-09-01 to 2026-09-03` |
-| `{{5}}` | `guests` — how many people | `3` |
+| `{{5}}` | `guests`  how many people | `3` |
 
 **Body**
 
@@ -131,7 +193,7 @@ Please contact your guest to confirm arrival details.
 **Footer**
 
 ```
-1 Darjeeling
+aangan
 ```
 
 ```bash
@@ -146,7 +208,7 @@ curl -X POST "https://graph.facebook.com/v21.0/<WABA_ID>/message_templates" \
       { "type": "BODY",
         "text": "New booking at {{1}}.\n\nGuest: {{2}}\nPhone: {{3}}\nDates: {{4}}\nPeople: {{5}}\n\nPlease contact your guest to confirm arrival details.",
         "example": { "body_text": [["Peak View Homestay", "Asha Rai", "+919876543210", "2026-09-01 to 2026-09-03", "3"]] } },
-      { "type": "FOOTER", "text": "1 Darjeeling" }
+      { "type": "FOOTER", "text": "aangan" }
     ]
   }'
 ```
@@ -155,10 +217,10 @@ Sets `WHATSAPP_BOOKING_CONFIRMED_HOST_TEMPLATE`.
 
 ---
 
-## 4. Booking cancelled, to the guest — `booking_cancelled_guest`
+## 4. Booking cancelled, to the guest  `booking_cancelled_guest`
 
 Category **UTILITY**. Filled from `notifyBookingCancelled()`, which is also what the
-double-booking guard calls after cancelling a booking the guest has already paid for — the one
+double-booking guard calls after cancelling a booking the guest has already paid for  the one
 case where silence would be indefensible.
 
 | Slot | Variable | Example |
@@ -166,7 +228,7 @@ case where silence would be indefensible.
 | `{{1}}` | `name` | `Asha Rai` |
 | `{{2}}` | `listing` | `Peak View Homestay` |
 | `{{3}}` | `stay` | `2026-09-01 to 2026-09-03` |
-| `{{4}}` | `refund` — a whole sentence about the money | `Your payment has been refunded and will reach your account in 5-7 working days.` |
+| `{{4}}` | `refund`  a whole sentence about the money | `Your payment has been refunded and will reach your account in 5-7 working days.` |
 
 **Body**
 
@@ -175,17 +237,17 @@ Hello {{1}}, your booking at {{2}} for {{3}} has been cancelled.
 
 {{4}}
 
-We are sorry for the disruption. You can find another place to stay in the 1 Darjeeling app.
+We are sorry for the disruption. You can find another place to stay in the aangan app.
 ```
 
 **Footer**
 
 ```
-1 Darjeeling
+aangan
 ```
 
 `{{4}}` arrives as one of two full sentences depending on whether the refund actually went
-through, so it needs its own line and no added punctuation — same as `{{4}}` in the guest
+through, so it needs its own line and no added punctuation  same as `{{4}}` in the guest
 confirmation.
 
 ```bash
@@ -198,14 +260,117 @@ curl -X POST "https://graph.facebook.com/v21.0/<WABA_ID>/message_templates" \
     "category": "UTILITY",
     "components": [
       { "type": "BODY",
-        "text": "Hello {{1}}, your booking at {{2}} for {{3}} has been cancelled.\n\n{{4}}\n\nWe are sorry for the disruption. You can find another place to stay in the 1 Darjeeling app.",
+        "text": "Hello {{1}}, your booking at {{2}} for {{3}} has been cancelled.\n\n{{4}}\n\nWe are sorry for the disruption. You can find another place to stay in the aangan app.",
         "example": { "body_text": [["Asha Rai", "Peak View Homestay", "2026-09-01 to 2026-09-03", "Your payment has been refunded and will reach your account in 5-7 working days."]] } },
-      { "type": "FOOTER", "text": "1 Darjeeling" }
+      { "type": "FOOTER", "text": "aangan" }
     ]
   }'
 ```
 
 Sets `WHATSAPP_BOOKING_CANCELLED_GUEST_TEMPLATE`.
+
+---
+
+## 5. A document needs changing, to the host  `host_changes_requested`
+
+Category **UTILITY**. Optional: the server starts without it (see `OPTIONAL_TEMPLATES` in
+`backend/src/messaging/providerConfig.ts`); until it is set, hosts get this news in the app, on
+the website and by push only. Filled from `notifyHostVerification()` when an admin rejects a
+document. Sent to the main owner and every co-owner who has signed in.
+
+| Slot | Variable | Example |
+|---|---|---|
+| `{{1}}` | `name` | `Pema Sherpa` |
+| `{{2}}` | `business` | `Peak View Homestay` |
+| `{{3}}` | `document` | `Trade licence` |
+| `{{4}}` | `reason` | `The photo is blurred, please upload a clearer one` |
+
+**Body**
+
+```
+Hello {{1}}, the aangan team checked the documents for {{2}}. One needs to be uploaded again: {{3}}
+
+Reason: {{4}}
+
+Open the aangan app or website, go to Verification and upload it again. Your other documents are kept.
+```
+
+**Footer** `aangan`. Interakt env var: `INTERAKT_HOST_CHANGES_REQUESTED_TEMPLATE` (WhatsApp Cloud API:
+`WHATSAPP_HOST_CHANGES_REQUESTED_TEMPLATE`, MSG91: `MSG91_HOST_CHANGES_REQUESTED_TEMPLATE_ID`).
+
+---
+
+## 6. Approved and live, to the host  `host_approved`
+
+Category **UTILITY**. Optional, like #5. Sent once, the moment a host becomes verified
+(`recomputeKycStatus()`), whether an admin approving the last document or the host's own live
+location capture completed it.
+
+| Slot | Variable | Example |
+|---|---|---|
+| `{{1}}` | `name` | `Pema Sherpa` |
+| `{{2}}` | `business` | `Peak View Homestay` |
+
+**Body**
+
+```
+Hello {{1}}, {{2}} is verified on aangan. Your listings are now live and travellers can find and book you.
+
+You will now see the aangan verified badge on your page.
+```
+
+**Footer** `aangan`. Interakt env var: `INTERAKT_HOST_APPROVED_TEMPLATE` (WhatsApp Cloud API:
+`WHATSAPP_HOST_APPROVED_TEMPLATE`, MSG91: `MSG91_HOST_APPROVED_TEMPLATE_ID`).
+
+---
+
+## 7. New booking request, to the host  `booking_request_host`
+
+Category **UTILITY**. Optional, like #5. Sent when a guest asks to book a homestay, driver or guide
+that has a real host, because nothing is confirmed until the host presses **Accept**. Goes to the
+listing's contact number and to each owner's own number. Until this template is approved the host
+only sees the request inside the app or on the dashboard.
+
+| Slot | Variable | Example |
+|---|---|---|
+| `{{1}}` | `listing` | `Peak View Homestay` |
+| `{{2}}` | `guest`  the guest's name | `Asha Rai` |
+| `{{3}}` | `stay` | `2026-09-01 to 2026-09-03` |
+
+**Body**
+
+```
+New booking request on aangan: {{2}} would like to book {{1}} for {{3}}.
+
+Open your aangan dashboard to accept or decline. The guest is waiting for your answer.
+```
+
+**Footer** `aangan`. Interakt env var: `INTERAKT_BOOKING_REQUEST_HOST_TEMPLATE` (WhatsApp Cloud API:
+`WHATSAPP_BOOKING_REQUEST_HOST_TEMPLATE`, MSG91: `MSG91_BOOKING_REQUEST_HOST_TEMPLATE_ID`).
+
+---
+
+## 8. Host said yes, to the guest  `booking_accepted_guest`
+
+Category **UTILITY**. Optional, like #5. Sent when the host accepts a request, so the guest comes
+back and confirms it (free with the aangan pass, or the small booking fee).
+
+| Slot | Variable | Example |
+|---|---|---|
+| `{{1}}` | `name` | `Asha Rai` |
+| `{{2}}` | `listing` | `Peak View Homestay` |
+| `{{3}}` | `stay` | `2026-09-01 to 2026-09-03` |
+
+**Body**
+
+```
+Hello {{1}}, your host accepted your request for {{2}} ({{3}}).
+
+Open My Trips on aangan and confirm it to lock it in.
+```
+
+**Footer** `aangan`. Interakt env var: `INTERAKT_BOOKING_ACCEPTED_GUEST_TEMPLATE` (WhatsApp Cloud API:
+`WHATSAPP_BOOKING_ACCEPTED_GUEST_TEMPLATE`, MSG91: `MSG91_BOOKING_ACCEPTED_GUEST_TEMPLATE_ID`).
 
 ---
 
@@ -219,7 +384,7 @@ judges wrongly filed, so mislabelling gains nothing.
 **The `example` block is not optional.** Meta rejects a template with variables and no example
 values, and the rejection reason does not always say so plainly.
 
-**Dates arrive as the app stores them** — `2026-09-01`, not `1 September 2026`. Readable, if
+**Dates arrive as the app stores them**  `2026-09-01`, not `1 September 2026`. Readable, if
 unlovely. Making them prettier is a change to `formatStay()` in
 `backend/src/lib/notifications.ts` and needs no template change, since it is the same `{{3}}`
 either way. Worth doing at some point; not worth blocking on.

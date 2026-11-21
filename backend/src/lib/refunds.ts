@@ -6,8 +6,8 @@ import { MOCK_PAYMENTS, rzpClient, log } from '../config';
  * Returning money.
  *
  * Before this existed, every rupee the platform took was one-way: cancelling a booking flipped a
- * status column and nothing else, so a guest whose booking was cancelled — by themselves, by the
- * host, or by the double-booking guard in payments.ts — simply lost what they had paid. There was
+ * status column and nothing else, so a guest whose booking was cancelled  by themselves, by the
+ * host, or by the double-booking guard in payments.ts  simply lost what they had paid. There was
  * no record of money owed and no way to return it without logging into the Razorpay dashboard by
  * hand.
  *
@@ -21,7 +21,7 @@ export type RefundOutcome = {
   paymentId: string;
   orderId: string;
   amount: number;
-  /** false when this payment was already refunded — not an error, just nothing left to do. */
+  /** false when this payment was already refunded  not an error, just nothing left to do. */
   refunded: boolean;
   /** Set when the gateway refused. The payment row is left untouched so a retry can succeed. */
   error?: string;
@@ -33,13 +33,13 @@ export type RefundOutcome = {
  * Never throws: a refund runs on paths that have already taken the user's money and already
  * committed the thing the money was for (a cancellation, a conflicting booking). Aborting those
  * with a 500 because Razorpay was briefly unreachable would be worse than recording the failure
- * and letting an operator retry — so the failure is returned, and logged loudly.
+ * and letting an operator retry  so the failure is returned, and logged loudly.
  */
 export async function refundPayment(payment: PaymentRow, reason: string): Promise<RefundOutcome> {
   const base = { paymentId: payment.id, orderId: payment.orderId, amount: payment.amount };
 
   if (payment.status !== 'paid') {
-    // Never settled (or already refunded) — there is nothing to send back.
+    // Never settled (or already refunded)  there is nothing to send back.
     return { ...base, refunded: false };
   }
 
@@ -48,7 +48,7 @@ export async function refundPayment(payment: PaymentRow, reason: string): Promis
   if (payment.mock || MOCK_PAYMENTS || !payment.paymentId) {
     // A mocked payment moved no money, so there is nothing to ask a gateway for. The row is still
     // marked refunded, because the app's own record of what the user owes must be correct in
-    // mock mode too — that is what lets the pre-go-live deployment exercise this path honestly.
+    // mock mode too  that is what lets the pre-go-live deployment exercise this path honestly.
     gatewayRefundId = `mock_rfnd_${payment.orderId}`;
   } else {
     if (!rzpClient) {
@@ -71,7 +71,7 @@ export async function refundPayment(payment: PaymentRow, reason: string): Promis
       // Loud, because nothing else in the system will notice: the cancellation the caller asked
       // for has already happened and it returns 200 either way.
       log.error(
-        `[refund] gateway refused a refund — MONEY IS STILL HELD. ` +
+        `[refund] gateway refused a refund  MONEY IS STILL HELD. ` +
         `payment=${payment.id} order=${payment.orderId} amount=${payment.amount} reason="${reason}": ${error}`
       );
       await recordFailedAttempt(payment, reason, error);
@@ -103,7 +103,7 @@ export async function refundPayment(payment: PaymentRow, reason: string): Promis
 /**
  * Records that a refund was owed and could not be delivered, without changing `status`.
  *
- * The row stays `paid`, because the money genuinely is still with the platform — reporting it as
+ * The row stays `paid`, because the money genuinely is still with the platform  reporting it as
  * refunded would make the books lie. Stamping the reason and the error is what puts it on the
  * operator's queue (see listUnreturnedPayments) instead of losing it to a log line.
  */
@@ -114,7 +114,7 @@ async function recordFailedAttempt(payment: PaymentRow, reason: string, error: s
 }
 
 /**
- * Refunds every settled payment attached to one thing — a booking id, a provider id, a user id.
+ * Refunds every settled payment attached to one thing  a booking id, a provider id, a user id.
  *
  * There is normally exactly one, but the loop is deliberate: a retried checkout can leave two paid
  * rows against the same reference, and refunding only the first would quietly keep the second.
@@ -140,7 +140,7 @@ export async function refundPaymentsFor(
 }
 
 /**
- * Every payment that was charged but whose refund failed at the gateway — the operator's work
+ * Every payment that was charged but whose refund failed at the gateway  the operator's work
  * queue. Surfaced through GET /api/admin/refunds/pending so a Razorpay outage during a
  * cancellation cannot silently become money the platform simply kept.
  */

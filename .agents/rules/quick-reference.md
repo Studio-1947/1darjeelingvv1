@@ -1,6 +1,6 @@
 ---
 trigger: model_decision
-description: Apply when you need a fast lookup of which agents, skills, or validation scripts exist — for routing decisions or recalling the master/key components of the kit.
+description: Apply when you need a fast lookup of which agents, skills, or validation scripts exist  for routing decisions or recalling the master/key components of the kit.
 ---
 
 # Quick Reference - AG Kit

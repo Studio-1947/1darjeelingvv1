@@ -1,135 +1,144 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import gsap from 'gsap';
 import SmartImg from '@/components/SmartImg';
 import { listingImage } from '@/lib/listingContent';
-import VerifiedBadge from '@/components/provider/VerifiedBadge';
-import { MapPin, ArrowLeft, Share2, Heart, ChevronDown, Check } from 'lucide-react';
-import { SCREEN_H } from './primitives';
+import { Icon } from '@/components/ag/Icon';
+import { Status } from '@/components/ag';
+import AudioGuide from '@/components/AudioGuide';
 import { useFavorites } from '@/context/FavoritesContext';
 import { useLoginGate } from '@/components/LoginGate';
 import type { ShareOutcome } from '@/lib/share';
 
-/** Full-screen hero: cover image, back/like/share, and the title block. */
-export default function DetailHero({ item, unit, onShare }: {
+/** The prototype's guide kinds (gtypeTag): its label key and icon. */
+const GUIDE_TAG: Record<string, string> = {
+  trekking: 'trek', heritage: 'flag', tea: 'leaf', nature: 'leaf', culture: 'flag', photography: 'sun', story: 'news', storyteller: 'news',
+};
+
+/**
+ * Top of the listing page (prototype V.item): the 16:10 photo, the photo strip, then the name, the
+ * guide kind, the place, the verified tag with the rating, and the host line.
+ */
+export default function DetailHero({ item, photos, stripLabel, stripTestid = 'detail-photos', host }: {
   item: any;
-  unit: string;
+  photos: { src: string; tag?: string; groupTestid?: string }[];
+  stripLabel?: string;
+  stripTestid?: string;
+  /** "Host: Name ↗", already built by the page. */
+  host?: React.ReactNode;
+}) {
+  const { t } = useTranslation();
+  const heroSrc = listingImage(item, 1440, 900);
+  const rated = Number(item.review_count) > 0;
+  const guideKinds: string[] = item.type === 'guide' && Array.isArray(item.extras?.guide_types) ? item.extras.guide_types : [];
+
+  return (
+    <>
+      <span className="ag-listing-hero" data-testid="detail-hero">
+        <SmartImg src={heroSrc} alt={item.title} className="w-full h-full" />
+      </span>
+
+      {photos.length > 0 && (
+        <div className="ag-listing-strip" role="list" aria-label={stripLabel || t('listing.photos', 'Photos')} data-testid={stripTestid}>
+          {photos.map((p, i) => (
+            <StripTile key={p.src + i} src={p.src} tag={p.tag} testid={p.groupTestid}
+              alt={t('detail.gallery_alt', { index: i + 1 }) + (item?.title ? ` · ${item.title}` : '')} />
+          ))}
+        </div>
+      )}
+
+      <div className="ag-listing-stack">
+        <h1 data-testid="listing-title">{item.title}</h1>
+        {guideKinds.length > 0 && (
+          <span className="ag-listing-gtag">
+            <Icon name={(GUIDE_TAG[guideKinds[0]] as any) || 'trek'} />
+            {t(`profile.guide_type_${guideKinds[0]}`, { defaultValue: guideKinds[0] })}
+          </span>
+        )}
+        {item.location && <p className="ag-listing-place"><Icon name="pin" /> {item.location}</p>}
+        {(item.provider_verified || rated) && (
+          <p className="ag-listing-row">
+            {item.provider_verified && <span className="ag-listing-tag ok">{t('listing.verified', 'Verified')}</span>}
+            {rated && (
+              <>
+                <a href="#reviews" className="ag-listing-starline" aria-label={t('reviews.out_of_5', { value: Number(item.rating).toFixed(1) })}>
+                  <Icon name="star" />{Number(item.rating).toFixed(1)}
+                </a>
+                <span className="ag-small">({item.review_count})</span>
+              </>
+            )}
+          </p>
+        )}
+        {host}
+      </div>
+    </>
+  );
+}
+
+/** One photo of the strip; a photo that fails to load leaves the strip instead of showing a blank tile. */
+function StripTile({ src, alt, tag, testid }: { src: string; alt: string; tag?: string; testid?: string }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) return null;
+  return (
+    <div role="listitem" data-testid={testid}>
+      <img src={src} alt={alt} loading="lazy" decoding="async" onError={() => setFailed(true)} />
+      {tag && <span className="ag-listing-tag">{tag}</span>}
+    </div>
+  );
+}
+
+/**
+ * The row under the price (prototype .itembtns): Listen, Direction, then save and share as round
+ * outlined icon buttons.
+ */
+export function ItemActions({ item, about, onDirections, onShare }: {
+  item: any;
+  about: string;
+  onDirections: () => void;
   onShare: () => Promise<ShareOutcome>;
 }) {
   const { t } = useTranslation();
-  const nav = useNavigate();
-  const loc = useLocation();
   const { isFavorite, toggle } = useFavorites();
   const { requireAuth } = useLoginGate();
   const liked = isFavorite(item.id);
   const [shareState, setShareState] = useState<'idle' | 'copied' | 'failed'>('idle');
-  const heroRef = useRef<HTMLElement>(null);
-  const heroContentRef = useRef<HTMLDivElement>(null);
 
-  // Saving requires an account (favorites are per-user). The gate explains that before sending
-  // anyone to sign in, matching how the feed cards behave.
+  // Saving and sharing need an account; the gate explains that before sending anyone to sign in.
   const handleLike = () => {
     if (!requireAuth('save')) return;
     toggle(item.id).catch(() => {});
   };
-
-  // `nav(-1)` goes nowhere when this is the first entry in the SPA's history - i.e. the visitor
-  // landed here directly via a shared link, a new tab, or a refresh (React Router marks that entry
-  // with key 'default'). In that case send them to the home feed instead of leaving them on a dead
-  // button (or bouncing them off the site entirely).
-  const goBack = () => {
-    if (loc.key === 'default') nav('/');
-    else nav(-1);
-  };
-
   const handleShare = async () => {
     if (!requireAuth('share')) return;
     const outcome = await onShare();
-    // A successful native share sheet gives its own feedback, so only surface a pill for the
-    // clipboard-copy fallback (and for outright failure).
+    // A native share sheet gives its own feedback; only the clipboard fallback and failure need one.
     if (outcome === 'copied' || outcome === 'failed') {
       setShareState(outcome);
       setTimeout(() => setShareState('idle'), outcome === 'copied' ? 1600 : 2400);
     }
   };
 
-  // On landing, only the hero image shows; then the title block rises up from
-  // below into place on its own. The page scrolls normally throughout.
-  useEffect(() => {
-    const ctx = gsap.context(() => {
-      gsap.fromTo(
-        heroContentRef.current,
-        { yPercent: 55, autoAlpha: 0 },
-        { yPercent: 0, autoAlpha: 1, duration: 1.1, delay: 0.35, ease: 'power3.out' },
-      );
-    }, heroRef);
-    return () => ctx.revert();
-  }, []);
-
-  // A distinct per-listing hero (provider image kept; shared seed images replaced).
-  const heroSrc = listingImage(item, 2000, 1200);
-
   return (
-    <section ref={heroRef} className={`relative ${SCREEN_H} h-[calc(100svh-var(--header-h))] w-full overflow-hidden bg-mist`} data-testid="detail-hero">
-      <SmartImg src={heroSrc} alt={item.title} className="absolute inset-0 w-full h-full object-cover" />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/45" />
-
-      {/* Below lg the sticky header supplies the back control - avoid two. */}
-      <button onClick={goBack} data-testid="detail-back"
-        className="absolute z-10 top-4 left-4 md:top-6 md:left-8 hidden lg:inline-flex items-center gap-2 pl-3 pr-4 py-2.5 rounded-full bg-white/95 backdrop-blur text-sm font-bold text-ink btn-hover">
-        <ArrowLeft size={16} /> {t('common.back')}
-      </button>
-
-      <div className="absolute z-10 top-4 right-4 md:top-6 md:right-8 flex flex-col items-end gap-2">
-        <div className="flex gap-2">
-          <button onClick={handleLike} data-testid="detail-like"
-            aria-label={t('common.save')} aria-pressed={liked}
-            className="w-11 h-11 rounded-full bg-white/95 backdrop-blur grid place-items-center btn-hover">
-            <Heart size={18} className={liked ? 'fill-flag text-flag' : 'text-ink'} />
-          </button>
-          <button onClick={handleShare} data-testid="detail-share" aria-label={t('feed.share')}
-            className="w-11 h-11 rounded-full bg-white/95 backdrop-blur grid place-items-center btn-hover">
-            <Share2 size={18} className="text-ink" />
-          </button>
-        </div>
-        {shareState !== 'idle' && (
-          <span
-            role="status"
-            data-testid="detail-share-feedback"
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold shadow-md ${
-              shareState === 'copied' ? 'bg-white/95 text-ink' : 'bg-flag text-white'
-            }`}
-          >
-            {shareState === 'copied' ? <><Check size={13} /> {t('detail.share_copied')}</> : t('detail.share_failed')}
-          </span>
-        )}
+    <>
+      <div className="ag-listing-acts" data-testid="detail-actions">
+        <AudioGuide title={item.title} aboutText={about} />
+        <button type="button" className={`ag-listing-rowic${liked ? ' on' : ''}`} aria-pressed={liked}
+          aria-label={liked ? t('listing.saved', 'Saved') : t('listing.save', 'Save')} title={liked ? t('listing.saved', 'Saved') : t('listing.save', 'Save')}
+          onClick={handleLike} data-testid="detail-like">
+          <Icon name="heart" />
+        </button>
+        <button type="button" className="ag-btn tonal ag-listing-dir" onClick={onDirections} data-testid="detail-directions">
+          <Icon name="pin" /> {t('listing.direction', 'Direction')}
+        </button>
+        <button type="button" className="ag-listing-rowic" aria-label={t('listing.share', 'Share')} title={t('listing.share', 'Share')}
+          onClick={handleShare} data-testid="detail-share">
+          <Icon name="share" />
+        </button>
       </div>
-
-      {/* Left-aligned hero content. It spans the whole hero, so it has to stay
-          click-through or it swallows the back/like/share buttons underneath. */}
-      <div ref={heroContentRef} style={{ opacity: 0 }} className="absolute inset-0 pointer-events-none flex flex-col items-start justify-center text-left px-4 md:px-8 lg:px-16">
-        <span className="chip bg-white/90 capitalize">{t(`categories.${item.type}`)}</span>
-        <h1 className="mt-5 font-display font-extrabold text-5xl sm:text-6xl md:text-8xl text-white leading-[0.95] max-w-4xl"
-          data-testid="listing-title">{item.title}</h1>
-        {item.provider_verified && (
-          <span className="mt-3 inline-flex rounded-full bg-white/90 backdrop-blur p-0.5">
-            <VerifiedBadge size="md" />
-          </span>
-        )}
-        <div className="mt-5 flex flex-wrap justify-start items-center gap-x-6 gap-y-2 text-white/90 text-base md:text-lg font-semibold">
-          <span className="flex items-center gap-1.5"><MapPin size={18} /> {item.location}</span>
-          {item.price > 0 && (
-            <span className="flex items-center gap-1.5">
-              ₹{item.price}<span className="font-normal text-white/75">{unit || ` ${t('detail.onwards')}`}</span>
-            </span>
-          )}
-        </div>
-      </div>
-
-      <div className="absolute inset-x-0 bottom-6 hidden md:flex justify-center text-white/70">
-        <ChevronDown size={26} className="animate-bounce" />
-      </div>
-    </section>
+      {shareState !== 'idle' && (
+        <Status role="status" data-testid="detail-share-feedback" tone={shareState === 'copied' ? 'ok' : 'no'} className="self-start">
+          {shareState === 'copied' ? <><Icon name="check" size={14} /> {t('detail.share_copied')}</> : t('detail.share_failed')}
+        </Status>
+      )}
+    </>
   );
 }

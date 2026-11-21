@@ -57,7 +57,7 @@ describe('messaging config', () => {
   });
 
   it('applies the documented OTP defaults', () => {
-    expect(OTP_TTL_SECONDS).toBe(300);
+    expect(OTP_TTL_SECONDS).toBe(600);
     expect(OTP_MAX_ATTEMPTS).toBe(5);
   });
 });

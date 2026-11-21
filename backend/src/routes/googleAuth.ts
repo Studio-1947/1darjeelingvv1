@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { EMPTY_TRAVELLER_PROFILE } from '../lib/travellerProfile';
 import { v4 as uuidv4 } from 'uuid';
 import { OAuth2Client } from 'google-auth-library';
 import { db, schema } from '../db';
@@ -18,7 +19,7 @@ const router = Router();
 /**
  * Collect every Google client ID this server trusts. When a token arrives the SDK
  * picks the correct audience from this list automatically, so we do not need to
- * know which platform sent it — only that it was one of ours.
+ * know which platform sent it  only that it was one of ours.
  */
 const GOOGLE_CLIENT_IDS: string[] = [
   GOOGLE_WEB_CLIENT_ID,
@@ -72,7 +73,7 @@ router.post(
     }
 
     if (!googleClient) {
-      log.error('[auth/google] Google OAuth is not configured — GOOGLE_WEB_CLIENT_ID, GOOGLE_ANDROID_CLIENT_ID, and GOOGLE_IOS_CLIENT_ID are all unset');
+      log.error('[auth/google] Google OAuth is not configured  GOOGLE_WEB_CLIENT_ID, GOOGLE_ANDROID_CLIENT_ID, and GOOGLE_IOS_CLIENT_ID are all unset');
       return res.status(503).json({ detail: 'Google sign-in is not configured on this server' });
     }
 
@@ -106,7 +107,7 @@ router.post(
     const SELF_ASSIGNABLE_ROLES = ['tourist', 'provider'];
     const roleToUse = SELF_ASSIGNABLE_ROLES.includes(role) ? role : 'tourist';
 
-    // Look up by email — Google accounts are identified by email, not phone.
+    // Look up by email  Google accounts are identified by email, not phone.
     // A user who signed up via OTP has their email set if they added one in profile.
     // A Google-only user gets a synthetic phone to satisfy the unique constraint.
     let [user] = payload.email
@@ -133,13 +134,15 @@ router.post(
         supportExpiresAt: null,
         password: null,
         phoneVerifiedAt: null,
+        interests: [],
+        ...EMPTY_TRAVELLER_PROFILE,
         referralCode: null,
       };
 
       await db.insert(schema.users).values(user);
       log.info(`[auth/google] Created new user ${user.id} via Google (${payload.email ?? 'no email'})`);
     } else {
-      // Returning user — update avatar from Google if it changed.
+      // Returning user  update avatar from Google if it changed.
       if (payload.picture && payload.picture !== user.avatar) {
         await db.update(schema.users)
           .set({ avatar: payload.picture })

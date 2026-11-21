@@ -1,31 +1,30 @@
 # Reference only — this is NOT used by Docker or docker-compose.in.yml.
 # It's the file to create on the VPS's system Nginx (not in this repo's
-# containers) at /etc/nginx/sites-available/1darjeeling.in, matching the exact
+# containers) at /etc/nginx/sites-available/aanganerp.in, matching the exact
 # convention already used for every other app on this box (compare
-# deploy/host-nginx-site.conf.example, which does the same for the
-# onedarjeeling.duckdns.org stack on port 8091).
+# /etc/nginx/sites-available/s47-task.duckdns.org).
 #
 # Install it with:
-#   sudo cp deploy/host-nginx-site.in.conf.example /etc/nginx/sites-available/1darjeeling.in
-#   sudo ln -s /etc/nginx/sites-available/1darjeeling.in /etc/nginx/sites-enabled/
+#   sudo cp deploy/host-nginx-site.in.conf.example /etc/nginx/sites-available/aanganerp.in
+#   sudo ln -s /etc/nginx/sites-available/aanganerp.in /etc/nginx/sites-enabled/
 #   sudo nginx -t && sudo systemctl reload nginx
-#   sudo certbot --nginx -d 1darjeeling.in -d www.1darjeeling.in
+#   sudo certbot --nginx -d aanganerp.in -d www.aanganerp.in
 #
 # That last command edits this file in place to add the SSL block and the
 # HTTP->HTTPS redirect, exactly like it already did for the other certs on this
 # VPS — nothing more to do after that; Certbot's existing renewal timer covers
-# this cert too. DNS for 1darjeeling.in must resolve to this VPS before certbot
+# this cert too. DNS for aanganerp.in must resolve to this VPS before certbot
 # runs (see deploy/VPS-RUNBOOK.md).
 
 server {
-    server_name 1darjeeling.in www.1darjeeling.in;
+    server_name aanganerp.in www.aanganerp.in;
 
     # Uploads (listing images, KYC docs) are sent as base64 JSON, ~33% larger than the
     # raw file. The container's nginx (deploy/nginx/app.conf) already allows 30m; set the
     # same ceiling here so a large upload isn't rejected at THIS system-Nginx layer with a
     # bare 413 before it ever reaches the app. (The container then returns a clean JSON
-    # 400/413.) Unlike the onedarjeeling example, this line is set explicitly rather than
-    # relying on the system Nginx global default.
+    # 400/413.) Set explicitly rather than relying on the system Nginx global default, which
+    # is shared with every other tenant on this box and must not be raised for all of them.
     client_max_body_size 30m;
 
     location / {

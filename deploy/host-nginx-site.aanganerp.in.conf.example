@@ -1,4 +1,4 @@
-# Reference only — install this on the VPS's system Nginx, not in a container.
+# Reference only  install this on the VPS's system Nginx, not in a container.
 # It fronts the existing `prod` Compose stack, whose internal nginx is bound to
 # 127.0.0.1:8092 by docker-compose.in.yml.
 #

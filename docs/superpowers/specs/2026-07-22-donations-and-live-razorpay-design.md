@@ -1,4 +1,4 @@
-# Donations & Live Razorpay (Test Mode) — Design
+# Donations & Live Razorpay (Test Mode)  Design
 
 > Date: 2026-07-22
 > Status: Approved for planning
@@ -10,8 +10,8 @@
 
 Two related changes:
 
-1. **Donations.** A "Donate for good" entry point in the header lets a logged-in user give any amount they choose. It grants nothing — no access, no expiry, no listing. It is a gift.
-2. **Real gateway everywhere.** `MOCK_PAYMENTS=false` locally, with Razorpay test credentials, so all four flows — `provider_registration` (₹99), `booking_commission` (₹1), `platform_support` (₹12) and the new `donation` (variable) — run through the real Razorpay checkout rather than the simulated modal.
+1. **Donations.** A "Donate for good" entry point in the header lets a logged-in user give any amount they choose. It grants nothing  no access, no expiry, no listing. It is a gift.
+2. **Real gateway everywhere.** `MOCK_PAYMENTS=false` locally, with Razorpay test credentials, so all four flows  `provider_registration` (₹99), `booking_commission` (₹1), `platform_support` (₹12) and the new `donation` (variable)  run through the real Razorpay checkout rather than the simulated modal.
 
 ## 2. Confirmed decisions
 
@@ -33,7 +33,7 @@ Today `POST /payments/order` contains:
 const amount = AMOUNTS[flow];
 ```
 
-That one line is the reason nobody has to wonder whether a client can name its own price. A donation has no fixed price, so something has to change — but bolting `if (flow === 'donation') amount = req.body.amount` into that function erodes the very invariant the line exists to advertise.
+That one line is the reason nobody has to wonder whether a client can name its own price. A donation has no fixed price, so something has to change  but bolting `if (flow === 'donation') amount = req.body.amount` into that function erodes the very invariant the line exists to advertise.
 
 Instead, one function owns the decision:
 
@@ -59,7 +59,7 @@ The value is read from the body **once**, in `resolveAmount`, and the validated 
 
 ## 4. Ownership and settlement
 
-`reference_id` for `donation` is the payer's own user id — the same rule as `platform_support`, enforced in `assertOwnsReference`, `403` otherwise. There is no other entity a donation could belong to.
+`reference_id` for `donation` is the payer's own user id  the same rule as `platform_support`, enforced in `assertOwnsReference`, `403` otherwise. There is no other entity a donation could belong to.
 
 **Settlement grants nothing.** `handlePaymentSuccess`'s `donation` branch performs no writes beyond the `payments` row that `settlePaymentOnce` already updated. It returns `{ amount }` so the thank-you screen can name the figure.
 
@@ -89,7 +89,7 @@ RAZORPAY_WEBHOOK_SECRET=...
 
 ### What changes behaviourally
 
-`POST /payments/order` stops returning `mock: true`, so every frontend caller takes its `payWithRazorpay` branch instead of opening `MockPaymentModal`. That branch already exists and is used by `useBookingFlow`, `ProviderOnboard`, `Support` and (new) `Donate` — no frontend change is required for the switch itself.
+`POST /payments/order` stops returning `mock: true`, so every frontend caller takes its `payWithRazorpay` branch instead of opening `MockPaymentModal`. That branch already exists and is used by `useBookingFlow`, `ProviderOnboard`, `Support` and (new) `Donate`  no frontend change is required for the switch itself.
 
 `POST /payments/mock/complete` returns `400 Mock payments disabled`, which is correct and already tested.
 
@@ -100,7 +100,7 @@ Razorpay delivers webhooks to a public URL. It cannot reach `localhost`, so duri
 1. the browser callback into `POST /payments/verify` (real signature, real payment id), and
 2. a locally-generated, correctly-signed `POST /payments/webhook` request that proves the handler's own logic.
 
-This is a gap in *environment*, not in code — the webhook handler is unchanged and already covered by `webhook.test.ts`. Exercising it against genuine Razorpay delivery requires a public tunnel or a deployed environment, and is called out in §9 as work that remains.
+This is a gap in *environment*, not in code  the webhook handler is unchanged and already covered by `webhook.test.ts`. Exercising it against genuine Razorpay delivery requires a public tunnel or a deployed environment, and is called out in §9 as work that remains.
 
 ### The test suite is unaffected
 
@@ -111,12 +111,12 @@ This is a gap in *environment*, not in code — the webhook handler is unchanged
 | File | Change |
 |---|---|
 | `backend/src/config.ts` | `DONATION_MIN_PAISE = 1000`, `DONATION_MAX_PAISE = 10000000` |
-| `backend/src/lib/payments.ts` *(new)* | `resolveAmount(flow, body)` — pure, no DB, no Express |
+| `backend/src/lib/payments.ts` *(new)* | `resolveAmount(flow, body)`  pure, no DB, no Express |
 | `backend/src/routes/payments.ts` | use `resolveAmount`; `donation` branches in `assertOwnsReference` and `handlePaymentSuccess`; OpenAPI enums and the `amount` request property |
 | `backend/test/donations.test.ts` *(new)* | flow + validation coverage |
 | `backend/test/payments.test.ts` | unchanged; existing flows must keep passing |
 
-`donation` is deliberately **absent** from the `AMOUNTS` map — its presence there would imply a fixed price. `resolveAmount` recognises it explicitly.
+`donation` is deliberately **absent** from the `AMOUNTS` map  its presence there would imply a fixed price. `resolveAmount` recognises it explicitly.
 
 ## 8. Frontend changes
 
@@ -129,7 +129,7 @@ This is a gap in *environment*, not in code — the webhook handler is unchanged
 | `frontend/src/lib/api.ts` | `createPaymentOrder` gains an optional `amount` |
 | `frontend/src/locales/{en,hi,bn,ne}.json` | `donate.*` block |
 
-Client-side amount validation mirrors the server's bounds for immediate feedback, but the server's check is authoritative — the client's is a courtesy, not a control.
+Client-side amount validation mirrors the server's bounds for immediate feedback, but the server's check is authoritative  the client's is a courtesy, not a control.
 
 Logged-out visitors clicking Donate go to `/login?next=%2Fdonate`, reusing the existing `next` parameter that `Login.tsx` already honours.
 
@@ -159,4 +159,4 @@ Both are listed so nobody mistakes "the suite is green" for "money has moved".
 - A public donor list or leaderboard
 - Refunds
 - Changing the ₹99, ₹1, or ₹12 amounts
-- Moving production off mock payments — this design covers local test-mode setup only
+- Moving production off mock payments  this design covers local test-mode setup only

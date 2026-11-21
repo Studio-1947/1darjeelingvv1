@@ -1,8 +1,10 @@
 import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Bookmark, Share2, Star, X } from 'lucide-react';
+import { Bookmark, ShareNetwork as Share2, Star } from '@phosphor-icons/react';
 import { useAuth } from '@/context/AuthContext';
+import { Button } from '@/components/ag';
+import Sheet from '@/components/listing-detail/Sheet';
 
 /** The actions that require an account. Each maps to its own copy and icon. */
 export type GatedAction = 'save' | 'share' | 'review';
@@ -55,58 +57,18 @@ export function LoginGateProvider({ children }: { children: React.ReactNode }) {
     <Ctx.Provider value={value}>
       {children}
 
-      {action && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="login-gate-title"
-          data-testid="login-gate"
-          className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center p-4"
-        >
-          <button
-            type="button"
-            aria-label={t('common.close')}
-            onClick={() => setAction(null)}
-            className="absolute inset-0 bg-black/50 backdrop-blur-[2px] cursor-default"
-          />
-          <div className="relative w-full max-w-sm bg-white rounded-3xl border border-[var(--line)] shadow-2xl p-6 text-center animate-in fade-in slide-in-from-bottom-4 duration-200">
-            <button
-              type="button"
-              onClick={() => setAction(null)}
-              aria-label={t('common.close')}
-              data-testid="login-gate-dismiss"
-              className="absolute top-3 right-3 w-9 h-9 rounded-full grid place-items-center text-ink-soft hover:bg-mist transition-colors"
-            >
-              <X size={18} />
-            </button>
-
-            <span className="mx-auto w-14 h-14 rounded-full bg-mist text-pine grid place-items-center">
-              {Icon && <Icon size={24} />}
-            </span>
-            <h2 id="login-gate-title" className="mt-4 font-display font-extrabold text-xl text-ink">
-              {t(`auth_gate.${action}_title`)}
-            </h2>
-            <p className="mt-2 text-sm text-ink-soft leading-relaxed">
-              {t(`auth_gate.${action}_body`)}
-            </p>
-
-            <button
-              type="button"
-              onClick={goLogin}
-              data-testid="login-gate-cta"
-              className="mt-5 w-full py-3 rounded-full bg-flag text-white font-bold btn-hover"
-            >
-              {t('auth_gate.cta')}
-            </button>
-            <button
-              type="button"
-              onClick={() => setAction(null)}
-              className="mt-2 w-full py-2 text-sm font-semibold text-ink-soft hover:text-ink transition-colors"
-            >
-              {t('auth_gate.later')}
-            </button>
+      {action && Icon && (
+        <Sheet onClose={() => setAction(null)} labelledBy="login-gate-title" testid="login-gate" closeTestid="login-gate-dismiss">
+          <div className="flex flex-col items-center text-center gap-2 pt-2">
+            <span className="ag-micon !w-14 !h-14 [&_svg]:!w-6 [&_svg]:!h-6"><Icon aria-hidden="true" /></span>
+            <h2 id="login-gate-title" className="!text-[22px] !leading-7 mt-1">{t(`auth_gate.${action}_title`)}</h2>
+            <p className="ag-small">{t(`auth_gate.${action}_body`)}</p>
           </div>
-        </div>
+          <div className="ag-stack">
+            <Button variant="primary" go block onClick={goLogin} data-testid="login-gate-cta" data-autofocus>{t('auth_gate.cta')}</Button>
+            <Button variant="text" center className="self-center" onClick={() => setAction(null)}>{t('auth_gate.later')}</Button>
+          </div>
+        </Sheet>
       )}
     </Ctx.Provider>
   );

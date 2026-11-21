@@ -4,12 +4,18 @@ module.exports = {
   content: ["./src/**/*.{js,jsx,ts,tsx}", "./public/index.html"],
   theme: {
     extend: {
+      // One stack: the --font token in styles/aangan.css (Google Sans Flex, Noto Sans for Indic scripts).
       fontFamily: {
-        display: ['"Google Sans"', '"Google Sans Display"', '"DM Sans"', 'system-ui', 'sans-serif'],
-        body: ['"Google Sans"', '"Google Sans Text"', '"DM Sans"', 'system-ui', 'sans-serif'],
-        deva: ['"Google Sans"', '"Noto Sans Devanagari"', '"DM Sans"', 'system-ui', 'sans-serif'],
+        display: ['var(--font)'],
+        body: ['var(--font)'],
+        sans: ['var(--font)'],
+        deva: ['var(--font)'],
       },
+      // /7 sets every heavy label at medium: nothing above 500.
+      fontWeight: { semibold: '500', bold: '500', extrabold: '500', black: '500' },
       borderRadius: {
+        '2xl': 'var(--r-card)',
+        '3xl': 'var(--r-card)',
         lg: 'var(--radius)',
         md: 'calc(var(--radius) - 4px)',
         sm: 'calc(var(--radius) - 8px)',
@@ -27,11 +33,14 @@ module.exports = {
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',
-        pine: { DEFAULT: '#2C5E3B', dark: '#1F4429', light: '#4E8261' },
-        flag: '#C42E2E',
-        gold: '#F0B90B',
-        mist: '#EEF2ED',
-        ink: { DEFAULT: '#14201A', soft: '#4B5C55' },
+        // Legacy names on the theme palette (styles/aangan.css; re-tinted by lib/theme.ts). pine = the brand colour.
+        pine: { DEFAULT: 'rgb(var(--r-rgb) / <alpha-value>)', dark: 'rgb(var(--r-press-rgb) / <alpha-value>)', light: 'rgb(var(--r-tint-rgb) / <alpha-value>)' },
+        flag: 'rgb(217 45 32 / <alpha-value>)',
+        gold: 'rgb(245 180 0 / <alpha-value>)',
+        mist: 'rgb(var(--creme2-rgb) / <alpha-value>)',
+        ink: { DEFAULT: 'rgb(var(--ink-strong-rgb) / <alpha-value>)', soft: 'rgb(var(--ink-muted-rgb) / <alpha-value>)' },
+        creme: 'rgb(var(--creme-rgb) / <alpha-value>)',
+        blush: 'rgb(var(--blush-rgb) / <alpha-value>)',
       },
       keyframes: {
         'fade-up': { from: { opacity: 0, transform: 'translateY(16px)' }, to: { opacity: 1, transform: 'translateY(0)' } },

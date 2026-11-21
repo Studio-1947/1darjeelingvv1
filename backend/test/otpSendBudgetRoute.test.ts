@@ -4,11 +4,11 @@ import { sql } from 'drizzle-orm';
 
 // POST /api/auth/otp/send consults the daily budget only when rate limiting is on, and rate
 // limiting is off under APP_ENV=test so the rest of the suite can request codes freely. This file
-// turns it on for its own module graph — vi.stubEnv + vi.resetModules() + dynamic import, the same
+// turns it on for its own module graph  vi.stubEnv + vi.resetModules() + dynamic import, the same
 // approach as otpRealProvider.test.ts, and safe because vitest gives each file its own graph.
 //
 // The per-minute limiters (5/min per IP, 3/min per phone) come on with it, so the daily ceiling is
-// reached by seeding the counter row rather than by sending eleven times — eleven requests would
+// reached by seeding the counter row rather than by sending eleven times  eleven requests would
 // trip the per-minute limiter first and prove nothing about the daily one.
 
 // Pulled in statically: neither depends on RATE_LIMIT_ENABLED, so the copy from the test file's
@@ -99,7 +99,7 @@ describe('POST /auth/otp/send daily budget', () => {
     const phone = '+919100010004';
     const previous = setProviderForTests({
       name: 'failing-provider',
-      init() {},
+      init() { },
       async sendOtp() {
         throw new Error('simulated provider outage');
       },

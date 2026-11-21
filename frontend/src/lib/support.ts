@@ -8,7 +8,7 @@ export interface SupportUser {
 
 /**
  * Mirrors backend/src/lib/support.ts. Kept in step deliberately: this one decides what the user
- * SEES, the server's decides what the user may DO. The server is always the authority — if the
+ * SEES, the server's decides what the user may DO. The server is always the authority  if the
  * two ever disagree, the 402 interceptor below corrects the client.
  */
 export function isExemptFromSupport(user: SupportUser): boolean {
@@ -23,7 +23,7 @@ export function isSupportActive(user: SupportUser): boolean {
   return expiry > Date.now();
 }
 
-/** Logged-out visitors never need it — public browsing stays free. */
+/** Logged-out visitors never need it  public browsing stays free. */
 export function needsSupport(user: SupportUser | null | undefined): boolean {
   if (!user) return false;
   return !isExemptFromSupport(user) && !isSupportActive(user);

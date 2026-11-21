@@ -11,7 +11,7 @@ interface RateLimitStore {
 const rateLimitStores: { [key: string]: RateLimitStore } = {};
 
 // Entries are only ever rewritten when the same IP comes back, so without a sweep the store grows
-// once per unique IP forever — a slow leak that a burst of traffic turns into a fast one.
+// once per unique IP forever  a slow leak that a burst of traffic turns into a fast one.
 function sweepExpired(store: RateLimitStore, now: number) {
   for (const key of Object.keys(store)) {
     if (now > store[key].resetTime) {
@@ -23,7 +23,7 @@ function sweepExpired(store: RateLimitStore, now: number) {
 /**
  * Fixed-window per-IP rate limiter.
  *
- * Correct client attribution depends on app.set('trust proxy', TRUST_PROXY_HOPS) — see app.ts.
+ * Correct client attribution depends on app.set('trust proxy', TRUST_PROXY_HOPS)  see app.ts.
  * Without it, every request behind the production Nginx chain carries the proxy's IP, so all
  * callers share a single bucket: brute-force protection disappears and the first few requests
  * lock out the whole platform.

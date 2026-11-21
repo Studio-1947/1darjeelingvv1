@@ -1,6 +1,6 @@
 ---
 trigger: model_decision
-description: Apply when writing, building, refactoring, or fixing code — project-type agent routing, the Socratic Gate, Plan Mode phases, and the final checklist/scripts. Skip for pure questions or text-only responses.
+description: Apply when writing, building, refactoring, or fixing code  project-type agent routing, the Socratic Gate, Plan Mode phases, and the final checklist/scripts. Skip for pure questions or text-only responses.
 ---
 
 # Code Rules (TIER 1) - AG Kit

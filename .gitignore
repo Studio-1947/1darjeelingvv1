@@ -93,6 +93,15 @@ credentials.json
 *.key
 .credentials
 
-# Generated at deploy time by deploy/init-letsencrypt.sh — not source
+# Generated at deploy time by deploy/init-letsencrypt.sh  not source
 deploy/nginx/conf.d/
 deploy/certbot/
+
+# Debug artifacts / temp screenshots
+scratch_debug/
+
+# Local e2e server output
+backend/e2e-server.*.log
+
+# Database dumps taken in the repo root (the prod deploy runs git reset --hard here)
+/*.sql

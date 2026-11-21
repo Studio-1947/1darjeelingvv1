@@ -1,34 +1,50 @@
 import { Router, Request, Response } from 'express';
+import { MAX_PRICE } from '../lib/priceCap';
+import { hostPlanVisibility, isListingHostLapsed } from '../lib/hostPlan';
+import { isGracePaused } from '../lib/hostGrace';
 import { v4 as uuidv4 } from 'uuid';
 import { db, schema } from '../db';
-import { eq, or, and, ilike, inArray } from 'drizzle-orm';
-import { authenticateToken } from '../middleware/auth';
+import { eq, and, inArray, sql, asc } from 'drizzle-orm';
+import { authenticateToken, optionalUser } from '../middleware/auth';
+import { canSeeProviderPhone, listExtras, publicExtras } from '../lib/listingContact';
+import { rateLimiter } from '../middleware/rateLimiter';
+import { recomputeKycStatus } from './kyc';
+import { googleMapsUrl, inServiceRegion, MapsLinkError, resolveMapsLink } from '../lib/mapsLink';
 import { storeBase64Image, ImageUploadError } from '../lib/imageUpload';
 import { routeParam } from '../lib/routeParam';
+import { blockedRanges, isDateExclusive } from '../lib/bookingAvailability';
+import { myActiveProvider, myProvider } from '../lib/hostAccess';
+import { HOST_APPROVAL_TYPES } from '../lib/bookingApproval';
+import { rank, type Interpretation } from '../lib/search';
+import { isIsoDate, maxGuestsFor } from '../lib/bookingRules';
+import { checkNameLike } from '../lib/contentRules';
+import { listingCover } from '../lib/listingCover';
+import { ratingsForListings } from '../lib/listingRatings';
 import {
   SPOT_TYPE, SPOT_FORBIDDEN_MESSAGE, canWriteSpots, parseSpotExtras,
   isSpotPublished, publicSpotVisibility, spotOrdering, SpotValidationError,
 } from '../lib/spots';
 
 /** The listing types the app knows how to render. Mirrors the enum in the OpenAPI blocks below. */
-const LISTING_TYPES = ['spot', 'homestay', 'driver', 'shop', 'cafe', 'event', 'biodiversity'];
+const LISTING_TYPES = ['spot', 'homestay', 'driver', 'guide', 'shop', 'cafe', 'event', 'biodiversity'];
 
 const MAX_TITLE_LEN = 160;
 const MAX_LOCATION_LEN = 160;
 const MAX_DESCRIPTION_LEN = 8000;
 const MAX_TAGS = 12;
 const MAX_TAG_LEN = 40;
-const MAX_PRICE = 1_000_000;
 /** Upper bound for `limit`, so a public caller can't ask for the whole table in one query. */
 const MAX_PAGE_SIZE = 200;
 const DEFAULT_PAGE_SIZE = 60;
+/** Upper bound for `offset`: paging deeper than this is a scrape, not a person scrolling. */
+const MAX_OFFSET = 10_000;
 
 /**
  * Validates the caller-supplied columns of a listing payload. Returns an error message, or null.
  *
  * These columns land in a typed table (`price` is a NOT NULL integer, `title` is NOT NULL), so
  * without this a wrong-typed field became a driver error and a 500 on what is really a bad
- * request. `partial` is for PATCH/PUT, where an absent key means "leave it alone" — but a key
+ * request. `partial` is for PATCH/PUT, where an absent key means "leave it alone"  but a key
  * that *is* present still has to be valid, which is what stops a spot being blanked out through
  * the generic update route.
  */
@@ -49,6 +65,13 @@ function validateListingPayload(body: any, { partial }: { partial: boolean }): s
       return `${field} must be ${max} characters or fewer`;
     }
   }
+  // The name and place travellers see: a real one, tidily spaced (lib/contentRules.ts).
+  for (const [field, label, max] of [['title', 'Name', MAX_TITLE_LEN], ['location', 'Location', MAX_LOCATION_LEN]] as const) {
+    if (body[field] === undefined) continue;
+    const checked = checkNameLike(body[field], label, max);
+    if ('error' in checked) return checked.error;
+    body[field] = checked.value;
+  }
 
   if (body.type !== undefined && !LISTING_TYPES.includes(body.type)) {
     return `type must be one of: ${LISTING_TYPES.join(', ')}`;
@@ -57,7 +80,19 @@ function validateListingPayload(body: any, { partial }: { partial: boolean }): s
   if (body.price !== undefined && body.price !== null) {
     const price = Number(body.price);
     if (!Number.isInteger(price) || price < 0 || price > MAX_PRICE) {
-      return 'price must be a whole number of rupees between 0 and 1000000';
+      return `price must be a whole number of rupees between 0 and ${MAX_PRICE}`;
+    }
+  }
+
+  // The host's price lists on a listing (rooms, food, routes, services, menu, goods) are held to the
+  // same cap as their profile (lib/hostProfile.ts). Only the cap is checked here, so older row shapes still save.
+  if (body.extras && typeof body.extras === 'object') {
+    for (const key of ['rooms', 'meals', 'routes', 'services', 'menu', 'goods']) {
+      const rows = body.extras[key];
+      if (!Array.isArray(rows)) continue;
+      if (rows.some((r: any) => r && typeof r === 'object' && Number(r.price) > MAX_PRICE)) {
+        return `each ${key} price must be at most ${MAX_PRICE} rupees`;
+      }
     }
   }
 
@@ -101,9 +136,8 @@ function coord(value: unknown): number | null {
 }
 
 async function resolveOwnProviderId(userId: string): Promise<string | null> {
-  const providersList = await db.select().from(schema.providers).where(eq(schema.providers.userId, userId));
-  const active = providersList.find(p => p.status === 'active');
-  return active ? active.id : null;
+  // Owner or co-owner: both run the same business's listings.
+  return (await myActiveProvider(userId))?.id ?? null;
 }
 
 const router = Router();
@@ -127,7 +161,17 @@ const router = Router();
  *         description: Case-insensitive search across title, description, location
  *       - in: query
  *         name: limit
- *         schema: { type: integer, default: 60 }
+ *         schema: { type: integer, default: 60, maximum: 200 }
+ *       - in: query
+ *         name: offset
+ *         schema: { type: integer, default: 0, maximum: 10000 }
+ *         description: How many matching listings to skip (pass the previous page's next_offset)
+ *       - in: query
+ *         name: available_on
+ *         schema: { type: string, format: date }
+ *         description: >
+ *           Drivers only (with type=driver): YYYY-MM-DD. Leaves out drivers who switched
+ *           availability off and drivers with an accepted or confirmed booking on that day.
  *     responses:
  *       200:
  *         description: Matching listings
@@ -139,13 +183,15 @@ const router = Router();
  *                 items:
  *                   type: array
  *                   items: { $ref: '#/components/schemas/Listing' }
+ *                 total: { type: integer, description: All listings matching the filters, across pages }
+ *                 next_offset: { type: integer, nullable: true, description: Offset of the next page; null on the last page }
  *   post:
  *     summary: Create a listing
  *     description: >
- *       Callers must be an active provider (listing is created under their own provider id — any
+ *       Callers must be an active provider (listing is created under their own provider id  any
  *       provider_id in the body is ignored) or an admin (may set provider_id explicitly). Other
  *       authenticated users (e.g. tourists) are rejected. `type=spot` is admin-only: tourist spots
- *       are curated content, so a provider creating one gets a 403 — use /admin/spots instead.
+ *       are curated content, so a provider creating one gets a 403  use /admin/spots instead.
  *     tags: [Listings]
  *     security: [{ bearerAuth: [] }]
  *     requestBody:
@@ -163,7 +209,7 @@ const router = Router();
  *               price: { type: integer, default: 0 }
  *               image: { type: string }
  *               tags: { type: array, items: { type: string } }
- *               provider_id: { type: string, description: "Admin only — ignored for non-admin callers" }
+ *               provider_id: { type: string, description: "Admin only  ignored for non-admin callers" }
  *               extras: { type: object }
  *     responses:
  *       200:
@@ -185,25 +231,6 @@ const router = Router();
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
  */
-/** Rating summary (count + 1-decimal average) per listing id, for the ids given. */
-async function ratingsForListings(listingIds: string[]): Promise<Map<string, { count: number; average: number }>> {
-  const out = new Map<string, { count: number; average: number }>();
-  if (listingIds.length === 0) return out;
-  const rows = await db.select({ listingId: schema.reviews.listingId, rating: schema.reviews.rating })
-    .from(schema.reviews)
-    .where(inArray(schema.reviews.listingId, listingIds));
-  const acc = new Map<string, { sum: number; count: number }>();
-  for (const r of rows) {
-    const a = acc.get(r.listingId) || { sum: 0, count: 0 };
-    a.sum += r.rating;
-    a.count += 1;
-    acc.set(r.listingId, a);
-  }
-  for (const [id, a] of acc) {
-    out.set(id, { count: a.count, average: Math.round((a.sum / a.count) * 10) / 10 });
-  }
-  return out;
-}
 
 // Get list of listings with filter
 router.get('/', async (req: Request, res: Response) => {
@@ -215,35 +242,74 @@ router.get('/', async (req: Request, res: Response) => {
   const limit = Number.isFinite(requestedLimit) && requestedLimit > 0
     ? Math.min(requestedLimit, MAX_PAGE_SIZE)
     : DEFAULT_PAGE_SIZE;
+  const requestedOffset = parseInt(req.query.offset as string, 10);
+  const offset = Number.isFinite(requestedOffset) && requestedOffset > 0
+    ? Math.min(requestedOffset, MAX_OFFSET)
+    : 0;
 
-  // Draft spots must never surface on a public read — this route has no auth, so the
+  // Draft spots must never surface on a public read  this route has no auth, so the
   // predicate is unconditional here and admins get their drafts from /admin/spots instead.
-  const conditions = [publicSpotVisibility()];
+  // Nor may a lapsed host's listings: they leave the feed until the host renews (lib/hostPlan.ts).
+  const conditions = [publicSpotVisibility(), hostPlanVisibility()];
   if (type) {
     conditions.push(eq(schema.listings.type, type));
   }
-  if (q) {
-    conditions.push(
-      or(
-        ilike(schema.listings.title, `%${q}%`),
-        ilike(schema.listings.description, `%${q}%`),
-        ilike(schema.listings.location, `%${q}%`)
-      )!
-    );
+  // Find a ride: only the drivers free on the day asked for. A driver who switched availability
+  // off is out, and so is one already holding an accepted or confirmed booking that covers the day
+  // (a booking with no end date covers its start day only).
+  const availableOn = req.query.available_on;
+  if (availableOn !== undefined && availableOn !== '') {
+    if (!isIsoDate(availableOn)) {
+      return res.status(400).json({ detail: 'available_on must be a date like 2026-12-31', code: 'bad_date' });
+    }
+    if (type === 'driver') {
+      conditions.push(sql`coalesce(${schema.listings.extras}->>'available', 'true') <> 'false'`);
+      conditions.push(sql`not exists (
+        select 1 from ${schema.bookings}
+        where ${schema.bookings.listingId} = ${schema.listings.id}
+          and ${schema.bookings.status} in ('accepted', 'confirmed')
+          and ${schema.bookings.checkIn} <= ${availableOn}
+          and coalesce(${schema.bookings.checkOut}, ${schema.bookings.checkIn}) >= ${availableOn}
+      )`);
+    }
   }
-
-  // The spots feed is curated, so it follows the admin's own order (featured first, then
-  // the manual sort order). Every other type keeps the table's natural order as before.
-  const query = db.select().from(schema.listings).where(and(...conditions));
-  const items = type === SPOT_TYPE
-    ? await query.orderBy(...spotOrdering()).limit(limit)
-    : await query.limit(limit);
+  // A search reads the words (lib/search.ts): kind of place, budget, each word on its own, local
+  // spellings and typos, best match first. It ranks every visible listing of the type, then pages.
+  const term = typeof q === 'string' ? q.trim().slice(0, 120) : '';
+  let items: (typeof schema.listings.$inferSelect)[];
+  let search: Interpretation | null = null;
+  let total: number;
+  if (term) {
+    const all = await db.select().from(schema.listings).where(and(...conditions));
+    const visible = await providerFlags(all.map((i) => i.providerId));
+    const ranked = rank(all, term, {
+      type: type ?? null,
+      // A small lift for verified, active hosts; never enough to beat a better match.
+      boost: (l) => (visible.get(l.providerId) ? 0.5 : 0),
+    });
+    total = ranked.results.length;
+    items = ranked.results.slice(offset, offset + limit).map((r) => r.item);
+    search = ranked.interpretation;
+  } else {
+    // The spots feed is curated, so it follows the admin's own order (featured first, then
+    // the manual sort order). Every other type is oldest first. Both end on the id, so the
+    // order is total and paging with offset never repeats or skips a row.
+    const where = and(...conditions);
+    const [counted] = await db.select({ n: sql<number>`count(*)::int` }).from(schema.listings).where(where);
+    total = counted?.n ?? 0;
+    const order = type === SPOT_TYPE
+      ? [...spotOrdering(), asc(schema.listings.id)]
+      : [asc(schema.listings.createdAt), asc(schema.listings.id)];
+    items = await db.select().from(schema.listings).where(where).orderBy(...order).limit(limit).offset(offset);
+  }
+  // No next page past the offset cap: a request there would be clamped back and repeat this one.
+  const nextOffset = offset + items.length < total && offset + items.length <= MAX_OFFSET ? offset + items.length : null;
 
   const providerIds = [...new Set(items.map(item => item.providerId))];
   const providerRows = providerIds.length > 0
     ? await db.select({ id: schema.providers.id, kycStatus: schema.providers.kycStatus, status: schema.providers.status })
-        .from(schema.providers)
-        .where(inArray(schema.providers.id, providerIds))
+      .from(schema.providers)
+      .where(inArray(schema.providers.id, providerIds))
     : [];
   const providerById = new Map(providerRows.map(p => [p.id, p]));
   const ratingByListing = await ratingsForListings(items.map(i => i.id));
@@ -260,10 +326,12 @@ router.get('/', async (req: Request, res: Response) => {
       latitude: item.latitude,
       longitude: item.longitude,
       price: item.price,
+      max_guests: maxGuestsFor(item),
       image: item.image,
       tags: item.tags,
       provider_id: item.providerId,
-      extras: item.extras,
+      // Contact numbers in extras stay behind the same gate as provider_phone (lib/listingContact.ts).
+      extras: listExtras(item.type, item.extras),
       created_at: item.createdAt,
       rating: rating?.average ?? 0,
       review_count: rating?.count ?? 0,
@@ -273,7 +341,42 @@ router.get('/', async (req: Request, res: Response) => {
     };
   });
 
-  res.json({ items: itemsReturn });
+  const page = { items: itemsReturn, total, next_offset: nextOffset };
+  res.json(search ? { ...page, search } : page);
+});
+
+/** Which of these providers are verified and active (for the search boost). */
+async function providerFlags(ids: string[]): Promise<Map<string, boolean>> {
+  const unique = [...new Set(ids.filter(Boolean))];
+  if (!unique.length) return new Map();
+  const rows = await db.select({ id: schema.providers.id, kycStatus: schema.providers.kycStatus, status: schema.providers.status })
+    .from(schema.providers).where(inArray(schema.providers.id, unique));
+  return new Map(rows.map((p) => [p.id, p.kycStatus === 'verified' && p.status === 'active']));
+}
+
+/**
+ * @openapi
+ * /listings/count:
+ *   get:
+ *     summary: How many listings a traveller can find (the About page's "places mapped so far")
+ *     tags: [Listings]
+ *     responses:
+ *       200:
+ *         description: The count, under the same visibility rules as GET /listings
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 count: { type: integer }
+ */
+// Declared before /:id, or "count" would be read as a listing id.
+router.get('/count', async (_req: Request, res: Response) => {
+  const [row] = await db.select({ n: sql<number>`count(*)::int` })
+    .from(schema.listings)
+    .where(and(publicSpotVisibility(), hostPlanVisibility()));
+  res.set('Cache-Control', 'public, max-age=300');
+  return res.json({ count: row?.n ?? 0 });
 });
 
 /**
@@ -313,17 +416,36 @@ router.get('/:id', async (req: Request, res: Response) => {
   if (item.type === SPOT_TYPE && !isSpotPublished(item.extras)) {
     return res.status(404).json({ detail: 'Not found' });
   }
+  // Hidden with the rest of the feed while its host's plan has lapsed or approval is pending. The
+  // host (or a co-owner) can still open it, so "View" on their dashboard shows their own page
+  // with a "not live yet" note instead of an error.
+  const viewer = await optionalUser(req);
+  const notLive = await isListingHostLapsed(item.providerId);
+  if (notLive) {
+    const own = viewer ? (await myProvider(viewer.id))?.id === item.providerId : false;
+    if (!own) return res.status(404).json({ detail: 'Not found' });
+  }
 
   const [provider] = await db.select({
-      kycStatus: schema.providers.kycStatus,
-      status: schema.providers.status,
-      contactPhone: schema.providers.contactPhone,
-    })
+    kycStatus: schema.providers.kycStatus,
+    status: schema.providers.status,
+    contactPhone: schema.providers.contactPhone,
+    slug: schema.providers.slug,
+    businessType: schema.providers.businessType,
+    planExpiresAt: schema.providers.planExpiresAt,
+  })
     .from(schema.providers)
     .where(eq(schema.providers.id, item.providerId))
     .limit(1);
 
   const rating = (await ratingsForListings([item.id])).get(item.id);
+
+  // A homestay's or a driver's number is the introduction a booking makes, so it is only handed to
+  // the people entitled to it (see lib/listingContact.ts). Everything else stays public.
+  const phoneVisible = await canSeeProviderPhone(
+    { id: item.id, type: item.type, providerId: item.providerId },
+    viewer
+  );
 
   const itemReturn = {
     id: item.id,
@@ -334,32 +456,98 @@ router.get('/:id', async (req: Request, res: Response) => {
     latitude: item.latitude,
     longitude: item.longitude,
     price: item.price,
+    max_guests: maxGuestsFor(item),
     image: item.image,
     tags: item.tags,
     provider_id: item.providerId,
-    extras: item.extras,
+    // Contact numbers in extras stay behind the same gate as provider_phone (lib/listingContact.ts).
+    extras: publicExtras(item.extras, phoneVisible),
     created_at: item.createdAt,
     rating: rating?.average ?? 0,
     review_count: rating?.count ?? 0,
     // The provider's public contact line, so the detail page can offer call/WhatsApp for listings
     // that aren't booked online (shops, cafes, events). Only present when a provider row matches.
-    provider_phone: provider?.contactPhone ?? null,
+    provider_phone: phoneVisible ? (provider?.contactPhone ?? null) : null,
+    // Tells a client the number exists but is held back, so it can say "unlocks after booking"
+    // instead of "this provider has no contact line".
+    provider_phone_locked: !phoneVisible && Boolean(provider?.contactPhone),
     // Verified badge must never show for a provider an admin has suspended (flipped off
     // "active"), even if their kycStatus was previously computed as "verified".
-    provider_verified: provider?.kycStatus === 'verified' && provider?.status === 'active'
+    provider_verified: provider?.kycStatus === 'verified' && provider?.status === 'active',
+    // Only ever true for the host's own view of a listing travellers cannot see yet.
+    not_live: notLive,
+    // The host's own page (aanganerp.in/<type>/<slug>) and their two marks.
+    host_page_path: provider?.slug ? `/${provider.businessType}/${provider.slug}` : null,
+    provider_member: provider ? provider.status === 'active' && !!provider.planExpiresAt && Date.parse(provider.planExpiresAt) > Date.now() : false,
+    // Booking it sends the host a request to accept first (lib/bookingApproval.ts), so the button
+    // says "Request to book". Team-run listings with no host account still confirm at once.
+    request_to_book: HOST_APPROVAL_TYPES.has(item.type) && !!provider,
+    // The host's free start is used up and they have not paid yet: the page stays up, but new
+    // bookings and delivery requests are refused (lib/hostGrace.ts), so the button is turned off.
+    bookings_paused: await isGracePaused(item.providerId),
   };
 
   res.json({ item: itemReturn });
 });
 
+/**
+ * @openapi
+ * /listings/{id}/availability:
+ *   get:
+ *     summary: Dates on a homestay that are already taken or held
+ *     description: Public, and dates only. Other listing types are never date-exclusive and return no ranges.
+ *     tags: [Listings]
+ *     parameters:
+ *       - { in: query, name: from, schema: { type: string, format: date }, description: Defaults to today }
+ *       - { in: query, name: to, schema: { type: string, format: date }, description: Defaults to 120 days after from; at most 366 days }
+ *     responses:
+ *       200: { description: "{ listing_id, from, to, ranges: [{ check_in, check_out, state: booked|hold }] }" }
+ *       400: { description: Bad or inverted dates }
+ *       404: { description: Listing not found }
+ */
+router.get('/:id/availability', async (req: Request, res: Response) => {
+  const id = routeParam(req, 'id');
+  const [item] = await db.select({ id: schema.listings.id, type: schema.listings.type })
+    .from(schema.listings).where(eq(schema.listings.id, id)).limit(1);
+  if (!item) return res.status(404).json({ detail: 'Not found' });
+
+  const isoDate = /^\d{4}-\d{2}-\d{2}$/;
+  const day = 86_400_000;
+  const today = new Date().toISOString().slice(0, 10);
+  const from = typeof req.query.from === 'string' ? req.query.from : today;
+  // Validate `from` before deriving a default `to` from it: an unparseable date makes
+  // toISOString() throw, which would surface as a 500 rather than the 400 it deserves.
+  if (!isoDate.test(from) || Number.isNaN(Date.parse(from))) {
+    return res.status(400).json({ detail: 'from and to must be dates like 2026-12-31' });
+  }
+  const to = typeof req.query.to === 'string'
+    ? req.query.to
+    : new Date(Date.parse(from) + 120 * day).toISOString().slice(0, 10);
+
+  if (!isoDate.test(to) || Number.isNaN(Date.parse(to))) {
+    return res.status(400).json({ detail: 'from and to must be dates like 2026-12-31' });
+  }
+  if (Date.parse(to) <= Date.parse(from) || Date.parse(to) - Date.parse(from) > 366 * day) {
+    return res.status(400).json({ detail: 'to must be after from, within 366 days' });
+  }
+
+  const viewer = isDateExclusive(item.type) ? await optionalUser(req) : null;
+  const ranges = isDateExclusive(item.type) ? await blockedRanges(db, id, from, to, viewer?.id) : [];
+  res.json({ listing_id: id, from, to, ranges });
+});
+
 // Create a new listing
 router.post('/', authenticateToken, async (req: Request, res: Response) => {
-  const { title, type, description, location, latitude = null, longitude = null, price = 0, image = '', tags = [], provider_id, extras = {} } = req.body;
-  if (!title || !type || !description || !location) {
+  const { type, description, latitude = null, longitude = null, price = 0, image = '', tags = [], provider_id, extras = {} } = req.body;
+  // Only POST /providers/me/location/verify may mark a listing's pin as verified.
+  if (extras && typeof extras === 'object') delete extras.location_verified;
+  if (!req.body?.title || !type || !description || !req.body?.location) {
     return res.status(400).json({ detail: 'Title, type, description and location are required' });
   }
   const payloadError = validateListingPayload(req.body, { partial: false });
   if (payloadError) return res.status(400).json({ detail: payloadError });
+  // Read after the check, which tidies the name and place (lib/contentRules.ts).
+  const { title, location } = req.body;
 
   // Tourist spots are curated editorial content, not a business someone lists. An active
   // provider may create every other type; only an admin may create a spot.
@@ -399,12 +587,33 @@ router.post('/', authenticateToken, async (req: Request, res: Response) => {
     latitude: coord(latitude),
     longitude: coord(longitude),
     price: price != null ? Number(price) : 0,
-    image: typeof image === 'string' ? image.trim() : '',
+    image: listingCover(typeof image === 'string' ? image : '', storedExtras),
     tags: Array.isArray(tags) ? tags.map((tag: string) => tag.trim()) : [],
     providerId,
     extras: storedExtras,
     createdAt: new Date().toISOString()
   };
+
+  // A host who has already confirmed their pin should not have to do it again for each listing they
+  // add: with no coordinates of its own, a new listing takes the provider's verified pin. A
+  // listing that names its own coordinates keeps them, unverified, until it is verified itself.
+  if (listing.latitude == null && listing.longitude == null && req.user.role !== 'admin') {
+    const [owner] = await db.select({ extras: schema.providers.extras })
+      .from(schema.providers).where(eq(schema.providers.id, providerId)).limit(1);
+    const verification = (owner?.extras as any)?.location_verification;
+    if (
+      verification &&
+      typeof verification.latitude === 'number' &&
+      typeof verification.longitude === 'number'
+    ) {
+      listing.latitude = verification.latitude;
+      listing.longitude = verification.longitude;
+      listing.extras = {
+        ...(listing.extras || {}),
+        location_verified: { verified_at: verification.verified_at, source: verification.source },
+      };
+    }
+  }
 
   await db.insert(schema.listings).values(listing);
 
@@ -417,6 +626,7 @@ router.post('/', authenticateToken, async (req: Request, res: Response) => {
     latitude: listing.latitude,
     longitude: listing.longitude,
     price: listing.price,
+    max_guests: maxGuestsFor(listing),
     image: listing.image,
     tags: listing.tags,
     provider_id: listing.providerId,
@@ -427,9 +637,67 @@ router.post('/', authenticateToken, async (req: Request, res: Response) => {
   res.json({ item: listingReturn });
 });
 
+/**
+ * POST /api/listings/:id/location/verify  { maps_url }
+ *
+ * Verifies the pin of ONE listing from a Google Maps link, for a host whose listings are in
+ * different places (a homestay up the hill and a café in town). POST /providers/me/location/verify
+ * stamps one pin on everything a provider owns, which is right for a single-site business and
+ * wrong for the rest. Same parsing, same service-area check, same flag; only this listing moves.
+ */
+router.post(
+  '/:id/location/verify',
+  authenticateToken,
+  rateLimiter(10, 60_000, 'maps_verify'),
+  async (req: Request, res: Response) => {
+    const [listing] = await db.select().from(schema.listings)
+      .where(eq(schema.listings.id, routeParam(req, 'id'))).limit(1);
+    if (!listing) return res.status(404).json({ detail: 'Not found' });
+    if (!(await canManageListing(req, listing))) {
+      return res.status(403).json({ detail: 'You can only verify the location of your own listing' });
+    }
+
+    let pin;
+    try {
+      pin = await resolveMapsLink(req.body?.maps_url);
+    } catch (err) {
+      if (err instanceof MapsLinkError) return res.status(400).json({ detail: err.message });
+      throw err;
+    }
+    if (!inServiceRegion(pin)) {
+      return res.status(400).json({
+        detail: 'That pin is outside the Darjeeling area we serve. Check you picked the right place in Google Maps.',
+      });
+    }
+
+    const verifiedAt = new Date().toISOString();
+    const [updated] = await db.update(schema.listings)
+      .set({
+        latitude: pin.latitude,
+        longitude: pin.longitude,
+        extras: { ...(listing.extras || {}), location_verified: { verified_at: verifiedAt, source: 'google_maps_link' } },
+      })
+      .where(eq(schema.listings.id, listing.id))
+      .returning();
+
+    // A homestay is only "verified" once a pin is, so the status is worked out again now.
+    await recomputeKycStatus(listing.providerId);
+
+    res.json({
+      location: {
+        verified: true,
+        latitude: updated.latitude,
+        longitude: updated.longitude,
+        maps_url: googleMapsUrl(pin),
+        verified_at: verifiedAt,
+      },
+    });
+  }
+);
+
 // Helper to verify listing management permissions
 async function canManageListing(req: Request, listing: typeof schema.listings.$inferSelect): Promise<boolean> {
-  // A spot is admin-owned content — a provider must not be able to edit or delete one even
+  // A spot is admin-owned content  a provider must not be able to edit or delete one even
   // if a spot row somehow carries their provider id (e.g. legacy data or a seeded row).
   if (listing.type === SPOT_TYPE) return canWriteSpots(req.user.role);
   if (req.user.role === 'admin') return true;
@@ -506,9 +774,25 @@ const updateListingHandler = async (req: Request, res: Response) => {
     if (updateFields[axis] !== undefined) updateFields[axis] = coord(updateFields[axis]);
   }
 
+  // The verified-location flag is server-granted. A client-supplied extras object never carries
+  // it in, and moving the pin drops it, because the verification was of the old position.
+  const pinMoved = (['latitude', 'longitude'] as const).some(
+    (axis) => updateFields[axis] !== undefined && updateFields[axis] !== listing[axis]
+  );
+  const storedVerified = listing.extras?.location_verified;
+  if (updateFields.extras && typeof updateFields.extras === 'object' && !Array.isArray(updateFields.extras)) {
+    const { location_verified: _ignored, ...rest } = updateFields.extras;
+    updateFields.extras = storedVerified && !pinMoved ? { ...rest, location_verified: storedVerified } : rest;
+  } else if (pinMoved && storedVerified) {
+    const { location_verified: _dropped, ...rest } = listing.extras || {};
+    updateFields.extras = rest;
+  }
+
   if (Object.keys(updateFields).length > 0) {
     await db.update(schema.listings).set(updateFields).where(eq(schema.listings.id, listing.id));
   }
+  // Moving a verified pin took the verification with it, and a homestay's status depends on it.
+  if (pinMoved && storedVerified) await recomputeKycStatus(listing.providerId);
 
   const [updated] = await db.select().from(schema.listings).where(eq(schema.listings.id, listing.id)).limit(1);
   // Another admin can delete the row between the update and this read; answer 404 rather than
@@ -523,6 +807,7 @@ const updateListingHandler = async (req: Request, res: Response) => {
     latitude: updated.latitude,
     longitude: updated.longitude,
     price: updated.price,
+    max_guests: maxGuestsFor(updated),
     image: updated.image,
     tags: updated.tags,
     provider_id: updated.providerId,

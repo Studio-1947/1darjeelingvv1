@@ -7,34 +7,24 @@ vi.mock('../src/lib/s3', () => ({
     const { Readable } = await import('stream');
     return { stream: Readable.from([Buffer.from('test-file-bytes')]), contentType: 'image/png' };
   }),
-  deletePrivate: vi.fn(async () => {}),
+  deletePrivate: vi.fn(async () => { }),
 }));
 
 import { app } from '../src/app';
 import { db, schema } from '../src/db';
 import { and, eq } from 'drizzle-orm';
-import { registerUser, onboardActiveProvider, loginAdmin, createListing } from './helpers';
+import { registerUser, onboardActiveProvider, loginAdmin, createListing, uploadRequiredDocs, captureLiveLocation } from './helpers';
 
 // 1x1 transparent PNG as a data URL
 const PNG_DATA_URL =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
-
-const SHOP_REQUIRED_DOC_TYPES = ['aadhaar', 'pan', 'owner_photo', 'trade_license'];
 
 // Fully onboards a 'shop' provider, uploads and admin-approves every required KYC
 // doc for that business type, leaving the provider's kycStatus === 'verified'.
 async function onboardVerifiedShopProvider(name: string) {
   const { token, providerId } = await onboardActiveProvider({ name, businessType: 'shop' });
 
-  for (const doc_type of SHOP_REQUIRED_DOC_TYPES) {
-    const up = await request(app)
-      .post('/api/providers/me/kyc')
-      .set('Authorization', `Bearer ${token}`)
-      .send({ doc_type, file: PNG_DATA_URL, filename: `${doc_type}.png` });
-    if (up.status !== 200) {
-      throw new Error(`kyc upload failed for ${doc_type}: ${up.status} ${JSON.stringify(up.body)}`);
-    }
-  }
+  const uploaded = await uploadRequiredDocs(token);
 
   const adminToken = await loginAdmin();
   const pending = await request(app)
@@ -42,7 +32,7 @@ async function onboardVerifiedShopProvider(name: string) {
     .query({ status: 'pending' })
     .set('Authorization', `Bearer ${adminToken}`);
   const docsForProvider = pending.body.documents.filter((d: any) => d.provider_id === providerId);
-  expect(docsForProvider.length).toBe(SHOP_REQUIRED_DOC_TYPES.length);
+  expect(docsForProvider.length).toBe(uploaded.length);
 
   for (const doc of docsForProvider) {
     const review = await request(app)
@@ -54,6 +44,10 @@ async function onboardVerifiedShopProvider(name: string) {
     }
   }
 
+  // A shop is only verified once its location has been captured live as well.
+  const live = await captureLiveLocation(token);
+  if (live.status !== 200) throw new Error(`live capture failed: ${live.status} ${JSON.stringify(live.body)}`);
+
   return { token, providerId };
 }
 
@@ -63,14 +57,14 @@ describe('listings authorization', () => {
     const res = await request(app)
       .post('/api/listings')
       .set('Authorization', `Bearer ${token}`)
-      .send({ title: 'Fake Listing', type: 'spot', description: 'x', location: 'y' });
+      .send({ title: 'Fake Listing', type: 'spot', description: 'x', location: 'Darjeeling' });
     expect(res.status).toBe(403);
   });
 
   it('rejects listing creation with no auth token at all', async () => {
     const res = await request(app)
       .post('/api/listings')
-      .send({ title: 'Fake Listing', type: 'spot', description: 'x', location: 'y' });
+      .send({ title: 'Fake Listing', type: 'spot', description: 'x', location: 'Darjeeling' });
     expect(res.status).toBe(401);
   });
 
@@ -93,7 +87,7 @@ describe('listings authorization', () => {
         title: 'Spoofed Listing',
         type: 'homestay',
         description: 'x',
-        location: 'y',
+        location: 'Darjeeling',
         provider_id: 'someone-elses-provider-id',
       });
     expect(res.status).toBe(200);
@@ -110,7 +104,7 @@ describe('listings authorization', () => {
         title: 'Admin Listing',
         type: 'spot',
         description: 'x',
-        location: 'y',
+        location: 'Darjeeling',
         provider_id: 'admin-seed-provider',
       });
     expect(res.status).toBe(200);
@@ -172,7 +166,7 @@ describe('listings read endpoints', () => {
     const createRes = await request(app)
       .post('/api/listings')
       .set('Authorization', `Bearer ${token}`)
-      .send({ title: 'Unverified Provider Listing', type: 'homestay', description: 'x', location: 'y' });
+      .send({ title: 'Unverified Provider Listing', type: 'homestay', description: 'x', location: 'Darjeeling' });
     expect(createRes.status).toBe(200);
     expect(createRes.body.item.provider_id).toBe(providerId);
     const listingId = createRes.body.item.id;
@@ -222,7 +216,7 @@ describe('listings read endpoints', () => {
 
   // The real admin suspend path (frontend-admin's Admin.tsx sends exactly 'suspended', not
   // 'pending_payment') must drop the Verified badge the same way the test above covers for
-  // pending_payment — the display rule is `status === 'active'`, so any non-active status,
+  // pending_payment  the display rule is `status === 'active'`, so any non-active status,
   // including the one the UI actually sends, must flip it off.
   it('suspending a verified provider (active -> suspended) drops provider_verified on their listings, on both routes', async () => {
     const { token, providerId } = await onboardVerifiedShopProvider('Suspended Verified Owner');
@@ -307,7 +301,7 @@ describe('listings read endpoints', () => {
     const before = await request(app).get(`/api/listings/${listingId}`);
     expect(before.body.item.provider_verified).toBe(true);
 
-    const del = await request(app).delete('/api/providers/me/kyc/pan').set('Authorization', `Bearer ${token}`);
+    const del = await request(app).delete('/api/providers/me/kyc/premises_photo_front').set('Authorization', `Bearer ${token}`);
     expect(del.status).toBe(200);
 
     const afterSingle = await request(app).get(`/api/listings/${listingId}`);
@@ -335,7 +329,7 @@ describe('listings read endpoints', () => {
     const reupload = await request(app)
       .post('/api/providers/me/kyc')
       .set('Authorization', `Bearer ${token}`)
-      .send({ doc_type: 'owner_photo', file: PNG_DATA_URL, filename: 'owner_photo-new.png' });
+      .send({ doc_type: 'premises_photo_front', file: PNG_DATA_URL, filename: 'front-new.png' });
     expect(reupload.status).toBe(200);
     expect(reupload.body.document.status).toBe('pending');
 
@@ -356,7 +350,7 @@ describe('provider can manage multiple listings', () => {
     const res = await request(app)
       .post('/api/listings')
       .set('Authorization', `Bearer ${token}`)
-      .send({ title: 'Second Listing', type: 'homestay', description: 'x', location: 'y' });
+      .send({ title: 'Second Listing', type: 'homestay', description: 'x', location: 'Darjeeling' });
     expect(res.status).toBe(200);
     expect(res.body.item.provider_id).toBe(providerId);
 
@@ -370,7 +364,7 @@ describe('provider can manage multiple listings', () => {
     const createRes = await request(app)
       .post('/api/listings')
       .set('Authorization', `Bearer ${token}`)
-      .send({ title: 'Original Title', type: 'homestay', description: 'x', location: 'y', price: 1000 });
+      .send({ title: 'Original Title', type: 'homestay', description: 'x', location: 'Darjeeling', price: 1000 });
     const listingId = createRes.body.item.id;
 
     const patchRes = await request(app)
@@ -383,13 +377,23 @@ describe('provider can manage multiple listings', () => {
     expect(patchRes.body.item.price).toBe(1500);
   });
 
+  it('caps every price on a listing at 50,000 rupees, the room list in extras included', async () => {
+    const { token } = await onboardActiveProvider({ name: 'Pricey Provider' });
+    const post = (body: object) => request(app).post('/api/listings').set('Authorization', `Bearer ${token}`)
+      .send({ title: 'Cap Test Stay', type: 'homestay', description: 'x', location: 'Darjeeling', ...body });
+    expect((await post({ price: 50000 })).status).toBe(200);
+    expect((await post({ price: 50001 })).status).toBe(400);
+    expect((await post({ price: 1000, extras: { rooms: [{ name: 'Suite', price: 60000, unit: 'night' }] } })).status).toBe(400);
+    expect((await post({ price: 1000, extras: { rooms: [{ name: 'Suite', price: 50000, unit: 'night' }] } })).status).toBe(200);
+  });
+
   it('blocks a different provider from editing someone else\'s listing', async () => {
     const { token: ownerToken } = await onboardActiveProvider({ name: 'Owner Provider' });
     const { token: otherToken } = await onboardActiveProvider({ name: 'Other Provider' });
     const createRes = await request(app)
       .post('/api/listings')
       .set('Authorization', `Bearer ${ownerToken}`)
-      .send({ title: 'Owner Listing', type: 'homestay', description: 'x', location: 'y' });
+      .send({ title: 'Owner Listing', type: 'homestay', description: 'x', location: 'Darjeeling' });
     const listingId = createRes.body.item.id;
 
     const patchRes = await request(app)
@@ -409,7 +413,7 @@ describe('provider can manage multiple listings', () => {
     const createRes = await request(app)
       .post('/api/listings')
       .set('Authorization', `Bearer ${token}`)
-      .send({ title: 'Doomed Listing', type: 'homestay', description: 'x', location: 'y' });
+      .send({ title: 'Doomed Listing', type: 'homestay', description: 'x', location: 'Darjeeling' });
     const listingId = createRes.body.item.id;
 
     const deleteRes = await request(app)
@@ -426,7 +430,7 @@ describe('provider can manage multiple listings', () => {
     const createRes = await request(app)
       .post('/api/listings')
       .set('Authorization', `Bearer ${token}`)
-      .send({ title: 'Provider Owned', type: 'homestay', description: 'x', location: 'y' });
+      .send({ title: 'Provider Owned', type: 'homestay', description: 'x', location: 'Darjeeling' });
     const listingId = createRes.body.item.id;
 
     const admin = await loginAdmin();
@@ -447,7 +451,7 @@ describe('provider can manage multiple listings', () => {
     const patchRes = await request(app)
       .patch('/api/listings/does-not-exist')
       .set('Authorization', `Bearer ${token}`)
-      .send({ title: 'x' });
+      .send({ title: 'Edited Title' });
     expect(patchRes.status).toBe(404);
 
     const deleteRes = await request(app)
