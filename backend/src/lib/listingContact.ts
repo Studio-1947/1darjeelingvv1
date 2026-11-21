@@ -1,6 +1,7 @@
 import { and, eq } from 'drizzle-orm';
 import { db, schema } from '../db';
 import { ownListingIds } from './hostAccess';
+import { homeDeliveryEnabled } from '../config';
 
 /**
  * Listing types whose provider number is released by a booking rather than published.
@@ -43,6 +44,9 @@ export function publicSocial(social: unknown, contactVisible: boolean): Record<s
  */
 export function publicExtras(extras: unknown, phoneVisible: boolean): Record<string, unknown> {
   const e = extras && typeof extras === 'object' && !Array.isArray(extras) ? { ...(extras as Record<string, unknown>) } : {};
+  // TEMPORARY(legal-pause): while home delivery is paused, no listing advertises it: every badge, filter and order button
+  // in the web and Android apps reads this flag, so removing it here hides them all at once.
+  if (!homeDeliveryEnabled()) delete e.home_delivery;
   if (!phoneVisible) {
     for (const key of CONTACT_EXTRAS) delete e[key];
     if ('social' in e) {

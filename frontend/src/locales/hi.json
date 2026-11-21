@@ -1111,7 +1111,7 @@
         "h": "1. सामान्य पूछताछ",
         "p": "प्लेटफ़ॉर्म, आपके खाते, किसी लिस्टिंग या बुकिंग के बारे में सवालों के लिए:",
         "contact": {
-          "name": "1Darjeeling",
+          "name": "WBIN 1947 Studio LLP (1Darjeeling)",
           "email": "aanganerp@gmail.com",
           "phone": "+91 90932 77919",
           "address": "Ward 4, Krishna Nagar, 1-149, Manbir Thapa Road, Mirik, West Bengal 734214"
@@ -1146,10 +1146,11 @@
           "आपको अपनी शिकायत का एक रेफ़रेंस नंबर मिलेगा और कारणों सहित नतीजा बताया जाएगा।"
         ],
         "contact": {
-          "name": "Grievance Officer, 1Darjeeling",
+          "name": "Grievance Officer, WBIN 1947 Studio LLP",
           "email": "aanganerp@gmail.com",
           "phone": "+91 90932 77919",
-          "address": "Ward 4, Krishna Nagar, 1-149, Manbir Thapa Road, Mirik, West Bengal 734214"
+          "address": "Ward 4, Krishna Nagar, 1-149, Manbir Thapa Road, Mirik, West Bengal 734214",
+          "officer": true
         }
       },
       {
@@ -2876,7 +2877,11 @@
       "email_us": "{{email}} पर ईमेल करें",
       "call_us": "aangan को {{phone}} पर कॉल करें",
       "call": "कॉल",
-      "email": "ईमेल"
+      "email": "ईमेल",
+      "operated_by": "{{name}} द्वारा संचालित",
+      "gstin": "GSTIN {{gstin}}",
+      "grievance_officer": "शिकायत अधिकारी: {{name}}",
+      "grievance_link": "शिकायतें"
     },
     "scrollToTop": {
       "back_to_top": "ऊपर जाएँ"
@@ -2896,7 +2901,8 @@
       }
     },
     "header": {
-      "app": "ऐप"
+      "app": "ऐप",
+      "beta": "बीटा"
     },
     "trips": {
       "band": "{{type}} बुकिंग",
@@ -3586,5 +3592,10 @@
     "and1": "यह पेज Chrome में खोलें।",
     "and2": "ऊपर दाएँ तीन बिंदु दबाएँ।",
     "and3": "\"Install app\" या \"Add to Home screen\" दबाएँ।"
+  },
+  "maintenance": {
+    "eyebrow": "जल्द वापस",
+    "title": "रखरखाव जारी है",
+    "body": "हम aangan में कुछ बदलाव कर रहे हैं, साइट जल्द ही वापस आएगी। आप अब भी हमें कॉल या ईमेल कर सकते हैं।"
   }
 }

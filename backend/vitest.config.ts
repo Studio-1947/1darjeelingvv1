@@ -21,6 +21,10 @@ export default defineConfig({
       INTERAKT_WEBHOOK_SECRET: 'test_interakt_webhook_secret',
       ADMIN_USERNAME: 'admin',
       ADMIN_PASSWORD: 'test_admin_password',
+      // TEMPORARY(legal-pause): both paused in production (config.ts); the suites that cover them run with them on, and
+      // test/pausedFeatures.test.ts switches them off.
+      HOME_DELIVERY: 'true',
+      DONATIONS: 'true',
     },
     setupFiles: ['./test/setup.ts'],
   },

@@ -425,6 +425,39 @@ if (!Number.isInteger(graceBookings) || graceBookings < 1 || graceBookings > 100
 }
 export const HOST_GRACE_BOOKINGS = graceBookings;
 
+// ---------------------------------------------------------------------------------------------
+// TEMPORARY(legal-pause) — the three switches for the pre-launch legal pause (2026-11-22).
+//
+// All three live here and only here: the website asks GET /api/app/status for them, so changing the
+// server's .env and restarting the backend is all it takes. No code change, no rebuild.
+// To remove the pause entirely later, search the repo for "TEMPORARY(legal-pause)".
+//
+//   MAINTENANCE    The public website shows a full-screen "Under maintenance" screen instead of
+//                  any page. The API stays up (the Android app keeps working) and the admin console
+//                  at /admin is untouched. ON in production unless MAINTENANCE=false; off elsewhere
+//                  unless MAINTENANCE=true, so local development still shows the app.
+//   HOME_DELIVERY  Off unless "true": listings stop showing delivery (publicExtras drops
+//                  `home_delivery`) and new requests are refused. Open requests can still be
+//                  answered, and a host's own setting is kept, so turning it on restores every
+//                  listing as it was. Waiting on the CA.
+//   DONATIONS      Off unless "true": no new donation order can be created. Waiting on the CA.
+//
+// Functions rather than constants so they are read at call time (and tests can switch them).
+// ---------------------------------------------------------------------------------------------
+const envFlag = (name: string): boolean | undefined => {
+  const v = process.env[name]?.trim().toLowerCase();
+  return v ? v === 'true' : undefined;
+};
+export function maintenanceEnabled(): boolean {
+  return envFlag('MAINTENANCE') ?? IS_PROD;
+}
+export function homeDeliveryEnabled(): boolean {
+  return envFlag('HOME_DELIVERY') ?? false;
+}
+export function donationsEnabled(): boolean {
+  return envFlag('DONATIONS') ?? false;
+}
+
 // Bounds on a donation, in paise. The floor stops dust-spam orders; the ceiling is a sanity guard
 // so a fat-fingered extra zero is refused here rather than reaching the gateway.
 export const DONATION_MIN_PAISE = 1000;        // ₹10

@@ -10,6 +10,7 @@ import { ownListingIds } from '../lib/hostAccess';
 import { isListingHostLapsed } from '../lib/hostPlan';
 import { GRACE_PAUSED_CODE, GRACE_PAUSED_DETAIL, isGracePaused, noteGraceProgress } from '../lib/hostGrace';
 import { isPlausiblePhone } from '../lib/phone';
+import { homeDeliveryEnabled } from '../config';
 
 const router = Router();
 
@@ -37,6 +38,8 @@ function out(r: typeof schema.deliveryRequests.$inferSelect, extra: Record<strin
  *     security: [{ bearerAuth: [] }]
  */
 router.post('/', authenticateToken, requireTravellerMode, rateLimiter(20, 60 * 60 * 1000, 'delivery_request'), async (req: Request, res: Response) => {
+  // TEMPORARY(legal-pause): paused (config.ts). Requests already open are still answered below.
+  if (!homeDeliveryEnabled()) return res.status(403).json({ detail: 'Home delivery is paused for now.' });
   const { listing_id, items, address, phone, note } = req.body || {};
   const [listing] = await db.select().from(schema.listings).where(eq(schema.listings.id, String(listing_id || ''))).limit(1);
   if (!listing) return res.status(404).json({ detail: 'Listing not found' });

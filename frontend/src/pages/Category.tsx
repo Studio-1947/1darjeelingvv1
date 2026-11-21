@@ -19,6 +19,7 @@ import { Icon } from '@/components/ag/Icon';
 import { ListRow } from '@/components/home/cards';
 import { CatSpotCard, CatStayCard } from '@/components/ListingCard';
 import { typeMatches } from '@/components/home/HomeFilterPanel';
+import { useAppStatus } from '@/context/AppStatus'; // TEMPORARY(legal-pause)
 
 const TYPE_MAP = {
   spots: 'spot',
@@ -110,6 +111,7 @@ export default function Category({ typeOverride }: { typeOverride?: string }) {
 }
 
 function CategoryPage({ typeOverride }: { typeOverride?: string }) {
+  const { home_delivery: deliveryOn } = useAppStatus(); // TEMPORARY(legal-pause)
   const { t, i18n } = useTranslation();
   const { type: paramType } = useParams();
   const [sp, setSp] = useSearchParams();
@@ -150,7 +152,8 @@ function CategoryPage({ typeOverride }: { typeOverride?: string }) {
   const [entryFilter, setEntryFilter] = useState<string>(() => sp.get('entry') || 'all');
   const [kind, setKind] = useState(() => sp.get('kind') || '');
   // Home delivery is for cafes and shops only; a ?del=1 left on another category is ignored.
-  const [delivers, setDelivers] = useState(() => (type === 'cafe' || type === 'shop') && sp.get('del') === '1');
+  // While delivery is paused (TEMPORARY(legal-pause), context/AppStatus.tsx) a saved ?del=1 link is ignored too.
+  const [delivers, setDelivers] = useState(() => deliveryOn && (type === 'cafe' || type === 'shop') && sp.get('del') === '1');
   // Board: "Filter > by proximity & by price". Where the traveller is, and how far they will go.
   const [near, setNear] = useState<{ lat: number; lng: number } | null>(null);
   const [radius, setRadius] = useState<number | null>(null);
@@ -593,7 +596,7 @@ function CategoryPage({ typeOverride }: { typeOverride?: string }) {
           </div>
         )}
 
-        {(type === 'cafe' || type === 'shop') && (
+        {/* TEMPORARY(legal-pause) */ deliveryOn && (type === 'cafe' || type === 'shop') && (
           <div className="ag-category-pills">
             <button type="button" className="ag-category-svpill" aria-pressed={delivers} onClick={() => setDelivers((v) => !v)} data-testid="category-delivers">
               <svg className="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5.5 18a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM18.5 18a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM5.5 15.5h5l3-6h3l2 6M13.5 9.5L12 6H9" /></svg>

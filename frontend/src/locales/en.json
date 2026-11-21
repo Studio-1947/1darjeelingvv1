@@ -585,12 +585,12 @@
   },
   "privacy": {
     "title": "Privacy Policy",
-    "updated": "Last updated: July 2026",
+    "updated": "Last updated: November 2026",
     "email_label": "Email:",
     "phone_label": "Phone:",
     "address_label": "Address:",
     "intro": [
-      "1Darjeeling (\"we,\" \"us,\" \"our,\" or \"the Platform\") operates www.aanganerp.in (the \"Site\"), a local marketplace and travel guide connecting visitors with local businesses, guides, and services in Darjeeling. This Privacy Policy explains how we collect, use, disclose, and protect your information when you use our Site.",
+      "WBIN 1947 Studio LLP, under the name 1Darjeeling (\"we,\" \"us,\" \"our,\" or \"the Platform\"), operates www.aanganerp.in (the \"Site\"), a local marketplace and travel guide connecting visitors with local businesses, guides, and services in Darjeeling. This Privacy Policy explains how we collect, use, disclose, and protect your information when you use our Site.",
       "By using 1Darjeeling, you agree to the collection and use of information in accordance with this policy."
     ],
     "sections": [
@@ -684,7 +684,7 @@
       },
       {
         "h": "9. Children's Privacy",
-        "p": "1Darjeeling is not intended for use by individuals under the age of 13 (or the applicable minimum age in your jurisdiction). We do not knowingly collect personal information from children. If you believe a child has provided us information, please contact us so we can remove it."
+        "p": "1Darjeeling is for adults only. You must be at least 18 years old to create an account or make a booking request, as our Terms & Conditions require. We do not knowingly collect personal information from anyone under 18. If you believe someone under 18 has given us information, please contact us so we can remove it."
       },
       {
         "h": "10. International Users",
@@ -698,13 +698,15 @@
         "h": "12. Contact Us",
         "p": "If you have questions or concerns about this Privacy Policy or our data practices, contact us at:",
         "contact": {
-          "name": "1Darjeeling",
+          "name": "WBIN 1947 Studio LLP (1Darjeeling)",
           "email": "aanganerp@gmail.com",
           "phone": "+91 90932 77919",
           "address": "Ward 4, Krishna Nagar, 1-149, Manbir Thapa Road, Mirik, West Bengal 734214"
         }
       }
-    ]
+    ],
+    "officer_label": "Grievance Officer:",
+    "gstin_label": "GSTIN:"
   },
   "footer": {
     "made": "Made in Darjeeling, for Darjeeling",
@@ -1230,7 +1232,7 @@
     "title": "Contact Us",
     "updated": "Last updated: August 2026",
     "intro": [
-      "1Darjeeling is run by a small team based in the Darjeeling hills. Whether you are a traveller with a question about a booking, a local business wanting to be listed, or someone with a complaint, this page tells you how to reach a person.",
+      "1Darjeeling is run by WBIN 1947 Studio LLP, a small team based in the Darjeeling hills. Whether you are a traveller with a question about a booking, a local business wanting to be listed, or someone with a complaint, this page tells you how to reach a person.",
       "We read everything that comes in and reply to most messages within 2 working days."
     ],
     "sections": [
@@ -1238,7 +1240,7 @@
         "h": "1. General Enquiries",
         "p": "For questions about the Platform, your account, a listing, or a booking:",
         "contact": {
-          "name": "1Darjeeling",
+          "name": "WBIN 1947 Studio LLP (1Darjeeling)",
           "email": "aanganerp@gmail.com",
           "phone": "+91 90932 77919",
           "address": "Ward 4, Krishna Nagar, 1-149, Manbir Thapa Road, Mirik, West Bengal 734214"
@@ -1273,10 +1275,11 @@
           "You will be given a reference for your complaint and told the outcome with reasons."
         ],
         "contact": {
-          "name": "Grievance Officer, 1Darjeeling",
+          "name": "Grievance Officer, WBIN 1947 Studio LLP",
           "email": "aanganerp@gmail.com",
           "phone": "+91 90932 77919",
-          "address": "Ward 4, Krishna Nagar, 1-149, Manbir Thapa Road, Mirik, West Bengal 734214"
+          "address": "Ward 4, Krishna Nagar, 1-149, Manbir Thapa Road, Mirik, West Bengal 734214",
+          "officer": true
         }
       },
       {
@@ -1969,7 +1972,7 @@
     "title": "Terms & Conditions",
     "updated": "Last updated: November 2026",
     "intro": [
-      "1Darjeeling (\"we,\" \"us,\" \"our,\" or \"the Platform\") operates www.aanganerp.in (the \"Site\"), a local marketplace and travel guide connecting visitors with homestays, drivers, cafés, shops and guides in and around Darjeeling. These Terms & Conditions govern your use of the Site.",
+      "WBIN 1947 Studio LLP, under the name 1Darjeeling (\"we,\" \"us,\" \"our,\" or \"the Platform\"), operates www.aanganerp.in (the \"Site\"), a local marketplace and travel guide connecting visitors with homestays, drivers, cafés, shops and guides in and around Darjeeling. These Terms & Conditions govern your use of the Site.",
       "By creating an account, making a booking request, listing a business, or otherwise using the Site, you agree to these Terms. If you do not agree, please do not use the Site."
     ],
     "sections": [
@@ -1998,11 +2001,11 @@
         "sub": [
           {
             "h": "3.1 Traveller Pass — ₹1 a year, GST included, optional",
-            "p": "The pass is optional. A payment gives a traveller account one year with a verified badge that hosts see on its booking requests. Asking for and confirming bookings are free with or without the pass. It does not renew automatically; after it expires, you may buy another one-year pass."
+            "p": "The pass is optional. A payment gives a traveller account one year with a verified badge that hosts see on its booking requests. With an active pass, sending booking requests is free; without it, each request costs ₹1.20 to send (see 3.2). Confirming a booking is free either way. It does not renew automatically; after it expires, you may buy another one-year pass."
           },
           {
-            "h": "3.2 Bookings — free for travellers",
-            "p": "Making a booking request is free, and confirming it is free. aangan charges travellers no booking fee, no GST add-on and no platform fee. What you pay for the stay, ride or goods themselves is paid directly to the business; aangan never receives it and takes no share."
+            "h": "3.2 Booking Requests — ₹1.20 to send without the pass, free with it",
+            "p": "Sending a booking request to a business costs ₹1 plus 18% GST and a 2% payment gateway fee, ₹1.20 in all, paid to the Platform when you send it. With an active Traveller Pass, sending is free. Confirming a booking is free for everyone. The ₹1.20 is refunded in full, automatically, if the business declines the request or does not answer in time, if its dates go to another traveller who confirmed first, if you withdraw the request before confirming, or if the business or our team cancels the booking. It is not refunded if you cancel a booking after confirming it, because by then the business's contact details have been shared with you, or if the business reports that you did not arrive. What you pay for the stay, ride or goods themselves is paid directly to the business; we never receive it and take no share."
           },
           {
             "h": "3.3 Business Listing Plan — ₹499 a year for homestays, drivers and guides, ₹99 a year for cafés, each plus 18% GST and a 2% platform fee; free until 2 completed bookings; local shops list free",
@@ -2018,7 +2021,7 @@
       {
         "h": "4. Bookings",
         "items": [
-          "A booking begins as a request. It is confirmed when you confirm it at checkout, at which point both you and the business are notified. Confirming a booking is free.",
+          "A booking begins as a request. It reaches the business once it is sent: free with an active Traveller Pass, or for the ₹1.20 request fee (3.2) without one. It is confirmed when you confirm it at checkout, at which point both you and the business are notified. Confirming a booking is free.",
           "For homestays, confirmed dates are held exclusively. While a checkout is in progress, those dates are held briefly against other travellers so two people cannot pay for the same room; an abandoned checkout releases them again.",
           "If two travellers confirm the same homestay for the same dates at the same moment, only the first can be confirmed. The second booking is cancelled automatically and that traveller is told.",
           "A confirmed booking is a confirmed request to the business. Check-in times, house rules, extra charges and payment for the stay itself are matters between you and the business."
@@ -2083,7 +2086,7 @@
         "h": "14. Contact",
         "p": "Questions about these Terms can be sent to us at:",
         "contact": {
-          "name": "1Darjeeling",
+          "name": "WBIN 1947 Studio LLP (1Darjeeling)",
           "email": "aanganerp@gmail.com",
           "phone": "+91 90932 77919",
           "address": "Ward 4, Krishna Nagar, 1-149, Manbir Thapa Road, Mirik, West Bengal 734214"
@@ -2095,7 +2098,7 @@
     "title": "Refund & Cancellation Policy",
     "updated": "Last updated: November 2026",
     "intro": [
-      "This policy explains when money paid to 1Darjeeling is returned, how long it takes, and what falls outside it. It forms part of our Terms & Conditions.",
+      "This policy explains when money paid to 1Darjeeling (WBIN 1947 Studio LLP) is returned, how long it takes, and what falls outside it. It forms part of our Terms & Conditions.",
       "One distinction governs everything below. The fees listed in this policy are paid to the Platform, and this policy covers them. The price of your stay, ride, meal or purchase is paid directly to the local business, and that money is governed by the business's own terms  we never receive it and cannot refund it."
     ],
     "sections": [
@@ -2104,7 +2107,7 @@
         "p": "A booking can be cancelled at any time before it takes place, from your dashboard, by the business, or by our team.",
         "items": [
           "A booking still awaiting payment can simply be cancelled  nothing has been charged.",
-          "A confirmed booking can be cancelled by you, by the business, or by us. Confirming is free, so there is nothing to refund. A booking fee paid before 19 November 2026 is refunded in full if that booking is cancelled.",
+          "A request or a confirmed booking can be cancelled by you, by the business, or by us. Whether the ₹1.20 request fee comes back depends on who cancels and when (see 3.1).",
           "If the business cancels on you, we will help you find an alternative wherever we can."
         ]
       },
@@ -2112,7 +2115,7 @@
         "h": "2. Automatic Refunds",
         "p": "Some refunds need no request at all  the Platform issues them itself:",
         "items": [
-          "Booking fees: travellers pay none. A booking fee paid before 19 November 2026 (₹1.20) is refunded in full automatically if that booking is cancelled, or loses its dates to another traveller who confirmed first.",
+          "Request fees: the ₹1.20 paid to send a request is refunded in full if the business declines it or does not answer in time, if its dates go to another traveller who confirmed first, if you withdraw it before confirming, or if the business or our team cancels the booking.",
           "Duplicate charges: if a technical fault charges you twice for one thing, the duplicate is refunded in full."
         ]
       },
@@ -2120,8 +2123,8 @@
         "h": "3. The Fees, One by One",
         "sub": [
           {
-            "h": "3.1 Bookings — free for travellers",
-            "p": "Asking a host to book is free, and confirming a booking is free. You can cancel any time before the trip; there is nothing to refund because you paid aangan nothing. A booking fee paid before 19 November 2026 is refunded in full if that booking is cancelled, by any party, before the stay, or if its dates go to another traveller who confirmed first."
+            "h": "3.1 Booking Requests — ₹1.20 to send without the pass, free with it",
+            "p": "Sending a request without an active Traveller Pass costs ₹1 plus 18% GST and a 2% payment gateway fee, ₹1.20 in all. With the pass, sending is free, and confirming a booking is free for everyone. The ₹1.20 is refunded in full, automatically, if the business declines the request or does not answer in time, if its dates go to another traveller who confirmed first, if you withdraw the request before confirming, or if the business or our team cancels the booking. It is not refunded if you cancel a booking after confirming it, because by then the business's contact details have been shared with you, or if the business reports that you did not arrive."
           },
           {
             "h": "3.2 Traveller Pass — ₹1 a year, GST included, optional",
@@ -2160,7 +2163,7 @@
         "items": [
           "Money paid directly to a homestay, driver, café or shop. Ask them  their cancellation terms apply, and we will help you make contact.",
           "Costs around a trip that we never charged: travel to Darjeeling, other bookings, time taken off.",
-          "Fees where the traveller did not show up, or cancelled after the stay had already begun.",
+          "The request fee where the traveller cancelled a booking after confirming it, did not arrive, or cancelled after the stay had already begun.",
           "Accounts closed by us for a breach of our Terms."
         ]
       },
@@ -2172,7 +2175,7 @@
         "h": "8. Contact",
         "p": "Refund questions and requests go to:",
         "contact": {
-          "name": "1Darjeeling",
+          "name": "WBIN 1947 Studio LLP (1Darjeeling)",
           "email": "aanganerp@gmail.com",
           "phone": "+91 90932 77919",
           "address": "Ward 4, Krishna Nagar, 1-149, Manbir Thapa Road, Mirik, West Bengal 734214"
@@ -3326,7 +3329,11 @@
       "email_us": "Email {{email}}",
       "call_us": "Call aangan on {{phone}}",
       "call": "Call",
-      "email": "Email"
+      "email": "Email",
+      "operated_by": "Operated by {{name}}",
+      "gstin": "GSTIN {{gstin}}",
+      "grievance_officer": "Grievance Officer: {{name}}",
+      "grievance_link": "Grievances"
     },
     "scrollToTop": {
       "back_to_top": "Back to top"
@@ -3346,7 +3353,8 @@
       }
     },
     "header": {
-      "app": "App"
+      "app": "App",
+      "beta": "Beta"
     },
     "trips": {
       "band": "{{type}} booking",
@@ -4049,5 +4057,10 @@
     "and1": "Open this page in Chrome.",
     "and2": "Tap the three dots at the top right.",
     "and3": "Tap \"Install app\" or \"Add to Home screen\"."
+  },
+  "maintenance": {
+    "eyebrow": "Back soon",
+    "title": "Under maintenance",
+    "body": "We're making some changes to aangan, and the site will be back soon. You can still call or email us."
   }
 }
