@@ -333,7 +333,11 @@ export function useHostWizard() {
             // How many guests the home sleeps: the rooms added up (the board's "guest occupancy").
             const guests = ok.reduce((n, r) => n + (Math.floor(Number(r.occ)) || 0), 0);
             return {
-              rooms: ok.map((r) => ({ name: r.name.trim(), price: Number(r.price), unit: 'night' })),
+              // Each room keeps what it sleeps, so a booking for it is capped there (lib/roomFit.ts).
+              rooms: ok.map((r) => {
+                const occ = Math.floor(Number(r.occ)) || 0;
+                return { name: r.name.trim(), price: Number(r.price), unit: 'night', ...(occ > 0 ? { occ: Math.min(20, occ) } : {}) };
+              }),
               ...(guests > 0 ? { capacity: Math.min(100, guests) } : {}),
             };
           })() : {}),

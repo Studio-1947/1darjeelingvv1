@@ -377,6 +377,16 @@ describe('provider can manage multiple listings', () => {
     expect(patchRes.body.item.price).toBe(1500);
   });
 
+  it('caps every price on a listing at 50,000 rupees, the room list in extras included', async () => {
+    const { token } = await onboardActiveProvider({ name: 'Pricey Provider' });
+    const post = (body: object) => request(app).post('/api/listings').set('Authorization', `Bearer ${token}`)
+      .send({ title: 'Cap Test Stay', type: 'homestay', description: 'x', location: 'Darjeeling', ...body });
+    expect((await post({ price: 50000 })).status).toBe(200);
+    expect((await post({ price: 50001 })).status).toBe(400);
+    expect((await post({ price: 1000, extras: { rooms: [{ name: 'Suite', price: 60000, unit: 'night' }] } })).status).toBe(400);
+    expect((await post({ price: 1000, extras: { rooms: [{ name: 'Suite', price: 50000, unit: 'night' }] } })).status).toBe(200);
+  });
+
   it('blocks a different provider from editing someone else\'s listing', async () => {
     const { token: ownerToken } = await onboardActiveProvider({ name: 'Owner Provider' });
     const { token: otherToken } = await onboardActiveProvider({ name: 'Other Provider' });

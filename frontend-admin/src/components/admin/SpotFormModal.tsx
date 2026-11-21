@@ -5,6 +5,9 @@ import {
 import { uploadSpotImages, PartialUploadError } from '@/lib/uploadImage';
 import type { AdminSpot } from './SpotsTab';
 
+/** Same cap as the backend (backend/src/lib/priceCap.ts): no price above ₹50,000. */
+const MAX_PRICE = 50_000;
+
 // Mirrors the server-side caps in backend/src/lib/spots.ts, so the admin is stopped here with a
 // clear message rather than by a 400 after filling in a whole form.
 export const MAX_GALLERY_IMAGES = 16;
@@ -335,8 +338,8 @@ export default function SpotFormModal({ open, spot, onClose, onSubmit }: {
     }
 
     const price = Number(form.price || 0);
-    if (!Number.isInteger(price) || price < 0) {
-      setError('Entry price must be a whole number of rupees (0 for free).');
+    if (!Number.isInteger(price) || price < 0 || price > MAX_PRICE) {
+      setError(`Entry price must be a whole number of rupees from 0 to ${MAX_PRICE.toLocaleString('en-IN')} (0 for free).`);
       return;
     }
     const sortOrder = Number(form.sortOrder || 0);
@@ -564,7 +567,7 @@ export default function SpotFormModal({ open, spot, onClose, onSubmit }: {
 
             <div className="grid sm:grid-cols-2 gap-4">
               <Field label="Entry price (₹)" hint="Numeric  0 shows the spot as free. Used on cards.">
-                <input type="number" min="0" step="1" value={form.price} onChange={(e) => set('price', e.target.value)} data-testid="spot-form-price" className={inputClass} />
+                <input type="number" min="0" max={MAX_PRICE} step="1" value={form.price} onChange={(e) => set('price', e.target.value)} data-testid="spot-form-price" className={inputClass} />
               </Field>
               <Field label="Tags">
                 <ChipInput values={tags} onChange={setTags} max={MAX_TAGS} placeholder="e.g. sunrise" testId="spot-form-tag-input" />

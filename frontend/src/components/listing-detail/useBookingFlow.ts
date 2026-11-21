@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { readTrip } from '@/lib/tripParams';
+import { roomFit, roomNightly } from '@/lib/roomFit';
 
 export interface BookingForm {
   check_in: string;
@@ -39,7 +40,7 @@ export interface BookingErrors {
 const draftKey = (id: string) => `booking_draft_${id}`;
 
 /** The host's rooms, each with a name (listing extras, as the profile writes them). */
-export function roomsOf(item: any): { name: string; price: number; unit: string; occ?: number; photo?: string }[] {
+export function roomsOf(item: any): { name: string; price: number; unit: string; occ?: number; extra_beds?: number; extra_bed_price?: number; photo?: string }[] {
   const rooms = Array.isArray(item?.extras?.rooms) ? item.extras.rooms : [];
   return rooms.filter((r: any) => r && String(r.name || '').trim());
 }
@@ -67,7 +68,8 @@ export function chosenRoom(item: any, name?: string) {
 
 /**
  * What the request comes to, by the server's rule (lib/bookingAmount.ts + lib/bookingDetails.ts):
- * a room is its price a night (x people when priced per head); otherwise a homestay is the rate x
+ * a room is its price a night for the whole room, plus each extra-mattress guest's charge
+ * (lib/roomFit.ts); otherwise a homestay is the rate x
  * people x nights. A driver is the route's price per trip, or its day rate x days, else the listing
  * rate. A guide is the listing rate.
  */
@@ -78,7 +80,9 @@ export function bookingTotal(item: any, form: BookingForm): number {
     const nights = form.check_in && form.check_out
       ? Math.max(0, Math.round((Date.parse(form.check_out) - Date.parse(form.check_in)) / 86_400_000)) : 0;
     const room = chosenRoom(item, form.room);
-    if (room && Number(room.price) > 0) return Number(room.price) * (room.unit === 'head' ? guests : 1) * nights;
+    // The server uses the room whenever its night comes to more than 0 (a free room with a paid mattress too).
+    const nightly = room ? roomNightly(room, guests) : 0;
+    if (nightly > 0) return nightly * nights;
     return rate * guests * nights;
   }
   if (item?.type === 'driver') {
@@ -206,7 +210,8 @@ export function useBookingFlow(item: any, id: string) {
     if (item?.type === 'driver' && (!form.pickup_place?.trim() || !form.drop_place?.trim())) {
       next.route = t('booking.route_required', 'Pick where to start and where to go.');
     }
-    const roomOcc = item?.type === 'homestay' ? Number(chosenRoom(item, form.room)?.occ) || 0 : 0;
+    // A room takes what it sleeps plus its extra mattresses (lib/roomFit.ts).
+    const roomOcc = item?.type === 'homestay' ? roomFit(chosenRoom(item, form.room)).max || 0 : 0;
     const baseMax = item?.type === 'driver' ? (item?.extras?.seats || 6) : (item?.guests || item?.extras?.capacity || 10);
     const maxGuests = roomOcc > 0 ? Math.min(baseMax, roomOcc) : baseMax;
     if (!(Number(form.guests) >= 1)) {

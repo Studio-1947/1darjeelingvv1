@@ -29,6 +29,24 @@ describe('room rule on the host profile', () => {
     expect(profilePatchFrom('homestay', { rooms: [{ name: 'X', price: 10, occ: 0 }] })).toHaveProperty('error');
     expect(profilePatchFrom('homestay', { rooms: [{ name: 'X', price: 10, occ: 'two' }] })).toHaveProperty('error');
   });
+
+  it('takes up to two extra mattresses per room, with an optional price, only once the room says what it sleeps', () => {
+    const ok = profilePatchFrom('homestay', { rooms: [
+      { name: 'Valley Room', price: 2400, unit: 'night', occ: 2, extra_beds: 1, extra_bed_price: 400 },
+      { name: 'Loft', price: 1800, unit: 'night', occ: 2, extra_beds: 2 },
+      { name: 'Box', price: 900, unit: 'night', occ: 1, extra_beds: 0, extra_bed_price: 300 },
+    ] }) as any;
+    expect(ok.rooms[0]).toEqual({ name: 'Valley Room', price: 2400, unit: 'night', occ: 2, extra_beds: 1, extra_bed_price: 400 });
+    expect(ok.rooms[1]).toEqual({ name: 'Loft', price: 1800, unit: 'night', occ: 2, extra_beds: 2 });
+    // No extra mattress: its price means nothing and is not kept.
+    expect(ok.rooms[2]).toEqual({ name: 'Box', price: 900, unit: 'night', occ: 1 });
+    // A room is always priced a night for the whole room: an older client's "head" is stored as "night".
+    expect((profilePatchFrom('homestay', { rooms: [{ name: 'Dorm', price: 600, unit: 'head', occ: 4, extra_beds: 1, extra_bed_price: 300 }] }) as any).rooms[0])
+      .toEqual({ name: 'Dorm', price: 600, unit: 'night', occ: 4, extra_beds: 1, extra_bed_price: 300 });
+    expect(profilePatchFrom('homestay', { rooms: [{ name: 'X', price: 10, occ: 2, extra_beds: 3 }] })).toHaveProperty('error');
+    expect(profilePatchFrom('homestay', { rooms: [{ name: 'X', price: 10, extra_beds: 1 }] })).toHaveProperty('error');
+    expect(profilePatchFrom('homestay', { rooms: [{ name: 'X', price: 10, occ: 2, extra_beds: 1, extra_bed_price: 50001 }] })).toHaveProperty('error');
+  });
 });
 
 describe('booking amount with a room or a quoted fare', () => {
@@ -39,15 +57,38 @@ describe('booking amount with a room or a quoted fare', () => {
     expect(bookingGrossAmount({ listingType: 'driver', price: 2000, quotedFare: null })).toBe(2000);
   });
 
-  it('prices a per-head room for the party and caps people at the room size', () => {
+  it('prices a room as one price for the room (a room saved per head too) and caps people at the room size', () => {
     const r = pickRoom(ROOMS, 'family room', 3);
-    expect(r.ok && r.room).toMatchObject({ name: 'Family Room', nightly: 2700, occ: 5 });
+    expect(r.ok && r.room).toMatchObject({ name: 'Family Room', nightly: 900, occ: 5, unit: 'night' });
     const tooMany = pickRoom(ROOMS, 'Valley Room', 3);
     expect(tooMany.ok).toBe(false);
     expect(!tooMany.ok && tooMany.code).toBe('room_too_small');
     const unknown = pickRoom(ROOMS, 'Penthouse', 1);
     expect(!unknown.ok && unknown.code).toBe('bad_room');
     expect(pickRoom(ROOMS, '', 9)).toEqual({ ok: true, room: null });
+  });
+
+  it('lets a room take its extra mattress guests and charges each of them a night', () => {
+    const rooms = [
+      { name: 'Valley Room', price: 2400, unit: 'night', occ: 2, extra_beds: 1, extra_bed_price: 400 },
+      { name: 'Free Extra', price: 2000, unit: 'night', occ: 2, extra_beds: 2 },
+      { name: 'Was Per Head', price: 900, unit: 'head', occ: 2, extra_beds: 1, extra_bed_price: 400 },
+      { name: 'No Extra', price: 1500, unit: 'night', occ: 2 },
+    ];
+    expect(pickRoom(rooms, 'Valley Room', 2)).toMatchObject({ ok: true, room: { nightly: 2400, extraGuests: 0 } });
+    expect(pickRoom(rooms, 'Valley Room', 3)).toMatchObject({ ok: true, room: { nightly: 2800, extraGuests: 1 } });
+    const four = pickRoom(rooms, 'Valley Room', 4);
+    expect(!four.ok && four.code).toBe('room_too_small');
+    expect(!four.ok && four.detail).toMatch(/sleeps 2, and up to 3 with an extra mattress/);
+    expect(pickRoom(rooms, 'Free Extra', 4)).toMatchObject({ ok: true, room: { nightly: 2000, extraGuests: 2 } });
+    // A room once saved per head is one price for the room now, plus the mattress.
+    expect(pickRoom(rooms, 'Was Per Head', 3)).toMatchObject({ ok: true, room: { nightly: 1300 } });
+    // No extra mattress set: nobody beyond what the room sleeps.
+    expect(pickRoom(rooms, 'No Extra', 2)).toMatchObject({ ok: true, room: { nightly: 1500 } });
+    expect(pickRoom(rooms, 'No Extra', 3)).toMatchObject({ ok: false, code: 'room_too_small' });
+    // A free room with a paid mattress: the night is just the mattress, as the website shows.
+    expect(pickRoom([{ name: 'Free', price: 0, unit: 'night', occ: 2, extra_beds: 1, extra_bed_price: 300 }], 'Free', 3))
+      .toMatchObject({ ok: true, room: { nightly: 300 } });
   });
 
   it('works out a driver fare: per trip, day rate x days, else the listing price', () => {
@@ -105,6 +146,18 @@ describe('homestay room on POST /bookings', () => {
     const noRoom = await book(token, { listing_id: listing.id, check_in: inDays(5), check_out: inDays(6), guests: 3 });
     expect(noRoom.status).toBe(200);
     expect(noRoom.body.booking.room_name).toBeNull();
+  });
+
+  it('books a group of 3 into a room for 2 with +1 extra mattress, and adds the mattress to the amount', async () => {
+    const rooms = [{ name: 'Valley Room', price: 2400, unit: 'night', occ: 2, extra_beds: 1, extra_bed_price: 400 }];
+    const listing = await createListing({ title: 'Mattress House', type: 'homestay', extras: { rooms, capacity: 3 } });
+    const { token } = await registerUser({ name: 'Group Of Three' });
+    const three = await book(token, { listing_id: listing.id, check_in: inDays(8), check_out: inDays(10), guests: 3, room: 'Valley Room' });
+    expect(three.status).toBe(200);
+    // (2,400 + 400 for the third guest) x 2 nights
+    expect(three.body.booking).toMatchObject({ room_name: 'Valley Room', room_price: 2800, amount: 5600 });
+    const four = await book(token, { listing_id: listing.id, check_in: inDays(12), check_out: inDays(13), guests: 4, room: 'Valley Room' });
+    expect(four.status).toBe(400);
   });
 
   it('falls back to the provider profile rooms when the listing has none of its own', async () => {

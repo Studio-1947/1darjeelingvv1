@@ -5,6 +5,7 @@ import { Icon, type IconName } from '@/components/ag/Icon';
 import api from '@/lib/api';
 import { Box, ButtonA, SecHead } from '@/components/ag';
 import { Section, PriceRow, PersonCard, MiniCard } from './primitives';
+import { roomFit } from '@/lib/roomFit';
 
 /**
  * Sections for what hosts fill in on their business profile (backend lib/hostProfile.ts): the
@@ -109,16 +110,25 @@ export function ServicesSection({ services }: { services: Priced[] }) {
 }
 
 /** A homestay's rooms and food, each with its charge (prototype box "Rooms"). */
-export function RoomsFoodSection({ rooms, meals, homeDelivery }: { rooms: Priced[]; meals: Priced[]; homeDelivery?: boolean }) {
+export function RoomsFoodSection({ rooms, meals }: { rooms: Priced[]; meals: Priced[] }) {
   const { t } = useTranslation();
   if (!rooms.length && !meals.length) return null;
   return (
     <Section title={meals.length && !rooms.length ? t('profile.meals') : t('listing.rooms', 'Rooms')} testid="detail-rooms">
       {rooms.length > 0 && (
         <div className="flex flex-col">
-          {rooms.map((r, i) => (
-            <PriceRow key={i} photo={r.photo} name={r.name} sub={Number((r as any).occ || (r as any).capacity) > 0 ? `${Number((r as any).occ || (r as any).capacity)} ${t('listing.ppl', 'people')}` : undefined} price={Number(r.price) || 0} unit={t(`profile.unit_${r.unit || 'night'}`)} />
-          ))}
+          {rooms.map((r, i) => {
+            const size = Number((r as any).occ || (r as any).capacity);
+            // "2 people · +1 on extra mattress (₹400)": what the room sleeps and how many more fit (lib/roomFit.ts).
+            const fit = roomFit(r);
+            const extra = fit.extraBeds > 0
+              ? ` · ${t('listing.extra_mattress', { count: fit.extraBeds })}${fit.extraBedPrice > 0 ? ` (₹${fit.extraBedPrice.toLocaleString('en-IN')})` : ''}`
+              : '';
+            return (
+              <PriceRow key={i} photo={r.photo} name={r.name} sub={size > 0 ? `${size} ${t('listing.ppl', 'people')}${extra}` : undefined}
+                price={Number(r.price) || 0} unit={t('profile.unit_night')} />
+            );
+          })}
         </div>
       )}
       {meals.length > 0 && (
@@ -129,7 +139,6 @@ export function RoomsFoodSection({ rooms, meals, homeDelivery }: { rooms: Priced
           ))}
         </div>
       )}
-      {homeDelivery && <Line icon="bag">{t('profile.home_delivery_on')}</Line>}
     </Section>
   );
 }

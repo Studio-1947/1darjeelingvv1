@@ -87,7 +87,8 @@ export async function buildHostPage(provider: Provider, viewer: Viewer) {
       items: itemsFor(provider.businessType, e),
       gallery: (Array.isArray(e.images) ? e.images : provider.images || []).filter(Boolean),
       available: e.available !== false,
-      homeDelivery: e.home_delivery === true,
+      // Cafes and shops only; a homestay that switched it on before 2026-11-21 does not show it.
+      homeDelivery: (provider.businessType === 'cafe' || provider.businessType === 'shop') && e.home_delivery === true,
       // Instagram, Facebook and YouTube reach the host as surely as the phone, so they sit behind
       // the same gate; the website is the host's showcase and stays public.
       social: publicSocial(e.social, phoneOk),

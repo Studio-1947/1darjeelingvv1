@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { capPrice, MAX_PRICE } from '@/lib/hostFormChecks';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import api from '@/lib/api';
@@ -257,8 +258,8 @@ export default function SuggestPlace() {
           {!free && (
             <label className="ag-field">
               <span>{t('sugg.ticket_amt', 'Ticket price per person (₹)')}</span>
-              <input className="ag-in" type="number" inputMode="numeric" min={1} max={100000} value={price}
-                onChange={(e) => setPrice(e.target.value)} data-testid="home-suggest-price" />
+              <input className="ag-in" type="number" inputMode="numeric" min={1} max={MAX_PRICE} value={price}
+                onChange={(e) => setPrice(capPrice(e.target.value))} data-testid="home-suggest-price" />
             </label>
           )}
           <p className="ag-home-suggeye">{t('sugg.photos', 'Photos (up to 4)')}</p>

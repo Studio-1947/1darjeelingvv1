@@ -68,7 +68,7 @@ export default function Deliveries() {
           <ShieldCheck size={14} /> System Administrator
         </div>
         <h1 className="mt-1 font-display font-extrabold text-4xl text-ink leading-none">Home deliveries</h1>
-        <p className="mt-2 text-sm text-ink-soft">Requests travellers send to cafes, shops and homestays that deliver. The host answers each one from their dashboard.</p>
+        <p className="mt-2 text-sm text-ink-soft">Requests travellers send to cafes and shops that deliver. The host answers each one from their dashboard.</p>
       </div>
 
       <div className="flex flex-wrap items-center gap-2 mb-4">

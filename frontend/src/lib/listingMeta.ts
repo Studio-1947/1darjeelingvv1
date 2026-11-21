@@ -112,7 +112,7 @@ export function amenitiesFor(item: any, max = 8): Amenity[] {
     push(rule ? { Icon: rule.Icon, label: rule.label } : { Icon: Tag, label: prettify(tag) });
   });
 
-  if (item?.extras?.home_delivery === true) push({ Icon: Package, label: 'Home delivery', labelKey: 'ui.listingMeta.home_delivery' });
+  if ((item?.type === 'cafe' || item?.type === 'shop') && item?.extras?.home_delivery === true) push({ Icon: Package, label: 'Home delivery', labelKey: 'ui.listingMeta.home_delivery' });
   // The type's stock list fills out the team's own listings only. A host's page lists what the host
   // picked and nothing else: a shop that chose "Tea" must not also claim "Gift wrapping".
   const hostOwned = HOST_LISTED.has(item?.type) && !!item?.provider_id && item.provider_id !== 'admin-seed-provider';

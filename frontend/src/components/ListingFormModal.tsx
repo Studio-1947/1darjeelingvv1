@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { capPrice, MAX_PRICE } from '@/lib/hostFormChecks';
 import { useTranslation } from 'react-i18next';
 import { CircleNotch as Loader2 } from '@phosphor-icons/react';
 import { Button, FieldError, SelectField, TextArea, TextField } from '@/components/ag';
@@ -106,7 +107,7 @@ export default function ListingFormModal({ open, onClose, initial, onSubmit }: L
         <TextArea label={t('pd.description')} required rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} data-testid="listing-form-description" />
         <TextField label={t('lf.location')} required value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} data-testid="listing-form-location" />
         <div className="grid gap-4 sm:grid-cols-2">
-          <TextField label={t('lf.price')} type="number" min="0" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} data-testid="listing-form-price" />
+          <TextField label={t('lf.price')} type="number" min="0" max={MAX_PRICE} value={form.price} onChange={(e) => setForm({ ...form, price: capPrice(e.target.value) })} data-testid="listing-form-price" />
           <TextField label={t('lf.image_url')} value={form.image} onChange={(e) => setForm({ ...form, image: e.target.value })} data-testid="listing-form-image" />
         </div>
         <TextField label={t('lf.tags')} value={form.tags} onChange={(e) => setForm({ ...form, tags: e.target.value })} data-testid="listing-form-tags" />

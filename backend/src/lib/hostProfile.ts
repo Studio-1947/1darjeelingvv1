@@ -1,4 +1,5 @@
 import { normaliseVehicleNumber } from './vehicleNumber';
+import { MAX_PRICE } from './priceCap';
 import { isPlausiblePhone } from './phone';
 
 /**
@@ -10,8 +11,8 @@ import { isPlausiblePhone } from './phone';
  * - driver: routes with charges, vehicle number, driving licence number, car photos, passenger
  *   capacity (RC and licence uploads are KYC documents);
  * - homestay: property and host name, rooms and food with charges, recommended drivers,
- *   property photos, guest occupancy, amenities, home delivery (trade licence and homestay
- *   paper are KYC documents);
+ *   property photos, guest occupancy, amenities (trade licence and homestay paper are KYC
+ *   documents); no home delivery, that is for cafes and shops only (user decision 2026-11-21);
  * - guide: name, age, gender, type of guide, services and charges, seasons;
  * - cafe / restaurant: owner name, menu with prices, amenities, home delivery;
  * - local business (shop): type of business, goods and rates (at most 10 items), home delivery;
@@ -38,6 +39,8 @@ export const GOODS_UNITS = ['item', 'piece', 'kg', 'gram', 'litre', 'pack', 'doz
 export const MAX_GOODS = 10;
 /** Most people one homestay room can sleep (a room's optional `occ`). */
 export const MAX_ROOM_OCC = 50;
+/** Most extra guests a room can take on an extra mattress (user decision 2026-11-21: +1 or +2). */
+export const MAX_EXTRA_BEDS = 2;
 export const SOCIAL_KEYS = ['instagram', 'facebook', 'youtube', 'website'] as const;
 /**
  * The business theme colour (prototype palette.js, "For my business"): the palette keys the website
@@ -61,7 +64,6 @@ export function themeOf(v: unknown): string | undefined {
 export const MIN_CAR_PHOTOS = 6;
 export const MIN_PROPERTY_PHOTOS = 8;
 
-const MAX_PRICE = 1_000_000;
 
 export type ProfileError = { error: string };
 export type ProfilePatch = Record<string, unknown>;
@@ -177,21 +179,40 @@ const BY_TYPE: Record<string, Record<string, (v: unknown) => unknown | ProfileEr
   },
   homestay: {
     host_name: (v) => text(v, 80, 'Host name'),
-    // Each room may say how many people it sleeps (`occ`, optional): a booking for that room
-    // cannot be for more people than that (prototype staybook.js rooms[{name,price,occ}]).
+    // A room has one price a night for the whole room (user decision 2026-11-21: never per person;
+    // an older client's "head" is accepted and stored as "night"). Each room may say how many people
+    // it sleeps (`occ`): a booking for that room cannot be for more than that (prototype staybook.js
+    // rooms[{name,price,occ}]), unless the host allows up to two more on an extra mattress
+    // (`extra_beds`, 0-2), each adding `extra_bed_price` to the night (optional, 0 or absent = free).
+    // See lib/bookingDetails.ts pickRoom.
     rooms: (v) => list(v, 20, 'Rooms', (x) => {
       const r = priced(ROOM_UNITS, 'room', 'night')(x);
       if ('error' in r) return r;
-      const occRaw = (x as Record<string, unknown>).occ;
-      if (occRaw === undefined || occRaw === null || occRaw === '') return r;
-      const occ = int(occRaw, 1, MAX_ROOM_OCC, 'People per room');
-      return typeof occ === 'number' ? { ...r, occ } : occ;
+      const e = x as Record<string, unknown>;
+      const blank = (k: string) => e[k] === undefined || e[k] === null || e[k] === '';
+      let out: Record<string, unknown> = { ...r, unit: 'night' };
+      if (!blank('occ')) {
+        const occ = int(e.occ, 1, MAX_ROOM_OCC, 'People per room');
+        if (typeof occ !== 'number') return occ;
+        out = { ...out, occ };
+      }
+      if (!blank('extra_beds')) {
+        const extra = int(e.extra_beds, 0, MAX_EXTRA_BEDS, 'Extra mattress');
+        if (typeof extra !== 'number') return extra;
+        if (extra > 0 && out.occ === undefined) return { error: 'Say how many people the room sleeps before adding an extra mattress' };
+        if (extra > 0) out = { ...out, extra_beds: extra };
+      }
+      if (!blank('extra_bed_price') && out.extra_beds) {
+        const fee = int(e.extra_bed_price, 0, MAX_PRICE, 'Extra mattress price');
+        if (typeof fee !== 'number') return fee;
+        if (fee > 0) out = { ...out, extra_bed_price: fee };
+      }
+      return out;
     }),
     meals: (v) => list(v, 20, 'Food', priced(['meal', 'day', 'head'], 'meal', 'meal')),
     ...PREMISES,
     capacity: (v) => int(v, 1, 100, 'Guest occupancy'),
     amenities: (v) => list(v, 30, 'Amenities', (x) => text(x, 60, 'Amenity')),
-    home_delivery: (v) => (typeof v === 'boolean' ? v : { error: 'Home delivery must be on or off' }),
     // Which photo shows what, keyed by the photo's URL, so the listing page can group them.
     // Optional: an untagged photo shows under "More photos".
     photo_kinds: (v) => {

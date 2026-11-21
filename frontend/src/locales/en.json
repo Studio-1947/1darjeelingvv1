@@ -464,7 +464,10 @@
     "fee_note_pass": "Your aangan pass covers this booking. No fee, and your request goes with a verified badge.",
     "route_required": "Pick where to start and where to go.",
     "vsend": "Your request goes with a verified badge",
-    "vnudge": "Get verified for ₹1 a year and get more confirmations"
+    "vnudge": "Get verified for ₹1 a year and get more confirmations",
+    "extra_mattress_line_one": "Extra mattress, {{count}} guest",
+    "extra_mattress_line_other": "Extra mattress, {{count}} guests",
+    "extra_free": "Free"
   },
   "responsible": {
     "title": "Responsible Tourism",
@@ -1513,7 +1516,7 @@
       "host_name": "Host name",
       "price_missing": "Starting price per head",
       "price_whole": "Price per head in whole rupees",
-      "price_range": "Price per head between ₹100 and ₹1,00,000",
+      "price_range": "Price per head between ₹100 and ₹50,000",
       "business_name": "Your business name",
       "your_name": "Your name",
       "price_whole_any": "Price in whole rupees"
@@ -1754,7 +1757,7 @@
       "fee_full": "Homestays and drivers: {{price}} a year",
       "fee_small": "Guides, cafes and shops: {{price}} a year",
       "gst_note": "GST and a 2% payment fee are added when you pay.",
-      "price_range": "Set a price between ₹100 and ₹1,00,000.",
+      "price_range": "Set a price between ₹100 and ₹50,000.",
       "minus": "Minus 100",
       "plus": "Plus 100",
       "photos_added_one": "{{count}} photo added",
@@ -2350,7 +2353,6 @@
     "available_off": "Not taking bookings",
     "available_note": "Switch off when you are away. Travellers see you are not taking bookings.",
     "home_delivery": "Home delivery of food",
-    "home_delivery_note": "Turn on if you deliver meals to guests or neighbours.",
     "about_you": "About you",
     "owner_photo": "Owner photo",
     "your_photo": "Your photo",
@@ -2435,7 +2437,9 @@
     "video_failed": "Could not upload the video",
     "video_old_link": "Your current video link",
     "gallery_done": "{{have}} photos ({{goal}} needed) ✓",
-    "gallery_short": "{{have}} of {{goal}} needed"
+    "gallery_short": "{{have}} of {{goal}} needed",
+    "capacity_from_rooms": "Worked out from your rooms, extra mattresses included.",
+    "rooms_need_sleeps": "Say how many people each room sleeps, then save."
   },
   "owners": {
     "title": "Owners",
@@ -3057,7 +3061,17 @@
       "add_photo": "Add a photo",
       "price": "Price",
       "unit": "Unit",
-      "remove": "Remove"
+      "remove": "Remove",
+      "sleeps_label": "How many people the room sleeps",
+      "sleeps_unset": "Sleeps: not set",
+      "sleeps_one": "Sleeps {{count}}",
+      "sleeps_other": "Sleeps {{count}}",
+      "extra_label": "Extra mattress",
+      "extra_none": "No extra",
+      "extra_one": "Extra: +{{count}}",
+      "extra_other": "Extra: +{{count}}",
+      "extra_price": "₹ per extra person a night",
+      "extra_price_note": "Each extra guest pays this a night. Leave it empty if the mattress is free."
     },
     "providerProfile": {
       "could_not_save": "Could not save",
@@ -3673,7 +3687,9 @@
     "db_day_minus": "One day less",
     "db_day_plus": "One more day",
     "db_day1": "1 day",
-    "db_ndays_n": "{{n}} days"
+    "db_ndays_n": "{{n}} days",
+    "extra_mattress_one": "+{{count}} on extra mattress",
+    "extra_mattress_other": "+{{count}} on extra mattresses"
   },
   "theme": {
     "title": "Theme colour",

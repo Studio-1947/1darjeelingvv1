@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { MAX_PRICE } from '../lib/priceCap';
 import { v4 as uuidv4 } from 'uuid';
 import { db } from '../db';
 import * as schema from '../schema';
@@ -32,7 +33,6 @@ const MAX_LOCATION_LEN = 160;
 const MAX_DESCRIPTION_LEN = 8000;
 const MAX_TAGS = 12;
 const MAX_TAG_LEN = 40;
-const MAX_PRICE = 1_000_000;
 
 /** Shapes a spot row into the JSON the admin console consumes. */
 export function toAdminSpot(row: typeof schema.listings.$inferSelect, reviewCount = 0) {
@@ -81,7 +81,7 @@ function validateCore(body: any, { partial }: { partial: boolean }): string | nu
   if (body.price !== undefined && body.price !== null) {
     const price = Number(body.price);
     if (!Number.isInteger(price) || price < 0 || price > MAX_PRICE) {
-      return 'price must be a whole number of rupees (0 for free entry)';
+      return `price must be a whole number of rupees from 0 to ${MAX_PRICE} (0 for free entry)`;
     }
   }
   if (body.image !== undefined && body.image !== null && body.image !== '') {

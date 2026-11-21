@@ -12,7 +12,14 @@ export function isValidPhone(raw: string): boolean {
 }
 
 export const MIN_PRICE = 100;
-export const MAX_PRICE = 100000;
+/** The most any one price can be, in whole rupees (user decision 2026-11-21). The backend checks the same (backend/src/lib/priceCap.ts). */
+export const MAX_PRICE = 50000;
+
+/** Keeps only digits and holds a typed price at MAX_PRICE, for price inputs that store text. */
+export function capPrice(raw: string): string {
+  const d = (raw || '').replace(/[^\d]/g, '');
+  return d && Number(d) > MAX_PRICE ? String(MAX_PRICE) : d;
+}
 
 /** null when fine, else a reason key under ob.check.* */
 export function priceProblem(raw: string): null | 'price_missing' | 'price_whole' | 'price_range' {

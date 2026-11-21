@@ -17,6 +17,7 @@ import AmenityPicker from '@/components/provider/AmenityPicker';
 import { RouteFareTable } from '@/components/provider/RouteEditor';
 import { HOMESTAY_AMENITIES, CAFE_AMENITIES } from '@/constants/listingOptions';
 import PricedEditor, { type Priced } from '@/components/provider/PricedEditor';
+import { roomFit, roomsCapacity } from '@/lib/roomFit';
 import OwnersSection from '@/components/provider/OwnersSection';
 import HostMiniSite, { type MiniSiteData } from '@/components/provider/HostMiniSite';
 import { useSeo } from '@/components/Seo';
@@ -166,7 +167,11 @@ export default function ProviderProfile() {
     if (!provider) return;
     const e = provider.extras || {};
     const priced = (rows: any[] | undefined, nameKey = 'name', unit = 'day'): Priced[] =>
-      (Array.isArray(rows) ? rows : []).map((r) => ({ name: String(r?.[nameKey] ?? r?.name ?? ''), price: Number(r?.price) || '', unit: r?.unit || unit, ...(r?.photo ? { photo: String(r.photo) } : {}) }));
+      (Array.isArray(rows) ? rows : []).map((r) => ({
+        name: String(r?.[nameKey] ?? r?.name ?? ''), price: Number(r?.price) || '', unit: r?.unit || unit, ...(r?.photo ? { photo: String(r.photo) } : {}),
+        // A homestay room's size and extra mattress (lib/roomFit.ts), kept so a save does not drop them.
+        ...(Number(r?.occ) > 0 ? { occ: Number(r.occ), extra_beds: Number(r?.extra_beds) || 0, extra_bed_price: Number(r?.extra_bed_price) || '' } : {}),
+      }));
     setP(provider);
     setForm({
       business_name: provider.business_name || '',
@@ -189,7 +194,8 @@ export default function ProviderProfile() {
       seats: e.seats ?? '',
       routes: Array.isArray(e.routes) ? e.routes : [],
       // homestay
-      rooms: priced(e.rooms, 'name', 'night'),
+      // A room is one price a night for the whole room (a room saved per head before shows per night).
+      rooms: priced(e.rooms, 'name', 'night').map((r) => ({ ...r, unit: 'night' })),
       meals: priced(e.meals, 'name', 'meal'),
       capacity: e.capacity ?? '',
       amenities: Array.isArray(e.amenities) ? e.amenities : [],
@@ -265,10 +271,22 @@ export default function ProviderProfile() {
 
   const save = async () => {
     if (!form) return;
+    // Every room says how many people it sleeps: that is the most it takes, unless it has an extra mattress.
+    if (type === 'homestay' && form.rooms.some((r: Priced) => r.name.trim() && !roomFit(r).occ)) {
+      setMsg({ ok: false, text: t('hostProfile.rooms_need_sleeps') });
+      return;
+    }
     setBusy(true);
     setMsg(null);
     const num = (v: any) => (v === '' || v === null || v === undefined ? undefined : Number(v));
-    const priced = (rows: Priced[]) => rows.filter((r) => r.name.trim()).map((r) => ({ name: r.name.trim(), price: Number(r.price) || 0, unit: r.unit, ...(r.photo ? { photo: r.photo } : {}) }));
+    const priced = (rows: Priced[]) => rows.filter((r) => r.name.trim()).map((r) => {
+      const fit = roomFit(r);
+      return {
+        name: r.name.trim(), price: Number(r.price) || 0, unit: r.unit, ...(r.photo ? { photo: r.photo } : {}),
+        ...(fit.occ ? { occ: fit.occ } : {}),
+        ...(fit.extraBeds ? { extra_beds: fit.extraBeds, ...(fit.extraBedPrice ? { extra_bed_price: fit.extraBedPrice } : {}) } : {}),
+      };
+    });
     const profile: Record<string, unknown> = {
       host_avatar: form.host_avatar,
       whatsapp: form.whatsapp.trim(),
@@ -286,11 +304,14 @@ export default function ProviderProfile() {
     } else if (type === 'homestay') {
       Object.assign(profile, {
         host_name: form.host_name.trim(), rooms: priced(form.rooms), meals: priced(form.meals),
-        amenities: form.amenities, recommended_drivers: form.recommended_drivers, home_delivery: form.home_delivery,
+        amenities: form.amenities, recommended_drivers: form.recommended_drivers,
         // Only labels for photos still in the gallery.
         photo_kinds: Object.fromEntries(Object.entries(form.photo_kinds || {}).filter(([url, k]) => k && form.images.includes(url))),
       });
-      if (num(form.capacity) !== undefined) profile.capacity = num(form.capacity);
+      // Rooms that say what they sleep decide the guest occupancy; otherwise the host's own number.
+      const fromRooms = roomsCapacity(form.rooms);
+      if (fromRooms > 0) profile.capacity = fromRooms;
+      else if (num(form.capacity) !== undefined) profile.capacity = num(form.capacity);
     } else if (type === 'guide') {
       Object.assign(profile, { host_name: form.host_name.trim(), guide_types: form.guide_types, services: priced(form.services), seasons: form.seasons });
       if (form.gender) profile.gender = form.gender;
@@ -377,7 +398,7 @@ export default function ProviderProfile() {
     items: previewItems(),
     gallery: form.images,
     available: form.available,
-    homeDelivery: form.home_delivery && (type === 'homestay' || type === 'cafe' || type === 'shop'),
+    homeDelivery: form.home_delivery && (type === 'cafe' || type === 'shop'),
   };
 
   return (
@@ -408,11 +429,11 @@ export default function ProviderProfile() {
           <Toggle on={form.available} onChange={(v) => set({ available: v })} testid="profile-available"
             label={t('hostProfile.available_on')}
             note={t('hostProfile.available_note')} />
-          {(type === 'homestay' || type === 'cafe' || type === 'shop') && (
+          {(type === 'cafe' || type === 'shop') && (
             <div>
               <Toggle on={form.home_delivery} onChange={(v) => set({ home_delivery: v })} testid="profile-home-delivery"
                 label={type === 'shop' ? t('hostProfile.home_delivery_shop') : t('hostProfile.home_delivery')}
-                note={type === 'shop' ? t('hostProfile.home_delivery_shop_note') : type === 'cafe' ? t('hostProfile.home_delivery_cafe_note') : t('hostProfile.home_delivery_note')} />
+                note={type === 'shop' ? t('hostProfile.home_delivery_shop_note') : t('hostProfile.home_delivery_cafe_note')} />
             </div>
           )}
         </Box>
@@ -510,14 +531,20 @@ export default function ProviderProfile() {
         {type === 'homestay' && (
           <Section title={t('hostProfile.rooms_food')} note={t('hostProfile.rooms_food_note')} testid="profile-homestay">
             <Group label={t('profile.rooms')}>
-              <PricedEditor rows={form.rooms} onChange={(rooms) => set({ rooms })} units={['night', 'head']} unitLabel={unitLabel}
-                namePlaceholder={t('hostProfile.room_ph')} addLabel={t('hostProfile.add_room')} testid="profile-rooms" />
+              <PricedEditor rows={form.rooms} onChange={(rooms) => set({ rooms })} units={['night']} unitLabel={unitLabel}
+                namePlaceholder={t('hostProfile.room_ph')} addLabel={t('hostProfile.add_room')} testid="profile-rooms" sleeps />
             </Group>
             <Group label={t('profile.meals')}>
               <PricedEditor rows={form.meals} onChange={(meals) => set({ meals })} units={['meal', 'day', 'head']} unitLabel={unitLabel}
                 namePlaceholder={t('hostProfile.meal_ph')} addLabel={t('hostProfile.add_meal')} testid="profile-meals" />
             </Group>
-            <TextField label={t('hostProfile.capacity')} type="number" min={1} max={100} value={form.capacity} onChange={(e) => set({ capacity: e.target.value })} className="sm:max-w-[12rem]" />
+            {/* Rooms that say what they sleep decide the guest occupancy (saved with the profile); else the host types it. */}
+            {roomsCapacity(form.rooms) > 0 ? (
+              <TextField label={t('hostProfile.capacity')} hint={t('hostProfile.capacity_from_rooms')} value={String(roomsCapacity(form.rooms))}
+                readOnly className="sm:max-w-[12rem]" data-testid="profile-capacity-rooms" />
+            ) : (
+              <TextField label={t('hostProfile.capacity')} type="number" min={1} max={100} value={form.capacity} onChange={(e) => set({ capacity: e.target.value })} className="sm:max-w-[12rem]" />
+            )}
             <Group label={t('hostProfile.amenities')}>
               <AmenityPicker presets={HOMESTAY_AMENITIES} selected={form.amenities} onChange={(amenities: string[]) => set({ amenities })} />
             </Group>
