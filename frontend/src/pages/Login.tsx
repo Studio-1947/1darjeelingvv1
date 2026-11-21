@@ -256,7 +256,7 @@ export default function Login() {
               <span className="text-xs font-semibold text-ink-soft">{t('auth.otp_label')}</span>
               <div className="mt-1 flex items-center gap-2 px-3 py-2 rounded-xl border border-[var(--line)] bg-white">
                 <KeyRound size={16} className="text-ink-soft" />
-                <input value={otp} onChange={(e) => setOtp(e.target.value)} required maxLength={6}
+                <input value={otp} onChange={(e) => setOtp(e.target.value)} required maxLength={32}
                   data-testid="login-otp" placeholder="123456"
                   className="flex-1 bg-transparent outline-none py-1 tracking-widest font-mono text-lg" />
               </div>
