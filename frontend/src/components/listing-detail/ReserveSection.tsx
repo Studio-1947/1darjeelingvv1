@@ -10,6 +10,7 @@ import { useAuth } from '@/context/AuthContext';
 import { needsSupport } from '@/lib/support';
 import { niceTime } from '@/lib/tripTime';
 import { roomFit } from '@/lib/roomFit';
+import { rupees, usePrice } from '@/lib/prices';
 
 /** Listing types whose bookings are requests the host accepts first (server: HOST_APPROVAL_TYPES). */
 const HOST_ASKED = new Set(['homestay', 'driver', 'guide']);
@@ -109,6 +110,10 @@ export function BookingScreen({ item, unit, step, booking, onNext }: {
 
   // Referral vouchers the traveller can use on this booking (the app's "Apply voucher").
   const { user } = useAuth();
+  // With the pass a request goes out free; without it, sending costs the ₹1 fee (with GST).
+  const hasPass = !!user && !needsSupport(user);
+  const sendFee = usePrice('booking_commission');
+  const feeText = rupees(sendFee.total);
   const [vouchers, setVouchers] = React.useState<{ id: string; discountPercentage: number }[]>([]);
   React.useEffect(() => {
     if (!user) { setVouchers([]); return; }
@@ -399,25 +404,41 @@ export function BookingScreen({ item, unit, step, booking, onNext }: {
           )}
 
           <Button variant="primary" className="ag-listing-send" onClick={doBook} disabled={busy} data-testid="booking-submit">
-            {busy ? t('common.loading') : t('listing.send', 'Send')}
+            {busy ? t('common.loading') : !hasPass ? t('listing.send_fee', 'Send · {{fee}}', { fee: feeText }) : t('listing.send', 'Send')}
           </Button>
           {msg && <p data-testid="booking-msg" role="alert" className="ag-err !text-[14px] !leading-5">{msg}</p>}
           {(errors.route || errors.check_in || errors.check_out || errors.guests) && (
             <p className="ag-err !text-[14px] !leading-5" role="alert">{errors.route || errors.check_in || errors.check_out || errors.guests}</p>
           )}
-          <p className="ag-small ag-listing-center m-0">{t('listing.askfree', 'Asking is free. You pay nothing now.')}</p>
-          <p className="ag-listing-feeline" data-testid="booking-fee-line"><Icon name="badge" /><span>{user && !needsSupport(user) ? t('booking.vsend', 'Your request goes with a verified badge') : <Link to="/support" className="text-inherit">{t('booking.vnudge', 'Get verified for ₹1 a year and get more confirmations')}</Link>}</span></p>
-          <p className="ag-small ag-listing-center m-0" data-testid="booking-cancel-note">
-            {t('booking.cancel_note')} <Link to="/refunds" className="text-[var(--r)] no-underline font-medium">{t('booking.fees_and_refunds')}</Link>
-          </p>
+          {/* What sending costs and how to take it back, as the app writes a note (icon + small text). */}
+          <Box tone="blush" flat className="!gap-2.5" data-testid="booking-fee-line">
+            <p className="m-0 flex items-start gap-2.5 ag-small !text-[var(--ink-strong)]">
+              <Icon name="badge" size={20} className="flex-none text-[var(--r)]" />
+              <span>
+                {hasPass
+                  ? t('booking.send_pass', 'Your aangan pass covers this. Sending is free, and your request goes with a verified badge.')
+                  : <>{t('booking.send_fee', 'Sending this request costs {{fee}}. If the host says no or does not answer, you get it back.', { fee: feeText })}{' '}
+                    <Link to="/support" className="text-[var(--r)] no-underline font-medium">{t('booking.send_fee_pass', 'Free with the aangan pass')}</Link></>}
+              </span>
+            </p>
+            <p className="m-0 flex items-start gap-2.5 ag-small !text-[var(--ink-strong)]" data-testid="booking-cancel-note">
+              <Icon name="back" size={20} className="flex-none text-[var(--r)]" />
+              <span>{t('booking.cancel_note')} <Link to="/refunds" className="text-[var(--r)] no-underline font-medium">{t('booking.fees_and_refunds')}</Link></span>
+            </p>
+          </Box>
 
           {HOST_ASKED.has(item.type) && (
             <Box tone="blush" flat data-testid="reserve-how-it-works">
               <span className="ag-eyebrow">{t('approval.next_steps')}</span>
               <ol className="grid gap-2.5 m-0 p-0 list-none">
-                {[t('approval.step_ask'), t('approval.step_host'), t('approval.step_confirm_free', 'You confirm it in My Trips. It is free.'), t('approval.step_contact')].map((s, i) => (
+                {[
+                  hasPass ? t('approval.step_send_pass', 'Send your request. Free with your pass.') : t('approval.step_send_fee', 'Send your request for {{fee}}, or free with the aangan pass.', { fee: feeText }),
+                  t('approval.step_host_refund', 'The host checks availability and accepts. If they say no or do not answer within 48 hours, the request closes and any fee comes back.'),
+                  t('approval.step_confirm_free', 'You confirm it in My Trips. It is free.'),
+                  t('approval.step_contact'),
+                ].map((s, i) => (
                   <li key={i} className="flex items-start gap-3">
-                    <span className="ag-micon !w-7 !h-7 text-[13px] font-medium">{i === 1 ? <Icon name="hourglass" size={16} /> : i + 1}</span>
+                    <span className="ag-micon !w-7 !h-7 !bg-[var(--surface)] text-[13px] font-medium">{i + 1}</span>
                     <span className="pt-0.5 text-[14px] leading-5 text-[var(--ink-strong)]">{s}</span>
                   </li>
                 ))}

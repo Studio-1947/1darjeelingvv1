@@ -125,6 +125,24 @@ export async function onboardActiveProvider(opts: {
   return { token, providerId, phone };
 }
 
+/**
+ * Pays the ₹1 fee that sends a saved request (a traveller without the aangan pass), with the mock
+ * gateway. Returns what the settlement said.
+ */
+export async function payToSend(token: string, bookingId: string) {
+  const order = await request(app)
+    .post('/api/payments/order')
+    .set('Authorization', `Bearer ${token}`)
+    .send({ flow: 'booking_commission', reference_id: bookingId });
+  if (order.status !== 200) throw new Error(`fee order failed: ${order.status} ${JSON.stringify(order.body)}`);
+  const res = await request(app)
+    .post('/api/payments/mock/complete')
+    .set('Authorization', `Bearer ${token}`)
+    .send({ order_id: order.body.order.id, flow: 'booking_commission', reference_id: bookingId });
+  if (res.status !== 200) throw new Error(`fee payment failed: ${res.status} ${JSON.stringify(res.body)}`);
+  return res.body;
+}
+
 export async function createConfirmedBooking(opts: {
   token: string;
   listingId: string;
@@ -145,6 +163,8 @@ export async function createConfirmedBooking(opts: {
     throw new Error(`booking failed: ${bookingRes.status} ${JSON.stringify(bookingRes.body)}`);
   }
   const bookingId = bookingRes.body.booking.id as string;
+  // Without the pass the request goes out only once the ₹1 fee is paid.
+  if (bookingRes.body.fee_due) await payToSend(opts.token, bookingId);
 
   // A request on a real host's driver/homestay/guide waits for the host (board); accept it the
   // way the team can on a host's behalf, so tests about something else get a confirmed booking.
@@ -157,7 +177,7 @@ export async function createConfirmedBooking(opts: {
     }
   }
 
-  // Bookings are free: checkout is what the ₹1 commission payment used to be.
+  // Confirming is free (the ₹1, when due, was paid to send the request).
   const checkoutRes = await request(app)
     .post(`/api/bookings/${bookingId}/checkout`)
     .set('Authorization', `Bearer ${opts.token}`);

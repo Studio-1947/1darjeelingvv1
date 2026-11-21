@@ -188,9 +188,11 @@ describe('refunds (legacy paid bookings)', () => {
     const bookingId = await createBooking(token, listing.id, inDays(125), inDays(128));
     const { orderId } = await payForBooking(token, bookingId);
 
+    // Cancelled by the team: the guest got nothing for the fee. (A guest who drops a booking they
+    // confirmed keeps it paid: they have had the host's number.)
     const res = await request(app)
       .patch(`/api/bookings/${bookingId}/cancel`)
-      .set('Authorization', `Bearer ${token}`);
+      .set('Authorization', `Bearer ${await loginAdmin()}`);
 
     expect(res.status).toBe(200);
     expect(res.body.refunded).toBe(true);
@@ -206,8 +208,9 @@ describe('refunds (legacy paid bookings)', () => {
     const bookingId = await createBooking(token, listing.id, inDays(148), inDays(151));
     const { orderId } = await payForBooking(token, bookingId);
 
-    await request(app).patch(`/api/bookings/${bookingId}/cancel`).set('Authorization', `Bearer ${token}`);
-    const second = await request(app).patch(`/api/bookings/${bookingId}/cancel`).set('Authorization', `Bearer ${token}`);
+    const admin = await loginAdmin();
+    await request(app).patch(`/api/bookings/${bookingId}/cancel`).set('Authorization', `Bearer ${admin}`);
+    const second = await request(app).patch(`/api/bookings/${bookingId}/cancel`).set('Authorization', `Bearer ${admin}`);
 
     expect(second.status).toBe(200);
     const [payment] = await db.select().from(schema.payments).where(eq(schema.payments.orderId, orderId)).limit(1);

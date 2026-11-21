@@ -129,8 +129,9 @@ export default function ListingDetail() {
     <>
       <BookingFeeModal
         bookingId={booking.feeFor}
-        onClose={() => { booking.setFeeFor(null); nav('/dashboard'); }}
-        onConfirmed={(b) => { booking.setFeeFor(null); booking.setConfirm({ open: true, data: b }); }}
+        // Closing it leaves the request unsent, on the booking screen, ready to send again.
+        onClose={() => booking.setFeeFor(null)}
+        onConfirmed={(b) => { void booking.afterSent(b); }}
       />
       <BookingConfirmation
         open={!!booking.confirm?.open}
@@ -259,7 +260,7 @@ export default function ListingDetail() {
                 </ButtonLink>
               </div>
             )}
-            {bookable && <p className="ag-small">{t('listing.askfree', 'Asking is free. You pay nothing now.')} {t('listing.numlater', 'You get the phone number after you book.')}</p>}
+            {bookable && <p className="ag-small">{t('listing.askfee', 'Sending a request costs ₹1, or nothing with the aangan pass.')} {t('listing.numlater', 'You get the phone number after you book.')}</p>}
           </div>
         )}
 

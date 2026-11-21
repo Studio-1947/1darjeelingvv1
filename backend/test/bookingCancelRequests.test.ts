@@ -3,7 +3,7 @@ import request from 'supertest';
 import { and, eq } from 'drizzle-orm';
 import { app } from '../src/app';
 import { db, schema } from '../src/db';
-import { createConfirmedBooking, inDays, loginAdmin, onboardActiveProvider, registerUser } from './helpers';
+import { createConfirmedBooking, inDays, loginAdmin, onboardActiveProvider, registerUser, payToSend } from './helpers';
 
 /** A real host's homestay, so requests wait for the host and the host can answer them. */
 async function hostWithHomestay(name: string) {
@@ -76,13 +76,14 @@ describe('cancelling with a reason (PATCH /bookings/:id/cancel)', () => {
     expect(res.body.code).toBe('bad_reason');
   });
 
-  it('a guest cancelling a confirmed booking under 24 hours ahead is late (nothing to refund: confirming is free)', async () => {
+  it('a guest cancelling a confirmed booking under 24 hours ahead is late (the ₹1 that sent it stays paid)', async () => {
     const { token } = await registerUser({ name: 'Late Guest', paySupport: false });
     const { hostToken, listingId } = await hostWithHomestay('Late Host');
     void hostToken;
     const id = await ask(token, listingId, 0, 1);
+    // No pass: the request goes out once the ₹1 is paid, then confirms free.
+    await payToSend(token, id);
     await request(app).patch(`/api/bookings/${id}/confirm`).set(auth(await loginAdmin()));
-    // No pass: it confirms free.
     const checkout = await request(app).post(`/api/bookings/${id}/checkout`).set(auth(token));
     expect(checkout.status).toBe(200);
 

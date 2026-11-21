@@ -10,8 +10,10 @@ import { computeSupportPassExpiry, isExemptFromSupport, isSupportActive } from '
 import { computeHostPlanExpiry, isHostPlanLive, isListingHostLapsed } from '../lib/hostPlan';
 import { serializeProvider } from '../lib/providerShape';
 import { publishFirstListing } from '../lib/hostGrace';
+import { sendAwaitingRequest, AWAITING_FEE } from '../lib/bookingSend';
 import { settleBookingConfirmation } from '../lib/bookingConfirmation';
-import { AWAITING_HOST_DETAIL, isAwaitingHost } from '../lib/bookingApproval';
+import { isAwaitingHost } from '../lib/bookingApproval';
+import { refundPaymentsFor } from '../lib/refunds';
 import { resolveAmount } from '../lib/payments';
 import { hostPlanBreakup, passBreakupFor, priceList } from '../lib/pricing';
 
@@ -63,8 +65,21 @@ async function handlePaymentSuccess(
       .returning();
     return serializeProvider(renewed);
   } else if (flow === 'booking_commission') {
-    // The ₹1 convenience fee of a traveller without the pass: paying it confirms the booking,
-    // and refunds it if the dates went to someone else first.
+    // The ₹1 fee of a traveller without the pass: paying it sends their saved request to the
+    // host (lib/bookingSend.ts), and refunds it if the request cannot go out after all.
+    const [b] = await db.select().from(schema.bookings).where(eq(schema.bookings.id, referenceId)).limit(1);
+    if (!b) return null;
+    if (b.status === AWAITING_FEE) {
+      const sent = await sendAwaitingRequest(referenceId, { paid: true });
+      return 'booking' in sent ? { outcome: sent.outcome, id: sent.booking.id, status: sent.booking.status } : null;
+    }
+    // An order made before 2026-11-19, when the fee confirmed a booking, settling late: it still
+    // confirms. A request still waiting on its host is never confirmed by money (it went out with
+    // the pass while this payment was open), so that fee goes back.
+    if (await isAwaitingHost(b)) {
+      await refundPaymentsFor('booking_commission', b.id, 'request already sent with the pass');
+      return { outcome: 'already', id: b.id, status: b.status };
+    }
     return settleBookingConfirmation(referenceId, userId, { paid: true });
   } else if (flow === 'platform_support') {
     // The yearly aangan pass (₹1 the first year, ₹12 after). A duplicate settlement never reaches this point because the
@@ -155,11 +170,10 @@ async function assertOwnsReference(
     }
     if (booking.status === 'confirmed') return { status: 409, detail: 'This booking is already confirmed' };
     if (booking.status === 'cancelled') return { status: 409, detail: 'This booking was cancelled' };
-    // Paying the fee confirms the booking, so a request still waiting for its host cannot be paid.
-    if (await isAwaitingHost(booking)) return { status: 409, detail: AWAITING_HOST_DETAIL, code: 'awaiting_host' };
-    // Confirming is free for every traveller now; nobody pays this fee any more. The flow stays
-    // for refunds of fees paid before the change.
-    return { status: 409, detail: 'Confirming a booking is free. There is nothing to pay.', code: 'booking_free' };
+    // The fee is paid to send a saved request. Once it has gone (with the fee or the pass),
+    // there is nothing more to pay: confirming is free.
+    if (booking.status === AWAITING_FEE) return null;
+    return { status: 409, detail: 'This request has already been sent. Confirming it is free.', code: 'booking_free' };
   }
 
   if (flow === 'platform_support') {

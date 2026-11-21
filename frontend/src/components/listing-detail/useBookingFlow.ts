@@ -266,8 +266,14 @@ export function useBookingFlow(item: any, id: string) {
         days: item.type === 'driver' && chosenRoute(item, form.route)?.unit === 'day' ? Math.max(1, Number(form.days) || 1) : undefined,
         voucher_id: form.voucher_id || undefined,
       });
-      // Board: drivers, homestays and guides wait for the host to accept. Nothing is confirmed or
-      // paid now; the traveller confirms from My Trips once the host says yes.
+      // Without the aangan pass the request is saved, not sent: the fee sheet offers ₹1 or the
+      // pass, and sends it (afterSent). The draft stays until then, so closing the sheet loses nothing.
+      if (data.fee_due) {
+        setFeeFor(data.booking.id);
+        return;
+      }
+      // Board: drivers, homestays and guides wait for the host to accept. Nothing is confirmed
+      // now; the traveller confirms from My Trips once the host says yes.
       if (data.booking.awaiting_host) {
         clearDraft(id);
         setRequested(data.booking);
@@ -302,6 +308,20 @@ export function useBookingFlow(item: any, id: string) {
     }
   };
 
+  /** The fee sheet sent the request: show "Request sent", or confirm one no host has to accept. */
+  const afterSent = async (sent: any) => {
+    setFeeFor(null);
+    if (!item) return;
+    clearDraft(id);
+    if (sent?.awaiting_host) { setRequested(sent); return; }
+    try {
+      const { data: checkout } = await api.post(`/bookings/${sent.id}/checkout`);
+      setConfirm({ open: true, data: checkout.booking });
+    } catch (e) {
+      setMsg(e?.response?.data?.detail || e.message || t('booking.failed'));
+    }
+  };
+
   // Editing a field clears its own complaint; leaving the message up while the
   // visitor fixes it reads as though the fix didn't take.
   const updateForm = (patch: Partial<BookingForm>) => {
@@ -323,6 +343,7 @@ export function useBookingFlow(item: any, id: string) {
     feeFor, setFeeFor,
     requested, setRequested,
     doBook,
+    afterSent,
     validate,
   };
 }

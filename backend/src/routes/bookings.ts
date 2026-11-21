@@ -11,7 +11,7 @@ import { authenticateToken } from '../middleware/auth';
 import { findBlockingBooking, holdCutoff, isDateExclusive, lockBookingForChange, lockListingForBooking } from '../lib/bookingAvailability';
 import { checkBookingRequest, hasStartDatePassed, MAX_OPEN_REQUESTS, PAST_DATE_DETAIL } from '../lib/bookingRules';
 import { refundPaymentsFor } from '../lib/refunds';
-import { notifyBookingAccepted, notifyBookingCancelled, notifyBookingRequest } from '../lib/notifications';
+import { notifyBookingAccepted, notifyBookingCancelled } from '../lib/notifications';
 import { routeParam } from '../lib/routeParam';
 import { isListingHostLapsed } from '../lib/hostPlan';
 import { GRACE_PAUSED_CODE, GRACE_PAUSED_DETAIL, isGracePaused } from '../lib/hostGrace';
@@ -26,6 +26,8 @@ import {
 } from '../lib/bookingDetails';
 import { ownListingIds } from '../lib/hostAccess';
 import { approvalRequired, AWAITING_HOST_DETAIL, isAwaitingHost, realHostIds } from '../lib/bookingApproval';
+import { announceRequest, AWAITING_FEE, sendAwaitingRequest, sendsFree } from '../lib/bookingSend';
+import { flowBreakup, passBreakupFor } from '../lib/pricing';
 
 /** Listing types guests contact directly rather than book. */
 const CONTACT_ONLY_TYPES = new Set(['cafe', 'shop']);
@@ -135,7 +137,9 @@ function detailFields(b: BookingRow) {
  *             schema: { $ref: '#/components/schemas/Error' }
  */
 // Create a booking
-// No pass needed to ask: without one, the ₹1 fee is paid when the booking is confirmed.
+// With the aangan pass a request goes straight to the host. Without it the request is saved as
+// `awaiting_fee` and goes out once the ₹1 fee is paid (POST /payments/order, flow
+// booking_commission) or the pass is taken (POST /bookings/{id}/send). Confirming stays free.
 router.post('/', authenticateToken, requireTravellerMode, async (req: Request, res: Response) => {
   // `listing_type` from the body is deliberately not read: the stored listing's type decides every
   // rule below, so a request cannot pick a type with weaker checks.
@@ -231,6 +235,8 @@ router.post('/', authenticateToken, requireTravellerMode, async (req: Request, r
     ? [...new Set(services.map((s: unknown) => String(s ?? '').trim()).filter((s: string) => offered.has(s)))].slice(0, 20) as string[]
     : [];
 
+  // Sent free with the pass; otherwise saved until the ₹1 fee is paid.
+  const free = sendsFree(req.user);
   const booking = {
     id: uuidv4(),
     userId: req.user.id,
@@ -251,7 +257,7 @@ router.post('/', authenticateToken, requireTravellerMode, async (req: Request, r
     pickupTime: trip?.pickupTime ?? null,
     days: trip?.days ?? null,
     quotedFare: trip?.quotedFare ?? null,
-    status: 'pending_payment',
+    status: free ? 'pending_payment' : AWAITING_FEE,
     createdAt: new Date().toISOString(),
     confirmedAt: null,
     voucherId: validVoucher ? validVoucher.id : null,
@@ -281,6 +287,17 @@ router.post('/', authenticateToken, requireTravellerMode, async (req: Request, r
       ));
       if (waiting.length >= MAX_OPEN_REQUESTS) throw TOO_MANY;
       await lockListingForBooking(tx, listing_id);
+      // Pressing Send again before paying replaces the unsent request for this listing, so
+      // unpaid drafts never pile up (and a voucher held by the old one comes back).
+      const unsent = await tx.update(schema.bookings)
+        .set({ status: 'cancelled', cancelledAt: new Date().toISOString() })
+        .where(and(
+          eq(schema.bookings.userId, req.user.id),
+          eq(schema.bookings.listingId, listing_id),
+          eq(schema.bookings.status, AWAITING_FEE),
+        ))
+        .returning({ id: schema.bookings.id });
+      for (const u of unsent) await releaseVoucherForBooking(tx, u.id);
       if (isDateExclusive(listing.type) && check_in && check_out) {
         // Blocks on confirmed and accepted bookings AND on requests still inside their hold window.
         clash = await findBlockingBooking(tx, listing_id, check_in, check_out);
@@ -334,33 +351,10 @@ router.post('/', authenticateToken, requireTravellerMode, async (req: Request, r
     throw err;
   }
 
-  const awaitingHost = approvalRequired(listing.type, listing.providerId, await realHostIds([listing.providerId]));
-
-  // The host's feed hears about the request straight away, even though it is unpaid, because the
-  // provider inbox already lists it and they would otherwise see it there with no prompt.
-  await addHostNotification(listing.providerId, {
-    kind: 'booking_request',
-    title: 'New booking request',
-    body: awaitingHost
-      ? `${req.user.name || 'A guest'} asked to book ${listing.title}. Accept or decline it on your dashboard.`
-      : `${req.user.name || 'A guest'} asked about ${listing.title}.`,
-    msg: { key: awaitingHost ? 'booking_request_host' : 'booking_enquiry_host', params: { guest: req.user.name || '', place: listing.title } },
-    refId: booking.id,
-  });
-  // A request needs the host to act, so it also goes out by WhatsApp/email (not awaited: the
-  // guest's answer must not wait on a gateway).
-  if (awaitingHost && listing.providerId) {
-    void notifyBookingRequest(booking, listing.providerId, req.user.name || 'A guest');
-    // The guest's own record that the request went out (persona test 2026-11-09: the bell stayed
-    // empty until the host answered).
-    void addInAppNotification(req.user.id, {
-      kind: 'booking_requested',
-      title: 'Request sent',
-      body: `Your request for ${listing.title} has gone to the host. You will hear back within ${REQUEST_EXPIRY_HOURS} hours; nothing is charged until you confirm.`,
-      msg: { key: 'request_sent', params: { place: listing.title, hours: REQUEST_EXPIRY_HOURS } },
-      refId: booking.id,
-    });
-  }
+  // The host hears about a request only once it is sent: now with the pass, after the fee without.
+  const awaitingHost = free
+    ? await announceRequest(booking, listing, req.user.name || '')
+    : approvalRequired(listing.type, listing.providerId, await realHostIds([listing.providerId]));
 
   const bookingReturn = {
     id: booking.id,
@@ -391,6 +385,17 @@ router.post('/', authenticateToken, requireTravellerMode, async (req: Request, r
     awaiting_host: awaitingHost,
   };
 
+  // Without the pass: the request is saved, not sent. The client offers the ₹1 fee or the pass
+  // (both totals with GST), then calls POST /bookings/{id}/send.
+  if (!free) {
+    return res.json({
+      booking: bookingReturn,
+      fee_due: true,
+      amount: flowBreakup('booking_commission').total,
+      breakup: flowBreakup('booking_commission'),
+      pass_breakup: passBreakupFor(req.user),
+    });
+  }
   res.json({ booking: bookingReturn });
 });
 
@@ -425,7 +430,8 @@ router.post('/', authenticateToken, requireTravellerMode, async (req: Request, r
 router.get('/me', authenticateToken, async (req: Request, res: Response) => {
   const bookings = await db.select()
     .from(schema.bookings)
-    .where(eq(schema.bookings.userId, req.user.id))
+    // An unsent request (no fee paid yet) is a draft: it lives on the booking screen, not in My Trips.
+    .where(and(eq(schema.bookings.userId, req.user.id), ne(schema.bookings.status, AWAITING_FEE)))
     .orderBy(desc(schema.bookings.createdAt));
 
   const myReviews = await db.select({ listingId: schema.reviews.listingId }).from(schema.reviews)
@@ -582,9 +588,10 @@ router.get('/provider', authenticateToken, async (req: Request, res: Response) =
     });
   }
 
+  // A request the guest has not paid to send yet is not the host's to see.
   const bookings = await db.select()
     .from(schema.bookings)
-    .where(inArray(schema.bookings.listingId, listingIds))
+    .where(and(inArray(schema.bookings.listingId, listingIds), ne(schema.bookings.status, AWAITING_FEE)))
     .orderBy(desc(schema.bookings.createdAt));
 
   const guestIds = [...new Set(bookings.map(b => b.userId))];
@@ -781,6 +788,9 @@ router.patch('/:id/confirm', authenticateToken, async (req: Request, res: Respon
   if (booking.status === 'cancelled') {
     return res.status(409).json({ detail: 'This booking was cancelled and cannot be accepted' });
   }
+  if (booking.status === AWAITING_FEE) {
+    return res.status(409).json({ detail: 'This request has not been sent yet', code: 'not_sent' });
+  }
   // A request whose date has passed (one saved before dates were checked) cannot be promised.
   if (hasStartDatePassed(booking.checkIn)) {
     return res.status(409).json({ detail: PAST_DATE_DETAIL, code: 'date_in_past' });
@@ -793,7 +803,7 @@ router.patch('/:id/confirm', authenticateToken, async (req: Request, res: Respon
     // Re-read under lock: the guest may have cancelled, or request expiry closed it, since the
     // checks above. Accepting must not undo either.
     const now = await lockBookingForChange(tx, booking.id);
-    if (!now || now.status === 'cancelled') return { closed: true as const };
+    if (!now || now.status === 'cancelled' || now.status === AWAITING_FEE) return { closed: true as const };
     if (now.status === 'accepted' || now.status === 'confirmed') return { already: now };
     if (isDateExclusive(booking.listingType) && booking.checkIn && booking.checkOut) {
       const clash = await findBlockingBooking(
@@ -841,7 +851,7 @@ router.patch('/:id/confirm', authenticateToken, async (req: Request, res: Respon
     await addInAppNotification(other.userId, {
       kind: 'booking_cancelled',
       title: 'Those dates are no longer free',
-      body: `The host of ${other.listingTitle} accepted another guest for some of the same nights, so your request was closed. Nothing was charged.`,
+      body: `The host of ${other.listingTitle} accepted another guest for some of the same nights, so your request was closed. Any fee you paid to send it comes back.`,
       msg: { key: 'dates_taken_request', params: { place: other.listingTitle } },
       refId: other.id,
     });
@@ -857,6 +867,49 @@ router.patch('/:id/confirm', authenticateToken, async (req: Request, res: Respon
   void notifyBookingAccepted(outcome.booking);
 
   res.json({ booking: bookingShape(outcome.booking) });
+});
+
+/**
+ * @openapi
+ * /bookings/{id}/send:
+ *   post:
+ *     summary: Send a saved request to the host (free with the aangan pass)
+ *     description: >
+ *       A traveller without the aangan pass has their request saved as `awaiting_fee`. Paying the
+ *       ₹1 fee (payment flow `booking_commission`, reference = this booking) sends it on its own;
+ *       this call sends it once the pass is active, and is safe to repeat after either.
+ *     tags: [Bookings]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: "The sent request (`awaiting_host` says whether the host must accept it)" }
+ *       402: { description: "No pass and no fee paid (`code: fee_required`)" }
+ *       409: { description: "Cancelled, the date has passed, or the dates went to another guest" }
+ */
+router.post('/:id/send', authenticateToken, async (req: Request, res: Response) => {
+  const [booking] = await db.select().from(schema.bookings).where(eq(schema.bookings.id, routeParam(req, 'id'))).limit(1);
+  if (!booking) return res.status(404).json({ detail: 'Booking not found' });
+  if (booking.userId !== req.user.id) return res.status(403).json({ detail: 'You can only send your own request' });
+
+  if (booking.status === AWAITING_FEE && !sendsFree(req.user)) {
+    return res.status(402).json({
+      detail: 'Pay the ₹1 fee, or take the aangan pass and send requests free all year.',
+      code: 'fee_required',
+      amount: flowBreakup('booking_commission').total,
+      breakup: flowBreakup('booking_commission'),
+      pass_breakup: passBreakupFor(req.user),
+    });
+  }
+  const sent = booking.status === AWAITING_FEE ? await sendAwaitingRequest(booking.id, { paid: false }) : null;
+  if (sent?.outcome === 'missing') return res.status(404).json({ detail: 'Booking not found' });
+  const row = sent && 'booking' in sent ? sent.booking : booking;
+  if (sent?.outcome === 'taken') return res.status(409).json({ detail: 'These dates have just gone to another guest', code: 'dates_taken' });
+  if (sent?.outcome === 'past') return res.status(409).json({ detail: PAST_DATE_DETAIL, code: 'date_in_past' });
+  if (row.status === 'cancelled') return res.status(409).json({ detail: 'This booking was cancelled', code: 'cancelled' });
+
+  const [listing] = await db.select({ providerId: schema.listings.providerId, price: schema.listings.price })
+    .from(schema.listings).where(eq(schema.listings.id, row.listingId)).limit(1);
+  const awaitingHost = listing ? approvalRequired(row.listingType, listing.providerId, await realHostIds([listing.providerId])) : false;
+  res.json({ booking: { ...bookingShape(row), amount: amountOfBooking(row, listing?.price), awaiting_host: awaitingHost } });
 });
 
 /**
@@ -894,6 +947,10 @@ router.post('/:id/checkout', authenticateToken, async (req: Request, res: Respon
   if (booking.status === 'cancelled') {
     return res.status(409).json({ detail: 'This booking was cancelled' });
   }
+  // Never sent (the ₹1 fee or the pass is still due): there is nothing for the host to have accepted.
+  if (booking.status === AWAITING_FEE) {
+    return res.status(409).json({ detail: 'Send the request first.', code: 'not_sent' });
+  }
   // Board: a driver, homestay or guide request waits for the host to accept it first.
   if (await isAwaitingHost(booking)) {
     return res.status(409).json({ detail: AWAITING_HOST_DETAIL, code: 'awaiting_host', booking: bookingShape(booking) });
@@ -908,7 +965,7 @@ router.post('/:id/checkout', authenticateToken, async (req: Request, res: Respon
     if (listing && (await isListingHostLapsed(listing.providerId))) {
       return res.status(409).json({ detail: 'This listing is not taking bookings right now' });
     }
-    // Confirming is free for every traveller (prototype: "aangan charges tourists nothing").
+    // Confirming is free: the ₹1 (without the pass) was paid when the request was sent.
   }
 
   const record = await settleBookingConfirmation(booking.id, req.user.id, { paid: false });
@@ -979,10 +1036,13 @@ router.patch('/:id/cancel', authenticateToken, async (req: Request, res: Respons
   // guest received nothing for it, so it goes back; a confirmed stay keeps its discount spent.
   if (wasStatus !== 'confirmed') await releaseVoucherForBooking(db, booking.id);
 
-  // Give back whatever was paid for this booking. Before this, cancelling flipped the status and
-  // kept the money with no record that anything was owed  refundPaymentsFor is idempotent and a
-  // no-op for a booking that never got past pending_payment, so this is safe on every path.
-  const outcomes = await refundPaymentsFor('booking_commission', booking.id, `booking cancelled by ${side}`);
+  // The ₹1 paid to send the request goes back when the guest got nothing for it: the host
+  // declined or cancelled, the team cancelled, or the guest withdrew before confirming. A guest
+  // who drops a booking they already confirmed has had the host's number, so the fee stays paid
+  // (otherwise confirm-then-cancel would be a free way to get every number).
+  // refundPaymentsFor is idempotent and a no-op when nothing was paid.
+  const keepFee = side === 'guest' && wasStatus === 'confirmed';
+  const outcomes = keepFee ? [] : await refundPaymentsFor('booking_commission', booking.id, `booking cancelled by ${side}`);
   const refunded = outcomes.some(o => o.refunded);
 
   const reasonLine = why.reason ? ` Reason: ${CANCEL_REASON_TEXT[why.reason] ?? why.reason}${why.note ? ` (${why.note})` : ''}.` : '';
@@ -993,7 +1053,7 @@ router.patch('/:id/cancel', authenticateToken, async (req: Request, res: Respons
       await addInAppNotification(booking.userId, {
         kind: 'booking_declined',
         title: 'Request declined',
-        body: `The host of ${booking.listingTitle} declined your request. Nothing was charged; you can book somewhere else.${reasonLine}`,
+        body: `The host of ${booking.listingTitle} declined your request. Any fee you paid to send it comes back, and you can book somewhere else.${reasonLine}`,
         msg: { key: 'request_declined', params: { place: booking.listingTitle, reason: why.reason ?? '' } },
         refId: booking.id,
       });
@@ -1188,8 +1248,8 @@ router.delete('/:id/cancel-request', authenticateToken, async (req: Request, res
  *     summary: Accept a guest's cancel request (host or admin)
  *     description: >
  *       Cancels the booking as the guest's cancellation, with the request's reason and note; it is
- *       late when the request came under 24 hours before the trip. The ₹1 fee, if paid, is refunded
- *       as on any cancel.
+ *       late when the request came under 24 hours before the trip. The ₹1 fee that sent the request stays paid:
+ *       the guest has already had the host's number.
  *     tags: [Bookings]
  *     security: [{ bearerAuth: [] }]
  *     parameters:
@@ -1235,9 +1295,9 @@ router.post('/:id/cancel-request/accept', authenticateToken, async (req: Request
   if (!outcome.changed) return res.json({ booking: bookingShape(outcome.updated), refunded: false });
   const { updated } = outcome;
 
-  // As on any cancel of a confirmed booking: the discount stays spent, the ₹1 fee goes back.
-  const outcomes = await refundPaymentsFor('booking_commission', booking.id, 'cancel request accepted by host');
-  const refunded = outcomes.some((o) => o.refunded);
+  // The guest asked to drop a confirmed booking: the discount stays spent, and so does the ₹1
+  // that sent the request, because the guest has already had the host's number.
+  const refunded = false;
 
   await addInAppNotification(booking.userId, {
     kind: 'booking_cancelled',
