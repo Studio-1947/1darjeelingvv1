@@ -1812,6 +1812,7 @@
       "fee_big": "Homestays, drivers and guides: {{price}} a year",
       "fee_cafe": "Cafes and restaurants: {{price}} a year",
       "fee_shop": "Local shops: free",
+      "fee_one": "{{what}}: {{price}} a year",
       "describe": "{{what}} in {{place}}, run by {{name}} and listed on aangan.",
       "wzphS2": "The first one is the cover. Photos help travellers choose you: add at least {{count}} to get the Verified tick. You can add them later."
     }

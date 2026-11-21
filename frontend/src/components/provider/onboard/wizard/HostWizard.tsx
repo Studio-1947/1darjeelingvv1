@@ -12,6 +12,7 @@ import { Icon, type IconName } from '@/components/ag/Icon';
 import { HelpWhatsApp, useHostSignupInfo } from '@/components/provider/onboard/QuickFill';
 import { HOST_TYPES, HUBS, MAX_GOODS, MAX_PHOTOS, OFFERS, PRESETS, QUICK_DISHES, SHOP_UNITS, type HostType, type HostWizard, type Place } from './useHostWizard';
 import { photoGoalFor } from '@/lib/photoGoal';
+import Sheet, { SheetHead } from '@/components/listing-detail/Sheet';
 
 // Leaflet is heavy: load the pin map only once the host has picked a place.
 const PinMap = lazy(() => import('./PinMap'));
@@ -52,39 +53,44 @@ function Frame({ w, title, sub, children, cta }: { w: HostWizard; title: React.R
   );
 }
 
-/** The fee lines, with real prices from the server. `plain` = dotted list inside the charges box. */
-function FeeList({ plain }: { plain?: boolean }) {
+/**
+ * The fee lines, with real prices from the server. `plain` = dotted list inside the charges box.
+ * With a `type` it shows only that business's charge; without one, every type's.
+ */
+function FeeList({ plain, type }: { plain?: boolean; type?: HostType | '' }) {
   const { t } = useTranslation();
   const full = useHostPlanPrice('homestay');
   const small = useHostPlanPrice('cafe');
+  const mine = useHostPlanPrice(type || 'homestay');
   const { grace_bookings } = useHostSignupInfo();
-  const lines = [
-    t('ob.wz.fee_big', { price: rupees(full.base), defaultValue: 'Homestays, drivers and guides: {{price}} a year' }),
-    t('ob.wz.fee_cafe', { price: rupees(small.base), defaultValue: 'Cafes and restaurants: {{price}} a year' }),
-    t('ob.wz.fee_shop', 'Local shops: free'),
-    t('ob.wz.fp_4', { count: grace_bookings, defaultValue: 'Pay now, or after your first {{count}} bookings' }),
-  ];
+  const grace = t('ob.wz.fp_4', { count: grace_bookings, defaultValue: 'Pay now, or after your first {{count}} bookings' });
+  const free = type === 'shop';
+  const lines = type
+    ? [
+      free
+        ? t('ob.wz.fee_shop', 'Local shops: free')
+        : t('ob.wz.fee_one', { what: t(`ob.wz.t_${type}`), price: rupees(mine.base), defaultValue: '{{what}}: {{price}} a year' }),
+      // Inside the charges box the When to pay choice says this already.
+      ...(free || plain ? [] : [grace]),
+    ]
+    : [
+      t('ob.wz.fee_big', { price: rupees(full.base), defaultValue: 'Homestays, drivers and guides: {{price}} a year' }),
+      t('ob.wz.fee_cafe', { price: rupees(small.base), defaultValue: 'Cafes and restaurants: {{price}} a year' }),
+      t('ob.wz.fee_shop', 'Local shops: free'),
+      grace,
+    ];
   const tick = plain ? null : <Icon name="check" />;
   return (
-    <ul className={`ag-onboard-fees${plain ? ' plain' : ''}`}>
+    <ul className={`ag-onboard-fees${plain ? ' plain' : ''}`} data-testid={plain ? 'wz-fees-box' : 'wz-fees'}>
       {lines.map((l) => <li key={l}>{tick}<span>{l}</span></li>)}
-      <li className="hl">{tick}<span>{t('ob.wz.fp_5')}</span></li>
+      {!free && <li className="hl">{tick}<span>{t('ob.wz.fp_5')}</span></li>}
     </ul>
   );
 }
 
 /* ---------- 1. What do you want to list? ---------- */
 function TypeStep({ w }: { w: HostWizard }) {
-  const { t, d, set, pickType } = w;
-  const { grace_bookings } = useHostSignupInfo();
-  const pay: Array<{ k: 'now' | 'later'; icon: IconName; title: string; sub: string }> = [
-    { k: 'now', icon: 'bag', title: t('ob.wz.ch_now', 'Pay when listing'), sub: t('ob.wz.ch_nowS', 'Pay the yearly charge now and go live today.') },
-    {
-      k: 'later', icon: 't_trip',
-      title: t('ob.wz.ch_later', { count: grace_bookings, defaultValue: 'Pay after {{count}} bookings' }),
-      sub: t('ob.wz.ch_laterS', { count: grace_bookings, defaultValue: 'List free now, pay after your first {{count}} bookings.' }),
-    },
-  ];
+  const { t, d, pickType } = w;
   return (
     <Frame w={w} title={t('ob.wz.what')} sub={t('ob.wz.onelist')}
       cta={(
@@ -105,22 +111,6 @@ function TypeStep({ w }: { w: HostWizard }) {
         ))}
       </div>
 
-      {!w.adding && d.type !== 'shop' && <Box tone="blush" className="ag-onboard-charge">
-        <span className="ag-eyebrow" data-testid="onboard-free-chip">{t('ob.wz.ch_eye')}</span>
-        <FeeList plain />
-        <span className="ag-eyebrow">{t('ob.wz.ch_when')}</span>
-        <div className="ag-onboard-chopts" role="radiogroup" aria-label={t('ob.wz.ch_when')}>
-          {pay.map((o) => (
-            <button key={o.k} type="button" role="radio" aria-checked={d.payWhen === o.k} className="ag-onboard-chopt"
-              onClick={() => set({ payWhen: o.k })} data-testid={`plan-${o.k}`}>
-              <span className="top"><Icon name={o.icon} /><span className="rdot" aria-hidden="true" /></span>
-              <b>{o.title}</b>
-              <span className="ag-small">{o.sub}</span>
-            </button>
-          ))}
-        </div>
-        <p className="ag-small">{t('ob.wz.gst_note')}</p>
-      </Box>}
     </Frame>
   );
 }
@@ -465,6 +455,49 @@ function ExtrasStep({ w }: { w: HostWizard }) {
   );
 }
 
+/** Whether "Put it live" first asks when to pay: a new host listing a paid type (shops are free). */
+const asksToPay = (w: HostWizard) => !w.adding && !!w.d.type && w.d.type !== 'shop';
+
+/**
+ * Opened by the last step's pay button: the picked type's charge and When to pay, Pay when listing
+ * already chosen (useHostWizard). Its button follows the choice and puts the listing up.
+ */
+function ChargesSheet({ w, onConfirm, onClose }: { w: HostWizard; onConfirm: () => void; onClose: () => void }) {
+  const { t, d, set } = w;
+  const { grace_bookings } = useHostSignupInfo();
+  const plan = useHostPlanPrice(d.type || 'homestay');
+  const pay: Array<{ k: 'now' | 'later'; icon: IconName; title: string; sub: string }> = [
+    { k: 'now', icon: 'bag', title: t('ob.wz.ch_now', 'Pay when listing'), sub: t('ob.wz.ch_nowS', 'Pay the yearly charge now and go live today.') },
+    {
+      k: 'later', icon: 't_trip',
+      title: t('ob.wz.ch_later', { count: grace_bookings, defaultValue: 'Pay after {{count}} bookings' }),
+      sub: t('ob.wz.ch_laterS', { count: grace_bookings, defaultValue: 'List free now, pay after your first {{count}} bookings.' }),
+    },
+  ];
+  return (
+    <Sheet onClose={onClose} labelledBy="wz-charges-title" testid="wz-charges" closeTestid="wz-charges-close">
+      <div className="flex flex-col gap-4">
+        <SheetHead id="wz-charges-title" eyebrow={<span data-testid="onboard-free-chip">{t('ob.wz.ch_eye')}</span>} title={t('ob.wz.ch_when')} />
+        <FeeList plain type={d.type} />
+        <div className="ag-onboard-chopts" role="radiogroup" aria-labelledby="wz-charges-title">
+          {pay.map((o) => (
+            <button key={o.k} type="button" role="radio" aria-checked={d.payWhen === o.k} className="ag-onboard-chopt"
+              onClick={() => set({ payWhen: o.k, payPicked: true })} data-testid={`plan-${o.k}`}>
+              <span className="top"><Icon name={o.icon} /><span className="rdot" aria-hidden="true" /></span>
+              <b>{o.title}</b>
+              <span className="ag-small">{o.sub}</span>
+            </button>
+          ))}
+        </div>
+        <p className="ag-small m-0">{t('ob.wz.gst_note')}</p>
+        <NextButton onClick={onConfirm} data-autofocus data-testid="wz-charges-confirm">
+          {d.payWhen === 'now' ? t('ob.wz.put_pay', { price: rupees(plan.base) }) : t('ob.wz.put')}
+        </NextButton>
+      </div>
+    </Sheet>
+  );
+}
+
 /* ---------- 6. Travellers will see this ---------- */
 function ReviewStep({ w }: { w: HostWizard }) {
   const { t, d, busy, submit, startingPrice, offerLabels } = w;
@@ -472,14 +505,17 @@ function ReviewStep({ w }: { w: HostWizard }) {
   const unit = d.type === 'homestay' ? t('ob.wz.night') : (d.type === 'driver' || d.type === 'guide') ? t('ob.wz.day') : '';
   const plan = useHostPlanPrice(d.type || 'homestay');
   const icon = d.type ? TYPE_ICON[d.type] : 'home';
+  const [asking, setAsking] = useState(false);
+  // Paid types see only the pay button here; when to pay is chosen in the sheet it opens.
+  const put = () => (asksToPay(w) ? setAsking(true) : submit());
   return (
     <Frame w={w} title={t('ob.wz.review')}
       cta={(
         <>
-          <NextButton onClick={submit} disabled={busy} data-testid="onboard-submit">
-            {busy ? t('common.loading') : d.payWhen === 'now' && !w.adding && d.type !== 'shop' ? t('ob.wz.put_pay', { price: rupees(plan.base) }) : t('ob.wz.put')}
+          <NextButton onClick={put} disabled={busy} data-testid="onboard-submit">
+            {busy ? t('common.loading') : asksToPay(w) ? t('ob.wz.put_pay', { price: rupees(plan.base) }) : t('ob.wz.put')}
           </NextButton>
-          {!w.adding && <FeeList />}
+          {!w.adding && d.type === 'shop' && <FeeList type="shop" />}
         </>
       )}>
       <article className="ag-onboard-card">
@@ -498,6 +534,7 @@ function ReviewStep({ w }: { w: HostWizard }) {
         </ul>
       )}
       <p className="ag-onboard-muted">+91 {d.phone}</p>
+      {asking && <ChargesSheet w={w} onClose={() => setAsking(false)} onConfirm={() => { setAsking(false); void submit(); }} />}
     </Frame>
   );
 }

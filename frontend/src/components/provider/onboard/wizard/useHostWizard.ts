@@ -81,6 +81,8 @@ export const stepsFor = (ty: HostType | ''): StepKey[] => ['type', 'place', 'nam
 type Draft = {
   type: HostType | '';
   payWhen: 'later' | 'now';
+  /** True once the host taps a When to pay option; until then the default applies. */
+  payPicked?: boolean;
   place: Place | null;
   name: string;
   phone: string;
@@ -153,7 +155,10 @@ export function useHostWizard() {
     const ty = (HOST_TYPES as readonly string[]).includes(link.type || '') ? (link.type as HostType) : (saved.type || '');
     return {
       type: ty,
-      payWhen: saved.payWhen || 'later',
+      // Pay when listing is the default. A saved choice counts only if the host tapped it: the draft is
+      // written as soon as the wizard opens, so older drafts hold the old default ('later'), not a choice.
+      payWhen: saved.payPicked && saved.payWhen ? saved.payWhen : 'now',
+      payPicked: !!saved.payPicked,
       place: saved.place || null,
       name: saved.name || '',
       phone: saved.phone || '',
