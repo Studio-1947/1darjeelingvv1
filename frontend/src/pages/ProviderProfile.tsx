@@ -16,6 +16,7 @@ import GalleryUploader from '@/components/provider/GalleryUploader';
 import AmenityPicker from '@/components/provider/AmenityPicker';
 import { RouteFareTable } from '@/components/provider/RouteEditor';
 import { HOMESTAY_AMENITIES, CAFE_AMENITIES } from '@/constants/listingOptions';
+import { useAppStatus } from '@/context/AppStatus'; // TEMPORARY(legal-pause)
 import PricedEditor, { type Priced } from '@/components/provider/PricedEditor';
 import { roomFit, roomsCapacity } from '@/lib/roomFit';
 import OwnersSection from '@/components/provider/OwnersSection';
@@ -173,6 +174,7 @@ function DriverPicker({ selected, onChange }: { selected: string[]; onChange: (i
 
 export default function ProviderProfile() {
   const { t } = useTranslation();
+  const { home_delivery: deliveryOn } = useAppStatus(); // TEMPORARY(legal-pause)
   useSeo({ title: t('hostProfile.title') });
   const nav = useNavigate();
   const { user, loading: authLoading, provider, refreshProvider } = useAuth();
@@ -478,7 +480,7 @@ export default function ProviderProfile() {
     items: previewItems(),
     gallery: form.images,
     available: form.available,
-    homeDelivery: form.home_delivery && (type === 'cafe' || type === 'shop'),
+    homeDelivery: deliveryOn && form.home_delivery && (type === 'cafe' || type === 'shop'), // TEMPORARY(legal-pause)
   };
 
   // Each listing with Edit, then Add: under "Your properties", or inside a driver's vehicle section.
@@ -527,7 +529,8 @@ export default function ProviderProfile() {
           <Toggle on={form.available} onChange={(v) => set({ available: v })} testid="profile-available"
             label={t('hostProfile.available_on')}
             note={t('hostProfile.available_note')} />
-          {(type === 'cafe' || type === 'shop') && (
+          {/* TEMPORARY(legal-pause): hidden while delivery is paused; the saved setting is kept and returns with it. */}
+          {deliveryOn && (type === 'cafe' || type === 'shop') && (
             <div>
               <Toggle on={form.home_delivery} onChange={(v) => set({ home_delivery: v })} testid="profile-home-delivery"
                 label={type === 'shop' ? t('hostProfile.home_delivery_shop') : t('hostProfile.home_delivery')}

@@ -4,7 +4,7 @@ import { and, desc, eq, sql } from 'drizzle-orm';
 import { db, schema } from '../db';
 import { isHostPlanLive } from '../lib/hostPlan';
 
-import { APP_MIN_VERSION, APP_LATEST_VERSION, APP_STORE_URL, PLAY_STORE_URL, VERIFICATION_SUPPORT_PHONE, HOST_GRACE_BOOKINGS } from '../config';
+import { APP_MIN_VERSION, APP_LATEST_VERSION, APP_STORE_URL, PLAY_STORE_URL, VERIFICATION_SUPPORT_PHONE, HOST_GRACE_BOOKINGS, maintenanceEnabled, homeDeliveryEnabled, donationsEnabled } from '../config';
 
 const router = Router();
 
@@ -23,6 +23,29 @@ const router = Router();
  *       200:
  *         description: Version policy
  */
+/**
+ * @openapi
+ * /app/status:
+ *   get:
+ *     summary: Whether the website is under maintenance, and which paused features are on
+ *     description: >
+ *       TEMPORARY(legal-pause). The website asks once on load. Set with MAINTENANCE, HOME_DELIVERY
+ *       and DONATIONS in the server's .env (see config.ts).
+ *     tags: [App]
+ *     responses:
+ *       200:
+ *         description: Current switches
+ */
+router.get('/status', (_req: Request, res: Response) => {
+  // Not cached: switching maintenance off must reach visitors on their next load.
+  res.set('Cache-Control', 'no-store');
+  res.json({
+    maintenance: maintenanceEnabled(),
+    home_delivery: homeDeliveryEnabled(),
+    donations: donationsEnabled(),
+  });
+});
+
 router.get('/version', (_req: Request, res: Response) => {
   res.set('Cache-Control', 'public, max-age=300');
   res.json({

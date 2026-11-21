@@ -2,6 +2,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import Seo from '@/components/Seo';
 import { Box, PageHead } from '@/components/ag';
+import { COMPANY } from '@/constants/company';
 
 /**
  * The renderer shared by every policy page  Privacy, Terms, Refunds and Contact: readable text in
@@ -24,7 +25,8 @@ export interface Block {
   /** Trailing paragraph, for the "you can control cookies…" style closers. */
   note?: string;
   sub?: Block[];
-  contact?: { name: string; email: string; phone?: string; address: string };
+  /** `officer` marks the grievance card, which also names the officer from constants/company.ts. */
+  contact?: { name: string; email: string; phone?: string; address: string; officer?: boolean };
 }
 
 /** Paragraph + bullets + closer  the body shared by sections and sub-sections. */
@@ -87,6 +89,11 @@ export default function LegalDocument({ ns, testId, children }: { ns: string; te
               <Box className="!gap-1 text-base leading-[26px] text-[var(--ink7)]">
                 <address className="not-italic flex flex-col gap-1">
                   <b className="font-medium text-[var(--ink-strong)]">{s.contact.name}</b>
+                  {/* constants/company.ts; each line appears once its value is filled in. */}
+                  {s.contact.officer && COMPANY.grievanceOfficer && (
+                    <span data-testid="grievance-officer">{t('privacy.officer_label')} {COMPANY.grievanceOfficer}</span>
+                  )}
+                  {COMPANY.gstin && <span>{t('privacy.gstin_label')} {COMPANY.gstin}</span>}
                   <span>
                     {t('privacy.email_label')}{' '}
                     <a href={`mailto:${s.contact.email}`} className="font-medium text-[var(--r)] hover:underline">{s.contact.email}</a>

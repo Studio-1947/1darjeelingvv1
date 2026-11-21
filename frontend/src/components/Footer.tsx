@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { FacebookLogo, InstagramLogo, EnvelopeSimple as Mail, Phone } from '@phosphor-icons/react';
 import Wordmark from '@/components/Wordmark';
 import { ButtonA } from '@/components/ag';
+import { COMPANY } from '@/constants/company';
 
 /**
  * A minimal footer: the wordmark, one row of links, the social icons and the copyright line.
@@ -53,6 +54,16 @@ export default function Footer() {
           </ul>
         </nav>
         <p className="ag-small">© 2026 {t('brand')}. {t('footer.rights')}.</p>
+        {/* The entity behind the site (constants/company.ts); a line still waiting on its value is left out. */}
+        <p className="ag-small" data-testid="footer-entity">
+          {[
+            t('ui.footer.operated_by', { name: COMPANY.legalName }),
+            COMPANY.gstin && t('ui.footer.gstin', { gstin: COMPANY.gstin }),
+            COMPANY.grievanceOfficer && t('ui.footer.grievance_officer', { name: COMPANY.grievanceOfficer }),
+          ].filter(Boolean).join(' · ')}
+          {/* Styled as the policy pages style a link inside text (LegalDocument's contact card). */}
+          {' · '}<Link to="/contact" className="font-medium text-[var(--r)] hover:underline">{t('ui.footer.grievance_link')}</Link>
+        </p>
       </div>
     </footer>
   );

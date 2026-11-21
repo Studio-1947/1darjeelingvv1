@@ -1,4 +1,4 @@
-import { AMOUNTS, DONATION_MIN_PAISE, DONATION_MAX_PAISE } from '../config';
+import { AMOUNTS, DONATION_MIN_PAISE, DONATION_MAX_PAISE, donationsEnabled } from '../config';
 import { flowBreakup, type PriceBreakup } from './pricing';
 
 export type AmountResolution =
@@ -34,6 +34,11 @@ export function resolveAmount(flow: string, body: any): AmountResolution {
     // renewal price is applied by the order route, which knows the payer.
     const breakup = flowBreakup(flow);
     return { amount: breakup.total, breakup };
+  }
+
+  // TEMPORARY(legal-pause): paused (config.ts); refused before any amount is looked at.
+  if (!donationsEnabled()) {
+    return { error: { status: 403, detail: 'Donations are paused for now.' } };
   }
 
   const raw = body?.amount;

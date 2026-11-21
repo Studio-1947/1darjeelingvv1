@@ -11,6 +11,7 @@ import Layout from '@/components/Layout';
 import ScrollToTop from '@/components/ScrollToTop';
 import { LoginGateProvider } from '@/components/LoginGate';
 import Policies from '@/pages/Policies';
+import { AppStatusGate, useAppStatus } from '@/context/AppStatus'; // TEMPORARY(legal-pause)
 
 const Support = lazy(() => import('@/pages/Support'));
 const Donate = lazy(() => import('@/pages/Donate'));
@@ -60,6 +61,11 @@ function PageLoading() {
   return <div className="page-loading" role="status">{t('common.loading')}</div>;
 }
 
+/** TEMPORARY(legal-pause): /donate while donations are paused goes home. */
+function DonateRoute() {
+  return useAppStatus().donations ? <Donate /> : <Navigate to="/" replace />;
+}
+
 export default function App() {
   React.useEffect(() => {
     const splash = document.getElementById('app-splash');
@@ -83,6 +89,8 @@ export default function App() {
       <FavoritesProvider>
         <BrowserRouter>
           <ScrollToTop />
+          {/* TEMPORARY(legal-pause): the maintenance screen replaces the whole site while it is on. */}
+          <AppStatusGate>
           <LoginGateProvider>
             <Layout>
                 <PageErrorBoundary>
@@ -107,7 +115,8 @@ export default function App() {
                     ))}
                     <Route path="/login" element={<Login />} />
                     <Route path="/support" element={<TravellerOnly><Support /></TravellerOnly>} />
-                    <Route path="/donate" element={<Donate />} />
+                    {/* TEMPORARY(legal-pause): donations are paused; the server refuses them too. */}
+                    <Route path="/donate" element={<DonateRoute />} />
                     <Route path="/notifications" element={<Notifications />} />
                     <Route path="/theme" element={<ThemeColour />} />
                     <Route path="/provider/onboard" element={<ProviderOnboard />} />
@@ -140,6 +149,7 @@ export default function App() {
                 </PageErrorBoundary>
             </Layout>
           </LoginGateProvider>
+          </AppStatusGate>
         </BrowserRouter>
       </FavoritesProvider>
     </AuthProvider>

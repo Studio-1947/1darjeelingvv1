@@ -3,6 +3,7 @@ import { db, schema } from '../db';
 import { canSeeProviderPhone, listExtras, publicSocial } from './listingContact';
 import { isHostPlanLive } from './hostPlan';
 import { pagePath } from './providerSlug';
+import { homeDeliveryEnabled } from '../config';
 import { themeOf } from './hostProfile';
 
 type Provider = typeof schema.providers.$inferSelect;
@@ -88,7 +89,8 @@ export async function buildHostPage(provider: Provider, viewer: Viewer) {
       gallery: (Array.isArray(e.images) ? e.images : provider.images || []).filter(Boolean),
       available: e.available !== false,
       // Cafes and shops only; a homestay that switched it on before 2026-11-21 does not show it.
-      homeDelivery: (provider.businessType === 'cafe' || provider.businessType === 'shop') && e.home_delivery === true,
+      // TEMPORARY(legal-pause): homeDeliveryEnabled() gate.
+      homeDelivery: homeDeliveryEnabled() && (provider.businessType === 'cafe' || provider.businessType === 'shop') && e.home_delivery === true,
       // Instagram, Facebook and YouTube reach the host as surely as the phone, so they sit behind
       // the same gate; the website is the host's showcase and stays public.
       social: publicSocial(e.social, phoneOk),

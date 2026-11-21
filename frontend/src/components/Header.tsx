@@ -8,6 +8,7 @@ import api from '@/lib/api';
 import { APP_STORE_URLS } from '@/constants/app';
 import AppComingSoon, { phonePlatform } from '@/components/AppComingSoon';
 import { Icon } from '@/components/ag/Icon';
+import { Status } from '@/components/ag';
 import { useMode } from '@/lib/theme';
 
 /** When the bell last asked for the unread count (shared across page changes). */
@@ -104,8 +105,10 @@ export default function Header() {
           </button>
         )}
 
-        <Link to="/" className="ag-brand" data-testid="brand-link" aria-label={t('brand', 'aangan')}>
+        <Link to="/" className="ag-brand gap-2" data-testid="brand-link" aria-label={`${t('brand', 'aangan')} ${t('ui.header.beta', 'Beta')}`}>
           <Wordmark className="word" still />
+          {/* Early days: says so plainly, next to the name, on every screen. */}
+          <Status tone="info" className="flex-none" data-testid="beta-label">{t('ui.header.beta', 'Beta')}</Status>
         </Link>
 
         <div className="ag-topact">
