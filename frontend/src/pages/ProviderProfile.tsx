@@ -54,6 +54,9 @@ function Section({ title, note, children, testid, id }: { title: string; note?: 
 }
 
 /** A labelled group for controls that are not a single field (chips, priced rows, uploads). */
+/** Passenger capacity choices for a driver: the 1-30 the server accepts. */
+const SEAT_OPTIONS = Array.from({ length: 30 }, (_, i) => i + 1);
+
 function Group({ label, children, hint }: { label: string; children: React.ReactNode; hint?: string }) {
   return (
     <div className="grid gap-2">
@@ -404,6 +407,24 @@ export default function ProviderProfile() {
     homeDelivery: form.home_delivery && (type === 'cafe' || type === 'shop'),
   };
 
+  // Each listing with Edit, then Add: under "Your properties", or inside a driver's vehicle section.
+  const listingRows = (
+    <>
+      {myListings.map((l) => (
+        <div key={l.id} className="row">
+          <span className="min-w-0">
+            <b>{l.title}</b>
+            <span className="ag-small">{l.location}{Number(l.price) > 0 ? ` · ${t('host.from', 'From')} ₹${Number(l.price).toLocaleString('en-IN')}` : ''}</span>
+          </span>
+          <Button variant="text" onClick={() => setEditListing(l)}>{t('common.edit')}</Button>
+        </div>
+      ))}
+      <Button className="self-start" icon={<Icon name={type === 'driver' ? 'car' : 'home'} />} onClick={() => setAddListing(true)}>
+        {type === 'driver' ? t('host.add_vehicle', 'Add a vehicle') : t('host.add_property', 'Add a property')}
+      </Button>
+    </>
+  );
+
   return (
     <div className="ag-wrap">
       <div className="ag-main" data-testid="provider-profile">
@@ -500,34 +521,34 @@ export default function ProviderProfile() {
           </div>
         </Section>
 
-        {/* provider.js "Your properties" / "Your vehicles": each listing with Edit, and Add. */}
-        <Box as="section" className="ag-host-props" data-testid="profile-properties">
-          <h2>{type === 'driver' ? t('host.your_vehicles', 'Your vehicles') : t('host.your_properties', 'Your properties')}</h2>
-          {myListings.map((l) => (
-            <div key={l.id} className="row">
-              <span className="min-w-0">
-                <b>{l.title}</b>
-                <span className="ag-small">{l.location}{Number(l.price) > 0 ? ` · ${t('host.from', 'From')} ₹${Number(l.price).toLocaleString('en-IN')}` : ''}</span>
-              </span>
-              <Button variant="text" onClick={() => setEditListing(l)}>{t('common.edit')}</Button>
-            </div>
-          ))}
-          <Button className="self-start" icon={<Icon name={type === 'driver' ? 'car' : 'home'} />} onClick={() => setAddListing(true)}>
-            {type === 'driver' ? t('host.add_vehicle', 'Add a vehicle') : t('host.add_property', 'Add a property')}
-          </Button>
-        </Box>
+        {/* provider.js "Your properties": each listing with Edit, and Add. A driver's vehicles sit
+            inside the vehicle section below instead, so all of it is in one place. */}
+        {type !== 'driver' && (
+          <Box as="section" className="ag-host-props" data-testid="profile-properties">
+            <h2>{t('host.your_properties', 'Your properties')}</h2>
+            {listingRows}
+          </Box>
+        )}
 
         {type === 'driver' && (
           <Section title={t('hostProfile.vehicle')} testid="profile-driver">
             <div className="grid gap-4 sm:grid-cols-3">
               <TextField label={t('hostProfile.vehicle_number')} value={form.vehicle_number} onChange={(e) => set({ vehicle_number: e.target.value })} placeholder="WB 74 A 1234" />
               <TextField label={t('hostProfile.license_number')} value={form.license_number} onChange={(e) => set({ license_number: e.target.value })} />
-              <TextField label={t('hostProfile.seats')} type="number" min={1} max={30} value={form.seats} onChange={(e) => set({ seats: e.target.value })} />
+              {/* A pick, not typing: the server takes 1-30 (lib/hostProfile.ts). */}
+              <SelectField label={t('hostProfile.seats')} value={String(form.seats ?? '')} onChange={(e) => set({ seats: e.target.value })} data-testid="profile-seats">
+                <option value="">{t('hostProfile.seats_pick', 'Choose')}</option>
+                {SEAT_OPTIONS.map((n) => <option key={n} value={String(n)}>{t('hostProfile.seats_n', { count: n })}</option>)}
+              </SelectField>
             </div>
             <p className="ag-small">{t('hostProfile.vehicle_docs_note')}</p>
             <Group label={t('hostProfile.routes')}>
               <RouteFareTable routes={form.routes} onChange={(routes: any) => set({ routes })} emptyNote={t('hostProfile.routes_empty')} />
             </Group>
+            <div className="ag-host-props grid gap-3 border-t border-[var(--hairline)] pt-4" data-testid="profile-properties">
+              <span className="text-sm font-medium text-[var(--ink-strong)]">{t('host.your_vehicles', 'Your vehicles')}</span>
+              {listingRows}
+            </div>
           </Section>
         )}
 
