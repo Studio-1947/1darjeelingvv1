@@ -88,3 +88,12 @@ export function isKnownPlace(text: unknown, extra: string[] = []): boolean {
   const q = flat(text);
   return q.length >= 3 && extra.some((name) => { const n = flat(name); return n.length >= 3 && q.includes(n); });
 }
+
+/**
+ * The box aangan serves. The backend refuses a host's map pin outside it (backend/src/lib/mapsLink.ts
+ * SERVICE_REGION); keep the two identical so the sign-up wizard says so before "Put it live".
+ */
+export const SERVICE_REGION = { minLat: 26.35, maxLat: 27.4, minLng: 87.85, maxLng: 89.0 } as const;
+export function inServiceRegion(lat: number, lng: number): boolean {
+  return lat >= SERVICE_REGION.minLat && lat <= SERVICE_REGION.maxLat && lng >= SERVICE_REGION.minLng && lng <= SERVICE_REGION.maxLng;
+}

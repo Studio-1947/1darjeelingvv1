@@ -60,6 +60,13 @@
 .ag-onboard-myloc.ag-btn { align-self: flex-start; padding-left: 16px; border-color: var(--blush2); }
 .ag-onboard-picked { display: flex; align-items: center; gap: 6px; margin: 0; }
 .ag-onboard-picked svg.i { width: 14px; height: 14px; }
+.ag-onboard-pin { display: flex; flex-direction: column; gap: 10px; }
+.ag-onboard-pin .where { display: flex; align-items: flex-start; gap: 8px; margin: 0; color: var(--ink-strong); font: 500 15px/20px var(--font); }
+.ag-onboard-pin .where svg.i { flex: none; width: 18px; height: 18px; margin-top: 1px; color: var(--r); }
+.ag-onboard-pin .meta { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; margin: 0; }
+.ag-onboard-pin .meta .ll { font-variant-numeric: tabular-nums; }
+.ag-onboard-pin .weak { color: var(--ink-strong); }
+.ag-onboard-acc { stroke: var(--r); fill: var(--r); }
 
 /* place / offer / quick-dish pills (pchip) */
 .ag-onboard-pchips { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 4px; }

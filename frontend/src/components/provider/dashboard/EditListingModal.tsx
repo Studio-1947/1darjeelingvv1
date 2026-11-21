@@ -59,7 +59,10 @@ export default function EditListingModal({ listing, onClose, onSave }: {
     apply: (url: string) => void,
   ) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    e.target.value = '';
+    if (file) await uploadFileOne(file, setFlag, apply);
+  };
+  const uploadFileOne = async (file: File, setFlag: (b: boolean) => void, apply: (url: string) => void) => {
     setFlag(true);
     setError('');
     try {
@@ -169,7 +172,8 @@ export default function EditListingModal({ listing, onClose, onSave }: {
             </Part>
             <Part title={t('el.driver_photo')}>
               <AvatarUploader src={driverAvatar} initial={title || 'D'} uploading={uploadingDriverPic}
-                onFileSelected={(e) => uploadOne(e, setUploadingDriverPic, setDriverAvatar)} label={t('el.upload_driver_photo')} />
+                onFile={(f) => uploadFileOne(f, setUploadingDriverPic, setDriverAvatar)} onRemove={() => setDriverAvatar('')}
+                label={t('el.upload_driver_photo')} />
             </Part>
             <Part title={t('el.routes_covered')} note={t('el.routes_note')}>
               <RouteListEditor routes={routes} onChange={setRoutes} />
@@ -215,7 +219,8 @@ export default function EditListingModal({ listing, onClose, onSave }: {
         {isHomestay && (
           <Part title={t('el.host_info')}>
             <AvatarUploader src={hostAvatar} initial={hostName || 'Host'} uploading={uploadingHostPic}
-              onFileSelected={(e) => uploadOne(e, setUploadingHostPic, setHostAvatar)} label={t('el.upload_host_photo')} />
+              onFile={(f) => uploadFileOne(f, setUploadingHostPic, setHostAvatar)} onRemove={() => setHostAvatar('')}
+              label={t('el.upload_host_photo')} />
             <TextField label={t('el.host_name')} value={hostName} onChange={(e) => setHostName(e.target.value)} />
             <TextArea label={t('el.host_bio')} rows={3} value={hostBio} onChange={(e) => setHostBio(e.target.value)} />
           </Part>
@@ -225,7 +230,7 @@ export default function EditListingModal({ listing, onClose, onSave }: {
 
         <div className="ag-row justify-end border-t border-[var(--hairline)] pt-4">
           <Button onClick={onClose}>{t('common.cancel')}</Button>
-          <Button type="submit" variant="primary" disabled={saving || uploading} data-testid="save-edit-listing">
+          <Button type="submit" variant="primary" disabled={saving || uploading || uploadingHostPic || uploadingDriverPic} data-testid="save-edit-listing">
             {saving ? t('common.saving') : t('common.save_changes')}
           </Button>
         </div>

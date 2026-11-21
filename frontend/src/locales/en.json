@@ -1357,6 +1357,17 @@
     "browse_stays": "Browse stays",
     "cultural_events": "Cultural events"
   },
+  "photoCrop": {
+    "title": "Adjust your photo",
+    "hint": "Drag to move it. Pinch or use the slider to zoom.",
+    "zoom": "Zoom",
+    "zoom_in": "Zoom in",
+    "zoom_out": "Zoom out",
+    "use": "Use photo",
+    "failed": "This photo could not be cropped. Please try another one.",
+    "change": "Change photo",
+    "uploading": "Uploading photo…"
+  },
   "widgets": {
     "upload_photo": "Upload Photo",
     "add_photos": "Add Photos",
@@ -1702,6 +1713,13 @@
       "myloc": "My location",
       "tp_none": "No match. Try another name or place.",
       "noloc": "Could not get your location. Pick a place instead.",
+      "locating": "Finding your exact spot…",
+      "loc_denied": "Location is blocked for this site. Allow it in your browser settings, or pick a place below.",
+      "loc_outside": "This spot is outside the Darjeeling hills, where aangan works. Pick a place below, or move the pin.",
+      "loc_naming": "Finding the address…",
+      "loc_acc": "GPS accurate to about {{m}} m. Drag the pin if it is off.",
+      "loc_weak": "GPS is weak here (about {{m}} m). Drag the pin to your door.",
+      "loc_drag": "Drag the pin or tap the map to mark your exact door.",
       "wz_noplace": "Choose where it is.",
       "who": "Your name and number",
       "nmStay": "Name of your homestay",
