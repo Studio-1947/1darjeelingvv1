@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { MAX_PRICE } from '../lib/priceCap';
 import { hostPlanVisibility, isListingHostLapsed } from '../lib/hostPlan';
 import { isGracePaused } from '../lib/hostGrace';
 import { v4 as uuidv4 } from 'uuid';
@@ -32,7 +33,6 @@ const MAX_LOCATION_LEN = 160;
 const MAX_DESCRIPTION_LEN = 8000;
 const MAX_TAGS = 12;
 const MAX_TAG_LEN = 40;
-const MAX_PRICE = 1_000_000;
 /** Upper bound for `limit`, so a public caller can't ask for the whole table in one query. */
 const MAX_PAGE_SIZE = 200;
 const DEFAULT_PAGE_SIZE = 60;
@@ -80,7 +80,19 @@ function validateListingPayload(body: any, { partial }: { partial: boolean }): s
   if (body.price !== undefined && body.price !== null) {
     const price = Number(body.price);
     if (!Number.isInteger(price) || price < 0 || price > MAX_PRICE) {
-      return 'price must be a whole number of rupees between 0 and 1000000';
+      return `price must be a whole number of rupees between 0 and ${MAX_PRICE}`;
+    }
+  }
+
+  // The host's price lists on a listing (rooms, food, routes, services, menu, goods) are held to the
+  // same cap as their profile (lib/hostProfile.ts). Only the cap is checked here, so older row shapes still save.
+  if (body.extras && typeof body.extras === 'object') {
+    for (const key of ['rooms', 'meals', 'routes', 'services', 'menu', 'goods']) {
+      const rows = body.extras[key];
+      if (!Array.isArray(rows)) continue;
+      if (rows.some((r: any) => r && typeof r === 'object' && Number(r.price) > MAX_PRICE)) {
+        return `each ${key} price must be at most ${MAX_PRICE} rupees`;
+      }
     }
   }
 

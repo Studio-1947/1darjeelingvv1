@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { MAX_PRICE } from '../lib/priceCap';
 import { listExtras } from '../lib/listingContact';
 import { assignSlug, pagePath, PAGE_TYPES } from '../lib/providerSlug';
 import { buildHostPage, hostBadges, hostIsPublic } from '../lib/hostPage';
@@ -88,6 +89,11 @@ router.post('/onboard', authenticateToken, async (req: Request, res: Response) =
   const { business_name: rawBusinessName, business_type, description, location: rawLocation, latitude = null, longitude = null, contact_phone, price_from = 0, images = [], extras = {} } = req.body;
   // Location verification is granted only by POST /me/location/verify, never claimed by the caller.
   if (extras && typeof extras === 'object') delete extras.location_verification;
+  // A number or a numeric string (an older app may send "1500"), at most MAX_PRICE.
+  const priceFromN = Number(price_from ?? 0);
+  if (!Number.isInteger(priceFromN) || priceFromN < 0 || priceFromN > MAX_PRICE) {
+    return res.status(400).json({ detail: `price_from must be a whole number of rupees from 0 to ${MAX_PRICE}` });
+  }
   // Home delivery is for cafes and shops only (user decision 2026-11-21).
   if (extras && typeof extras === 'object' && business_type !== 'cafe' && business_type !== 'shop') delete extras.home_delivery;
 
@@ -683,8 +689,8 @@ router.patch('/me', authenticateToken, async (req: Request, res: Response) => {
     set.contactPhone = String(body.contact_phone).trim();
   }
   if (body.price_from !== undefined) {
-    if (!Number.isInteger(body.price_from) || body.price_from < 0 || body.price_from > 1_000_000) {
-      return res.status(400).json({ detail: 'price_from must be a whole number of rupees' });
+    if (!Number.isInteger(body.price_from) || body.price_from < 0 || body.price_from > MAX_PRICE) {
+      return res.status(400).json({ detail: `price_from must be a whole number of rupees from 0 to ${MAX_PRICE}` });
     }
     set.priceFrom = body.price_from;
   }

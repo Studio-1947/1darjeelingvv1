@@ -1513,7 +1513,7 @@
       "host_name": "Host name",
       "price_missing": "Starting price per head",
       "price_whole": "Price per head in whole rupees",
-      "price_range": "Price per head between ₹100 and ₹1,00,000",
+      "price_range": "Price per head between ₹100 and ₹50,000",
       "business_name": "Your business name",
       "your_name": "Your name",
       "price_whole_any": "Price in whole rupees"
@@ -1754,7 +1754,7 @@
       "fee_full": "Homestays and drivers: {{price}} a year",
       "fee_small": "Guides, cafes and shops: {{price}} a year",
       "gst_note": "GST and a 2% payment fee are added when you pay.",
-      "price_range": "Set a price between ₹100 and ₹1,00,000.",
+      "price_range": "Set a price between ₹100 and ₹50,000.",
       "minus": "Minus 100",
       "plus": "Plus 100",
       "photos_added_one": "{{count}} photo added",

@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { MAX_PRICE } from './hostFormChecks';
 import {
   DESCRIPTION_CHIPS,
   HOST_TYPES,
@@ -58,7 +59,7 @@ describe('description chips', () => {
       for (const p of PRICE_SUGGESTIONS[type]) {
         expect(Number.isInteger(p)).toBe(true);
         expect(p).toBeGreaterThanOrEqual(100);
-        expect(p).toBeLessThanOrEqual(100000);
+        expect(p).toBeLessThanOrEqual(MAX_PRICE);
       }
     }
   });

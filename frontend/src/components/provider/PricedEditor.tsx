@@ -1,4 +1,5 @@
 import React from 'react';
+import { MAX_PRICE } from '@/lib/hostFormChecks';
 import { useTranslation } from 'react-i18next';
 import { Plus, Trash, Camera } from '@phosphor-icons/react';
 import { uploadImage } from '@/lib/uploadImage';
@@ -39,7 +40,7 @@ export default function PricedEditor({ rows, onChange, units, unitLabel, namePla
             </IconButton>
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <input type="number" min={0} value={r.price} onChange={(e) => set(i, { price: e.target.value === '' ? '' : Math.max(0, Number(e.target.value)) })}
+            <input type="number" min={0} max={MAX_PRICE} value={r.price} onChange={(e) => set(i, { price: e.target.value === '' ? '' : Math.min(MAX_PRICE, Math.max(0, Number(e.target.value))) })}
               placeholder="₹" aria-label={t('ui.pricedEditor.price')} className="ag-in" />
             <select value={r.unit} onChange={(e) => set(i, { unit: e.target.value })} aria-label={t('ui.pricedEditor.unit')} className="ag-in">
               {units.map((u) => <option key={u} value={u}>{unitLabel(u)}</option>)}

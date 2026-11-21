@@ -4,7 +4,7 @@ import api from '@/lib/api';
 import { rupees, useHostPlanPrice } from '@/lib/prices';
 import { SUPPORTED_IMAGE_ACCEPT } from '@/lib/uploadImage';
 import { distanceTo } from '@/lib/places';
-import { isValidPhone } from '@/lib/hostFormChecks';
+import { capPrice, isValidPhone, MAX_PRICE } from '@/lib/hostFormChecks';
 import { Box, Button, ButtonLink, FieldError, IconButton, StepBar, TextField } from '@/components/ag';
 import { Icon, type IconName } from '@/components/ag/Icon';
 import { HelpWhatsApp, useHostSignupInfo } from '@/components/provider/onboard/QuickFill';
@@ -208,7 +208,7 @@ function PriceStep({ w }: { w: HostWizard }) {
   const { t, d, set } = w;
   const presets = (d.type && PRESETS[d.type]) || [];
   const n = Number(d.price) || 0;
-  const bump = (by: number) => set({ price: String(Math.max(0, n + by)) });
+  const bump = (by: number) => set({ price: String(Math.min(MAX_PRICE, Math.max(0, n + by))) });
   const stay = d.type === 'homestay';
   const rooms = stay && d.roomsMode;
   const setRoom = (k: number, patch: Partial<{ name: string; price: string; occ: string }>) => set({ rooms: d.rooms.map((r, j) => (j === k ? { ...r, ...patch } : r)) });
@@ -230,8 +230,8 @@ function PriceStep({ w }: { w: HostWizard }) {
               <button type="button" className="round" aria-label={t('ob.wz.minus')} onClick={() => bump(-100)}>−</button>
               <label className="ag-onboard-priceedit">
                 <span aria-hidden="true">₹</span>
-                <input type="number" inputMode="numeric" min={0} step={50} value={d.price} aria-label={t('ob.wz.price')}
-                  onChange={(e) => set({ price: e.target.value.replace(/[^\d]/g, '') })} data-testid="onboard-price" />
+                <input type="number" inputMode="numeric" min={0} max={MAX_PRICE} step={50} value={d.price} aria-label={t('ob.wz.price')}
+                  onChange={(e) => set({ price: capPrice(e.target.value) })} data-testid="onboard-price" />
               </label>
               <button type="button" className="round" aria-label={t('ob.wz.plus')} onClick={() => bump(100)}>+</button>
             </div>
@@ -251,8 +251,8 @@ function PriceStep({ w }: { w: HostWizard }) {
               <input className="ag-in" value={r.name} placeholder={t('ob.wz.rnShort')} aria-label={t('ob.wz.rnShort')}
                 onChange={(e) => setRoom(k, { name: e.target.value })} data-testid={`wz-room-name-${k}`} />
               <label className="ag-onboard-roomin">₹
-                <input type="number" inputMode="numeric" min={0} value={r.price} placeholder="0" aria-label={t('ob.wz.price')}
-                  onChange={(e) => setRoom(k, { price: e.target.value.replace(/[^\d]/g, '') })} data-testid={`wz-room-price-${k}`} />
+                <input type="number" inputMode="numeric" min={0} max={MAX_PRICE} value={r.price} placeholder="0" aria-label={t('ob.wz.price')}
+                  onChange={(e) => setRoom(k, { price: capPrice(e.target.value) })} data-testid={`wz-room-price-${k}`} />
               </label>
               <label className="ag-onboard-roomin"><Icon name="person" />
                 <input type="number" inputMode="numeric" min={1} max={20} value={r.occ ?? '2'} aria-label={t('ob.wz.guests', 'Guests')}
@@ -311,8 +311,8 @@ function MenuStep({ w }: { w: HostWizard }) {
             <div className={`fields${shop ? ' unit' : ''}`}>
               <input className="ag-in" value={m.name} maxLength={40} placeholder={shop ? t('ob.wz.sh_item') : t('ob.wz.mn_dish')} aria-label={shop ? t('ob.wz.sh_item') : t('ob.wz.mn_dish')}
                 onChange={(e) => setDish(k, { name: e.target.value })} data-testid={`wz-dish-name-${k}`} />
-              <input className="ag-in" type="number" inputMode="numeric" min={0} value={m.price} placeholder={t('ob.wz.mn_price')} aria-label={t('ob.wz.mn_price')}
-                onChange={(e) => setDish(k, { price: e.target.value.replace(/[^\d]/g, '') })} data-testid={`wz-dish-price-${k}`} />
+              <input className="ag-in" type="number" inputMode="numeric" min={0} max={MAX_PRICE} value={m.price} placeholder={t('ob.wz.mn_price')} aria-label={t('ob.wz.mn_price')}
+                onChange={(e) => setDish(k, { price: capPrice(e.target.value) })} data-testid={`wz-dish-price-${k}`} />
               {shop && (
                 <select className="ag-in" value={m.unit || 'item'} aria-label={t('ob.wz.sh_unit')} onChange={(e) => setDish(k, { unit: e.target.value })} data-testid={`wz-dish-unit-${k}`}>
                   {SHOP_UNITS.map((u) => <option key={u} value={u}>{t(`profile.unit_${u}`)}</option>)}

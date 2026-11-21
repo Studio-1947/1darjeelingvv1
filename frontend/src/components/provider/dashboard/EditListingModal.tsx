@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { MAX_PRICE } from '@/lib/hostFormChecks';
 import { useTranslation } from 'react-i18next';
 import { Upload } from '@phosphor-icons/react';
 import { Button, FieldError, TextArea, TextField } from '@/components/ag';
@@ -149,7 +150,7 @@ export default function EditListingModal({ listing, onClose, onSave }: {
               </p>
             </div>
           ) : (
-            <TextField label={t('el.price')} required type="number" min="0" value={price} onChange={(e) => setPrice(Number(e.target.value) || 0)} />
+            <TextField label={t('el.price')} required type="number" min="0" max={MAX_PRICE} value={price} onChange={(e) => setPrice(Math.min(MAX_PRICE, Number(e.target.value) || 0))} />
           )}
         </div>
 

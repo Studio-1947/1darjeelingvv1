@@ -28,6 +28,10 @@ describe('host profile fields', () => {
       .toEqual({ rooms: [{ name: 'Mountain-view double', price: 1800, unit: 'night' }] });
     // Home delivery is for cafes and shops; a homestay cannot switch it on.
     expect(profilePatchFrom('homestay', { home_delivery: true })).toHaveProperty('error');
+    // No price above ₹50,000 (backend/src/lib/priceCap.ts).
+    expect(profilePatchFrom('cafe', { menu: [{ name: 'Momo', price: 50000 }] })).not.toHaveProperty('error');
+    expect(profilePatchFrom('cafe', { menu: [{ name: 'Momo', price: 50001 }] })).toHaveProperty('error');
+    expect(profilePatchFrom('homestay', { rooms: [{ name: 'Suite', price: 60000, unit: 'night' }] })).toHaveProperty('error');
     expect(profilePatchFrom('homestay', { social: { instagram: '@norbu' }, whatsapp: '9876543210', available: false }))
       .toEqual({ social: { instagram: '@norbu' }, whatsapp: '9876543210', available: false });
   });

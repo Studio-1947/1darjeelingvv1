@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { MAX_PRICE } from '../lib/priceCap';
 import { v4 as uuidv4 } from 'uuid';
 import { and, desc, eq, gte, inArray, sql } from 'drizzle-orm';
 
@@ -30,7 +31,6 @@ const MAX_PLACE = 80;
 const MAX_AREA = 80;
 export const MIN_DETAILS = 20;
 const MAX_DETAILS = 2000;
-const MAX_PRICE = 100_000;
 const MAX_NOTE = 300;
 /** A real person suggests a few places; a script suggests hundreds. */
 export const MAX_SUGGESTIONS_PER_DAY = 10;

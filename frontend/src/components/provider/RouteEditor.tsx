@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { MAX_PRICE } from '@/lib/hostFormChecks';
 import { useTranslation } from 'react-i18next';
 import { Plus, X } from '@phosphor-icons/react';
 import { optionLabel } from '@/lib/optionLabel';
@@ -92,8 +93,9 @@ export function RouteFareTable({ routes, onChange, emptyNote }: {
             <input
               type="number"
               min="0"
+              max={MAX_PRICE}
               value={r.price || ''}
-              onChange={(e) => patch(i, { price: Number(e.target.value) || 0 })}
+              onChange={(e) => patch(i, { price: Math.min(MAX_PRICE, Number(e.target.value) || 0) })}
               placeholder={`₹ ${t('widgets.rate_ph')}`}
               aria-label={t('widgets.rate_for_route', { route: r.route })}
               className="ag-in"

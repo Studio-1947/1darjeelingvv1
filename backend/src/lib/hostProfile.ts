@@ -1,4 +1,5 @@
 import { normaliseVehicleNumber } from './vehicleNumber';
+import { MAX_PRICE } from './priceCap';
 import { isPlausiblePhone } from './phone';
 
 /**
@@ -61,7 +62,6 @@ export function themeOf(v: unknown): string | undefined {
 export const MIN_CAR_PHOTOS = 6;
 export const MIN_PROPERTY_PHOTOS = 8;
 
-const MAX_PRICE = 1_000_000;
 
 export type ProfileError = { error: string };
 export type ProfilePatch = Record<string, unknown>;
