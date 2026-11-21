@@ -28,7 +28,8 @@ import {
   GuideSection, ServicesSection, RoomsFoodSection, RecommendedDriversSection, PriceListSection, OwnerSection,
   HostSection, DriverSection, UnavailableNotice,
 } from '@/components/listing-detail/profileSections';
-import { useBookingFlow } from '@/components/listing-detail/useBookingFlow';
+import { roomsOf, useBookingFlow } from '@/components/listing-detail/useBookingFlow';
+import { roomOpen } from '@/lib/roomFit';
 import { useAuth } from '@/context/AuthContext';
 import { BusinessModeNotice } from '@/components/TravellerOnly';
 
@@ -106,7 +107,10 @@ export default function ListingDetail() {
 
   // Off when the host switched availability off, or their free start is used up and not paid yet
   // (backend lib/hostGrace.ts); the page stays up either way.
-  const available = item.extras?.available !== false && item.bookings_paused !== true;
+  // A homestay whose every room the host marked full (let outside the app) takes no request either.
+  const stayRooms = item.type === 'homestay' ? roomsOf(item) : [];
+  const roomsFull = stayRooms.length > 0 && !stayRooms.some(roomOpen);
+  const available = item.extras?.available !== false && item.bookings_paused !== true && !roomsFull;
   const reservable = item.type === 'homestay' || item.type === 'driver' || item.type === 'guide';
   const bookable = !ownPreview && available && reservable;
   const contactable = !ownPreview && ['shop', 'cafe', 'event'].includes(item.type);
@@ -250,7 +254,7 @@ export default function ListingDetail() {
         ) : item.type === 'event' ? <p className="ag-listing-lead"><span className="ag-small">{t('common.entry_varies')}</span></p> : null}
 
         {/* Website beside Ask to book (the fixed bar carries Book now), then the "asking is free" line. */}
-        {reservable && !ownPreview && !available && <UnavailableNotice />}
+        {reservable && !ownPreview && !available && <UnavailableNotice roomsFull={roomsFull} />}
         {(item.host_page_path || bookable) && (
           <div className="ag-listing-stack">
             {item.host_page_path && (

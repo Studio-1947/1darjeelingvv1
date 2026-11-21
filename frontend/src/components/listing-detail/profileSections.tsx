@@ -3,9 +3,9 @@ import { useTranslation } from 'react-i18next';
 import { InstagramLogo, FacebookLogo, YoutubeLogo, Globe, PlayCircle } from '@phosphor-icons/react';
 import { Icon, type IconName } from '@/components/ag/Icon';
 import api from '@/lib/api';
-import { Box, ButtonA, SecHead } from '@/components/ag';
+import { Box, ButtonA, SecHead, Status } from '@/components/ag';
 import { Section, PriceRow, PersonCard, MiniCard } from './primitives';
-import { roomFit } from '@/lib/roomFit';
+import { roomFit, roomOpen } from '@/lib/roomFit';
 
 /**
  * Sections for what hosts fill in on their business profile (backend lib/hostProfile.ts): the
@@ -124,8 +124,13 @@ export function RoomsFoodSection({ rooms, meals }: { rooms: Priced[]; meals: Pri
             const extra = fit.extraBeds > 0
               ? ` · ${t('listing.extra_mattress', { count: fit.extraBeds })}${fit.extraBedPrice > 0 ? ` (₹${fit.extraBedPrice.toLocaleString('en-IN')})` : ''}`
               : '';
+            const sizeText = size > 0 ? `${size} ${t('listing.ppl', 'people')}${extra}` : '';
+            // A room the host has let outside the app is shown, marked full (lib/roomFit.ts roomOpen).
+            const sub = roomOpen(r) ? (sizeText || undefined) : (
+              <><Status tone="pending" className="mr-1.5" data-testid="detail-room-full">{t('listing.room_full', 'Full')}</Status>{sizeText}</>
+            );
             return (
-              <PriceRow key={i} photo={r.photo} name={r.name} sub={size > 0 ? `${size} ${t('listing.ppl', 'people')}${extra}` : undefined}
+              <PriceRow key={i} photo={r.photo} name={r.name} sub={sub}
                 price={Number(r.price) || 0} unit={t('profile.unit_night')} />
             );
           })}
@@ -214,14 +219,15 @@ export function RecommendedDriversSection({ ids }: { ids: string[] }) {
 }
 
 /** Shown in the booking box when a host has switched availability off. */
-export function UnavailableNotice() {
+export function UnavailableNotice({ roomsFull = false }: { roomsFull?: boolean }) {
   const { t } = useTranslation();
   return (
     <Box tone="blush" flat data-testid="host-unavailable" className="!flex-row !items-start">
       <span className="ag-listing-ic40"><Icon name="hourglass" /></span>
       <div className="flex flex-col gap-1">
         <h3>{t('detail.unavailable_title')}</h3>
-        <p className="ag-small">{t('detail.unavailable_body')}</p>
+        {/* Every room let outside the app is not the host pausing: say which. */}
+        <p className="ag-small">{roomsFull ? t('detail.rooms_full_body') : t('detail.unavailable_body')}</p>
       </div>
     </Box>
   );

@@ -41,6 +41,14 @@ export const MAX_GOODS = 10;
 export const MAX_ROOM_OCC = 50;
 /** Most extra guests a room can take on an extra mattress (user decision 2026-11-21: +1 or +2). */
 export const MAX_EXTRA_BEDS = 2;
+/**
+ * Profile fields that belong to one property, not to the whole business (user decision 2026-11-21).
+ * A host can run several homestays: each listing keeps its own rooms, food, guest occupancy and
+ * amenities, and saving the profile writes them to one listing only (routes/providers.ts PATCH /me).
+ */
+export const PROPERTY_FIELDS: Record<string, readonly string[]> = {
+  homestay: ['rooms', 'meals', 'capacity', 'amenities'],
+};
 export const SOCIAL_KEYS = ['instagram', 'facebook', 'youtube', 'website'] as const;
 /**
  * The business theme colour (prototype palette.js, "For my business"): the palette keys the website
@@ -206,6 +214,12 @@ const BY_TYPE: Record<string, Record<string, (v: unknown) => unknown | ProfileEr
         const fee = int(e.extra_bed_price, 0, MAX_PRICE, 'Extra mattress price');
         if (typeof fee !== 'number') return fee;
         if (fee > 0) out = { ...out, extra_bed_price: fee };
+      }
+      // A room let outside the app is switched off by the host: travellers see it as full and cannot
+      // book it. Stored only when off; absent means taking bookings.
+      if (!blank('available')) {
+        if (typeof e.available !== 'boolean') return { error: 'A room is either taking bookings or full' };
+        if (!e.available) out = { ...out, available: false };
       }
       return out;
     }),

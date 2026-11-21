@@ -253,3 +253,74 @@ describe('GET /listings?type=driver&available_on', () => {
     expect(res.body.items.map((i: any) => i.id)).toContain(created.body.item.id);
   });
 });
+
+describe('a room the host marks full', () => {
+  it('keeps available:false on the profile, drops true, and refuses anything else', () => {
+    const ok = profilePatchFrom('homestay', { rooms: [
+      { name: 'Booked Offline', price: 2000, occ: 2, available: false },
+      { name: 'Open Room', price: 1800, occ: 2, available: true },
+    ] }) as any;
+    expect(ok.rooms[0]).toMatchObject({ name: 'Booked Offline', available: false });
+    expect(ok.rooms[1]).not.toHaveProperty('available');
+    expect(profilePatchFrom('homestay', { rooms: [{ name: 'X', price: 10, available: 'no' }] })).toHaveProperty('error');
+  });
+
+  it('refuses a full room, and a request with no room when every room is full', () => {
+    const rooms = [{ name: 'Valley Room', price: 2400, occ: 2, available: false }, { name: 'Attic', price: 1500, occ: 2 }];
+    const full = pickRoom(rooms, 'Valley Room', 2);
+    expect(full.ok).toBe(false);
+    expect((full as any).code).toBe('room_full');
+    expect(pickRoom(rooms, 'Attic', 2).ok).toBe(true);
+    expect(pickRoom(rooms, undefined, 2)).toEqual({ ok: true, room: null });
+    const allFull = pickRoom(rooms.map((r) => ({ ...r, available: false })), undefined, 2);
+    expect((allFull as any).code).toBe('rooms_full');
+  });
+
+  it('refuses the booking on POST /bookings', async () => {
+    const rooms = [{ name: 'Valley Room', price: 2400, unit: 'night', occ: 2, available: false }, { name: 'Attic', price: 1500, unit: 'night', occ: 2 }];
+    const listing = await createListing({ title: 'Half Full House', type: 'homestay', extras: { rooms } });
+    const { token } = await registerUser({ name: 'Late Guest' });
+    const res = await book(token, { listing_id: listing.id, check_in: inDays(5), check_out: inDays(6), guests: 2, room: 'Valley Room' });
+    expect(res.status).toBe(400);
+    expect(res.body.code).toBe('room_full');
+    const ok = await book(token, { listing_id: listing.id, check_in: inDays(5), check_out: inDays(6), guests: 2, room: 'Attic' });
+    expect(ok.status).toBe(200);
+  });
+});
+
+describe('rooms belong to each property (PATCH /providers/me)', () => {
+  it('saves rooms to the property asked for, the first one by default, and business fields to all', async () => {
+    const { token, providerId } = await onboardActiveProvider({ name: 'Two Homes Host' });
+    for (const title of ['Upper House', 'Lower House']) {
+      const r = await request(app).post('/api/listings').set('Authorization', `Bearer ${token}`)
+        .send({ title, type: 'homestay', description: 'x', location: 'Darjeeling', price: 1000 });
+      expect(r.status).toBe(200);
+    }
+    const listings = async () => (await db.select().from(schema.listings).where(eq(schema.listings.providerId, providerId)))
+      .sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)));
+    const own = await listings();
+    const first = own[0];
+    const last = own[own.length - 1];
+    expect(first.id).not.toBe(last.id);
+    const patch = (body: Record<string, unknown>) =>
+      request(app).patch('/api/providers/me').set('Authorization', `Bearer ${token}`).send(body);
+
+    const lowerRooms = [{ name: 'Garden Room', price: 3000, occ: 3 }];
+    const one = await patch({ listing_id: last.id, profile: { rooms: lowerRooms, languages: ['Nepali'] } });
+    expect(one.status).toBe(200);
+    let now = await listings();
+    expect(now.find((l) => l.id === last.id)!.extras.rooms).toEqual([{ name: 'Garden Room', price: 3000, unit: 'night', occ: 3 }]);
+    expect(now.find((l) => l.id === last.id)!.price).toBe(3000);
+    expect(now.find((l) => l.id === first.id)!.extras.rooms).toBeUndefined();
+    for (const l of now) expect(l.extras.languages).toEqual(['Nepali']);
+
+    const upperRooms = [{ name: 'Valley Room', price: 2400, occ: 2 }];
+    expect((await patch({ profile: { rooms: upperRooms } })).status).toBe(200);
+    now = await listings();
+    expect(now.find((l) => l.id === first.id)!.extras.rooms[0].name).toBe('Valley Room');
+    expect(now.find((l) => l.id === last.id)!.extras.rooms[0].name).toBe('Garden Room');
+    expect(now.find((l) => l.id === last.id)!.price).toBe(3000);
+
+    expect((await patch({ listing_id: 'not-mine', profile: { rooms: upperRooms } })).status).toBe(400);
+  });
+});

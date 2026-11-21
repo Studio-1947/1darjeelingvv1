@@ -5,7 +5,7 @@ import { assignSlug, pagePath, PAGE_TYPES } from '../lib/providerSlug';
 import { buildHostPage, hostBadges, hostIsPublic } from '../lib/hostPage';
 import { hostStats } from '../lib/hostStats';
 import { optionalUser } from '../middleware/auth';
-import { missingMandatory, profileKeysFor, profilePatchFrom, startingPriceFor, themeOf } from '../lib/hostProfile';
+import { missingMandatory, profileKeysFor, profilePatchFrom, PROPERTY_FIELDS, startingPriceFor, themeOf } from '../lib/hostProfile';
 import { isHostApprovalPending, isHostPlanLive } from '../lib/hostPlan';
 import { graceStateFor, publishFirstListing } from '../lib/hostGrace';
 import { hostPlanBreakup } from '../lib/pricing';
@@ -719,15 +719,37 @@ router.patch('/me', authenticateToken, async (req: Request, res: Response) => {
 
   // The host profile (lib/hostProfile.ts): photos, WhatsApp, availability, languages, rooms and
   // food, services, routes and the rest, checked per type and merged into extras.
+  // A host can run several properties. The fields of one property (PROPERTY_FIELDS: a homestay's
+  // rooms, food, occupancy, amenities) are saved to one listing only: `listing_id`, else the host's
+  // first listing, the one set up at sign-up, which the business profile mirrors. Everything else in
+  // the profile is the whole business's and goes to every listing (user decision 2026-11-21).
+  const own = await db.select().from(schema.listings).where(eq(schema.listings.providerId, provider.id));
+  own.sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)));
+  // The first listing of the business's own type (the profile page's first property is its oldest homestay).
+  const firstId = own.find((l) => l.type === provider.businessType)?.id ?? own[0]?.id ?? null;
+  let targetId = firstId;
+  if (body.listing_id !== undefined && body.listing_id !== null) {
+    if (typeof body.listing_id !== 'string' || !own.some((l) => l.id === body.listing_id)) {
+      return res.status(400).json({ detail: 'That property is not one of yours' });
+    }
+    targetId = body.listing_id;
+  }
+  const propKeys = PROPERTY_FIELDS[provider.businessType] ?? [];
+  const perProperty = propKeys.length > 0;
   let profilePatch: Record<string, unknown> | null = null;
+  let businessPatch: Record<string, unknown> = {};
+  let propertyPatch: Record<string, unknown> = {};
   if (body.profile !== undefined) {
     const checked = profilePatchFrom(provider.businessType, body.profile);
     if ('error' in checked) return res.status(400).json({ detail: checked.error });
     profilePatch = checked;
-    const extras = { ...(set.extras ?? provider.extras ?? {}), ...checked };
+    businessPatch = Object.fromEntries(Object.entries(checked).filter(([k]) => !propKeys.includes(k)));
+    propertyPatch = Object.fromEntries(Object.entries(checked).filter(([k]) => propKeys.includes(k)));
+    const onFirst = targetId === firstId;
+    const extras = { ...(set.extras ?? provider.extras ?? {}), ...businessPatch, ...(onFirst ? propertyPatch : {}) };
     set.extras = extras;
     const derived = startingPriceFor(provider.businessType, extras);
-    if (derived !== null && body.price_from === undefined) set.priceFrom = derived;
+    if (derived !== null && body.price_from === undefined && (onFirst || !perProperty)) set.priceFrom = derived;
   }
   if (body.cover_image !== undefined) {
     const cover = typeof body.cover_image === 'string' ? body.cover_image.trim() : '';
@@ -741,20 +763,26 @@ router.patch('/me', authenticateToken, async (req: Request, res: Response) => {
 
   const [updated] = await db.update(schema.providers).set(set).where(eq(schema.providers.id, provider.id)).returning();
   if (set.businessName || !updated.slug) updated.slug = await assignSlug(updated.id, updated.businessName);
-  // Travellers read the listing, not the provider row, so the profile is copied onto every listing
-  // this host runs: the profile fields, the cover photo, the derived price and the name.
+  // Travellers read the listing, not the provider row. The business fields, the cover photo and the
+  // name go onto every listing this host runs; one property's fields (and the price they make) go
+  // onto that property's listing only.
   if (profilePatch || set.images || set.businessName) {
-    const own = await db.select().from(schema.listings).where(eq(schema.listings.providerId, provider.id));
     for (const l of own) {
       const next: Partial<typeof schema.listings.$inferInsert> = {};
-      if (profilePatch) next.extras = { ...(l.extras || {}), ...profilePatch };
+      if (profilePatch) next.extras = { ...(l.extras || {}), ...businessPatch, ...(l.id === targetId ? propertyPatch : {}) };
       if (set.images) next.image = set.images[0];
       // No chosen cover: the listing shows the host's first photo, and follows it when photos change.
       else if (profilePatch && 'images' in profilePatch && !(provider.images || [])[0]) {
         next.image = coverAfterPhotosChange(l.image, l.extras, next.extras);
       }
       if (set.businessName && l.title === provider.businessName) next.title = set.businessName;
-      if (profilePatch && set.priceFrom !== undefined) next.price = set.priceFrom;
+      if (profilePatch && !perProperty) {
+        if (set.priceFrom !== undefined) next.price = set.priceFrom;
+      } else if (profilePatch && l.id === targetId) {
+        // This property's own "from" price: a typed one, else its cheapest room.
+        const price = body.price_from !== undefined ? set.priceFrom : startingPriceFor(provider.businessType, next.extras as Record<string, unknown>);
+        if (price !== null && price !== undefined) next.price = price;
+      }
       if (Object.keys(next).length) await db.update(schema.listings).set(next).where(eq(schema.listings.id, l.id));
     }
   }

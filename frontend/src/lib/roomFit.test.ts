@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { roomFit, roomNightly, roomsCapacity } from './roomFit';
+import { roomFit, roomNightly, roomsCapacity, roomOpen } from './roomFit';
 
 describe('room size and extra mattress', () => {
   it('takes what the room sleeps plus up to two extra mattresses', () => {
@@ -32,5 +32,14 @@ describe('room size and extra mattress', () => {
   it('takes no one beyond what the room sleeps when the host set no extra mattress', () => {
     expect(roomFit({ occ: 2 }).max).toBe(2);
     expect(roomFit({ occ: 2, extra_beds: 0, extra_bed_price: 400 })).toEqual({ occ: 2, extraBeds: 0, extraBedPrice: 0, max: 2 });
+  });
+});
+
+describe('roomOpen', () => {
+  it('is open unless the host switched the room off', () => {
+    expect(roomOpen({ name: 'A' })).toBe(true);
+    expect(roomOpen({ name: 'A', available: true })).toBe(true);
+    expect(roomOpen({ name: 'A', available: false })).toBe(false);
+    expect(roomOpen(null)).toBe(true);
   });
 });

@@ -25,6 +25,12 @@ export function roomsCapacity(rooms: any[] | undefined): number {
   return Math.min(100, named.reduce((n, r) => n + (roomFit(r).max || 0), 0));
 }
 
+/**
+ * Whether a room takes bookings. A host switches a room off when it is let outside the app; it then
+ * shows as full and cannot be booked (the server's roomOpen, lib/bookingDetails.ts).
+ */
+export const roomOpen = (r: any): boolean => r?.available !== false;
+
 /** What one night of this room costs a party of `guests`: the room's price, plus each extra guest's mattress. */
 export function roomNightly(r: any, guests: number): number {
   const price = Math.max(0, Math.floor(Number(r?.price)) || 0);

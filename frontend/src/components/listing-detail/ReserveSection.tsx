@@ -9,7 +9,7 @@ import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { needsSupport } from '@/lib/support';
 import { niceTime } from '@/lib/tripTime';
-import { roomFit } from '@/lib/roomFit';
+import { roomFit, roomOpen } from '@/lib/roomFit';
 import { rupees, usePrice } from '@/lib/prices';
 
 /** Listing types whose bookings are requests the host accepts first (server: HOST_APPROVAL_TYPES). */
@@ -103,6 +103,8 @@ export function BookingScreen({ item, unit, step, booking, onNext }: {
   const services: any[] = isGuide && Array.isArray(item.extras?.services) ? item.extras.services.filter((s: any) => String(s?.name || '').trim()) : [];
   const routes = isDriver ? routesOf(item) : [];
   const rooms = isStay ? roomsOf(item) : [];
+  // Rooms the host let outside the app are full: listed, but not bookable (the server refuses them too).
+  const openRooms = rooms.filter(roomOpen);
   const room = isStay ? chosenRoom(item, form.room) : null;
   const route = isDriver ? chosenRoute(item, form.route) : null;
   const perDay = isDriver && route?.unit === 'day';
@@ -127,10 +129,13 @@ export function BookingScreen({ item, unit, step, booking, onNext }: {
       const d = addDays(today, 1);
       Object.assign(patch, isStay ? { check_in: d, check_out: form.check_out && form.check_out > d ? form.check_out : addDays(d, 1) } : { check_in: d });
     }
-    // A stay opens on the first room (prototype), and a draft's room the host no longer lists is dropped.
-    if (isStay && rooms.length && !chosenRoom(item, form.room)) {
-      patch.room = rooms[0].name;
-      const fits = roomFit(rooms[0]).max || 0;
+    // A stay opens on the first open room (prototype), and a draft's room the host no longer lists is
+    // dropped. One the host has since marked full is swapped on the room step, where the picker shows
+    // it; on a later step it stays and Send says so (useBookingFlow validate), never a silent swap.
+    const kept = chosenRoom(item, form.room);
+    if (isStay && openRooms.length && (!kept || (!roomOpen(kept) && step === 1))) {
+      patch.room = openRooms[0].name;
+      const fits = roomFit(openRooms[0]).max || 0;
       if (fits > 0 && Number(form.guests) > fits) patch.guests = fits;
     }
     if (isDriver && !form.pickup_time) patch.pickup_time = '09:00';
@@ -232,17 +237,20 @@ export function BookingScreen({ item, unit, step, booking, onNext }: {
             </p>
           )}
           {rooms.length > 0 && (
-            <SelectField label={t('listing.sb_room', 'Room')} value={room?.name || ''} onChange={(e) => pickRoom(e.target.value)} data-testid="booking-room">
+            <SelectField label={t('listing.sb_room', 'Room')} value={room?.name || ''} onChange={(e) => pickRoom(e.target.value)} data-testid="booking-room"
+              error={errors.room}>
               {rooms.map((r, i) => (
-                <option key={i} value={r.name}>
+                <option key={i} value={r.name} disabled={!roomOpen(r)}>
                   {/* Short, as the prototype writes it, so it fits a phone: name · price · people. */}
                   {r.name}{Number(r.price) > 0 ? ` · ${rs(Number(r.price))}` : ''}
                   {Number(r.occ) > 0 ? ` · ${t('listing.ppl_many', '{{count}} people', { count: Number(r.occ) })}` : ''}
                   {roomFit(r).extraBeds > 0 ? ` (+${roomFit(r).extraBeds})` : ''}
+                  {roomOpen(r) ? '' : ` · ${t('listing.room_full', 'Full')}`}
                 </option>
               ))}
             </SelectField>
           )}
+          {/* A stay with every room full never opens here: the listing page shows UnavailableNotice instead. */}
           {people}
           {totalBox}
           {nextBtn}
@@ -407,8 +415,8 @@ export function BookingScreen({ item, unit, step, booking, onNext }: {
             {busy ? t('common.loading') : !hasPass ? t('listing.send_fee', 'Send · {{fee}}', { fee: feeText }) : t('listing.send', 'Send')}
           </Button>
           {msg && <p data-testid="booking-msg" role="alert" className="ag-err !text-[14px] !leading-5">{msg}</p>}
-          {(errors.route || errors.check_in || errors.check_out || errors.guests) && (
-            <p className="ag-err !text-[14px] !leading-5" role="alert">{errors.route || errors.check_in || errors.check_out || errors.guests}</p>
+          {(errors.route || errors.check_in || errors.check_out || errors.guests || errors.room) && (
+            <p className="ag-err !text-[14px] !leading-5" role="alert">{errors.route || errors.check_in || errors.check_out || errors.guests || errors.room}</p>
           )}
           {/* What sending costs and how to take it back, as the app writes a note (icon + small text). */}
           <Box tone="blush" flat className="!gap-2.5" data-testid="booking-fee-line">
