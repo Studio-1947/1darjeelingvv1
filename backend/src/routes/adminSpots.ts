@@ -8,6 +8,7 @@ import { authenticateToken, requireAdmin } from '../middleware/auth';
 import { addInAppNotification } from '../lib/inApp';
 import { storeBase64Image, ImageUploadError } from '../lib/imageUpload';
 import { routeParam } from '../lib/routeParam';
+import { googleMapsUrl, inServiceRegion, MapsLinkError, resolveMapsLink } from '../lib/mapsLink';
 import {
   SPOT_TYPE, parseSpotExtras, spotOrdering, SpotValidationError, isSpotPublished,
 } from '../lib/spots';
@@ -238,6 +239,29 @@ router.post('/admin/spots/upload', authenticateToken, requireAdmin, async (req: 
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
  */
+/**
+ * POST /api/admin/spots/resolve-pin  { maps_url }
+ *
+ * The pin behind a Google Maps link (a shared maps.app.goo.gl link, a full google.com/maps link,
+ * or a pasted "lat, lng"), for the spot form to fill its latitude and longitude. Nothing is saved:
+ * the admin still presses Save. A pin outside the Darjeeling area is returned with
+ * `in_region: false` so the form can warn; spots up in Sikkim are legitimate.
+ */
+router.post('/admin/spots/resolve-pin', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const pin = await resolveMapsLink(req.body?.maps_url);
+    res.json({
+      latitude: pin.latitude,
+      longitude: pin.longitude,
+      maps_url: googleMapsUrl(pin),
+      in_region: inServiceRegion(pin),
+    });
+  } catch (err) {
+    if (err instanceof MapsLinkError) return res.status(400).json({ detail: err.message });
+    throw err;
+  }
+});
+
 /**
  * Creates a spot from an admin payload (the POST /admin/spots body). Shared with the place
  * suggestions review (routes/placeSuggestions.ts), which turns an approved suggestion into an
