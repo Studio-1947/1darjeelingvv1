@@ -3,7 +3,7 @@ import { EMPTY_TRAVELLER_PROFILE } from '../lib/travellerProfile';
 import crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import { db, schema } from '../db';
-import { and, desc, eq, isNull } from 'drizzle-orm';
+import { and, desc, eq, isNull, lt, sql } from 'drizzle-orm';
 import { rateLimiter } from '../middleware/rateLimiter';
 import { authenticateToken, makeToken, verifyPassword, hashPassword, needsRehash } from '../middleware/auth';
 import { log, ADMIN_USERNAME, ADMIN_PASSWORD, MOCK_OTP, OTP_TTL_SECONDS, OTP_MAX_ATTEMPTS, REVIEW_PHONE, REVIEW_OTP } from '../config';
@@ -16,6 +16,7 @@ import { recordCampaignSignup } from '../lib/referralCampaigns';
 import { hashOtp, verifyOtpHash } from '../lib/otpHash';
 import { claimCoOwnerInvites } from '../lib/hostAccess';
 import { cleanName } from '../lib/accountFields';
+import { findUserByPhone } from '../lib/findUserByPhone';
 
 const router = Router();
 
@@ -175,7 +176,8 @@ router.post(
     const otpHash = await hashOtp(otp);
 
     // Check if the user already exists
-    const [user] = await db.select().from(schema.users).where(eq(schema.users.phone, phone)).limit(1);
+    // Any spelling of a number that already has an account counts as that account (BUG-06).
+    const user = await findUserByPhone(phone);
     const exists = !!user;
 
     // Only a resolved send permits reporting `sent: true`. The previous version returned success
@@ -269,7 +271,18 @@ router.post(
  *             schema: { $ref: '#/components/schemas/Error' }
  */
 // Verify OTP
-router.post('/otp/verify', rateLimiter(10, 60 * 1000, 'otp_verify'), async (req: Request, res: Response) => {
+router.post(
+  '/otp/verify',
+  rateLimiter(10, 60 * 1000, 'otp_verify'),
+  // Per number as well as per IP (BUG-01): an IP limit alone is beaten by spreading guesses
+  // over a few addresses. Keyed on the canonical number so spacing variants share one bucket.
+  rateLimiter(15, 10 * 60 * 1000, 'otp_verify_phone', {
+    keyExtractor: (req: Request) => {
+      const key = phoneKey(req.body?.phone);
+      return key ? `phone:${key}` : undefined;
+    },
+  }),
+  async (req: Request, res: Response) => {
   const { phone, otp, name, role = 'tourist', referral_code: referralCode } = req.body;
   if (!phone || !otp) {
     return res.status(400).json({ detail: 'Phone and OTP are required' });
@@ -312,15 +325,31 @@ router.post('/otp/verify', rateLimiter(10, 60 * 1000, 'otp_verify'), async (req:
       return res.status(400).json({ detail: 'OTP expired. Request a new one.' });
     }
 
+    // Reserve the attempt BEFORE comparing, in one statement. The old code read `attempts`,
+    // compared the hash, then wrote `attempts + 1`, so fifty guesses fired at once all read the
+    // same old count and all got compared (QA report BUG-01). The conditional UPDATE lets the
+    // database hand out at most OTP_MAX_ATTEMPTS reservations per code, however many arrive at once.
+    const [reserved] = await db.update(schema.otps)
+      .set({ attempts: sql`${schema.otps.attempts} + 1` })
+      .where(and(eq(schema.otps.id, otpRec.id), lt(schema.otps.attempts, OTP_MAX_ATTEMPTS)))
+      .returning({ attempts: schema.otps.attempts });
+    if (!reserved) {
+      return res.status(429).json({ detail: 'Too many incorrect attempts. Request a new OTP.' });
+    }
+
     if (!(await verifyOtpHash(otpRec.otpHash, otp))) {
-      await db.update(schema.otps)
-        .set({ attempts: otpRec.attempts + 1 })
-        .where(eq(schema.otps.id, otpRec.id));
       return res.status(400).json({ detail: 'Invalid OTP' });
     }
+
+    // A right code gives its reservation back: the sign-up flow sends the same code twice (once
+    // alone, once with the name), and that second, legitimate send must not count as a miss.
+    await db.update(schema.otps)
+      .set({ attempts: sql`GREATEST(${schema.otps.attempts} - 1, 0)` })
+      .where(eq(schema.otps.id, otpRec.id));
   }
 
-  let [user] = await db.select().from(schema.users).where(eq(schema.users.phone, phone)).limit(1);
+  // Same number typed another way signs in to the same account, not a new empty one (BUG-06).
+  let user = await findUserByPhone(phone);
   if (!user) {
     if (!name || typeof name !== 'string' || name.trim() === '') {
       // Reached only once the code has passed, and the code is not consumed yet: the web sign-in

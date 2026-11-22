@@ -1,11 +1,12 @@
-import { and, eq, inArray, lt } from 'drizzle-orm';
+import { and, eq, inArray, lt, sql } from 'drizzle-orm';
 import { db, schema } from '../db';
-import { REQUEST_EXPIRY_HOURS, log } from '../config';
+import { ACCEPTED_HOLD_HOURS, REQUEST_EXPIRY_HOURS, log } from '../config';
 import { HOST_APPROVAL_TYPES, realHostIds } from './bookingApproval';
 import { addHostNotification, addInAppNotification } from './inApp';
 import { releaseVoucherForBooking } from './vouchers';
 import { refundPaymentsFor } from './refunds';
 import { AWAITING_FEE } from './bookingSend';
+import { acceptedCutoff, isDateExclusive } from './bookingAvailability';
 
 /**
  * Closes booking requests the host never answered.
@@ -32,7 +33,7 @@ export async function expireStaleRequests(now: Date = new Date()): Promise<numbe
       lt(schema.bookings.createdAt, cutoff),
       inArray(schema.bookings.listingType, [...HOST_APPROVAL_TYPES]),
     ));
-  if (!stale.length) return dropUnsentDrafts(now);
+  if (!stale.length) return (await dropUnsentDrafts(now)) + (await lapseUnconfirmedAccepts(now));
 
   const hosts = await realHostIds(stale.map((b) => b.providerId));
   let closed = 0;
@@ -64,7 +65,63 @@ export async function expireStaleRequests(now: Date = new Date()): Promise<numbe
     });
   }
   closed += await dropUnsentDrafts(now);
+  closed += await lapseUnconfirmedAccepts(now);
   if (closed) log.info(`[requests] closed ${closed} request(s) not answered within ${REQUEST_EXPIRY_HOURS}h`);
+  return closed;
+}
+
+/**
+ * Homestay bookings the host accepted but the guest never confirmed (QA report BUG-02).
+ *
+ * The dates already stopped blocking at ACCEPTED_HOLD_HOURS (lib/bookingAvailability.ts
+ * acceptedCutoff); this closes the booking itself, so My Trips and the host dashboard stop
+ * showing it as open and the guest's voucher comes back. The ₹1 that sent the request is
+ * refunded: the guest never confirmed, so they never had the host's number. Both sides are told.
+ */
+async function lapseUnconfirmedAccepts(now: Date): Promise<number> {
+  const cutoff = acceptedCutoff(now);
+  const lapsed = await db.select({
+    id: schema.bookings.id,
+    userId: schema.bookings.userId,
+    listingTitle: schema.bookings.listingTitle,
+    listingType: schema.bookings.listingType,
+    providerId: schema.listings.providerId,
+  })
+    .from(schema.bookings)
+    .innerJoin(schema.listings, eq(schema.listings.id, schema.bookings.listingId))
+    .where(and(
+      eq(schema.bookings.status, 'accepted'),
+      lt(sql`coalesce(${schema.bookings.acceptedAt}, ${schema.bookings.createdAt})`, cutoff),
+    ));
+  let closed = 0;
+  for (const b of lapsed) {
+    // Only date-exclusive listings hold anything; a driver's accept blocks no one's day.
+    if (!isDateExclusive(b.listingType)) continue;
+    // Guarded on the status, so a guest confirming at this very moment wins.
+    const [row] = await db.update(schema.bookings)
+      .set({ status: 'cancelled', cancelledAt: now.toISOString(), cancelReason: 'not_confirmed' })
+      .where(and(eq(schema.bookings.id, b.id), eq(schema.bookings.status, 'accepted')))
+      .returning({ id: schema.bookings.id });
+    if (!row) continue;
+    closed++;
+    await releaseVoucherForBooking(db, b.id);
+    await refundPaymentsFor('booking_commission', b.id, 'accepted but not confirmed in time');
+    await addInAppNotification(b.userId, {
+      kind: 'booking_expired',
+      title: 'Your booking was not confirmed',
+      body: `The host of ${b.listingTitle} accepted your request, but it was not confirmed within ${ACCEPTED_HOLD_HOURS} hours, so it was closed and the dates were freed. Any fee you paid to send it comes back. You can ask again if the dates are still free.`,
+      msg: { key: 'accepted_lapsed_guest', params: { place: b.listingTitle, hours: ACCEPTED_HOLD_HOURS } },
+      refId: b.id,
+    });
+    await addHostNotification(b.providerId, {
+      kind: 'booking_expired',
+      title: 'An accepted booking lapsed',
+      body: `A guest you accepted for ${b.listingTitle} did not confirm within ${ACCEPTED_HOLD_HOURS} hours, so the booking closed and those dates are free again.`,
+      msg: { key: 'accepted_lapsed_host', params: { place: b.listingTitle, hours: ACCEPTED_HOLD_HOURS } },
+      refId: b.id,
+    });
+  }
+  if (closed) log.info(`[requests] closed ${closed} accepted booking(s) not confirmed within ${ACCEPTED_HOLD_HOURS}h`);
   return closed;
 }
 

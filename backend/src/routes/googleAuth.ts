@@ -8,6 +8,14 @@ import { rateLimiter } from '../middleware/rateLimiter';
 import { makeToken } from '../middleware/auth';
 import { toPublicUser } from '../lib/publicUser';
 import { log } from '../config';
+
+/** "a***@gmail.com": enough to tell accounts apart in a log, not enough to identify someone. */
+function maskEmail(email?: string | null): string {
+  if (!email) return 'no email';
+  const at = email.indexOf('@');
+  if (at < 1) return '***';
+  return `${email[0]}***${email.slice(at)}`;
+}
 import {
   GOOGLE_WEB_CLIENT_ID,
   GOOGLE_ANDROID_CLIENT_ID,
@@ -140,7 +148,8 @@ router.post(
       };
 
       await db.insert(schema.users).values(user);
-      log.info(`[auth/google] Created new user ${user.id} via Google (${payload.email ?? 'no email'})`);
+      // Masked like every other log line that names a person (BUG-17).
+      log.info(`[auth/google] Created new user ${user.id} via Google (${maskEmail(payload.email)})`);
     } else {
       // Returning user  update avatar from Google if it changed.
       if (payload.picture && payload.picture !== user.avatar) {

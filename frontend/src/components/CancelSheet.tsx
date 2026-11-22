@@ -21,6 +21,7 @@ const REASON_EN: Record<string, string> = {
   not_available: 'Car or home not available',
   family_health: 'Family or health reason',
   no_show: 'The guest did not come',
+  not_confirmed: 'Not confirmed in time',
 };
 
 export const reasonLabel = (t: TFunction, code?: string | null) =>

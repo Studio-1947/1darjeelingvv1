@@ -6,9 +6,9 @@ import { v4 as uuidv4 } from 'uuid';
 import { db, schema } from '../db';
 // lt/gt/and moved out with the inline overlap query  the date comparison now lives in
 // lib/bookingAvailability.ts, shared with the settlement path so the two cannot drift.
-import { eq, desc, inArray, and, ne, lt, gt, gte, isNull, sql } from 'drizzle-orm';
+import { eq, desc, inArray, and, ne, lt, gt, gte, isNull, or, sql } from 'drizzle-orm';
 import { authenticateToken } from '../middleware/auth';
-import { findBlockingBooking, holdCutoff, isDateExclusive, lockBookingForChange, lockListingForBooking } from '../lib/bookingAvailability';
+import { acceptedCutoff, findBlockingBooking, holdCutoff, isDateExclusive, lockBookingForChange, lockListingForBooking } from '../lib/bookingAvailability';
 import { checkBookingRequest, hasStartDatePassed, MAX_OPEN_REQUESTS, PAST_DATE_DETAIL } from '../lib/bookingRules';
 import { refundPaymentsFor } from '../lib/refunds';
 import { notifyBookingAccepted, notifyBookingCancelled } from '../lib/notifications';
@@ -251,7 +251,14 @@ router.post('/', authenticateToken, requireTravellerMode, async (req: Request, r
     routeName,
     services: chosenServices,
     roomName: room?.name ?? null,
-    roomPrice: room ? room.nightly : null,
+    // The night's price is fixed when the request is made (QA report BUG-07). With a room it is the
+    // room's price; without one it is the listing's per-person rate x guests, which gives the same
+    // total under bookingGrossAmount but no longer moves when the host edits the listing later.
+    roomPrice: room
+      ? room.nightly
+      : listing.type === 'homestay' && Number(listing.price) > 0
+        ? Math.round(Number(listing.price) * Math.max(1, Number(guests) || 1))
+        : null,
     pickupPlace: trip?.pickupPlace ?? null,
     dropPlace: trip?.dropPlace ?? null,
     pickupTime: trip?.pickupTime ?? null,
@@ -280,10 +287,20 @@ router.post('/', authenticateToken, requireTravellerMode, async (req: Request, r
       // instant (to different listings) count one after the other. Always taken before the listing
       // lock, and only here, so the two locks are never waited on in opposite orders.
       await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`booking-requests:${req.user.id}`}))`);
+      // Accepted bookings the guest has not confirmed yet count too: each holds a host's dates,
+      // so leaving them out let one person lock many homestays' calendars at once (BUG-02).
       const waiting = await tx.select({ id: schema.bookings.id }).from(schema.bookings).where(and(
         eq(schema.bookings.userId, req.user.id),
-        eq(schema.bookings.status, 'pending_payment'),
-        gte(schema.bookings.createdAt, new Date(Date.now() - REQUEST_EXPIRY_HOURS * 60 * 60 * 1000).toISOString()),
+        or(
+          and(
+            eq(schema.bookings.status, 'pending_payment'),
+            gte(schema.bookings.createdAt, new Date(Date.now() - REQUEST_EXPIRY_HOURS * 60 * 60 * 1000).toISOString()),
+          ),
+          and(
+            eq(schema.bookings.status, 'accepted'),
+            gte(sql`coalesce(${schema.bookings.acceptedAt}, ${schema.bookings.createdAt})`, acceptedCutoff()),
+          ),
+        ),
       ));
       if (waiting.length >= MAX_OPEN_REQUESTS) throw TOO_MANY;
       await lockListingForBooking(tx, listing_id);
@@ -300,7 +317,8 @@ router.post('/', authenticateToken, requireTravellerMode, async (req: Request, r
       for (const u of unsent) await releaseVoucherForBooking(tx, u.id);
       if (isDateExclusive(listing.type) && check_in && check_out) {
         // Blocks on confirmed and accepted bookings AND on requests still inside their hold window.
-        clash = await findBlockingBooking(tx, listing_id, check_in, check_out);
+        // Per room when one was picked: another guest in another room is not a clash (BUG-04).
+        clash = await findBlockingBooking(tx, listing_id, check_in, check_out, undefined, booking.roomName);
       } else {
         // Nothing reserves a driver's or guide's day, but the same person asking twice for the
         // same day within the hold window is a double tap, not a second trip.
@@ -330,7 +348,7 @@ router.post('/', authenticateToken, requireTravellerMode, async (req: Request, r
   } catch (err) {
     if (err === TOO_MANY) {
       return res.status(409).json({
-        detail: `You have ${MAX_OPEN_REQUESTS} requests waiting for hosts. Wait for an answer, or cancel one in My Trips, then ask again.`,
+        detail: `You have ${MAX_OPEN_REQUESTS} open requests. Confirm or cancel one in My Trips, or wait for a host to answer, then ask again.`,
         code: 'too_many_requests',
       });
     }
@@ -809,7 +827,7 @@ router.patch('/:id/confirm', authenticateToken, async (req: Request, res: Respon
     if (now.status === 'accepted' || now.status === 'confirmed') return { already: now };
     if (isDateExclusive(booking.listingType) && booking.checkIn && booking.checkOut) {
       const clash = await findBlockingBooking(
-        tx, booking.listingId, booking.checkIn, booking.checkOut, booking.id
+        tx, booking.listingId, booking.checkIn, booking.checkOut, booking.id, now.roomName
       );
       if (clash && (clash.status === 'confirmed' || clash.status === 'accepted')) {
         return { taken: true as const };
@@ -833,6 +851,12 @@ router.patch('/:id/confirm', authenticateToken, async (req: Request, res: Respon
           ne(schema.bookings.id, booking.id),
           lt(schema.bookings.checkIn, booking.checkOut),
           gt(schema.bookings.checkOut, booking.checkIn),
+          // Accepting Room 1 closes only the requests it makes impossible: the same room, or the
+          // whole house. Requests for the other rooms stay open (BUG-04). Accepting the whole
+          // house (no room) closes every overlapping request, as before.
+          ...(now.roomName
+            ? [or(isNull(schema.bookings.roomName), eq(schema.bookings.roomName, now.roomName))]
+            : []),
         ))
         .returning();
     }

@@ -227,6 +227,10 @@ export const BOOKING_HOLD_MINUTES = requirePositiveInt('BOOKING_HOLD_MINUTES', p
 // guest is never left waiting on a host who will not answer. See lib/requestExpiry.ts.
 export const REQUEST_EXPIRY_HOURS = requirePositiveInt('REQUEST_EXPIRY_HOURS', process.env.REQUEST_EXPIRY_HOURS, 48);
 
+// How long a host's Accept holds the dates while the guest has not pressed Confirm. After this the
+// booking lapses and the nights go back on the market (QA report BUG-02). See lib/requestExpiry.ts.
+export const ACCEPTED_HOLD_HOURS = requirePositiveInt('ACCEPTED_HOLD_HOURS', process.env.ACCEPTED_HOLD_HOURS, 48);
+
 export const JWT_SECRET = requireRealValueInProd('JWT_SECRET', process.env.JWT_SECRET, 'dev_only_insecure_jwt_secret');
 // Defaulting to true is right in dev and wrong in production, for the same reason APP_ENV refuses
 // to default above: an absent variable is an operator mistake, not a request for simulated

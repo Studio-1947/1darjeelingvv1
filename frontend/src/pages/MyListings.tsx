@@ -12,6 +12,8 @@ import EditListingModal from '@/components/provider/dashboard/EditListingModal';
 import HostPlanCard from '@/components/provider/dashboard/HostPlanCard';
 import { useSeo } from '@/components/Seo';
 import { Box, Button, ButtonLink, PageHead, Status } from '@/components/ag';
+import { toast } from 'sonner';
+import { apiError } from '@/lib/plans';
 
 export default function MyListings() {
   const { t } = useTranslation();
@@ -72,7 +74,14 @@ export default function MyListings() {
 
   const handleDeleteListing = async (listingId: string) => {
     if (!window.confirm(t('pd.delete_confirm') || 'Delete this listing? This cannot be undone.')) return;
-    await api.delete(`/listings/${listingId}`);
+    try {
+      await api.delete(`/listings/${listingId}`);
+    } catch (e: any) {
+      // Refused while guests have open or upcoming bookings on it (409 open_bookings); the
+      // server says what to close first.
+      toast.error(apiError(e, t('pd.delete_failed', 'Could not delete this listing.')));
+      return;
+    }
     await loadData();
   };
 

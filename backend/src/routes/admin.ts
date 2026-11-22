@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { travellerDashboard } from '../lib/travellerDashboard';
 import { missingMandatory } from '../lib/hostProfile';
 import { v4 as uuidv4 } from 'uuid';
+import crypto from 'crypto';
 import { db } from '../db';
 import * as schema from '../schema';
 import { eq, and, count, inArray, desc, isNull, isNotNull, gt, or, ne } from 'drizzle-orm';
@@ -14,7 +15,7 @@ import { approvalRequired, realHostIds } from '../lib/bookingApproval';
 import { requirementsFor } from '../lib/kycRequirements';
 import { kycTypesFor } from '../lib/kycTypes';
 import { notifyHostVerification } from '../lib/notifications';
-import { deleteListingsOwnedBy, deleteKycFilesOwnedBy } from '../lib/accountCleanup';
+import { deleteListingsOwnedBy, deleteKycFilesOwnedBy, deleteAccount, DELETED_ACCOUNT_ID } from '../lib/accountCleanup';
 import { listUnreturnedPayments, refundPayment } from '../lib/refunds';
 import { routeParam } from '../lib/routeParam';
 import { hostPlanVisibility } from '../lib/hostPlan';
@@ -192,6 +193,14 @@ router.get('/admin/stats', authenticateToken, requireAdmin, async (req: Request,
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
  */
+/** Constant-time comparison of two secrets of any length (hashed first, so lengths match). */
+function secretMatches(given: unknown, expected: string): boolean {
+  if (typeof given !== 'string') return false;
+  const a = crypto.createHash('sha256').update(given, 'utf8').digest();
+  const b = crypto.createHash('sha256').update(expected, 'utf8').digest();
+  return crypto.timingSafeEqual(a, b);
+}
+
 // Admin Bootstrap
 router.post('/admin/bootstrap', rateLimiter(3, 60 * 60 * 1000, 'admin_bootstrap'), authenticateToken, async (req: Request, res: Response) => {
   const { secret, password } = req.body;
@@ -203,7 +212,8 @@ router.post('/admin/bootstrap', rateLimiter(3, 60 * 60 * 1000, 'admin_bootstrap'
   }
 
   const expectedSecret = ADMIN_BOOTSTRAP_SECRET;
-  if (!expectedSecret || secret !== expectedSecret) {
+  // Constant-time compare (BUG-16): `!==` leaks how much of the secret a guess got right.
+  if (!expectedSecret || !secretMatches(secret, expectedSecret)) {
     return res.status(403).json({ detail: 'Invalid bootstrap secret' });
   }
 
@@ -362,14 +372,21 @@ router.delete('/admin/users/:id', authenticateToken, requireAdmin, async (req: R
   if (targetUser && targetUser.role === 'admin') {
     return res.status(403).json({ detail: 'Cannot delete admin user' });
   }
-  // Providers, bookings and payments cascade off the user row, but listings do not: their
-  // provider_id is untyped text with no foreign key, so without this a deleted provider's
-  // listings stayed live and bookable with no owner behind them.
-  await deleteListingsOwnedBy(id);
-  // Same reason as the self-service path in routes/users.ts: kyc_documents cascades off the
-  // provider rows, but the files it points at are in object storage, which nothing cascades to.
-  await deleteKycFilesOwnedBy(id);
-  await db.delete(schema.users).where(eq(schema.users.id, id));
+  if (!targetUser) return res.status(404).json({ detail: 'User not found' });
+  if (id === DELETED_ACCOUNT_ID) {
+    return res.status(403).json({ detail: 'This account holds the payment records of deleted accounts' });
+  }
+  // Same safe path as the self-service delete (QA report BUG-03): listings and KYC files go,
+  // payment records are kept, one transaction. Refused while bookings are open unless ?force=1.
+  const force = req.query.force === '1' || req.query.force === 'true';
+  const outcome = await deleteAccount(id, { force });
+  if ('blocked' in outcome) {
+    return res.status(409).json({
+      detail: `This account has open or upcoming bookings (${outcome.blocked.asGuest} as a guest, ${outcome.blocked.onListings} on its listings). Close them first, or delete with ?force=1.`,
+      code: 'open_bookings',
+      ...outcome.blocked,
+    });
+  }
   res.json({ ok: true });
 });
 
