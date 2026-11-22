@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { InstagramLogo, FacebookLogo, YoutubeLogo, Globe, PlayCircle } from '@phosphor-icons/react';
+import { PlayCircle } from '@phosphor-icons/react';
 import { Icon, type IconName } from '@/components/ag/Icon';
 import api from '@/lib/api';
 import { Box, ButtonA, SecHead, Status } from '@/components/ag';
@@ -12,13 +12,6 @@ import { roomFit, roomOpen } from '@/lib/roomFit';
  * guide's own sections, rooms and food for a homestay, the drivers a homestay recommends, and the
  * facts every host can add about themselves. Each renders nothing when the host left it empty.
  */
-
-const SOCIAL = [
-  { key: 'instagram', Icon: InstagramLogo, href: (v: string) => (/^https?:/i.test(v) ? v : `https://instagram.com/${v.replace(/^@/, '')}`) },
-  { key: 'facebook', Icon: FacebookLogo, href: (v: string) => (/^https?:/i.test(v) ? v : `https://facebook.com/${v}`) },
-  { key: 'youtube', Icon: YoutubeLogo, href: (v: string) => (/^https?:/i.test(v) ? v : `https://youtube.com/${v}`) },
-  { key: 'website', Icon: Globe, href: (v: string) => (/^https?:/i.test(v) ? v : `https://${v}`) },
-] as const;
 
 /** An uploaded intro video (played here) rather than an older YouTube or Instagram link. */
 const isVideoFile = (url: string) => /\.(mp4|mov|webm)(\?|$)/i.test(url) || /\/videos\//.test(url);
@@ -32,15 +25,16 @@ function Line({ icon, children, testid }: { icon: IconName; children: React.Reac
   );
 }
 
-/** Languages (prototype "Speaks" chips), years of experience, an intro video and social links. */
+/**
+ * Languages (prototype "Speaks" chips), years of experience and an intro video. Social media links
+ * are no longer asked for or shown, so links saved before that are not shown either.
+ */
 export function HostFacts({ extras, noLanguages }: { extras: any; noLanguages?: boolean }) {
   const { t } = useTranslation();
   const languages: string[] = !noLanguages && Array.isArray(extras?.languages) ? extras.languages : [];
   const years = Number(extras?.experience_years);
-  const social = extras?.social && typeof extras.social === 'object' ? extras.social : {};
-  const links = SOCIAL.filter((s) => typeof social[s.key] === 'string' && social[s.key]);
   const video = typeof extras?.intro_video === 'string' && extras.intro_video ? extras.intro_video : '';
-  if (!languages.length && !(years > 0) && !links.length && !video) return null;
+  if (!languages.length && !(years > 0) && !video) return null;
   return (
     <div className="flex flex-col gap-3" data-testid="host-facts">
       {languages.length > 0 && (
@@ -53,15 +47,9 @@ export function HostFacts({ extras, noLanguages }: { extras: any; noLanguages?: 
       {video && isVideoFile(video) && (
         <video src={video} controls playsInline preload="metadata" className="w-full rounded-[16px] bg-[var(--ink-strong)] aspect-video" data-testid="host-intro-video" />
       )}
-      {((video && !isVideoFile(video)) || links.length > 0) && (
+      {video && !isVideoFile(video) && (
         <div className="ag-row">
-          {video && !isVideoFile(video) && (
-            <ButtonA size="sm" href={video} target="_blank" rel="noreferrer" icon={<PlayCircle />}>{t('profile.watch_intro')}</ButtonA>
-          )}
-          {links.map(({ key, Icon, href }) => (
-            <a key={key} href={href(social[key])} target="_blank" rel="noreferrer" aria-label={t(`profile.social_${key}`)} title={t(`profile.social_${key}`)}
-              className="ag-iconbtn"><Icon /></a>
-          ))}
+          <ButtonA size="sm" href={video} target="_blank" rel="noreferrer" icon={<PlayCircle />}>{t('profile.watch_intro')}</ButtonA>
         </div>
       )}
     </div>
@@ -180,7 +168,7 @@ export function PriceListSection({ kind, rows, homeDelivery, capacity = 0, shopK
 
 /**
  * "Meet the owner" for a cafe or a shop: only what the owner filled in on their business profile
- * (no stand-in story), with their languages, experience, intro video and social links.
+ * (no stand-in story), with their languages, experience and intro video.
  */
 export function OwnerSection({ item, verified }: { item: any; verified: boolean }) {
   const { t } = useTranslation();

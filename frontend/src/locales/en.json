@@ -109,7 +109,7 @@
     "body": "Pay exactly what you see: GST is included, nothing is added on top. The pass is optional: asking and confirming a booking are free without it.",
     "cta": "Take the pass · {{total}}",
     "reassurance": "Valid for one year. Nothing auto-charges.",
-    "skip": "Not now, I will pay ₹1.20 per booking",
+    "skip": "Not now, I will pay the ₹1.20 convenience fee per request",
     "modal_title": "aangan pass",
     "modal_duration": "· valid for 1 year",
     "privacy_link": "privacy policy",
@@ -117,16 +117,16 @@
     "skip2": "Not now"
   },
   "donate": {
-    "title": "Donate for good",
+    "title": "Support aangan",
     "lead": "Give what you like  every rupee goes into keeping 1 Darjeeling running and its listings free for small local businesses.",
     "choose": "Choose an amount",
     "custom": "Or enter your own",
-    "cta": "Donate ₹{{amount}}",
+    "cta": "Support with ₹{{amount}}",
     "note": "A one-off gift. It buys nothing and unlocks nothing  it just helps.",
     "thanks": "Thank you  ₹{{amount}} received.",
     "invalid": "Enter an amount between ₹10 and ₹1,00,000.",
     "error": "Payment could not be completed. Please try again.",
-    "modal_title": "Donation",
+    "modal_title": "Support aangan",
     "back": "Back"
   },
   "hero": {
@@ -197,7 +197,8 @@
     "previous": "Previous",
     "next": "Next",
     "remove": "Remove",
-    "retry": "Try again"
+    "retry": "Try again",
+    "per_room_night": "/ room / night"
   },
   "cta": {
     "book_now": "Reserve",
@@ -373,7 +374,7 @@
     "profileCompletion": "Profile completion",
     "completeYourListing": "Complete your listing",
     "verification": "Verification (KYC)",
-    "verificationHelp": "Our team checks these to give you the Verified badge. JPEG, PNG or PDF, up to 5 MB.",
+    "verificationHelp": "Our team checks these to give you the Documents verified badge. JPEG, PNG or PDF, up to 5 MB.",
     "verified": "Verified",
     "inReview": "In review",
     "rejected": "Rejected",
@@ -398,7 +399,7 @@
     "underReviewTitle": "Verification in progress",
     "underReviewMessage": "Your documents are under review - no action is needed right now.",
     "viewStatusCta": "View status",
-    "verifiedTooltip": "KYC verified by 1 Darjeeling",
+    "verifiedTooltip": "Documents checked by the aangan team",
     "fileTooLarge": "File is too large. Please upload a file under 5 MB.",
     "videoTooLarge": "The video is too large. Please upload one under 25 MB.",
     "videoHint": "A short video from your phone (MP4 or MOV, up to 25 MB).",
@@ -414,7 +415,8 @@
     "reloadFailed": "Document uploaded, but refreshing your profile failed. Reload the page to see the update.",
     "tryAgain": "Try again",
     "notActiveYet": "KYC verification becomes available once your business registration is complete and active. Finish onboarding to unlock this section.",
-    "verifyProgress": "Getting the Verified tick"
+    "verifyProgress": "Getting the Documents verified badge",
+    "docs_verified": "Documents verified"
   },
   "locationPicker": {
     "search_placeholder": "Search address or landmark…",
@@ -437,7 +439,7 @@
     "checkout": "Check-out",
     "guests": "Guests",
     "notes": "Notes (optional)",
-    "fee_note": "Free with the aangan pass (₹1 for the first year, then ₹12 a year, GST included), or a ₹1.20 fee for this booking (₹1 + 18% GST + 2% platform fee).",
+    "fee_note": "Free with the aangan pass (₹1 for the first year, then ₹12 a year, GST included), or a ₹1.20 app convenience fee for this request (₹1 + 18% GST + 2% platform fee).",
     "pay_confirm": "Confirm booking",
     "success": "Booking confirmed!",
     "status": {
@@ -464,14 +466,14 @@
     "payable_now": "Payable now",
     "fees_and_refunds": "Fees & refund policy",
     "guests_required": "At least one guest",
-    "fee_note_pass": "Your aangan pass covers this booking. No fee, and your request goes with a verified badge.",
+    "fee_note_pass": "Your aangan pass covers this booking. No fee, and your request goes with a Member badge.",
     "route_required": "Pick where to start and where to go.",
-    "vsend": "Your request goes with a verified badge",
+    "vsend": "Your request goes with a Member badge",
     "vnudge": "Get verified for ₹1 a year and get more confirmations",
     "extra_mattress_line_one": "Extra mattress, {{count}} guest",
     "extra_mattress_line_other": "Extra mattress, {{count}} guests",
     "extra_free": "Free",
-    "send_pass": "Your aangan pass covers this. Sending is free, and your request goes with a verified badge.",
+    "send_pass": "Your aangan pass covers this. Sending is free, and your request goes with a Member badge.",
     "send_fee": "Sending this request costs {{fee}}. If the host says no or does not answer, you get it back.",
     "send_fee_pass": "Free with the aangan pass"
   },
@@ -585,123 +587,145 @@
   },
   "privacy": {
     "title": "Privacy Policy",
-    "updated": "Last updated: November 2026",
+    "updated": "Last updated: 22 November 2026",
     "email_label": "Email:",
     "phone_label": "Phone:",
     "address_label": "Address:",
     "intro": [
-      "WBIN 1947 Studio LLP, under the name 1Darjeeling (\"we,\" \"us,\" \"our,\" or \"the Platform\"), operates www.aanganerp.in (the \"Site\"), a local marketplace and travel guide connecting visitors with local businesses, guides, and services in Darjeeling. This Privacy Policy explains how we collect, use, disclose, and protect your information when you use our Site.",
-      "By using 1Darjeeling, you agree to the collection and use of information in accordance with this policy."
+      "WBIN 1947 Studio LLP (\"we\", \"us\", \"our\") runs aangan at www.aanganerp.in and in the aangan app (together, the \"Platform\"). aangan connects travellers with homestays, drivers, guides, cafés and shops in and around Darjeeling. This Privacy Policy explains what personal data we collect, why, who we share it with, how long we keep it, and how you can use your rights under the Digital Personal Data Protection Act, 2023.",
+      "We ask for your consent when you sign in: you tick \"I Agree\" to this policy and the Terms & Conditions before we send you a sign-in code. We record the date you agreed. You can withdraw consent at any time by deleting your account (Section 9)."
     ],
     "sections": [
       {
-        "h": "1. Information We Collect",
+        "h": "1. Data We Collect",
         "sub": [
           {
-            "h": "1.1 Information You Provide to Us",
+            "h": "1.1 Your account",
             "items": [
-              "Account information: name, email address, phone number, password, and profile details when you register.",
-              "Role/onboarding information: details submitted during our onboarding questionnaire (e.g., whether you're a traveler, local business, guide, or other role), which may be used to assign badges or tiers on your profile.",
-              "Contact form submissions: any information you submit through contact or inquiry forms, including your message content.",
-              "Listing/business information: if you register as a local business or service provider, details such as business name, location, description, photos, pricing, and contact details.",
-              "Payment information: if applicable, payment details are processed by our third-party payment processor; we do not store full card details on our servers.",
-              "Communications: records of correspondence if you contact us directly."
+              "Your phone number, which is how you sign in. We send a one-time code by WhatsApp (or SMS). There are no passwords, and the website has no Google sign-in.",
+              "Your name, and anything you choose to add to your profile: a photo, WhatsApp number, email, language, gender, birth year, address and pincode, and travel preferences.",
+              "A referral or invite code, if you use one, and the date you ticked \"I Agree\"."
             ]
           },
           {
-            "h": "1.2 Information Collected Automatically",
+            "h": "1.2 Bookings and requests",
             "items": [
-              "Usage data: pages visited, time spent, click patterns, referring URLs.",
-              "Device and log data: IP address, browser type, device type, operating system, timestamps.",
-              "Cookies and similar technologies: used to remember preferences, maintain sessions, and analyze site usage (see Section 6).",
-              "Approximate location: derived from IP address or, if you grant permission, precise device location, to show relevant local listings."
+              "The listing, dates, number of guests, room, route or pickup details, notes you write to the host, and the status of the request (sent, accepted, confirmed, cancelled, completed).",
+              "Delivery requests to cafés and shops, where offered: the items, delivery address and phone number.",
+              "Reviews, photos, posts, comments, trip plans, place suggestions and reports you send."
             ]
           },
           {
-            "h": "1.3 Information from Third Parties",
-            "p": "If you sign in via a third-party service (e.g., Google), we may receive basic profile information as permitted by that service."
+            "h": "1.3 Payments",
+            "p": "Fees and passes are paid through Razorpay. We receive the amount, order and payment reference, and refund details. Card, UPI and bank details are entered with Razorpay and never reach us."
+          },
+          {
+            "h": "1.4 Hosts, drivers, guides, cafés and shops",
+            "items": [
+              "Business details: name, type, description, photos and video, location and map pin, prices, rooms, routes, menu and opening hours.",
+              "Contact details: phone, WhatsApp and email, and the names and numbers of any co-owners you add.",
+              "Profile details you choose to give, such as a profile photo, languages, years of experience, vehicle number, licence number, and for guides age and gender.",
+              "Verification documents (see Section 3), and a live location capture or Google Maps link used to check where your business is.",
+              "A UPI ID, if you add one for guests to pay you directly."
+            ]
+          },
+          {
+            "h": "1.5 Collected automatically",
+            "items": [
+              "Device location, only when you allow it, to show places near you or the weather, or to check a business location. We store a business's verified pin, not travellers' locations.",
+              "A push-notification token for your phone, if you allow notifications in the app.",
+              "Usage data through Google Analytics on www.aanganerp.in (pages viewed, approximate location from your IP address, device and browser type), and technical error reports.",
+              "Our servers keep standard access logs (IP address, browser, time and page requested) to keep the service secure."
+            ]
           }
         ]
       },
       {
-        "h": "2. How We Use Your Information",
-        "p": "We use the information we collect to:",
+        "h": "2. Why We Use It",
         "items": [
-          "Create and manage your account and onboarding profile/badge tier",
-          "Connect travelers with local businesses, guides, and services",
-          "Operate, maintain, and improve the Site and its features",
-          "Respond to inquiries submitted through contact forms",
-          "Send administrative messages, updates, and (with consent, where required) marketing communications",
-          "Detect, prevent, and address technical issues, fraud, or abuse",
-          "Comply with legal obligations"
+          "To sign you in and keep your account secure.",
+          "To send your booking request to the host and keep both of you informed about it.",
+          "To verify hosts, drivers, guides and businesses before they show a badge.",
+          "To take fees and passes, and to issue refunds.",
+          "To answer support requests, investigate reports and keep the Platform safe from fraud and abuse.",
+          "To understand how the Platform is used and fix problems.",
+          "To meet our legal obligations, including tax and consumer-protection rules."
+        ],
+        "note": "We do not sell your personal data, and we do not use it for advertising."
+      },
+      {
+        "h": "3. Verification Documents",
+        "p": "Hosts, drivers, guides, cafés and shops upload documents through the app or website only. We never ask for documents over WhatsApp or by email, and our staff do not collect them on their phones.",
+        "items": [
+          "What we ask for: a photo ID (a voter ID, driving licence or passport; please do not upload an Aadhaar card), a photo of your place, homestay registration papers for homestays, and for drivers the driving licence and a selfie with the vehicle.",
+          "Documents are kept in private storage that is not reachable from the internet. Only our verification team and the owners of that business can open them.",
+          "Checks are done by our own team. We do not currently use an outside KYC company; if we start to, we will name it here first.",
+          "The badge a listing shows says exactly what was checked: \"Documents verified\" means our team has checked the documents remotely.",
+          "When a document is replaced or removed, the old file is deleted. When a business account is deleted, its documents are deleted."
         ]
       },
       {
-        "h": "3. How We Share Your Information",
-        "p": "We do not sell your personal information. We may share information:",
+        "h": "4. Who Sees Your Data",
         "items": [
-          "With local businesses/service providers: if you make an inquiry or booking, relevant details are shared with the business/provider you're contacting.",
-          "With service providers: hosting, database, analytics, and email providers who process data on our behalf under confidentiality obligations.",
-          "For legal reasons: if required by law, regulation, legal process, or governmental request, or to protect the rights, property, or safety of 1Darjeeling, our users, or others.",
-          "Business transfers: in connection with a merger, acquisition, or sale of assets, your information may be transferred as part of that transaction.",
-          "With your consent: for any other purpose disclosed at the time you provide the information."
+          "Hosts, when you send them a request: your name, phone number and the details of the request, so they can answer it. Hosts must use these only for your booking.",
+          "Travellers, about a host: the public listing, the host's or driver's name and profile photo, and reviews. A homestay, driver or guide's phone number, WhatsApp and social links open only to a traveller whose booking with them is confirmed. Cafés and shops show their numbers publicly.",
+          "Other users: your name, profile photo, reviews, posts, comments and trip plans that you choose to publish.",
+          "Our service providers, who process data for us under contract: Interakt and Meta (WhatsApp sign-in codes and booking messages), Razorpay (payments), Expo and Google Firebase (push notifications), Google Analytics (site usage), Sentry (error reports), OpenStreetMap and Open-Meteo (maps, addresses and weather), Google Fonts, and our hosting provider. Voice search uses your browser's speech service (in Chrome, Google's).",
+          "Authorities, when the law requires it, or to protect someone's safety.",
+          "A buyer or successor, if the business is transferred, under this same policy."
         ]
       },
       {
-        "h": "4. Data Retention",
-        "p": "We retain your personal information for as long as your account is active or as needed to provide you services, comply with legal obligations, resolve disputes, and enforce our agreements. You may request deletion of your account and associated data at any time (see Section 8)."
+        "h": "5. WhatsApp and Notifications",
+        "p": "We send your sign-in code on WhatsApp, and messages about your bookings (a new request, accepted, confirmed, cancelled, verification results) on WhatsApp, in the app and as push notifications. These are about your account and bookings only; we do not send promotions on WhatsApp without asking you first. You can turn push notifications off in your phone's settings."
       },
       {
-        "h": "5. Data Security",
-        "p": "We use reasonable administrative, technical, and physical safeguards to protect your information, including encrypted connections (HTTPS) and access controls on our database. However, no method of transmission or storage is 100% secure, and we cannot guarantee absolute security."
-      },
-      {
-        "h": "6. Cookies and Tracking Technologies",
-        "p": "We use cookies and similar technologies to:",
+        "h": "6. How Long We Keep It",
         "items": [
-          "Keep you logged in",
-          "Remember your preferences",
-          "Understand how visitors use the Site (analytics)"
-        ],
-        "note": "You can control cookies through your browser settings. Disabling cookies may affect some Site functionality."
+          "Sign-in codes: valid for 10 minutes, and deleted as soon as they are used.",
+          "A request saved but never sent is closed after 24 hours. A request the host does not answer closes by itself.",
+          "Your account, bookings, payments, reviews and posts: for as long as your account exists. When you delete your account, they are deleted, including verification documents and listings.",
+          "Database backups are kept for 14 days and then overwritten, so deleted data leaves the backups within that time."
+        ]
       },
       {
-        "h": "7. Third-Party Links",
-        "p": "Our Site may contain links to third-party websites (e.g., local business websites, social media, booking partners). We are not responsible for the privacy practices of these third parties. We encourage you to review their privacy policies."
+        "h": "7. Security",
+        "p": "We use encrypted connections (HTTPS), keep verification documents in private storage, store sign-in codes only as one-way hashes, and limit who on our team can open personal data. No system is perfectly secure; if a breach affects your data, we will tell you and the Data Protection Board of India as the law requires."
       },
       {
-        "h": "8. Your Rights and Choices",
-        "p": "Depending on your location, you may have the right to:",
+        "h": "8. Cookies and Browser Storage",
+        "p": "The Platform keeps your sign-in, language, theme and unfinished forms in your browser's storage so you do not have to repeat them. On www.aanganerp.in, Google Analytics sets its own cookies to count visits. You can clear these in your browser settings; you will then be signed out."
+      },
+      {
+        "h": "9. Your Rights",
+        "p": "Under the Digital Personal Data Protection Act, 2023, you can:",
         "items": [
-          "Access the personal information we hold about you",
-          "Correct inaccurate information",
-          "Request deletion of your account and data",
-          "Object to or restrict certain processing",
-          "Withdraw consent (where processing is based on consent)",
-          "Request a copy of your data in a portable format"
+          "Get a summary of the personal data we hold about you and who we have shared it with.",
+          "Correct or update it. Most of it you can edit yourself in your profile.",
+          "Have it erased. You can delete your account yourself (at the end of this page), or ask us to.",
+          "Withdraw your consent, which means closing your account.",
+          "Nominate someone to use these rights for you if you die or cannot act.",
+          "Complain to our Grievance Officer (Section 12), and then, if you are not satisfied, to the Data Protection Board of India."
         ],
-        "note": "To exercise these rights, contact us at aanganerp@gmail.com or +91 90932 77919. We will respond within a reasonable timeframe."
+        "note": "Write to {{email}} with \"Privacy\" in the subject line, from or naming the phone number on your account. We acknowledge within 48 hours and reply within one month."
       },
       {
-        "h": "9. Children's Privacy",
-        "p": "1Darjeeling is for adults only. You must be at least 18 years old to create an account or make a booking request, as our Terms & Conditions require. We do not knowingly collect personal information from anyone under 18. If you believe someone under 18 has given us information, please contact us so we can remove it."
+        "h": "10. Age",
+        "p": "aangan is for adults. You must be 18 or older to create an account, as the Terms & Conditions require; you confirm this when you tick \"I Agree\". We do not knowingly collect data from anyone under 18. If you believe someone under 18 has given us data, tell us and we will delete it."
       },
       {
-        "h": "10. International Users",
-        "p": "If you access the Site from outside India, please note your information will be processed in India, where data protection laws may differ from those in your jurisdiction."
+        "h": "11. Changes to This Policy",
+        "p": "We will post any change on this page with a new date, and tell you in the app before a significant change takes effect."
       },
       {
-        "h": "11. Changes to This Privacy Policy",
-        "p": "We may update this Privacy Policy from time to time. Changes will be posted on this page with an updated \"Last updated\" date. Continued use of the Site after changes constitutes acceptance of the updated policy."
-      },
-      {
-        "h": "12. Contact Us",
-        "p": "If you have questions or concerns about this Privacy Policy or our data practices, contact us at:",
+        "h": "12. Contact and Grievance Officer",
+        "p": "For questions about this policy or your data, or to use your rights:",
         "contact": {
-          "name": "WBIN 1947 Studio LLP (1Darjeeling)",
-          "email": "aanganerp@gmail.com",
+          "name": "Grievance Officer, WBIN 1947 Studio LLP (aangan)",
+          "email": "{{email}}",
           "phone": "+91 90932 77919",
-          "address": "Ward 4, Krishna Nagar, 1-149, Manbir Thapa Road, Mirik, West Bengal 734214"
+          "address": "Ward 4, Krishna Nagar, 1-149, Manbir Thapa Road, Mirik, West Bengal 734214",
+          "officer": true
         }
       }
     ],
@@ -1175,7 +1199,7 @@
     "comment_failed": "Could not post your comment. Try again.",
     "send": "Send",
     "link_copied": "Link copied",
-    "verified_host": "Verified host",
+    "verified_host": "Host with documents verified",
     "photo_alt": "Photo from {{name}}",
     "host_cta": "Run a homestay, café, shop or taxi?",
     "just_now": "just now",
@@ -1241,7 +1265,7 @@
         "p": "For questions about the Platform, your account, a listing, or a booking:",
         "contact": {
           "name": "WBIN 1947 Studio LLP (1Darjeeling)",
-          "email": "aanganerp@gmail.com",
+          "email": "{{email}}",
           "phone": "+91 90932 77919",
           "address": "Ward 4, Krishna Nagar, 1-149, Manbir Thapa Road, Mirik, West Bengal 734214"
         }
@@ -1259,7 +1283,7 @@
       },
       {
         "h": "3. For Local Businesses",
-        "p": "If you run a homestay, drive for visitors, or keep a café or shop and would like to be listed, you can start from the \"For Providers\" page on this Site, or write to us at the address above. We will guide you through what is needed, including the documents required to verify your business."
+        "p": "If you run a homestay, drive for visitors, guide, or keep a café or shop and would like to be listed, start from the \"For Providers\" page (aanganerp.in/provider/onboard), or write to us at the address above. We will guide you through what is needed, including the documents required to verify your business."
       },
       {
         "h": "4. Refunds and Payments",
@@ -1276,7 +1300,7 @@
         ],
         "contact": {
           "name": "Grievance Officer, WBIN 1947 Studio LLP",
-          "email": "aanganerp@gmail.com",
+          "email": "{{email}}",
           "phone": "+91 90932 77919",
           "address": "Ward 4, Krishna Nagar, 1-149, Manbir Thapa Road, Mirik, West Bengal 734214",
           "officer": true
@@ -1307,7 +1331,7 @@
     "add_photo": "Add Photo",
     "post": "Post review",
     "update_cta": "Update review",
-    "signed_out": "Been here? Sign in to share your rating and review.",
+    "signed_out": "Reviews come from travellers who stayed, rode or toured through aangan.",
     "sign_in_cta": "Sign in to review",
     "loading": "Loading reviews…",
     "empty": "No reviews yet - be the first to leave one.",
@@ -1324,7 +1348,9 @@
     "updated_toast": "Your review has been updated!",
     "posted_toast": "Thank you! Your review has been posted.",
     "removed_toast": "Your review has been removed.",
-    "single_review_hint": "Editing your existing review"
+    "single_review_hint": "Editing your existing review",
+    "signed_out_cta": "Sign in to review your trip",
+    "support_required": "Reviews here are open to aangan pass holders, so every review comes from a real traveller."
   },
   "saved": {
     "label": "Saved",
@@ -1791,7 +1817,7 @@
       "photos_added_other": "{{count}} photos added",
       "put_pay": "Pay {{price}} and put my listing up",
       "in_title": "Your listing is up",
-      "in_body": "Travellers can find it now. Next, finish your business profile and send your documents from the Business dashboard to get the Verified tick.",
+      "in_body": "Travellers can find it now. Next, finish your business profile and send your documents from the Business dashboard to get the Documents verified badge.",
       "day_route": "Full day hire",
       "day_service": "Day tour",
       "fo": {
@@ -1823,7 +1849,11 @@
       "fee_shop": "Local shops: free",
       "fee_one": "{{what}}: {{price}} a year",
       "describe": "{{what}} in {{place}}, run by {{name}} and listed on aangan.",
-      "wzphS2": "The first one is the cover. Photos help travellers choose you: add at least {{count}} to get the Verified tick. You can add them later."
+      "wzphS2": "The first one is the cover. Photos help travellers choose you. You need at least {{count}} before you can send your documents for the Documents verified badge. You can add them later.",
+      "offer_add": "Add your own",
+      "offer_ph": "For example: Mountain view",
+      "offer_save": "Add",
+      "offer_remove": "Remove {{name}}"
     }
   },
   "pay": {
@@ -1973,7 +2003,7 @@
     "updated": "Last updated: November 2026",
     "intro": [
       "WBIN 1947 Studio LLP, under the name 1Darjeeling (\"we,\" \"us,\" \"our,\" or \"the Platform\"), operates www.aanganerp.in (the \"Site\"), a local marketplace and travel guide connecting visitors with homestays, drivers, cafés, shops and guides in and around Darjeeling. These Terms & Conditions govern your use of the Site.",
-      "By creating an account, making a booking request, listing a business, or otherwise using the Site, you agree to these Terms. If you do not agree, please do not use the Site."
+      "You accept these Terms by ticking \"I Agree\" when you sign in, which also confirms you are 18 or older. If you do not agree, please do not create an account or send requests."
     ],
     "sections": [
       {
@@ -2001,19 +2031,15 @@
         "sub": [
           {
             "h": "3.1 Traveller Pass — ₹1 a year, GST included, optional",
-            "p": "The pass is optional. A payment gives a traveller account one year with a verified badge that hosts see on its booking requests. With an active pass, sending booking requests is free; without it, each request costs ₹1.20 to send (see 3.2). Confirming a booking is free either way. It does not renew automatically; after it expires, you may buy another one-year pass."
+            "p": "The pass is optional. A payment gives a traveller account one year with a Member badge that hosts see on its requests. With an active pass, the app convenience fee (3.2) is waived; without it, each request costs ₹1.20. It does not renew automatically; after it expires, you may buy another one-year pass."
           },
           {
-            "h": "3.2 Booking Requests — ₹1.20 to send without the pass, free with it",
-            "p": "Sending a booking request to a business costs ₹1 plus 18% GST and a 2% payment gateway fee, ₹1.20 in all, paid to the Platform when you send it. With an active Traveller Pass, sending is free. Confirming a booking is free for everyone. The ₹1.20 is refunded in full, automatically, if the business declines the request or does not answer in time, if its dates go to another traveller who confirmed first, if you withdraw the request before confirming, or if the business or our team cancels the booking. It is not refunded if you cancel a booking after confirming it, because by then the business's contact details have been shared with you, or if the business reports that you did not arrive. What you pay for the stay, ride or goods themselves is paid directly to the business; we never receive it and take no share."
+            "h": "3.2 App Convenience Fee — ₹1.20 per request without the pass, waived with it",
+            "p": "Sending a request to a business through the app costs a convenience fee of ₹1 plus 18% GST and a 2% payment gateway fee, ₹1.20 in all, paid to the Platform when you send it. With an active Traveller Pass it is waived. The fee is only for using the app to reach the business. It is not a booking fee, deposit or advance: it does not pay for, reserve or guarantee any stay, ride, tour or goods, and it does not make us a party to any booking. Whether the business accepts your request and whether the booking goes ahead are matters between you and the business, and we are not liable for either. We make no further charge at any later step. As a courtesy, the ₹1.20 is refunded in full, automatically, if the business declines the request or does not answer in time, if its dates go to another traveller who confirmed first, if you withdraw the request before confirming, or if the business or our team cancels it. It is not refunded if you cancel after confirming, because by then the business's contact details have been shared with you, or if the business reports that you did not arrive. What you pay for the stay, ride or goods themselves is paid directly to the business; we never receive it and take no share."
           },
           {
             "h": "3.3 Business Listing Plan — ₹499 a year for homestays, drivers and guides, ₹99 a year for cafés, each plus 18% GST and a 2% platform fee; free until 2 completed bookings; local shops list free",
             "p": "A new local business can list for free. Its documents are still checked and approved before its listing goes live. Once live, it takes bookings without paying until 2 bookings have been completed, meaning the guest's stay, ride or tour has taken place (for cafés, until 2 bookings or home-delivery orders have been completed or delivered). After that, new bookings pause until the business pays for its first year (₹499 for a homestay, driver or guide, ₹99 for a café, each plus 18% GST and a 2% platform fee): the listing stays visible, bookings already confirmed go ahead, and requests already received can still be accepted. The business may pay at any time during the free period, and its first year starts on the day it pays. Each year after that costs the same. The plan does not renew automatically: if a year ends without renewal, the business's listings are hidden from travellers and stop taking bookings until it renews. Local shops list free and pay nothing. It is not a commission on bookings."
-          },
-          {
-            "h": "3.4 Donations  voluntary, ₹10 to ₹1,00,000",
-            "p": "You may choose to support the Platform with a donation of any amount within that range. A donation is a gift: it buys nothing, grants no access, unlocks no feature, and confers no benefit or priority of any kind."
           }
         ],
         "note": "Payments are processed by Razorpay. We do not receive or store your full card details. Fees are stated in Indian Rupees and are inclusive of applicable taxes unless stated otherwise at the point of payment."
@@ -2021,16 +2047,20 @@
       {
         "h": "4. Bookings",
         "items": [
-          "A booking begins as a request. It reaches the business once it is sent: free with an active Traveller Pass, or for the ₹1.20 request fee (3.2) without one. It is confirmed when you confirm it at checkout, at which point both you and the business are notified. Confirming a booking is free.",
+          "A booking begins as a request. It reaches the business once it is sent: with the convenience fee waived under an active Traveller Pass, or for the ₹1.20 app convenience fee (3.2) without one. It is confirmed when you confirm it at checkout, at which point both you and the business are notified. There is no charge to confirm.",
           "For homestays, confirmed dates are held exclusively. While a checkout is in progress, those dates are held briefly against other travellers so two people cannot pay for the same room; an abandoned checkout releases them again.",
           "If two travellers confirm the same homestay for the same dates at the same moment, only the first can be confirmed. The second booking is cancelled automatically and that traveller is told.",
-          "A confirmed booking is a confirmed request to the business. Check-in times, house rules, extra charges and payment for the stay itself are matters between you and the business."
+          "A confirmed booking is a confirmed request to the business. We do not take any booking money: the price of the stay, ride, tour, meal or goods, any advance or deposit, check-in times, house rules and extra charges are agreed and settled directly between you and the business. We do not guarantee that a business accepts a request, honours a booking or provides what it offers, and we are not liable if it does not."
         ]
       },
       {
         "h": "5. Cancellations and Refunds",
-        "p": "A booking may be cancelled by you, by the business, or by us. Fees paid to the Platform are refunded as set out in the Refund & Cancellation Policy, which forms part of these Terms.",
-        "note": "Any amount you have paid directly to a local business is governed by that business's own cancellation terms, not by ours. We can help you make contact, but we cannot refund money we never received."
+        "p": "A booking may be cancelled by you, by the business, or by us. We do not collect booking money of any kind: the price of a stay, ride, tour, meal or goods, and any advance or deposit, is paid directly to the business. We are therefore not responsible or liable for refunding it, and the business's own cancellation terms apply to it. We can help you get in touch with the business, but we cannot refund money we never received.",
+        "items": [
+          "The only money we receive is the Platform fees in section 3: the app convenience fee, the Traveller Pass and the Business Listing Plan.",
+          "Those fees are refunded as set out in the Refund & Cancellation Policy, which forms part of these Terms.",
+          "If you paid us one of those fees by mistake or without meaning to (for example a duplicate payment, the wrong plan, or a payment you did not intend to make), write to us with your registered mobile number and the reason. We look at every such request, refund it in full where the reason holds, and tell you the outcome with our reasons."
+        ]
       },
       {
         "h": "6. Rules for Local Businesses",
@@ -2067,7 +2097,7 @@
       },
       {
         "h": "10. Limitation of Liability",
-        "p": "To the fullest extent permitted by law, 1Darjeeling is not liable for any indirect, incidental or consequential loss arising from your use of the Site, from any dealing with a local business, or from anything that happens during a stay, ride or visit arranged through the Site.",
+        "p": "We do not receive or hold booking money and are not a party to the arrangement between a traveller and a business. To the fullest extent permitted by law, 1Darjeeling is not liable for any indirect, incidental or consequential loss arising from your use of the Site, from any dealing with a local business, or from anything that happens during a stay, ride or visit arranged through the Site.",
         "note": "Where liability cannot lawfully be excluded, our total liability to you is limited to the fees you have actually paid to the Platform in the twelve months before the claim. Nothing here limits liability for death or personal injury caused by our negligence, or for fraud."
       },
       {
@@ -2087,7 +2117,7 @@
         "p": "Questions about these Terms can be sent to us at:",
         "contact": {
           "name": "WBIN 1947 Studio LLP (1Darjeeling)",
-          "email": "aanganerp@gmail.com",
+          "email": "{{email}}",
           "phone": "+91 90932 77919",
           "address": "Ward 4, Krishna Nagar, 1-149, Manbir Thapa Road, Mirik, West Bengal 734214"
         }
@@ -2107,7 +2137,7 @@
         "p": "A booking can be cancelled at any time before it takes place, from your dashboard, by the business, or by our team.",
         "items": [
           "A booking still awaiting payment can simply be cancelled  nothing has been charged.",
-          "A request or a confirmed booking can be cancelled by you, by the business, or by us. Whether the ₹1.20 request fee comes back depends on who cancels and when (see 3.1).",
+          "A request or a confirmed booking can be cancelled by you, by the business, or by us. Whether the ₹1.20 app convenience fee comes back depends on who cancels and when (see 3.1).",
           "If the business cancels on you, we will help you find an alternative wherever we can."
         ]
       },
@@ -2115,7 +2145,7 @@
         "h": "2. Automatic Refunds",
         "p": "Some refunds need no request at all  the Platform issues them itself:",
         "items": [
-          "Request fees: the ₹1.20 paid to send a request is refunded in full if the business declines it or does not answer in time, if its dates go to another traveller who confirmed first, if you withdraw it before confirming, or if the business or our team cancels the booking.",
+          "App convenience fees: as a courtesy, the ₹1.20 paid to send a request is refunded in full if the business declines it or does not answer in time, if its dates go to another traveller who confirmed first, if you withdraw it before confirming, or if the business or our team cancels it.",
           "Duplicate charges: if a technical fault charges you twice for one thing, the duplicate is refunded in full."
         ]
       },
@@ -2123,8 +2153,8 @@
         "h": "3. The Fees, One by One",
         "sub": [
           {
-            "h": "3.1 Booking Requests — ₹1.20 to send without the pass, free with it",
-            "p": "Sending a request without an active Traveller Pass costs ₹1 plus 18% GST and a 2% payment gateway fee, ₹1.20 in all. With the pass, sending is free, and confirming a booking is free for everyone. The ₹1.20 is refunded in full, automatically, if the business declines the request or does not answer in time, if its dates go to another traveller who confirmed first, if you withdraw the request before confirming, or if the business or our team cancels the booking. It is not refunded if you cancel a booking after confirming it, because by then the business's contact details have been shared with you, or if the business reports that you did not arrive."
+            "h": "3.1 App Convenience Fee — ₹1.20 per request without the pass, waived with it",
+            "p": "Sending a request without an active Traveller Pass costs an app convenience fee of ₹1 plus 18% GST and a 2% payment gateway fee, ₹1.20 in all. With the pass it is waived, and there is no charge to confirm. It is a fee for using the app, not a payment for any booking, and we are not liable for whether a booking goes ahead. As a courtesy, the ₹1.20 is refunded in full, automatically, if the business declines the request or does not answer in time, if its dates go to another traveller who confirmed first, if you withdraw the request before confirming, or if the business or our team cancels it. It is not refunded if you cancel after confirming, because by then the business's contact details have been shared with you, or if the business reports that you did not arrive."
           },
           {
             "h": "3.2 Traveller Pass — ₹1 a year, GST included, optional",
@@ -2132,11 +2162,7 @@
           },
           {
             "h": "3.3 Business Listing Plan — ₹499 a year for homestays, drivers and guides, ₹99 a year for cafés, each plus 18% GST and a 2% platform fee; free until 2 completed bookings; local shops list free",
-            "p": "Listing is free until 2 of your bookings are completed (for cafés and shops, delivered home-delivery orders count too), so nothing is paid before then. If you pay while your listing is already live on the free start, that payment is not refundable, because the listing is already published. Otherwise, each payment is refundable in full within 7 days if your listing has not yet gone live that year. Once the listing is published and visible to travellers, that year's payment is not refundable. If we reject or remove your listing for a reason that is not a breach of our Terms, we refund the current year in full regardless of when. The plan never renews automatically."
-          },
-          {
-            "h": "3.4 Donations",
-            "p": "A donation is a voluntary gift and is not refundable. If you donated by mistake  a wrong amount, a duplicate, an accidental confirmation  write to us within 7 days and we will return it."
+            "p": "Listing is free until 2 of your bookings are completed (for cafés, delivered home-delivery orders count too), so nothing is paid before then. Within 7 days of paying, if your listing has not yet gone live that year, you can have the payment back in full for any reason. If you paid for the plan by mistake or without meaning to (a duplicate payment, the wrong plan, or a payment you did not intend to make), write to us with your registered mobile number and the reason (see section 5), even if your listing is already live: we look at every such request and refund the payment in full where the reason holds. If we reject or remove your listing for a reason that is not a breach of our Terms, we refund the current year in full regardless of when. The plan never renews automatically, so there is no recurring charge to cancel."
           }
         ]
       },
@@ -2163,7 +2189,7 @@
         "items": [
           "Money paid directly to a homestay, driver, café or shop. Ask them  their cancellation terms apply, and we will help you make contact.",
           "Costs around a trip that we never charged: travel to Darjeeling, other bookings, time taken off.",
-          "The request fee where the traveller cancelled a booking after confirming it, did not arrive, or cancelled after the stay had already begun.",
+          "The app convenience fee where the traveller cancelled a booking after confirming it, did not arrive, or cancelled after the stay had already begun.",
           "Accounts closed by us for a breach of our Terms."
         ]
       },
@@ -2176,7 +2202,7 @@
         "p": "Refund questions and requests go to:",
         "contact": {
           "name": "WBIN 1947 Studio LLP (1Darjeeling)",
-          "email": "aanganerp@gmail.com",
+          "email": "{{email}}",
           "phone": "+91 90932 77919",
           "address": "Ward 4, Krishna Nagar, 1-149, Manbir Thapa Road, Mirik, West Bengal 734214"
         }
@@ -2511,7 +2537,7 @@
     "step_paid": "Plan paid",
     "step_free": "Free start",
     "title_profile": "Finish your profile first",
-    "body_profile": "Your listing is live. To get the Verified tick, finish your business profile and send your documents. Still needed:",
+    "body_profile": "Your listing is live. To get the Documents verified badge, finish your business profile and send your documents. Still needed:",
     "cta_profile": "Open business profile",
     "step_sent": "Documents sent",
     "step_review": "Team reviewing",
@@ -2519,10 +2545,10 @@
     "title_pay": "Pay for your plan to continue",
     "body_pay": "Once your plan is paid you can send your documents for approval.",
     "title_send": "Send your documents for approval",
-    "body_send": "Your plan is paid and your listing is live. Upload your documents so our team can check them and give you the Verified tick.",
-    "body_send_free": "Your listing is live and there is nothing to pay now. Upload your documents so our team can check them and give you the Verified tick.",
+    "body_send": "Your plan is paid and your listing is live. Upload your documents so our team can check them and give you the Documents verified badge.",
+    "body_send_free": "Your listing is live and there is nothing to pay now. Upload your documents so our team can check them and give you the Documents verified badge.",
     "title_waiting": "Documents sent",
-    "body_waiting": "Our team will start checking them soon. Your listing stays live meanwhile; the Verified tick appears once the check is done.",
+    "body_waiting": "Our team will start checking them soon. Your listing stays live meanwhile; the Documents verified badge appears once the check is done.",
     "title_reviewing": "Our team is checking your documents",
     "body_reviewing": "We will notify you as soon as it is done. Your listing stays live meanwhile.",
     "title_changes": "A document needs changing",
@@ -2580,7 +2606,7 @@
     "pass_price": "{{total}} / year",
     "pass_body": "Every booking for a year confirms free, plus saved places and reviews.",
     "fee_title": "Just this booking",
-    "fee_body": "A one-time convenience fee for this booking.",
+    "fee_body": "A one-time app convenience fee for sending this request. It is not a payment for the booking.",
     "note": "If the booking is cancelled, the fee comes back to you.",
     "failed": "Payment did not go through. Please try again.",
     "send_eyebrow": "Send your request",
@@ -2623,7 +2649,7 @@
     "then": "Then {{price}} per year, billed once a year.",
     "yearly": "{{price}} per year",
     "billed": "Billed once a year.",
-    "what": "Verified homestays, drivers and local shops, booked directly with hosts.",
+    "what": "Homestays, drivers and local shops whose documents our team has checked, booked directly with hosts.",
     "no_hidden": "No hidden charges. No commission on your bookings.",
     "pay_host": "You pay the host directly, at their price."
   },
@@ -2636,7 +2662,7 @@
     "host_renewal": "Host plan · one more year",
     "pass": "aangan pass · 1 year",
     "pass_first_year": "aangan pass · first year",
-    "booking_fee": "Convenience fee · this booking",
+    "booking_fee": "Convenience fee · this request",
     "request_fee": "Fee · this request"
   },
   "approval": {
@@ -2646,7 +2672,7 @@
     "next_steps": "What happens next",
     "step_ask": "Ask the host. Sending a request is free.",
     "refund_link": "Fees and refunds",
-    "step_host": "The host checks availability and accepts. If they do not answer within 48 hours, the request closes and nothing is charged.",
+    "step_host": "The host checks availability and accepts. If they do not answer within 24 hours, the request closes and nothing is charged.",
     "step_confirm": "You confirm it in My Trips (free with the aangan pass, or ₹1.20).",
     "step_contact": "You get the host's number to call or WhatsApp.",
     "go_trips": "Go to My Trips",
@@ -2662,7 +2688,7 @@
     "step_confirm_free": "You confirm it in My Trips. It is free.",
     "step_send_pass": "Send your request. Free with your pass.",
     "step_send_fee": "Send your request for {{fee}}, or free with the aangan pass.",
-    "step_host_refund": "The host checks availability and accepts. If they say no or do not answer within 48 hours, the request closes and any fee comes back."
+    "step_host_refund": "The host checks availability and accepts. If they say no or do not answer within 24 hours, the request closes and any fee comes back."
   },
   "photoKind": {
     "label": "What this photo shows",
@@ -3029,7 +3055,7 @@
     "hostExtras": {
       "link_copied": "Link copied",
       "page_title": "Your page on aangan",
-      "private_until_approved": "Travellers can open it now. The Verified tick appears once our team approves your documents.",
+      "private_until_approved": "Travellers can open it now. The Documents verified badge appears once our team approves your documents.",
       "private_until_active": "Only you can open it until your plan is active and verified.",
       "open_my_page": "Open my page",
       "copy_link": "Copy link",
@@ -3320,7 +3346,12 @@
       "wa_lead": "We send a one-time code to this number.",
       "change_name": "Change name",
       "codeq": "Enter the code",
-      "phoneq": "Your phone number"
+      "phoneq": "Your phone number",
+      "agree": "I Agree",
+      "agree_to": "to the",
+      "privacy_policy": "Privacy Policy",
+      "agree_age": ", and I am 18 or older.",
+      "agree_needed": "Please tick I Agree to continue."
     },
     "footer": {
       "by_studio": "By {{name}}",
@@ -3569,6 +3600,10 @@
       "no_show_guest": {
         "title": "The host says you did not come",
         "body": "The host of {{place}} says you did not come, so the booking was closed. If that is wrong, use Report a problem in My Trips."
+      },
+      "request_reminder_host": {
+        "title": "A guest is waiting for your answer",
+        "body": "A request for {{place}} is still waiting. Accept or decline within about {{hours}} hours, or it closes by itself."
       }
     },
     "missing": {
@@ -3608,7 +3643,7 @@
       "trade_license": "Shop & Establishment / trade licence",
       "vehicle_insurance": "Vehicle insurance",
       "vehicle_rc": "Vehicle registration (RC)",
-      "photo_id": "Aadhaar or any photo ID",
+      "photo_id": "Photo ID: voter ID, driving licence or passport (not Aadhaar)",
       "driver_vehicle_photo": "Selfie with your vehicle"
     }
   },
@@ -3621,7 +3656,7 @@
     "back": "Back to overview",
     "booked": "booked",
     "bookings": "Bookings",
-    "bookings_s": "Requests from travellers for your listings. Answer within 48 hours.",
+    "bookings_s": "Requests from travellers for your listings. Answer within 24 hours.",
     "completed": "Completed",
     "earned": "Earned",
     "finish": "Finish your profile",
@@ -3658,7 +3693,7 @@
     "tg_ok": "Got it",
     "tg_what": "What does this toggle mean?",
     "upcoming": "Upcoming",
-    "verified": "Verified",
+    "verified": "Documents verified",
     "your_listings": "Your listings",
     "your_properties": "Your properties",
     "your_vehicles": "Your vehicles",
@@ -3674,7 +3709,7 @@
     "person1": "1 person",
     "per_year": "/yr",
     "bookings_tab": "Bookings",
-    "docs_s": "A photo of your ID and a photo of your place (homestays: also your homestay registration papers). Our team checks them to give you the Verified tick.",
+    "docs_s": "A photo of your ID and a photo of your place (homestays: also your homestay registration papers). Our team checks them to give you the Documents verified badge.",
     "shop_free": "Local shops list free",
     "shop_free_s": "No yearly pass and no commission. Keep taking orders.",
     "menu_n": "Menu · {{count}}",
@@ -3738,7 +3773,7 @@
     "v7book": "Book now",
     "v7from": "From",
     "v7price": "Price",
-    "verified": "Verified",
+    "verified": "Documents verified",
     "when": "Which day?",
     "joinedA": "On aangan since",
     "per_day": "per day",
@@ -3966,10 +4001,10 @@
     "login_post": "Log in and post",
     "cover_login": "Log in to add a cover photo.",
     "login_note": "You will log in before the plan is posted. What you typed is kept.",
-    "verify_h": "Only verified people post in the Feed",
-    "verify_host": "Your plan can go in the Feed once your business has the Verified tick. Send your documents from the Business dashboard.",
-    "verify_traveller": "Get the {{price}} Verified traveller pass to post your plan. Everyone can still see, like, comment on and share what is in the Feed.",
-    "verify_tick": "Get the Verified tick",
+    "verify_h": "Only members and hosts with documents verified post in the Feed",
+    "verify_host": "Your plan can go in the Feed once your business has the Documents verified badge. Send your documents from the Business dashboard.",
+    "verify_traveller": "Get the {{price}} aangan pass to post your plan. Everyone can still see, like, comment on and share what is in the Feed.",
+    "verify_tick": "Get the Documents verified badge",
     "verify_pass": "Get the pass for {{price}}",
     "keep_private": "Keep it to myself for now",
     "done_private": "Your plan is saved",
@@ -3985,24 +4020,24 @@
     "valid_till": "Valid till",
     "back": "Back to account",
     "title_short": "Membership",
-    "verified": "Verified traveller",
+    "verified": "Member",
     "traveller": "Traveller",
     "since": "Member since",
     "paid": "Paid",
-    "why": "Your pass puts a verified badge on your booking requests, so hosts and drivers say yes faster. It also covers the booking fee.",
+    "why": "Your pass puts a Member badge on your booking requests, so hosts and drivers say yes faster. It also covers the app convenience fee.",
     "end": "End membership",
     "end_q": "End your membership now?",
-    "end_s": "The verified badge goes at once and what you paid is not refunded. Getting the pass again costs the yearly price.",
+    "end_s": "The Member badge goes at once and what you paid is not refunded. Getting the pass again costs the yearly price.",
     "end_yes": "Yes, end it",
     "keep": "Keep it",
-    "offer": "Get the aangan pass and a verified badge. Hosts and drivers see it on your booking requests, so they say yes faster.",
+    "offer": "Get the aangan pass and a Member badge. Hosts and drivers see it on your booking requests, so they say yes faster.",
     "year": "year",
     "first_year": "first year",
     "then": "then {{price}} a year",
-    "vwhy": "Verified travellers get more confirmations from homestays.",
-    "vt1": "Verified badge on every booking request",
+    "vwhy": "Members get more confirmations from homestays.",
+    "vt1": "Member badge on every booking request",
     "vt2": "Membership card on your phone",
-    "vt3": "No booking fee on your requests",
+    "vt3": "No convenience fee on your requests",
     "forbiz": "For businesses",
     "pass": "aangan pass",
     "passh": "A yearly pass, not a commission",
@@ -4020,8 +4055,8 @@
     "check_biz": "Check your business",
     "list_biz": "List your business",
     "for_hosts": "For homestays, drivers, guides, cafes and shops.",
-    "why2": "Pay ₹1 a year to aangan and get a verified badge. Hosts and drivers see it on your booking requests, so they say yes faster.",
-    "vt3b": "Still no booking fees, ever",
+    "why2": "Pay ₹1 a year to aangan and get a Member badge. Hosts and drivers see it on your booking requests, so they say yes faster.",
+    "vt3b": "Still no convenience fees, ever",
     "r_trav2": "Travellers",
     "free": "Free",
     "r_big2": "Homestays, drivers and guides",

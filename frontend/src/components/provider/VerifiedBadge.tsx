@@ -8,7 +8,7 @@ export default function VerifiedBadge({ size = 'sm' }: { size?: 'sm' | 'md' }) {
   const { t } = useTranslation();
   return (
     <Status tone="ok" title={t('kyc.verifiedTooltip')}>
-      <SealCheck size={size === 'md' ? 16 : 14} weight="fill" aria-hidden="true" /> {t('kyc.verified')}
+      <SealCheck size={size === 'md' ? 16 : 14} weight="fill" aria-hidden="true" /> {t('kyc.docs_verified', 'Documents verified')}
     </Status>
   );
 }

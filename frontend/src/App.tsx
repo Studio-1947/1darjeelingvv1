@@ -120,6 +120,8 @@ export default function App() {
                     <Route path="/notifications" element={<Notifications />} />
                     <Route path="/theme" element={<ThemeColour />} />
                     <Route path="/provider/onboard" element={<ProviderOnboard />} />
+                    {/* The Contact page and the footer call it "For Providers"; people type /providers. */}
+                    <Route path="/providers" element={<Navigate to="/provider/onboard" replace />} />
                     <Route path="/provider/dashboard" element={<ProviderDashboard />} />
                     <Route path="/provider/profile" element={<ProviderProfile />} />
                     <Route path="/profile/edit" element={<EditProfile />} />

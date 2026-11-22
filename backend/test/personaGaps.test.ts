@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import request from 'supertest';
 import { app } from '../src/app';
+import { REQUEST_EXPIRY_HOURS } from '../src/config';
 import { coverAfterPhotosChange, listingCover } from '../src/lib/listingCover';
 import { registerUser, onboardActiveProvider, createConfirmedBooking, inDays, loginAdmin } from './helpers';
 
@@ -91,7 +92,7 @@ describe('rest of the persona gaps', () => {
     expect(items.some((n: any) => n.kind === 'booking_requested' && n.title === 'Request sent')).toBe(true);
     // Carries the message key and details so the website/app can show it in other languages.
     const sentNote = items.find((n: any) => n.kind === 'booking_requested');
-    expect(sentNote.msg).toEqual({ key: 'request_sent', params: { place: 'Notice Stay', hours: 48 } });
+    expect(sentNote.msg).toEqual({ key: 'request_sent', params: { place: 'Notice Stay', hours: REQUEST_EXPIRY_HOURS } });
   });
 
   it('a booking problem reaches the team with the booking, and the team can cancel it', async () => {

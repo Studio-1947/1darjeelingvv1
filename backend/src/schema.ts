@@ -15,6 +15,10 @@ export const users = pgTable('users', {
   password: text('password'),
   // Set atomically after a successful WhatsApp OTP verification.
   phoneVerifiedAt: text('phone_verified_at'),
+  // When they ticked "I Agree" (Terms + Privacy Policy, 18 or older) on the sign-in screen. Kept as
+  // the record of consent the DPDP Act asks for. null = signed up before the box existed, or from
+  // an app version that does not send it yet.
+  termsAcceptedAt: text('terms_accepted_at'),
   // The user's own invite code. Server-generated and unique  the app used to derive one from
   // the first name (`ASHA-1D`), which collides on every second Asha and could not be looked up.
   // Nullable because rows created before referrals existed have none until they are backfilled.
