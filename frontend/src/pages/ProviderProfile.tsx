@@ -14,7 +14,8 @@ import { uploadImage, uploadImages } from '@/lib/uploadImage';
 import AvatarUploader from '@/components/provider/AvatarUploader';
 import GalleryUploader from '@/components/provider/GalleryUploader';
 import AmenityPicker from '@/components/provider/AmenityPicker';
-import { RouteFareTable } from '@/components/provider/RouteEditor';
+import { RouteListEditor, RouteFareTable } from '@/components/provider/RouteEditor';
+import LicenceUpload from '@/components/provider/LicenceUpload';
 import { HOMESTAY_AMENITIES, CAFE_AMENITIES } from '@/constants/listingOptions';
 import { useAppStatus } from '@/context/AppStatus'; // TEMPORARY(legal-pause)
 import PricedEditor, { type Priced } from '@/components/provider/PricedEditor';
@@ -634,7 +635,12 @@ export default function ProviderProfile() {
                 {SEAT_OPTIONS.map((n) => <option key={n} value={String(n)}>{t('hostProfile.seats_n', { count: n })}</option>)}
               </SelectField>
             </div>
+            <LicenceUpload />
             <p className="ag-small">{t('hostProfile.vehicle_docs_note')}</p>
+            {/* Add or remove routes here, then set each one's charge below (as in the listing editor). */}
+            <Group label={t('el.routes_covered')}>
+              <RouteListEditor routes={form.routes} onChange={(routes: any) => set({ routes })} emptyNote={t('hostProfile.routes_empty')} />
+            </Group>
             <Group label={t('hostProfile.routes')}>
               <RouteFareTable routes={form.routes} onChange={(routes: any) => set({ routes })} emptyNote={t('hostProfile.routes_empty')} />
             </Group>
