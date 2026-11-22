@@ -266,7 +266,7 @@ svg.i { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-widt
   .ag-header { position: sticky; top: 0; z-index: 40; background: rgb(var(--page-rgb) / .92); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
   /* The bar runs the full width of the window, so the logo (with its Beta tag) sits in the top-left
      corner on a wide screen too, not at the edge of the 720px page column. */
-  .ag-header .ag-wrap { max-width: none; display: flex; align-items: center; gap: 8px; min-height: 64px; padding-block: 8px; }
+  .ag-header .ag-wrap { display: flex; align-items: center; gap: 8px; min-height: 64px; padding-block: 8px; }
   .ag-brand { position: relative; display: flex; align-items: center; flex: 1; min-width: 0; height: 32px; color: var(--ink-strong); text-decoration: none; }
   .ag-brand .word { height: 26px; width: 108px; }
   .ag-topact { display: flex; align-items: center; gap: 6px; flex: none; }
@@ -278,7 +278,7 @@ svg.i { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-widt
   @media (max-width: 380px) { .ag-getapp { width: 40px; padding: 0; justify-content: center; } .ag-getapp span { display: none; } }
   .ag-loginbtn svg { width: 18px; height: 18px; }
   .ag-loginbtn { height: 40px; display: inline-flex; align-items: center; gap: 4px; padding: 0 12px 0 16px; border-radius: var(--pill); border: 0; background: var(--r); color: var(--on-r); font: 500 14px/20px var(--font); white-space: nowrap; text-decoration: none; cursor: pointer; }
-  .ag-tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; background: rgb(var(--page-rgb) / .95); border-top: 1px solid var(--hairline); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); padding: 0 8px env(safe-area-inset-bottom, 0px); }
+  .ag-tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; width: 100%; max-width: var(--wmax); margin-inline: auto; background: rgb(var(--page-rgb) / .95); border-top: 1px solid var(--hairline); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); padding: 0 8px env(safe-area-inset-bottom, 0px); }
   .ag-tabbar .ag-wrap { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; padding-inline: 0; }
   .ag-tab { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; height: 60px; padding: 6px 2px; border: 0; background: transparent; color: var(--ink-faint); font: 500 12px/16px var(--font); letter-spacing: .5px; text-decoration: none; }
   .ag-tab .ind { position: relative; width: 48px; height: 28px; display: grid; place-items: center; }

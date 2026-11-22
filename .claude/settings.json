@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "ClaudeInChromeDomain(localhost:3000)",
-      "ClaudeInChromeDomain(192.168.1.6:3000)"
+      "ClaudeInChromeDomain(192.168.1.6:3000)",
+      "ClaudeInChromeDomain(aangan20testing.vercel.app)"
     ]
   },
   "enabledPlugins": {
