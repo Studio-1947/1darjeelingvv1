@@ -656,3 +656,13 @@ export const placeSuggestions = pgTable('place_suggestions', {
   statusIdx: index('place_suggestions_status_idx').on(t.status, t.createdAt),
   userIdx: index('place_suggestions_user_id_idx').on(t.userId),
 }));
+
+// Site-wide switches an admin flips from the panel, one row per key (e.g. 'maintenance').
+// Read through lib/siteSettings.ts, which falls back to the server's .env when a key has no row.
+export const appSettings = pgTable('app_settings', {
+  key: text('key').primaryKey(),
+  value: jsonb('value').notNull(),
+  updatedAt: text('updated_at').notNull(),
+  // The admin's user id (or 'admin-system'). Plain text: the built-in admin has no users row.
+  updatedBy: text('updated_by'),
+});

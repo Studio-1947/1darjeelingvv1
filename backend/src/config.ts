@@ -436,6 +436,9 @@ export const HOST_GRACE_BOOKINGS = graceBookings;
 //                  any page. The API stays up (the Android app keeps working) and the admin console
 //                  at /admin is untouched. ON in production unless MAINTENANCE=false; off elsewhere
 //                  unless MAINTENANCE=true, so local development still shows the app.
+//                  This is only the default: an admin can switch it from the panel's Overview tab,
+//                  and that choice wins until they reset it (lib/siteSettings.ts). It is not part
+//                  of the legal pause, so keep it when the pause is removed.
 //   HOME_DELIVERY  Off unless "true": listings stop showing delivery (publicExtras drops
 //                  `home_delivery`) and new requests are refused. Open requests can still be
 //                  answered, and a host's own setting is kept, so turning it on restores every

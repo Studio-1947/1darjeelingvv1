@@ -288,6 +288,13 @@
       "when": 1795343902353,
       "tag": "0040_terms_consent",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1795368358812,
+      "tag": "0041_app_settings",
+      "breakpoints": true
     }
   ]
 }
