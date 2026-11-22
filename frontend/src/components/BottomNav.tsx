@@ -16,14 +16,18 @@ type Tab = { key: string; to: string; match: string[]; label: string; icon: Icon
  */
 export default function BottomNav() {
   const { t } = useTranslation();
-  const { user, isHostMode } = useAuth();
+  const { user, isHostMode, provider } = useAuth();
   const { pathname, search } = useLocation();
   // A tab matches its path, or its path plus query (?s=bookings); the bare path only when no sub-screen is open.
   const here = pathname + search;
   const isActive = (m: string[]) => m.some((x) => (x.includes('?') ? here.startsWith(x) : pathname === x && !new URLSearchParams(search).get('s')));
   const savedCount = useFavorites().ids.size;
+  // In host mode the Account tab shows the business profile photo (provider.extras.host_avatar,
+  // set on Account > Business profile), falling back to the traveller photo; same for the initial.
+  const avatar: string | undefined = (isHostMode && provider?.extras?.host_avatar) || user?.avatar || undefined;
+  const initialName: string | undefined = (isHostMode && (provider?.extras?.host_name || provider?.business_name)) || user?.name;
   const [avatarError, setAvatarError] = useState(false);
-  useEffect(() => { setAvatarError(false); }, [user?.avatar]);
+  useEffect(() => { setAvatarError(false); }, [avatar]);
 
   // Hosts keep the traveller's five tabs, as in the prototype; My trip becomes Bookings and Home is
   // the business dashboard. My listings is reached from the dashboard's "Your listings · See all".
@@ -52,10 +56,10 @@ export default function BottomNav() {
           return (
             <Link key={tab.key} to={tab.to} className="ag-tab" data-testid={`bottom-nav-${tab.key}`} aria-current={active ? 'page' : undefined}>
               <span className="ind">
-                {isAccount && user?.avatar && !avatarError ? (
-                  <img src={user.avatar} alt="" className="av" onError={() => setAvatarError(true)} data-testid="bottom-nav-avatar" />
-                ) : isAccount && user?.name ? (
-                  <span className="av" data-testid="bottom-nav-initial">{user.name.trim().charAt(0).toUpperCase()}</span>
+                {isAccount && avatar && !avatarError ? (
+                  <img src={avatar} alt="" className="av" onError={() => setAvatarError(true)} data-testid="bottom-nav-avatar" />
+                ) : isAccount && user && initialName?.trim() ? (
+                  <span className="av" data-testid="bottom-nav-initial">{initialName.trim().charAt(0).toUpperCase()}</span>
                 ) : (
                   <Icon name={tab.icon} />
                 )}

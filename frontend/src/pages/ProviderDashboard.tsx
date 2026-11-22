@@ -308,9 +308,14 @@ function ProviderDashboardPage() {
           {listings.length > 1 && (
             <Chips scroll aria-label={t('ui.providerDashboard.choose_listing')}>
               <Chip on={!activeListingId} onClick={() => setActiveListingId(null)}>{t('ui.providerDashboard.all_listings')}</Chip>
-              {listings.map((l) => (
-                <Chip key={l.id} on={activeListingId === l.id} onClick={() => setActiveListingId(l.id)}>{l.title}</Chip>
-              ))}
+              {/* Type first (icon + "Homestay · Rabi"), sorted by type then name, so two listings with the host's name tell apart. */}
+              {[...listings]
+                .sort((a, b) => typeLabel(a.type).localeCompare(typeLabel(b.type)) || (a.title || '').localeCompare(b.title || ''))
+                .map((l) => (
+                  <Chip key={l.id} on={activeListingId === l.id} onClick={() => setActiveListingId(l.id)} data-testid={`bookings-listing-${l.id}`}>
+                    <Icon name={BAND_ICON[l.type] || 'home'} />{typeLabel(l.type)} · {l.title}
+                  </Chip>
+                ))}
             </Chips>
           )}
           {scoped.length === 0 ? (

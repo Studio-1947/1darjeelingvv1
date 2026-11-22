@@ -156,12 +156,6 @@ html[data-mode="dark"] .ag-account-tdtile > svg.i, html[data-mode="dark"] .ag-ac
 .ag-account-paln span { font: 400 12px/16px var(--font); letter-spacing: .24px; color: var(--ink-muted); }
 .ag-account-palfor { margin: 4px 0 14px; }
 
-/* on/off switch in a menu row (prototype .tog), e.g. Dark mode */
-.ag-account-tog { position: relative; flex: none; width: 44px; height: 26px; border-radius: var(--pill); background: var(--outline); transition: background .15s; }
-.ag-account-tog i { position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgb(0 0 0 / .25); transition: transform .15s; }
-.ag-account-tog.on { background: var(--r); }
-.ag-account-tog.on i { transform: translateX(18px); }
-@media (prefers-reduced-motion: reduce) { .ag-account-tog, .ag-account-tog i { transition: none; } }
 
 /* Cancelling (prototype cancel.js): the reason sheet, and the banners on trip and booking cards. */
 .ag-cx-reasons { gap: 6px !important; }
