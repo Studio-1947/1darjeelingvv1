@@ -1,6 +1,6 @@
-import { and, eq, gt, gte, lt, ne, or, sql } from 'drizzle-orm';
+import { and, eq, gt, gte, isNull, lt, ne, or, sql } from 'drizzle-orm';
 import { schema } from '../db';
-import { BOOKING_HOLD_MINUTES } from '../config';
+import { ACCEPTED_HOLD_HOURS, BOOKING_HOLD_MINUTES } from '../config';
 
 /**
  * Homestay availability  the single source of truth for "are these dates taken?".
@@ -33,6 +33,33 @@ export function holdCutoff(now: Date = new Date()): string {
 }
 
 /**
+ * The instant before which an `accepted` booking the guest never confirmed stops holding its dates
+ * (QA report BUG-02).
+ *
+ * Accepting used to block the nights forever: a guest who never pressed Confirm froze the room
+ * until the stay date passed, and one person could do that to many homestays at once. The host's
+ * promise still holds for a fair while (ACCEPTED_HOLD_HOURS, 48 by default), long enough for any
+ * guest who means it to confirm, and then the dates go back on the market. lib/requestExpiry.ts
+ * closes the lapsed booking and tells both sides; this cutoff makes the dates free even before
+ * that sweep runs.
+ */
+export function acceptedCutoff(now: Date = new Date()): string {
+  return new Date(now.getTime() - ACCEPTED_HOLD_HOURS * 3600 * 1000).toISOString();
+}
+
+/**
+ * Rooms (QA report BUG-04). A homestay with several rooms can host one guest per room on the
+ * same night, so a booking that names a room clashes only with bookings for that same room, or
+ * with bookings that named no room (taken to mean the whole house). A request naming no room is
+ * the whole house, so every overlapping booking blocks it. Listings without rooms store no room
+ * name, and behave exactly as before.
+ */
+function roomClause(roomName?: string | null) {
+  if (!roomName) return undefined;
+  return or(isNull(schema.bookings.roomName), eq(schema.bookings.roomName, roomName));
+}
+
+/**
  * The SQL predicate for "this row blocks the requested range on this listing".
  *
  * Half-open interval comparison (`existing.checkIn < requested.checkOut AND existing.checkOut >
@@ -46,7 +73,8 @@ function blockingPredicate(
   listingId: string,
   checkIn: string,
   checkOut: string,
-  excludeBookingId?: string
+  excludeBookingId?: string,
+  roomName?: string | null
 ) {
   const clauses = [
     eq(schema.bookings.listingId, listingId),
@@ -55,11 +83,14 @@ function blockingPredicate(
     or(
       // Paid for and belonging to a guest  blocks unconditionally.
       eq(schema.bookings.status, 'confirmed'),
-      // The host has agreed to take these nights. Blocks unconditionally too, and deliberately
-      // NOT subject to the hold window: a host who accepts has promised the room, and a promise
-      // that silently expires fifteen minutes later is worse than no acceptance at all. If the
-      // guest never pays, the host cancels  which is a decision someone makes, not a timeout.
-      eq(schema.bookings.status, 'accepted'),
+      // The host has agreed to take these nights. Not subject to the short checkout hold (a
+      // promise that lapses in fifteen minutes is worse than none), but not forever either: a
+      // guest who has not confirmed within ACCEPTED_HOLD_HOURS lets the dates go (BUG-02). Rows
+      // from before accepted_at existed fall back to when the request was made.
+      and(
+        eq(schema.bookings.status, 'accepted'),
+        gte(sql`coalesce(${schema.bookings.acceptedAt}, ${schema.bookings.createdAt})`, acceptedCutoff())
+      ),
       // A checkout still in flight. `createdAt` is an ISO-8601 UTC string for every row this app
       // writes, so lexicographic ordering is chronological ordering and a text comparison is a
       // correct time comparison.
@@ -72,6 +103,8 @@ function blockingPredicate(
   if (excludeBookingId) {
     clauses.push(ne(schema.bookings.id, excludeBookingId));
   }
+  const room = roomClause(roomName);
+  if (room) clauses.push(room);
   return and(...clauses);
 }
 
@@ -93,12 +126,14 @@ export async function findBlockingBooking(
   listingId: string,
   checkIn: string,
   checkOut: string,
-  excludeBookingId?: string
+  excludeBookingId?: string,
+  /** The room asked for, when the homestay has rooms; null or absent means the whole house. */
+  roomName?: string | null
 ): Promise<BookingRow | null> {
   const rows = await runner
     .select()
     .from(schema.bookings)
-    .where(blockingPredicate(listingId, checkIn, checkOut, excludeBookingId))
+    .where(blockingPredicate(listingId, checkIn, checkOut, excludeBookingId, roomName))
     .limit(1);
   return rows[0] ?? null;
 }
@@ -116,17 +151,20 @@ export async function blockedRanges(
   from: string,
   to: string,
   /** The signed-in viewer, if any: their own bookings come back marked `mine`, nobody else's do. */
-  viewerId?: string | null
-): Promise<{ check_in: string; check_out: string; state: 'booked' | 'hold'; mine?: true }[]> {
+  viewerId?: string | null,
+  /** Only what blocks this room (plus whole-house bookings). Absent: every blocking booking. */
+  roomName?: string | null
+): Promise<{ check_in: string; check_out: string; state: 'booked' | 'hold'; room_name: string | null; mine?: true }[]> {
   const rows = await runner
     .select({
       checkIn: schema.bookings.checkIn,
       checkOut: schema.bookings.checkOut,
       status: schema.bookings.status,
       userId: schema.bookings.userId,
+      roomName: schema.bookings.roomName,
     })
     .from(schema.bookings)
-    .where(blockingPredicate(listingId, from, to))
+    .where(blockingPredicate(listingId, from, to, undefined, roomName))
     .orderBy(schema.bookings.checkIn);
   return rows
     .filter((r) => r.checkIn && r.checkOut)
@@ -134,6 +172,8 @@ export async function blockedRanges(
       check_in: r.checkIn as string,
       check_out: r.checkOut as string,
       state: r.status === 'pending_payment' ? ('hold' as const) : ('booked' as const),
+      // Which room is taken; null when the whole house is. Lets a calendar show other rooms free.
+      room_name: r.roomName ?? null,
       // So a traveller who already asked for these nights is told that, not "someone else booked".
       ...(viewerId && r.userId === viewerId ? { mine: true as const } : {}),
     }));

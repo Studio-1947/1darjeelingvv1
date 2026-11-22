@@ -41,7 +41,7 @@ describe('GET /api/health', () => {
     expect(typeof res.body.checks.database.ms).toBe('number');
   });
 
-  it('answers 503 and names the failing component when storage is down', async () => {
+  it('answers 503 and names the failing component when storage is down, without leaking the error', async () => {
     checkStorage.mockRejectedValue(new Error('connect ECONNREFUSED 172.20.0.4:9000'));
 
     const res = await request(app).get('/api/health');
@@ -51,7 +51,9 @@ describe('GET /api/health', () => {
     expect(res.status).toBe(503);
     expect(res.body.status).toBe('degraded');
     expect(res.body.checks.storage.ok).toBe(false);
-    expect(res.body.checks.storage.error).toContain('ECONNREFUSED');
+    // The raw error (internal addresses) stays in the log; the public body names only the part (BUG-13).
+    expect(res.body.checks.storage.error).toBeUndefined();
+    expect(JSON.stringify(res.body)).not.toContain('172.20.0.4');
     // One dependency failing must not mask the health of the others.
     expect(res.body.checks.database.ok).toBe(true);
   });

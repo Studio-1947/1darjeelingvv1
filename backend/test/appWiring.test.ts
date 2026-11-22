@@ -207,8 +207,9 @@ describe('GET /listings/:id/availability', () => {
     const res = await request(app).get(`/api/listings/${id}/availability?from=${inDays(20)}&to=${inDays(60)}`);
     expect(res.status).toBe(200);
     expect(res.body.ranges).toEqual([
-      { check_in: inDays(32), check_out: inDays(34), state: 'hold' },
-      { check_in: inDays(42), check_out: inDays(44), state: 'booked' },
+      // room_name: which room is taken, null for a homestay without rooms (BUG-04).
+      { check_in: inDays(32), check_out: inDays(34), state: 'hold', room_name: null },
+      { check_in: inDays(42), check_out: inDays(44), state: 'booked', room_name: null },
     ]);
     // Dates and state only: nothing that identifies the guest or the booking.
     expect(JSON.stringify(res.body)).not.toContain(held.body.booking.id);

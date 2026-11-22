@@ -8,6 +8,7 @@ import { eq, and, inArray, sql, asc } from 'drizzle-orm';
 import { authenticateToken, optionalUser } from '../middleware/auth';
 import { canSeeProviderPhone, listExtras, publicExtras } from '../lib/listingContact';
 import { rateLimiter } from '../middleware/rateLimiter';
+import { log } from '../config';
 import { recomputeKycStatus } from './kyc';
 import { googleMapsUrl, inServiceRegion, MapsLinkError, resolveMapsLink } from '../lib/mapsLink';
 import { storeBase64Image, ImageUploadError } from '../lib/imageUpload';
@@ -19,6 +20,7 @@ import { rank, type Interpretation } from '../lib/search';
 import { isIsoDate, maxGuestsFor } from '../lib/bookingRules';
 import { checkNameLike } from '../lib/contentRules';
 import { listingCover } from '../lib/listingCover';
+import { openBookingsFor } from '../lib/accountCleanup';
 import { ratingsForListings } from '../lib/listingRatings';
 import {
   SPOT_TYPE, SPOT_FORBIDDEN_MESSAGE, canWriteSpots, parseSpotExtras,
@@ -532,7 +534,9 @@ router.get('/:id/availability', async (req: Request, res: Response) => {
   }
 
   const viewer = isDateExclusive(item.type) ? await optionalUser(req) : null;
-  const ranges = isDateExclusive(item.type) ? await blockedRanges(db, id, from, to, viewer?.id) : [];
+  // ?room=<name> narrows the calendar to one room of a multi-room homestay (BUG-04).
+  const room = typeof req.query.room === 'string' && req.query.room.trim() ? req.query.room.trim() : null;
+  const ranges = isDateExclusive(item.type) ? await blockedRanges(db, id, from, to, viewer?.id, room) : [];
   res.json({ listing_id: id, from, to, ranges });
 });
 
@@ -706,13 +710,22 @@ async function canManageListing(req: Request, listing: typeof schema.listings.$i
 }
 
 // Upload image (returns the public MinIO URL)
-router.post('/upload', authenticateToken, async (req: Request, res: Response) => {
+router.post(
+  '/upload',
+  authenticateToken,
+  // Travellers upload too (review photos, avatars, place suggestions), so this stays open to any
+  // account, but capped per account per day so one login cannot fill the public bucket (BUG-12).
+  rateLimiter(100, 24 * 60 * 60 * 1000, 'image_upload_user', {
+    keyExtractor: (req: Request) => (req.user?.id ? `user:${req.user.id}` : undefined),
+  }),
+  async (req: Request, res: Response) => {
   try {
     const url = await storeBase64Image(req.body?.file, req.body?.filename);
     res.json({ url });
   } catch (err: any) {
     if (err instanceof ImageUploadError) return res.status(400).json({ detail: err.message });
-    res.status(500).json({ detail: err.message || 'MinIO upload failed' });
+    log.error(`[upload] image store failed: ${err?.message || err}`);
+    res.status(500).json({ detail: 'Upload failed, please try again' });
   }
 });
 
@@ -832,6 +845,21 @@ router.delete('/:id', authenticateToken, async (req: Request, res: Response) => 
         ? SPOT_FORBIDDEN_MESSAGE
         : 'You do not have permission to delete this listing',
     });
+  }
+
+  // Other guests' open or upcoming bookings would cascade away with the row, silently
+  // (QA report BUG-03). Refuse until the host has declined or cancelled them, which tells each
+  // guest and refunds their fee. An admin can still force it with ?force=1.
+  const force = req.user.role === 'admin' && (req.query.force === '1' || req.query.force === 'true');
+  if (!force) {
+    const open = await openBookingsFor({ listingIds: [listing.id] }, req.user.id);
+    if (open) {
+      return res.status(409).json({
+        detail: `This listing has ${open} open or upcoming booking${open === 1 ? '' : 's'}. Decline or cancel ${open === 1 ? 'it' : 'them'} on your dashboard first, so the guest${open === 1 ? ' is' : 's are'} told.`,
+        code: 'open_bookings',
+        open,
+      });
+    }
   }
 
   await db.delete(schema.listings).where(eq(schema.listings.id, listing.id));

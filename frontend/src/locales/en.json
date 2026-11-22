@@ -1468,6 +1468,7 @@
     "add_listing": "Add listing",
     "no_listings": "You have no active listings.",
     "delete_confirm": "Delete this listing? This cannot be undone.",
+    "delete_failed": "Could not delete this listing.",
     "business": "Business",
     "contact": "Contact",
     "description": "Description",
@@ -3477,6 +3478,14 @@
         "title": "A booking request lapsed",
         "body": "A request for {{place}} closed because it was not answered within {{hours}} hours. Accept requests soon so guests can book you."
       },
+      "accepted_lapsed_guest": {
+        "title": "Your booking was not confirmed",
+        "body": "The host of {{place}} accepted your request, but it was not confirmed within {{hours}} hours, so it was closed and the dates were freed. Any fee you paid to send it comes back. You can ask again if the dates are still free."
+      },
+      "accepted_lapsed_host": {
+        "title": "An accepted booking lapsed",
+        "body": "A guest you accepted for {{place}} did not confirm within {{hours}} hours, so the booking closed and those dates are free again."
+      },
       "booking_request_host": {
         "title": "New booking request",
         "body": "{{guest}} asked to book {{place}}. Accept or decline it on your dashboard."
@@ -3827,7 +3836,8 @@
       "fully_booked": "Fully booked for these dates",
       "not_available": "Car or home not available",
       "family_health": "Family or health reason",
-      "no_show": "The guest did not come"
+      "no_show": "The guest did not come",
+      "not_confirmed": "Not confirmed in time"
     },
     "reason": "Reason",
     "h_guest": "Why are you cancelling?",

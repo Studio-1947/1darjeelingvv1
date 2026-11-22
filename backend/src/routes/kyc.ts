@@ -11,7 +11,7 @@ import { computeCompletion } from '../lib/profileCompletion';
 import { uploadPrivate, getPrivateObject, deletePrivate } from '../lib/s3';
 import { log, VERIFICATION_SUPPORT_PHONE } from '../config';
 import { routeParam } from '../lib/routeParam';
-import { hostUserIds, myActiveProvider } from '../lib/hostAccess';
+import { myActiveProvider } from '../lib/hostAccess';
 import { notifyHostVerification } from '../lib/notifications';
 
 const router = Router();
@@ -64,6 +64,11 @@ export function matchesDeclaredType(buffer: Buffer, mime: string): boolean {
 
 // The business this person runs (as owner or co-owner), while it is active.
 const ownActiveProvider = myActiveProvider;
+
+// ID documents (Aadhaar, PAN and the like) belong to the person who uploaded them, not to the
+// business: a co-owner can see the review status but cannot open, replace or remove the owner's
+// scans (QA report BUG-08). Only the owner and admins can.
+const OWNER_ONLY_DETAIL = 'Only the owner of this business can open or change its ID documents';
 
 function docOut(d: typeof schema.kycDocuments.$inferSelect) {
   return {
@@ -344,6 +349,7 @@ async function storeKycDocument(
 router.post('/me/kyc', authenticateToken, async (req: Request, res: Response) => {
   const provider = await ownActiveProvider(req.user.id);
   if (!provider) return res.status(403).json({ detail: 'Only active providers can upload KYC documents' });
+  if (provider.userId !== req.user.id) return res.status(403).json({ detail: OWNER_ONLY_DETAIL, code: 'owner_only' });
 
   // A new host sends documents for approval only once the mandatory parts of their profile are in
   // (lib/hostProfile.ts). Hosts who were live before approval existed are not held back.
@@ -393,6 +399,7 @@ router.post('/me/kyc', authenticateToken, async (req: Request, res: Response) =>
 router.post('/me/kyc/video', authenticateToken, async (req: Request, res: Response) => {
   const provider = await ownActiveProvider(req.user.id);
   if (!provider) return res.status(403).json({ detail: 'Only active providers can upload KYC documents' });
+  if (provider.userId !== req.user.id) return res.status(403).json({ detail: OWNER_ONLY_DETAIL, code: 'owner_only' });
 
   // A new host sends documents for approval only once the mandatory parts of their profile are in
   // (lib/hostProfile.ts). Hosts who were live before approval existed are not held back.
@@ -436,6 +443,7 @@ router.post('/me/kyc/video', authenticateToken, async (req: Request, res: Respon
 router.delete('/me/kyc/:docType', authenticateToken, async (req: Request, res: Response) => {
   const provider = await ownActiveProvider(req.user.id);
   if (!provider) return res.status(403).json({ detail: 'Only active providers can manage KYC documents' });
+  if (provider.userId !== req.user.id) return res.status(403).json({ detail: OWNER_ONLY_DETAIL, code: 'owner_only' });
   const removed = await db.select().from(schema.kycDocuments)
     .where(and(eq(schema.kycDocuments.providerId, provider.id), eq(schema.kycDocuments.docType, routeParam(req, 'docType'))));
   await db.delete(schema.kycDocuments)
@@ -459,7 +467,8 @@ router.get('/kyc/:id/file', authenticateToken, async (req: Request, res: Respons
   let allowed = req.user.role === 'admin';
   if (!allowed) {
     const [provider] = await db.select().from(schema.providers).where(eq(schema.providers.id, doc.providerId)).limit(1);
-    allowed = !!provider && (await hostUserIds(provider.id)).includes(req.user.id);
+    // The owner only, not co-owners (BUG-08).
+    allowed = !!provider && provider.userId === req.user.id;
   }
   if (!allowed) return res.status(403).json({ detail: 'Forbidden' });
 

@@ -35,7 +35,7 @@ async function confirmUnderLock(bookingId: string) {
     if (isDateExclusive(target.listingType) && target.checkIn && target.checkOut) {
 
       const clash = await findBlockingBooking(
-        tx, target.listingId, target.checkIn, target.checkOut, target.id
+        tx, target.listingId, target.checkIn, target.checkOut, target.id, target.roomName
       );
       // `accepted` counts as taken here for the same reason it blocks in the predicate: the host
       // has already promised those nights to someone else, so confirming this one would send two

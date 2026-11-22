@@ -227,7 +227,10 @@ app.get('/api/health', async (_req: Request, res: Response) => {
     } catch (err) {
       // The message names the component and the failure, and is safe: these are connection-level
       // errors from our own infrastructure, not anything derived from a caller's request.
-      checks[name] = { ok: false, ms: Date.now() - started, error: (err as Error)?.message?.slice(0, 200) || 'unknown' };
+      // The detail (it can carry internal addresses, e.g. "connect ECONNREFUSED 172.20.0.4:9000")
+      // goes to the log only; this endpoint is public (QA report BUG-13).
+      log.warn(`[health] ${name} check failed: ${(err as Error)?.message?.slice(0, 200) || 'unknown'}`);
+      checks[name] = { ok: false, ms: Date.now() - started };
     }
   };
 

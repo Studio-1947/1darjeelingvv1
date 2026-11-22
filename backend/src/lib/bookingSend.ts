@@ -84,7 +84,7 @@ export async function sendAwaitingRequest(bookingId: string, { paid }: { paid: b
     };
     if (hasStartDatePassed(now.checkIn)) return { outcome: 'past' as const, booking: await close() };
     if (isDateExclusive(now.listingType) && now.checkIn && now.checkOut) {
-      const clash = await findBlockingBooking(tx, now.listingId, now.checkIn, now.checkOut, now.id);
+      const clash = await findBlockingBooking(tx, now.listingId, now.checkIn, now.checkOut, now.id, now.roomName);
       if (clash) return { outcome: 'taken' as const, booking: await close() };
     }
     const [sent] = await tx.update(schema.bookings)

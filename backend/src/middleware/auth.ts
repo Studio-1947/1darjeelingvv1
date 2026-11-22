@@ -4,7 +4,7 @@ import crypto from 'crypto';
 import { db, schema } from '../db';
 import { toPublicUser, type PublicUser } from '../lib/publicUser';
 import { eq } from 'drizzle-orm';
-import { JWT_SECRET } from '../config';
+import { ADMIN_PASSWORD, JWT_SECRET } from '../config';
 
 // OWASP's floor for PBKDF2-HMAC-SHA512. (The widely-quoted 600,000 is the SHA256 figure  using
 // it here would be ~3x the intended work factor for no benefit.) Measured ~120ms per hash, which
@@ -95,10 +95,37 @@ interface JwtPayload {
   sub: string;
   phone?: string;
   role?: string;
+  /** Built-in admin only: which ADMIN_PASSWORD the token was issued under. */
+  apv?: string;
+}
+
+/**
+ * How long a session lasts. Admin sessions are short (QA report BUG-09): a leaked admin token
+ * used to give full admin access for 30 days, with no way to end it short of rotating
+ * JWT_SECRET and logging everyone out.
+ */
+const USER_TOKEN_TTL = '30d';
+const ADMIN_TOKEN_TTL = '12h';
+
+/** A short fingerprint of the built-in admin password, never the password itself. */
+function adminPasswordVersion(): string {
+  return crypto.createHash('sha256').update(`admin-token:${ADMIN_PASSWORD}`).digest('hex').slice(0, 16);
+}
+
+/**
+ * The built-in (.env) admin's token is valid only while ADMIN_PASSWORD is the one it was issued
+ * under, so changing the password ends every existing session of that admin (BUG-09). That
+ * login has no database row, so there is nothing else to revoke against.
+ */
+function builtInAdminTokenValid(payload: JwtPayload): boolean {
+  return payload.apv === adminPasswordVersion();
 }
 
 export function makeToken(userId: string, phone: string, role: string): string {
-  return jwt.sign({ sub: userId, phone, role }, JWT_SECRET, { expiresIn: '30d' });
+  if (userId === 'admin-system') {
+    return jwt.sign({ sub: userId, phone, role, apv: adminPasswordVersion() }, JWT_SECRET, { expiresIn: ADMIN_TOKEN_TTL });
+  }
+  return jwt.sign({ sub: userId, phone, role }, JWT_SECRET, { expiresIn: role === 'admin' ? ADMIN_TOKEN_TTL : USER_TOKEN_TTL });
 }
 
 export async function authenticateToken(req: Request, res: Response, next: NextFunction) {
@@ -111,6 +138,7 @@ export async function authenticateToken(req: Request, res: Response, next: NextF
   try {
     const payload = jwt.verify(token, JWT_SECRET) as JwtPayload;
     if (payload.sub === 'admin-system') {
+      if (!builtInAdminTokenValid(payload)) return res.status(401).json({ detail: 'Invalid token' });
       req.user = toPublicUser({
         id: 'admin-system',
         name: 'System Administrator',
@@ -152,6 +180,7 @@ export async function optionalUser(req: Request): Promise<AuthenticatedUser | nu
   try {
     const payload = jwt.verify(authHeader.split(' ')[1], JWT_SECRET) as JwtPayload;
     if (payload.sub === 'admin-system') {
+      if (!builtInAdminTokenValid(payload)) return null;
       return toPublicUser({
         id: 'admin-system',
         name: 'System Administrator',

@@ -4,7 +4,7 @@ import { REFERRAL_REWARD_DAYS } from '../config';
 import { and, eq } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
 import { authenticateToken } from '../middleware/auth';
-import { deleteListingsOwnedBy, deleteKycFilesOwnedBy } from '../lib/accountCleanup';
+import { blockedDeleteDetail, deleteAccount } from '../lib/accountCleanup';
 import { toPublicUser } from '../lib/publicUser';
 import { assignReferralCode, countReferrals } from '../lib/referrals';
 import { readProfilePatch } from '../lib/travellerProfile';
@@ -178,22 +178,12 @@ router.get('/me/vouchers', authenticateToken, async (req: Request, res: Response
 
 // Delete User Account and cleanup
 router.delete('/me', authenticateToken, async (req: Request, res: Response) => {
-  const uid = req.user.id;
-  const phone = req.user.phone;
-
-  // Manual deletions for non-strictly linked tables
-  await db.delete(schema.otps).where(eq(schema.otps.phone, phone));
-  // Before the provider rows go: the kyc_documents rows cascade off them, and once they are
-  // gone there is no way left to find the identity documents those rows point at in storage.
-  await deleteKycFilesOwnedBy(uid);
-  // Covers listings filed under the user's id *and* under their provider id  see the helper.
-  await deleteListingsOwnedBy(uid);
-  // Cascading deletes on schema will clean up providers, bookings, and payments, but let's be explicit
-  await db.delete(schema.providers).where(eq(schema.providers.userId, uid));
-  await db.delete(schema.bookings).where(eq(schema.bookings.userId, uid));
-  await db.delete(schema.payments).where(eq(schema.payments.userId, uid));
-  await db.delete(schema.users).where(eq(schema.users.id, uid));
-
+  // Refused while people are relying on open bookings; payment records are kept, not deleted;
+  // one transaction (QA report BUG-03). See lib/accountCleanup.ts deleteAccount.
+  const outcome = await deleteAccount(req.user.id);
+  if ('blocked' in outcome) {
+    return res.status(409).json({ detail: blockedDeleteDetail(outcome.blocked), code: 'open_bookings', ...outcome.blocked });
+  }
   res.json({ deleted: true });
 });
 
