@@ -198,8 +198,22 @@ export default function ReviewsSection({ item }: { item: any }) {
           ))
         )}
 
-        {user && !myReview && canReview?.code === 'stay_required' ? (
-          <p data-testid="review-stay-required" className="ag-small">{t('reviews.stay_required')}</p>
+        {/* The form shows only to someone the server will accept a review from (a completed
+            booking for homestays, drivers and guides), or who already wrote one. Nobody sees stars
+            to tap before they have had the stay: the Terms ask for genuine experience only. */}
+        {!user ? (
+          <p data-testid="review-signed-out" className="ag-small">
+            {t('reviews.signed_out', 'Reviews come from travellers who stayed, rode or toured through aangan.')}{' '}
+            <Button variant="text" onClick={() => nav(loginHref)} className="!inline-flex !p-0 align-baseline" data-testid="review-login">
+              {t('reviews.signed_out_cta', 'Sign in to review your trip')}
+            </Button>
+          </p>
+        ) : !myReview && canReview && !canReview.allowed ? (
+          <p data-testid={canReview.code === 'stay_required' ? 'review-stay-required' : 'review-support-required'} className="ag-small">
+            {canReview.code === 'stay_required'
+              ? t('reviews.stay_required')
+              : t('reviews.support_required', 'Reviews here are open to aangan pass holders, so every review comes from a real traveller.')}
+          </p>
         ) : (
           <>
             <div className="flex items-center justify-between gap-3">
@@ -214,31 +228,28 @@ export default function ReviewsSection({ item }: { item: any }) {
             <TextField value={comment} onChange={(e) => setComment(e.target.value)} data-testid="review-comment"
               placeholder={t('listing.revph', 'Write a few words (you can skip)')} aria-label={t('listing.revph', 'Write a few words (you can skip)')} />
 
-            {user && (
-              <div className="flex flex-wrap items-center gap-2">
-                {photos.map((p, idx) => (
-                  <div key={idx} className="relative w-16 h-16 rounded-[12px] overflow-hidden bg-[var(--creme2)]">
-                    <img src={p} alt={t('reviews.attachment_alt')} className="w-full h-full object-cover" />
-                    <IconButton small label={t('reviews.remove')} onClick={() => setPhotos(photos.filter((_, i) => i !== idx))}
-                      className="absolute top-0.5 right-0.5 !w-6 !h-6 [&_svg]:!w-3.5 [&_svg]:!h-3.5">
-                      <X />
-                    </IconButton>
-                  </div>
-                ))}
-                {photos.length < MAX_REVIEW_PHOTOS && (
-                  <label className="h-11 px-4 rounded-full border border-dashed border-[var(--outline)] inline-flex items-center gap-2 cursor-pointer text-[14px] font-medium text-[var(--ink-strong)] bg-[var(--surface)]">
-                    {uploadingPhotos ? <Loader2 size={18} className="animate-spin text-[var(--r)]" /> : <Icon name="download" size={18} className="text-[var(--r)]" />}
-                    {t('reviews.add_photo')}
-                    <input type="file" accept="image/*" multiple onChange={handlePhotoUpload} disabled={uploadingPhotos || submitting} className="sr-only" />
-                  </label>
-                )}
-              </div>
-            )}
+            <div className="flex flex-wrap items-center gap-2">
+              {photos.map((p, idx) => (
+                <div key={idx} className="relative w-16 h-16 rounded-[12px] overflow-hidden bg-[var(--creme2)]">
+                  <img src={p} alt={t('reviews.attachment_alt')} className="w-full h-full object-cover" />
+                  <IconButton small label={t('reviews.remove')} onClick={() => setPhotos(photos.filter((_, i) => i !== idx))}
+                    className="absolute top-0.5 right-0.5 !w-6 !h-6 [&_svg]:!w-3.5 [&_svg]:!h-3.5">
+                    <X />
+                  </IconButton>
+                </div>
+              ))}
+              {photos.length < MAX_REVIEW_PHOTOS && (
+                <label className="h-11 px-4 rounded-full border border-dashed border-[var(--outline)] inline-flex items-center gap-2 cursor-pointer text-[14px] font-medium text-[var(--ink-strong)] bg-[var(--surface)]">
+                  {uploadingPhotos ? <Loader2 size={18} className="animate-spin text-[var(--r)]" /> : <Icon name="download" size={18} className="text-[var(--r)]" />}
+                  {t('reviews.add_photo')}
+                  <input type="file" accept="image/*" multiple onChange={handlePhotoUpload} disabled={uploadingPhotos || submitting} className="sr-only" />
+                </label>
+              )}
+            </div>
 
             <FieldError id="review-error">{error}</FieldError>
             <div className="ag-row">
-              {/* Signed out, Send review asks for an account first (a review needs a completed stay). */}
-              <Button onClick={user ? submit : () => nav(loginHref)} disabled={!rating || submitting || uploadingPhotos} data-testid="review-submit"
+              <Button onClick={submit} disabled={!rating || submitting || uploadingPhotos} data-testid="review-submit"
                 icon={submitting ? <Loader2 className="animate-spin" /> : undefined}>
                 {myReview ? t('reviews.update_cta') : t('listing.revsend', 'Send review')}
               </Button>

@@ -15,6 +15,10 @@ export const users = pgTable('users', {
   password: text('password'),
   // Set atomically after a successful WhatsApp OTP verification.
   phoneVerifiedAt: text('phone_verified_at'),
+  // When they ticked "I Agree" (Terms + Privacy Policy, 18 or older) on the sign-in screen. Kept as
+  // the record of consent the DPDP Act asks for. null = signed up before the box existed, or from
+  // an app version that does not send it yet.
+  termsAcceptedAt: text('terms_accepted_at'),
   // The user's own invite code. Server-generated and unique  the app used to derive one from
   // the first name (`ASHA-1D`), which collides on every second Asha and could not be looked up.
   // Nullable because rows created before referrals existed have none until they are backfilled.
@@ -652,3 +656,13 @@ export const placeSuggestions = pgTable('place_suggestions', {
   statusIdx: index('place_suggestions_status_idx').on(t.status, t.createdAt),
   userIdx: index('place_suggestions_user_id_idx').on(t.userId),
 }));
+
+// Site-wide switches an admin flips from the panel, one row per key (e.g. 'maintenance').
+// Read through lib/siteSettings.ts, which falls back to the server's .env when a key has no row.
+export const appSettings = pgTable('app_settings', {
+  key: text('key').primaryKey(),
+  value: jsonb('value').notNull(),
+  updatedAt: text('updated_at').notNull(),
+  // The admin's user id (or 'admin-system'). Plain text: the built-in admin has no users row.
+  updatedBy: text('updated_by'),
+});

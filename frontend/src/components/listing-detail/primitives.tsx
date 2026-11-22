@@ -5,6 +5,7 @@ import { Icon } from '@/components/ag/Icon';
 import SmartImg from '@/components/SmartImg';
 import { listingImage } from '@/lib/listingContent';
 import { Box, cx } from '@/components/ag';
+import { stayPrice } from '@/lib/stayPrice';
 
 /**
  * One block of the listing page (red /7 item view): a Box with an h2, inside the 720px column.
@@ -130,7 +131,10 @@ export function PersonCard({ testid, title, name, photo, verified, place, chips,
 /** A small listing card (`.ag-card`) for the nearby and recommended rows. */
 export function MiniCard({ item, badge }: { item: any; badge?: string }) {
   const { t } = useTranslation();
-  const unit = item.type === 'homestay' ? t('common.per_head') : item.type === 'driver' || item.type === 'guide' ? t('common.per_day') : '';
+  // A homestay leads with its cheapest room when it has priced rooms (lib/stayPrice.ts).
+  const stay = item.type === 'homestay' ? stayPrice(item) : null;
+  const price = stay ? stay.price : Number(item.price);
+  const unit = stay ? t(stay.perRoom ? 'common.per_room_night' : 'common.per_head') : item.type === 'driver' || item.type === 'guide' ? t('common.per_day') : '';
   return (
     <Link to={`/listing/${item.id}`} className="ag-card flex flex-col">
       <span className="relative block">
@@ -144,8 +148,8 @@ export function MiniCard({ item, badge }: { item: any; badge?: string }) {
       <span className="body">
         <span className="name line-clamp-1">{item.title}</span>
         <span className="meta line-clamp-1">{item.location}</span>
-        {Number(item.price) > 0 && (
-          <span className="ag-price">₹{Number(item.price).toLocaleString('en-IN')} {unit && <span className="unit">{unit}</span>}</span>
+        {price > 0 && (
+          <span className="ag-price">{stay?.from && <span className="unit">{t('common.starting_from')} </span>}₹{price.toLocaleString('en-IN')} {unit && <span className="unit">{unit}</span>}</span>
         )}
       </span>
     </Link>

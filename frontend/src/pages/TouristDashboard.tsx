@@ -11,6 +11,7 @@ import { Box, Button, ButtonA, ButtonLink, PageHead, Status } from '@/components
 import { Icon, type IconName } from '@/components/ag/Icon';
 import Wordmark from '@/components/Wordmark';
 import TravellerPanels, { Avatar } from '@/components/TravellerPanels';
+import { COMPANY } from '@/constants/company';
 
 /** Prototype language order and labels (V.language). */
 const LANG_ORDER: LangCode[] = ['en', 'hi', 'ne', 'bn'];
@@ -57,13 +58,13 @@ function AccountFoot() {
       <p className="ag-account-help">
         {t('ui.account.help1', 'Need help? Call us on')} <b>+91 90932 77919</b><br />
         <span className="hrs"><Icon name="bell" /> {t('ui.account.callhrs', 'Calls: Monday to Friday, 9 am to 6 pm')}</span><br />
-        {t('ui.account.help2', 'or email:')} <a href="mailto:aanganerp@gmail.com" data-testid="account-help-email"><b>aanganerp@gmail.com</b></a>
+        {t('ui.account.help2', 'or email:')} <a href={`mailto:${COMPANY.email}`} data-testid="account-help-email"><b>{COMPANY.email}</b></a>
       </p>
       <div className="ag-account-contact">
         <ButtonA href="tel:+919093277919" icon={<Icon name="phone" />} data-testid="account-help"
           aria-label={t('ui.footer.call_us', { phone: '+91 90932 77919' })}>{t('ui.footer.call')}</ButtonA>
-        <ButtonA href="mailto:aanganerp@gmail.com" icon={<Icon name="mail" />}
-          aria-label={t('ui.footer.email_us', { email: 'aanganerp@gmail.com' })}>{t('ui.footer.email')}</ButtonA>
+        <ButtonA href={`mailto:${COMPANY.email}`} icon={<Icon name="mail" />}
+          aria-label={t('ui.footer.email_us', { email: COMPANY.email })}>{t('ui.footer.email')}</ButtonA>
         <a className="ag-iconbtn" href="https://www.instagram.com/aanganerp?dlrf=MWRnZ2tneHBqM2JiaQ%3D%3D" target="_blank" rel="noreferrer"
           aria-label={t('ui.footer.follow_instagram')}><Icon name="insta" /></a>
         <a className="ag-iconbtn" href="https://www.facebook.com/profile.php?id=61594349938326" target="_blank" rel="noreferrer"

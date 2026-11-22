@@ -16,7 +16,9 @@ export type DocRequirement = {
 // host can see. Documents already stored under a dropped type stay in the table and in the admin
 // queue; they simply no longer count towards verification, and since every list below is a subset
 // of the old required one, nobody who was verified before stops being verified.
-const PHOTO_ID: DocRequirement = { docType: 'aadhaar', label: 'Aadhaar or any photo ID', required: true };
+// The doc type keeps its old key ('aadhaar') so existing uploads still match, but we no longer ask for
+// Aadhaar: UIDAI is ending private storage of Aadhaar copies, so the label steers to other photo IDs.
+const PHOTO_ID: DocRequirement = { docType: 'aadhaar', label: 'Photo ID: voter ID, driving licence or passport (not Aadhaar)', required: true };
 
 export const KYC_REQUIREMENTS: Record<string, DocRequirement[]> = {
   homestay: [

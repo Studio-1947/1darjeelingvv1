@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import request from 'supertest';
 import { app } from '../src/app';
+import { eq } from 'drizzle-orm';
+import { db, schema } from '../src/db';
 import { nextPhone, registerUser } from './helpers';
 
 describe('auth', () => {
@@ -91,5 +93,24 @@ describe('auth', () => {
       .post('/api/auth/admin/login')
       .send({ phone: 'admin', password: 'wrong_password' });
     expect(res.status).toBe(401);
+  });
+
+  it('records when the user ticked I Agree, once, and does not require it from older apps', async () => {
+    const phone = nextPhone();
+    const first = await request(app).post('/api/auth/otp/verify').send({ phone, otp: '123456', name: 'Consenting Guest', consent: true });
+    expect(first.status).toBe(200);
+    const [row] = await db.select().from(schema.users).where(eq(schema.users.phone, phone));
+    expect(row.termsAcceptedAt).toBeTruthy();
+
+    const again = await request(app).post('/api/auth/otp/verify').send({ phone, otp: '123456', consent: true });
+    expect(again.status).toBe(200);
+    const [same] = await db.select().from(schema.users).where(eq(schema.users.phone, phone));
+    expect(same.termsAcceptedAt).toBe(row.termsAcceptedAt);
+
+    const oldApp = nextPhone();
+    const legacy = await request(app).post('/api/auth/otp/verify').send({ phone: oldApp, otp: '123456', name: 'Old App User' });
+    expect(legacy.status).toBe(200);
+    const [noConsent] = await db.select().from(schema.users).where(eq(schema.users.phone, oldApp));
+    expect(noConsent.termsAcceptedAt).toBeNull();
   });
 });

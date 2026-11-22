@@ -14,6 +14,10 @@ import { HOST_TYPES, HUBS, MAX_GOODS, MAX_PHOTOS, OFFERS, PRESETS, QUICK_DISHES,
 import { photoGoalFor } from '@/lib/photoGoal';
 import Sheet, { SheetHead } from '@/components/listing-detail/Sheet';
 
+/** "Add your own" on the What do you give? step; the server takes up to 30 amenities of 60 characters. */
+const MAX_OWN_OFFERS = 8;
+const MAX_OWN_OFFER_LEN = 40;
+
 // Leaflet is heavy: load the pin map only once the host has picked a place.
 const PinMap = lazy(() => import('./PinMap'));
 
@@ -140,7 +144,9 @@ function PlaceStep({ w }: { w: HostWizard }) {
     return () => window.clearTimeout(id);
   }, [q]);
 
-  const hubs = q.trim() ? HUBS.filter((h) => h.name.toLowerCase().includes(q.trim().toLowerCase())) : HUBS;
+  // No preset places before typing: the search and "my location" cover it. Typed text matches the
+  // hubs straight away while the geocoder answers.
+  const hubs = q.trim() ? HUBS.filter((h) => h.name.toLowerCase().includes(q.trim().toLowerCase())) : [];
   const chips = [...hubs, ...found.filter((f) => !hubs.some((h) => h.name === f.name))];
 
   // Every pick (GPS, chip, search, pin drag) bumps `seq`; a street name that comes back for an
@@ -416,6 +422,17 @@ function ExtrasStep({ w }: { w: HostWizard }) {
   const { t, d, set, addPhotos, uploading } = w;
   const keys = d.type ? OFFERS[d.type] : [];
   const toggle = (k: string) => set({ offers: d.offers.includes(k) ? d.offers.filter((x) => x !== k) : [...d.offers, k] });
+  // Anything not on the ready-made list, typed by the host. Tapping one removes it.
+  const own = d.offers.filter((o) => !keys.includes(o));
+  const [adding, setAdding] = useState(false);
+  const [text, setText] = useState('');
+  const addOwn = () => {
+    const v = text.trim().replace(/\s+/g, ' ').slice(0, MAX_OWN_OFFER_LEN);
+    const known = keys.some((k) => t(`ob.wz.fo.${k}`).toLowerCase() === v.toLowerCase());
+    if (v && !known && !d.offers.some((o) => o.toLowerCase() === v.toLowerCase())) set({ offers: [...d.offers, v] });
+    setText('');
+    setAdding(false);
+  };
   const count = d.photos.length;
   return (
     <Frame w={w} title={t('ob.wz.offers')}>
@@ -425,7 +442,30 @@ function ExtrasStep({ w }: { w: HostWizard }) {
             <Icon name={d.offers.includes(k) ? 'check' : 'plus'} />{t(`ob.wz.fo.${k}`)}
           </button>
         ))}
+        {own.map((o) => (
+          <button key={o} type="button" className="ag-onboard-pchip" aria-pressed onClick={() => toggle(o)}
+            aria-label={t('ob.wz.offer_remove', { name: o, defaultValue: 'Remove {{name}}' })} data-testid="wz-offer-own">
+            <Icon name="check" />{o}<Icon name="close" />
+          </button>
+        ))}
+        {!adding && own.length < MAX_OWN_OFFERS && (
+          <button type="button" className="ag-onboard-pchip" onClick={() => setAdding(true)} data-testid="wz-offer-add">
+            <Icon name="plus" />{t('ob.wz.offer_add', 'Add your own')}
+          </button>
+        )}
       </div>
+      {adding && (
+        <form className="ag-onboard-loc" onSubmit={(e) => { e.preventDefault(); addOwn(); }}>
+          <label className="ag-onboard-search">
+            <input autoFocus value={text} onChange={(e) => setText(e.target.value)} maxLength={MAX_OWN_OFFER_LEN}
+              placeholder={t('ob.wz.offer_ph', 'For example: Mountain view')} aria-label={t('ob.wz.offer_add', 'Add your own')}
+              onKeyDown={(e) => { if (e.key === 'Escape') { setText(''); setAdding(false); } }} data-testid="wz-offer-input" />
+          </label>
+          <Button type="submit" variant="primary" disabled={!text.trim()} data-testid="wz-offer-save">
+            {t('ob.wz.offer_save', 'Add')}
+          </Button>
+        </form>
+      )}
       <Box className="ag-onboard-photos">
         <div className="head">
           <b>{t('ob.wz.wzph')}</b>
@@ -449,7 +489,7 @@ function ExtrasStep({ w }: { w: HostWizard }) {
             </label>
           )}
         </div>
-        <p className="ag-small">{photoGoalFor(d.type) ? t('ob.wz.wzphS2', 'The first one is the cover. Photos help travellers choose you: add at least {{count}} to get the Verified tick. You can add them later.', { count: photoGoalFor(d.type) }) : t('ob.wz.wzphS')}</p>
+        <p className="ag-small">{photoGoalFor(d.type) ? t('ob.wz.wzphS2', 'The first one is the cover. Photos help travellers choose you. You need at least {{count}} before you can send your documents for the Documents verified badge. You can add them later.', { count: photoGoalFor(d.type) }) : t('ob.wz.wzphS')}</p>
       </Box>
     </Frame>
   );

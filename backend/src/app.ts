@@ -18,6 +18,7 @@ import adminSpotsRouter from './routes/adminSpots';
 import placeSuggestionsRouter from './routes/placeSuggestions';
 import referralCampaignsRouter from './routes/referralCampaigns';
 import adminMaintenanceRouter from './routes/adminMaintenance';
+import adminSettingsRouter from './routes/adminSettings';
 import adminBroadcastsRouter from './routes/adminBroadcasts';
 import geocodeRouter from './routes/geocode';
 import mapTilesRouter from './routes/mapTiles';
@@ -276,6 +277,7 @@ app.use('/api', reportsRouter); // /api/reports, /api/users/me/blocks, /api/admi
 app.use('/api', adminRouter); // Mount admin routes directly under /api (e.g. /api/admin/seed, /api/admin/stats)
 app.use('/api', adminSpotsRouter); // Admin-only tourist-spot CRUD (e.g. /api/admin/spots)
 app.use('/api', adminMaintenanceRouter); // Admin Clean-up tab (e.g. /api/admin/maintenance/demo)
+app.use('/api', adminSettingsRouter); // Admin site switches (e.g. /api/admin/settings/maintenance)
 app.use('/api', adminBroadcastsRouter); // Admin Notifications page (e.g. /api/admin/broadcasts)
 
 // ============ 404 + ERROR HANDLING ============

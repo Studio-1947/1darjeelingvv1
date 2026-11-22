@@ -1,4 +1,4 @@
-import { and, eq, inArray, lt, sql } from 'drizzle-orm';
+import { and, eq, gte, inArray, lt, sql } from 'drizzle-orm';
 import { db, schema } from '../db';
 import { ACCEPTED_HOLD_HOURS, REQUEST_EXPIRY_HOURS, log } from '../config';
 import { HOST_APPROVAL_TYPES, realHostIds } from './bookingApproval';
@@ -9,7 +9,7 @@ import { AWAITING_FEE } from './bookingSend';
 import { acceptedCutoff, isDateExclusive } from './bookingAvailability';
 
 /**
- * Closes booking requests the host never answered.
+ * Closes booking requests the host never answered (and, below, reminds hosts halfway through).
  *
  * With host approval a request stays `pending_payment` until the host presses Accept. A host who
  * never opens the dashboard would leave the guest waiting forever, unable to plan. After
@@ -126,6 +126,51 @@ async function lapseUnconfirmedAccepts(now: Date): Promise<number> {
 }
 
 /**
+ * Halfway through the answer window, the host gets one reminder for each request still waiting,
+ * so a request does not lapse just because the first notice was missed. One per request: a
+ * reminder already on record for that booking (kind booking_reminder, ref_id) is not sent again.
+ */
+export async function remindSlowHosts(now: Date = new Date()): Promise<number> {
+  const half = new Date(now.getTime() - (REQUEST_EXPIRY_HOURS / 2) * 3600_000).toISOString();
+  const cutoff = new Date(now.getTime() - REQUEST_EXPIRY_HOURS * 3600_000).toISOString();
+  const waiting = await db.select({
+    id: schema.bookings.id,
+    listingTitle: schema.bookings.listingTitle,
+    providerId: schema.listings.providerId,
+  })
+    .from(schema.bookings)
+    .innerJoin(schema.listings, eq(schema.listings.id, schema.bookings.listingId))
+    .where(and(
+      eq(schema.bookings.status, 'pending_payment'),
+      lt(schema.bookings.createdAt, half),
+      gte(schema.bookings.createdAt, cutoff),
+      inArray(schema.bookings.listingType, [...HOST_APPROVAL_TYPES]),
+    ));
+  if (!waiting.length) return 0;
+
+  const already = await db.select({ refId: schema.notifications.refId })
+    .from(schema.notifications)
+    .where(and(eq(schema.notifications.kind, 'booking_reminder'), inArray(schema.notifications.refId, waiting.map((b) => b.id))));
+  const done = new Set(already.map((r) => r.refId));
+  const hosts = await realHostIds(waiting.map((b) => b.providerId));
+  let sent = 0;
+  for (const b of waiting) {
+    if (done.has(b.id) || !hosts.has(b.providerId)) continue;
+    const left = Math.ceil(REQUEST_EXPIRY_HOURS / 2);
+    await addHostNotification(b.providerId, {
+      kind: 'booking_reminder',
+      title: 'A guest is waiting for your answer',
+      body: `A request for ${b.listingTitle} is still waiting. Accept or decline within about ${left} hours, or it closes by itself.`,
+      msg: { key: 'request_reminder_host', params: { place: b.listingTitle, hours: left } },
+      refId: b.id,
+    });
+    sent++;
+  }
+  if (sent) log.info(`[requests] reminded hosts about ${sent} waiting request(s)`);
+  return sent;
+}
+
+/**
  * Requests saved but never sent (the traveller left without paying the ₹1 fee) are closed after a
  * day, so they do not keep a voucher locked. Nobody was told about them, so nobody is told now.
  */
@@ -141,7 +186,9 @@ async function dropUnsentDrafts(now: Date): Promise<number> {
 
 /** Runs the sweep now and every 30 minutes. Never throws: a failed sweep waits for the next one. */
 export function startRequestExpiry(): NodeJS.Timeout {
-  const run = () => expireStaleRequests().catch((err) => log.warn(`[requests] expiry sweep failed: ${(err as Error).message}`));
+  const run = () => expireStaleRequests()
+    .then(() => remindSlowHosts())
+    .catch((err) => log.warn(`[requests] expiry sweep failed: ${(err as Error).message}`));
   void run();
   const timer = setInterval(run, 30 * 60 * 1000);
   timer.unref();

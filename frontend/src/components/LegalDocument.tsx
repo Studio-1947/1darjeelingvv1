@@ -55,9 +55,10 @@ export default function LegalDocument({ ns, testId, children }: { ns: string; te
   // These documents are authored in English only and reach the other languages through i18next's
   // fallback. If a lookup ever fails to resolve, t() hands back the key as a string  guard so a
   // legal page degrades to empty rather than throwing.
-  const rawIntro = t(`${ns}.intro`, { returnObjects: true });
+  const rawIntro = t(`${ns}.intro`, { returnObjects: true, email: COMPANY.email });
   const intro: string[] = Array.isArray(rawIntro) ? rawIntro : [];
-  const rawSections = t(`${ns}.sections`, { returnObjects: true });
+  // `{{email}}` in the texts is the one support address from constants/company.ts.
+  const rawSections = t(`${ns}.sections`, { returnObjects: true, email: COMPANY.email });
   const sections: Block[] = Array.isArray(rawSections) ? rawSections : [];
 
   return (
@@ -91,12 +92,14 @@ export default function LegalDocument({ ns, testId, children }: { ns: string; te
                   <b className="font-medium text-[var(--ink-strong)]">{s.contact.name}</b>
                   {/* constants/company.ts; each line appears once its value is filled in. */}
                   {s.contact.officer && COMPANY.grievanceOfficer && (
-                    <span data-testid="grievance-officer">{t('privacy.officer_label')} {COMPANY.grievanceOfficer}</span>
+                    <span data-testid="grievance-officer">
+                      {t('privacy.officer_label')} {COMPANY.grievanceOfficer}{COMPANY.grievanceDesignation && `, ${COMPANY.grievanceDesignation}`}
+                    </span>
                   )}
                   {COMPANY.gstin && <span>{t('privacy.gstin_label')} {COMPANY.gstin}</span>}
                   <span>
                     {t('privacy.email_label')}{' '}
-                    <a href={`mailto:${s.contact.email}`} className="font-medium text-[var(--r)] hover:underline">{s.contact.email}</a>
+                    <a href={`mailto:${COMPANY.email}`} className="font-medium text-[var(--r)] hover:underline">{COMPANY.email}</a>
                   </span>
                   {s.contact.phone && (
                     <span>

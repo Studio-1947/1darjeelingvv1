@@ -25,7 +25,7 @@ const ok = (c, m) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (!c) fails.p
   await shot(p, '1-type');
   await p.click('[data-testid=wz-type-homestay]'); await p.click('[data-testid=wz-next]');
   ok(await step('place'), 'place step');
-  await p.click('[data-testid="wz-place-Darjeeling"]'); await p.click('[data-testid=wz-next]');
+  await p.fill('[data-testid=wz-place-search]', 'Darjeeling'); await p.click('[data-testid="wz-place-Darjeeling"]'); await p.click('[data-testid=wz-next]');
   ok(await step('name'), 'name step');
   const nm = 'Signedout Stay ' + String(Date.now()).slice(-5);
   const digits = '87' + String(Date.now()).slice(-8);
@@ -48,6 +48,7 @@ const ok = (c, m) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (!c) fails.p
   await shot(p, '4-login');
   await p.fill('[data-testid=login-phone]', digits);
   const sent = p.waitForResponse((r) => r.url().includes('/auth/otp/send'));
+  await p.check('[data-testid=login-agree]');
   await p.click('[data-testid=login-send-otp]');
   const otp = (await (await sent).json()).mock_otp;
   await p.fill('[data-testid=login-otp]', otp);

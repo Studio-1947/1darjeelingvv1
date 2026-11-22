@@ -249,6 +249,7 @@ router.post(
  *               otp: { type: string, description: "6-digit OTP, or '123456' universal code when MESSAGING_PROVIDER=mock" }
  *               name: { type: string, description: "Required on first login for a new phone number" }
  *               role: { type: string, enum: [tourist, provider], default: tourist }
+ *               consent: { type: boolean, description: "true when the user ticked I Agree (Terms, Privacy Policy, 18+). Stored once as users.terms_accepted_at" }
  *     responses:
  *       200:
  *         description: Login success
@@ -375,6 +376,7 @@ router.post(
       supportExpiresAt: null,
       password: null,
       phoneVerifiedAt: new Date().toISOString(),
+      termsAcceptedAt: null,
       interests: [],
       ...EMPTY_TRAVELLER_PROFILE,
       // Minted at registration so the invite screen never has to wait on a write.
@@ -418,6 +420,15 @@ router.post(
       .set({ phoneVerifiedAt: new Date().toISOString() })
       .where(eq(schema.users.id, user.id));
     user.phoneVerifiedAt = new Date().toISOString();
+  }
+
+  // The "I Agree" box on the website's sign-in screen sends consent: true. Recorded the first time
+  // it arrives, as proof of when they agreed. Not required here: app builds from before the box
+  // do not send it, and refusing them would lock those users out.
+  if (user && req.body?.consent === true && !user.termsAcceptedAt) {
+    const at = new Date().toISOString();
+    await db.update(schema.users).set({ termsAcceptedAt: at }).where(eq(schema.users.id, user.id));
+    user.termsAcceptedAt = at;
   }
 
   // Someone the owner added as a co-owner gets the business side the moment they sign in.

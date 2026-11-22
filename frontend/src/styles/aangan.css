@@ -264,7 +264,9 @@ svg.i { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-widt
 
   /* ---------- shell ---------- */
   .ag-header { position: sticky; top: 0; z-index: 40; background: rgb(var(--page-rgb) / .92); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
-  .ag-header .ag-wrap { display: flex; align-items: center; gap: 8px; min-height: 64px; padding-block: 8px; }
+  /* The bar runs the full width of the window, so the logo (with its Beta tag) sits in the top-left
+     corner on a wide screen too, not at the edge of the 720px page column. */
+  .ag-header .ag-wrap { max-width: none; display: flex; align-items: center; gap: 8px; min-height: 64px; padding-block: 8px; }
   .ag-brand { position: relative; display: flex; align-items: center; flex: 1; min-width: 0; height: 32px; color: var(--ink-strong); text-decoration: none; }
   .ag-brand .word { height: 26px; width: 108px; }
   .ag-topact { display: flex; align-items: center; gap: 6px; flex: none; }
