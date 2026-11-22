@@ -25,7 +25,7 @@ export default function ListingCard({ item, badge = null }) {
       <span className="body">
         <span className="name line-clamp-2">
           {item.title}
-          {item.provider_verified && <SealCheck size={16} weight="fill" className="ml-1 inline-block align-[-2px] text-[var(--r)]" aria-label={t('kyc.verified')} />}
+          {item.provider_verified && <SealCheck size={16} weight="fill" className="ml-1 inline-block align-[-2px] text-[var(--r)]" aria-label={t('kyc.docs_verified', 'Documents verified')} />}
         </span>
         <span className="meta flex items-start gap-1">
           <MapPin size={14} className="mt-0.5 flex-none text-[var(--r)]" aria-hidden="true" />
@@ -72,7 +72,7 @@ function DistBadge({ km }: { km: Km }) {
 function VerifiedTick() {
   const { t } = useTranslation();
   return (
-    <span className="ag-category-vb" role="img" aria-label={t('kyc.verified')} title={t('kyc.verified')}>
+    <span className="ag-category-vb" role="img" aria-label={t('kyc.docs_verified', 'Documents verified')} title={t('kyc.docs_verified', 'Documents verified')}>
       <Icon name="check" />
     </span>
   );
@@ -138,7 +138,8 @@ export function CatStayCard({ it, href, km, testId, ctaTestId, ctaLabel, fare }:
   const seats = Number(e.seats) > 0 ? Number(e.seats) : Number(it.max_guests) || 0;
   const carType = e.vehicle_type || e.car_model || '';
   const avatar = typeof e.host_avatar === 'string' && e.host_avatar ? e.host_avatar : '';
-  const unit = it.type === 'homestay' ? t('common.per_head') : t('category.per_day', 'per day');
+  // A homestay's unit comes with its price (per room or per person, lib/stayPrice.ts).
+  const unit = it.type === 'homestay' ? p.unit : t('category.per_day', 'per day');
   return (
     <div className={cx('ag-category-stay', isCar && 'car')} data-testid={testId}>
       <Link to={href} className="ag-category-stayimg" aria-label={it.title}>
@@ -181,7 +182,7 @@ export function CatStayCard({ it, href, km, testId, ctaTestId, ctaLabel, fare }:
           <span className="ag-category-price">
             {fare && fare.price > 0
               ? <><b>₹{fare.price.toLocaleString('en-IN')}</b> <span className="unit">{fare.unit === 'day' ? t('category.per_day', 'per day') : t('listing.per_trip', 'per trip')}</span></>
-              : p.text ? <span className="unit">{p.text}</span> : p.amount ? <><b>{p.amount}</b> <span className="unit">{unit}</span></> : null}
+              : p.text ? <span className="unit">{p.text}</span> : p.amount ? <>{it.type === 'homestay' && p.lead && <span className="unit">{p.lead} </span>}<b>{p.amount}</b> <span className="unit">{unit}</span></> : null}
           </span>
         )}
         <div className="ag-category-stayact">

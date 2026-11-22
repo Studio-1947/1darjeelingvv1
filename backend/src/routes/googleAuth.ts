@@ -134,6 +134,7 @@ router.post(
         supportExpiresAt: null,
         password: null,
         phoneVerifiedAt: null,
+        termsAcceptedAt: null,
         interests: [],
         ...EMPTY_TRAVELLER_PROFILE,
         referralCode: null,

@@ -36,7 +36,6 @@ import { Box, Button, ButtonLink, Chip, Chips, IconButton, SelectField, TextArea
 
 const GUIDE_TYPES = ['trekking', 'heritage', 'nature', 'birding', 'tea', 'cultural', 'city', 'photography'];
 const SEASONS = ['spring', 'summer', 'monsoon', 'autumn', 'winter'];
-const SOCIAL = ['instagram', 'facebook', 'youtube', 'website'] as const;
 const MENU_UNITS = ['plate', 'item', 'cup', 'head'];
 const GOODS_UNITS = ['item', 'piece', 'kg', 'gram', 'litre', 'pack', 'dozen'];
 const MAX_GOODS = 10;
@@ -240,7 +239,6 @@ export default function ProviderProfile() {
       experience_years: e.experience_years ?? '',
       host_bio: e.host_bio || '',
       intro_video: e.intro_video || '',
-      social: { ...(e.social || {}) },
       images: Array.isArray(e.images) ? e.images : [],
       photo_kinds: e.photo_kinds && typeof e.photo_kinds === 'object' ? e.photo_kinds : {},
       // driver
@@ -368,7 +366,8 @@ export default function ProviderProfile() {
       languages: form.languages.split(',').map((s: string) => s.trim()).filter(Boolean),
       host_bio: form.host_bio,
       intro_video: form.intro_video.trim(),
-      social: Object.fromEntries(SOCIAL.map((k) => [k, (form.social[k] || '').trim()]).filter(([, v]) => v)),
+      // Social links are no longer asked for; saving clears any a host added before.
+      social: {},
       images: form.images,
     };
     if (num(form.experience_years) !== undefined) profile.experience_years = num(form.experience_years);
@@ -613,12 +612,6 @@ export default function ProviderProfile() {
               </div>
             </Group>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            {SOCIAL.map((k) => (
-              <TextField key={k} label={t(`profile.social_${k}`)} value={form.social[k] || ''}
-                onChange={(e) => set({ social: { ...form.social, [k]: e.target.value } })} placeholder={k === 'website' ? 'https://' : '@'} />
-            ))}
-          </div>
         </Section>
 
         {/* provider.js "Your properties": each listing with Edit, and Add. A driver's vehicles sit
@@ -769,7 +762,8 @@ export default function ProviderProfile() {
             </div>
           ) : (
             <>
-              <Button onClick={save} disabled={busy || !!uploading} data-testid="profile-save">{busy ? t('common.loading') : t('hostProfile.save')}</Button>
+              {/* The page's main action, so it uses the filled primary button like the wizard's Next. */}
+              <Button variant="primary" go onClick={save} disabled={busy || !!uploading} data-testid="profile-save">{busy ? t('common.loading') : t('hostProfile.save')}</Button>
               <p className={`msg ${msg ? 'text-[var(--fail)]' : 'text-[var(--ink-muted)]'}`} role={msg ? 'alert' : undefined} data-testid="profile-msg">
                 {msg ? msg.text : t('hostProfile.save_hint')}
               </p>

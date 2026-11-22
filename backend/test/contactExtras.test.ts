@@ -2,11 +2,23 @@ import { describe, it, expect } from 'vitest';
 import request from 'supertest';
 import { app } from '../src/app';
 import { createConfirmedBooking, inDays, onboardActiveProvider, registerUser } from './helpers';
+import { publicExtras } from '../src/lib/listingContact';
 
 // A host's number must not leak through a listing's free-form extras, where onboarding has always
 // copied the contact phone and the profile adds WhatsApp and social links. They follow the
 // provider_phone gate: only a confirmed booking opens them, with or without the aangan pass.
 describe('contact numbers in listing extras', () => {
+  it('drops the licence number and UPI id before a confirmed booking, and keeps them after', () => {
+    const extras = { license_number: 'WB-74 2019 0001234', upi: 'host@okaxis', vehicle_number: 'WB 74 A 1234', rooms: [] };
+    const shut = publicExtras(extras, false);
+    expect(shut.license_number).toBeUndefined();
+    expect(shut.upi).toBeUndefined();
+    expect(shut.vehicle_number).toBe('WB 74 A 1234');
+    const open = publicExtras(extras, true);
+    expect(open.license_number).toBe('WB-74 2019 0001234');
+    expect(open.upi).toBe('host@okaxis');
+  });
+
   async function guideWithNumbers(name: string) {
     const { token, providerId, phone } = await onboardActiveProvider({ name, businessType: 'guide' });
     await request(app).patch('/api/providers/me').set('Authorization', `Bearer ${token}`)

@@ -66,6 +66,7 @@ const j = async (m, p, body, token) => { const r = await fetch(API + p, { method
       await p.goto(WEB + '/login?next=' + encodeURIComponent('/provider/onboard'), { waitUntil: 'networkidle' });
       await p.fill('[data-testid="login-phone"]', digits);
       const sent = p.waitForResponse((r) => r.url().includes('/auth/otp/send'));
+      await p.check('[data-testid="login-agree"]');
       await p.click('[data-testid="login-send-otp"]');
       await p.fill('[data-testid="login-otp"]', (await (await sent).json()).mock_otp);
       if (await p.locator('[data-testid="login-name"]').count()) await p.fill('[data-testid="login-name"] input, input[data-testid="login-name"]', 'Walk Host').catch(() => p.locator('[data-testid="login-name"] input').fill('Walk Host'));
@@ -90,7 +91,7 @@ const j = async (m, p, body, token) => { const r = await fetch(API + p, { method
       if (type === 'shop') line(type, (await p.locator('[data-testid="plan-now"]').count()) === 0, 'a local shop is not asked to choose a plan');
       else await p.click('[data-testid="plan-now"]');
       let ok = await nextStep('type');
-      if (ok) { await p.click('[data-testid="wz-place-Darjeeling"]'); ok = await nextStep('place'); }
+      if (ok) { await p.fill('[data-testid=wz-place-search]', 'Darjeeling'); await p.click('[data-testid="wz-place-Darjeeling"]'); ok = await nextStep('place'); }
       if (ok) {
         await p.fill('[data-testid="wz-name"]', name);
         await p.fill('[data-testid="onboard-phone"]', '9' + digits.slice(-9));

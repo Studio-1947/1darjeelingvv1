@@ -844,6 +844,7 @@ async function homeSearch(page, text) {
     const ph = `98${String(Date.now()).slice(-8)}`;
     const input = (await tid(l, 'login-phone').evaluate((e) => e.tagName)) === 'INPUT' ? tid(l, 'login-phone') : tid(l, 'login-phone').locator('input');
     await input.fill(ph);
+    await tid(l, 'login-agree').check();
     const [resp] = await Promise.all([
       l.waitForResponse((r) => r.url().includes('/auth/otp/send'), { timeout: 8000 }),
       tid(l, 'login-send-otp').click(),

@@ -32,6 +32,7 @@ import { roomsOf, useBookingFlow } from '@/components/listing-detail/useBookingF
 import { roomOpen } from '@/lib/roomFit';
 import { useAuth } from '@/context/AuthContext';
 import { BusinessModeNotice } from '@/components/TravellerOnly';
+import { stayPrice } from '@/lib/stayPrice';
 
 /**
  * Public listing page, laid out as the prototype's item view: photo, photo strip, name, place,
@@ -184,6 +185,7 @@ export default function ListingDetail() {
   })();
   const personSrc = host.avatar || personImageFor(item);
   const roomCount = Array.isArray(item.extras?.rooms) ? item.extras.rooms.length : 0;
+  const stay = item.type === 'homestay' ? stayPrice(item) : null;
   const showHost = !place && !ownPreview && (host.known || !!item.host_page_path);
   const delivery = !ownPreview && ['cafe', 'shop'].includes(item.type) && !item.bookings_paused && item.extras?.home_delivery;
   const spotFacts = isSpot && spotInfo.highlights.length > 0
@@ -245,6 +247,14 @@ export default function ListingDetail() {
         {/* Places to visit: the entry ticket box. Everything else: the price line. */}
         {(isSpot || item.type === 'biodiversity') ? (
           <TicketBox price={Number(item.price) || 0} entryFee={spotInfo.entryFee && !(Number(item.price) > 0) ? spotInfo.entryFee : undefined} />
+        ) : stay ? (
+          // A homestay: its cheapest room per room per night, or its per-person rate when it has no
+          // priced rooms (lib/stayPrice.ts), so the headline and the room list say the same thing.
+          <p className="ag-listing-lead">
+            {stay.from && <span className="ag-small">{t('listing.from', 'From')} </span>}
+            <span className="price">₹{stay.price.toLocaleString('en-IN')}</span>
+            <span className="ag-small"> {t(stay.perRoom ? 'common.per_room_night' : 'common.per_head')}</span>
+          </p>
         ) : Number(item.price) > 0 ? (
           <p className="ag-listing-lead">
             {(!unit || roomCount > 1) && <span className="ag-small">{t('listing.from', 'From')} </span>}

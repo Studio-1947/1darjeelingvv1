@@ -4,7 +4,8 @@ import { and, desc, eq, sql } from 'drizzle-orm';
 import { db, schema } from '../db';
 import { isHostPlanLive } from '../lib/hostPlan';
 
-import { APP_MIN_VERSION, APP_LATEST_VERSION, APP_STORE_URL, PLAY_STORE_URL, VERIFICATION_SUPPORT_PHONE, HOST_GRACE_BOOKINGS, maintenanceEnabled, homeDeliveryEnabled, donationsEnabled } from '../config';
+import { APP_MIN_VERSION, APP_LATEST_VERSION, APP_STORE_URL, PLAY_STORE_URL, VERIFICATION_SUPPORT_PHONE, HOST_GRACE_BOOKINGS, homeDeliveryEnabled, donationsEnabled } from '../config';
+import { isMaintenanceOn } from '../lib/siteSettings';
 
 const router = Router();
 
@@ -29,18 +30,19 @@ const router = Router();
  *   get:
  *     summary: Whether the website is under maintenance, and which paused features are on
  *     description: >
- *       TEMPORARY(legal-pause). The website asks once on load. Set with MAINTENANCE, HOME_DELIVERY
- *       and DONATIONS in the server's .env (see config.ts).
+ *       The website asks on load and again every few minutes. Maintenance is switched from the
+ *       admin panel (Overview tab), with MAINTENANCE in the server's .env as the default
+ *       (lib/siteSettings.ts). TEMPORARY(legal-pause): HOME_DELIVERY and DONATIONS are .env only.
  *     tags: [App]
  *     responses:
  *       200:
  *         description: Current switches
  */
-router.get('/status', (_req: Request, res: Response) => {
+router.get('/status', async (_req: Request, res: Response) => {
   // Not cached: switching maintenance off must reach visitors on their next load.
   res.set('Cache-Control', 'no-store');
   res.json({
-    maintenance: maintenanceEnabled(),
+    maintenance: await isMaintenanceOn(),
     home_delivery: homeDeliveryEnabled(),
     donations: donationsEnabled(),
   });

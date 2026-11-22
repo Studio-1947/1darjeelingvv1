@@ -9,4 +9,12 @@ export const COMPANY = {
   legalName: 'WBIN 1947 Studio LLP',
   gstin: '',
   grievanceOfficer: '',
+  /** The officer's designation (e.g. 'Designated Partner'), shown after the name; the rules ask for both. */
+  grievanceDesignation: '',
+  /**
+   * The one support / grievance / data-request address. Every page reads it from here, including
+   * the policy texts' contact cards ({{email}} in the locale files). The review asked for an address
+   * on our own domain instead of Gmail: change it here once that mailbox exists.
+   */
+  email: 'aanganerp@gmail.com',
 };

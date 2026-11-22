@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { FacebookLogo, InstagramLogo, EnvelopeSimple as Mail, Phone } from '@phosphor-icons/react';
 import Wordmark from '@/components/Wordmark';
-import { ButtonA } from '@/components/ag';
+import { ButtonA, Status } from '@/components/ag';
 import { COMPANY } from '@/constants/company';
 
 /**
@@ -34,13 +34,14 @@ export default function Footer() {
       <div className="ag-wrap flex flex-col gap-5">
         <div className="flex items-center gap-3">
           <Wordmark className="h-6 w-auto text-[var(--ink-strong)]" still />
+          <Status tone="info" className="flex-none">{t('ui.header.beta', 'Beta')}</Status>
           <span className="ag-small">{t('ui.footer.by_studio', { name: 'studio 1947' })}</span>
         </div>
         <div className="ag-row">
           <ButtonA size="sm" variant="primary" href="tel:+919093277919" data-testid="footer-phone" icon={<Phone aria-hidden="true" />}
             aria-label={t('ui.footer.call_us', { phone: '+91 90932 77919' })}>{t('ui.footer.call')}</ButtonA>
-          <ButtonA size="sm" href="mailto:aanganerp@gmail.com" icon={<Mail aria-hidden="true" />}
-            aria-label={t('ui.footer.email_us', { email: 'aanganerp@gmail.com' })}>{t('ui.footer.email')}</ButtonA>
+          <ButtonA size="sm" href={`mailto:${COMPANY.email}`} icon={<Mail aria-hidden="true" />}
+            aria-label={t('ui.footer.email_us', { email: COMPANY.email })}>{t('ui.footer.email')}</ButtonA>
           <a href="https://www.instagram.com/aanganerp?dlrf=MWRnZ2tneHBqM2JiaQ%3D%3D" target="_blank" rel="noreferrer"
             aria-label={t('ui.footer.follow_instagram')} className="ag-iconbtn"><InstagramLogo aria-hidden="true" /></a>
           <a href="https://www.facebook.com/profile.php?id=61594349938326" target="_blank" rel="noreferrer"

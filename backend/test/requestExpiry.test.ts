@@ -3,7 +3,7 @@ import request from 'supertest';
 import { eq } from 'drizzle-orm';
 import { app } from '../src/app';
 import { db, schema } from '../src/db';
-import { expireStaleRequests } from '../src/lib/requestExpiry';
+import { expireStaleRequests, remindSlowHosts } from '../src/lib/requestExpiry';
 import { REQUEST_EXPIRY_HOURS } from '../src/config';
 import { registerUser, onboardActiveProvider, loginAdmin, createListing, inDays } from './helpers';
 
@@ -73,5 +73,22 @@ describe('unanswered requests close by themselves', () => {
     await age(b.id, REQUEST_EXPIRY_HOURS + 1);
     await expireStaleRequests();
     expect(await status(b.id)).toBe('pending_payment');
+  });
+
+  it('reminds the host once, halfway through the window, about a request still waiting', async () => {
+    const { hostToken, listing } = await hostHomestay('Forgetful Host');
+    const { token: guest } = await registerUser({ name: 'Hopeful Guest' });
+    const waiting = await ask(guest, listing, inDays(120), inDays(122));
+    const young = await ask(guest, listing, inDays(140), inDays(142));
+    await age(waiting.id, REQUEST_EXPIRY_HOURS / 2 + 1);
+
+    await remindSlowHosts();
+    await remindSlowHosts();
+
+    const hostFeed = (await request(app).get('/api/notifications').set(auth(hostToken))).body.items;
+    const reminders = hostFeed.filter((n: any) => n.kind === 'booking_reminder');
+    expect(reminders.map((n: any) => n.ref_id)).toEqual([waiting.id]);
+    expect(await status(waiting.id)).toBe('pending_payment');
+    expect(await status(young.id)).toBe('pending_payment');
   });
 });

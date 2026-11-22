@@ -20,15 +20,24 @@ import { cardCtaKey } from '@/lib/cardCta';
 import { useFavorites } from '@/context/FavoritesContext';
 import { useLoginGate } from '@/components/LoginGate';
 import FaceImg from '@/components/FaceImg';
+import { stayPrice } from '@/lib/stayPrice';
 
 type Km = { km: number; approx: boolean } | null | undefined;
 
 /** The price line: amount plus its unit, or what stands in for a price. */
 export function priceParts(it: any, t: TFunction): { amount?: string; unit?: string; lead?: string; text?: string } {
+  // A homestay leads with its cheapest room (per room per night) when it has priced rooms, and
+  // with its per-person rate otherwise (lib/stayPrice.ts).
+  const stay = it.type === 'homestay' ? stayPrice(it) : null;
+  if (stay) {
+    return {
+      lead: stay.from ? t('common.starting_from') : undefined,
+      amount: `₹${stay.price.toLocaleString('en-IN')}`,
+      unit: t(stay.perRoom ? 'common.per_room_night' : 'common.per_head'),
+    };
+  }
   if (Number(it.price) > 0) {
     const amount = `₹${Number(it.price).toLocaleString('en-IN')}`;
-    // A homestay is priced per person, not per night - see the note on common.per_head.
-    if (it.type === 'homestay') return { amount, unit: t('common.per_head') };
     if (it.type === 'driver') return { amount, unit: t('common.per_day') };
     if (['guide', 'cafe', 'shop'].includes(it.type)) return { lead: t('common.starting_from'), amount };
     return { amount };
@@ -117,7 +126,7 @@ export function StayCard({ it, href, km, testId, ctaTestId, saveTestId, ctaLabel
         <Link to={href} className="name">
           <span className="truncate">{it.title}</span>
           {it.provider_verified && (
-            <span className="ag-home-vb" role="img" aria-label={t('kyc.verified')}><Icon name="check" /></span>
+            <span className="ag-home-vb" role="img" aria-label={t('kyc.docs_verified', 'Documents verified')}><Icon name="check" /></span>
           )}
         </Link>
         <span className="meta"><Icon name="pin" /><span className="truncate">{it.location}</span></span>
@@ -248,7 +257,7 @@ export function ListRow({ it, href, km, testId }: { it: any; href: string; km?: 
       <span className="flex min-w-0 flex-col gap-1">
         <span className="name line-clamp-2">
           {it.title}
-          {it.provider_verified && <SealCheck size={16} weight="fill" className="ml-1 inline-block align-[-2px] text-[var(--r)]" aria-label={t('kyc.verified')} />}
+          {it.provider_verified && <SealCheck size={16} weight="fill" className="ml-1 inline-block align-[-2px] text-[var(--r)]" aria-label={t('kyc.docs_verified', 'Documents verified')} />}
         </span>
         <Where it={it} km={km} />
         <Price it={it} />

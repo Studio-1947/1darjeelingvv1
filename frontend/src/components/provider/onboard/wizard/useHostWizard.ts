@@ -317,7 +317,14 @@ export function useHostWizard() {
     return Number(d.price) || 0;
   };
 
-  const offerLabels = () => (d.type ? OFFERS[d.type] : []).filter((k) => d.offers.includes(k)).map((k) => t(`ob.wz.fo.${k}`));
+  // The ticked ready-made chips first, then anything the host typed in themselves (stored as plain text).
+  const offerLabels = () => {
+    const keys = d.type ? OFFERS[d.type] : [];
+    return [
+      ...keys.filter((k) => d.offers.includes(k)).map((k) => t(`ob.wz.fo.${k}`)),
+      ...d.offers.filter((o) => !keys.includes(o)),
+    ];
+  };
 
   /** What the host's choices say about the place; the backend needs a description, the prototype asks none. */
   const describe = () => {

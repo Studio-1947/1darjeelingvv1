@@ -22,6 +22,13 @@ type Viewer = { id: string; role: string } | null;
 const CONTACT_EXTRAS = ['contact_phone', 'host_phone', 'whatsapp', 'phone', 'mobile', 'email'];
 
 /**
+ * Personal details the profile copies onto listing extras that a traveller never needs before a
+ * confirmed booking: the driver's licence number and the host's UPI id (for paying them directly).
+ * They follow the same gate as the phone, so owners, admins and a confirmed guest still see them.
+ */
+const PRIVATE_EXTRAS = ['license_number', 'upi'];
+
+/**
  * Social links a traveller could message the host through (Instagram, Facebook, YouTube) follow
  * the same gate. The business website does not: it is the host's own showcase, so it stays public.
  */
@@ -49,6 +56,7 @@ export function publicExtras(extras: unknown, phoneVisible: boolean): Record<str
   if (!homeDeliveryEnabled()) delete e.home_delivery;
   if (!phoneVisible) {
     for (const key of CONTACT_EXTRAS) delete e[key];
+    for (const key of PRIVATE_EXTRAS) delete e[key];
     if ('social' in e) {
       const kept = publicSocial(e.social, false);
       if (Object.keys(kept).length) e.social = kept;

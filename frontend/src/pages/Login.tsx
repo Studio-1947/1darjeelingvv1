@@ -61,6 +61,10 @@ export default function Login() {
   const [sentChannel, setSentChannel] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+  // The "I Agree" box on the first screen (Terms, Privacy Policy, 18 or older). Nothing goes out,
+  // no code and no Google prompt, until it is ticked. It is sent with the code so the server keeps
+  // the date they agreed (users.terms_accepted_at).
+  const [agreed, setAgreed] = useState(false);
   const [googleBusy, setGoogleBusy] = useState(false);
   const gisLoaded = useRef(false);
   const country = OTP_COUNTRIES.find((item) => item.code === countryCode) ?? OTP_COUNTRIES[0];
@@ -84,7 +88,7 @@ export default function Login() {
   // Initialize Google Identity Services once and prompt the One Tap UI.
   const handleGoogleSignIn = useCallback(async (idToken: string) => {
     try {
-      const { data } = await api.post('/auth/google', { idToken, role });
+      const { data } = await api.post('/auth/google', { idToken, role, consent: true });
       finishSignIn(data);
     } catch (e: any) {
       setErr(e?.response?.data?.detail || t('ui.login.google_failed'));
@@ -122,6 +126,7 @@ export default function Login() {
 
   const requestCode = async () => {
     if (!canonicalPhone) return;
+    if (!agreed) { setErr(t('ui.login.agree_needed', 'Please tick I Agree to continue.')); return; }
     setBusy(true); setErr('');
     try {
       const { data } = await api.post('/auth/otp/send', { phone: canonicalPhone, channel: 'whatsapp' });
@@ -146,7 +151,7 @@ export default function Login() {
     if (!canonicalPhone) return;
     setBusy(true); setErr('');
     try {
-      const { data } = await api.post('/auth/otp/verify', { phone: canonicalPhone, otp, role });
+      const { data } = await api.post('/auth/otp/verify', { phone: canonicalPhone, otp, role, consent: agreed });
       finishSignIn(data);
     } catch (e) {
       // `code` is new; the detail check covers a backend deployed before it (same answer, older shape).
@@ -164,7 +169,7 @@ export default function Login() {
     setBusy(true); setErr('');
     try {
       const { data } = await api.post('/auth/otp/verify', {
-        phone: canonicalPhone, otp, name, role,
+        phone: canonicalPhone, otp, name, role, consent: agreed,
         // Hosts too: a code from a host link or a field team member (admin → Referrals) is counted for them.
         ...(referral.trim() ? { referral_code: referral.trim() } : {}),
       });
@@ -176,6 +181,7 @@ export default function Login() {
   };
 
   const googleSignIn = async () => {
+    if (!agreed) { setErr(t('ui.login.agree_needed', 'Please tick I Agree to continue.')); return; }
     setGoogleBusy(true);
     setErr('');
     try {
@@ -230,11 +236,26 @@ export default function Login() {
               </div>
               <p id="login-phone-hint" data-testid="login-phone-hint" className="ag-small !text-xs !leading-4">{t('auth.phone_hint')}</p>
             </div>
-            <Button type="submit" variant="primary" go className="self-start" disabled={busy || !canonicalPhone} data-testid="login-send-otp">
+            {/* Consent, asked for plainly rather than assumed from "by continuing". Required:
+                Continue (and Google) stay off until it is ticked. */}
+            <label className="flex items-start gap-3 text-sm text-[var(--ink7)] cursor-pointer min-h-11" data-testid="login-consent">
+              <input type="checkbox" checked={agreed} required
+                onChange={(e) => { setAgreed(e.target.checked); if (e.target.checked) setErr(''); }}
+                className="accent-[var(--r)] w-5 h-5 mt-0.5 flex-none" data-testid="login-agree" />
+              <span>
+                <b className="font-medium text-[var(--ink-strong)]">{t('ui.login.agree', 'I Agree')}</b>{' '}
+                {t('ui.login.agree_to', 'to the')}{' '}
+                <Link to="/terms" className="underline">{t('auth.terms_conditions_link')}</Link>{' '}
+                {t('auth.terms_and')}{' '}
+                <Link to="/privacy" className="underline">{t('ui.login.privacy_policy', 'Privacy Policy')}</Link>
+                {t('ui.login.agree_age', ', and I am 18 or older.')}
+              </span>
+            </label>
+            <Button type="submit" variant="primary" go className="self-start" disabled={busy || !canonicalPhone || !agreed} data-testid="login-send-otp">
               {busy ? t('common.loading') : t('common.continue', 'Continue')}
             </Button>
             {GOOGLE_CLIENT_ID && (
-              <Button className="self-start" icon={googleBusy ? undefined : <Icon name="google" />} disabled={googleBusy || busy}
+              <Button className="self-start" icon={googleBusy ? undefined : <Icon name="google" />} disabled={googleBusy || busy || !agreed}
                 onClick={googleSignIn} data-testid="login-google">
                 {googleBusy ? t('common.loading') : t('ui.login.gg', 'Continue with Google')}
               </Button>
@@ -296,10 +317,6 @@ export default function Login() {
         )}
 
         {err && <p data-testid="login-error" role="alert" className="ag-err !text-sm">{err}</p>}
-
-        <p className="ag-small !text-xs !leading-4 text-center">
-          {t('auth.terms_prefix')} <Link to="/terms" className="underline">{t('auth.terms_conditions_link')}</Link> {t('auth.terms_and')} <Link to="/privacy" className="underline">{t('auth.terms_link')}</Link>{t('auth.terms_suffix')}
-        </p>
       </div>
     </div>
   );

@@ -31,7 +31,7 @@ export default function HostFeedStrip() {
             <span className="body">
               <span className="flex min-w-0 items-center gap-1">
                 <span className="name truncate">{p.host.name}</span>
-                {p.host.verified && <SealCheck size={16} weight="fill" className="flex-none text-[var(--r)]" aria-label={t('kyc.verified')} />}
+                {p.host.verified && <SealCheck size={16} weight="fill" className="flex-none text-[var(--r)]" aria-label={t('kyc.docs_verified', 'Documents verified')} />}
               </span>
               <span className="meta">{timeAgo(p.created_at, i18n.language, t)}</span>
               <span className="line-clamp-3 text-sm text-[var(--ink7)]">{p.body}</span>

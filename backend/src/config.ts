@@ -225,7 +225,7 @@ export const BOOKING_HOLD_MINUTES = requirePositiveInt('BOOKING_HOLD_MINUTES', p
 
 // How long a booking request waits for its host to press Accept before it closes by itself, so a
 // guest is never left waiting on a host who will not answer. See lib/requestExpiry.ts.
-export const REQUEST_EXPIRY_HOURS = requirePositiveInt('REQUEST_EXPIRY_HOURS', process.env.REQUEST_EXPIRY_HOURS, 48);
+export const REQUEST_EXPIRY_HOURS = requirePositiveInt('REQUEST_EXPIRY_HOURS', process.env.REQUEST_EXPIRY_HOURS, 24);
 
 export const JWT_SECRET = requireRealValueInProd('JWT_SECRET', process.env.JWT_SECRET, 'dev_only_insecure_jwt_secret');
 // Defaulting to true is right in dev and wrong in production, for the same reason APP_ENV refuses
@@ -436,6 +436,9 @@ export const HOST_GRACE_BOOKINGS = graceBookings;
 //                  any page. The API stays up (the Android app keeps working) and the admin console
 //                  at /admin is untouched. ON in production unless MAINTENANCE=false; off elsewhere
 //                  unless MAINTENANCE=true, so local development still shows the app.
+//                  This is only the default: an admin can switch it from the panel's Overview tab,
+//                  and that choice wins until they reset it (lib/siteSettings.ts). It is not part
+//                  of the legal pause, so keep it when the pause is removed.
 //   HOME_DELIVERY  Off unless "true": listings stop showing delivery (publicExtras drops
 //                  `home_delivery`) and new requests are refused. Open requests can still be
 //                  answered, and a host's own setting is kept, so turning it on restores every
