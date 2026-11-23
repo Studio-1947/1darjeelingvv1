@@ -2358,6 +2358,8 @@
     "view_owner": "Your view",
     "view_traveller": "As a traveller",
     "preview_traveller": "This is exactly what travellers see. Book now only works for them, not here.",
+    "page_preview": "Your own view of your page. Ask to book is hidden here; travellers see it.",
+    "page_preview_traveller": "This is exactly what travellers see on your page.",
     "preview_book": "Preview only. Travellers start their request here."
   },
   "profile": {
