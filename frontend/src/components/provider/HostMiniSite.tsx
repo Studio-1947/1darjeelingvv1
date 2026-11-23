@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Phone, WhatsappLogo, NavigationArrow, SealCheck, Star, PlayCircle, Globe, CrownSimple, Info } from '@phosphor-icons/react';
+import { NavigationArrow, SealCheck, Star, PlayCircle, Globe, CrownSimple, Info } from '@phosphor-icons/react';
 import { Box, ButtonA, SecHead, Status, cx } from '@/components/ag';
 import { themeVars, useMode } from '@/lib/theme';
 import SmartImg from '@/components/SmartImg';
@@ -55,13 +55,9 @@ export function miniSiteSlug(name: string): string {
 
 const isVideoFile = (url: string) => /\.(mp4|mov|webm)(\?|$)/i.test(url) || /\/videos\//.test(url);
 
-/** Real targets for the three buttons on the public page; the editor preview leaves them out. */
+/** The Direction button's target on the public page; the editor preview leaves it out. */
 export type MiniSiteActions = {
-  call?: string | null;
-  whatsapp?: string | null;
   direction?: string | null;
-  /** Shown instead of Call / WhatsApp when the number is held back (book first, or take the pass). */
-  locked?: React.ReactNode;
 };
 
 export default function HostMiniSite({ data, actions }: { data: MiniSiteData; actions?: MiniSiteActions }) {
@@ -79,11 +75,9 @@ export default function HostMiniSite({ data, actions }: { data: MiniSiteData; ac
   const stars = Math.round(data.rating || 0);
   const typeLabel = t(`categories.${data.type}`, { defaultValue: data.type });
 
-  // Call (the main action), WhatsApp, Direction. The editor preview has no targets, so it shows
-  // the same three as inert shapes; the public page dims any it cannot offer.
+  // Direction only: the host's page offers no Call or WhatsApp, since numbers open only after a
+  // confirmed booking. The editor preview has no target, so it shows the button as an inert shape.
   const buttons = [
-    { key: 'call', Icon: Phone, label: t('miniSite.call'), variant: 'primary', href: actions?.call },
-    { key: 'whatsapp', Icon: WhatsappLogo, label: t('miniSite.whatsapp'), variant: 'std', href: actions?.whatsapp },
     { key: 'direction', Icon: NavigationArrow, label: t('miniSite.direction'), variant: 'tonal', href: actions?.direction },
   ] as const;
 
@@ -169,21 +163,20 @@ export default function HostMiniSite({ data, actions }: { data: MiniSiteData; ac
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-2">
+      <div className="flex gap-2">
         {buttons.map(({ key, Icon, label, variant, href }) => (
           href ? (
-            <ButtonA key={key} variant={variant} size="sm" center icon={<Icon />} href={href} target={key === 'call' ? undefined : '_blank'} rel="noreferrer"
-              className="!gap-1.5 !px-2" data-testid={`mini-site-${key}`}>
+            <ButtonA key={key} variant={variant} size="sm" center icon={<Icon />} href={href} target="_blank" rel="noreferrer"
+              className="!gap-1.5 !px-4" data-testid={`mini-site-${key}`}>
               {label}
             </ButtonA>
           ) : (
-            <span key={key} className={cx('ag-btn sm center !gap-1.5 !px-2', variant !== 'std' && variant)} aria-disabled={actions ? true : undefined}>
+            <span key={key} className={cx('ag-btn sm center !gap-1.5 !px-4', variant)} aria-disabled={actions ? true : undefined}>
               <Icon />{label}
             </span>
           )
         ))}
       </div>
-      {actions?.locked && <div className="ag-small" data-testid="mini-site-locked">{actions.locked}</div>}
 
       {/* What they offer: photo tiles with the rate */}
       {data.items.length > 0 && (
