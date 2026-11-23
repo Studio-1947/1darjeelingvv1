@@ -14,13 +14,17 @@
 .ag-category-search .clear { width: 36px; height: 36px; flex: none; display: grid; place-items: center; border: 0; border-radius: 50%; background: transparent; color: var(--ink-muted); cursor: pointer; }
 .ag-category-search .clear svg.i { width: 18px; height: 18px; }
 
-.ag-category-sact { flex: none; display: flex; align-items: center; gap: 2px; height: 56px; padding: 0 6px; border-radius: 28px; background: rgb(var(--surface-rgb) / .62); border: 1px solid rgb(228 228 228 / .7); }
-.ag-category-sact button { position: relative; width: 40px; height: 40px; display: grid; place-items: center; padding: 0; cursor: pointer; }
-.ag-category-sact .fbtn { border: 1px solid var(--outline); border-radius: 14px; background: var(--surface); color: var(--ink-strong); }
+.ag-category-sact { flex: none; display: flex; align-items: center; gap: 8px; }
+/* Filter and voice: two separate round buttons beside the search field, like Home's. */
+.ag-category-sact button { position: relative; width: 56px; height: 56px; display: grid; place-items: center; padding: 0; border-radius: 50%; border: 1px solid rgb(228 228 228 / .7); background: rgb(var(--surface-rgb) / .62); cursor: pointer; }
+.ag-category-sact button:hover { border-color: var(--r); }
+.ag-category-sact button:focus-visible { outline: 3px solid rgb(var(--r-rgb) / .3); outline-offset: 2px; }
+.ag-category-sact .fbtn { color: var(--ink-strong); }
+.ag-category-sact .fbtn[aria-pressed="true"] { border-color: var(--r); }
 .ag-category-sact .fbtn svg.i { width: 24px; height: 24px; }
-.ag-category-sact .fdot { position: absolute; top: 6px; right: 6px; width: 8px; height: 8px; border-radius: 50%; background: var(--r); }
-.ag-category-sact .vsep { display: block; width: 1.5px; height: 22px; margin: 0 1px; border-radius: 1px; background: rgb(var(--r-rgb) / .55); }
-.ag-category-sact .vbtn { border: 0; border-radius: 50%; background: transparent; color: var(--r); }
+.ag-category-sact .fdot { position: absolute; top: 12px; right: 12px; width: 8px; height: 8px; border-radius: 50%; background: var(--r); }
+.ag-category-sact .vbtn { color: var(--r); }
+.ag-category-sact .vbtn svg.i { width: 24px; height: 24px; }
 .ag-category-sact .vbtn.on { background: var(--r-tint); animation: ag-category-pulse 1.2s ease-in-out infinite; }
 @keyframes ag-category-pulse { 50% { box-shadow: 0 0 0 6px rgb(var(--r-rgb) / .15); } }
 .ag-category-listen { margin: 0; text-align: center; }
