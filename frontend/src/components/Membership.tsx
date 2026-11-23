@@ -116,6 +116,7 @@ export function PassJoinCard({ children }: { price?: number; renewing?: boolean;
         <li><Icon name="check" />{t('member.vt1', 'Verified badge on every booking request')}</li>
         <li><Icon name="check" />{t('member.vt2', 'Membership card on your phone')}</li>
         <li><Icon name="check" />{t('member.vt3b', 'Still no booking fees, ever')}</li>
+        <li><Icon name="check" />{t('support.reassurance_gst', 'Valid for one year, GST included. Nothing auto-charges.')}</li>
       </ul>
       {children}
     </Box>

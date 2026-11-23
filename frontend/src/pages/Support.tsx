@@ -1,13 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation, Navigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Check } from '@phosphor-icons/react';
 import { Button, PageHead } from '@/components/ag';
 import { useAuth } from '@/context/AuthContext';
 import { createPaymentOrder, completeMockPayment, payWithRazorpay } from '@/lib/api';
 import { needsSupport } from '@/lib/support';
 import MockPaymentModal from '@/components/MockPaymentModal';
-import PriceBreakup from '@/components/PriceBreakup';
 import { rupees, usePassPrice } from '@/lib/prices';
 import { MemberCard, PassJoinCard } from '@/components/Membership';
 import { useSeo } from '@/components/Seo';
@@ -181,14 +179,10 @@ export default function Support() {
         <PageHead eyebrow={t('ui.account.eyebrow', 'Your account')} title={t('member.title_short', 'Membership')} />
 
         <PassJoinCard price={pass.total} renewing={!!user?.supportExpiresAt}>
-          <PriceBreakup breakup={pass} label={user?.supportExpiresAt ? t('price.pass') : t('price.pass_first_year')} />
           <div className="flex flex-col gap-2">
             <Button variant="primary" go block onClick={startPayment} disabled={busy} data-testid="support-pay">
               {busy ? t('common.loading') : t('support.cta', { total: rupees(pass.total) })}
             </Button>
-            <p className="ag-small !text-xs flex items-center justify-center gap-1 m-0">
-              <Check size={14} aria-hidden="true" /> {t('support.reassurance')}
-            </p>
           </div>
           {err && <p data-testid="support-error" role="alert" className="ag-err !text-sm text-center m-0">{err}</p>}
           <Button variant="text" className="self-center" onClick={browseAnonymously} data-testid="support-skip">{t('support.skip2', 'Not now')}</Button>

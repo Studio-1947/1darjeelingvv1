@@ -109,6 +109,7 @@
     "body": "Pay exactly what you see: GST is included, nothing is added on top. The pass is optional: asking and confirming a booking are free without it.",
     "cta": "Take the pass · {{total}}",
     "reassurance": "Valid for one year. Nothing auto-charges.",
+    "reassurance_gst": "Valid for one year, GST included. Nothing auto-charges.",
     "skip": "Not now, I will pay the ₹1.20 convenience fee per request",
     "modal_title": "aangan pass",
     "modal_duration": "· valid for 1 year",
