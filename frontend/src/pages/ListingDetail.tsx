@@ -6,7 +6,8 @@ import { shareLink } from '@/lib/share';
 import { openDirections } from '@/lib/directions';
 import { ListingDetailSkeleton, LoadingStatus } from '@/components/skeletons';
 import { amenitiesFor, hostFor } from '@/lib/listingMeta';
-import { contentFor, listingImage, galleryImagesFor, personImageFor, spotInfoFor } from '@/lib/listingContent';
+import { contentFor, listingImage, galleryImagesFor, personImageFor, spotInfoFor, sizedImage } from '@/lib/listingContent';
+import FaceImg from '@/components/FaceImg';
 import { groupPhotos } from '@/lib/photoGroups';
 import Seo from '@/components/Seo';
 import BookingConfirmation from '@/components/BookingConfirmation';
@@ -192,14 +193,23 @@ export default function ListingDetail() {
     ? spotInfo.highlights.map((h: string) => ({ label: h }))
     : amenities.map((a) => ({ label: a.label, labelKey: a.labelKey }));
 
+  // The host's face beside their name: the photo from their business profile (sent as item.host),
+  // else the one on the listing, else their initial.
+  const hostFace = item.host?.avatar || host.avatar;
+  const hostName = item.host?.name || host.name;
   const hostLine = showHost ? (
-    <p className="ag-small">
-      {t('listing.pf_host', 'Host')}:{' '}
-      {item.host_page_path ? (
-        <Link to={item.host_page_path} data-testid="listing-host-page" className="ag-listing-plink">
-          <b>{host.known ? host.name : t('ui.listingDetail.see_host_page')}</b><Icon name="arrowne" />
-        </Link>
-      ) : <b className="font-medium text-[var(--ink-strong)]">{host.name}</b>}
+    <p className="ag-small ag-listing-host">
+      <span className="face" aria-hidden="true">
+        <FaceImg src={hostFace ? sizedImage(hostFace, 120) : ''} initial={(hostName || '?').charAt(0).toUpperCase()} />
+      </span>
+      <span>
+        {t('listing.pf_host', 'Host')}:{' '}
+        {item.host_page_path ? (
+          <Link to={item.host_page_path} data-testid="listing-host-page" className="ag-listing-plink">
+            <b>{hostName || t('ui.listingDetail.see_host_page')}</b><Icon name="arrowne" />
+          </Link>
+        ) : <b className="font-medium text-[var(--ink-strong)]">{hostName}</b>}
+      </span>
     </p>
   ) : null;
 
