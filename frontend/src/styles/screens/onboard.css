@@ -58,6 +58,8 @@
 .ag-onboard-search input { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--ink-strong); font: 400 15px/20px var(--font); outline: none; }
 .ag-onboard-search input::placeholder { color: var(--ink-muted); }
 .ag-onboard-myloc.ag-btn { align-self: flex-start; padding-left: 16px; border-color: var(--blush2); }
+.ag-onboard-lochint { display: flex; align-items: flex-start; gap: 8px; margin: 0; }
+.ag-onboard-lochint svg.i { flex: none; width: 16px; height: 16px; margin-top: 2px; color: var(--r); }
 .ag-onboard-picked { display: flex; align-items: center; gap: 6px; margin: 0; }
 .ag-onboard-picked svg.i { width: 14px; height: 14px; }
 .ag-onboard-pin { display: flex; flex-direction: column; gap: 10px; }

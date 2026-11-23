@@ -127,6 +127,7 @@ function PlaceStep({ w }: { w: HostWizard }) {
   const [found, setFound] = useState<Place[]>([]);
   const [looking, setLooking] = useState(false);
   const [locating, setLocating] = useState(false);
+  const perm = useGeoPermission();
 
   // Typed names: the hubs first, then the geocoder (proxied by the backend) for villages and roads.
   useEffect(() => {
@@ -180,7 +181,9 @@ function PlaceStep({ w }: { w: HostWizard }) {
     try {
       const p = await exactPosition();
       const { latitude: lat, longitude: lng, accuracy } = p.coords;
-      if (!inServiceRegion(lat, lng)) { setErr(t('ob.wz.loc_outside')); return; }
+      // A fix this rough comes from Wi-Fi or the mobile network, which usually means the phone's
+      // Location (GPS) is off; say so rather than telling a host in the hills they are outside them.
+      if (!inServiceRegion(lat, lng)) { setErr(t(accuracy > ROUGH_FIX_M ? 'ob.wz.loc_rough' : 'ob.wz.loc_outside')); return; }
       const n = ++seq.current;
       set({ place: { name: nearbyName(lat, lng), lat, lng, accuracy: Math.round(accuracy) } });
       setFocus((f) => f + 1);
@@ -206,6 +209,12 @@ function PlaceStep({ w }: { w: HostWizard }) {
           icon={locating ? <Loader2 className="animate-spin" /> : <Icon name="locate" />}>
           {locating ? t('ob.wz.locating') : t('ob.wz.myloc')}
         </Button>
+        {!pl && perm !== 'granted' && (
+          <p className="ag-small ag-onboard-lochint" data-testid="wz-loc-hint">
+            <Icon name="locate" />
+            <span>{perm === 'denied' ? t('ob.wz.loc_hint_blocked') : t('ob.wz.loc_hint')}</span>
+          </p>
+        )}
       </div>
       <div className="ag-onboard-pchips" role="list">
         {chips.map((p) => (
@@ -238,6 +247,30 @@ function PlaceStep({ w }: { w: HostWizard }) {
       )}
     </Frame>
   );
+}
+
+/** Beyond this many metres a fix is a network guess, not GPS. */
+const ROUGH_FIX_M = 1000;
+
+/**
+ * Whether this site may read the phone's position: 'granted', 'prompt', 'denied', or 'unknown'
+ * where the browser cannot say (older Safari). Follows changes made in the browser's settings.
+ */
+function useGeoPermission() {
+  const [state, setState] = useState<PermissionState | 'unknown'>('unknown');
+  useEffect(() => {
+    let status: PermissionStatus | null = null;
+    let live = true;
+    const onChange = () => { if (status) setState(status.state); };
+    navigator.permissions?.query({ name: 'geolocation' }).then((s) => {
+      if (!live) return;
+      status = s;
+      setState(s.state);
+      s.addEventListener('change', onChange);
+    }).catch(() => { /* keep 'unknown' */ });
+    return () => { live = false; status?.removeEventListener('change', onChange); };
+  }, []);
+  return state;
 }
 
 /**
