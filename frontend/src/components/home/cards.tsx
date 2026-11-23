@@ -20,6 +20,7 @@ import { cardCtaKey } from '@/lib/cardCta';
 import { useFavorites } from '@/context/FavoritesContext';
 import { useLoginGate } from '@/components/LoginGate';
 import FaceImg from '@/components/FaceImg';
+import HostLine from '@/components/HostLine';
 import { stayPrice } from '@/lib/stayPrice';
 
 type Km = { km: number; approx: boolean } | null | undefined;
@@ -129,6 +130,7 @@ export function StayCard({ it, href, km, testId, ctaTestId, saveTestId, ctaLabel
             <span className="ag-home-vb" role="img" aria-label={t('kyc.docs_verified', 'Documents verified')}><Icon name="check" /></span>
           )}
         </Link>
+        <HostLine host={it.host} />
         <span className="meta"><Icon name="pin" /><span className="truncate">{it.location}</span></span>
         {['homestay', 'driver', 'guide'].includes(it.type) && (
           <span className="metarow">
@@ -219,7 +221,8 @@ export function GuideCard({ it, href, testId, fresh }: { it: any; href: string; 
       {fresh && <span className="ag-home-newb" data-testid={testId ? `${testId}-new` : undefined}>{t('home.new', 'New')}</span>}
       <SmartImg src={listingImage(it, 300, 300)} alt="" className="gimg" />
       <b>{String(it.title || '').split(' ')[0]}</b>
-      {service && <span className="gtag"><Icon name="trek" /><span className="truncate">{service.name}</span></span>}
+      <HostLine host={it.host} />
+      {service &&<span className="gtag"><Icon name="trek" /><span className="truncate">{service.name}</span></span>}
       <span className="small">{it.location}</span>
       {Number(it.price) > 0 && (
         <span className="gprice">₹{Number(it.price).toLocaleString('en-IN')}<span className="small"> {t('home.per_day', 'per day')}</span></span>
@@ -239,6 +242,7 @@ export function ShopCard({ it, href, testId, fresh }: { it: any; href: string; t
       {fresh && <span className="ag-home-newb" data-testid={testId ? `${testId}-new` : undefined}>{t('home.new', 'New')}</span>}
       <SmartImg src={listingImage(it, 300, 300)} alt="" className="gimg" />
       <b>{it.title}</b>
+      <HostLine host={it.host} />
       <span className="gtag"><Icon name={cafe ? 'cup' : 'bag'} /><span className="truncate">{kind}</span></span>
       <span className="small"><Icon name="pin" /><span className="truncate">{it.location}</span></span>
       {ex.home_delivery && (

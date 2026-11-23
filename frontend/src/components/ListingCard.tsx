@@ -11,6 +11,7 @@ import { optionLabel } from '@/lib/optionLabel';
 import { priceParts } from '@/components/home/cards';
 import { useFavorites } from '@/context/FavoritesContext';
 import { useLoginGate } from '@/components/LoginGate';
+import HostLine from '@/components/HostLine';
 
 /** A listing as an `.ag-card`: photo, name, place, price, and an optional status tag on the photo. */
 export default function ListingCard({ item, badge = null }) {
@@ -156,6 +157,7 @@ export function CatStayCard({ it, href, km, testId, ctaTestId, ctaLabel, fare }:
           {it.title}
           {it.provider_verified && <> <VerifiedTick /></>}
         </Link>
+        <HostLine host={it.host} />
         {/* Between the name and the place in the markup ("Name, 3 km · Ghum"), drawn over the photo's corner. */}
         <DistBadge km={km} />
         <span className="meta place"><Icon name="pin" />{it.location}</span>

@@ -1,3 +1,4 @@
+import { hostCard } from '../lib/hostCard';
 import { Router, Request, Response } from 'express';
 import { listExtras } from '../lib/listingContact';
 import { maxGuestsFor } from '../lib/bookingRules';
@@ -65,7 +66,7 @@ router.get('/', authenticateToken, async (req: Request, res: Response) => {
 
   const providerIds = [...new Set(listings.map(l => l.providerId))];
   const providerRows = providerIds.length > 0
-    ? await db.select({ id: schema.providers.id, kycStatus: schema.providers.kycStatus, status: schema.providers.status })
+    ? await db.select({ id: schema.providers.id, kycStatus: schema.providers.kycStatus, status: schema.providers.status, extras: schema.providers.extras })
       .from(schema.providers)
       .where(inArray(schema.providers.id, providerIds))
     : [];
@@ -101,6 +102,7 @@ router.get('/', authenticateToken, async (req: Request, res: Response) => {
         rating: rating?.average ?? 0,
         review_count: rating?.count ?? 0,
         provider_verified: provider?.kycStatus === 'verified' && provider?.status === 'active',
+        host: hostCard(provider?.extras, l.extras),
       };
     });
 
