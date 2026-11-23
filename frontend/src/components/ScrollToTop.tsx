@@ -47,7 +47,7 @@ export default function ScrollToTop() {
       aria-label={t('ui.scrollToTop.back_to_top')}
       title={t('ui.scrollToTop.back_to_top')}
       data-testid="back-to-top"
-      className={`fixed bottom-[calc(var(--bottom-nav-h)+1rem)] right-4 z-40 grid h-11 w-11 place-items-center rounded-full bg-ink text-white shadow-lg transition-all duration-200 hover:bg-pine focus:outline-none focus:ring-2 focus:ring-pine focus:ring-offset-2 lg:bottom-6 ${ownBottomBar ? 'max-lg:hidden ' : ''}${visible ? 'translate-y-0 opacity-100' : 'pointer-events-none translate-y-3 opacity-0'}`}
+      className={`fixed bottom-[calc(var(--bottom-nav-h)+1rem)] right-4 z-40 grid h-12 w-12 place-items-center rounded-full border-2 border-[var(--surface)] bg-[var(--r)] text-[var(--on-r)] shadow-[0_6px_20px_rgb(0_0_0/.35)] transition-all duration-200 hover:bg-[var(--r-press)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--r)] focus-visible:ring-offset-2 lg:bottom-6 ${ownBottomBar ? 'max-lg:hidden ' : ''}${visible ? 'translate-y-0 opacity-100' : 'pointer-events-none translate-y-3 opacity-0'}`}
     >
       <ArrowUp size={20} weight="bold" aria-hidden="true" />
     </button>

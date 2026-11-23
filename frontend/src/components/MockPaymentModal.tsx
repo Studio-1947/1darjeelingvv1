@@ -22,7 +22,7 @@ export default function MockPaymentModal({ open, onClose, amount, title, descrip
 
   if (!open) return null;
 
-  // ₹598.80, not ₹599: totals carry GST and the platform fee, so paise matter.
+  // ₹588.82, not ₹589: totals carry GST, so paise matter.
   const shown = rupees(amount || 0).replace(/^₹/, '');
 
   const handlePay = async () => {

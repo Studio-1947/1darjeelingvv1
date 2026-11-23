@@ -60,7 +60,8 @@ export type MiniSiteActions = {
   direction?: string | null;
 };
 
-export default function HostMiniSite({ data, actions }: { data: MiniSiteData; actions?: MiniSiteActions }) {
+/** nameAside: shown beside the name, e.g. the owner's "Your view / As a traveller" switch on their public page. */
+export default function HostMiniSite({ data, actions, nameAside }: { data: MiniSiteData; actions?: MiniSiteActions; nameAside?: React.ReactNode }) {
   // Re-render when dark mode is switched, so the business colour follows it.
   const [colourMode] = useMode();
   const { t } = useTranslation();
@@ -128,6 +129,7 @@ export default function HostMiniSite({ data, actions }: { data: MiniSiteData; ac
                 <Info size={18} weight={badgeInfo ? 'fill' : 'regular'} aria-hidden="true" />
               </button>
             )}
+            {nameAside}
           </div>
           {badgeInfo && (data.verified || data.member) && (
             <Box flat id={infoId} className="!gap-2 text-sm" data-testid="badge-info-panel">

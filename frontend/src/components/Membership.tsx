@@ -157,7 +157,7 @@ export function BusinessPassCard() {
           <div key={who} className={`prow${hl ? ' hl' : ''}`}><span className="picon"><Icon name={icon} /></span><span className="pwho">{who}</span><b className="pval">{val}</b></div>
         ))}
       </div>
-      <p className="ag-small m-0">{t('member.gst', 'Business prices plus GST and a 2% payment fee.')}</p>
+      <p className="ag-small m-0">{t('member.gst', 'Business prices plus 18% GST.')}</p>
       <ul className="pchecks">
         <li><Icon name="check" />{t('member.pass1', 'No commission per booking')}</li>
         <li><Icon name="check" />{t('member.pass2', 'Guests pay the host directly')}</li>

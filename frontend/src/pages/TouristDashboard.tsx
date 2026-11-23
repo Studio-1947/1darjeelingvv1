@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/context/AuthContext';
 import { useSeo } from '@/components/Seo';
 import { isSupportActive } from '@/lib/support';
-import { rupees, usePassPrice } from '@/lib/prices';
+import { isFreeHostType, rupees, useHostPlanPrice, usePassPrice } from '@/lib/prices';
 import { LANGUAGES, setLanguage, type LangCode } from '@/i18n';
 import { PALETTES, accentOf, mix, useTheme } from '@/lib/theme';
 import { Box, Button, ButtonA, ButtonLink, PageHead, Status } from '@/components/ag';
@@ -134,6 +134,7 @@ export default function TouristDashboard() {
   const nav = useNavigate();
   const [sp] = useSearchParams();
   const pass = usePassPrice(user);
+  const planPrice = useHostPlanPrice(provider?.business_type);
   const [theme] = useTheme();
 
   if (sp.get('s') === 'language') return <LanguageScreen />;
@@ -153,6 +154,15 @@ export default function TouristDashboard() {
   const pe = provider?.extras || {};
   const headName: string | undefined = biz ? (pe.host_name || provider?.business_name) : user?.name;
   const headPhoto: string | undefined = biz ? (pe.host_avatar || user?.avatar) : user?.avatar;
+  // Business mode: Membership is the business's yearly plan (on My listings), not the traveller pass.
+  const planYear = rupees((provider?.plan_price ?? planPrice).base);
+  const planUntil = provider?.plan_expires_at
+    ? new Date(provider.plan_expires_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+  const planSub = !biz ? ''
+    : isFreeHostType(provider?.business_type) ? t('ui.account.plan_free', 'Free for local shops')
+    : !provider?.plan_expires_at ? t('ui.account.plan_start', { price: planYear, defaultValue: 'Free start · then {{price}} a year' })
+    : provider?.plan_active ? t('ui.account.plan_until', { date: planUntil, defaultValue: 'Business plan · active until {{date}}' })
+    : t('ui.account.plan_ended', { price: planYear, defaultValue: 'Ended · renew for {{price}} a year' });
 
   return (
     <div className="ag-wrap">
@@ -216,10 +226,16 @@ export default function TouristDashboard() {
           {!biz && <Link to={user ? '/dashboard?s=tdash' : '/login?next=' + encodeURIComponent('/dashboard?s=tdash')} data-testid="account-traveller-dashboard">
             <Row icon="t_trip" title={t('ui.account.tdash', 'Traveller dashboard')} />
           </Link>}
-          <Link to="/support" data-testid="account-pass">
-            <Row icon="badge" title={t('ui.account.member', 'Membership')}
-              sub={passOn ? `${t('ui.travellerPanels.pass_title')} · ${t('ui.travellerPanels.pass_active')}` : t('ui.travellerPanels.get_pass', { price: rupees(pass.total) })} />
-          </Link>
+          {biz ? (
+            <Link to="/my-listings#plan" data-testid="account-plan">
+              <Row icon="badge" title={t('ui.account.biz_member', 'Business membership')} sub={planSub} />
+            </Link>
+          ) : (
+            <Link to="/support" data-testid="account-pass">
+              <Row icon="badge" title={t('ui.account.member', 'Membership')}
+                sub={passOn ? `${t('ui.travellerPanels.pass_title')} · ${t('ui.travellerPanels.pass_active')}` : t('ui.travellerPanels.get_pass', { price: rupees(pass.total) })} />
+            </Link>
+          )}
         </nav>
 
         {biz ? (

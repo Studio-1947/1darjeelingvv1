@@ -9,7 +9,7 @@ import HostMiniSite from '@/components/provider/HostMiniSite';
 import { themeVars, useMode } from '@/lib/theme';
 import DeliveryRequestButton from '@/components/DeliveryRequestButton';
 import { waShare } from '@/lib/tripMessages';
-import { Box, Button, ButtonA, ButtonLink, PageHead } from '@/components/ag';
+import { Box, Button, ButtonA, ButtonLink, PageHead, Seg } from '@/components/ag';
 import SmartImg from '@/components/SmartImg';
 
 /**
@@ -26,6 +26,8 @@ export default function HostPage() {
   const type = pathname.split('/')[1];
   const [data, setData] = useState<any>(null);
   const [moved, setMoved] = useState<string | null>(null);
+  // The host looking at their own page: their view (Ask to book off) or exactly what a traveller sees.
+  const [viewAs, setViewAs] = useState<'owner' | 'traveller'>('owner');
 
   useEffect(() => {
     let live = true;
@@ -54,6 +56,8 @@ export default function HostPage() {
   }
 
   const { page, listings, reviews } = data;
+  const own = data.own === true;
+  const ownerView = own && viewAs === 'owner';
   const url = `${window.location.origin}${page.path || pathname}`;
   const direction = page.latitude && page.longitude
     ? `https://www.google.com/maps/dir/?api=1&destination=${page.latitude},${page.longitude}`
@@ -79,16 +83,30 @@ export default function HostPage() {
         <HostMiniSite
           data={page}
           actions={{ direction }}
+          nameAside={own && (
+            <Seg<'owner' | 'traveller'> value={viewAs} onChange={setViewAs} label={t('business_gate.view_as', 'View as')}
+              options={[
+                { value: 'owner', label: t('business_gate.view_owner', 'Your view'), testId: 'page-view-as-owner' },
+                { value: 'traveller', label: t('business_gate.view_traveller', 'As a traveller'), testId: 'page-view-as-traveller' },
+              ]} />
+          )}
         />
+        {own && (
+          <p className="ag-small !text-[var(--ink-strong)]" data-testid="own-page-preview">
+            {ownerView
+              ? t('business_gate.page_preview', "Your own view of your page. Ask to book is hidden here; travellers see it.")
+              : t('business_gate.page_preview_traveller', 'This is exactly what travellers see on your page.')}
+          </p>
+        )}
 
         {/* The prototype's action row (site.js): Ask to book, home delivery, share. */}
         <div className="ag-listing-acts">
-          {listings[0] && (
+          {!ownerView && listings[0] && (
             <ButtonLink variant="primary" go size="sm" to={`/listing/${listings[0].id}`} data-testid="host-page-book">
               {t('listing.book', 'Ask to book')}
             </ButtonLink>
           )}
-          {page.homeDelivery && listings[0] && <DeliveryRequestButton listing={{ ...listings[0], extras: { ...listings[0].extras, home_delivery: true } }} />}
+          {!ownerView && page.homeDelivery && listings[0] && <DeliveryRequestButton listing={{ ...listings[0], extras: { ...listings[0].extras, home_delivery: true } }} />}
           <button type="button" className="ag-listing-rowic" onClick={share} data-testid="host-page-share"
             aria-label={t('ui.hostPage.share')} title={t('ui.hostPage.share')}>
             <Icon name="share" />

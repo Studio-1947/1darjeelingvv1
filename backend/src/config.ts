@@ -367,12 +367,14 @@ export const rzpClient = RAZORPAY_KEY_SECRET ? new Razorpay({
   key_secret: RAZORPAY_KEY_SECRET
 }) : null;
 
-// Every fixed price below is the BASE. On top of it the payer is charged 18% GST and a 2% payment
-// gateway fee, both worked out on the base (lib/pricing.ts), e.g. ₹499 + ₹89.82 + ₹9.98 = ₹598.80.
+// Every fixed price below is the BASE. On top of it the payer is charged 18% GST, worked out on the
+// base (lib/pricing.ts), e.g. ₹499 + ₹89.82 = ₹588.82.
+// No platform / payment gateway fee is charged (removed 2026-11-23, owner's decision). The rate
+// stays as a setting at 0 so payment rows keep the same breakup shape (platform_fee: 0).
 // The aangan pass is the exception: its price already includes GST, so a traveller pays exactly
 // ₹1, then ₹12 (user decision 2026-11-08). See GST_INCLUDED_FLOWS.
 export const GST_RATE_PERCENT = 18;
-export const PLATFORM_FEE_PERCENT = 2;
+export const PLATFORM_FEE_PERCENT = 0;
 
 // Fixed base prices, in paise. `donation` is deliberately absent: its presence here would imply a
 // fixed price, and the whole point of a donation is that the giver chooses. See lib/payments.ts.
@@ -403,7 +405,7 @@ export const SMALL_HOST_TYPES: ReadonlySet<string> = new Set(['cafe']);
 // Businesses that list free: no plan to pay, and the free start never runs out.
 export const FREE_HOST_TYPES: ReadonlySet<string> = new Set(['shop']);
 
-// Flows whose price already includes GST and carries no gateway fee: the traveller pays the
+// Flows whose price already includes GST: the traveller pays the
 // price on the card and nothing more.
 export const GST_INCLUDED_FLOWS: ReadonlySet<string> = new Set(['platform_support']);
 

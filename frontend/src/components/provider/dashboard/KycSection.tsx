@@ -1,11 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { checklistLabel } from '@/lib/serverText';
 import { useAuth } from '@/context/AuthContext';
 import { CheckCircle as CheckCircle2, Clock, XCircle, Circle, MapPin } from '@phosphor-icons/react';
 import { Icon } from '@/components/ag/Icon';
 import { Box, Button, FieldError, Status, TextField } from '@/components/ag';
 import { getMyProfile, uploadKycDoc, uploadKycVideo, deleteKycDoc, KycApiError, KycProfile, ChecklistItem, verifyMapsLink, captureLiveLocation } from '@/lib/kyc';
+
+/** Where each listing item is fixed on the Business profile (a section id there), and its link text. */
+const FIX_AT: Record<string, string> = { description: 'about', photos: 'photos', price: 'prices' };
+const FIX_LABEL: Record<string, string> = { description: 'Write it', photos: 'Add photos', price: 'Set prices' };
 
 export default function KycSection({ onProfileChange }: { onProfileChange?: (p: KycProfile) => void }) {
   const { t } = useTranslation();
@@ -132,6 +137,13 @@ export default function KycSection({ onProfileChange }: { onProfileChange?: (p: 
                   <span className="d" aria-hidden="true">{item.state === 'done' ? <Icon name="check" /> : '•'}</span>
                   <div className="min-w-0 flex-1">
                     <span>{checklistLabel(t, item, businessType)}</span>
+                    {/* Not done yet: a link straight to where it is fixed on the Business profile. */}
+                    {!item.action && item.state !== 'done' && FIX_AT[item.key] && (
+                      <Link to={`/provider/profile#${FIX_AT[item.key] === 'prices' && (businessType === 'cafe' || businessType === 'shop') ? 'menu' : FIX_AT[item.key]}`}
+                        className="ag-host-fix" data-testid={`kyc-fix-${item.key}`}>
+                        {t(`kyc.fix.${item.key}`, FIX_LABEL[item.key])} <Icon name="arrowne" />
+                      </Link>
+                    )}
                     {item.action && item.state !== 'done' && (
                       <LocationCheck action={item.action} onDone={async () => { await load().catch(() => {}); }} />
                     )}

@@ -319,7 +319,7 @@ async function settlePaymentOnce(payment: PaymentRow, gatewayPaymentId: string) 
  *   get:
  *     summary: What each fixed payment costs, with its breakup
  *     description: >
- *       Base price, 18% GST, the 2% payment gateway fee (host plans only) and the total, in
+ *       Base price, 18% GST, the platform fee (0: none is charged) and the total, in
  *       paise, for the aangan pass (first year and renewal), the ₹1 booking fee and the host plan. Public, so both apps can show
  *       the breakup before anyone signs in or pays.
  *     tags: [Payments]

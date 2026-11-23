@@ -138,7 +138,7 @@ export default function HostPlanCard({ provider, user, reviews, onRenewed }: {
   if (!provider) return null;
   if (isFreeHostType(provider.business_type) && provider.status === 'active') {
     return (
-      <Box as="section" data-testid="host-plan-card">
+      <Box as="section" id="plan" className="scroll-mt-20" data-testid="host-plan-card">
         <span className="ag-eyebrow">{t('pd.plan_label')}</span>
         <p className="m-0"><b>{t('host.shop_free', 'Local shops list free')}</b></p>
         <p className="ag-small m-0">{t('host.shop_free_s', 'No yearly pass and no commission. Keep taking orders.')}</p>
@@ -150,7 +150,7 @@ export default function HostPlanCard({ provider, user, reviews, onRenewed }: {
   const alarm = lapsed || !!grace?.paused;
 
   return (
-    <Box as="section" tone={alarm ? 'blush' : undefined} data-testid="host-plan-card">
+    <Box as="section" id="plan" tone={alarm ? 'blush' : undefined} className="scroll-mt-20" data-testid="host-plan-card">
       <div className="flex items-start gap-3">
         <MenuIcon>{alarm ? <WarningCircle /> : <CalendarCheck />}</MenuIcon>
         <div className="min-w-0 flex-1">
