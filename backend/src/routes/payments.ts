@@ -680,6 +680,31 @@ router.post('/verify', authenticateToken, async (req: Request, res: Response) =>
 });
 
 /**
+ * Has this order been paid? Polled by the website while Razorpay's window is open: a UPI QR
+ * scanned on another phone does not always reach the window's success callback, so the window
+ * would sit open after the money had gone. When our row is not paid yet, Razorpay is asked
+ * directly and a captured payment is settled exactly as the webhook would settle it.
+ */
+router.get('/order/:orderId/status', authenticateToken, rateLimiter(120, 60 * 1000, 'order_status'), async (req: Request, res: Response) => {
+  const orderId = String(req.params.orderId);
+  const [payment] = await db.select().from(schema.payments).where(eq(schema.payments.orderId, orderId)).limit(1);
+  if (!payment || payment.userId !== req.user.id) return res.status(404).json({ detail: 'Order not found' });
+  if (payment.status === 'paid' || payment.status === 'refunded') return res.json({ paid: true });
+  if (payment.mock || !rzpClient) return res.json({ paid: false });
+  try {
+    const found: any = await rzpClient.orders.fetchPayments(orderId);
+    const captured = (found?.items || []).find((p: any) => p?.status === 'captured' && p?.order_id === orderId);
+    if (!captured) return res.json({ paid: false });
+    const { alreadySettled } = await settlePaymentOnce(payment, captured.id);
+    log.info(`[order-status] order=${orderId} flow=${payment.flow} ${alreadySettled ? 'already settled' : 'settled by poll'}`);
+    return res.json({ paid: true });
+  } catch (err: any) {
+    log.error(`[order-status] could not ask Razorpay about ${orderId}: ${err?.message || err?.error?.description || err}`);
+    return res.json({ paid: false });
+  }
+});
+
+/**
  * @openapi
  * /payments/webhook:
  *   post:

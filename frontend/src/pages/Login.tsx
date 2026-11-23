@@ -248,7 +248,7 @@ export default function Login() {
                 <Link to="/terms" className="underline">{t('auth.terms_conditions_link')}</Link>{' '}
                 {t('auth.terms_and')}{' '}
                 <Link to="/privacy" className="underline">{t('ui.login.privacy_policy', 'Privacy Policy')}</Link>
-                {t('ui.login.agree_age', ', and I am 18 or older.')}
+                {t('ui.login.agree_end', '.')}
               </span>
             </label>
             <Button type="submit" variant="primary" go className="self-start" disabled={busy || !canonicalPhone || !agreed} data-testid="login-send-otp">

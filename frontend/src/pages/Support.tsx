@@ -11,6 +11,7 @@ import PriceBreakup from '@/components/PriceBreakup';
 import { rupees, usePassPrice } from '@/lib/prices';
 import { BusinessPassCard, MemberCard, PassJoinCard } from '@/components/Membership';
 import { useSeo } from '@/components/Seo';
+import PaymentDoneCard from '@/components/PaymentDoneCard';
 
 /** A pass holder (or a host whose plan includes it): the membership card, then For businesses. */
 function MembershipScreen() {
@@ -41,6 +42,8 @@ export default function Support() {
   // Set the instant "not now" is clicked  see browseAnonymously below for why the
   // `!user` redirect needs this to stay off during that specific transition.
   const [leaving, setLeaving] = useState(false);
+  // What was just paid, shown on the "payment done" card before anything else (null: not yet).
+  const [paid, setPaid] = useState<number | null>(null);
 
   // Where SupportGate intercepted them. Rebuilt from pathname + search + hash so a query-bearing
   // URL like /search?q=momo survives the round trip; falling back to the feed keeps a direct
@@ -80,6 +83,27 @@ export default function Support() {
   // navigate('/'), overwriting it  "not now" silently lands on the login screen instead of
   // the homepage). leaving suppresses the branch for exactly that window; once the location
   // actually changes, Support unmounts and the flag stops mattering.
+  // Just paid: the "payment done" card first, then on to wherever they were headed (or, opened
+  // on its own, their membership card).
+  if (paid !== null && user) {
+    const until = user.supportExpiresAt ? new Date(user.supportExpiresAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
+    const onward = Boolean(from?.pathname || next);
+    return (
+      <div className="ag-wrap">
+        <div className="ag-main" data-testid="support-paid">
+          <PaymentDoneCard
+            title={t('support.paid_title', 'Membership payment done')}
+            body={until
+              ? t('support.paid_body', { total: rupees(paid), until })
+              : t('support.paid_body_nodate', { total: rupees(paid) })}
+            action={t(onward ? 'support.paid_continue' : 'support.paid_card', onward ? 'Continue' : 'See my membership')}
+            onAction={() => (onward ? nav(destination, { replace: true }) : setPaid(null))}
+          />
+        </div>
+      </div>
+    );
+  }
+
   if (!user && !leaving) return <Navigate to="/login" replace />;
 
   // Opened on its own (Account → Membership, or just paid from there): a pass holder sees their
@@ -92,7 +116,7 @@ export default function Support() {
 
   const finish = async () => {
     await refresh();
-    nav(destination, { replace: true });
+    setPaid(pass.total);
   };
 
   const startPayment = async () => {

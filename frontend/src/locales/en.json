@@ -114,6 +114,11 @@
     "modal_duration": "· valid for 1 year",
     "privacy_link": "privacy policy",
     "error": "Payment could not be completed. Please try again.",
+    "paid_title": "Membership payment done",
+    "paid_body": "{{total}} received. Your aangan pass is active until {{until}}.",
+    "paid_body_nodate": "{{total}} received. Your aangan pass is active.",
+    "paid_continue": "Continue",
+    "paid_card": "See my membership",
     "skip2": "Not now"
   },
   "donate": {
@@ -3357,7 +3362,7 @@
       "agree": "I Agree",
       "agree_to": "to the",
       "privacy_policy": "Privacy Policy",
-      "agree_age": ", and I am 18 or older.",
+      "agree_end": ".",
       "agree_needed": "Please tick I Agree to continue."
     },
     "footer": {
