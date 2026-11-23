@@ -186,7 +186,7 @@ export async function notifyBookingCancelled(
   const stay = formatStay(booking.checkIn, booking.checkOut);
   const refundLine = refunded
     ? 'Your payment has been refunded and will reach your account in 5-7 working days.'
-    : 'If you were charged, our team will contact you about the refund.';
+    : 'The ₹1.20 app convenience fee paid to send the request is not refundable.';
 
   if (guestEmail && emailEnabled()) {
     await sendEmail({

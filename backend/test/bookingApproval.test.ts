@@ -118,7 +118,7 @@ describe('host approval before a booking can be confirmed', () => {
     expect(checkout.body.booking.status).toBe('confirmed');
   });
 
-  it('gives the ₹1 back when the host declines', async () => {
+  it('keeps the ₹1.20 app convenience fee when the host declines', async () => {
     const { hostToken, listing } = await hostListing('Fee Decline', 'driver');
     const { token: guest } = await registerUser({ name: 'Declined Payer', paySupport: false });
     const res = await request(app).post('/api/bookings').set(auth(guest)).send({ listing_id: listing.id, check_in: inDays(10) });
@@ -126,9 +126,9 @@ describe('host approval before a booking can be confirmed', () => {
     await payToSend(guest, id);
     const declined = await request(app).patch(`/api/bookings/${id}/cancel`).set(auth(hostToken)).send({ as: 'host' });
     expect(declined.status).toBe(200);
-    expect(declined.body.refunded).toBe(true);
+    expect(declined.body.refunded).toBe(false);
     const [payment] = await db.select().from(schema.payments).where(eq(schema.payments.referenceId, id)).limit(1);
-    expect(payment.status).toBe('refunded');
+    expect(payment.status).toBe('paid');
   });
 
   it('lets the host decline a request instead', async () => {

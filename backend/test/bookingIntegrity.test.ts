@@ -182,41 +182,23 @@ describe('booking notifications', () => {
 });
 
 describe('refunds (legacy paid bookings)', () => {
-  it('returns the money when a confirmed booking is cancelled', async () => {
+  it('keeps the app convenience fee when a confirmed booking is cancelled, even by the team', async () => {
     const listing = await createListing({ title: 'Cancellable Homestay', type: 'homestay' });
     const { token, user } = await registerUser({ name: 'Cancelling Guest' });
     const bookingId = await createBooking(token, listing.id, inDays(125), inDays(128));
     const { orderId } = await payForBooking(token, bookingId);
 
-    // Cancelled by the team: the guest got nothing for the fee. (A guest who drops a booking they
-    // confirmed keeps it paid: they have had the host's number.)
+    // The fee is an app convenience fee: not refunded, whoever cancels (Terms 3.2, Refunds 2).
     const res = await request(app)
       .patch(`/api/bookings/${bookingId}/cancel`)
       .set('Authorization', `Bearer ${await loginAdmin()}`);
 
     expect(res.status).toBe(200);
-    expect(res.body.refunded).toBe(true);
+    expect(res.body.refunded).toBe(false);
 
     const [payment] = await db.select().from(schema.payments).where(eq(schema.payments.orderId, orderId)).limit(1);
-    expect(payment.status).toBe('refunded');
+    expect(payment.status).toBe('paid');
     expect(payment.userId).toBe(user.id);
-  });
-
-  it('is idempotent  a second cancel does not refund twice', async () => {
-    const listing = await createListing({ title: 'Double Cancel Homestay', type: 'homestay' });
-    const { token } = await registerUser({ name: 'Twice Cancelling Guest' });
-    const bookingId = await createBooking(token, listing.id, inDays(148), inDays(151));
-    const { orderId } = await payForBooking(token, bookingId);
-
-    const admin = await loginAdmin();
-    await request(app).patch(`/api/bookings/${bookingId}/cancel`).set('Authorization', `Bearer ${admin}`);
-    const second = await request(app).patch(`/api/bookings/${bookingId}/cancel`).set('Authorization', `Bearer ${admin}`);
-
-    expect(second.status).toBe(200);
-    const [payment] = await db.select().from(schema.payments).where(eq(schema.payments.orderId, orderId)).limit(1);
-    expect(payment.status).toBe('refunded');
-    // One refund reference, written once  a second gateway call would have overwritten it.
-    expect(payment.refundId).toBe(`mock_rfnd_${orderId}`);
   });
 
   it('does not refund a booking that was never paid for', async () => {

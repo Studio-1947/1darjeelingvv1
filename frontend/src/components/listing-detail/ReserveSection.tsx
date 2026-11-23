@@ -425,7 +425,7 @@ export function BookingScreen({ item, unit, step, booking, onNext }: {
               <span>
                 {hasPass
                   ? t('booking.send_pass', 'Your aangan pass covers this. Sending is free, and your request goes with a verified badge.')
-                  : <>{t('booking.send_fee', 'Sending this request costs {{fee}}. If the host says no or does not answer, you get it back.', { fee: feeText })}{' '}
+                  : <>{t('booking.send_fee', 'Sending this request costs {{fee}}, an app convenience fee. It is not refundable.', { fee: feeText })}{' '}
                     <Link to="/support" className="text-[var(--r)] no-underline font-medium">{t('booking.send_fee_pass', 'Free with the aangan pass')}</Link></>}
               </span>
             </p>
@@ -441,7 +441,7 @@ export function BookingScreen({ item, unit, step, booking, onNext }: {
               <ol className="grid gap-2.5 m-0 p-0 list-none">
                 {[
                   hasPass ? t('approval.step_send_pass', 'Send your request. Free with your pass.') : t('approval.step_send_fee', 'Send your request for {{fee}}, or free with the aangan pass.', { fee: feeText }),
-                  t('approval.step_host_refund', 'The host checks availability and accepts. If they say no or do not answer within 48 hours, the request closes and any fee comes back.'),
+                  t('approval.step_host_refund', 'The host checks availability and accepts. If they say no or do not answer within 24 hours, the request closes.'),
                   t('approval.step_confirm_free', 'You confirm it in My Trips. It is free.'),
                   t('approval.step_contact'),
                 ].map((s, i) => (

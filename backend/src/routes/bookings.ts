@@ -10,7 +10,6 @@ import { eq, desc, inArray, and, ne, lt, gt, gte, isNull, or, sql } from 'drizzl
 import { authenticateToken } from '../middleware/auth';
 import { acceptedCutoff, findBlockingBooking, holdCutoff, isDateExclusive, lockBookingForChange, lockListingForBooking } from '../lib/bookingAvailability';
 import { checkBookingRequest, hasStartDatePassed, MAX_OPEN_REQUESTS, PAST_DATE_DETAIL } from '../lib/bookingRules';
-import { refundPaymentsFor } from '../lib/refunds';
 import { notifyBookingAccepted, notifyBookingCancelled } from '../lib/notifications';
 import { routeParam } from '../lib/routeParam';
 import { isListingHostLapsed } from '../lib/hostPlan';
@@ -688,7 +687,7 @@ router.get('/provider', authenticateToken, async (req: Request, res: Response) =
  *   patch:
  *     summary: Cancel a booking (by the traveller who made it, the provider who owns the listing, or an admin)
  *     description: >
- *       Cancels at once and refunds the ₹1 fee if it was paid. Records who cancelled, the reason and
+ *       Cancels at once. The ₹1.20 app convenience fee that sent the request is not refunded. Records who cancelled, the reason and
  *       note, whether it was late (a guest, under 24 h before the trip, on a booking the host had
  *       accepted) and whether it was a host declining a request. The web asks a guest with a
  *       confirmed booking to use POST /bookings/{id}/cancel-request instead.
@@ -873,11 +872,11 @@ router.patch('/:id/confirm', authenticateToken, async (req: Request, res: Respon
 
   for (const other of outcome.declined) {
     await releaseVoucherForBooking(db, other.id);
-    await refundPaymentsFor('booking_commission', other.id, 'dates went to another guest'); // no-op when unpaid
+    // The ₹1.20 that sent it is an app convenience fee for reaching the host: it is not refunded.
     await addInAppNotification(other.userId, {
       kind: 'booking_cancelled',
       title: 'Those dates are no longer free',
-      body: `The host of ${other.listingTitle} accepted another guest for some of the same nights, so your request was closed. Any fee you paid to send it comes back.`,
+      body: `The host of ${other.listingTitle} accepted another guest for some of the same nights, so your request was closed. You can ask another host.`,
       msg: { key: 'dates_taken_request', params: { place: other.listingTitle } },
       refId: other.id,
     });
@@ -1144,14 +1143,10 @@ router.patch('/:id/cancel', authenticateToken, async (req: Request, res: Respons
   // guest received nothing for it, so it goes back; a confirmed stay keeps its discount spent.
   if (wasStatus !== 'confirmed') await releaseVoucherForBooking(db, booking.id);
 
-  // The ₹1 paid to send the request goes back when the guest got nothing for it: the host
-  // declined or cancelled, the team cancelled, or the guest withdrew before confirming. A guest
-  // who drops a booking they already confirmed has had the host's number, so the fee stays paid
-  // (otherwise confirm-then-cancel would be a free way to get every number).
-  // refundPaymentsFor is idempotent and a no-op when nothing was paid.
-  const keepFee = side === 'guest' && wasStatus === 'confirmed';
-  const outcomes = keepFee ? [] : await refundPaymentsFor('booking_commission', booking.id, `booking cancelled by ${side}`);
-  const refunded = outcomes.some(o => o.refunded);
+  // The ₹1.20 paid to send the request is an app convenience fee: paid to use the app to reach the
+  // host, not a booking payment, so it is not refunded whoever cancels or why (Terms 3, Refunds 2).
+  // The team can still refund one by hand from the admin console (POST /admin/payments/:id/refund).
+  const refunded = false;
 
   const reasonLine = why.reason ? ` Reason: ${CANCEL_REASON_TEXT[why.reason] ?? why.reason}${why.note ? ` (${why.note})` : ''}.` : '';
   // The feed, unlike WhatsApp, is cheap and silent, so whoever did not press the button hears
@@ -1161,7 +1156,7 @@ router.patch('/:id/cancel', authenticateToken, async (req: Request, res: Respons
       await addInAppNotification(booking.userId, {
         kind: 'booking_declined',
         title: 'Request declined',
-        body: `The host of ${booking.listingTitle} declined your request. Any fee you paid to send it comes back, and you can book somewhere else.${reasonLine}`,
+        body: `The host of ${booking.listingTitle} declined your request. You can book somewhere else.${reasonLine}`,
         msg: { key: 'request_declined', params: { place: booking.listingTitle, reason: why.reason ?? '' } },
         refId: booking.id,
       });
