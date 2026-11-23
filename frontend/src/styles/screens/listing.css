@@ -36,9 +36,12 @@
 .ag-listing-lead .ag-small { font-weight: 400; }
 .ag-listing-center { text-align: center; }
 
-/* Website / Listen / Direction: 52px and 44px pills, 15px and 14px type */
-.ag-listing .ag-btn.ag-listing-web { padding-left: 16px; padding-right: 6px; }
-.ag-listing-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 4px 0; }
+/* Website / Direction / save / share: one row of 44px pills, 14px type */
+.ag-listing-acts > .ag-btn.ag-listing-web { padding: 0 16px; }
+.ag-listing-acts { display: flex; flex-wrap: nowrap; align-items: center; gap: 8px; margin: 4px 0; overflow-x: auto; scrollbar-width: none; }
+.ag-listing-acts::-webkit-scrollbar { display: none; }
+.ag-listing-acts > .ag-btn { flex: none; white-space: nowrap; text-decoration: none; }
+.ag-listing-acts > .ag-listing-web { order: 0; }
 .ag-listing-acts .ag-btn { height: 44px; min-height: 44px; padding: 0 16px; font: 500 14px/20px var(--font); }
 .ag-listing-acts .ag-btn.tonal > svg, .ag-listing-acts .ag-btn.tonal svg.i { width: 18px; height: 18px; color: var(--r); }
 .ag-listing-acts > .ag-listing-rowic { order: 2; }
@@ -130,3 +133,8 @@
 .ag-listing-dtrow { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; align-items: start; }
 .ag-listing-locpair .ag-in, .ag-listing-dtrow .ag-in { min-width: 0; padding: 0 10px 0 12px; }
 .ag-listing-dtrow .ag-in::-webkit-calendar-picker-indicator { margin: 0; padding: 0; width: 18px; }
+
+/* "Host: Rabi" with the host's face (photo, or their initial). */
+.ag-listing-host { display: flex; align-items: center; gap: 10px; }
+.ag-listing-host .face { flex: none; width: 44px; height: 44px; border-radius: 50%; overflow: hidden; display: grid; place-items: center; background: var(--blush); color: var(--r); font-weight: 600; font-size: 18px; box-shadow: 0 0 0 2px var(--r); }
+.ag-listing-host .face img { width: 100%; height: 100%; object-fit: cover; }

@@ -4,7 +4,6 @@ import { ACCEPTED_HOLD_HOURS, REQUEST_EXPIRY_HOURS, log } from '../config';
 import { HOST_APPROVAL_TYPES, realHostIds } from './bookingApproval';
 import { addHostNotification, addInAppNotification } from './inApp';
 import { releaseVoucherForBooking } from './vouchers';
-import { refundPaymentsFor } from './refunds';
 import { AWAITING_FEE } from './bookingSend';
 import { acceptedCutoff, isDateExclusive } from './bookingAvailability';
 
@@ -47,12 +46,11 @@ export async function expireStaleRequests(now: Date = new Date()): Promise<numbe
     if (!row) continue;
     closed++;
     await releaseVoucherForBooking(db, b.id);
-    // The ₹1 paid to send it goes back: the host never answered. No-op when it went free.
-    await refundPaymentsFor('booking_commission', b.id, 'request not answered in time');
+    // The ₹1.20 that sent it is an app convenience fee, not refunded (Terms 3, Refunds 2).
     await addInAppNotification(b.userId, {
       kind: 'booking_expired',
       title: 'Your request was not answered',
-      body: `The host of ${b.listingTitle} did not answer within ${REQUEST_EXPIRY_HOURS} hours, so your request was closed. Any fee you paid to send it comes back. You can ask another host.`,
+      body: `The host of ${b.listingTitle} did not answer within ${REQUEST_EXPIRY_HOURS} hours, so your request was closed. You can ask another host.`,
       msg: { key: 'request_expired_guest', params: { place: b.listingTitle, hours: REQUEST_EXPIRY_HOURS } },
       refId: b.id,
     });
@@ -75,8 +73,8 @@ export async function expireStaleRequests(now: Date = new Date()): Promise<numbe
  *
  * The dates already stopped blocking at ACCEPTED_HOLD_HOURS (lib/bookingAvailability.ts
  * acceptedCutoff); this closes the booking itself, so My Trips and the host dashboard stop
- * showing it as open and the guest's voucher comes back. The ₹1 that sent the request is
- * refunded: the guest never confirmed, so they never had the host's number. Both sides are told.
+ * showing it as open and the guest's voucher comes back. The ₹1.20 app convenience fee that
+ * sent the request is not refunded. Both sides are told.
  */
 async function lapseUnconfirmedAccepts(now: Date): Promise<number> {
   const cutoff = acceptedCutoff(now);
@@ -105,11 +103,10 @@ async function lapseUnconfirmedAccepts(now: Date): Promise<number> {
     if (!row) continue;
     closed++;
     await releaseVoucherForBooking(db, b.id);
-    await refundPaymentsFor('booking_commission', b.id, 'accepted but not confirmed in time');
     await addInAppNotification(b.userId, {
       kind: 'booking_expired',
       title: 'Your booking was not confirmed',
-      body: `The host of ${b.listingTitle} accepted your request, but it was not confirmed within ${ACCEPTED_HOLD_HOURS} hours, so it was closed and the dates were freed. Any fee you paid to send it comes back. You can ask again if the dates are still free.`,
+      body: `The host of ${b.listingTitle} accepted your request, but it was not confirmed within ${ACCEPTED_HOLD_HOURS} hours, so it was closed and the dates were freed. You can ask again if the dates are still free.`,
       msg: { key: 'accepted_lapsed_guest', params: { place: b.listingTitle, hours: ACCEPTED_HOLD_HOURS } },
       refId: b.id,
     });

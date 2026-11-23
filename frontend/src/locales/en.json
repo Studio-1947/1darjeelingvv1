@@ -480,7 +480,7 @@
     "extra_mattress_line_other": "Extra mattress, {{count}} guests",
     "extra_free": "Free",
     "send_pass": "Your aangan pass covers this. Sending is free, and your request goes with a Member badge.",
-    "send_fee": "Sending this request costs {{fee}}. If the host says no or does not answer, you get it back.",
+    "send_fee": "Sending this request costs {{fee}}, an app convenience fee. It is not refundable.",
     "send_fee_pass": "Free with the aangan pass"
   },
   "responsible": {
@@ -1394,7 +1394,7 @@
     "booked_on": "Booked",
     "view_listing": "View listing",
     "cancel_confirm": "Cancel this?",
-    "cancel_free": "Free to cancel. Any fee you paid comes back automatically.",
+    "cancel_free": "Free to cancel. The app convenience fee is not refundable.",
     "quick_actions": "Quick actions",
     "browse_stays": "Browse stays",
     "cultural_events": "Cultural events"
@@ -2047,7 +2047,7 @@
           },
           {
             "h": "3.2 App Convenience Fee — ₹1.20 per request without the pass, waived with it",
-            "p": "Sending a request to a business through the app costs a convenience fee of ₹1 plus 18% GST and a 2% payment gateway fee, ₹1.20 in all, paid to the Platform when you send it. With an active Traveller Pass it is waived. The fee is only for using the app to reach the business. It is not a booking fee, deposit or advance: it does not pay for, reserve or guarantee any stay, ride, tour or goods, and it does not make us a party to any booking. Whether the business accepts your request and whether the booking goes ahead are matters between you and the business, and we are not liable for either. We make no further charge at any later step. As a courtesy, the ₹1.20 is refunded in full, automatically, if the business declines the request or does not answer in time, if its dates go to another traveller who confirmed first, if you withdraw the request before confirming, or if the business or our team cancels it. It is not refunded if you cancel after confirming, because by then the business's contact details have been shared with you, or if the business reports that you did not arrive. What you pay for the stay, ride or goods themselves is paid directly to the business; we never receive it and take no share."
+            "p": "Sending a request to a business through the app costs a convenience fee of ₹1 plus 18% GST and a 2% payment gateway fee, ₹1.20 in all, paid to the Platform when you send it. With an active Traveller Pass it is waived. The fee is only for using the app to reach the business. It is not a booking fee, deposit or advance: it does not pay for, reserve or guarantee any stay, ride, tour or goods, and it does not make us a party to any booking. Whether the business accepts your request and whether the booking goes ahead are matters between you and the business, and we are not liable for either. We make no further charge at any later step. The fee is non-refundable: it pays for the use of the app at the moment the request is sent. It is not refunded, whatever happens to the request: if the business declines it or does not answer, if its dates go to another traveller, if you withdraw or cancel it, or if the business or our team cancels it. The only exceptions are a payment error on our side: if you are charged but the request is never sent, or charged twice for the same request, that charge is refunded in full. What you pay for the stay, ride or goods themselves is paid directly to the business; we never receive it and take no share."
           },
           {
             "h": "3.3 Business Listing Plan — ₹499 a year for homestays, drivers and guides, ₹99 a year for cafés, each plus 18% GST and a 2% platform fee; free until 2 completed bookings; local shops list free",
@@ -2070,7 +2070,7 @@
         "p": "A booking may be cancelled by you, by the business, or by us. We do not collect booking money of any kind: the price of a stay, ride, tour, meal or goods, and any advance or deposit, is paid directly to the business. We are therefore not responsible or liable for refunding it, and the business's own cancellation terms apply to it. We can help you get in touch with the business, but we cannot refund money we never received.",
         "items": [
           "The only money we receive is the Platform fees in section 3: the app convenience fee, the Traveller Pass and the Business Listing Plan.",
-          "Those fees are refunded as set out in the Refund & Cancellation Policy, which forms part of these Terms.",
+          "The app convenience fee is non-refundable (3.2). The Traveller Pass and the Business Listing Plan are refunded only as set out in the Refund & Cancellation Policy, which forms part of these Terms.",
           "If you paid us one of those fees by mistake or without meaning to (for example a duplicate payment, the wrong plan, or a payment you did not intend to make), write to us with your registered mobile number and the reason. We look at every such request, refund it in full where the reason holds, and tell you the outcome with our reasons."
         ]
       },
@@ -2149,7 +2149,7 @@
         "p": "A booking can be cancelled at any time before it takes place, from your dashboard, by the business, or by our team.",
         "items": [
           "A booking still awaiting payment can simply be cancelled  nothing has been charged.",
-          "A request or a confirmed booking can be cancelled by you, by the business, or by us. Whether the ₹1.20 app convenience fee comes back depends on who cancels and when (see 3.1).",
+          "A request or a confirmed booking can be cancelled by you, by the business, or by us. The ₹1.20 app convenience fee paid to send the request is not refunded, whoever cancels and whenever (see 3.1).",
           "If the business cancels on you, we will help you find an alternative wherever we can."
         ]
       },
@@ -2157,7 +2157,7 @@
         "h": "2. Automatic Refunds",
         "p": "Some refunds need no request at all  the Platform issues them itself:",
         "items": [
-          "App convenience fees: as a courtesy, the ₹1.20 paid to send a request is refunded in full if the business declines it or does not answer in time, if its dates go to another traveller who confirmed first, if you withdraw it before confirming, or if the business or our team cancels it.",
+          "Requests that never went out: if you are charged the ₹1.20 app convenience fee but the request is not sent (for example its dates were taken while you were paying), that charge is refunded in full.",
           "Duplicate charges: if a technical fault charges you twice for one thing, the duplicate is refunded in full."
         ]
       },
@@ -2166,7 +2166,7 @@
         "sub": [
           {
             "h": "3.1 App Convenience Fee — ₹1.20 per request without the pass, waived with it",
-            "p": "Sending a request without an active Traveller Pass costs an app convenience fee of ₹1 plus 18% GST and a 2% payment gateway fee, ₹1.20 in all. With the pass it is waived, and there is no charge to confirm. It is a fee for using the app, not a payment for any booking, and we are not liable for whether a booking goes ahead. As a courtesy, the ₹1.20 is refunded in full, automatically, if the business declines the request or does not answer in time, if its dates go to another traveller who confirmed first, if you withdraw the request before confirming, or if the business or our team cancels it. It is not refunded if you cancel after confirming, because by then the business's contact details have been shared with you, or if the business reports that you did not arrive."
+            "p": "Sending a request without an active Traveller Pass costs an app convenience fee of ₹1 plus 18% GST and a 2% payment gateway fee, ₹1.20 in all. With the pass it is waived, and there is no charge to confirm. It is a fee for using the app, not a payment for any booking, and we are not liable for whether a booking goes ahead. It is non-refundable. It is not refunded, whatever happens to the request: if the business declines it or does not answer, if its dates go to another traveller, if you withdraw or cancel it, or if the business or our team cancels it. The only exceptions are a payment error on our side: if you are charged but the request is never sent, or charged twice for the same request, that charge is refunded in full."
           },
           {
             "h": "3.2 Traveller Pass — ₹1 a year, GST included, optional",
@@ -2201,7 +2201,7 @@
         "items": [
           "Money paid directly to a homestay, driver, café or shop. Ask them  their cancellation terms apply, and we will help you make contact.",
           "Costs around a trip that we never charged: travel to Darjeeling, other bookings, time taken off.",
-          "The app convenience fee where the traveller cancelled a booking after confirming it, did not arrive, or cancelled after the stay had already begun.",
+          "The app convenience fee, once the request it paid for has been sent, whatever then happens to the request or booking.",
           "Accounts closed by us for a breach of our Terms."
         ]
       },
@@ -2290,7 +2290,7 @@
       },
       {
         "h": "6. Money Owed to You",
-        "p": "Deleting your account does not cancel a refund you are already owed. If a booking of yours is cancelled and a fee is due back, that refund is processed to the original payment method whether or not the account still exists. Delete first and it still reaches you."
+        "p": "Deleting your account does not cancel a refund you are already owed. If a refund is due to you (for example a Traveller Pass refunded within 7 days, or a duplicate charge), that refund is processed to the original payment method whether or not the account still exists. Delete first and it still reaches you."
       },
       {
         "h": "7. Contact",
@@ -2352,7 +2352,12 @@
     "body": "Business mode is for running your own listing. To explore and book places on aangan, switch to Traveller.",
     "switch": "Switch to Traveller",
     "dashboard": "Back to your dashboard",
-    "preview": "This is how travellers see your listing. Booking is turned off while you're in Business mode."
+    "preview": "Your own view of this listing. Booking is turned off while you're in Business mode.",
+    "view_as": "View as",
+    "view_owner": "Your view",
+    "view_traveller": "As a traveller",
+    "preview_traveller": "This is exactly what travellers see. Book now only works for them, not here.",
+    "preview_book": "Preview only. Travellers start their request here."
   },
   "profile": {
     "opening_hours": "Open {{hours}}",
@@ -2622,14 +2627,14 @@
     "pass_body": "Every booking for a year confirms free, plus saved places and reviews.",
     "fee_title": "Just this booking",
     "fee_body": "A one-time app convenience fee for sending this request. It is not a payment for the booking.",
-    "note": "If the booking is cancelled, the fee comes back to you.",
+    "note": "This is an app convenience fee. It is not refundable.",
     "failed": "Payment did not go through. Please try again.",
     "send_eyebrow": "Send your request",
     "send_title": "Take the pass, or pay for this request",
     "send_body": "Your request is saved. The host sees it once you choose one.",
     "send_fee_title": "Just this request",
     "send_fee_body": "Sends this one request to the host.",
-    "send_note": "If the host says no or does not answer, or you withdraw before confirming, the fee comes back to you."
+    "send_note": "This is an app convenience fee for sending the request. It is not refundable, even if the host says no or does not answer."
   },
   "plan_card": {
     "eyebrow_full": "For homestays and drivers",
@@ -2703,7 +2708,7 @@
     "step_confirm_free": "You confirm it in My Trips. It is free.",
     "step_send_pass": "Send your request. Free with your pass.",
     "step_send_fee": "Send your request for {{fee}}, or free with the aangan pass.",
-    "step_host_refund": "The host checks availability and accepts. If they say no or do not answer within 24 hours, the request closes and any fee comes back."
+    "step_host_refund": "The host checks availability and accepts. If they say no or do not answer within 24 hours, the request closes."
   },
   "photoKind": {
     "label": "What this photo shows",
@@ -3437,6 +3442,9 @@
       "biz_start": "Start your business on aangan",
       "biz_start_s": "Homestay, driver, guide, cafe or shop. No booking commission.",
       "check_biz": "Check your business",
+      "biz_profile": "Business profile",
+      "for_travel": "Going somewhere?",
+      "travel_box_s": "Book stays, drivers and guides, see your trips and saved places.",
       "list_now": "List now",
       "tdash": "Traveller dashboard",
       "help": "Help and contact",
@@ -3486,7 +3494,7 @@
       },
       "request_expired_guest": {
         "title": "Your request was not answered",
-        "body": "The host of {{place}} did not answer within {{hours}} hours, so your request was closed. Any fee you paid to send it comes back. You can ask another host."
+        "body": "The host of {{place}} did not answer within {{hours}} hours, so your request was closed. You can ask another host."
       },
       "request_expired_host": {
         "title": "A booking request lapsed",
@@ -3494,7 +3502,7 @@
       },
       "accepted_lapsed_guest": {
         "title": "Your booking was not confirmed",
-        "body": "The host of {{place}} accepted your request, but it was not confirmed within {{hours}} hours, so it was closed and the dates were freed. Any fee you paid to send it comes back. You can ask again if the dates are still free."
+        "body": "The host of {{place}} accepted your request, but it was not confirmed within {{hours}} hours, so it was closed and the dates were freed. You can ask again if the dates are still free."
       },
       "accepted_lapsed_host": {
         "title": "An accepted booking lapsed",
@@ -3510,11 +3518,11 @@
       },
       "request_sent": {
         "title": "Request sent",
-        "body": "Your request for {{place}} has gone to the host. You will hear back within {{hours}} hours. If the host says no, any fee you paid comes back."
+        "body": "Your request for {{place}} has gone to the host. You will hear back within {{hours}} hours."
       },
       "dates_taken_request": {
         "title": "Those dates are no longer free",
-        "body": "The host of {{place}} accepted another guest for some of the same nights, so your request was closed. Any fee you paid to send it comes back."
+        "body": "The host of {{place}} accepted another guest for some of the same nights, so your request was closed. You can ask another host."
       },
       "request_accepted": {
         "title": "Your request was accepted",
@@ -3562,7 +3570,7 @@
       },
       "request_declined": {
         "title": "Request declined",
-        "body": "The host of {{place}} declined your request. Any fee you paid to send it comes back, and you can book somewhere else."
+        "body": "The host of {{place}} declined your request. You can book somewhere else."
       },
       "cancel_request_host": {
         "title": "Guest asked to cancel",
@@ -3858,7 +3866,7 @@
     "h_host": "Why are you cancelling this booking?",
     "h_decline": "Why are you declining?",
     "i_decline": "The traveller will see your reason and can book someone else.",
-    "i_host": "The traveller will be told your reason. Any fee they paid goes back to them.",
+    "i_host": "The traveller will be told your reason.",
     "i_pre": "The host has not said yes yet, so your request is simply withdrawn. Nothing is charged.",
     "i_accepted": "Nothing is paid yet, so this cancels at once at no charge. The host will be told.",
     "i_post": "The host has already kept this for you. They will be asked to accept the cancellation. Talk to them first if you can.",

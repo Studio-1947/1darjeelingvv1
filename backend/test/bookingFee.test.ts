@@ -70,13 +70,13 @@ describe('booking without the aangan pass', () => {
     expect(second.booking.status).toBe('awaiting_fee');
   });
 
-  it('refunds the fee when the guest withdraws before confirming, but not after', async () => {
+  it('keeps the app convenience fee whether the guest withdraws before confirming or cancels after', async () => {
     const { token } = await registerUser({ name: 'Withdrawing Wangmo', paySupport: false });
     const listing = await createListing();
     const a = (await ask(token, listing.id)).booking.id;
     await payToSend(token, a);
     const withdrawn = await request(app).patch(`/api/bookings/${a}/cancel`).set(auth(token));
-    expect(withdrawn.body.refunded).toBe(true);
+    expect(withdrawn.body.refunded).toBe(false);
 
     // Confirmed means the guest has had the host's number: dropping it keeps the fee paid.
     const listing2 = await createListing();

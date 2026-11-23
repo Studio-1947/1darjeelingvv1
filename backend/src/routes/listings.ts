@@ -438,6 +438,7 @@ router.get('/:id', async (req: Request, res: Response) => {
     slug: schema.providers.slug,
     businessType: schema.providers.businessType,
     planExpiresAt: schema.providers.planExpiresAt,
+    extras: schema.providers.extras,
   })
     .from(schema.providers)
     .where(eq(schema.providers.id, item.providerId))
@@ -482,6 +483,8 @@ router.get('/:id', async (req: Request, res: Response) => {
     // Only ever true for the host's own view of a listing travellers cannot see yet.
     not_live: notLive,
     // The host's own page (aanganerp.in/<type>/<slug>) and their two marks.
+    // Name and photo only, the same as the cards (lib/hostCard.ts); never a phone.
+    host: hostCard(provider?.extras, item.extras),
     host_page_path: provider?.slug ? `/${provider.businessType}/${provider.slug}` : null,
     provider_member: provider ? provider.status === 'active' && !!provider.planExpiresAt && Date.parse(provider.planExpiresAt) > Date.now() : false,
     // Booking it sends the host a request to accept first (lib/bookingApproval.ts), so the button
