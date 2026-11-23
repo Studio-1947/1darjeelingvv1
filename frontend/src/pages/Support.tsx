@@ -2,18 +2,18 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation, Navigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Check } from '@phosphor-icons/react';
-import { Button, PageHead, SecHead } from '@/components/ag';
+import { Button, PageHead } from '@/components/ag';
 import { useAuth } from '@/context/AuthContext';
 import { createPaymentOrder, completeMockPayment, payWithRazorpay } from '@/lib/api';
 import { needsSupport } from '@/lib/support';
 import MockPaymentModal from '@/components/MockPaymentModal';
 import PriceBreakup from '@/components/PriceBreakup';
 import { rupees, usePassPrice } from '@/lib/prices';
-import { BusinessPassCard, MemberCard, PassJoinCard } from '@/components/Membership';
+import { MemberCard, PassJoinCard } from '@/components/Membership';
 import { useSeo } from '@/components/Seo';
 import PaymentDoneCard from '@/components/PaymentDoneCard';
 
-/** A pass holder (or a host whose plan includes it): the membership card, then For businesses. */
+/** A pass holder (or a host whose plan includes it): their membership card. */
 function MembershipScreen() {
   const { t } = useTranslation();
   return (
@@ -21,8 +21,6 @@ function MembershipScreen() {
       <div className="ag-main" data-testid="membership-screen">
         <PageHead eyebrow={t('ui.account.eyebrow', 'Your account')} title={t('member.title_short', 'Membership')} />
         <MemberCard />
-        <SecHead title={t('member.forbiz', 'For businesses')} />
-        <BusinessPassCard />
       </div>
     </div>
   );
@@ -196,8 +194,6 @@ export default function Support() {
           <Button variant="text" className="self-center" onClick={browseAnonymously} data-testid="support-skip">{t('support.skip2', 'Not now')}</Button>
         </PassJoinCard>
 
-        <SecHead title={t('member.forbiz', 'For businesses')} />
-        <BusinessPassCard />
 
         <p className="ag-small !text-xs text-center">
           <Link to="/privacy" className="underline">{t('support.privacy_link')}</Link>
