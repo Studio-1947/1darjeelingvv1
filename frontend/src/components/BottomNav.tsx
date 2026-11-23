@@ -37,7 +37,7 @@ export default function BottomNav() {
         { key: 'feed', to: '/feed', match: ['/feed'], label: t('nav.feed_tab'), icon: 't_feed' },
         { key: 'trips', to: '/provider/dashboard?s=bookings', match: ['/provider/dashboard?s=bookings'], label: t('host.bookings_tab', 'Bookings'), icon: 't_trip' },
         { key: 'saved', to: '/saved', match: ['/saved'], label: t('nav.saved'), icon: 't_saved', badge: savedCount },
-        { key: 'account', to: '/provider/profile', match: ['/provider/profile', '/my-listings'], label: t('nav.account'), icon: 't_me' },
+        { key: 'account', to: '/dashboard', match: ['/dashboard', '/provider/profile', '/my-listings'], label: t('nav.account'), icon: 't_me' },
       ]
     : [
         { key: 'home', to: '/', match: ['/'], label: t('nav.home'), icon: 't_home' },

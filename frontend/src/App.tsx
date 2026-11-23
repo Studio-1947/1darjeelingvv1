@@ -125,7 +125,7 @@ export default function App() {
                     <Route path="/provider/dashboard" element={<ProviderDashboard />} />
                     <Route path="/provider/profile" element={<ProviderProfile />} />
                     <Route path="/profile/edit" element={<EditProfile />} />
-                    <Route path="/dashboard" element={<TravellerOnly><TouristDashboard /></TravellerOnly>} />
+                    <Route path="/dashboard" element={<TouristDashboard />} />
                     <Route path="/my-trips" element={<TravellerOnly><MyTrips /></TravellerOnly>} />
                     <Route path="/my-listings" element={<MyListings />} />
                     <Route path="/saved" element={<TravellerOnly><Saved /></TravellerOnly>} />

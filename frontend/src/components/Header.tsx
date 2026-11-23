@@ -16,7 +16,7 @@ let lastUnreadCheck = 0;
 let lastUnreadCount = 0;
 
 /** Roots of the tab bar: nothing to go back to from these. */
-const ROOTS = ['/', '/feed', '/my-trips', '/saved', '/dashboard', '/provider/dashboard', '/my-listings', '/provider/profile'];
+const ROOTS = ['/', '/feed', '/my-trips', '/saved', '/dashboard', '/provider/dashboard'];
 
 /** On Home the search button appears once the page's own search box has scrolled under the bar. */
 function useHomeSearchScrolledAway(active: boolean) {

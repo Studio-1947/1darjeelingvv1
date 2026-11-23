@@ -11,6 +11,7 @@ import { Box, Button, ButtonA, ButtonLink, PageHead, Status } from '@/components
 import { Icon, type IconName } from '@/components/ag/Icon';
 import Wordmark from '@/components/Wordmark';
 import TravellerPanels, { Avatar } from '@/components/TravellerPanels';
+import { BusinessModeNotice } from '@/components/TravellerOnly';
 import { COMPANY } from '@/constants/company';
 
 /** Prototype language order and labels (V.language). */
@@ -100,9 +101,10 @@ function LanguageScreen() {
 /** Account -> Traveller dashboard (prototype V.tdash): its own screen at /dashboard?s=tdash. */
 function TravellerDashScreen() {
   const { t } = useTranslation();
-  const { user, loading } = useAuth();
+  const { user, loading, isHostMode } = useAuth();
   const nav = useNavigate();
   React.useEffect(() => { if (!loading && !user) nav('/login?next=' + encodeURIComponent('/dashboard?s=tdash'), { replace: true }); }, [loading, user, nav]);
+  if (isHostMode) return <BusinessModeNotice />;
   if (loading || !user) return <div className="ag-wrap"><div className="ag-main"><p className="ag-small">{t('common.loading')}</p></div></div>;
   return (
     <div className="ag-wrap">
@@ -120,13 +122,15 @@ const shownPhone = (p?: string | null) => (p && /^\+91\d{10}$/.test(p) ? `+91 ${
 /**
  * The Account tab (prototype V.me): who you are, the menu (profile, theme colour, language, traveller
  * dashboard, membership), the business card, then the help card. Always reachable, so a signed-out
- * visitor gets the guest version with a Log in button. The traveller dashboard and Language open as
+ * visitor gets the guest version with a Log in button. In business mode it is the same page with the
+ * business up top: the business photo and name, Business profile and My listings in the menu, and a
+ * card to switch back to travelling, so switching modes does not drop the host on a different screen. The traveller dashboard and Language open as
  * their own screens (/dashboard?s=tdash, ?s=language); Log out and blocked people live on Profile.
  */
 export default function TouristDashboard() {
   const { t, i18n } = useTranslation();
   useSeo({ title: t('nav.account'), noindex: true });
-  const { user, loading, setMode, provider } = useAuth();
+  const { user, loading, setMode, provider, isHostMode } = useAuth();
   const nav = useNavigate();
   const [sp] = useSearchParams();
   const pass = usePassPrice(user);
@@ -145,6 +149,10 @@ export default function TouristDashboard() {
   const pal = PALETTES.find((p) => p.key === theme);
   const accent = accentOf(theme);
   const themeName = pal ? `${pal.name} · ${pal.en}` : accent;
+  const biz = isHostMode && isHost && !!provider;
+  const pe = provider?.extras || {};
+  const headName: string | undefined = biz ? (pe.host_name || provider?.business_name) : user?.name;
+  const headPhoto: string | undefined = biz ? (pe.host_avatar || user?.avatar) : user?.avatar;
 
   return (
     <div className="ag-wrap">
@@ -154,10 +162,14 @@ export default function TouristDashboard() {
         {/* Who you are */}
         <Box className="ag-account-head" data-testid={user ? 'account-me' : 'account-guest'}>
           <div className="row">
-            <Avatar name={user?.name} src={user?.avatar} size={64} />
+            <Avatar name={headName} src={headPhoto} size={64} />
             <div className="min-w-0 flex-1">
-              <h2>{user?.name || t('dashboard.traveller')}</h2>
-              {user ? (
+              <h2>{headName || t('dashboard.traveller')}</h2>
+              {biz ? (
+                <Status tone={live ? 'ok' : 'pending'} className="mt-1" data-testid="account-mode">
+                  {live ? t('verify.step_live') : t('provider.pending_review')}
+                </Status>
+              ) : user ? (
                 passOn ? (
                   <Status tone="ok" className="mt-1" data-testid="account-mode"><Icon name="check" size={14} /> {t('ui.travellerPanels.pass_title')}</Status>
                 ) : (
@@ -177,6 +189,16 @@ export default function TouristDashboard() {
 
         {/* Menu */}
         <nav className="ag-box ag-account-menu" aria-label={t('nav.account')}>
+          {biz && (
+            <>
+              <Link to="/provider/profile" data-testid="account-business-profile">
+                <Row icon="bag" title={t('ui.account.biz_profile', 'Business profile')} sub={provider?.business_name || undefined} />
+              </Link>
+              <Link to="/my-listings" data-testid="account-my-listings">
+                <Row icon="home" title={t('nav.my_listings', 'My Listings')} />
+              </Link>
+            </>
+          )}
           <Link to={user ? '/profile/edit' : '/login?next=/profile/edit'} data-testid="account-edit-profile">
             <Row icon="person" title={t('nav.profile')} sub={shownPhone(user?.phone)} />
           </Link>
@@ -191,15 +213,32 @@ export default function TouristDashboard() {
           <Link to="/dashboard?s=language" data-testid="account-language">
             <Row icon="globe" title={t('lang.choose', 'Language')} sub={langName(i18n.language)} />
           </Link>
-          <Link to={user ? '/dashboard?s=tdash' : '/login?next=' + encodeURIComponent('/dashboard?s=tdash')} data-testid="account-traveller-dashboard">
+          {!biz && <Link to={user ? '/dashboard?s=tdash' : '/login?next=' + encodeURIComponent('/dashboard?s=tdash')} data-testid="account-traveller-dashboard">
             <Row icon="t_trip" title={t('ui.account.tdash', 'Traveller dashboard')} />
-          </Link>
+          </Link>}
           <Link to="/support" data-testid="account-pass">
             <Row icon="badge" title={t('ui.account.member', 'Membership')}
               sub={passOn ? `${t('ui.travellerPanels.pass_title')} · ${t('ui.travellerPanels.pass_active')}` : t('ui.travellerPanels.get_pass', { price: rupees(pass.total) })} />
           </Link>
         </nav>
 
+        {biz ? (
+          <>
+            <span className="ag-eyebrow ag-account-bizeye">{t('ui.account.for_travel', 'Going somewhere?')}</span>
+            <section className="ag-account-biz" aria-label={t('ui.account.for_travel', 'Going somewhere?')}>
+              <div className="row">
+                <span className="ag-micon" aria-hidden="true"><Icon name="t_trip" /></span>
+                <div className="min-w-0 flex-1">
+                  <b>{t('nav.mode_traveller', 'Traveller')}</b>
+                  <span className="ag-small">{t('ui.account.travel_box_s', 'Book stays, drivers and guides, see your trips and saved places.')}</span>
+                </div>
+              </div>
+              <Button go onClick={() => setMode('tourist')} data-testid="account-switch-traveller">
+                {t('nav.switch_traveller', 'Switch to Traveller')}
+              </Button>
+            </section>
+          </>
+        ) : (<>
         {/* For businesses */}
         <span className="ag-eyebrow ag-account-bizeye">{t('ui.account.for_business', 'For businesses')}</span>
         <section className="ag-account-biz" aria-label={t('ui.account.for_business', 'For businesses')}>
@@ -234,6 +273,7 @@ export default function TouristDashboard() {
             </ButtonLink>
           )}
         </section>
+        </>)}
 
         <AccountFoot />
       </div>
