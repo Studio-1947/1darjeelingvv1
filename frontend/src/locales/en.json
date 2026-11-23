@@ -633,7 +633,8 @@
               "Contact details: phone, WhatsApp and email, and the names and numbers of any co-owners you add.",
               "Profile details you choose to give, such as a profile photo, languages, years of experience, vehicle number, licence number, and for guides age and gender.",
               "Verification documents (see Section 3), and a live location capture or Google Maps link used to check where your business is.",
-              "A UPI ID, if you add one for guests to pay you directly."
+              "A UPI ID, if you add one for guests to pay you directly.",
+              "Your GST registration (GSTIN and the legal name on it), if you give it when paying for your plan. It is recorded on that payment and used only for your GST invoice and our GST returns."
             ]
           },
           {
@@ -4135,5 +4136,15 @@
     "eyebrow": "Back soon",
     "title": "Under maintenance",
     "body": "We're making some changes to aangan, and the site will be back soon. You can still call or email us."
+  },
+  "gst": {
+    "have": "My business is GST-registered",
+    "have_sub": "Add your GSTIN to get a GST invoice for this payment. Optional.",
+    "gstin": "GSTIN",
+    "gstin_bad": "Check the 15-character GSTIN on your GST certificate.",
+    "legal_name": "Legal name on the GST certificate",
+    "legal_name_bad": "Enter the legal name registered with this GSTIN.",
+    "saved_note": "Saved for your next renewal too. Turn this off if you are not GST-registered.",
+    "pay_cta": "Pay {{total}}"
   }
 }

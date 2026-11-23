@@ -8,6 +8,9 @@ import { Box, Button, FieldError, MenuIcon, cx } from '@/components/ag';
 import { Icon } from '@/components/ag/Icon';
 import { isFreeHostType, rupees, useHostPlanPrice } from '@/lib/prices';
 import { graceLeft, type GraceState } from '@/lib/hostQuickFill';
+import { gstDraftError, gstDraftFrom, gstPayload, type GstDraft } from '@/lib/gstin';
+import GstDetails from '@/components/provider/GstDetails';
+import Sheet, { SheetHead } from '@/components/listing-detail/Sheet';
 
 /**
  * Within this many days of the end, renewal opens and the card starts nudging the host to renew.
@@ -36,6 +39,10 @@ export function useHostPlan(provider: any, user: any, onRenewed: () => Promise<v
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [payModal, setPayModal] = useState<any>(null);
+  // Pay first opens a short confirm sheet: the price and the optional GST details (lib/gstin.ts).
+  const [confirming, setConfirming] = useState(false);
+  const [gst, setGst] = useState<GstDraft>(() => gstDraftFrom(provider));
+  const [gstTried, setGstTried] = useState(false);
   // The server sends this host's price (plan_price); the type decides it until that arrives.
   const typePrice = useHostPlanPrice(provider?.business_type);
   const firstYear = provider?.plan_price ?? typePrice;
@@ -73,11 +80,21 @@ export function useHostPlan(provider: any, user: any, onRenewed: () => Promise<v
     }
   };
 
-  const renew = async () => {
+  // Opens the confirm sheet, filled in with the GSTIN saved from the last payment.
+  const renew = () => {
+    setErr('');
+    setGst(gstDraftFrom(provider));
+    setGstTried(false);
+    setConfirming(true);
+  };
+
+  const pay = async () => {
+    if (gstDraftError(gst)) { setGstTried(true); return; }
     setBusy(true);
     setErr('');
     try {
-      const order = await createPaymentOrder({ flow, reference_id: provider?.id });
+      const order = await createPaymentOrder({ flow, reference_id: provider?.id, gst: gstPayload(gst) });
+      setConfirming(false);
       if (order.mock) {
         setPayModal({ amount: order.amount, order: order.order });
       } else {
@@ -95,7 +112,10 @@ export function useHostPlan(provider: any, user: any, onRenewed: () => Promise<v
       // The payment may have gone through even if the checkout reported a failure (the webhook
       // settles it), so re-read before inviting a second attempt.
       await onRenewed();
-      setErr(e?.response?.data?.detail || t('pd.plan_renew_failed'));
+      const detail = e?.response?.data?.detail || t('pd.plan_renew_failed');
+      // A GSTIN the server refused: keep the sheet open on it, with the server's words.
+      if (e?.response?.data?.code === 'invalid_gstin') { setGstTried(true); setConfirming(true); }
+      setErr(detail);
     } finally {
       setBusy(false);
     }
@@ -114,6 +134,20 @@ export function useHostPlan(provider: any, user: any, onRenewed: () => Promise<v
   };
 
   const modal = (
+    <>
+    {confirming && (
+      <Sheet onClose={() => { if (!busy) setConfirming(false); }} labelledBy="host-plan-confirm-title" testid="host-plan-confirm" closeTestid="host-plan-confirm-close">
+        <div className="flex flex-col gap-4">
+          <SheetHead id="host-plan-confirm-title" eyebrow={provider?.business_name} title={paymentTitle} />
+          <PriceBreakup breakup={firstYear} label={registrationPending ? t('price.host_first_year') : t('price.host_renewal')} />
+          <GstDetails value={gst} onChange={setGst} showErrors={gstTried} />
+          <FieldError>{err}</FieldError>
+          <Button variant="primary" go block onClick={pay} disabled={busy} data-autofocus data-testid="host-plan-pay">
+            {busy ? t('pd.plan_renewing') : t('gst.pay_cta', { total: rupees(firstYear.total), defaultValue: 'Pay {{total}}' })}
+          </Button>
+        </div>
+      </Sheet>
+    )}
     <MockPaymentModal
       open={!!payModal}
       onClose={() => setPayModal(null)}
@@ -123,6 +157,7 @@ export function useHostPlan(provider: any, user: any, onRenewed: () => Promise<v
       onPay={finishMockPayment}
       prefill={{ upi: `${(user?.name || 'host').toLowerCase().replace(/\s+/g, '')}@ybl` }}
     />
+    </>
   );
   return { t, busy, err, firstYear, renewal, price, registrationPending, grace, notStarted, lapsed, daysLeft, soon, until, canRenew, startFree, renew, modal };
 }

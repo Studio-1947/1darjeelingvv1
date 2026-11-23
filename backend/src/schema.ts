@@ -213,8 +213,8 @@ export const providers = pgTable('providers', {
   kycStatus: text('kyc_status').default('none').notNull(),
   createdAt: text('created_at').notNull(),
   activatedAt: text('activated_at'),
-  // End of the host's current paid year (₹499 a year, or ₹99 for cafes, shops and guides, plus GST
-  // and the platform fee; see lib/pricing.ts). Null until
+  // End of the host's current paid year (₹499 a year, or ₹99 for cafes, plus GST; see
+  // lib/pricing.ts). Null until
   // the first payment settles. Once it passes, the host's listings leave the public feed until
   // they renew. See lib/hostPlan.ts.
   planExpiresAt: text('plan_expires_at'),
@@ -233,6 +233,10 @@ export const providers = pgTable('providers', {
   // should look like individual websites"). Made from the business name, unique, see
   // lib/providerSlug.ts.
   slug: text('slug'),
+  // The host's GST registration, optional, given when paying for the plan (lib/gstin.ts). Kept so
+  // the next payment is invoiced to it too; null for a host who is not GST-registered.
+  gstin: text('gstin'),
+  gstLegalName: text('gst_legal_name'),
 }, (t) => ({
   slugUnique: uniqueIndex('providers_slug_unique').on(t.slug),
   // At most one provider row per user, ever  enforced at the DB level so the onboard route's
@@ -363,6 +367,10 @@ export const payments = pgTable('payments', {
   // Base, GST, platform fee and total in paise at the time of the order (lib/pricing.ts). Null on
   // donations and on orders made before the breakup existed.
   breakup: jsonb('breakup').$type<{ base: number; gst: number; platform_fee: number; total: number; gst_rate: number; platform_fee_rate: number }>(),
+  // Who the payment is invoiced to, for a host plan paid by a GST-registered business: their GSTIN,
+  // legal name and state code at the time of payment (lib/gstin.ts). Null for everyone else (a
+  // B2C sale). Copied, not looked up, so the invoice and the GST return keep what was given then.
+  billing: jsonb('billing').$type<{ gstin: string; legal_name: string; state_code: string }>(),
   orderId: text('order_id').unique().notNull(),
   status: text('status').notNull(),
   paymentId: text('payment_id'),

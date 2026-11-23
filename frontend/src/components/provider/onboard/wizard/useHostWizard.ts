@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { gstDraftError, gstPayload, type GstDraft } from '@/lib/gstin';
 import api, { createPaymentOrder, completeMockPayment, payWithRazorpay } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { imageProblem, uploadImage } from '@/lib/uploadImage';
@@ -83,6 +84,8 @@ type Draft = {
   payWhen: 'later' | 'now';
   /** True once the host taps a When to pay option; until then the default applies. */
   payPicked?: boolean;
+  /** Paying now: the optional GST registration the first year is invoiced to (lib/gstin.ts). */
+  gst?: GstDraft;
   place: Place | null;
   name: string;
   phone: string;
@@ -159,6 +162,7 @@ export function useHostWizard() {
       // written as soon as the wizard opens, so older drafts hold the old default ('later'), not a choice.
       payWhen: saved.payPicked && saved.payWhen ? saved.payWhen : 'now',
       payPicked: !!saved.payPicked,
+      gst: saved.gst || { on: false, gstin: '', legalName: '' },
       place: saved.place || null,
       name: saved.name || '',
       phone: saved.phone || '',
@@ -433,7 +437,10 @@ export function useHostWizard() {
         await finish();
         return;
       }
-      const orderRes = await createPaymentOrder({ flow: 'provider_registration', reference_id: providerId });
+      const orderRes = await createPaymentOrder({
+        flow: 'provider_registration', reference_id: providerId,
+        gst: d.gst && !gstDraftError(d.gst) ? gstPayload(d.gst) : null,
+      });
       if (orderRes.mock) {
         setPayModal({ amount: orderRes.amount, order: orderRes.order, providerId });
       } else {

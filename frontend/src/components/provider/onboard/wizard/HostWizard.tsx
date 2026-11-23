@@ -14,6 +14,8 @@ import { HOST_TYPES, HUBS, MAX_GOODS, MAX_PHOTOS, OFFERS, PRESETS, QUICK_DISHES,
 import { photoGoalFor } from '@/lib/photoGoal';
 import Sheet, { SheetHead } from '@/components/listing-detail/Sheet';
 import PaymentDoneCard from '@/components/PaymentDoneCard';
+import GstDetails from '@/components/provider/GstDetails';
+import { gstDraftError } from '@/lib/gstin';
 
 /** "Add your own" on the What do you give? step; the server takes up to 30 amenities of 60 characters. */
 const MAX_OWN_OFFERS = 8;
@@ -544,6 +546,13 @@ function ChargesSheet({ w, onConfirm, onClose }: { w: HostWizard; onConfirm: () 
   const { t, d, set } = w;
   const { grace_bookings } = useHostSignupInfo();
   const plan = useHostPlanPrice(d.type || 'homestay');
+  const gst = d.gst || { on: false, gstin: '', legalName: '' };
+  const [gstTried, setGstTried] = useState(false);
+  // Paying now: a GSTIN that is switched on has to be complete before the listing goes up.
+  const confirm = () => {
+    if (d.payWhen === 'now' && gstDraftError(gst)) { setGstTried(true); return; }
+    onConfirm();
+  };
   const pay: Array<{ k: 'now' | 'later'; icon: IconName; title: string; sub: string }> = [
     { k: 'now', icon: 'bag', title: t('ob.wz.ch_now', 'Pay when listing'), sub: t('ob.wz.ch_nowS', 'Pay the yearly charge now and go live today.') },
     {
@@ -568,7 +577,8 @@ function ChargesSheet({ w, onConfirm, onClose }: { w: HostWizard; onConfirm: () 
           ))}
         </div>
         <p className="ag-small m-0">{t('ob.wz.gst_note')}</p>
-        <NextButton onClick={onConfirm} data-autofocus data-testid="wz-charges-confirm">
+        {d.payWhen === 'now' && <GstDetails value={gst} onChange={(next) => set({ gst: next })} showErrors={gstTried} />}
+        <NextButton onClick={confirm} data-autofocus data-testid="wz-charges-confirm">
           {d.payWhen === 'now' ? t('ob.wz.put_pay', { price: rupees(plan.base) }) : t('ob.wz.put')}
         </NextButton>
       </div>

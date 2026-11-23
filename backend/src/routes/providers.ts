@@ -336,6 +336,9 @@ router.get('/me', authenticateToken, async (req: Request, res: Response) => {
     plan_active: isHostPlanLive(provider),
     // What this host pays for a year: ₹499 + GST and fee, or ₹99 for a cafe, shop or guide.
     plan_price: hostPlanBreakup(provider.businessType),
+    // The GST registration the plan is invoiced to (lib/gstin.ts); null when the host gave none.
+    gstin: provider.gstin ?? null,
+    gst_legal_name: provider.gstLegalName ?? null,
     kyc_status: provider.kycStatus,
     approval_pending: isHostApprovalPending(provider),
     // What a new host still has to fill in before their documents can go for approval.

@@ -75,6 +75,11 @@ export interface PaymentOrderParams {
   flow: string;
   reference_id: string;
   /**
+   * Host plan flows only: the GST registration to invoice the plan to (saved on the business), or
+   * null for a host who is not GST-registered. Left out, the saved one is used.
+   */
+  gst?: { gstin: string; legal_name: string } | null;
+  /**
    * Paise. Only meaningful for flow='donation', where the giver chooses. Every other flow's price
    * is fixed server-side and this field is ignored  sending it does not change what is charged.
    */
@@ -100,11 +105,12 @@ export interface RazorpayPaymentParams {
 /**
  * Creates an order on the backend. Returns { mock, key_id, order, amount }.
  */
-export async function createPaymentOrder({ flow, reference_id, amount }: PaymentOrderParams) {
+export async function createPaymentOrder({ flow, reference_id, amount, gst }: PaymentOrderParams) {
   // `amount` is sent only when supplied. The server decides what is actually charged  for every
   // flow but `donation` it reads its own price map and ignores whatever arrives here.
   const body: Record<string, unknown> = { flow, reference_id };
   if (amount !== undefined) body.amount = amount;
+  if (gst !== undefined) body.gst = gst;
   const { data } = await api.post('/payments/order', body);
   return data;
 }

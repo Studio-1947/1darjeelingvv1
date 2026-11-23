@@ -13,6 +13,39 @@ const inr = (paise: number) => {
   return `₹${(paise / 100).toLocaleString('en-IN', { minimumFractionDigits: whole ? 0 : 2, maximumFractionDigits: 2 })}`;
 };
 
+/** Our own state code (WBIN 1947 Studio LLP, West Bengal): a buyer in the same state pays CGST + SGST, anyone else IGST. */
+const SUPPLIER_STATE = '19';
+
+/**
+ * Host plans paid by a GST-registered business (payments.billing, backend lib/gstin.ts), as a CSV
+ * for the B2B part of the GST return: one row per paid, unrefunded payment, amounts in rupees.
+ */
+function downloadB2bCsv(payments: any[]) {
+  const rs = (paise: number) => (paise / 100).toFixed(2);
+  const cell = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  const rows = payments
+    .filter((pm) => pm.billing?.gstin && pm.status === 'paid' && pm.breakup)
+    .sort((a, b) => String(a.paidAt || a.createdAt).localeCompare(String(b.paidAt || b.createdAt)))
+    .map((pm) => {
+      const { base, gst } = pm.breakup;
+      const intra = pm.billing.state_code === SUPPLIER_STATE;
+      const half = Math.round(gst / 2);
+      return [
+        (pm.paidAt || pm.createdAt || '').slice(0, 10), pm.paymentId || pm.orderId, pm.billing.gstin, pm.billing.legal_name,
+        pm.billing.state_code, intra ? 'Intra-state' : 'Inter-state', flowLabel(pm), rs(base), pm.breakup.gst_rate ?? 18,
+        intra ? '0.00' : rs(gst), intra ? rs(half) : '0.00', intra ? rs(gst - half) : '0.00', rs(pm.amount),
+      ].map(cell).join(',');
+    });
+  const head = ['Date', 'Payment ID', 'Buyer GSTIN', 'Legal name', 'Place of supply (state code)', 'Supply', 'For', 'Taxable value', 'GST rate %', 'IGST', 'CGST', 'SGST', 'Invoice total']
+    .map(cell).join(',');
+  const blob = new Blob([[head, ...rows].join('\r\n')], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `aangan-gst-b2b-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
 /** What a payment was for, in words. The pass is ₹12 the first time and ₹99 after that. */
 const flowLabel = (pm: any) => {
   if (pm.flow === 'platform_support') {
@@ -46,6 +79,7 @@ export default function PaymentsTab({ payments, onRefunded }: PaymentsTabProps) 
   /** A payment that was charged, is owed back, and whose refund has not gone through. */
   const isOwed = (pm: any) => pm.status === 'paid' && pm.refundReason && !pm.refundedAt;
   const owedCount = payments.filter(isOwed).length;
+  const b2bCount = payments.filter((pm) => pm.billing?.gstin && pm.status === 'paid').length;
 
   const handleRefund = async (pm: any) => {
     const label = `₹${(pm.amount / 100).toLocaleString('en-IN')} (${pm.flow})`;
@@ -82,6 +116,14 @@ export default function PaymentsTab({ payments, onRefunded }: PaymentsTabProps) 
         </div>
       )}
 
+      <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-ink-soft">
+        <span>{b2bCount} paid host plan{b2bCount === 1 ? '' : 's'} invoiced to a GSTIN (B2B).</span>
+        <button type="button" onClick={() => downloadB2bCsv(payments)} disabled={b2bCount === 0} data-testid="payments-gst-csv"
+          className="rounded-full border border-[var(--line)] px-4 py-2 font-bold text-ink hover:bg-mist disabled:opacity-50">
+          Export GST (B2B) CSV
+        </button>
+      </div>
+
       {msg && (
         <div className="rounded-2xl border border-[var(--line)] bg-mist p-4 text-sm text-ink" role="status">{msg}</div>
       )}
@@ -106,6 +148,12 @@ export default function PaymentsTab({ payments, onRefunded }: PaymentsTabProps) 
                   <td className="p-4">
                     <div className="font-bold">{flowLabel(pm)}</div>
                     <div className="text-xs text-ink-soft font-mono select-all">{pm.orderId}</div>
+                    {/* Invoiced to the host's GST registration (B2B), when they gave one. */}
+                    {pm.billing?.gstin && (
+                      <div className="mt-1 text-xs text-ink" data-testid={`payment-gstin-${pm.id}`}>
+                        <span className="font-mono select-all">GSTIN {pm.billing.gstin}</span> · {pm.billing.legal_name}
+                      </div>
+                    )}
                   </td>
 
                   {/* Gateway reference */}
