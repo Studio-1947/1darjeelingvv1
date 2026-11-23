@@ -687,7 +687,7 @@ router.get('/provider', authenticateToken, async (req: Request, res: Response) =
  *   patch:
  *     summary: Cancel a booking (by the traveller who made it, the provider who owns the listing, or an admin)
  *     description: >
- *       Cancels at once. The ₹1.20 app convenience fee that sent the request is not refunded. Records who cancelled, the reason and
+ *       Cancels at once. The ₹1.18 app convenience fee that sent the request is not refunded. Records who cancelled, the reason and
  *       note, whether it was late (a guest, under 24 h before the trip, on a booking the host had
  *       accepted) and whether it was a host declining a request. The web asks a guest with a
  *       confirmed booking to use POST /bookings/{id}/cancel-request instead.
@@ -872,7 +872,7 @@ router.patch('/:id/confirm', authenticateToken, async (req: Request, res: Respon
 
   for (const other of outcome.declined) {
     await releaseVoucherForBooking(db, other.id);
-    // The ₹1.20 that sent it is an app convenience fee for reaching the host: it is not refunded.
+    // The ₹1.18 that sent it is an app convenience fee for reaching the host: it is not refunded.
     await addInAppNotification(other.userId, {
       kind: 'booking_cancelled',
       title: 'Those dates are no longer free',
@@ -1143,7 +1143,7 @@ router.patch('/:id/cancel', authenticateToken, async (req: Request, res: Respons
   // guest received nothing for it, so it goes back; a confirmed stay keeps its discount spent.
   if (wasStatus !== 'confirmed') await releaseVoucherForBooking(db, booking.id);
 
-  // The ₹1.20 paid to send the request is an app convenience fee: paid to use the app to reach the
+  // The ₹1.18 paid to send the request is an app convenience fee: paid to use the app to reach the
   // host, not a booking payment, so it is not refunded whoever cancels or why (Terms 3, Refunds 2).
   // The team can still refund one by hand from the admin console (POST /admin/payments/:id/refund).
   const refunded = false;

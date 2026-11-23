@@ -46,7 +46,7 @@ export async function expireStaleRequests(now: Date = new Date()): Promise<numbe
     if (!row) continue;
     closed++;
     await releaseVoucherForBooking(db, b.id);
-    // The ₹1.20 that sent it is an app convenience fee, not refunded (Terms 3, Refunds 2).
+    // The ₹1.18 that sent it is an app convenience fee, not refunded (Terms 3, Refunds 2).
     await addInAppNotification(b.userId, {
       kind: 'booking_expired',
       title: 'Your request was not answered',
@@ -73,7 +73,7 @@ export async function expireStaleRequests(now: Date = new Date()): Promise<numbe
  *
  * The dates already stopped blocking at ACCEPTED_HOLD_HOURS (lib/bookingAvailability.ts
  * acceptedCutoff); this closes the booking itself, so My Trips and the host dashboard stop
- * showing it as open and the guest's voucher comes back. The ₹1.20 app convenience fee that
+ * showing it as open and the guest's voucher comes back. The ₹1.18 app convenience fee that
  * sent the request is not refunded. Both sides are told.
  */
 async function lapseUnconfirmedAccepts(now: Date): Promise<number> {

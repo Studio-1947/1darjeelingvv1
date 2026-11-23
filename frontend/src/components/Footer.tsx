@@ -59,7 +59,6 @@ export default function Footer() {
         <p className="ag-small" data-testid="footer-entity">
           {[
             t('ui.footer.operated_by', { name: COMPANY.legalName }),
-            COMPANY.gstin && t('ui.footer.gstin', { gstin: COMPANY.gstin }),
             COMPANY.grievanceOfficer && t('ui.footer.grievance_officer', { name: COMPANY.grievanceOfficer }),
           ].filter(Boolean).join(' · ')}
           {/* Styled as the policy pages style a link inside text (LegalDocument's contact card). */}

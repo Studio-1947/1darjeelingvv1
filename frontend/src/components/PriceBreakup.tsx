@@ -3,8 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { rupees, type PriceBreakup as Breakup } from '@/lib/prices';
 
 /**
- * The lines of a payment before it opens: the plan, pass or fee, 18% GST, the 2% payment gateway
- * fee (host plans only) and the total that will be charged. `wasBase` shows the usual price struck
+ * The lines of a payment before it opens: the plan, pass or fee, 18% GST and the total that will be
+ * charged. A platform-fee line shows only if a breakup carries one (orders before 2026-11-23). `wasBase` shows the usual price struck
  * through beside a launch price. The app shows the same box (src/components/PriceBreakup.tsx).
  */
 export default function PriceBreakup({ breakup, label, wasBase, compact = false, className = '' }: {

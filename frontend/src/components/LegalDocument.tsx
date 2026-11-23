@@ -96,7 +96,6 @@ export default function LegalDocument({ ns, testId, children }: { ns: string; te
                       {t('privacy.officer_label')} {COMPANY.grievanceOfficer}{COMPANY.grievanceDesignation && `, ${COMPANY.grievanceDesignation}`}
                     </span>
                   )}
-                  {COMPANY.gstin && <span>{t('privacy.gstin_label')} {COMPANY.gstin}</span>}
                   <span>
                     {t('privacy.email_label')}{' '}
                     <a href={`mailto:${COMPANY.email}`} className="font-medium text-[var(--r)] hover:underline">{COMPANY.email}</a>

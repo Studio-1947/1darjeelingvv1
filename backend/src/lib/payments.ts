@@ -30,7 +30,7 @@ export function resolveAmount(flow: string, body: any): AmountResolution {
     }
     // The body is not consulted. A fixed-price flow carrying an `amount` is either a confused
     // client or a hostile one; either way the map wins. The charge is the base plus GST (and the
-    // gateway fee on host flows); a donation (below) is a gift and carries neither. The pass
+    // platform fee, now 0); a donation (below) is a gift and carries neither. The pass
     // renewal price is applied by the order route, which knows the payer.
     const breakup = flowBreakup(flow);
     return { amount: breakup.total, breakup };

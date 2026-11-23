@@ -2,13 +2,14 @@ import { AMOUNTS, GST_RATE_PERCENT, PLATFORM_FEE_PERCENT, PASS_RENEWAL_BASE, GST
 
 /**
  * What a fixed-price payment is made of, in paise. The base price is the plan, pass or fee itself;
- * 18% GST and the 2% platform fee are each worked out on the base.
+ * 18% GST is worked out on the base. There is no platform fee (PLATFORM_FEE_PERCENT is 0; the
+ * platform_fee field stays, always 0, so stored breakups keep one shape).
  *
- *   homestay or driver, each year   ₹499 + ₹89.82 GST + ₹9.98 fee  = ₹598.80
- *   cafe, shop or guide, each year  ₹99  + ₹17.82 GST + ₹1.98 fee  = ₹118.80
- *   booking fee                     ₹1   + ₹0.18 GST  + ₹0.02 fee  = ₹1.20
+ *   homestay, driver or guide, each year  ₹499 + ₹89.82 GST = ₹588.82
+ *   cafe, each year                       ₹99  + ₹17.82 GST = ₹116.82
+ *   request fee                           ₹1   + ₹0.18 GST  = ₹1.18
  *
- * The aangan pass already includes GST and has no fee (`gst_included`): ₹1 the first year
+ * The aangan pass already includes GST (`gst_included`): ₹1 the first year
  * (₹0.85 + ₹0.15 GST), ₹12 every year after (₹10.17 + ₹1.83 GST).
  *
  * Both apps show these lines before the payment opens, and the payments row keeps a copy, so a
@@ -25,7 +26,7 @@ export type PriceBreakup = {
   gst_included?: boolean;
 };
 
-/** Every fixed payment carries the 2% platform fee (host plans, the pass, the ₹1 booking fee). */
+/** The platform fee rate for a flow: 0 for every flow (no platform fee is charged). */
 export function feeRateFor(_flow: string): number {
   return PLATFORM_FEE_PERCENT;
 }

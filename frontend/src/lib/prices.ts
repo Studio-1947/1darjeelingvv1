@@ -4,10 +4,10 @@ import api from '@/lib/api';
 /**
  * What each payment costs, in paise (pricing cards, 2026-11-08):
  *   - Host plan, every year: ₹499 for homestays and drivers, ₹99 for cafes, shops and guides,
- *     each + 18% GST + the 2% payment gateway fee (₹598.80 / ₹118.80).
- *   - aangan pass: ₹1 for the first year, then ₹12 a year. GST is already in that price and there
- *     is no fee, so the traveller pays exactly ₹1 or ₹12.
- *   - Booking fee (no pass): ₹1 + GST + fee (₹1.20).
+ *     each + 18% GST (₹588.82 / ₹116.82). No platform fee is charged (removed 2026-11-23).
+ *   - aangan pass: ₹1 for the first year, then ₹12 a year. GST is already in that price, so the
+ *     traveller pays exactly ₹1 or ₹12.
+ *   - Request fee (no pass): ₹1 + GST (₹1.18).
  *
  * The server owns the numbers (GET /payments/prices, backend/src/lib/pricing.ts); the fallback below
  * is the same rule, so the breakup still shows if that call fails. The app has the same file
@@ -40,7 +40,7 @@ const BASES: Record<PricedFlow, number> = {
   booking_commission: 100,
 };
 
-/** Prices that already include GST and carry no fee. */
+/** Prices that already include GST. */
 const GST_INCLUDED: PricedFlow[] = ['platform_support', 'platform_support_renewal'];
 
 /** Cafes pay the ₹99 plan; homestays, drivers and guides the ₹499 one; local shops list free. */
@@ -50,7 +50,7 @@ const FREE_HOST_TYPES = ['shop'];
 export const isFreeHostType = (type?: string | null) => !!type && FREE_HOST_TYPES.includes(type);
 export const hostPlanFlow = (type?: string | null): PricedFlow => (isSmallHostType(type) ? 'host_plan_small' : 'provider_registration');
 
-export function breakupOf(base: number, gstRate = 18, feeRate = 2): PriceBreakup {
+export function breakupOf(base: number, gstRate = 18, feeRate = 0): PriceBreakup {
   const gst = Math.round((base * gstRate) / 100);
   const fee = Math.round((base * feeRate) / 100);
   return { base, gst, platform_fee: fee, total: base + gst + fee, gst_rate: gstRate, platform_fee_rate: feeRate };
