@@ -266,14 +266,16 @@ export default function ProviderProfile() {
     }));
   }, [provider]);
 
-  // The dashboard's Menu button links to /provider/profile#menu: once the form is drawn, bring the
-  // cafe menu or the shop's goods into view (once, so later edits do not jump the page).
+  // Links land on a section: the dashboard's Menu button (#menu: the cafe menu or the shop's goods)
+  // and the verification checklist's "Add" links (#about, #photos, #prices). Once the form is drawn,
+  // bring it into view (once, so later edits do not jump the page).
   const location = useLocation();
   const scrolledToHash = useRef(false);
   useEffect(() => {
-    if (!form || scrolledToHash.current || location.hash !== '#menu') return;
+    const target = location.hash.slice(1);
+    if (!form || scrolledToHash.current || !['menu', 'about', 'photos', 'prices'].includes(target)) return;
     scrolledToHash.current = true;
-    window.requestAnimationFrame(() => document.getElementById('menu')?.scrollIntoView({ block: 'start' }));
+    window.requestAnimationFrame(() => document.getElementById(target)?.scrollIntoView({ block: 'start', behavior: 'smooth' }));
   }, [form, location.hash]);
 
   const type: string = p?.business_type || '';
@@ -539,7 +541,7 @@ export default function ProviderProfile() {
           )}
         </Box>
 
-        <Section title={t('hostProfile.about_you')}>
+        <Section title={t('hostProfile.about_you')} id="about">
           <AvatarUploader src={form.host_avatar} initial={(form.host_name || form.business_name || '?').charAt(0).toUpperCase()}
             uploading={uploading === 'host_avatar'} onFile={uploadFile('host_avatar')} onRemove={() => set({ host_avatar: '' })}
             label={type === 'homestay' ? t('hostProfile.owner_photo') : t('hostProfile.your_photo')} />
@@ -625,7 +627,7 @@ export default function ProviderProfile() {
         )}
 
         {type === 'driver' && (
-          <Section title={t('hostProfile.vehicle')} testid="profile-driver">
+          <Section title={t('hostProfile.vehicle')} testid="profile-driver" id="prices">
             <div className="grid gap-4 sm:grid-cols-3">
               <TextField label={t('hostProfile.vehicle_number')} value={form.vehicle_number} onChange={(e) => set({ vehicle_number: e.target.value })} placeholder="WB 74 A 1234" />
               <TextField label={t('hostProfile.license_number')} value={form.license_number} onChange={(e) => set({ license_number: e.target.value })} />
@@ -652,7 +654,7 @@ export default function ProviderProfile() {
         )}
 
         {type === 'homestay' && (
-          <Section title={t('hostProfile.rooms_food')} note={t('hostProfile.rooms_food_note')} testid="profile-homestay">
+          <Section title={t('hostProfile.rooms_food')} note={t('hostProfile.rooms_food_note')} testid="profile-homestay" id="prices">
             {/* Each property keeps its own rooms, food, occupancy and amenities; pick which one to edit. */}
             {homes.length > 1 && (
               <div className="grid gap-4 sm:grid-cols-2">
@@ -688,7 +690,7 @@ export default function ProviderProfile() {
         )}
 
         {type === 'guide' && (
-          <Section title={t('hostProfile.guiding')} testid="profile-guide">
+          <Section title={t('hostProfile.guiding')} testid="profile-guide" id="prices">
             <Group label={t('hostProfile.guide_type')}>
               <MultiChips options={GUIDE_TYPES} selected={form.guide_types} onChange={(guide_types) => set({ guide_types })} label={(o) => t(`profile.guide_type_${o}`)} />
             </Group>
@@ -734,7 +736,7 @@ export default function ProviderProfile() {
           </Section>
         )}
 
-        <Section title={t('hostProfile.photos')} note={photoGoal ? t(photosNote, { count: photoGoal }) : t('hostProfile.photos_note')}>
+        <Section id="photos" title={t('hostProfile.photos')} note={photoGoal ? t(photosNote, { count: photoGoal }) : t('hostProfile.photos_note')}>
           <Group label={t('hostProfile.cover')}>
             <div className="flex flex-wrap items-center gap-3">
               {form.cover

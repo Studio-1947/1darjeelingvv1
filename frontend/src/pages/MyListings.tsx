@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { CircleNotch as Loader2 } from '@phosphor-icons/react';
@@ -29,6 +29,13 @@ export default function MyListings() {
     open: false,
     editing: null,
   });
+
+  // Account > Business membership links to /my-listings#plan: once loaded, bring the plan card into view.
+  const { hash } = useLocation();
+  useEffect(() => {
+    if (loading || hash !== '#plan') return;
+    window.requestAnimationFrame(() => document.getElementById('plan')?.scrollIntoView({ block: 'start', behavior: 'smooth' }));
+  }, [loading, hash]);
 
   const loadData = useCallback(async () => {
     try {
