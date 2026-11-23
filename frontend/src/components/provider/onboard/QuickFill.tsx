@@ -96,7 +96,7 @@ export function useHostSignupInfo() {
   return info;
 }
 
-/** "Need help? WhatsApp us": opens a chat with the team, message written. Hidden without a number. */
+/** "Support" (WhatsApp logo): opens a chat with the team, message written. Hidden without a number. */
 export function HelpWhatsApp({ type, className = '' }: { type?: string; className?: string }) {
   const { t } = useTranslation();
   const { user } = useAuth();
@@ -108,7 +108,8 @@ export function HelpWhatsApp({ type, className = '' }: { type?: string; classNam
   });
   if (!link) return null;
   return (
-    <a href={link} target="_blank" rel="noopener noreferrer" data-testid="host-help-whatsapp" className={`ag-onboard-help ${className}`}>
+    <a href={link} target="_blank" rel="noopener noreferrer" data-testid="host-help-whatsapp" className={`ag-onboard-help ${className}`}
+      aria-label={t('ob.quick.help_aria', 'Support on WhatsApp')}>
       <Icon name="wa" />
       <span>{t('ob.quick.help')}</span>
     </a>

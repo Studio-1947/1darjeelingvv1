@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { Link, Navigate, useLocation, useParams } from 'react-router-dom';
-import { Lock } from '@phosphor-icons/react';
 import { Icon } from '@/components/ag/Icon';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
@@ -9,7 +8,7 @@ import Seo from '@/components/Seo';
 import HostMiniSite from '@/components/provider/HostMiniSite';
 import { themeVars, useMode } from '@/lib/theme';
 import DeliveryRequestButton from '@/components/DeliveryRequestButton';
-import { waLink, waShare } from '@/lib/tripMessages';
+import { waShare } from '@/lib/tripMessages';
 import { Box, Button, ButtonA, ButtonLink, PageHead } from '@/components/ag';
 import SmartImg from '@/components/SmartImg';
 
@@ -54,7 +53,7 @@ export default function HostPage() {
     );
   }
 
-  const { page, contact, listings, reviews } = data;
+  const { page, listings, reviews } = data;
   const url = `${window.location.origin}${page.path || pathname}`;
   const direction = page.latitude && page.longitude
     ? `https://www.google.com/maps/dir/?api=1&destination=${page.latitude},${page.longitude}`
@@ -79,14 +78,7 @@ export default function HostPage() {
         )}
         <HostMiniSite
           data={page}
-          actions={{
-            call: contact.phone ? `tel:${contact.phone}` : null,
-            whatsapp: contact.whatsapp ? waLink(contact.whatsapp, t('ui.hostPage.wa_hello', { name: page.hostName || page.name })) : null,
-            direction,
-            locked: contact.locked ? (
-              <span className="inline-flex items-center gap-1"><Lock size={14} aria-hidden="true" /> {t('ui.hostPage.locked')}</span>
-            ) : null,
-          }}
+          actions={{ direction }}
         />
 
         {/* The prototype's action row (site.js): Ask to book, home delivery, share. */}

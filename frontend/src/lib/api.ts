@@ -132,6 +132,17 @@ export async function payWithRazorpay({ order, key_id, flow, reference_id, name,
   const ok = await loadRazorpay();
   if (!ok) throw new Error('Razorpay SDK failed to load');
   return new Promise((resolve, reject) => {
+    // Settles once, whichever comes first: the window's own callback, the server saying the order
+    // is paid (a UPI QR scanned on another phone often never reaches the callback, leaving the
+    // window open after the money has gone), or the person closing the window.
+    let done = false;
+    let poll = 0;
+    const settle = (fn: () => void) => {
+      if (done) return;
+      done = true;
+      window.clearInterval(poll);
+      fn();
+    };
     const rzp = new (window as any).Razorpay({
       key: key_id,
       amount: order.amount,
@@ -142,14 +153,25 @@ export async function payWithRazorpay({ order, key_id, flow, reference_id, name,
       prefill,
       // The person's theme colour (Mitti by default), not a fixed red.
       theme: { color: getComputedStyle(document.documentElement).getPropertyValue('--r').trim() || '#947C47' },
-      modal: { ondismiss: () => reject(new Error('Payment cancelled')) },
+      modal: { ondismiss: () => settle(() => reject(new Error('Payment cancelled'))) },
       handler: async (resp: any) => {
+        window.clearInterval(poll);
         try {
           await api.post('/payments/verify', { ...resp, flow, reference_id });
-          resolve(resp);
-        } catch (e) { reject(e); }
+          settle(() => resolve(resp));
+        } catch (e) { settle(() => reject(e)); }
       },
     });
     rzp.open();
+    poll = window.setInterval(async () => {
+      if (done) return;
+      try {
+        const { data } = await api.get(`/payments/order/${encodeURIComponent(order.id)}/status`);
+        if (data?.paid && !done) {
+          settle(() => resolve({ razorpay_order_id: order.id, settled_by: 'status' }));
+          try { rzp.close(); } catch { /* already closed */ }
+        }
+      } catch { /* keep waiting; the window's callback may still come */ }
+    }, 3000);
   });
 }

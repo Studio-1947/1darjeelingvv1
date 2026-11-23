@@ -20,6 +20,7 @@ import { cardCtaKey } from '@/lib/cardCta';
 import { useFavorites } from '@/context/FavoritesContext';
 import { useLoginGate } from '@/components/LoginGate';
 import FaceImg from '@/components/FaceImg';
+import HostLine, { hasHost } from '@/components/HostLine';
 import { stayPrice } from '@/lib/stayPrice';
 
 type Km = { km: number; approx: boolean } | null | undefined;
@@ -116,7 +117,8 @@ export function StayCard({ it, href, km, testId, ctaTestId, saveTestId, ctaLabel
       <Link to={href} tabIndex={-1} aria-hidden="true" className="ag-home-stayimg">
         <SmartImg src={listingImage(it, wide ? 700 : 500, wide ? 700 : 380)} alt="" className="ag-home-photo" />
         {km && <span className="ag-home-distb"><Icon name="pin" />{kmLabel(km)}</span>}
-        {selfie && (
+        <HostLine host={it.host} />
+        {selfie && !hasHost(it.host) && (
           <span className="ag-home-selfie">
             <FaceImg src={avatar ? sizedImage(avatar, 120) : ''} initial={<b>{String(it.title || '?').trim().charAt(0).toUpperCase()}</b>} />
           </span>
@@ -217,9 +219,9 @@ export function GuideCard({ it, href, testId, fresh }: { it: any; href: string; 
   return (
     <Link to={href} className={cx('ag-home-gcard', fresh && 'fresh')} data-testid={testId}>
       {fresh && <span className="ag-home-newb" data-testid={testId ? `${testId}-new` : undefined}>{t('home.new', 'New')}</span>}
-      <SmartImg src={listingImage(it, 300, 300)} alt="" className="gimg" />
+      <span className="gphoto"><SmartImg src={listingImage(it, 300, 300)} alt="" className="gimg" /><HostLine host={it.host} /></span>
       <b>{String(it.title || '').split(' ')[0]}</b>
-      {service && <span className="gtag"><Icon name="trek" /><span className="truncate">{service.name}</span></span>}
+      {service &&<span className="gtag"><Icon name="trek" /><span className="truncate">{service.name}</span></span>}
       <span className="small">{it.location}</span>
       {Number(it.price) > 0 && (
         <span className="gprice">₹{Number(it.price).toLocaleString('en-IN')}<span className="small"> {t('home.per_day', 'per day')}</span></span>
@@ -237,7 +239,7 @@ export function ShopCard({ it, href, testId, fresh }: { it: any; href: string; t
   return (
     <Link to={href} className={cx('ag-home-gcard shop', fresh && 'fresh')} data-testid={testId}>
       {fresh && <span className="ag-home-newb" data-testid={testId ? `${testId}-new` : undefined}>{t('home.new', 'New')}</span>}
-      <SmartImg src={listingImage(it, 300, 300)} alt="" className="gimg" />
+      <span className="gphoto"><SmartImg src={listingImage(it, 300, 300)} alt="" className="gimg" /><HostLine host={it.host} /></span>
       <b>{it.title}</b>
       <span className="gtag"><Icon name={cafe ? 'cup' : 'bag'} /><span className="truncate">{kind}</span></span>
       <span className="small"><Icon name="pin" /><span className="truncate">{it.location}</span></span>

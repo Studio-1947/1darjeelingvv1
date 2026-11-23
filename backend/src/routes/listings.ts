@@ -1,3 +1,4 @@
+import { hostCard } from '../lib/hostCard';
 import { Router, Request, Response } from 'express';
 import { MAX_PRICE } from '../lib/priceCap';
 import { hostPlanVisibility, isListingHostLapsed } from '../lib/hostPlan';
@@ -309,7 +310,7 @@ router.get('/', async (req: Request, res: Response) => {
 
   const providerIds = [...new Set(items.map(item => item.providerId))];
   const providerRows = providerIds.length > 0
-    ? await db.select({ id: schema.providers.id, kycStatus: schema.providers.kycStatus, status: schema.providers.status })
+    ? await db.select({ id: schema.providers.id, kycStatus: schema.providers.kycStatus, status: schema.providers.status, extras: schema.providers.extras })
       .from(schema.providers)
       .where(inArray(schema.providers.id, providerIds))
     : [];
@@ -339,7 +340,9 @@ router.get('/', async (req: Request, res: Response) => {
       review_count: rating?.count ?? 0,
       // Verified badge must never show for a provider an admin has suspended (flipped off
       // "active"), even if their kycStatus was previously computed as "verified".
-      provider_verified: provider?.kycStatus === 'verified' && provider?.status === 'active'
+      provider_verified: provider?.kycStatus === 'verified' && provider?.status === 'active',
+      // "Hosted by" on every card: the host's name and photo only (lib/hostCard.ts).
+      host: hostCard(provider?.extras, item.extras),
     };
   });
 

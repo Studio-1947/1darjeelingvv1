@@ -109,11 +109,17 @@
     "body": "Pay exactly what you see: GST is included, nothing is added on top. The pass is optional: asking and confirming a booking are free without it.",
     "cta": "Take the pass · {{total}}",
     "reassurance": "Valid for one year. Nothing auto-charges.",
+    "reassurance_gst": "Valid for one year, GST included. Nothing auto-charges.",
     "skip": "Not now, I will pay the ₹1.20 convenience fee per request",
     "modal_title": "aangan pass",
     "modal_duration": "· valid for 1 year",
     "privacy_link": "privacy policy",
     "error": "Payment could not be completed. Please try again.",
+    "paid_title": "Membership payment done",
+    "paid_body": "{{total}} received. Your aangan pass is active until {{until}}.",
+    "paid_body_nodate": "{{total}} received. Your aangan pass is active.",
+    "paid_continue": "Continue",
+    "paid_card": "See my membership",
     "skip2": "Not now"
   },
   "donate": {
@@ -965,6 +971,7 @@
     "best_time": "Best time",
     "per_day": "per day",
     "upto": "Up to",
+    "hosted_by_label": "Hosted by",
     "new": "New",
     "seats": "seats",
     "sk_food": "Food",
@@ -1709,7 +1716,7 @@
     "quick": {
       "tap_to_describe": "Tap to describe your place, or type your own words",
       "tap_price": "Tap a price, or type your own",
-      "help": "Need help? WhatsApp us",
+      "help": "Support",
       "here_now": "I am here now",
       "locating": "Finding where you are…",
       "outside": "You seem to be outside the Darjeeling hills. Search for your place instead.",
@@ -1748,9 +1755,12 @@
       "wz_find": "Search your town or village…",
       "myloc": "My location",
       "tp_none": "No match. Try another name or place.",
-      "noloc": "Could not get your location. Pick a place instead.",
+      "noloc": "Could not get your location. Turn on Location (GPS) on your phone and try again, or search for your place.",
       "locating": "Finding your exact spot…",
+      "loc_hint": "To use My location, turn on Location (GPS) on your phone first, then tap Allow when your browser asks.",
+      "loc_hint_blocked": "Location is blocked for this site. Tap the icon beside the web address, allow Location, then tap My location. Or search for your place.",
       "loc_denied": "Location is blocked for this site. Allow it in your browser settings, or pick a place below.",
+      "loc_rough": "We only got a rough location, so your phone's Location (GPS) may be off. Turn it on and tap My location again, or search for your place.",
       "loc_outside": "This spot is outside the Darjeeling hills, where aangan works. Pick a place below, or move the pin.",
       "loc_naming": "Finding the address…",
       "loc_acc": "GPS accurate to about {{m}} m. Drag the pin if it is off.",
@@ -1819,6 +1829,7 @@
       "put_pay": "Pay {{price}} and put my listing up",
       "in_title": "Your listing is up",
       "in_body": "Travellers can find it now. Next, finish your business profile and send your documents from the Business dashboard to get the Documents verified badge.",
+      "in_paid": "Host plan payment done. Your first year is active.",
       "day_route": "Full day hire",
       "day_service": "Day tour",
       "fo": {
@@ -3354,7 +3365,7 @@
       "agree": "I Agree",
       "agree_to": "to the",
       "privacy_policy": "Privacy Policy",
-      "agree_age": ", and I am 18 or older.",
+      "agree_end": ".",
       "agree_needed": "Please tick I Agree to continue."
     },
     "footer": {
@@ -3655,7 +3666,7 @@
       "trade_license": "Shop & Establishment / trade licence",
       "vehicle_insurance": "Vehicle insurance",
       "vehicle_rc": "Vehicle registration (RC)",
-      "photo_id": "Photo ID: voter ID, driving licence or passport (not Aadhaar)",
+      "photo_id": "Photo ID: voter ID, driving licence or passport",
       "driver_vehicle_photo": "Selfie with your vehicle"
     }
   },

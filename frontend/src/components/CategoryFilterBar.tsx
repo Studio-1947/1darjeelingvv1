@@ -197,7 +197,6 @@ export default function CategoryFilterBar({
             <Icon name="filter" />
             {filtersOn && <span className="fdot" aria-hidden="true" />}
           </button>
-          <i className="vsep" aria-hidden="true" />
           <button
             type="button"
             className={cx('vbtn', voice.listening && 'on')}

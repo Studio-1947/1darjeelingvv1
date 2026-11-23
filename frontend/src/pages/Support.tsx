@@ -1,18 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation, Navigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Check } from '@phosphor-icons/react';
-import { Button, PageHead, SecHead } from '@/components/ag';
+import { Button, PageHead } from '@/components/ag';
 import { useAuth } from '@/context/AuthContext';
 import { createPaymentOrder, completeMockPayment, payWithRazorpay } from '@/lib/api';
 import { needsSupport } from '@/lib/support';
 import MockPaymentModal from '@/components/MockPaymentModal';
-import PriceBreakup from '@/components/PriceBreakup';
 import { rupees, usePassPrice } from '@/lib/prices';
-import { BusinessPassCard, MemberCard, PassJoinCard } from '@/components/Membership';
+import { MemberCard, PassJoinCard } from '@/components/Membership';
 import { useSeo } from '@/components/Seo';
+import PaymentDoneCard from '@/components/PaymentDoneCard';
 
-/** A pass holder (or a host whose plan includes it): the membership card, then For businesses. */
+/** A pass holder (or a host whose plan includes it): their membership card. */
 function MembershipScreen() {
   const { t } = useTranslation();
   return (
@@ -20,8 +19,6 @@ function MembershipScreen() {
       <div className="ag-main" data-testid="membership-screen">
         <PageHead eyebrow={t('ui.account.eyebrow', 'Your account')} title={t('member.title_short', 'Membership')} />
         <MemberCard />
-        <SecHead title={t('member.forbiz', 'For businesses')} />
-        <BusinessPassCard />
       </div>
     </div>
   );
@@ -41,6 +38,8 @@ export default function Support() {
   // Set the instant "not now" is clicked  see browseAnonymously below for why the
   // `!user` redirect needs this to stay off during that specific transition.
   const [leaving, setLeaving] = useState(false);
+  // What was just paid, shown on the "payment done" card before anything else (null: not yet).
+  const [paid, setPaid] = useState<number | null>(null);
 
   // Where SupportGate intercepted them. Rebuilt from pathname + search + hash so a query-bearing
   // URL like /search?q=momo survives the round trip; falling back to the feed keeps a direct
@@ -80,6 +79,29 @@ export default function Support() {
   // navigate('/'), overwriting it  "not now" silently lands on the login screen instead of
   // the homepage). leaving suppresses the branch for exactly that window; once the location
   // actually changes, Support unmounts and the flag stops mattering.
+  // Just paid: the "payment done" card first, then on to wherever they were headed (or, opened
+  // on its own, their membership card).
+  if (paid !== null && user) {
+    const until = user.supportExpiresAt ? new Date(user.supportExpiresAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
+    const onward = Boolean(from?.pathname || next);
+    return (
+      <div className="ag-wrap">
+        <div className="ag-main" data-testid="support-paid">
+          <PaymentDoneCard
+            title={t('support.paid_title', 'Membership payment done')}
+            body={until
+              ? t('support.paid_body', { total: rupees(paid), until })
+              : t('support.paid_body_nodate', { total: rupees(paid) })}
+          >
+            <Button go onClick={() => (onward ? nav(destination, { replace: true }) : setPaid(null))} data-testid="payment-done-next">
+              {t(onward ? 'support.paid_continue' : 'support.paid_card', onward ? 'Continue' : 'See my membership')}
+            </Button>
+          </PaymentDoneCard>
+        </div>
+      </div>
+    );
+  }
+
   if (!user && !leaving) return <Navigate to="/login" replace />;
 
   // Opened on its own (Account → Membership, or just paid from there): a pass holder sees their
@@ -92,7 +114,7 @@ export default function Support() {
 
   const finish = async () => {
     await refresh();
-    nav(destination, { replace: true });
+    setPaid(pass.total);
   };
 
   const startPayment = async () => {
@@ -157,21 +179,15 @@ export default function Support() {
         <PageHead eyebrow={t('ui.account.eyebrow', 'Your account')} title={t('member.title_short', 'Membership')} />
 
         <PassJoinCard price={pass.total} renewing={!!user?.supportExpiresAt}>
-          <PriceBreakup breakup={pass} label={user?.supportExpiresAt ? t('price.pass') : t('price.pass_first_year')} />
           <div className="flex flex-col gap-2">
             <Button variant="primary" go block onClick={startPayment} disabled={busy} data-testid="support-pay">
               {busy ? t('common.loading') : t('support.cta', { total: rupees(pass.total) })}
             </Button>
-            <p className="ag-small !text-xs flex items-center justify-center gap-1 m-0">
-              <Check size={14} aria-hidden="true" /> {t('support.reassurance')}
-            </p>
           </div>
           {err && <p data-testid="support-error" role="alert" className="ag-err !text-sm text-center m-0">{err}</p>}
           <Button variant="text" className="self-center" onClick={browseAnonymously} data-testid="support-skip">{t('support.skip2', 'Not now')}</Button>
         </PassJoinCard>
 
-        <SecHead title={t('member.forbiz', 'For businesses')} />
-        <BusinessPassCard />
 
         <p className="ag-small !text-xs text-center">
           <Link to="/privacy" className="underline">{t('support.privacy_link')}</Link>

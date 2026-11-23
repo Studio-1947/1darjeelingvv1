@@ -9,11 +9,11 @@ import { useHostSignupInfo } from '@/components/provider/onboard/QuickFill';
 import { useAuth } from '@/context/AuthContext';
 import api from '@/lib/api';
 import { isSupportActive } from '@/lib/support';
-import { rupees, useHostPlanPrice, usePrice } from '@/lib/prices';
+import { rupees, useHostPlanPrice } from '@/lib/prices';
 
 /**
  * Membership, as the prototype draws it (app.js member()): the pass holder's membership card, or
- * the "Verified traveller" offer, then "For businesses" with the hosts' yearly pass.
+ * the "Verified traveller" offer.
  */
 
 type Membership = { active: boolean; expires_at: string | null; since: string | null; paid: number | null; member_id: string };
@@ -99,9 +99,9 @@ export function MemberCard() {
 }
 
 /** The offer to a traveller without the pass (prototype passcard: Verified traveller, ₹1 / year). */
-export function PassJoinCard({ price, renewing, children }: { price: number; renewing: boolean; children: React.ReactNode }) {
+/** The pass offer: what it gives, then the caller's price breakup and Pay button (the price shows there). */
+export function PassJoinCard({ children }: { price?: number; renewing?: boolean; children: React.ReactNode }) {
   const { t } = useTranslation();
-  const yearly = usePrice('platform_support_renewal');
   return (
     <Box className="ag-passcard" data-testid="pass-offer">
       <div className="ptop">
@@ -112,16 +112,11 @@ export function PassJoinCard({ price, renewing, children }: { price: number; ren
         </div>
       </div>
       <p className="ag-small m-0">{t('member.offer', 'Get the aangan pass and a verified badge. Hosts and drivers see it on your booking requests, so they say yes faster.')}</p>
-      <div className="pprice">
-        <b data-testid="pass-offer-price">{rupees(price)}</b>
-        <span className="pper" data-testid="pass-offer-per">/ {renewing || yearly.total === price ? t('member.year', 'year') : t('member.first_year', 'first year')}</span>
-        {!renewing && yearly.total !== price && <span className="pnote">{t('member.then', 'then {{price}} a year', { price: rupees(yearly.total) })}</span>}
-      </div>
-      <p className="m-0"><b>{t('member.vwhy', 'Verified travellers get more confirmations from homestays.')}</b></p>
       <ul className="pchecks">
         <li><Icon name="check" />{t('member.vt1', 'Verified badge on every booking request')}</li>
         <li><Icon name="check" />{t('member.vt2', 'Membership card on your phone')}</li>
         <li><Icon name="check" />{t('member.vt3b', 'Still no booking fees, ever')}</li>
+        <li><Icon name="check" />{t('support.reassurance_gst', 'Valid for one year, GST included. Nothing auto-charges.')}</li>
       </ul>
       {children}
     </Box>

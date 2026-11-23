@@ -13,6 +13,7 @@ import { HelpWhatsApp, useHostSignupInfo } from '@/components/provider/onboard/Q
 import { HOST_TYPES, HUBS, MAX_GOODS, MAX_PHOTOS, OFFERS, PRESETS, QUICK_DISHES, SHOP_UNITS, type HostType, type HostWizard, type Place } from './useHostWizard';
 import { photoGoalFor } from '@/lib/photoGoal';
 import Sheet, { SheetHead } from '@/components/listing-detail/Sheet';
+import PaymentDoneCard from '@/components/PaymentDoneCard';
 
 /** "Add your own" on the What do you give? step; the server takes up to 30 amenities of 60 characters. */
 const MAX_OWN_OFFERS = 8;
@@ -127,6 +128,10 @@ function PlaceStep({ w }: { w: HostWizard }) {
   const [found, setFound] = useState<Place[]>([]);
   const [looking, setLooking] = useState(false);
   const [locating, setLocating] = useState(false);
+  const perm = useGeoPermission();
+  // GPS can take up to 12 s; a host who goes Back meanwhile must not get this step's error on another.
+  const live = useRef(true);
+  useEffect(() => { live.current = true; return () => { live.current = false; }; }, []);
 
   // Typed names: the hubs first, then the geocoder (proxied by the backend) for villages and roads.
   useEffect(() => {
@@ -179,16 +184,19 @@ function PlaceStep({ w }: { w: HostWizard }) {
     setLocating(true);
     try {
       const p = await exactPosition();
+      if (!live.current) return;
       const { latitude: lat, longitude: lng, accuracy } = p.coords;
-      if (!inServiceRegion(lat, lng)) { setErr(t('ob.wz.loc_outside')); return; }
+      // A fix this rough comes from Wi-Fi or the mobile network, which usually means the phone's
+      // Location (GPS) is off; say so rather than telling a host in the hills they are outside them.
+      if (!inServiceRegion(lat, lng)) { setErr(t(accuracy > ROUGH_FIX_M ? 'ob.wz.loc_rough' : 'ob.wz.loc_outside')); return; }
       const n = ++seq.current;
       set({ place: { name: nearbyName(lat, lng), lat, lng, accuracy: Math.round(accuracy) } });
       setFocus((f) => f + 1);
       void nameFromPin(lat, lng, n);
     } catch (e) {
-      setErr(e === 'denied' ? t('ob.wz.loc_denied') : t('ob.wz.noloc'));
+      if (live.current) setErr(e === 'denied' ? t('ob.wz.loc_denied') : t('ob.wz.noloc'));
     } finally {
-      setLocating(false);
+      if (live.current) setLocating(false);
     }
   };
 
@@ -206,6 +214,12 @@ function PlaceStep({ w }: { w: HostWizard }) {
           icon={locating ? <Loader2 className="animate-spin" /> : <Icon name="locate" />}>
           {locating ? t('ob.wz.locating') : t('ob.wz.myloc')}
         </Button>
+        {!pl && perm !== 'granted' && (
+          <p className="ag-small ag-onboard-lochint" data-testid="wz-loc-hint">
+            <Icon name="locate" />
+            <span>{perm === 'denied' ? t('ob.wz.loc_hint_blocked') : t('ob.wz.loc_hint')}</span>
+          </p>
+        )}
       </div>
       <div className="ag-onboard-pchips" role="list">
         {chips.map((p) => (
@@ -238,6 +252,30 @@ function PlaceStep({ w }: { w: HostWizard }) {
       )}
     </Frame>
   );
+}
+
+/** Beyond this many metres a fix is a network guess, not GPS. */
+const ROUGH_FIX_M = 1000;
+
+/**
+ * Whether this site may read the phone's position: 'granted', 'prompt', 'denied', or 'unknown'
+ * where the browser cannot say (older Safari). Follows changes made in the browser's settings.
+ */
+function useGeoPermission() {
+  const [state, setState] = useState<PermissionState | 'unknown'>('unknown');
+  useEffect(() => {
+    let status: PermissionStatus | null = null;
+    let live = true;
+    const onChange = () => { if (status) setState(status.state); };
+    navigator.permissions?.query({ name: 'geolocation' }).then((s) => {
+      if (!live) return;
+      status = s;
+      setState(s.state);
+      s.addEventListener('change', onChange);
+    }).catch(() => { /* keep 'unknown' */ });
+    return () => { live = false; status?.removeEventListener('change', onChange); };
+  }, []);
+  return state;
 }
 
 /**
@@ -449,7 +487,7 @@ function ExtrasStep({ w }: { w: HostWizard }) {
           </button>
         ))}
         {!adding && own.length < MAX_OWN_OFFERS && (
-          <button type="button" className="ag-onboard-pchip" onClick={() => setAdding(true)} data-testid="wz-offer-add">
+          <button type="button" className="ag-onboard-pchip addown" onClick={() => setAdding(true)} data-testid="wz-offer-add">
             <Icon name="plus" />{t('ob.wz.offer_add', 'Add your own')}
           </button>
         )}
@@ -581,16 +619,14 @@ function ReviewStep({ w }: { w: HostWizard }) {
 
 /* ---------- done ---------- */
 function DoneStep({ w }: { w: HostWizard }) {
-  const { t, d } = w;
+  const { t, d, paidPlan } = w;
   return (
     <section className="ag-main ag-onboard" data-testid="wz-done">
-      <Box tone="blush" className="ag-onboard-done">
-        <span className="big"><Icon name="party" /></span>
-        <h1 tabIndex={-1}>{t('ob.wz.in_title')}</h1>
-        <p>{t('ob.wz.in_body')}</p>
+      <PaymentDoneCard icon="party" title={t('ob.wz.in_title')} body={t('ob.wz.in_body')} testId="wz-done-card"
+        note={paidPlan ? t('ob.wz.in_paid', 'Host plan payment done. Your first year is active.') : undefined}>
         <ButtonLink go to="/provider/dashboard" data-testid="wz-dashboard">{t('ob.wz.biz')}</ButtonLink>
         <Button go onClick={() => window.location.assign("/provider/onboard?add=1")} icon={<Icon name="plus" />} data-testid="wz-another">{d.type === 'driver' ? t('ob.wz.addveh') : t('ob.wz.addprop')}</Button>
-      </Box>
+      </PaymentDoneCard>
     </section>
   );
 }

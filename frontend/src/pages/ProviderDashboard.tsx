@@ -519,14 +519,16 @@ function ProviderDashboardPage() {
           </div>
         </section>
 
-        <label className="ag-box ag-host-switch ag-host-avail">
+        {/* Each listing card has its own Taking bookings switch, and the server checks only that.
+            This business-wide one stays only for a host who paused everything with it, to undo it. */}
+        {!taking && <label className="ag-box ag-host-switch ag-host-avail">
           <span>
             <b>{t('host.taking', 'Taking bookings')}</b>
             <span className="ag-small">{taking ? t('host.avail_on', 'Available. Travellers can ask to book.') : t('host.avail_off', 'Not available right now. Your listings show as paused.')}</span>
           </span>
           <input type="checkbox" role="switch" checked={taking} disabled={switching === 'business'}
             onChange={(e) => setBusinessTaking(e.target.checked)} data-testid="business-taking" />
-        </label>
+        </label>}
 
         {nextStep}
 
