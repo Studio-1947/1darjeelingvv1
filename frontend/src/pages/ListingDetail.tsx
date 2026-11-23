@@ -12,7 +12,8 @@ import { groupPhotos } from '@/lib/photoGroups';
 import Seo from '@/components/Seo';
 import BookingConfirmation from '@/components/BookingConfirmation';
 import DeliveryRequestButton from '@/components/DeliveryRequestButton';
-import { Box, Status } from '@/components/ag';
+import { Box, Seg, Status } from '@/components/ag';
+import { toast } from 'sonner';
 import { Icon } from '@/components/ag/Icon';
 import BookingFeeModal from '@/components/listing-detail/BookingFeeModal';
 import RequestSent from '@/components/listing-detail/RequestSent';
@@ -51,6 +52,8 @@ export default function ListingDetail() {
   const [params, setParams] = useSearchParams();
   const [item, setItem] = useState(null);
   const [loading, setLoading] = useState(true);
+  // A host looking at their own listing: 'owner' (their view, booking off) or 'traveller' (what a traveller sees).
+  const [viewAs, setViewAs] = useState<'owner' | 'traveller'>('owner');
   const booking = useBookingFlow(item, id);
   const { isHostMode, provider } = useAuth();
   const step = Math.max(0, Math.floor(Number(params.get('book')) || 0));
@@ -106,6 +109,10 @@ export default function ListingDetail() {
   // On the business side a host sees only their own listing, as a preview with booking off.
   const ownPreview = isHostMode && !!provider && item.provider_id === provider.id;
   if (isHostMode && !ownPreview) return <BusinessModeNotice />;
+  // The host's own view. Switched to "As a traveller", the page shows what a traveller sees (the host
+  // line, the request fee line, Book now), but Book now only says it is a preview.
+  const ownerView = ownPreview && viewAs === 'owner';
+  const travellerPreview = ownPreview && viewAs === 'traveller';
 
   // Off when the host switched availability off, or their free start is used up and not paid yet
   // (backend lib/hostGrace.ts); the page stays up either way.
@@ -114,7 +121,7 @@ export default function ListingDetail() {
   const roomsFull = stayRooms.length > 0 && !stayRooms.some(roomOpen);
   const available = item.extras?.available !== false && item.bookings_paused !== true && !roomsFull;
   const reservable = item.type === 'homestay' || item.type === 'driver' || item.type === 'guide';
-  const bookable = !ownPreview && available && reservable;
+  const bookable = !ownerView && available && reservable;
   const contactable = !ownPreview && ['shop', 'cafe', 'event'].includes(item.type);
   const place = item.type === 'spot' || item.type === 'event' || item.type === 'biodiversity';
   const isSpot = item.type === 'spot';
@@ -187,7 +194,7 @@ export default function ListingDetail() {
   const personSrc = host.avatar || personImageFor(item);
   const roomCount = Array.isArray(item.extras?.rooms) ? item.extras.rooms.length : 0;
   const stay = item.type === 'homestay' ? stayPrice(item) : null;
-  const showHost = !place && !ownPreview && (host.known || !!item.host_page_path);
+  const showHost = !place && !ownerView && (host.known || !!item.host_page_path);
   const delivery = !ownPreview && ['cafe', 'shop'].includes(item.type) && !item.bookings_paused && item.extras?.home_delivery;
   const spotFacts = isSpot && spotInfo.highlights.length > 0
     ? spotInfo.highlights.map((h: string) => ({ label: h }))
@@ -226,9 +233,15 @@ export default function ListingDetail() {
 
       <div className="ag-main">
         {ownPreview && (
-          <Box tone="blush" flat data-testid="own-listing-preview" className="!flex-row !items-center !py-3">
-            <Icon name="search" size={20} className="text-[var(--r)]" />
-            <p className="ag-small !text-[var(--ink-strong)]">{t('business_gate.preview')}</p>
+          <Box tone="blush" flat data-testid="own-listing-preview" className="!py-3 !gap-2">
+            <Seg<'owner' | 'traveller'> value={viewAs} onChange={setViewAs} label={t('business_gate.view_as', 'View as')} className="self-start"
+              options={[
+                { value: 'owner', label: t('business_gate.view_owner', 'Your view'), testId: 'view-as-owner' },
+                { value: 'traveller', label: t('business_gate.view_traveller', 'As a traveller'), testId: 'view-as-traveller' },
+              ]} />
+            <p className="ag-small !text-[var(--ink-strong)]">
+              {ownerView ? t('business_gate.preview') : t('business_gate.preview_traveller', 'This is exactly what travellers see. Book now only works for them, not here.')}
+            </p>
           </Box>
         )}
         {item.not_live && (
@@ -274,7 +287,7 @@ export default function ListingDetail() {
         ) : item.type === 'event' ? <p className="ag-listing-lead"><span className="ag-small">{t('common.entry_varies')}</span></p> : null}
 
         {/* The "asking is free" line (the fixed bar carries Book now; Website sits in the pill row below). */}
-        {reservable && !ownPreview && !available && <UnavailableNotice roomsFull={roomsFull} />}
+        {reservable && !ownerView && !available && <UnavailableNotice roomsFull={roomsFull} />}
         {bookable && <p className="ag-small">{t('listing.askfee', 'Sending a request costs ₹1, or nothing with the aangan pass.')} {t('listing.numlater', 'You get the phone number after you book.')}</p>}
 
         {delivery && (
@@ -334,7 +347,7 @@ export default function ListingDetail() {
         <ReviewsSection item={item} />
       </div>
 
-      {bookable && <BookBar item={item} unit={unit} onBook={() => goStep(1)} />}
+      {bookable && <BookBar item={item} unit={unit} onBook={() => (travellerPreview ? toast(t('business_gate.preview_book', 'Preview only. Travellers start their request here.')) : goStep(1))} />}
       {modals}
     </div>
   );
