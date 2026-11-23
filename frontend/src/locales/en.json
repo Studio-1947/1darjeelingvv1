@@ -594,7 +594,7 @@
   },
   "privacy": {
     "title": "Privacy Policy",
-    "updated": "Last updated: 22 November 2026",
+    "updated": "Last updated: 23 November 2026",
     "email_label": "Email:",
     "phone_label": "Phone:",
     "address_label": "Address:",
@@ -624,7 +624,7 @@
           },
           {
             "h": "1.3 Payments",
-            "p": "Fees and passes are paid through Razorpay. We receive the amount, order and payment reference, and refund details. Card, UPI and bank details are entered with Razorpay and never reach us."
+            "p": "Fees and passes are paid through Razorpay. We receive the amount and how it is made up (price and GST), the order and payment reference, and refund details. Card, UPI and bank details are entered with Razorpay and never reach us."
           },
           {
             "h": "1.4 Hosts, drivers, guides, cafés and shops",
@@ -2012,19 +2012,19 @@
   },
   "terms": {
     "title": "Terms & Conditions",
-    "updated": "Last updated: November 2026",
+    "updated": "Last updated: 23 November 2026",
     "intro": [
       "WBIN 1947 Studio LLP, under the name 1Darjeeling (\"we,\" \"us,\" \"our,\" or \"the Platform\"), operates www.aanganerp.in (the \"Site\"), a local marketplace and travel guide connecting visitors with homestays, drivers, cafés, shops and guides in and around Darjeeling. These Terms & Conditions govern your use of the Site.",
       "You accept these Terms by ticking \"I Agree\" when you sign in, which also confirms you are 18 or older. If you do not agree, please do not create an account or send requests."
     ],
     "sections": [
       {
-        "h": "1. What 1Darjeeling Is  and Is Not",
+        "h": "1. What 1Darjeeling Is, and Is Not",
         "p": "We are a discovery and booking-request platform. We introduce travellers to independent local businesses; we do not own, operate, manage or control any homestay, vehicle, café or shop listed on the Site.",
         "items": [
           "The contract for your stay, ride, meal or purchase is between you and the local business. 1Darjeeling is not a party to it.",
           "We do not collect the price of the stay, ride or goods. That is settled directly between you and the business, on their terms.",
-          "Listing information  photographs, prices, amenities, availability  is supplied by the business. We take reasonable care but cannot guarantee it is complete or current.",
+          "Listing information (photographs, prices, amenities, availability) is supplied by the business. We take reasonable care but cannot guarantee it is complete or current.",
           "We are not responsible for the quality, safety, legality or fitness of anything offered by a listed business, nor for any act or omission of that business."
         ]
       },
@@ -2032,7 +2032,7 @@
         "h": "2. Accounts",
         "items": [
           "You must be at least 18 years old to create an account and make a booking request.",
-          "You register with a mobile number verified by a one-time password. Keep access to that number secure  anyone who can receive your OTP can access your account.",
+          "You register with a mobile number verified by a one-time password. Keep access to that number secure: anyone who can receive your OTP can access your account.",
           "You are responsible for everything done through your account.",
           "You must give accurate information and keep it up to date. We may suspend or remove accounts that carry false, misleading or impersonating information."
         ]
@@ -2042,19 +2042,19 @@
         "p": "All amounts below are what you pay to the Platform. They are separate from, and additional to, whatever you pay the local business for the stay, ride or goods themselves.",
         "sub": [
           {
-            "h": "3.1 Traveller Pass — ₹1 a year, GST included, optional",
-            "p": "The pass is optional. A payment gives a traveller account one year with a Member badge that hosts see on its requests. With an active pass, the app convenience fee (3.2) is waived; without it, each request costs ₹1.18. It does not renew automatically; after it expires, you may buy another one-year pass."
+            "h": "3.1 Traveller Pass — ₹1 for the first year, then ₹12 a year, GST included, optional",
+            "p": "The pass is optional. It costs ₹1 for the first year and ₹12 for each year after that, GST included, with nothing added on top. A payment gives a traveller account one year with a Member badge that hosts see on its requests. With an active pass, the app convenience fee (3.2) is waived; without it, each request costs ₹1.18. It does not renew automatically; after it expires, you may buy another one-year pass."
           },
           {
             "h": "3.2 App Convenience Fee — ₹1.18 per request without the pass, waived with it",
-            "p": "Sending a request to a business through the app costs a convenience fee of ₹1 plus 18% GST, ₹1.18 in all, paid to the Platform when you send it. With an active Traveller Pass it is waived. The fee is only for using the app to reach the business. It is not a booking fee, deposit or advance: it does not pay for, reserve or guarantee any stay, ride, tour or goods, and it does not make us a party to any booking. Whether the business accepts your request and whether the booking goes ahead are matters between you and the business, and we are not liable for either. We make no further charge at any later step. The fee is non-refundable: it pays for the use of the app at the moment the request is sent. It is not refunded, whatever happens to the request: if the business declines it or does not answer, if its dates go to another traveller, if you withdraw or cancel it, or if the business or our team cancels it. The only exceptions are a payment error on our side: if you are charged but the request is never sent, or charged twice for the same request, that charge is refunded in full. What you pay for the stay, ride or goods themselves is paid directly to the business; we never receive it and take no share."
+            "p": "Sending a request to a business through the app costs a convenience fee of ₹1 plus 18% GST, ₹1.18 in all, paid to the Platform when you send it. No platform or payment-gateway fee is added. With an active Traveller Pass it is waived. The fee is only for using the app to reach the business. It is not a booking fee, deposit or advance: it does not pay for, reserve or guarantee any stay, ride, tour or goods, and it does not make us a party to any booking. Whether the business accepts your request and whether the booking goes ahead are matters between you and the business, and we are not liable for either. We make no further charge at any later step. The fee is non-refundable: it pays for the use of the app at the moment the request is sent. It is not refunded, whatever happens to the request: if the business declines it or does not answer, if its dates go to another traveller, if you withdraw or cancel it, or if the business or our team cancels it. The only exceptions are a payment error on our side: if you are charged but the request is never sent, or charged twice for the same request, that charge is refunded in full. What you pay for the stay, ride or goods themselves is paid directly to the business; we never receive it and take no share."
           },
           {
             "h": "3.3 Business Listing Plan — ₹499 a year for homestays, drivers and guides, ₹99 a year for cafés, each plus 18% GST; free until 2 completed bookings; local shops list free",
             "p": "A new local business can list for free. Its documents are still checked and approved before its listing goes live. Once live, it takes bookings without paying until 2 bookings have been completed, meaning the guest's stay, ride or tour has taken place (for cafés, until 2 bookings or home-delivery orders have been completed or delivered). After that, new bookings pause until the business pays for its first year (₹499 for a homestay, driver or guide, ₹99 for a café, each plus 18% GST): the listing stays visible, bookings already confirmed go ahead, and requests already received can still be accepted. The business may pay at any time during the free period, and its first year starts on the day it pays. Each year after that costs the same. The plan does not renew automatically: if a year ends without renewal, the business's listings are hidden from travellers and stop taking bookings until it renews. Local shops list free and pay nothing. It is not a commission on bookings."
           }
         ],
-        "note": "Payments are processed by Razorpay. We do not receive or store your full card details. Fees are stated in Indian Rupees and are inclusive of applicable taxes unless stated otherwise at the point of payment."
+        "note": "Payments are processed by Razorpay. We do not receive or store your full card details. Fees are in Indian Rupees. The Traveller Pass price includes GST. The app convenience fee and the Business Listing Plan are stated before tax: 18% GST is added to them, and the full amount, GST shown separately, is displayed before you pay. We charge no other platform, payment-gateway or processing fee on top."
       },
       {
         "h": "4. Bookings",
@@ -2079,7 +2079,7 @@
         "items": [
           "You may list only a business you own or are authorised to represent.",
           "You must hold every licence, registration and permission the law requires for what you offer, and produce them on request.",
-          "Identity and address documents you submit for verification are held privately and are never published  see the Privacy Policy.",
+          "Identity and address documents you submit for verification are held privately and are never published (see the Privacy Policy).",
           "Your listing must be accurate. Prices shown must be prices you will honour.",
           "You must honour confirmed bookings, or cancel promptly so the traveller can make other arrangements.",
           "We may suspend or remove a listing that breaks these rules, attracts sustained complaints, or misrepresents what it offers."
@@ -2138,24 +2138,24 @@
   },
   "refunds": {
     "title": "Refund & Cancellation Policy",
-    "updated": "Last updated: November 2026",
+    "updated": "Last updated: 23 November 2026",
     "intro": [
-      "This policy explains when money paid to 1Darjeeling (WBIN 1947 Studio LLP) is returned, how long it takes, and what falls outside it. It forms part of our Terms & Conditions.",
-      "One distinction governs everything below. The fees listed in this policy are paid to the Platform, and this policy covers them. The price of your stay, ride, meal or purchase is paid directly to the local business, and that money is governed by the business's own terms  we never receive it and cannot refund it."
+      "This policy explains when money paid to aangan, a product of WBIN 1947 Studio LLP, is returned, how long it takes, and what falls outside it. It forms part of our Terms & Conditions.",
+      "One distinction governs everything below. The fees listed in this policy are paid to the Platform, and this policy covers them. The price of your stay, ride, meal or purchase is paid directly to the local business, and that money is governed by the business's own terms. We never receive it and cannot refund it."
     ],
     "sections": [
       {
         "h": "1. Cancelling a Booking",
         "p": "A booking can be cancelled at any time before it takes place, from your dashboard, by the business, or by our team.",
         "items": [
-          "A booking still awaiting payment can simply be cancelled  nothing has been charged.",
+          "A booking still awaiting payment can simply be cancelled: nothing has been charged.",
           "A request or a confirmed booking can be cancelled by you, by the business, or by us. The ₹1.18 app convenience fee paid to send the request is not refunded, whoever cancels and whenever (see 3.1).",
           "If the business cancels on you, we will help you find an alternative wherever we can."
         ]
       },
       {
         "h": "2. Automatic Refunds",
-        "p": "Some refunds need no request at all  the Platform issues them itself:",
+        "p": "Some refunds need no request at all. The Platform issues them itself:",
         "items": [
           "Requests that never went out: if you are charged the ₹1.18 app convenience fee but the request is not sent (for example its dates were taken while you were paying), that charge is refunded in full.",
           "Duplicate charges: if a technical fault charges you twice for one thing, the duplicate is refunded in full."
@@ -2169,7 +2169,7 @@
             "p": "Sending a request without an active Traveller Pass costs an app convenience fee of ₹1 plus 18% GST, ₹1.18 in all. With the pass it is waived, and there is no charge to confirm. It is a fee for using the app, not a payment for any booking, and we are not liable for whether a booking goes ahead. It is non-refundable. It is not refunded, whatever happens to the request: if the business declines it or does not answer, if its dates go to another traveller, if you withdraw or cancel it, or if the business or our team cancels it. The only exceptions are a payment error on our side: if you are charged but the request is never sent, or charged twice for the same request, that charge is refunded in full."
           },
           {
-            "h": "3.2 Traveller Pass — ₹1 a year, GST included, optional",
+            "h": "3.2 Traveller Pass — ₹1 for the first year, then ₹12 a year, GST included, optional",
             "p": "Refundable in full within 7 days of payment if you ask us. After 7 days it is not refundable; you can end it at any time from Membership, without a refund. It expires after one year and never renews automatically, so there is no recurring charge to cancel."
           },
           {
@@ -2199,7 +2199,7 @@
       {
         "h": "6. What This Policy Does Not Cover",
         "items": [
-          "Money paid directly to a homestay, driver, café or shop. Ask them  their cancellation terms apply, and we will help you make contact.",
+          "Money paid directly to a homestay, driver, café or shop. Ask them: their cancellation terms apply, and we will help you make contact.",
           "Costs around a trip that we never charged: travel to Darjeeling, other bookings, time taken off.",
           "The app convenience fee, once the request it paid for has been sent, whatever then happens to the request or booking.",
           "Accounts closed by us for a breach of our Terms."
@@ -2207,7 +2207,7 @@
       },
       {
         "h": "7. If Something Goes Wrong With a Refund",
-        "p": "If a refund we have approved has not reached you within 10 working days, or you disagree with a decision, escalate it to our Grievance Officer  the contact details are on the Contact Us page. We will look at it again and reply within 7 working days."
+        "p": "If a refund we have approved has not reached you within 10 working days, or you disagree with a decision, escalate it to our Grievance Officer. The contact details are on the Contact Us page. We will look at it again and reply within 7 working days."
       },
       {
         "h": "8. Contact",
