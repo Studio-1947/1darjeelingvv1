@@ -11,7 +11,7 @@ import { optionLabel } from '@/lib/optionLabel';
 import { priceParts } from '@/components/home/cards';
 import { useFavorites } from '@/context/FavoritesContext';
 import { useLoginGate } from '@/components/LoginGate';
-import HostLine from '@/components/HostLine';
+import HostLine, { hasHost } from '@/components/HostLine';
 
 /** A listing as an `.ag-card`: photo, name, place, price, and an optional status tag on the photo. */
 export default function ListingCard({ item, badge = null }) {
@@ -142,10 +142,12 @@ export function CatStayCard({ it, href, km, testId, ctaTestId, ctaLabel, fare }:
   // A homestay's unit comes with its price (per room or per person, lib/stayPrice.ts).
   const unit = it.type === 'homestay' ? p.unit : t('category.per_day', 'per day');
   return (
-    <div className={cx('ag-category-stay', isCar && 'car')} data-testid={testId}>
+    <div className={cx('ag-category-stay', isCar && 'car', isCar && hasHost(it.host) && 'hosted')} data-testid={testId}>
       <Link to={href} className="ag-category-stayimg" aria-label={it.title}>
         <SmartImg src={listingImage(it, 600, 600)} fallback={listingImageBackups(it, 600)} alt="" className="absolute inset-0 h-full w-full object-cover" />
-        {isCar && (
+        {/* The host over the photo; a driver with no host name keeps the face on the corner. */}
+        <HostLine host={it.host} />
+        {isCar && !hasHost(it.host) && (
           // The initial is drawn by CSS (data-initial) so the card's text still starts with its name.
           <span className="ag-category-selfie" aria-hidden="true" data-initial={avatar ? undefined : (it.title || '?').trim().charAt(0).toUpperCase()}>
             {avatar && <img src={avatar} alt="" />}
@@ -157,7 +159,6 @@ export function CatStayCard({ it, href, km, testId, ctaTestId, ctaLabel, fare }:
           {it.title}
           {it.provider_verified && <> <VerifiedTick /></>}
         </Link>
-        <HostLine host={it.host} />
         {/* Between the name and the place in the markup ("Name, 3 km · Ghum"), drawn over the photo's corner. */}
         <DistBadge km={km} />
         <span className="meta place"><Icon name="pin" />{it.location}</span>

@@ -970,7 +970,7 @@
     "best_time": "Best time",
     "per_day": "per day",
     "upto": "Up to",
-    "hosted_by": "Hosted by {{name}}",
+    "hosted_by_label": "Hosted by",
     "new": "New",
     "seats": "seats",
     "sk_food": "Food",
