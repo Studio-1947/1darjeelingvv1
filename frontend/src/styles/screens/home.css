@@ -106,7 +106,7 @@
 /* ---------- SpotCard: tall photo, sticker, name over it ---------- */
 .ag-home-spot { position: relative; display: flex; align-items: flex-end; aspect-ratio: 3 / 4; overflow: hidden; border-radius: 20px; background: var(--blush); box-shadow: var(--warmshadow); color: #fff; text-decoration: none; }
 .ag-home-spot .ag-home-photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-.ag-home-spot::before { content: ""; position: absolute; inset: 0; z-index: 0; background: linear-gradient(0deg, rgb(0 0 0 / .82) 0%, rgb(0 0 0 / .55) 22%, rgb(0 0 0 / .2) 40%, rgb(0 0 0 / 0) 50%); pointer-events: none; }
+.ag-home-spot::before { content: ""; position: absolute; inset: 0; z-index: 0; background: linear-gradient(0deg, rgb(0 0 0 / .92) 0%, rgb(0 0 0 / .78) 22%, rgb(0 0 0 / .45) 45%, rgb(0 0 0 / .2) 65%, rgb(0 0 0 / 0) 85%), rgb(0 0 0 / .22); pointer-events: none; }
 .ag-home-spot .info { position: relative; z-index: 1; display: flex; flex-direction: column; justify-content: flex-end; gap: 2px; width: 100%; min-width: 0; padding: 12px; }
 .ag-home-spot .loc { display: flex; align-items: center; gap: 4px; min-width: 0; font: 500 10px/16px var(--font); letter-spacing: .08em; text-transform: uppercase; opacity: .85; white-space: nowrap; text-shadow: 0 1px 4px rgb(0 0 0 / .6); }
 .ag-home-spot .loc svg.i { width: 12px; height: 12px; }
@@ -234,3 +234,11 @@
 .ag-home-fsearch svg.i { width: 20px; height: 20px; }
 .ag-home-fsearch .n { display: grid; place-items: center; min-width: 24px; height: 24px; padding: 0 7px; border-radius: 12px; background: #fff; color: var(--r); font: 600 13px/13px var(--font); }
 .ag-home-fsearch:active { background: var(--r-press); }
+
+/* Layers, bottom up: photo, darkening, then the sticker and the text. Without explicit z-indexes the
+   photo (later in the markup) painted over the darkening and the text sat on the bare photo. */
+.ag-home-spot .ag-home-photo { z-index: 0; }
+.ag-home-spot::before { z-index: 1 !important; }
+.ag-home-spot .info, .ag-home-spot .ag-home-stick { z-index: 2; }
+.ag-home-spot .loc { opacity: 1; text-shadow: 0 1px 3px rgb(0 0 0 / .9); }
+.ag-home-spot b { text-shadow: 0 1px 3px rgb(0 0 0 / .9), 0 0 12px rgb(0 0 0 / .5); }

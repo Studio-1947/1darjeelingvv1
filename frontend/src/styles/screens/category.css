@@ -110,7 +110,8 @@
 
 /* spot card (prototype .spotcard in .spots2) */
 .ag-category-spot { position: relative; display: flex; align-items: flex-end; aspect-ratio: 3 / 4; overflow: hidden; border-radius: 20px; background: var(--creme2); color: #fff; text-decoration: none; box-shadow: var(--warmshadow); }
-.ag-category-spot::before { content: ""; position: absolute; inset: 0; z-index: 1; background: linear-gradient(180deg, rgb(0 0 0 / 0) 45%, rgb(0 0 0 / .7) 100%); }
+/* A slight black over the whole photo and a deeper one behind the text, so the name reads on any photo. */
+.ag-category-spot::before { content: ""; position: absolute; inset: 0; z-index: 1; background: linear-gradient(0deg, rgb(0 0 0 / .92) 0%, rgb(0 0 0 / .78) 22%, rgb(0 0 0 / .45) 45%, rgb(0 0 0 / .2) 65%, rgb(0 0 0 / 0) 85%), rgb(0 0 0 / .22); pointer-events: none; }
 .ag-category-spot .info { position: relative; z-index: 2; width: 100%; display: flex; flex-direction: column; justify-content: flex-end; gap: 2px; padding: 12px; }
 .ag-category-spot .loc { display: flex; align-items: center; gap: 4px; min-width: 0; font: 500 10px/16px var(--font); letter-spacing: .8px; text-transform: uppercase; opacity: .85; text-shadow: 0 1px 4px rgb(0 0 0 / .6); }
 .ag-category-spot .loc svg.i { width: 12px; height: 12px; }
@@ -163,3 +164,9 @@ html[data-mode="dark"] .ag-category-reset { color: var(--ink-strong); text-decor
 .ag-home-gcard .ag-hostbadge { left: 6px; bottom: 6px; max-width: calc(100% - 12px); gap: 6px; padding-right: 10px; }
 .ag-home-gcard .ag-hostbadge .face { width: 30px; height: 30px; font-size: 13px; }
 .ag-home-gcard .ag-hostbadge b { font-size: 12px; line-height: 16px; }
+
+/* Layers, bottom up: photo, darkening, then the sticker and the text. */
+.ag-category-spot > img { z-index: 0; }
+.ag-category-spot .info, .ag-category-spot .ag-category-stick { z-index: 2; }
+.ag-category-spot .loc { opacity: 1; text-shadow: 0 1px 3px rgb(0 0 0 / .9); }
+.ag-category-spot b { text-shadow: 0 1px 3px rgb(0 0 0 / .9), 0 0 12px rgb(0 0 0 / .5); }
