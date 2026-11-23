@@ -1828,6 +1828,7 @@
       "put_pay": "Pay {{price}} and put my listing up",
       "in_title": "Your listing is up",
       "in_body": "Travellers can find it now. Next, finish your business profile and send your documents from the Business dashboard to get the Documents verified badge.",
+      "in_paid": "Host plan payment done. Your first year is active.",
       "day_route": "Full day hire",
       "day_service": "Day tour",
       "fo": {

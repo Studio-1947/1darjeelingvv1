@@ -13,6 +13,7 @@ import { HelpWhatsApp, useHostSignupInfo } from '@/components/provider/onboard/Q
 import { HOST_TYPES, HUBS, MAX_GOODS, MAX_PHOTOS, OFFERS, PRESETS, QUICK_DISHES, SHOP_UNITS, type HostType, type HostWizard, type Place } from './useHostWizard';
 import { photoGoalFor } from '@/lib/photoGoal';
 import Sheet, { SheetHead } from '@/components/listing-detail/Sheet';
+import PaymentDoneCard from '@/components/PaymentDoneCard';
 
 /** "Add your own" on the What do you give? step; the server takes up to 30 amenities of 60 characters. */
 const MAX_OWN_OFFERS = 8;
@@ -618,16 +619,14 @@ function ReviewStep({ w }: { w: HostWizard }) {
 
 /* ---------- done ---------- */
 function DoneStep({ w }: { w: HostWizard }) {
-  const { t, d } = w;
+  const { t, d, paidPlan } = w;
   return (
     <section className="ag-main ag-onboard" data-testid="wz-done">
-      <Box tone="blush" className="ag-onboard-done">
-        <span className="big"><Icon name="party" /></span>
-        <h1 tabIndex={-1}>{t('ob.wz.in_title')}</h1>
-        <p>{t('ob.wz.in_body')}</p>
+      <PaymentDoneCard icon="party" title={t('ob.wz.in_title')} body={t('ob.wz.in_body')} testId="wz-done-card"
+        note={paidPlan ? t('ob.wz.in_paid', 'Host plan payment done. Your first year is active.') : undefined}>
         <ButtonLink go to="/provider/dashboard" data-testid="wz-dashboard">{t('ob.wz.biz')}</ButtonLink>
         <Button go onClick={() => window.location.assign("/provider/onboard?add=1")} icon={<Icon name="plus" />} data-testid="wz-another">{d.type === 'driver' ? t('ob.wz.addveh') : t('ob.wz.addprop')}</Button>
-      </Box>
+      </PaymentDoneCard>
     </section>
   );
 }

@@ -207,6 +207,8 @@ export function useHostWizard() {
   const step: StepKey | 'done' = done ? 'done' : steps[i];
 
   const [err, setErr] = useState('');
+  // The first year was just paid on the way to the done screen (it says so there).
+  const [paidPlan, setPaidPlan] = useState(false);
   // The step that can fix what the server refused at "Put it live" (a business name, the place),
   // so the error can offer to go straight there instead of Back, Back, Back.
   const [fixAt, setFixAt] = useState<StepKey | null>(null);
@@ -375,7 +377,8 @@ export function useHostWizard() {
     }
   };
 
-  const finish = async () => {
+  const finish = async (paid = false) => {
+    setPaidPlan(paid);
     try { sessionStorage.removeItem(draftKey); } catch { /* private mode */ }
     await refresh();
     goTo('done');
@@ -442,7 +445,7 @@ export function useHostWizard() {
           description: 'aangan host plan · first year',
           prefill: { contact: user.phone, name: user.name },
         });
-        await finish();
+        await finish(true);
       }
     } catch (e: any) {
       const detail: string = e?.response?.data?.detail || '';
@@ -469,12 +472,12 @@ export function useHostWizard() {
     if (!payModal) return;
     await completeMockPayment({ order_id: payModal.order.id, flow: 'provider_registration', reference_id: payModal.providerId });
     setPayModal(null);
-    await finish();
+    await finish(true);
   };
 
   return {
     t, user, nav, d, set, pickType, steps, i, step, err, setErr, fixAt, busy, uploading, next, back, goTo, adding,
-    addPhotos, photoUrl, startingPrice, offerLabels, submit, payModal, setPayModal, finishMockPayment,
+    addPhotos, photoUrl, startingPrice, offerLabels, submit, payModal, setPayModal, finishMockPayment, paidPlan,
   };
 }
 
