@@ -76,6 +76,9 @@
 .ag-onboard-pchip svg.i { width: 16px; height: 16px; color: var(--r); }
 .ag-onboard-pchip[aria-pressed="true"] { background: var(--r); border-color: var(--r); color: var(--on-r); }
 .ag-onboard-pchip[aria-pressed="true"] svg.i { color: var(--on-r); }
+/* "Add your own" is an action, not an option: dashed accent outline like the Add photos tile. */
+.ag-onboard-pchip.addown { border: 1.5px dashed var(--r); background: transparent; color: var(--r); font-weight: 600; }
+.ag-onboard-pchip.addown svg.i { width: 18px; height: 18px; }
 
 /* 4. price: small chips, stepper with a typed amount */
 .ag-onboard-chips { display: flex; flex-wrap: wrap; gap: 8px; }

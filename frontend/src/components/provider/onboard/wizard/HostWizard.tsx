@@ -486,7 +486,7 @@ function ExtrasStep({ w }: { w: HostWizard }) {
           </button>
         ))}
         {!adding && own.length < MAX_OWN_OFFERS && (
-          <button type="button" className="ag-onboard-pchip" onClick={() => setAdding(true)} data-testid="wz-offer-add">
+          <button type="button" className="ag-onboard-pchip addown" onClick={() => setAdding(true)} data-testid="wz-offer-add">
             <Icon name="plus" />{t('ob.wz.offer_add', 'Add your own')}
           </button>
         )}
