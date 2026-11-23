@@ -189,7 +189,7 @@ const TYPE_WORD: Record<HostType, string> = {
 };
 
 /**
- * wa.me link to the aangan team with the message already written, for "Need help? WhatsApp us".
+ * wa.me link to the aangan team with the message already written, for the "Support" link.
  * Null when there is no usable help number.
  */
 export function helpWhatsAppLink(supportPhone: string | null | undefined, opts: { type?: HostType | null; name?: string; phone?: string } = {}): string | null {

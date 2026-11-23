@@ -128,6 +128,9 @@ function PlaceStep({ w }: { w: HostWizard }) {
   const [looking, setLooking] = useState(false);
   const [locating, setLocating] = useState(false);
   const perm = useGeoPermission();
+  // GPS can take up to 12 s; a host who goes Back meanwhile must not get this step's error on another.
+  const live = useRef(true);
+  useEffect(() => { live.current = true; return () => { live.current = false; }; }, []);
 
   // Typed names: the hubs first, then the geocoder (proxied by the backend) for villages and roads.
   useEffect(() => {
@@ -180,6 +183,7 @@ function PlaceStep({ w }: { w: HostWizard }) {
     setLocating(true);
     try {
       const p = await exactPosition();
+      if (!live.current) return;
       const { latitude: lat, longitude: lng, accuracy } = p.coords;
       // A fix this rough comes from Wi-Fi or the mobile network, which usually means the phone's
       // Location (GPS) is off; say so rather than telling a host in the hills they are outside them.
@@ -189,9 +193,9 @@ function PlaceStep({ w }: { w: HostWizard }) {
       setFocus((f) => f + 1);
       void nameFromPin(lat, lng, n);
     } catch (e) {
-      setErr(e === 'denied' ? t('ob.wz.loc_denied') : t('ob.wz.noloc'));
+      if (live.current) setErr(e === 'denied' ? t('ob.wz.loc_denied') : t('ob.wz.noloc'));
     } finally {
-      setLocating(false);
+      if (live.current) setLocating(false);
     }
   };
 
