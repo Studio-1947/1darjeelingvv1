@@ -12,7 +12,7 @@ import { groupPhotos } from '@/lib/photoGroups';
 import Seo from '@/components/Seo';
 import BookingConfirmation from '@/components/BookingConfirmation';
 import DeliveryRequestButton from '@/components/DeliveryRequestButton';
-import { Box, ButtonLink, Status } from '@/components/ag';
+import { Box, Status } from '@/components/ag';
 import { Icon } from '@/components/ag/Icon';
 import BookingFeeModal from '@/components/listing-detail/BookingFeeModal';
 import RequestSent from '@/components/listing-detail/RequestSent';
@@ -273,20 +273,9 @@ export default function ListingDetail() {
           </p>
         ) : item.type === 'event' ? <p className="ag-listing-lead"><span className="ag-small">{t('common.entry_varies')}</span></p> : null}
 
-        {/* Website beside Ask to book (the fixed bar carries Book now), then the "asking is free" line. */}
+        {/* The "asking is free" line (the fixed bar carries Book now; Website sits in the pill row below). */}
         {reservable && !ownPreview && !available && <UnavailableNotice roomsFull={roomsFull} />}
-        {(item.host_page_path || bookable) && (
-          <div className="ag-listing-stack">
-            {item.host_page_path && (
-              <div className="ag-row">
-                <ButtonLink variant="tonal" go className="ag-listing-web" to={item.host_page_path} icon={<Icon name="globe" />} data-testid="listing-website">
-                  {t('listing.pf_site', 'Website')}
-                </ButtonLink>
-              </div>
-            )}
-            {bookable && <p className="ag-small">{t('listing.askfee', 'Sending a request costs ₹1, or nothing with the aangan pass.')} {t('listing.numlater', 'You get the phone number after you book.')}</p>}
-          </div>
-        )}
+        {bookable && <p className="ag-small">{t('listing.askfee', 'Sending a request costs ₹1, or nothing with the aangan pass.')} {t('listing.numlater', 'You get the phone number after you book.')}</p>}
 
         {delivery && (
           <div className="ag-listing-dlv" data-testid="listing-host-links">
@@ -295,7 +284,7 @@ export default function ListingDetail() {
           </div>
         )}
 
-        <ItemActions item={item} about={c.about || item.description} onDirections={openMaps} onShare={shareIt} />
+        <ItemActions item={item} website={item.host_page_path} onDirections={openMaps} onShare={shareIt} />
 
         <AboutSection item={item} about={c.about} languages={languages} />
 

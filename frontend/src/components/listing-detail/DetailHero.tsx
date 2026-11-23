@@ -4,7 +4,7 @@ import SmartImg from '@/components/SmartImg';
 import { listingImage } from '@/lib/listingContent';
 import { Icon } from '@/components/ag/Icon';
 import { Status } from '@/components/ag';
-import AudioGuide from '@/components/AudioGuide';
+import { Link } from 'react-router-dom';
 import { useFavorites } from '@/context/FavoritesContext';
 import { useLoginGate } from '@/components/LoginGate';
 import type { ShareOutcome } from '@/lib/share';
@@ -87,12 +87,12 @@ function StripTile({ src, alt, tag, testid }: { src: string; alt: string; tag?: 
 }
 
 /**
- * The row under the price (prototype .itembtns): Listen, Direction, then save and share as round
- * outlined icon buttons.
+ * The one row of pills under the price: Website (the host's own page, when there is one), Direction,
+ * then save and share as round outlined icon buttons. Kept on a single line.
  */
-export function ItemActions({ item, about, onDirections, onShare }: {
+export function ItemActions({ item, website, onDirections, onShare }: {
   item: any;
-  about: string;
+  website?: string | null;
   onDirections: () => void;
   onShare: () => Promise<ShareOutcome>;
 }) {
@@ -120,7 +120,11 @@ export function ItemActions({ item, about, onDirections, onShare }: {
   return (
     <>
       <div className="ag-listing-acts" data-testid="detail-actions">
-        <AudioGuide title={item.title} aboutText={about} />
+        {website && (
+          <Link to={website} className="ag-btn tonal ag-listing-web" data-testid="listing-website">
+            <Icon name="globe" /> {t('listing.pf_site', 'Website')}
+          </Link>
+        )}
         <button type="button" className={`ag-listing-rowic${liked ? ' on' : ''}`} aria-pressed={liked}
           aria-label={liked ? t('listing.saved', 'Saved') : t('listing.save', 'Save')} title={liked ? t('listing.saved', 'Saved') : t('listing.save', 'Save')}
           onClick={handleLike} data-testid="detail-like">
