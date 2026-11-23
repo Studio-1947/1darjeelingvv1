@@ -3658,7 +3658,7 @@
       "trade_license": "Shop & Establishment / trade licence",
       "vehicle_insurance": "Vehicle insurance",
       "vehicle_rc": "Vehicle registration (RC)",
-      "photo_id": "Photo ID: voter ID, driving licence or passport (not Aadhaar)",
+      "photo_id": "Photo ID: voter ID, driving licence or passport",
       "driver_vehicle_photo": "Selfie with your vehicle"
     }
   },

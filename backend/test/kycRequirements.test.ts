@@ -24,7 +24,7 @@ describe('kycRequirements', () => {
 
   it('the ID row takes any photo ID, not only Aadhaar', () => {
     for (const type of ['homestay', 'driver', 'guide', 'cafe', 'shop']) {
-      expect(requirementsFor(type).find((r) => r.docType === 'aadhaar')?.label).toBe('Photo ID: voter ID, driving licence or passport (not Aadhaar)');
+      expect(requirementsFor(type).find((r) => r.docType === 'aadhaar')?.label).toBe('Photo ID: voter ID, driving licence or passport');
     }
   });
 
