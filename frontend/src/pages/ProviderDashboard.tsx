@@ -6,7 +6,6 @@ import { toast } from 'sonner';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import BookingCard, { BAND_ICON } from '@/components/provider/dashboard/BookingCard';
-import EditListingModal from '@/components/provider/dashboard/EditListingModal';
 import KycSection from '@/components/provider/dashboard/KycSection';
 import VerificationTracker from '@/components/provider/dashboard/VerificationTracker';
 import { HostPassLine } from '@/components/provider/dashboard/HostPlanCard';
@@ -55,7 +54,6 @@ function ProviderDashboardPage() {
   const sParam = params.get('s');
   const view: View = sParam === 'bookings' || sParam === 'documents' ? sParam : 'main';
   const setView = (v: View) => setParams(v === 'main' ? {} : { s: v });
-  const [selectedListing, setSelectedListing] = useState<any>(null);
   const [activeListingId, setActiveListingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
@@ -286,9 +284,6 @@ function ProviderDashboardPage() {
     </div>
   );
 
-  const editModal = selectedListing && (
-    <EditListingModal listing={selectedListing} onClose={() => setSelectedListing(null)} onSave={loadDashboard} />
-  );
 
   /* ---------- Bookings screen ---------- */
   if (view === 'bookings') {
@@ -461,7 +456,7 @@ function ProviderDashboardPage() {
               return (
                 <div key={l.id} className="ag-host-lcard" data-testid={`host-listing-${l.id}`}>
                   <button type="button" className="ag-host-lphoto" style={l.image ? { backgroundImage: `url(${l.image})` } : undefined}
-                    aria-label={l.title} onClick={() => setSelectedListing(l)} data-testid={`edit-listing-${l.id}`}>
+                    aria-label={l.title} onClick={() => nav(`/provider/listings/${l.id}`)} data-testid={`edit-listing-${l.id}`}>
                     {!l.image && <Icon name={BAND_ICON[l.type] || 'home'} />}
                   </button>
                   <div className="ag-host-lbody">
@@ -584,7 +579,6 @@ function ProviderDashboardPage() {
         </div>
       )}
 
-      {editModal}
 
       <ListingFormModal open={addOpen} onClose={() => setAddOpen(false)} onSubmit={handleAddListing} />
     </div>

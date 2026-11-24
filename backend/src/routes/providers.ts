@@ -773,7 +773,11 @@ router.patch('/me', authenticateToken, async (req: Request, res: Response) => {
     for (const l of own) {
       const next: Partial<typeof schema.listings.$inferInsert> = {};
       if (profilePatch) next.extras = { ...(l.extras || {}), ...businessPatch, ...(l.id === targetId ? propertyPatch : {}) };
-      if (set.images) next.image = set.images[0];
+      // The business cover reaches a listing that shows it (or has none); a listing given its own
+      // cover on its page keeps it (each listing's photos are its own, decision 2026-11-24).
+      if (set.images) {
+        if (!l.image || l.image === (provider.images || [])[0]) next.image = set.images[0];
+      }
       // No chosen cover: the listing shows the host's first photo, and follows it when photos change.
       else if (profilePatch && 'images' in profilePatch && !(provider.images || [])[0]) {
         next.image = coverAfterPhotosChange(l.image, l.extras, next.extras);

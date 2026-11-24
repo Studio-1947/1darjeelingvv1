@@ -26,6 +26,7 @@ const Login = lazy(() => import('@/pages/Login'));
 const ProviderOnboard = lazy(() => import('@/pages/ProviderOnboard'));
 const ProviderDashboard = lazy(() => import('@/pages/ProviderDashboard'));
 const ProviderProfile = lazy(() => import('@/pages/ProviderProfile'));
+const ProviderListingEdit = lazy(() => import('@/pages/ProviderListingEdit'));
 const TouristDashboard = lazy(() => import('@/pages/TouristDashboard'));
 const MyTrips = lazy(() => import('@/pages/MyTrips'));
 const MyListings = lazy(() => import('@/pages/MyListings'));
@@ -124,6 +125,7 @@ export default function App() {
                     <Route path="/providers" element={<Navigate to="/provider/onboard" replace />} />
                     <Route path="/provider/dashboard" element={<ProviderDashboard />} />
                     <Route path="/provider/profile" element={<ProviderProfile />} />
+                    <Route path="/provider/listings/:id" element={<ProviderListingEdit />} />
                     <Route path="/profile/edit" element={<EditProfile />} />
                     <Route path="/dashboard" element={<TouristDashboard />} />
                     <Route path="/my-trips" element={<TravellerOnly><MyTrips /></TravellerOnly>} />

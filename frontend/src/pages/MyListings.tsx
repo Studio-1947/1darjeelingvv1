@@ -8,7 +8,6 @@ import { Icon } from '@/components/ag/Icon';
 import ListingJourney from '@/components/provider/dashboard/ListingJourney';
 import InviteHostLink from '@/components/provider/InviteHostLink';
 import ListingFormModal from '@/components/ListingFormModal';
-import EditListingModal from '@/components/provider/dashboard/EditListingModal';
 import HostPlanCard from '@/components/provider/dashboard/HostPlanCard';
 import { useSeo } from '@/components/Seo';
 import { Box, Button, ButtonLink, PageHead, Status } from '@/components/ag';
@@ -24,7 +23,6 @@ export default function MyListings() {
   const [provider, setProvider] = useState<any>(null);
   const [listings, setListings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedListing, setSelectedListing] = useState<any>(null);
   const [listingModal, setListingModal] = useState<{ open: boolean; editing: any | null }>({
     open: false,
     editing: null,
@@ -166,7 +164,7 @@ export default function MyListings() {
             </div>
             <div className="acts">
               <ButtonLink to={`/listing/${l.id}`} variant="text" data-testid={`view-listing-${l.id}`}>{t('common.view')}</ButtonLink>
-              <Button variant="text" onClick={() => setSelectedListing(l)} data-testid={`edit-listing-${l.id}`}>{t('common.edit')}</Button>
+              <Button variant="text" onClick={() => nav(`/provider/listings/${l.id}`)} data-testid={`edit-listing-${l.id}`}>{t('common.edit')}</Button>
               <Button variant="text" className="ag-host-del" onClick={() => handleDeleteListing(l.id)} data-testid={`delete-listing-${l.id}`}>{t('common.delete')}</Button>
             </div>
           </Box>
@@ -176,13 +174,6 @@ export default function MyListings() {
         <InviteHostLink />
       </div>
 
-      {selectedListing && (
-        <EditListingModal
-          listing={selectedListing}
-          onClose={() => setSelectedListing(null)}
-          onSave={loadData}
-        />
-      )}
 
       <ListingFormModal
         open={listingModal.open}

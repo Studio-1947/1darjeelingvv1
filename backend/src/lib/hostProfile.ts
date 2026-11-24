@@ -42,12 +42,18 @@ export const MAX_ROOM_OCC = 50;
 /** Most extra guests a room can take on an extra mattress (user decision 2026-11-21: +1 or +2). */
 export const MAX_EXTRA_BEDS = 2;
 /**
- * Profile fields that belong to one property, not to the whole business (user decision 2026-11-21).
- * A host can run several homestays: each listing keeps its own rooms, food, guest occupancy and
- * amenities, and saving the profile writes them to one listing only (routes/providers.ts PATCH /me).
+ * Profile fields that belong to one listing, not to the whole business (user decisions 2026-11-21
+ * for homestays, 2026-11-24 for every type). A host can run several homestays, cafes, shops or
+ * vehicles: each listing keeps its own offers (rooms and food, menu, goods, services, routes), the
+ * details that go with them, and its photos. Saving writes them to one listing only
+ * (routes/providers.ts PATCH /me); the business profile mirrors the first listing's.
  */
 export const PROPERTY_FIELDS: Record<string, readonly string[]> = {
-  homestay: ['rooms', 'meals', 'capacity', 'amenities'],
+  homestay: ['rooms', 'meals', 'capacity', 'amenities', 'images', 'photo_kinds'],
+  cafe: ['menu', 'amenities', 'capacity', 'opening_hours', 'images'],
+  shop: ['goods', 'capacity', 'opening_hours', 'images'],
+  guide: ['services', 'images'],
+  driver: ['seats', 'routes', 'images'],
 };
 export const SOCIAL_KEYS = ['instagram', 'facebook', 'youtube', 'website'] as const;
 /**
