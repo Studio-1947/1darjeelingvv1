@@ -90,9 +90,16 @@ export function isKnownPlace(text: unknown, extra: string[] = []): boolean {
 }
 
 /**
- * The box aangan serves. The backend refuses a host's map pin outside it (backend/src/lib/mapsLink.ts
- * SERVICE_REGION); keep the two identical so the sign-up wizard says so before "Put it live".
+ * Where hosts can list: anywhere in India (a box around the mainland, Ladakh and the islands).
+ * The backend refuses a host's map pin outside it (backend/src/lib/mapsLink.ts LISTING_REGION);
+ * keep the two identical so the sign-up wizard says so before "Put it live".
  */
+export const LISTING_REGION = { minLat: 6.4, maxLat: 37.2, minLng: 68.0, maxLng: 97.5 } as const;
+export function inListingRegion(lat: number, lng: number): boolean {
+  return lat >= LISTING_REGION.minLat && lat <= LISTING_REGION.maxLat && lng >= LISTING_REGION.minLng && lng <= LISTING_REGION.maxLng;
+}
+
+/** The Darjeeling hills, where the curated spots and the map tiles are. Host listings use LISTING_REGION. */
 export const SERVICE_REGION = { minLat: 26.35, maxLat: 27.4, minLng: 87.85, maxLng: 89.0 } as const;
 export function inServiceRegion(lat: number, lng: number): boolean {
   return lat >= SERVICE_REGION.minLat && lat <= SERVICE_REGION.maxLat && lng >= SERVICE_REGION.minLng && lng <= SERVICE_REGION.maxLng;

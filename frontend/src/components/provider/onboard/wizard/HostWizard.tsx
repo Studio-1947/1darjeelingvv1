@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import api from '@/lib/api';
 import { rupees, useHostPlanPrice } from '@/lib/prices';
 import { SUPPORTED_IMAGE_ACCEPT } from '@/lib/uploadImage';
-import { distanceTo, inServiceRegion } from '@/lib/places';
+import { distanceTo, inListingRegion } from '@/lib/places';
 import { nearestAreaLabel } from '@/lib/hostQuickFill';
 import { CircleNotch as Loader2 } from '@phosphor-icons/react';
 import { capPrice, isValidPhone, MAX_PRICE } from '@/lib/hostFormChecks';
@@ -16,6 +16,7 @@ import Sheet, { SheetHead } from '@/components/listing-detail/Sheet';
 import PaymentDoneCard from '@/components/PaymentDoneCard';
 import GstDetails from '@/components/provider/GstDetails';
 import { gstDraftError } from '@/lib/gstin';
+import ConsentCheck from '@/components/ConsentCheck';
 
 /** "Add your own" on the What do you give? step; the server takes up to 30 amenities of 60 characters. */
 const MAX_OWN_OFFERS = 8;
@@ -97,7 +98,7 @@ function FeeList({ plain, type }: { plain?: boolean; type?: HostType | '' }) {
 
 /* ---------- 1. What do you want to list? ---------- */
 function TypeStep({ w }: { w: HostWizard }) {
-  const { t, d, pickType } = w;
+  const { t, d, set, setErr, pickType } = w;
   return (
     <Frame w={w} title={t('ob.wz.what')} sub={t('ob.wz.onelist')}
       cta={(
@@ -117,7 +118,10 @@ function TypeStep({ w }: { w: HostWizard }) {
           </button>
         ))}
       </div>
-
+      {/* The same I Agree as the sign-in screen, asked of every host before their details are taken.
+          A signed-out host finds it already ticked on the sign-in screen. */}
+      <ConsentCheck checked={d.agreed} onChange={(on) => { set({ agreed: on }); if (on) setErr(''); }}
+        testId="wz-consent" inputTestId="wz-agree" />
     </Frame>
   );
 }
@@ -170,12 +174,15 @@ function PlaceStep({ w }: { w: HostWizard }) {
   };
   const nearbyName = (lat: number, lng: number) => {
     const km = (h: Place) => distanceTo({ lat, lng }, { latitude: h.lat, longitude: h.lng })?.km ?? 1e9;
-    return nearestAreaLabel(lat, lng) || [...HUBS].sort((a, b) => km(a) - km(b))[0]?.name || 'Darjeeling';
+    // Hosts list from anywhere in India: a hub's name only when it is close by; elsewhere a plain
+    // label until the street name comes back from the geocoder.
+    const hub = [...HUBS].sort((a, b) => km(a) - km(b))[0];
+    return nearestAreaLabel(lat, lng) || (hub && km(hub) <= 30 ? hub.name : t('ob.wz.loc_pinned', 'Pinned location'));
   };
   const pick = (p: Place) => { seq.current += 1; setNaming(false); setErr(''); set({ place: p }); setFocus((f) => f + 1); };
   const movePin = (lat: number, lng: number) => {
     const n = ++seq.current;
-    setErr(inServiceRegion(lat, lng) ? '' : t('ob.wz.loc_outside'));
+    setErr(inListingRegion(lat, lng) ? '' : t('ob.wz.loc_outside'));
     set({ place: { name: nearbyName(lat, lng), lat, lng } });
     void nameFromPin(lat, lng, n);
   };
@@ -190,7 +197,7 @@ function PlaceStep({ w }: { w: HostWizard }) {
       const { latitude: lat, longitude: lng, accuracy } = p.coords;
       // A fix this rough comes from Wi-Fi or the mobile network, which usually means the phone's
       // Location (GPS) is off; say so rather than telling a host in the hills they are outside them.
-      if (!inServiceRegion(lat, lng)) { setErr(t(accuracy > ROUGH_FIX_M ? 'ob.wz.loc_rough' : 'ob.wz.loc_outside')); return; }
+      if (!inListingRegion(lat, lng)) { setErr(t(accuracy > ROUGH_FIX_M ? 'ob.wz.loc_rough' : 'ob.wz.loc_outside')); return; }
       const n = ++seq.current;
       set({ place: { name: nearbyName(lat, lng), lat, lng, accuracy: Math.round(accuracy) } });
       setFocus((f) => f + 1);
@@ -321,7 +328,7 @@ function NameStep({ w }: { w: HostWizard }) {
       <TextField label={label} value={d.name} onChange={(e) => set({ name: e.target.value })} autoComplete="off" maxLength={120} data-testid="wz-name" />
       <TextField label={t('ob.wz.phone')} value={d.phone} onChange={(e) => set({ phone: e.target.value.replace(/\D/g, '').slice(0, 10) })}
         type="tel" inputMode="numeric" maxLength={10} autoComplete="tel-national" data-testid="onboard-phone"
-        error={phoneBad ? t('ob.wz.badphone') : undefined} errorId="onboard-phone-error" />
+        hint={t('ob.wz.phone_hint')} error={phoneBad ? t('ob.wz.badphone') : undefined} errorId="onboard-phone-error" />
     </Frame>
   );
 }

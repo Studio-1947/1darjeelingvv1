@@ -20,7 +20,7 @@ import { isPlausiblePhone } from '../lib/phone';
 import { rateLimiter } from '../middleware/rateLimiter';
 import { normaliseVehicleNumber, VEHICLE_TYPE_MAX_LENGTH } from '../lib/vehicleNumber';
 import { recomputeKycStatus } from './kyc';
-import { googleMapsUrl, inServiceRegion, MapsLinkError, resolveMapsLink } from '../lib/mapsLink';
+import { googleMapsUrl, inListingRegion, MapsLinkError, resolveMapsLink } from '../lib/mapsLink';
 import {
   MAX_CO_OWNERS, claimCoOwnerInvites, dropHostRoleIfUnused, hostAccessFor, myProvider, newMemberId, ownListingIds, ownersOf,
 } from '../lib/hostAccess';
@@ -208,9 +208,9 @@ router.post('/onboard', authenticateToken, async (req: Request, res: Response) =
     (normalizedLatitude !== null || normalizedLongitude !== null) &&
     (normalizedLatitude === null ||
       normalizedLongitude === null ||
-      !inServiceRegion({ latitude: normalizedLatitude, longitude: normalizedLongitude }))
+      !inListingRegion({ latitude: normalizedLatitude, longitude: normalizedLongitude }))
   ) {
-    return res.status(400).json({ detail: 'That map pin is outside the area aangan covers. Pick a place in the Darjeeling region.' });
+    return res.status(400).json({ detail: 'That map pin is outside India. Pick the place where your business is.' });
   }
 
   let provider: typeof schema.providers.$inferSelect;
@@ -528,9 +528,9 @@ router.post(
       if (err instanceof MapsLinkError) return res.status(400).json({ detail: err.message });
       throw err;
     }
-    if (!inServiceRegion(pin)) {
+    if (!inListingRegion(pin)) {
       return res.status(400).json({
-        detail: 'That pin is outside the Darjeeling area we serve. Check you picked the right place in Google Maps.',
+        detail: 'That pin is outside India. Check you picked the right place in Google Maps.',
       });
     }
 
@@ -613,9 +613,9 @@ router.post(
       });
     }
     const pin = { latitude, longitude };
-    if (!inServiceRegion(pin)) {
+    if (!inListingRegion(pin)) {
       return res.status(400).json({
-        detail: 'Your phone says you are outside the Darjeeling area we serve. Capture your location while you are at your premises.',
+        detail: 'Your phone says you are outside India. Capture your location while you are at your premises.',
       });
     }
 

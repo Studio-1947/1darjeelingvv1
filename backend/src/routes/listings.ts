@@ -11,7 +11,7 @@ import { canSeeProviderPhone, listExtras, publicExtras } from '../lib/listingCon
 import { rateLimiter } from '../middleware/rateLimiter';
 import { log } from '../config';
 import { recomputeKycStatus } from './kyc';
-import { googleMapsUrl, inServiceRegion, MapsLinkError, resolveMapsLink } from '../lib/mapsLink';
+import { googleMapsUrl, inListingRegion, MapsLinkError, resolveMapsLink } from '../lib/mapsLink';
 import { storeBase64Image, ImageUploadError } from '../lib/imageUpload';
 import { routeParam } from '../lib/routeParam';
 import { blockedRanges, isDateExclusive } from '../lib/bookingAvailability';
@@ -674,9 +674,9 @@ router.post(
       if (err instanceof MapsLinkError) return res.status(400).json({ detail: err.message });
       throw err;
     }
-    if (!inServiceRegion(pin)) {
+    if (!inListingRegion(pin)) {
       return res.status(400).json({
-        detail: 'That pin is outside the Darjeeling area we serve. Check you picked the right place in Google Maps.',
+        detail: 'That pin is outside India. Check you picked the right place in Google Maps.',
       });
     }
 

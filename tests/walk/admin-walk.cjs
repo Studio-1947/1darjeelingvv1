@@ -159,6 +159,7 @@ async function onboardHost(type, opts = {}) {
       return !err;
     };
     await p.click(`[data-testid="wz-type-${type}"]`);
+    await p.check('[data-testid="wz-agree"]');
     await p.click('[data-testid="plan-now"]');
     let ok = await nextStep('type');
     if (ok) { await p.fill('[data-testid=wz-place-search]', 'Darjeeling'); await p.click('[data-testid="wz-place-Darjeeling"]'); ok = await nextStep('place'); }

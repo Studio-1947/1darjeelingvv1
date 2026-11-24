@@ -64,11 +64,13 @@ describe('live location capture', () => {
     expect((await captureLiveLocation(token)).status).toBe(200);
   });
 
-  it('refuses a position outside the area we serve', async () => {
+  it('refuses a position outside India, and takes one anywhere in it', async () => {
     const { token } = await onboardActiveProvider({ name: 'Live Away', businessType: 'cafe' });
+    const london = await captureLiveLocation(token, { latitude: 51.5074, longitude: -0.1278 });
+    expect(london.status).toBe(400);
+    expect(london.body.detail).toMatch(/outside India/);
     const delhi = await captureLiveLocation(token, { latitude: 28.6139, longitude: 77.209 });
-    expect(delhi.status).toBe(400);
-    expect(delhi.body.detail).toMatch(/Darjeeling/);
+    expect(delhi.status).toBe(200);
   });
 
   it('refuses a malformed reading', async () => {

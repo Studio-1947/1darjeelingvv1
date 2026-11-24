@@ -28,14 +28,14 @@ describe('provider onboarding map pin', () => {
     expect(res.body.provider.longitude).toBeCloseTo(88.2677, 4);
   });
 
-  it('refuses a pin outside the service region', async () => {
+  it('refuses a pin outside India', async () => {
     const { token } = await registerUser({ name: 'Far Away Onboarder', role: 'provider' });
     const res = await request(app)
       .post('/api/providers/onboard')
       .set('Authorization', `Bearer ${token}`)
       .send(onboardPayload({ latitude: 37.422, longitude: -122.084 }));
     expect(res.status).toBe(400);
-    expect(res.body.detail).toMatch(/outside the area/i);
+    expect(res.body.detail).toMatch(/outside India/i);
   });
 
   it('refuses half a pin', async () => {
