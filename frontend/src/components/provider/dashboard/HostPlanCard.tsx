@@ -233,7 +233,7 @@ export default function HostPlanCard({ provider, user, reviews, onRenewed }: {
             <Button variant="primary" go onClick={startFree} disabled={busy} data-testid="host-plan-start-free">{t('ob.free.cta')}</Button>
           )}
           {canRenew && (
-            <Button variant={notStarted || (grace && !grace.paused) ? 'std' : 'primary'} onClick={renew} disabled={busy} data-testid="host-plan-renew">
+            <Button variant={notStarted ? 'std' : 'primary'} go={!notStarted} onClick={renew} disabled={busy} data-testid="host-plan-renew">
               {busy ? t('pd.plan_renewing') : grace ? t('pd.grace.pay_cta', { total: rupees(firstYear.total) }) : registrationPending ? t('pd.plan_activate_cta', { total: rupees(firstYear.total) }) : t('pd.plan_renew_cta', { total: rupees(renewal.total) })}
             </Button>
           )}
