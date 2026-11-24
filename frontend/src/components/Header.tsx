@@ -5,8 +5,6 @@ import { useAuth } from '@/context/AuthContext';
 import Wordmark from '@/components/Wordmark';
 import useGoBack from '@/hooks/useGoBack';
 import api from '@/lib/api';
-import { APP_STORE_URLS } from '@/constants/app';
-import AppComingSoon, { phonePlatform } from '@/components/AppComingSoon';
 import { Icon } from '@/components/ag/Icon';
 import { Status } from '@/components/ag';
 import { useMode } from '@/lib/theme';
@@ -36,9 +34,9 @@ function useHomeSearchScrolledAway(active: boolean) {
 
 /**
  * Top bar, as the red /7 prototype draws it (app.js render()):
- * Back on every screen except the tab roots; the full wordmark always; then App (Home only for now,
- * while the app is coming soon; shrinking to its icon when Search is showing), Search (everywhere but Home, where it appears
- * once the home search has scrolled away), the bell (always), and Log in (tab roots, signed out).
+ * Back on every screen except the tab roots; the full wordmark always; then Search (everywhere but
+ * Home, where it appears once the home search has scrolled away), the theme switch, the bell (always),
+ * and Log in (tab roots, signed out). Getting the app lives on the notifications page (GetAppCard).
  */
 export default function Header() {
   const { t } = useTranslation();
@@ -47,8 +45,6 @@ export default function Header() {
   const navigate = useNavigate();
   const goBack = useGoBack();
   const [mode, setMode] = useMode();
-  const [appSoon, setAppSoon] = React.useState(false);
-  const closeAppSoon = React.useCallback(() => setAppSoon(false), []);
 
   // Unread notifications, for the badge on the bell. Re-read on every page change and when the
   // notifications page marks something read.
@@ -78,14 +74,6 @@ export default function Header() {
   const homeSearchAway = useHomeSearchScrolledAway(onHome);
   const showSearch = !onHome || homeSearchAway;
 
-  // A phone whose store already has the app goes straight there; otherwise the "coming soon" sheet.
-  const getApp = () => {
-    const mine = phonePlatform();
-    const url = mine ? APP_STORE_URLS[mine] : '';
-    if (url) window.open(url, '_blank', 'noopener');
-    else setAppSoon(true);
-  };
-
   const search = () => {
     const box = document.querySelector<HTMLElement>('[data-home-search]');
     if (onHome && box) {
@@ -112,18 +100,6 @@ export default function Header() {
         </Link>
 
         <div className="ag-topact">
-          {onHome && (
-            <button
-              type="button"
-              className={`ag-getapp${showSearch && !user ? ' compact' : ''}`}
-              onClick={getApp}
-              data-testid="header-download-app"
-              aria-label={t('nav.download_app')}
-            >
-              <Icon name="download" />
-              <span>{t('ui.header.app')}</span>
-            </button>
-          )}
           {showSearch && (
             <button type="button" className="ag-iconbtn" onClick={search} aria-label={t('widget.search')} data-testid="header-search">
               <Icon name="search" />
@@ -157,7 +133,6 @@ export default function Header() {
           )}
         </div>
       </div>
-      <AppComingSoon open={appSoon} onClose={closeAppSoon} />
     </header>
   );
 }

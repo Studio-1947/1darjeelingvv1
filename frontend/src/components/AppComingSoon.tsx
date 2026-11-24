@@ -2,7 +2,7 @@ import React from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { X } from '@phosphor-icons/react';
-import { Button, ButtonA, IconButton, Status } from '@/components/ag';
+import { Box, Button, ButtonA, IconButton, Status } from '@/components/ag';
 import { Icon } from '@/components/ag/Icon';
 import { APP_STORE_URLS } from '@/constants/app';
 
@@ -22,6 +22,38 @@ export const phonePlatform = (): Platform | null => {
   if (/android/i.test(ua)) return 'android';
   return null;
 };
+
+/**
+ * "Get the app", pinned at the top of the notifications page (it used to be the header's App
+ * button). A phone whose store already has the app goes straight there; otherwise the sheet below.
+ */
+export function GetAppCard() {
+  const { t } = useTranslation();
+  const [open, setOpen] = React.useState(false);
+  const close = React.useCallback(() => setOpen(false), []);
+  const live = Boolean(APP_STORE_URLS.android || APP_STORE_URLS.ios);
+  const getApp = () => {
+    const mine = phonePlatform();
+    const url = mine ? APP_STORE_URLS[mine] : '';
+    if (url) window.open(url, '_blank', 'noopener');
+    else setOpen(true);
+  };
+  return (
+    <>
+      <Box className="!flex-row items-center !gap-3.5" data-testid="notes-get-app">
+        <img src="/logo192.png" alt="" width={44} height={44} className="w-11 h-11 flex-none rounded-[12px]" />
+        <span className="min-w-0 flex-1">
+          <b className="block font-medium text-[var(--ink-strong)]">{live ? t('appsoon.h_live', 'Get the aangan app') : t('appsoon.h', 'The aangan app is coming soon')}</b>
+          <span className="ag-small">{t('appsoon.card_s', 'For Android and iPhone.')}</span>
+        </span>
+        <Button size="sm" icon={<Icon name="download" />} onClick={getApp} className="flex-none" data-testid="notes-get-app-open">
+          {t('ui.header.app', 'App')}
+        </Button>
+      </Box>
+      <AppComingSoon open={open} onClose={close} />
+    </>
+  );
+}
 
 /** A sheet from the bottom on a phone, a centred card on a wide screen, over a blurred page. Closes with the X, OK, Escape or a tap outside. */
 export default function AppComingSoon({ open, onClose }: { open: boolean; onClose: () => void }) {

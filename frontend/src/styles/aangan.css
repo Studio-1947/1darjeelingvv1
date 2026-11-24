@@ -270,12 +270,6 @@ svg.i { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-widt
   .ag-brand { position: relative; display: flex; align-items: center; flex: 1; min-width: 0; height: 32px; color: var(--ink-strong); text-decoration: none; }
   .ag-brand .word { height: 26px; width: 108px; }
   .ag-topact { display: flex; align-items: center; gap: 6px; flex: none; }
-  .ag-getapp { height: 40px; display: inline-flex; align-items: center; gap: 6px; padding: 0 16px 0 12px; border-radius: var(--pill); border: 1px solid var(--outline); background: var(--surface); color: var(--ink-strong); font: 500 14px/20px var(--font); white-space: nowrap; cursor: pointer; }
-  /* App shows its label, except on very narrow phones and while the Search button is showing (prototype) */
-  .ag-getapp svg { width: 18px; height: 18px; }
-  .ag-getapp.compact { width: 40px; padding: 0; justify-content: center; }
-  .ag-getapp.compact span { display: none; }
-  @media (max-width: 380px) { .ag-getapp { width: 40px; padding: 0; justify-content: center; } .ag-getapp span { display: none; } }
   .ag-loginbtn svg { width: 18px; height: 18px; }
   .ag-loginbtn { height: 40px; display: inline-flex; align-items: center; gap: 4px; padding: 0 12px 0 16px; border-radius: var(--pill); border: 0; background: var(--r); color: var(--on-r); font: 500 14px/20px var(--font); white-space: nowrap; text-decoration: none; cursor: pointer; }
   .ag-tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; width: 100%; max-width: var(--wmax); margin-inline: auto; background: rgb(var(--page-rgb) / .95); border-top: 1px solid var(--hairline); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); padding: 0 8px env(safe-area-inset-bottom, 0px); }
