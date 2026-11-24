@@ -6,7 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ag';
 
 /**
- * Log out and Delete account, at the foot of the account pages (traveller Account tab and the
+ * Log out and Delete account, at the foot of the profile pages (traveller Profile and the
  * business profile). The header has no profile menu, so this is the way out at every width.
  */
 export default function SignOutButton({ className }: { className?: string }) {
