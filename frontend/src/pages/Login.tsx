@@ -277,7 +277,7 @@ export default function Login() {
               inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6,16}" title={t('auth.otp_six_digits')}
               // Six empty slots, not "123456": a sample number read as a code already typed in.
               data-testid="login-otp" placeholder="––––––" className="[&_input]:tracking-[0.3em] [&_input]:tabular-nums [&_input]:text-lg" />
-            <Button type="submit" go className="self-start" disabled={busy || otp.length < 6} data-testid="login-verify">
+            <Button type="submit" variant="primary" go className="self-start" disabled={busy || otp.length < 6} data-testid="login-verify">
               {busy ? t('common.loading') : t('auth.verify')}
             </Button>
             <p className="ag-small text-center" data-testid="login-resend">
