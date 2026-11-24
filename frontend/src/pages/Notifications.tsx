@@ -10,6 +10,7 @@ import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { useSeo } from '@/components/Seo';
 import { timeAgo } from '@/lib/timeAgo';
+import { GetAppCard } from '@/components/AppComingSoon';
 
 type Note = { id: string; kind: string; title: string; body: string; ref_id: string | null; link?: string | null; unread: boolean; created_at: string; msg?: { key: string; params?: Record<string, string | number> } | null };
 
@@ -35,6 +36,7 @@ export default function Notifications() {
       <div className="ag-wrap">
         <div className="ag-main">
           <PageHead eyebrow={t('ui.notes.eyebrow', 'Updates')} title={t('notes.title')} />
+          <GetAppCard />
           {authLoading ? (
             <p className="ag-small">{t('common.loading')}</p>
           ) : (
@@ -82,6 +84,7 @@ export default function Notifications() {
     <div className="ag-wrap">
       <div className="ag-main">
         <PageHead eyebrow={t('ui.notes.eyebrow', 'Updates')} title={t('notes.title')} />
+        <GetAppCard />
         {unread && (
           <Button size="sm" icon={<Checks />} className="self-start" onClick={markAll} data-testid="notes-read-all">{t('notes.read_all')}</Button>
         )}
