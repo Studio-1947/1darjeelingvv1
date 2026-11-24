@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import api from '@/lib/api';
 import { rupees, useHostPlanPrice } from '@/lib/prices';
 import { SUPPORTED_IMAGE_ACCEPT } from '@/lib/uploadImage';
-import { distanceTo, inServiceRegion } from '@/lib/places';
+import { distanceTo, inListingRegion } from '@/lib/places';
 import { nearestAreaLabel } from '@/lib/hostQuickFill';
 import { CircleNotch as Loader2 } from '@phosphor-icons/react';
 import { capPrice, isValidPhone, MAX_PRICE } from '@/lib/hostFormChecks';
@@ -14,6 +14,9 @@ import { HOST_TYPES, HUBS, MAX_GOODS, MAX_PHOTOS, OFFERS, PRESETS, QUICK_DISHES,
 import { photoGoalFor } from '@/lib/photoGoal';
 import Sheet, { SheetHead } from '@/components/listing-detail/Sheet';
 import PaymentDoneCard from '@/components/PaymentDoneCard';
+import GstDetails from '@/components/provider/GstDetails';
+import { gstDraftError } from '@/lib/gstin';
+import ConsentCheck from '@/components/ConsentCheck';
 
 /** "Add your own" on the What do you give? step; the server takes up to 30 amenities of 60 characters. */
 const MAX_OWN_OFFERS = 8;
@@ -95,7 +98,7 @@ function FeeList({ plain, type }: { plain?: boolean; type?: HostType | '' }) {
 
 /* ---------- 1. What do you want to list? ---------- */
 function TypeStep({ w }: { w: HostWizard }) {
-  const { t, d, pickType } = w;
+  const { t, d, set, setErr, pickType } = w;
   return (
     <Frame w={w} title={t('ob.wz.what')} sub={t('ob.wz.onelist')}
       cta={(
@@ -115,7 +118,10 @@ function TypeStep({ w }: { w: HostWizard }) {
           </button>
         ))}
       </div>
-
+      {/* The same I Agree as the sign-in screen, asked of every host before their details are taken.
+          A signed-out host finds it already ticked on the sign-in screen. */}
+      <ConsentCheck checked={d.agreed} onChange={(on) => { set({ agreed: on }); if (on) setErr(''); }}
+        testId="wz-consent" inputTestId="wz-agree" />
     </Frame>
   );
 }
@@ -168,12 +174,15 @@ function PlaceStep({ w }: { w: HostWizard }) {
   };
   const nearbyName = (lat: number, lng: number) => {
     const km = (h: Place) => distanceTo({ lat, lng }, { latitude: h.lat, longitude: h.lng })?.km ?? 1e9;
-    return nearestAreaLabel(lat, lng) || [...HUBS].sort((a, b) => km(a) - km(b))[0]?.name || 'Darjeeling';
+    // Hosts list from anywhere in India: a hub's name only when it is close by; elsewhere a plain
+    // label until the street name comes back from the geocoder.
+    const hub = [...HUBS].sort((a, b) => km(a) - km(b))[0];
+    return nearestAreaLabel(lat, lng) || (hub && km(hub) <= 30 ? hub.name : t('ob.wz.loc_pinned', 'Pinned location'));
   };
   const pick = (p: Place) => { seq.current += 1; setNaming(false); setErr(''); set({ place: p }); setFocus((f) => f + 1); };
   const movePin = (lat: number, lng: number) => {
     const n = ++seq.current;
-    setErr(inServiceRegion(lat, lng) ? '' : t('ob.wz.loc_outside'));
+    setErr(inListingRegion(lat, lng) ? '' : t('ob.wz.loc_outside'));
     set({ place: { name: nearbyName(lat, lng), lat, lng } });
     void nameFromPin(lat, lng, n);
   };
@@ -188,7 +197,7 @@ function PlaceStep({ w }: { w: HostWizard }) {
       const { latitude: lat, longitude: lng, accuracy } = p.coords;
       // A fix this rough comes from Wi-Fi or the mobile network, which usually means the phone's
       // Location (GPS) is off; say so rather than telling a host in the hills they are outside them.
-      if (!inServiceRegion(lat, lng)) { setErr(t(accuracy > ROUGH_FIX_M ? 'ob.wz.loc_rough' : 'ob.wz.loc_outside')); return; }
+      if (!inListingRegion(lat, lng)) { setErr(t(accuracy > ROUGH_FIX_M ? 'ob.wz.loc_rough' : 'ob.wz.loc_outside')); return; }
       const n = ++seq.current;
       set({ place: { name: nearbyName(lat, lng), lat, lng, accuracy: Math.round(accuracy) } });
       setFocus((f) => f + 1);
@@ -319,7 +328,7 @@ function NameStep({ w }: { w: HostWizard }) {
       <TextField label={label} value={d.name} onChange={(e) => set({ name: e.target.value })} autoComplete="off" maxLength={120} data-testid="wz-name" />
       <TextField label={t('ob.wz.phone')} value={d.phone} onChange={(e) => set({ phone: e.target.value.replace(/\D/g, '').slice(0, 10) })}
         type="tel" inputMode="numeric" maxLength={10} autoComplete="tel-national" data-testid="onboard-phone"
-        error={phoneBad ? t('ob.wz.badphone') : undefined} errorId="onboard-phone-error" />
+        hint={t('ob.wz.phone_hint')} error={phoneBad ? t('ob.wz.badphone') : undefined} errorId="onboard-phone-error" />
     </Frame>
   );
 }
@@ -544,6 +553,13 @@ function ChargesSheet({ w, onConfirm, onClose }: { w: HostWizard; onConfirm: () 
   const { t, d, set } = w;
   const { grace_bookings } = useHostSignupInfo();
   const plan = useHostPlanPrice(d.type || 'homestay');
+  const gst = d.gst || { on: false, gstin: '', legalName: '' };
+  const [gstTried, setGstTried] = useState(false);
+  // Paying now: a GSTIN that is switched on has to be complete before the listing goes up.
+  const confirm = () => {
+    if (d.payWhen === 'now' && gstDraftError(gst)) { setGstTried(true); return; }
+    onConfirm();
+  };
   const pay: Array<{ k: 'now' | 'later'; icon: IconName; title: string; sub: string }> = [
     { k: 'now', icon: 'bag', title: t('ob.wz.ch_now', 'Pay when listing'), sub: t('ob.wz.ch_nowS', 'Pay the yearly charge now and go live today.') },
     {
@@ -568,7 +584,8 @@ function ChargesSheet({ w, onConfirm, onClose }: { w: HostWizard; onConfirm: () 
           ))}
         </div>
         <p className="ag-small m-0">{t('ob.wz.gst_note')}</p>
-        <NextButton onClick={onConfirm} data-autofocus data-testid="wz-charges-confirm">
+        {d.payWhen === 'now' && <GstDetails value={gst} onChange={(next) => set({ gst: next })} showErrors={gstTried} />}
+        <NextButton onClick={confirm} data-autofocus data-testid="wz-charges-confirm">
           {d.payWhen === 'now' ? t('ob.wz.put_pay', { price: rupees(plan.base) }) : t('ob.wz.put')}
         </NextButton>
       </div>

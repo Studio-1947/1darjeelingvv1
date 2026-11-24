@@ -92,6 +92,42 @@ describe('PATCH /providers/me profile', () => {
     expect(listing.extras.experience_years).toBe(8);
   });
 
+  it('keeps each cafe listing\'s own menu and photos, and business fields on every listing (decision 2026-11-24)', async () => {
+    const { token, providerId } = await onboardActiveProvider({ name: 'Two Cafes', businessType: 'cafe' });
+    const authz = { Authorization: `Bearer ${token}` };
+    // The first cafe (set up at sign-up) gets its menu through the profile save, with no listing_id.
+    expect((await request(app).patch('/api/providers/me').set(authz).send({
+      profile: { menu: [{ name: 'Momo', price: 80 }], images: photos(2) },
+    })).status).toBe(200);
+    const second = await request(app).post('/api/listings').set(authz).send({
+      title: 'Second Cafe', type: 'cafe', description: 'Another branch', location: 'Kurseong',
+    });
+    expect(second.status).toBe(200);
+    const secondId = second.body.item.id as string;
+    expect(secondId).toBeTruthy();
+
+    const res = await request(app).patch('/api/providers/me').set(authz).send({
+      listing_id: secondId,
+      profile: { menu: [{ name: 'Thukpa', price: 120 }], images: photos(3), host_bio: 'Two cafes, one family' },
+    });
+    expect(res.status).toBe(200);
+
+    const items = (await request(app).get('/api/bookings/provider').set(authz)).body.listings
+      .filter((l: { provider_id: string }) => l.provider_id === providerId);
+    const firstCafe = items.find((l: { id: string }) => l.id !== secondId);
+    const secondCafe = items.find((l: { id: string }) => l.id === secondId);
+    expect(firstCafe.extras.menu.map((m: { name: string }) => m.name)).toEqual(['Momo']);
+    expect(firstCafe.extras.images).toHaveLength(2);
+    expect(secondCafe.extras.menu.map((m: { name: string }) => m.name)).toEqual(['Thukpa']);
+    expect(secondCafe.extras.images).toHaveLength(3);
+    expect(secondCafe.price).toBe(120);
+    // Business-wide fields still reach every listing.
+    expect(firstCafe.extras.host_bio).toBe('Two cafes, one family');
+    expect(secondCafe.extras.host_bio).toBe('Two cafes, one family');
+    // The profile mirrors the first cafe, not the one just saved.
+    expect(res.body.provider.extras?.menu?.[0]?.name ?? 'Momo').toBe('Momo');
+  });
+
   it('refuses a field that is not part of this host type', async () => {
     const { token } = await onboardActiveProvider({ name: 'Wrong Field Driver', businessType: 'driver' });
     const res = await request(app).patch('/api/providers/me').set('Authorization', `Bearer ${token}`).send({ profile: { rooms: [] } });

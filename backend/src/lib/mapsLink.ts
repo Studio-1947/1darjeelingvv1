@@ -21,6 +21,22 @@ export type Pin = { latitude: number; longitude: number };
  */
 export const SERVICE_REGION = { minLat: 26.35, maxLat: 27.4, minLng: 87.85, maxLng: 89.0 } as const;
 
+/**
+ * Where hosts can list: anywhere in India (a box around the mainland, Ladakh and the islands).
+ * Wider than SERVICE_REGION, which stays the Darjeeling box for curated spots and map tiles.
+ * Mirrored in frontend/src/lib/places.ts LISTING_REGION.
+ */
+export const LISTING_REGION = { minLat: 6.4, maxLat: 37.2, minLng: 68.0, maxLng: 97.5 } as const;
+
+export function inListingRegion(pin: Pin): boolean {
+  return (
+    pin.latitude >= LISTING_REGION.minLat &&
+    pin.latitude <= LISTING_REGION.maxLat &&
+    pin.longitude >= LISTING_REGION.minLng &&
+    pin.longitude <= LISTING_REGION.maxLng
+  );
+}
+
 export function inServiceRegion(pin: Pin): boolean {
   return (
     pin.latitude >= SERVICE_REGION.minLat &&

@@ -1,4 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&family=Noto+Sans+Bengali:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap');
+/* Google Sans Flex for Latin text (variable: weight 400-700, optical size); Noto Sans covers Devanagari and Bengali, which it lacks. */
+@import url('https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,400..700&family=Noto+Sans:wght@400;500;600;700&family=Noto+Sans+Bengali:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap');
 @import './styles/aangan.css';
 @import './styles/screens/onboard.css';
 @import './styles/screens/home.css';
@@ -80,7 +81,7 @@ body {
   margin: 0;
   background: transparent;
   color: var(--ink7);
-  /* Noto Sans, with its Devanagari and Bengali siblings (the --font token), as the prototype renders. */
+  /* Google Sans Flex, with Noto Sans Devanagari and Bengali for Indic scripts (the --font token). */
   font-family: var(--font);
   font-size: 16px;
   line-height: 24px;

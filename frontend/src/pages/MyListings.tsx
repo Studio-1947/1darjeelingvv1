@@ -1,195 +1,171 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
-import { CircleNotch as Loader2 } from '@phosphor-icons/react';
+import { photoGoalFor } from '@/lib/photoGoal';
 import { Icon } from '@/components/ag/Icon';
-import ListingJourney from '@/components/provider/dashboard/ListingJourney';
-import InviteHostLink from '@/components/provider/InviteHostLink';
-import ListingFormModal from '@/components/ListingFormModal';
-import EditListingModal from '@/components/provider/dashboard/EditListingModal';
-import HostPlanCard from '@/components/provider/dashboard/HostPlanCard';
+import { BAND_ICON } from '@/components/provider/dashboard/BookingCard';
 import { useSeo } from '@/components/Seo';
-import { Box, Button, ButtonLink, PageHead, Status } from '@/components/ag';
+import { ButtonLink, Chip, Chips, Status } from '@/components/ag';
 import { toast } from 'sonner';
-import { apiError } from '@/lib/plans';
+
+/**
+ * Account → My Listings: every listing the business runs, of any kind, as cards with what a host
+ * checks at a glance (status, price, what it offers, photos, new requests), grouped by kind and
+ * filterable by whether it is taking bookings. A card opens the listing's own page
+ * (/provider/listings/:id) where it is edited (user decision 2026-11-24). The Business profile shows
+ * the same listings in short and links here.
+ */
+
+/** The listing's priced offers, by kind: what the card counts ("Rooms · 3"). */
+const OFFER_FIELD: Record<string, string> = { homestay: 'rooms', cafe: 'menu', shop: 'goods', guide: 'services', driver: 'routes' };
+
+type Filter = 'all' | 'on' | 'off';
 
 export default function MyListings() {
   const { t } = useTranslation();
   useSeo({ title: t('nav.my_listings'), noindex: true });
-  const { user, loading: authLoading, refresh } = useAuth();
+  const { user, loading: authLoading, provider, refreshProvider } = useAuth();
   const nav = useNavigate();
-  
-  const [provider, setProvider] = useState<any>(null);
-  const [listings, setListings] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedListing, setSelectedListing] = useState<any>(null);
-  const [listingModal, setListingModal] = useState<{ open: boolean; editing: any | null }>({
-    open: false,
-    editing: null,
-  });
-
-  // Account > Business membership links to /my-listings#plan: once loaded, bring the plan card into view.
   const { hash } = useLocation();
-  useEffect(() => {
-    if (loading || hash !== '#plan') return;
-    window.requestAnimationFrame(() => document.getElementById('plan')?.scrollIntoView({ block: 'start', behavior: 'smooth' }));
-  }, [loading, hash]);
 
-  const loadData = useCallback(async () => {
-    try {
-      const [pRes, bRes] = await Promise.all([
-        api.get('/providers/me').catch(() => null),
-        api.get('/bookings/provider').catch(() => null),
-      ]);
-      
-      if (pRes?.data?.provider) {
-        setProvider(pRes.data.provider);
-      }
-      if (bRes?.data?.listings) {
-        setListings(bRes.data.listings || []);
-      }
-    } catch (e) {
-      console.error('Failed to load provider listings:', e);
-    }
-  }, []);
+  const [listings, setListings] = useState<any[] | null>(null);
+  const [bookings, setBookings] = useState<any[]>([]);
+  const [filter, setFilter] = useState<Filter>('all');
+  const [switching, setSwitching] = useState<string | null>(null);
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user) {
-      setLoading(false);
-      return;
-    }
-    (async () => {
-      try {
-        await loadData();
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [user, authLoading, loadData]);
+    if (!user) { nav('/login?next=/my-listings'); return; }
+    if (user.role !== 'provider') { nav('/provider/onboard'); return; }
+    if (!provider) refreshProvider();
+  }, [authLoading, user, provider, nav, refreshProvider]);
 
-  const handleSaveListing = async (values: any) => {
-    if (listingModal.editing) {
-      await api.patch(`/listings/${listingModal.editing.id}`, values);
-    } else {
-      await api.post('/listings', values);
-    }
-    await loadData();
-  };
+  // An old link to the membership card (/my-listings#plan): the card lives on the Business profile now.
+  useEffect(() => { if (hash === '#plan') nav('/provider/profile#plan', { replace: true }); }, [hash, nav]);
 
-  const handleDeleteListing = async (listingId: string) => {
-    if (!window.confirm(t('pd.delete_confirm') || 'Delete this listing? This cannot be undone.')) return;
+  const load = useCallback(() => api.get('/bookings/provider')
+    .then((r) => { setListings(r.data.listings || []); setBookings(r.data.items || []); })
+    .catch(() => setListings([])), []);
+  useEffect(() => { if (provider?.id) load(); }, [provider?.id, load]);
+
+  const type: string = provider?.business_type || '';
+  const live = provider?.status === 'active';
+
+  // This business's own listings, grouped by kind (its own kind first), newest first within a kind.
+  const groups = useMemo(() => {
+    const own = (listings || []).filter((l) => l.provider_id === provider?.id)
+      .filter((l) => filter === 'all' || (filter === 'on') === (l.extras?.available !== false))
+      .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
+    const byKind = new Map<string, any[]>();
+    if (type) byKind.set(type, []);
+    for (const l of own) byKind.set(l.type, [...(byKind.get(l.type) || []), l]);
+    return [...byKind.entries()].filter(([, g]) => g.length > 0);
+  }, [listings, provider?.id, filter, type]);
+  const all = (listings || []).filter((l) => l.provider_id === provider?.id);
+  const nOff = all.filter((l) => l.extras?.available === false).length;
+
+  // The same switch as on the profile and the listing's page: saved at once, the one the server checks.
+  const setTaking = async (l: any, on: boolean) => {
+    setSwitching(l.id);
     try {
-      await api.delete(`/listings/${listingId}`);
+      await api.patch(`/listings/${l.id}`, { extras: { ...(l.extras || {}), available: on } });
+      await load();
     } catch (e: any) {
-      // Refused while guests have open or upcoming bookings on it (409 open_bookings); the
-      // server says what to close first.
-      toast.error(apiError(e, t('pd.delete_failed', 'Could not delete this listing.')));
-      return;
+      toast.error(e?.response?.data?.detail || t('ui.providerProfile.could_not_save'));
+    } finally {
+      setSwitching(null);
     }
-    await loadData();
   };
 
-  const refreshProviderAccess = async () => {
-    await refresh();
-    await loadData();
-  };
-
-  if (authLoading || loading) {
-    return (
-      <div className="ag-wrap">
-        <div className="ag-main">
-          <p className="ag-small flex items-center gap-2"><Loader2 size={20} className="animate-spin text-[var(--r)]" aria-hidden="true" />{t('common.loading')}</p>
-        </div>
-      </div>
-    );
+  if (!provider || listings === null) {
+    return <div className="ag-wrap"><div className="ag-main"><p className="ag-small">{t('common.loading')}</p></div></div>;
   }
 
-  // Non-logged-in user
-  if (!user) {
-    return (
-      <div className="ag-wrap">
-        <div className="ag-main">
-          <PageHead eyebrow={t('provider.dashboard_title')} title={t('ui.myListings.guest_title')} sub={t('ui.myListings.guest_body')} />
-          <Button variant="primary" go className="self-start" onClick={() => nav('/login?next=/my-listings')}>{t('ui.myListings.guest_cta')}</Button>
-        </div>
-      </div>
-    );
-  }
-
-  // Logged-in user, but not onboarded as a provider yet
-  if (!provider) {
-    return (
-      <div className="ag-wrap">
-        <div className="ag-main">
-          <PageHead eyebrow={t('provider.dashboard_title')} title={t('ui.myListings.onboard_title')} sub={t('ui.myListings.onboard_body')} />
-          <div className="ag-row">
-            <ButtonLink to="/provider/onboard" variant="primary" go>{t('provider.onboard_title')}</ButtonLink>
-            <ButtonLink to="/my-trips" go>{t('ui.myListings.view_trips')}</ButtonLink>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  const isDriver = provider.business_type === 'driver';
-  const live = provider.status === 'active';
-
-  // The prototype's Listings screen (provider.js): two actions, the journey, one box per listing,
-  // then the membership card and the invite link that used to sit on the dashboard.
   return (
     <div className="ag-wrap">
-      <div className="ag-main">
-        <h1 className="ag-host-tabh">{t('host.your_listings', 'Your listings')}</h1>
-        <div className="ag-host-two">
-          <ButtonLink to="/feed" go data-testid="post-update-cta">{t('pd.post_update')}</ButtonLink>
-          <Button icon={<Icon name={isDriver ? 'car' : 'home'} />} onClick={() => nav('/provider/onboard?add=1')} data-testid="add-listing-cta">
-            {isDriver ? t('host.add_vehicle', 'Add a vehicle') : t('host.add_property', 'Add a property')}
-          </Button>
+      <div className="ag-main" data-testid="my-listings">
+        <div>
+          <Link to="/provider/profile" className="ag-seeall">{t('hostProfile.title')}</Link>
+          <h1 className="ag-host-tabh mt-3">{t('host.your_listings', 'Your listings')} <span className="text-[var(--ink-muted)]">{all.length}</span></h1>
+          <p className="ag-small mt-3">{t('hostProfile.listings_note', 'Tap one to edit its prices, details and photos.')}</p>
         </div>
 
-        <ListingJourney count={listings.length} />
+        {/* The same two ways to add as on the profile: another of the business's own kind, or any kind. */}
+        <div className="ag-row">
+          {type && (
+            <ButtonLink to={`/provider/onboard?add=1&type=${type}&step=1`} icon={<Icon name={type === 'driver' ? 'car' : 'home'} />} data-testid="add-another-cta">
+              {t(`hostProfile.add_another_${type}`, 'Add another property')}
+            </ButtonLink>
+          )}
+          <ButtonLink to="/provider/onboard?add=1" icon={<Icon name="plus" />} data-testid="add-listing-cta">{t('pd.add_listing', 'Add listing')}</ButtonLink>
+          <ButtonLink to="/feed" variant="text" data-testid="post-update-cta">{t('pd.post_update')}</ButtonLink>
+        </div>
 
-        {listings.map((l) => (
-          <Box key={l.id} as="article" className="ag-host-lbox" data-testid={`my-listing-card-${l.id}`}>
-            <div className="top">
-              <h2 className="line-clamp-2">{l.title}</h2>
-              {l.price > 0 && <span className="ag-price">₹{Number(l.price).toLocaleString('en-IN')}</span>}
+        {/* Filter by Taking bookings, shown once there is something to tell apart. */}
+        {all.length > 1 && (
+          <Chips>
+            {([['all', `${t('home.filter_all', 'All')} · ${all.length}`], ['on', `${t('host.taking', 'Taking bookings')} · ${all.length - nOff}`], ['off', `${t('host.paused', 'Not taking bookings')} · ${nOff}`]] as [Filter, string][])
+              .map(([key, label]) => <Chip key={key} on={filter === key} onClick={() => setFilter(key)} data-testid={`listings-filter-${key}`}>{label}</Chip>)}
+          </Chips>
+        )}
+
+        {groups.length === 0 && <p className="ag-small" data-testid="listings-empty">{t('pd.no_listings', 'You have no active listings.')}</p>}
+
+        {groups.map(([kind, group]) => (
+          <section key={kind} className="ag-host-sec" data-testid={`listings-group-${kind}`}>
+            <span className="ag-eyebrow">{t(`ob.wz.t_${kind}`, { defaultValue: kind })} · {group.length}</span>
+            <div className="ag-host-lgrid">
+              {group.map((l) => {
+                const e = l.extras || {};
+                const on = e.available !== false;
+                const offers = Array.isArray(e[OFFER_FIELD[l.type]]) ? e[OFFER_FIELD[l.type]].length : 0;
+                const pics = Array.isArray(e.images) ? e.images.length : 0;
+                const goal = photoGoalFor(l.type);
+                const asks = bookings.filter((b) => b.listing_id === l.id && b.awaiting_host).length;
+                const offerLabel = ({ homestay: t('profile.rooms'), cafe: t('hostProfile.menu'), shop: t('hostProfile.goods'), guide: t('hostProfile.services'), driver: t('el.routes_covered') } as Record<string, string>)[l.type] || '';
+                return (
+                  <article key={l.id} className="ag-host-lcard" data-testid={`my-listing-card-${l.id}`}>
+                    <Link to={`/provider/listings/${l.id}`} className="ag-host-lphoto" style={l.image ? { backgroundImage: `url(${l.image})` } : undefined}
+                      aria-label={l.title} data-testid={`listing-photo-${l.id}`}>
+                      {!l.image && <Icon name={BAND_ICON[l.type] || 'home'} />}
+                    </Link>
+                    <div className="ag-host-lbody">
+                      <span className="ag-host-gtag"><Icon name={BAND_ICON[l.type] || 'home'} />{t(`ob.wz.t_${l.type}`, { defaultValue: l.type })}</span>
+                      <b>{l.title}</b>
+                      <span className="ag-small">{l.location}{Number(l.price) > 0 ? ` · ${t('host.from', 'From')} ₹${Number(l.price).toLocaleString('en-IN')}` : ''}</span>
+                      {/* What a host checks at a glance, one short line each. */}
+                      <ul className="ag-host-lfacts">
+                        <li>{offerLabel} · {offers}</li>
+                        <li className={goal && pics < goal ? 'warn' : undefined}>{t('hostProfile.photos')} · {goal ? `${pics} / ${goal}` : pics}</li>
+                        {asks > 0 && <li className="hot">{t('host.new', 'New requests')} · {asks}</li>}
+                      </ul>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Status tone={!live ? 'pending' : on ? 'ok' : 'no'}>
+                          {!live ? t('provider.pending_review') : on ? t('host.live', 'Live on aangan') : t('host.paused', 'Not taking bookings')}
+                        </Status>
+                      </div>
+                      <div className="ag-host-lacts">
+                        <ButtonLink to={`/provider/listings/${l.id}`} go icon={<Icon name="person" />} data-testid={`edit-listing-${l.id}`}>{t('common.edit')}</ButtonLink>
+                        <ButtonLink to={`/listing/${l.id}`} icon={<Icon name="globe" />} data-testid={`view-listing-${l.id}`}>{t('common.view')}</ButtonLink>
+                        {asks > 0 && <ButtonLink to="/provider/dashboard" icon={<Icon name="t_trip" />}>{t('host.bookings', 'Bookings')}</ButtonLink>}
+                        <span className="ag-host-tgrow">
+                          <label className="ag-host-ltoggle" title={t('host.taking', 'Taking bookings')}>
+                            <input type="checkbox" role="switch" checked={on} disabled={switching === l.id}
+                              aria-label={`${t('host.taking', 'Taking bookings')}: ${l.title}`}
+                              onChange={(ev) => setTaking(l, ev.target.checked)} data-testid={`listing-taking-${l.id}`} />
+                          </label>
+                        </span>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
             </div>
-            <p className="ag-small m-0">{t(`ob.wz.t_${l.type}`, { defaultValue: l.type })} · {l.location}</p>
-            <div className="flex flex-wrap items-center gap-2">
-              <Status tone={live && l.extras?.available !== false ? 'ok' : 'pending'}>
-                {!live ? t('provider.pending') : l.extras?.available === false ? t('host.paused', 'Not taking bookings') : t('host.live', 'Live on aangan')}
-              </Status>
-            </div>
-            <div className="acts">
-              <ButtonLink to={`/listing/${l.id}`} variant="text" data-testid={`view-listing-${l.id}`}>{t('common.view')}</ButtonLink>
-              <Button variant="text" onClick={() => setSelectedListing(l)} data-testid={`edit-listing-${l.id}`}>{t('common.edit')}</Button>
-              <Button variant="text" className="ag-host-del" onClick={() => handleDeleteListing(l.id)} data-testid={`delete-listing-${l.id}`}>{t('common.delete')}</Button>
-            </div>
-          </Box>
+          </section>
         ))}
-
-        <HostPlanCard provider={provider} user={user} onRenewed={refreshProviderAccess} />
-        <InviteHostLink />
       </div>
-
-      {selectedListing && (
-        <EditListingModal
-          listing={selectedListing}
-          onClose={() => setSelectedListing(null)}
-          onSave={loadData}
-        />
-      )}
-
-      <ListingFormModal
-        open={listingModal.open}
-        initial={listingModal.editing || undefined}
-        onClose={() => setListingModal({ open: false, editing: null })}
-        onSubmit={handleSaveListing}
-      />
     </div>
   );
 }

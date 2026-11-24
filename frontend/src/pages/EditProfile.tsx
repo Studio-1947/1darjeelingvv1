@@ -225,7 +225,8 @@ export default function EditProfile() {
       </form>
 
         {!setup && <BlockedPeople />}
-        {!setup && <SignOutButton className="self-start" />}
+        {/* Full width, as on the Account tab and the Business profile. */}
+        {!setup && <SignOutButton />}
       </div>
     </div>
   );

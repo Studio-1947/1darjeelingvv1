@@ -30,11 +30,11 @@ describe('provider location verification', () => {
     }
   });
 
-  it('rejects a pin outside the service area, and a link that is not Google Maps', async () => {
+  it('rejects a pin outside India, and a link that is not Google Maps', async () => {
     const { token } = await onboardActiveProvider({ name: 'Loc Two', businessType: 'homestay' });
-    const delhi = await verify(token, 'https://www.google.com/maps/@28.6139,77.2090,15z');
-    expect(delhi.status).toBe(400);
-    expect(delhi.body.detail).toMatch(/outside/);
+    const london = await verify(token, 'https://www.google.com/maps/@51.5074,-0.1278,15z');
+    expect(london.status).toBe(400);
+    expect(london.body.detail).toMatch(/outside India/);
     const other = await verify(token, 'https://example.com/maps/@27.03,88.26,15z');
     expect(other.status).toBe(400);
     const none = await verify(token, undefined);
@@ -152,11 +152,11 @@ describe('verifying one listing on its own', () => {
     expect(b.latitude).toBeNull();
   });
 
-  it('refuses a pin outside the service area, a bad link, and a listing that is not theirs', async () => {
+  it('refuses a pin outside India, a bad link, and a listing that is not theirs', async () => {
     const { token } = await onboardActiveProvider({ name: 'Loc Guard', businessType: 'homestay' });
     const [id] = await twoListings(token);
 
-    expect((await verifyListing(token, id, 'https://www.google.com/maps/@28.6139,77.2090,15z')).status).toBe(400);
+    expect((await verifyListing(token, id, 'https://www.google.com/maps/@51.5074,-0.1278,15z')).status).toBe(400);
     expect((await verifyListing(token, id, 'https://example.com/maps/@27.03,88.26,15z')).status).toBe(400);
     expect((await verifyListing(token, id, undefined)).status).toBe(400);
 

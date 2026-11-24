@@ -85,6 +85,7 @@ const j = async (m, p, body, token) => { const r = await fetch(API + p, { method
         return !err;
       };
       await p.click(`[data-testid="wz-type-${type}"]`);
+      await p.check('[data-testid="wz-agree"]');
       // "Pay later" (the free start) is the default. This walk takes "Pay now", so the paid route,
       // the checkout amount and the Member badge are all exercised.
       // A local shop lists free: there is no plan to choose.

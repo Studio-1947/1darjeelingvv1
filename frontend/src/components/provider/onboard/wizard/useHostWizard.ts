@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { gstDraftError, gstPayload, type GstDraft } from '@/lib/gstin';
 import api, { createPaymentOrder, completeMockPayment, payWithRazorpay } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { imageProblem, uploadImage } from '@/lib/uploadImage';
 import { readHostLink } from '@/lib/hostQuickFill';
 import { isValidPhone, MAX_PRICE, MIN_PRICE } from '@/lib/hostFormChecks';
 import { nameProblem } from '@/lib/contentRules';
-import { inServiceRegion } from '@/lib/places';
+import { inListingRegion } from '@/lib/places';
+import { setLoginPrefill } from '@/components/ConsentCheck';
 
 /*
  * Host onboarding, one question per screen (Aangan 2.0 wizard, provider.js):
@@ -83,6 +85,8 @@ type Draft = {
   payWhen: 'later' | 'now';
   /** True once the host taps a When to pay option; until then the default applies. */
   payPicked?: boolean;
+  /** Paying now: the optional GST registration the first year is invoiced to (lib/gstin.ts). */
+  gst?: GstDraft;
   place: Place | null;
   name: string;
   phone: string;
@@ -92,6 +96,8 @@ type Draft = {
   menu: Dish[];
   offers: string[];
   photos: string[];
+  /** I Agree (Terms, Privacy Policy, 18+) ticked on the first step; required of every host. */
+  agreed: boolean;
 };
 
 const DRAFT_KEY = 'ag-host-draft';
@@ -159,6 +165,7 @@ export function useHostWizard() {
       // written as soon as the wizard opens, so older drafts hold the old default ('later'), not a choice.
       payWhen: saved.payPicked && saved.payWhen ? saved.payWhen : 'now',
       payPicked: !!saved.payPicked,
+      gst: saved.gst || { on: false, gstin: '', legalName: '' },
       place: saved.place || null,
       name: saved.name || '',
       phone: saved.phone || '',
@@ -168,6 +175,7 @@ export function useHostWizard() {
       menu: saved.menu || [],
       offers: saved.offers || [],
       photos: saved.photos || [],
+      agreed: !!saved.agreed,
     };
   });
   // A patch, or a function of the latest draft (for answers that arrive after the host moved on, like a street name).
@@ -182,11 +190,14 @@ export function useHostWizard() {
     if (fromSubmit) {
       try { sessionStorage.setItem(PUT_UP_KEY, JSON.stringify({ draft: draftKey, at: Date.now() })); } catch { /* private mode */ }
     }
+    // The sign-in screen fills in the WhatsApp number given on the name step (still editable there)
+    // and keeps I Agree ticked if it was ticked here.
+    setLoginPrefill({ phone: isValidPhone(d.phone) ? d.phone : undefined, agreed: d.agreed });
     const back = new URLSearchParams(location.search);
     back.set('step', String(step));
     const next = encodeURIComponent(`${location.pathname}?${back}`);
     nav(`/login?next=${next}${link.ref ? `&ref=${encodeURIComponent(link.ref)}` : ''}&role=provider`);
-  }, [nav, location.pathname, location.search, link.ref, draftKey]);
+  }, [nav, location.pathname, location.search, link.ref, draftKey, d.phone, d.agreed]);
 
   // Prefill from the account once it has loaded.
   useEffect(() => {
@@ -240,10 +251,12 @@ export function useHostWizard() {
   /** The rule each step checks before moving on (copy from the prototype). */
   const check = (): string => {
     switch (step) {
-      case 'type': return d.type ? '' : t('ob.wz.pickone');
+      case 'type':
+        if (!d.type) return t('ob.wz.pickone');
+        return d.agreed ? '' : t('ui.login.agree_needed', 'Please tick I Agree to continue.');
       case 'place':
         if (!d.place) return t('ob.wz.wz_noplace');
-        return inServiceRegion(d.place.lat, d.place.lng) ? '' : t('ob.wz.loc_outside');
+        return inListingRegion(d.place.lat, d.place.lng) ? '' : t('ob.wz.loc_outside');
       case 'name': {
         // The server's own name rule (lib/contentRules.ts), checked here so "op" is caught on this
         // step and not only when the listing is put up.
@@ -433,7 +446,10 @@ export function useHostWizard() {
         await finish();
         return;
       }
-      const orderRes = await createPaymentOrder({ flow: 'provider_registration', reference_id: providerId });
+      const orderRes = await createPaymentOrder({
+        flow: 'provider_registration', reference_id: providerId,
+        gst: d.gst && !gstDraftError(d.gst) ? gstPayload(d.gst) : null,
+      });
       if (orderRes.mock) {
         setPayModal({ amount: orderRes.amount, order: orderRes.order, providerId });
       } else {

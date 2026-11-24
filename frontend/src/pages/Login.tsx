@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { Icon } from '@/components/ag/Icon';
 import { Box, Button, PageHead, SelectField, Status, TextField } from '@/components/ag';
 import Seo from '@/components/Seo';
+import ConsentCheck, { clearLoginPrefill, readLoginPrefill } from '@/components/ConsentCheck';
 import { nationalPhone, OTP_COUNTRIES, otpPhone } from '@/lib/phoneRegions';
 
 // Google Identity Services client ID from env
@@ -39,7 +40,10 @@ export default function Login() {
   // shown only once the code has been accepted (the server answers `name_required` for a right code
   // on a new number without using the code up; step 3 sends the same code again with the details).
   const [step, setStep] = useState(1);
-  const [phone, setPhone] = useState('');
+  // The host wizard hands over the WhatsApp number it asked for (and whether I Agree was ticked
+  // there), so the host does not type it twice. It is an ordinary field here: they can change it.
+  const [prefill] = useState(readLoginPrefill);
+  const [phone, setPhone] = useState(() => prefill.phone || '');
   const [countryCode, setCountryCode] = useState('+91');
   const [otp, setOtp] = useState('');
   const [name, setName] = useState('');
@@ -64,7 +68,7 @@ export default function Login() {
   // The "I Agree" box on the first screen (Terms, Privacy Policy, 18 or older). Nothing goes out,
   // no code and no Google prompt, until it is ticked. It is sent with the code so the server keeps
   // the date they agreed (users.terms_accepted_at).
-  const [agreed, setAgreed] = useState(false);
+  const [agreed, setAgreed] = useState(() => !!prefill.agreed);
   const [googleBusy, setGoogleBusy] = useState(false);
   const gisLoaded = useRef(false);
   const country = OTP_COUNTRIES.find((item) => item.code === countryCode) ?? OTP_COUNTRIES[0];
@@ -77,6 +81,7 @@ export default function Login() {
   // business to its activation payment.
   const finishSignIn = useCallback((data) => {
     signedInHere.current = true;
+    clearLoginPrefill();
     login(data.token, data.user, role);
     // Straight back to where they were, as the prototype does (back()). A host goes on with what they
     // came for (List your business opens onboarding), or to the dashboard. Profile details are asked
@@ -238,19 +243,7 @@ export default function Login() {
             </div>
             {/* Consent, asked for plainly rather than assumed from "by continuing". Required:
                 Continue (and Google) stay off until it is ticked. */}
-            <label className="flex items-start gap-3 text-sm text-[var(--ink7)] cursor-pointer min-h-11" data-testid="login-consent">
-              <input type="checkbox" checked={agreed} required
-                onChange={(e) => { setAgreed(e.target.checked); if (e.target.checked) setErr(''); }}
-                className="accent-[var(--r)] w-5 h-5 mt-0.5 flex-none" data-testid="login-agree" />
-              <span>
-                <b className="font-medium text-[var(--ink-strong)]">{t('ui.login.agree', 'I Agree')}</b>{' '}
-                {t('ui.login.agree_to', 'to the')}{' '}
-                <Link to="/terms" className="underline">{t('auth.terms_conditions_link')}</Link>{' '}
-                {t('auth.terms_and')}{' '}
-                <Link to="/privacy" className="underline">{t('ui.login.privacy_policy', 'Privacy Policy')}</Link>
-                {t('ui.login.agree_end', '.')}
-              </span>
-            </label>
+            <ConsentCheck checked={agreed} onChange={(on) => { setAgreed(on); if (on) setErr(''); }} />
             <Button type="submit" variant="primary" go className="self-start" disabled={busy || !canonicalPhone || !agreed} data-testid="login-send-otp">
               {busy ? t('common.loading') : t('common.continue', 'Continue')}
             </Button>

@@ -24,6 +24,8 @@ const ok = (c, m) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (!c) fails.p
   ok(await step('type'), 'signed out: wizard opens on the type step (no login first) ' + new URL(p.url()).pathname);
   await shot(p, '1-type');
   await p.click('[data-testid=wz-type-homestay]'); await p.click('[data-testid=wz-next]');
+  ok(await step('type') && (await p.locator('#wz-err').innerText()).includes('I Agree'), 'signed out: Next asks for I Agree first');
+  await p.check('[data-testid=wz-agree]'); await p.click('[data-testid=wz-next]');
   ok(await step('place'), 'place step');
   await p.fill('[data-testid=wz-place-search]', 'Darjeeling'); await p.click('[data-testid="wz-place-Darjeeling"]'); await p.click('[data-testid=wz-next]');
   ok(await step('name'), 'name step');
@@ -43,17 +45,26 @@ const ok = (c, m) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (!c) fails.p
   ok(await step('review'), 'review step');
   await shot(p, '3-review');
   await p.click('[data-testid=onboard-submit]');
+  // Paid types choose when to pay in a sheet first; pay later so the walk needs no payment.
+  if (await p.locator('[data-testid=wz-charges]').waitFor({ timeout: 3000 }).then(() => true, () => false)) {
+    await p.click('[data-testid=plan-later]'); await p.click('[data-testid=wz-charges-confirm]');
+  }
+  await p.waitForURL(/\/login/, { timeout: 10000 }).catch(() => {});
   const lu = new URL(p.url());
   ok(lu.pathname === '/login' && (lu.searchParams.get('next') || '').startsWith('/provider/onboard') && lu.searchParams.get('role') === 'provider', 'Put it live asks to log in: ' + lu.pathname + lu.search);
   await shot(p, '4-login');
-  await p.fill('[data-testid=login-phone]', digits);
+  ok((await p.inputValue('[data-testid=login-phone]')) === digits, 'login: the WhatsApp number from the wizard is filled in');
+  ok(await p.isChecked('[data-testid=login-agree]'), 'login: I Agree is already ticked from the wizard');
   const sent = p.waitForResponse((r) => r.url().includes('/auth/otp/send'));
-  await p.check('[data-testid=login-agree]');
   await p.click('[data-testid=login-send-otp]');
   const otp = (await (await sent).json()).mock_otp;
   await p.fill('[data-testid=login-otp]', otp);
-  if (await p.locator('[data-testid="login-name"]').count()) await p.fill('[data-testid="login-name"] input, input[data-testid="login-name"]', 'Walk Host').catch(() => p.locator('[data-testid="login-name"] input').fill('Walk Host'));
   await p.click('[data-testid=login-verify]');
+  // A new number: the name is asked after the code is accepted (step 3).
+  if (await p.locator('[data-testid=login-step-3]').waitFor({ timeout: 8000 }).then(() => true, () => false)) {
+    await p.locator('[data-testid=login-name] input, input[data-testid=login-name]').first().fill('Walk Host');
+    await p.click('[data-testid=login-create]');
+  }
   // Back from sign-in, the listing goes up by itself (no second "Put my listing up").
   ok(await p.locator('[data-testid=wz-done]').waitFor({ timeout: 30000 }).then(() => true, () => false), 'after sign-in the listing goes up by itself (done screen)');
   await shot(p, '6-done');

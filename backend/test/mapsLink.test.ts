@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { extractCoordinates, inServiceRegion, isGoogleMapsUrl, resolveMapsLink, MapsLinkError } from '../src/lib/mapsLink';
+import { extractCoordinates, inListingRegion, inServiceRegion, isGoogleMapsUrl, resolveMapsLink, MapsLinkError } from '../src/lib/mapsLink';
 
 describe('extractCoordinates', () => {
   it('reads a bare "lat, lng"', () => {
@@ -34,6 +34,18 @@ describe('inServiceRegion', () => {
     expect(inServiceRegion({ latitude: 27.06, longitude: 88.47 })).toBe(true);
     expect(inServiceRegion({ latitude: 26.72, longitude: 88.43 })).toBe(true);
     expect(inServiceRegion({ latitude: 28.61, longitude: 77.2 })).toBe(false);
+  });
+});
+
+describe('inListingRegion', () => {
+  it('accepts anywhere in India (Darjeeling, Delhi, Kanyakumari, Port Blair, Leh); rejects abroad', () => {
+    expect(inListingRegion({ latitude: 27.036, longitude: 88.2627 })).toBe(true);
+    expect(inListingRegion({ latitude: 28.61, longitude: 77.2 })).toBe(true);
+    expect(inListingRegion({ latitude: 8.08, longitude: 77.55 })).toBe(true);
+    expect(inListingRegion({ latitude: 11.62, longitude: 92.73 })).toBe(true);
+    expect(inListingRegion({ latitude: 34.15, longitude: 77.58 })).toBe(true);
+    expect(inListingRegion({ latitude: 51.5074, longitude: -0.1278 })).toBe(false);
+    expect(inListingRegion({ latitude: 37.422, longitude: -122.084 })).toBe(false);
   });
 });
 

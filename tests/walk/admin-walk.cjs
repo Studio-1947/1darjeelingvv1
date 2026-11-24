@@ -159,6 +159,7 @@ async function onboardHost(type, opts = {}) {
       return !err;
     };
     await p.click(`[data-testid="wz-type-${type}"]`);
+    await p.check('[data-testid="wz-agree"]');
     await p.click('[data-testid="plan-now"]');
     let ok = await nextStep('type');
     if (ok) { await p.fill('[data-testid=wz-place-search]', 'Darjeeling'); await p.click('[data-testid="wz-place-Darjeeling"]'); ok = await nextStep('place'); }
@@ -183,12 +184,20 @@ async function onboardHost(type, opts = {}) {
 
     const missing = (me.profile_missing || []).map((m) => m.label);
     if (missing.length || opts.homeDelivery) {
-      await p.goto(WEB + '/provider/profile', { waitUntil: 'networkidle' });
-      await p.locator('[data-testid="profile-save"]').first().waitFor({ timeout: 20000 }).catch(() => {});
+      // Photos belong to a listing (2026-11-24): #photos on the profile opens the first listing's page.
+      await p.goto(WEB + '/provider/profile#photos', { waitUntil: 'networkidle' });
+      await p.locator('[data-testid="listing-save"]').first().waitFor({ timeout: 20000 }).catch(() => {});
       await p.waitForTimeout(500);
       for (const input of await p.locator('input[type="file"][multiple]').all()) await input.setInputFiles(IMG.slice(0, 8)).catch(() => {});
       await p.waitForTimeout(800);
       await p.waitForFunction(() => [...document.querySelectorAll('input[type="file"][multiple]')].every((i) => !i.disabled), null, { timeout: 60000 }).catch(() => {});
+      await p.waitForTimeout(500);
+      if (await p.locator('[data-testid="listing-save"]').count()) {
+        await p.click('[data-testid="listing-save"]').catch(() => {});
+        await p.waitForTimeout(2500);
+      }
+      await p.goto(WEB + '/provider/profile', { waitUntil: 'networkidle' });
+      await p.locator('[data-testid="profile-save"]').first().waitFor({ timeout: 20000 }).catch(() => {});
       await p.waitForTimeout(500);
       const hn = p.locator('[data-testid="profile-host-name"]');
       if ((await hn.count()) && !(await hn.inputValue())) await hn.fill(`Owner ${digits.slice(-4)}`);

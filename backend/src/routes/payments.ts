@@ -5,6 +5,7 @@ import { db, schema } from '../db';
 import { eq, and, ne, gte, desc, sql } from 'drizzle-orm';
 import { authenticateToken } from '../middleware/auth';
 import { rateLimiter } from '../middleware/rateLimiter';
+import { parseGstInput, type GstBilling } from '../lib/gstin';
 import { AMOUNTS, FREE_HOST_TYPES, GST_RATE_PERCENT, PLATFORM_FEE_PERCENT, HOST_RENEWAL_WINDOW_DAYS, MOCK_PAYMENTS, rzpClient, RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, RAZORPAY_WEBHOOK_SECRET, IS_PROD, log } from '../config';
 import { computeSupportPassExpiry, isExemptFromSupport, isSupportActive } from '../lib/support';
 import { computeHostPlanExpiry, isHostPlanLive, isListingHostLapsed } from '../lib/hostPlan';
@@ -280,6 +281,13 @@ async function settlePaymentOnce(payment: PaymentRow, gatewayPaymentId: string) 
  *               flow: { type: string, enum: [provider_registration, provider_renewal, platform_support, donation] }
  *               reference_id: { type: string, description: "Provider id (provider_registration, provider_renewal), or the caller's own user id (platform_support, donation)" }
  *               amount: { type: integer, description: "Amount in paise. ONLY read for flow=donation, where it must be an integer between 1000 (₹10) and 10000000 (₹1,00,000). Ignored for every other flow, whose price is fixed server-side." }
+ *               gst:
+ *                 description: "Host plan flows only. { gstin, legal_name } invoices the plan to that GST registration and saves it on the business; null clears it (not GST-registered); omitted keeps what is saved. An invalid GSTIN is a 400 with code invalid_gstin."
+ *                 nullable: true
+ *                 type: object
+ *                 properties:
+ *                   gstin: { type: string, example: 19ABCDE1234F1Z5 }
+ *                   legal_name: { type: string }
  *     responses:
  *       200:
  *         description: Order created
@@ -423,11 +431,24 @@ router.post('/order', authenticateToken, async (req: Request, res: Response) => 
   }
   // A host's plan depends on the business: ₹499 for a homestay or driver, ₹99 for a cafe, shop
   // or guide. The provider is known to exist and be the caller's (assertOwnsReference above).
+  // A GST-registered host can have the plan invoiced to their GSTIN (lib/gstin.ts): `gst` in the
+  // body saves it on the business (null clears it), and the order records who it is billed to.
+  let billing: GstBilling | null = null;
   if (flow === 'provider_registration' || flow === 'provider_renewal') {
-    const [p] = await db.select({ businessType: schema.providers.businessType }).from(schema.providers)
-      .where(eq(schema.providers.id, reference_id)).limit(1);
+    const gstInput = parseGstInput(req.body.gst);
+    if ('error' in gstInput) return res.status(400).json({ detail: gstInput.error, code: 'invalid_gstin' });
+    const [p] = await db.select({ businessType: schema.providers.businessType, gstin: schema.providers.gstin, gstLegalName: schema.providers.gstLegalName })
+      .from(schema.providers).where(eq(schema.providers.id, reference_id)).limit(1);
     breakup = hostPlanBreakup(p?.businessType, flow);
     amount = breakup.total;
+    if (gstInput.value !== undefined) {
+      await db.update(schema.providers)
+        .set({ gstin: gstInput.value?.gstin ?? null, gstLegalName: gstInput.value?.legal_name ?? null })
+        .where(eq(schema.providers.id, reference_id));
+      billing = gstInput.value;
+    } else if (p?.gstin && p.gstLegalName) {
+      billing = { gstin: p.gstin, legal_name: p.gstLegalName, state_code: p.gstin.slice(0, 2) };
+    }
   }
 
   if (!MOCK_PAYMENTS && !rzpClient) {
@@ -453,7 +474,13 @@ router.post('/order', authenticateToken, async (req: Request, res: Response) => 
           eq(schema.payments.mock, MOCK_PAYMENTS),
           gte(schema.payments.createdAt, new Date(Date.now() - ORDER_REUSE_MINUTES * 60 * 1000).toISOString()),
         )).orderBy(desc(schema.payments.createdAt)).limit(1);
-        if (open?.orderId) return { order: { id: open.orderId, amount, currency: 'INR' } as any, reused: true };
+        if (open?.orderId) {
+          // The host may have added or changed their GSTIN since the order was made.
+          if (flow === 'provider_registration' || flow === 'provider_renewal') {
+            await tx.update(schema.payments).set({ billing }).where(eq(schema.payments.id, open.id));
+          }
+          return { order: { id: open.orderId, amount, currency: 'INR' } as any, reused: true };
+        }
       }
 
       let order: any;
@@ -475,6 +502,7 @@ router.post('/order', authenticateToken, async (req: Request, res: Response) => 
         referenceId: reference_id,
         amount,
         breakup,
+        billing,
         orderId: order.id,
         status: 'created',
         mock: MOCK_PAYMENTS,
@@ -488,7 +516,8 @@ router.post('/order', authenticateToken, async (req: Request, res: Response) => 
       key_id: MOCK_PAYMENTS ? 'mock_gateway' : RAZORPAY_KEY_ID,
       order: result.order,
       amount,
-      breakup
+      breakup,
+      billing
     });
   } catch (err: any) {
     log.error(`Razorpay order failed: ${err}`);

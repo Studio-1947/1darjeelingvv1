@@ -1,60 +1,41 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { missingLabel } from '@/lib/serverText';
-import { photoGoalFor } from '@/lib/photoGoal';
-import { MagnifyingGlass, Eye, X, VideoCamera, Check } from '@phosphor-icons/react';
+import { MagnifyingGlass, Eye, X, VideoCamera, Check, CaretRight } from '@phosphor-icons/react';
 import { Icon } from '@/components/ag/Icon';
-import EditListingModal from '@/components/provider/dashboard/EditListingModal';
-import ListingFormModal from '@/components/ListingFormModal';
-import SignOutButton from '@/components/SignOutButton';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
-import { uploadImage, uploadImages } from '@/lib/uploadImage';
+import { uploadImage } from '@/lib/uploadImage';
 import AvatarUploader from '@/components/provider/AvatarUploader';
-import GalleryUploader from '@/components/provider/GalleryUploader';
-import AmenityPicker from '@/components/provider/AmenityPicker';
-import { RouteListEditor, RouteFareTable } from '@/components/provider/RouteEditor';
 import LicenceUpload from '@/components/provider/LicenceUpload';
-import { HOMESTAY_AMENITIES, CAFE_AMENITIES } from '@/constants/listingOptions';
 import { useAppStatus } from '@/context/AppStatus'; // TEMPORARY(legal-pause)
-import PricedEditor, { type Priced } from '@/components/provider/PricedEditor';
-import { roomFit, roomsCapacity } from '@/lib/roomFit';
 import OwnersSection from '@/components/provider/OwnersSection';
+import HostPlanCard from '@/components/provider/dashboard/HostPlanCard';
+import InviteHostLink from '@/components/provider/InviteHostLink';
+import SignOutButton from '@/components/SignOutButton';
 import HostMiniSite, { type MiniSiteData } from '@/components/provider/HostMiniSite';
+import Fold from '@/components/provider/Fold';
 import { useSeo } from '@/components/Seo';
 import { Box, Button, ButtonLink, Chip, Chips, IconButton, SelectField, TextArea, TextField } from '@/components/ag';
 
 /**
- * The host's business profile: everything Studio1947's lists ask of a driver, a homestay, a
- * guide, a cafe and a local shop, on one page, saved through PATCH /providers/me (`profile`), which checks each field and
- * copies it onto the listing travellers see (backend lib/hostProfile.ts). The app has the same
- * screen (app/provider/profile.tsx).
+ * The host's business profile: what is the same for the whole business (its name and phone, the
+ * person behind it, a guide's kinds of guiding, a driver's licence, owners), saved through
+ * PATCH /providers/me (`profile`), which checks each field and copies it onto every listing
+ * (backend lib/hostProfile.ts). The app has the same screen (app/provider/profile.tsx).
+ *
+ * Each listing's own offers (rooms and food, menu, goods, services, routes) and photos are edited on
+ * that listing's page (/provider/listings/:id, ProviderListingEdit), opened from the list of listings
+ * here (user decision 2026-11-24). Every part is a collapsible card (Fold), so the page opens short.
  *
  * The items a new host must have before their documents can go for approval are listed at the
- * top, from the server's `profile_missing`, so the page and the server never disagree.
+ * top, from the server's `profile_missing`, each with where it is fixed.
  */
 
 const GUIDE_TYPES = ['trekking', 'heritage', 'nature', 'birding', 'tea', 'cultural', 'city', 'photography'];
 const SEASONS = ['spring', 'summer', 'monsoon', 'autumn', 'winter'];
-const MENU_UNITS = ['plate', 'item', 'cup', 'head'];
-const GOODS_UNITS = ['item', 'piece', 'kg', 'gram', 'litre', 'pack', 'dozen'];
-const MAX_GOODS = 10;
 
-/** One panel of the form: a Box with its h2 and an optional note. */
-function Section({ title, note, children, testid, id }: { title: string; note?: string; children: React.ReactNode; testid?: string; id?: string }) {
-  return (
-    <Box as="section" id={id} data-testid={testid} className={id ? 'scroll-mt-20' : undefined}>
-      <div>
-        <h2>{title}</h2>
-        {note && <p className="ag-small">{note}</p>}
-      </div>
-      <div className="grid grid-cols-[minmax(0,1fr)] gap-4">{children}</div>
-    </Box>
-  );
-}
-
-/** A labelled group for controls that are not a single field (chips, priced rows, uploads). */
 /** Languages a host picks from: the four the app is offered in (src/i18n.ts). Saved as these English names. */
 const HOST_LANGUAGES = ['English', 'Hindi', 'Nepali', 'Bengali'];
 /** The saved list, with a known language in its usual spelling ("nepali" -> "Nepali") and no repeats. */
@@ -74,35 +55,10 @@ function experienceOptions(current: unknown): number[] {
 }
 const last10 = (v: unknown) => String(v ?? '').replace(/\D/g, '').slice(-10);
 
-/** Passenger capacity choices for a driver: the 1-30 the server accepts. */
-const SEAT_OPTIONS = Array.from({ length: 30 }, (_, i) => i + 1);
+/** Where each item of the server's checklist is fixed: on this page, or on the first listing's page. */
+const FIX_ON_LISTING: Record<string, string> = { images: 'photos', services: 'prices', rooms: 'prices', menu: 'prices', goods: 'prices' };
 
-/** Saved priced rows (rooms, food, services, routes, goods) as the editor holds them. */
-function pricedRows(rows: any[] | undefined, nameKey = 'name', unit = 'day'): Priced[] {
-  return (Array.isArray(rows) ? rows : []).map((r) => ({
-    name: String(r?.[nameKey] ?? r?.name ?? ''), price: Number(r?.price) || '', unit: r?.unit || unit, ...(r?.photo ? { photo: String(r.photo) } : {}),
-    // A homestay room's size and extra mattress (lib/roomFit.ts), kept so a save does not drop them.
-    ...(Number(r?.occ) > 0 ? { occ: Number(r.occ), extra_beds: Number(r?.extra_beds) || 0, extra_bed_price: Number(r?.extra_bed_price) || '' } : {}),
-    // A room the host switched off (let outside the app) stays off.
-    ...(r?.available === false ? { available: false } : {}),
-  }));
-}
-
-/**
- * One property's own fields, from its extras (the server's PROPERTY_FIELDS): a host with several
- * homestays keeps rooms, food, occupancy and amenities per listing (user decision 2026-11-21).
- */
-const PROPERTY_KEYS = ['rooms', 'meals', 'capacity', 'amenities'] as const;
-function propertyForm(e: any) {
-  return {
-    // A room is one price a night for the whole room (a room saved per head before shows per night).
-    rooms: pricedRows(e?.rooms, 'name', 'night').map((r) => ({ ...r, unit: 'night' })),
-    meals: pricedRows(e?.meals, 'name', 'meal'),
-    capacity: e?.capacity ?? '',
-    amenities: Array.isArray(e?.amenities) ? e.amenities : [],
-  };
-}
-
+/** A labelled group for controls that are not a single field (chips, uploads). */
 function Group({ label, children, hint }: { label: string; children: React.ReactNode; hint?: string }) {
   return (
     <div className="grid gap-2">
@@ -186,13 +142,8 @@ export default function ProviderProfile() {
   const [uploading, setUploading] = useState<string | null>(null);
   const [stats, setStats] = useState<{ review_count?: number; average_rating?: number } | null>(null);
   const [showPreview, setShowPreview] = useState(false);
-  const [myListings, setMyListings] = useState<any[]>([]);
-  const [editListing, setEditListing] = useState<any>(null);
-  const [addListing, setAddListing] = useState(false);
-  // A host with several homestays edits one property's rooms, food, occupancy and amenities at a
-  // time. null = the first one (set up at sign-up), which the profile itself holds.
-  const [propertyId, setPropertyId] = useState<string | null>(null);
-  const propertyIdRef = useRef<string | null>(null);
+  const [myListings, setMyListings] = useState<any[] | null>(null);
+  const [switching, setSwitching] = useState<string | null>(null);
   const loadListings = (): Promise<any[]> => api.get('/bookings/provider')
     .then((r) => { const ls = r.data.listings || []; setMyListings(ls); return ls; })
     .catch(() => { setMyListings([]); return []; });
@@ -219,16 +170,16 @@ export default function ProviderProfile() {
     checkBusiness();
   }, [authLoading, user?.role, provider, checkBusiness]);
 
+  // The provider as last loaded (a plan renewal refreshes it); the form is built once per business,
+  // so a renewal on the plan card does not wipe edits typed below it.
+  useEffect(() => { if (provider) setP(provider); }, [provider]);
   useEffect(() => {
     if (!provider) return;
     const e = provider.extras || {};
-    const priced = pricedRows;
-    setP(provider);
-    // The profile holds the first property's rooms. While another property is picked, its rooms stay
-    // in the form across a reload of the profile (after a save).
-    setForm((prev: any) => ({
+    setForm({
       business_name: provider.business_name || '',
       contact_phone: provider.contact_phone || '',
+      // The business page's cover (the public /business page); each listing can have its own on its page.
       cover: (provider.images || [])[0] || '',
       host_avatar: e.host_avatar || '',
       host_name: e.host_name || '',
@@ -240,80 +191,104 @@ export default function ProviderProfile() {
       experience_years: e.experience_years ?? '',
       host_bio: e.host_bio || '',
       intro_video: e.intro_video || '',
-      images: Array.isArray(e.images) ? e.images : [],
-      photo_kinds: e.photo_kinds && typeof e.photo_kinds === 'object' ? e.photo_kinds : {},
+      recommended_drivers: Array.isArray(e.recommended_drivers) ? e.recommended_drivers : [],
+      home_delivery: e.home_delivery === true,
       // driver
       vehicle_number: e.vehicle_number || '',
       license_number: e.license_number || '',
-      seats: e.seats ?? '',
-      routes: Array.isArray(e.routes) ? e.routes : [],
-      // homestay (and a cafe's capacity and amenities)
-      ...propertyForm(e),
-      ...(prev && propertyIdRef.current ? Object.fromEntries(PROPERTY_KEYS.map((k) => [k, prev[k]])) : {}),
-      recommended_drivers: Array.isArray(e.recommended_drivers) ? e.recommended_drivers : [],
-      home_delivery: e.home_delivery === true,
       // guide
       age: e.age ?? '',
       gender: e.gender || '',
       guide_types: Array.isArray(e.guide_types) ? e.guide_types : [],
-      services: priced(e.services, 'name', 'day'),
       seasons: Array.isArray(e.seasons) ? e.seasons : [],
-      // cafe and shop
-      menu: priced(e.menu, 'name', 'plate'),
-      goods: priced(e.goods, 'name', 'item'),
+      // shop
       shop_kind: e.shop_kind || '',
-      opening_hours: e.opening_hours || '',
-    }));
-  }, [provider]);
-
-  // Links land on a section: the dashboard's Menu button (#menu: the cafe menu or the shop's goods)
-  // and the verification checklist's "Add" links (#about, #photos, #prices). Once the form is drawn,
-  // bring it into view (once, so later edits do not jump the page).
-  const location = useLocation();
-  const scrolledToHash = useRef(false);
-  useEffect(() => {
-    const target = location.hash.slice(1);
-    if (!form || scrolledToHash.current || !['menu', 'about', 'photos', 'prices'].includes(target)) return;
-    scrolledToHash.current = true;
-    window.requestAnimationFrame(() => document.getElementById(target)?.scrollIntoView({ block: 'start', behavior: 'smooth' }));
-  }, [form, location.hash]);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per business, see above
+  }, [provider?.id]);
 
   const type: string = p?.business_type || '';
   const missing: { key: string; label: string; min?: number; have?: number }[] = p?.profile_missing || [];
-  const updateForm = (updater: (current: any) => any) => {
-    // Once a host makes another edit, the previous success state is no longer current.
-    // Restore the save action immediately, including on the mobile layout.
-    setMsg((current) => current?.ok ? null : current);
-    setForm(updater);
-  };
-  const set = (patch: any) => updateForm((f: any) => ({ ...f, ...patch }));
 
-  // The host's homestays, oldest first: the first is the one the profile holds. Only this
-  // business's own listings, the ones a save can write to (the server checks listing_id the same way).
-  const homes = React.useMemo(() => myListings.filter((l) => l.type === 'homestay' && l.provider_id === provider?.id)
+  // This business's own listings, oldest first. The first of the business's own type is the one set up
+  // at sign-up: the server mirrors it onto the profile, so the checklist's photos and prices are fixed there.
+  const listings = useMemo(() => (myListings || []).filter((l) => l.provider_id === provider?.id)
     .sort((a, b) => String(a.created_at).localeCompare(String(b.created_at))), [myListings, provider?.id]);
-  // Unsaved edits to the picked property's rooms, food, occupancy or amenities: switching property
-  // would drop them, so the picker waits for a save.
-  const [propertyEdited, setPropertyEdited] = useState(false);
-  const setProperty = (patch: any) => { setPropertyEdited(true); set(patch); };
-  const pickProperty = (id: string) => {
-    const l = homes.find((x) => x.id === id);
-    if (!l || propertyEdited) return;
-    const pick = id === homes[0]?.id ? null : id;
-    setPropertyId(pick);
-    propertyIdRef.current = pick;
-    // The first property's fields live on the profile; another one's on its own listing.
-    updateForm((f: any) => ({ ...f, ...propertyForm(pick ? l.extras : provider?.extras) }));
+  const first = listings.find((l) => l.type === type) || listings[0] || null;
+  // The listings grouped by kind, the business's own kind first, then in the order they were added.
+  const listingGroups = useMemo(() => {
+    const groups = new Map<string, any[]>();
+    if (type) groups.set(type, []);
+    for (const l of listings) groups.set(l.type, [...(groups.get(l.type) || []), l]);
+    return [...groups.entries()].filter(([, g]) => g.length > 0);
+  }, [listings, type]);
+  const listingPath = (l: { id: string }, part?: string) => `/provider/listings/${l.id}${part ? `#${part}` : ''}`;
+
+  // Links land on a part. #about opens About you here; the dashboard's Menu button (#menu) and the
+  // checklist's photo and price links (#photos, #prices) belong to a listing now: go to the first one's.
+  const location = useLocation();
+  const hash = location.hash.slice(1);
+  // Each new hash is handled once (the checklist's Edit links change it while the page is open).
+  const handledHash = useRef('');
+  useEffect(() => {
+    if (!form || !hash || handledHash.current === hash) return;
+    if (['menu', 'photos', 'prices'].includes(hash)) {
+      if (myListings === null) return;
+      handledHash.current = hash;
+      if (first) nav(listingPath(first, hash), { replace: true });
+      return;
+    }
+    if (hash !== 'about' && hash !== 'listings' && hash !== 'plan') return;
+    handledHash.current = hash;
+    window.requestAnimationFrame(() => document.getElementById(hash)?.scrollIntoView({ block: 'start', behavior: 'smooth' }));
+  }, [form, hash, myListings, first, nav]);
+
+  // The fixed save bar covers the page's end: the page leaves room for it through --page-cta-h,
+  // as the item page's book bar does (ReserveSection).
+  const saveBarRef = useRef<HTMLDivElement>(null);
+  const formReady = !!form;
+  useEffect(() => {
+    const el = saveBarRef.current;
+    if (!el) return;
+    const root = document.documentElement;
+    const setH = () => root.style.setProperty('--page-cta-h', `${el.offsetHeight}px`);
+    setH();
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(setH) : null;
+    ro?.observe(el);
+    return () => { ro?.disconnect(); root.style.removeProperty('--page-cta-h'); };
+  }, [formReady]);
+
+  const set = (patch: any) => {
+    // Once a host makes another edit, the previous success state is no longer current.
+    setMsg((current) => current?.ok ? null : current);
+    setForm((f: any) => ({ ...f, ...patch }));
   };
 
-  const upload = (field: 'cover' | 'host_avatar') => (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Each listing's own Taking bookings switch, saved at once (the server checks only this one), as on the dashboard.
+  const setListingTaking = async (l: any, on: boolean) => {
+    setSwitching(l.id);
+    try {
+      await api.patch(`/listings/${l.id}`, { extras: { ...(l.extras || {}), available: on } });
+      await loadListings();
+    } catch (e: any) {
+      setMsg({ ok: false, text: e?.response?.data?.detail || t('ui.providerProfile.could_not_save') });
+    } finally {
+      setSwitching(null);
+    }
+  };
+
+  const uploadCover = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = '';
-    if (file) uploadFile(field)(file);
+    if (!file) return;
+    setUploading('cover');
+    try { set({ cover: await uploadImage(file) }); }
+    catch (err) { setMsg({ ok: false, text: typeof err === 'string' ? err : t('kyc.uploadFailed') }); }
+    finally { setUploading(null); }
   };
-  const uploadFile = (field: 'cover' | 'host_avatar') => async (file: File) => {
-    setUploading(field);
-    try { set({ [field]: await uploadImage(file) }); }
+  const uploadAvatar = async (file: File) => {
+    setUploading('host_avatar');
+    try { set({ host_avatar: await uploadImage(file) }); }
     catch (err) { setMsg({ ok: false, text: typeof err === 'string' ? err : t('kyc.uploadFailed') }); }
     finally { setUploading(null); }
   };
@@ -334,80 +309,42 @@ export default function ProviderProfile() {
     }
   };
 
-  const uploadGallery = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files?.length) return;
-    setUploading('images');
-    try { const urls = await uploadImages(files); updateForm((f: any) => ({ ...f, images: [...f.images, ...urls] })); }
-    catch (err) { setMsg({ ok: false, text: typeof err === 'string' ? err : t('kyc.uploadFailed') }); }
-    finally { setUploading(null); }
-  };
-
   const save = async () => {
     if (!form) return;
-    // Every room says how many people it sleeps: that is the most it takes, unless it has an extra mattress.
-    if (type === 'homestay' && form.rooms.some((r: Priced) => r.name.trim() && !roomFit(r).occ)) {
-      setMsg({ ok: false, text: t('hostProfile.rooms_need_sleeps') });
-      return;
-    }
     setBusy(true);
     setMsg(null);
     const num = (v: any) => (v === '' || v === null || v === undefined ? undefined : Number(v));
-    const priced = (rows: Priced[]) => rows.filter((r) => r.name.trim()).map((r) => {
-      const fit = roomFit(r);
-      return {
-        name: r.name.trim(), price: Number(r.price) || 0, unit: r.unit, ...(r.photo ? { photo: r.photo } : {}),
-        ...(fit.occ ? { occ: fit.occ } : {}),
-        ...(fit.extraBeds ? { extra_beds: fit.extraBeds, ...(fit.extraBedPrice ? { extra_bed_price: fit.extraBedPrice } : {}) } : {}),
-        ...(r.available === false ? { available: false } : {}),
-      };
-    });
+    // Only what is the whole business's: a listing's offers and photos are saved on its own page.
     const profile: Record<string, unknown> = {
       host_avatar: form.host_avatar,
       whatsapp: form.sameWhatsapp ? '' : form.whatsapp.trim(),
-      available: form.available,
       languages: form.languages.split(',').map((s: string) => s.trim()).filter(Boolean),
       host_bio: form.host_bio,
       intro_video: form.intro_video.trim(),
       // Social links are no longer asked for; saving clears any a host added before.
       social: {},
-      images: form.images,
     };
     if (num(form.experience_years) !== undefined) profile.experience_years = num(form.experience_years);
+    // `available` is copied onto every listing by the server, so it is sent only to undo a
+    // business-wide pause; otherwise a profile save would switch each paused listing back on.
+    if (p?.extras?.available === false) profile.available = form.available;
     if (type === 'driver') {
-      Object.assign(profile, { vehicle_number: form.vehicle_number.trim(), license_number: form.license_number.trim(), routes: form.routes });
-      if (num(form.seats) !== undefined) profile.seats = num(form.seats);
+      Object.assign(profile, { vehicle_number: form.vehicle_number.trim(), license_number: form.license_number.trim() });
     } else if (type === 'homestay') {
-      Object.assign(profile, {
-        host_name: form.host_name.trim(), rooms: priced(form.rooms), meals: priced(form.meals),
-        amenities: form.amenities, recommended_drivers: form.recommended_drivers,
-        // Only labels for photos still in the gallery.
-        photo_kinds: Object.fromEntries(Object.entries(form.photo_kinds || {}).filter(([url, k]) => k && form.images.includes(url))),
-      });
-      // Rooms that say what they sleep decide the guest occupancy; otherwise the host's own number.
-      const fromRooms = roomsCapacity(form.rooms);
-      if (fromRooms > 0) profile.capacity = fromRooms;
-      else if (num(form.capacity) !== undefined) profile.capacity = num(form.capacity);
+      Object.assign(profile, { host_name: form.host_name.trim(), recommended_drivers: form.recommended_drivers });
     } else if (type === 'guide') {
-      Object.assign(profile, { host_name: form.host_name.trim(), guide_types: form.guide_types, services: priced(form.services), seasons: form.seasons });
+      Object.assign(profile, { host_name: form.host_name.trim(), guide_types: form.guide_types, seasons: form.seasons });
       if (form.gender) profile.gender = form.gender;
       if (num(form.age) !== undefined) profile.age = num(form.age);
     } else if (type === 'cafe') {
-      Object.assign(profile, {
-        host_name: form.host_name.trim(), menu: priced(form.menu), amenities: form.amenities,
-        recommended_drivers: form.recommended_drivers, home_delivery: form.home_delivery,
-      });
+      Object.assign(profile, { host_name: form.host_name.trim(), recommended_drivers: form.recommended_drivers, home_delivery: form.home_delivery });
     } else if (type === 'shop') {
       Object.assign(profile, {
-        host_name: form.host_name.trim(), shop_kind: form.shop_kind.trim(), goods: priced(form.goods).slice(0, MAX_GOODS),
+        host_name: form.host_name.trim(), shop_kind: form.shop_kind.trim(),
         recommended_drivers: form.recommended_drivers, home_delivery: form.home_delivery,
       });
     }
-    if ((type === 'cafe' || type === 'shop') && num(form.capacity) !== undefined) profile.capacity = num(form.capacity);
-    if (type === 'cafe' || type === 'shop') profile.opening_hours = (form.opening_hours || '').trim();
     const body: Record<string, unknown> = { profile };
-    // Rooms, food, occupancy and amenities go to the picked property only (the first one when none is picked).
-    if (type === 'homestay' && propertyId) body.listing_id = propertyId;
     if (form.business_name.trim() && form.business_name.trim() !== p.business_name) body.business_name = form.business_name.trim();
     if (form.contact_phone.trim() && form.contact_phone.trim() !== p.contact_phone) body.contact_phone = form.contact_phone.trim();
     if (form.cover && form.cover !== (p.images || [])[0]) body.cover_image = form.cover;
@@ -415,12 +352,7 @@ export default function ProviderProfile() {
       const { data } = await api.patch('/providers/me', body);
       setP((prev: any) => ({ ...prev, ...data.provider }));
       await refreshProvider();
-      // The picker reads each property's rooms from its listing: bring them up to date, and show
-      // another property's rooms as the server stored them (the first one's come back with the profile).
-      const fresh = await loadListings();
-      const saved = propertyId ? fresh.find((l) => l.id === propertyId) : null;
-      if (saved) updateForm((f: any) => ({ ...f, ...propertyForm(saved.extras) }));
-      setPropertyEdited(false);
+      await loadListings();
       setMsg({ ok: true, text: t('hostProfile.saved') });
     } catch (e: any) {
       setMsg({ ok: false, text: e?.response?.data?.detail || e.message || t('ui.providerProfile.could_not_save') });
@@ -429,17 +361,7 @@ export default function ProviderProfile() {
     }
   };
 
-  // Matches the server's missingMandatory: 6 car photos; 8 photos for a homestay, cafe or shop.
-  const photoGoal = photoGoalFor(type);
-  const photosNote = type === 'driver' ? 'hostProfile.photos_note_driver' : type === 'cafe' ? 'hostProfile.photos_note_cafe'
-    : type === 'shop' ? 'hostProfile.photos_note_shop' : 'hostProfile.photos_note_homestay';
-  // "Gallery · 11 photos (8 needed) ✓", or "Gallery · 3 of 8 needed" while short.
-  const galleryHave = form?.images?.length || 0;
-  const galleryLabel = !photoGoal ? t('hostProfile.gallery') : `${t('hostProfile.gallery')} · ${galleryHave >= photoGoal
-    ? t('hostProfile.gallery_done', '{{have}} photos ({{goal}} needed) ✓', { have: galleryHave, goal: photoGoal })
-    : t('hostProfile.gallery_short', '{{have}} of {{goal}} needed', { have: galleryHave, goal: photoGoal })}`;
   const nameLabel = type === 'homestay' ? t('hostProfile.property_name') : type === 'guide' ? t('hostProfile.business_name_guide') : t('hostProfile.business_name');
-  const unitLabel = (u: string) => t(`profile.unit_${u}`);
 
   if (!form) {
     if (loadFailed) {
@@ -453,21 +375,18 @@ export default function ProviderProfile() {
     return <div className="ag-wrap"><div className="ag-main"><p className="ag-small">{t('common.loading')}</p></div></div>;
   }
 
-  const previewItems = (): MiniSiteData['items'] => {
-    const rows = (list: Priced[]) => list.filter((r) => r.name.trim()).map((r) => ({ name: r.name, price: Number(r.price) || 0, unit: r.unit, photo: r.photo }));
-    if (type === 'driver') return (form.routes || []).map((r: any) => ({ name: r.route || r.name || '', price: Number(r.price) || 0, unit: r.unit || 'trip', photo: r.photo })).filter((r: any) => r.name);
-    if (type === 'homestay') return [...rows(form.rooms), ...rows(form.meals)];
-    if (type === 'guide') return rows(form.services);
-    if (type === 'cafe') return rows(form.menu);
-    if (type === 'shop') return rows(form.goods);
-    return [];
-  };
+  // The preview shows the public page as travellers meet it first: the business, with the first listing's offers and photos.
+  const fe = first?.extras || {};
+  const rows = (list: any) => (Array.isArray(list) ? list : []).filter((r: any) => r && (r.name || r.route))
+    .map((r: any) => ({ name: r.route || r.name, price: Number(r.price) || 0, unit: r.unit || (type === 'driver' ? 'trip' : ''), photo: r.photo }));
+  const previewItems: MiniSiteData['items'] = type === 'homestay' ? [...rows(fe.rooms), ...rows(fe.meals)]
+    : rows(fe[({ driver: 'routes', guide: 'services', cafe: 'menu', shop: 'goods' } as Record<string, string>)[type]]);
   const preview: MiniSiteData = {
     type,
     name: form.business_name,
     hostName: form.host_name,
     avatar: form.host_avatar,
-    cover: form.cover,
+    cover: form.cover || first?.image || '',
     verified: !!p?.badges?.verified,
     member: !!p?.badges?.member,
     slug: p?.slug,
@@ -479,44 +398,54 @@ export default function ProviderProfile() {
     about: form.host_bio,
     video: form.intro_video,
     languages: String(form.languages || '').split(',').map((x: string) => x.trim()).filter(Boolean),
-    items: previewItems(),
-    gallery: form.images,
+    items: previewItems,
+    gallery: Array.isArray(fe.images) ? fe.images : [],
     available: form.available,
     homeDelivery: deliveryOn && form.home_delivery && (type === 'cafe' || type === 'shop'), // TEMPORARY(legal-pause)
   };
 
-  // Each listing with Edit, then Add: under "Your properties", or inside a driver's vehicle section.
-  const listingRows = (
-    <>
-      {myListings.map((l) => (
-        <div key={l.id} className="row">
-          <span className="min-w-0">
-            <b>{l.title}</b>
-            <span className="ag-small">{l.location}{Number(l.price) > 0 ? ` · ${t('host.from', 'From')} ₹${Number(l.price).toLocaleString('en-IN')}` : ''}</span>
-          </span>
-          <Button variant="text" onClick={() => setEditListing(l)}>{t('common.edit')}</Button>
-        </div>
-      ))}
-      <Button className="self-start" icon={<Icon name={type === 'driver' ? 'car' : 'home'} />} onClick={() => setAddListing(true)}>
-        {type === 'driver' ? t('host.add_vehicle', 'Add a vehicle') : t('host.add_property', 'Add a property')}
-      </Button>
-    </>
-  );
+  const sellsLocally = type === 'cafe' || type === 'shop';
+  const recommendsDrivers = type === 'homestay' || sellsLocally;
+  const needsAbout = missing.some((m) => m.key === 'host_name');
+  // Saved as paused for the whole business (the old business-wide switch), not just edited off here.
+  const pausedAll = p?.extras?.available === false;
+  const langs = splitLangs(form.languages);
 
   return (
     <div className="ag-wrap">
-      <div className="ag-main" data-testid="provider-profile">
+      <div className="ag-main pb-[calc(var(--page-cta-h)+24px)]" data-testid="provider-profile">
         <div>
           <p className="ag-host-typeline">{t(`ob.wz.t_${type}`, { defaultValue: type })}</p>
           <h1 className="ag-host-tabh">{t('hostProfile.title')}</h1>
           <p className="ag-small mt-3">{t('hostProfile.subtitle')}</p>
         </div>
 
+        {/* The prototype's "Live preview" card, at the top so the host sees the page they are editing; tapping it opens the full preview. */}
+        <button type="button" className="ag-box ag-host-preview" onClick={() => setShowPreview(true)} data-testid="profile-preview-open">
+          <span className="ag-eyebrow">{t('miniSite.preview_title')}</span>
+          {p?.page_path && <span className="url">{`${window.location.host}${p.page_path}`}</span>}
+          <h2>{form.business_name}</h2>
+          <span className="ag-small">{t(`ob.wz.t_${type}`, { defaultValue: type })} · {p?.location}</span>
+          {p?.created_at && <span className="ag-small">{t('host.joined', 'Joined aangan {{date}}', { date: new Date(p.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) })}</span>}
+          <span className={`ag-host-tag${p?.badges?.verified ? ' ok' : ''}`}>{p?.badges?.verified ? t('host.verified', 'Verified') : t('host.new_on', 'New on aangan')}</span>
+        </button>
+
         {missing.length > 0 ? (
           <Box tone="blush" className="ag-host-need" data-testid="profile-missing">
             <h2>{t('hostProfile.required_title')}</h2>
             <ul>
-              {missing.map((m) => <li key={m.key}><span className="d" aria-hidden="true">•</span>{missingLabel(t, m, p?.business_type)}</li>)}
+              {missing.map((m) => {
+                // Each item links to where it is fixed: About you here, or the first listing's photos or prices.
+                const part = FIX_ON_LISTING[m.key];
+                const to = part ? (first ? listingPath(first, part) : '#listings') : '#about';
+                return (
+                  <li key={m.key}>
+                    <span className="d" aria-hidden="true">•</span>
+                    <span className="flex-1">{missingLabel(t, m, p?.business_type)}</span>
+                    <Link to={to} className="ag-seeall shrink-0" data-testid={`profile-missing-fix-${m.key}`}>{t('common.edit')}</Link>
+                  </li>
+                );
+              })}
             </ul>
             <p className="ag-small">{t('hostProfile.required_note')}</p>
           </Box>
@@ -527,32 +456,97 @@ export default function ProviderProfile() {
           </Box>
         )}
 
-        <Box as="section" className="ag-host-switches">
-          <Toggle on={form.available} onChange={(v) => set({ available: v })} testid="profile-available"
-            label={t('hostProfile.available_on')}
-            note={t('hostProfile.available_note')} />
-          {/* TEMPORARY(legal-pause): hidden while delivery is paused; the saved setting is kept and returns with it. */}
-          {deliveryOn && (type === 'cafe' || type === 'shop') && (
-            <div>
-              <Toggle on={form.home_delivery} onChange={(v) => set({ home_delivery: v })} testid="profile-home-delivery"
-                label={type === 'shop' ? t('hostProfile.home_delivery_shop') : t('hostProfile.home_delivery')}
-                note={type === 'shop' ? t('hostProfile.home_delivery_shop_note') : t('hostProfile.home_delivery_cafe_note')} />
+        {/* The membership: what it costs, when it ends, renewing (it used to sit on My Listings). */}
+        <HostPlanCard provider={p} user={user} onRenewed={async () => { await refreshProvider(); await loadListings(); }} />
+
+        {/* Taking bookings is per listing (each card below). The business-wide switch shows only for a
+            host who paused everything with it, so they can undo it, as on the dashboard (decision 2026-11-24). */}
+        {(pausedAll || (deliveryOn && sellsLocally)) && (
+          <Box as="section" className="ag-host-switches">
+            {pausedAll && (
+              <Toggle on={form.available} onChange={(v) => set({ available: v })} testid="profile-available"
+                label={t('host.taking', 'Taking bookings')}
+                note={form.available ? t('host.avail_on', 'Available. Travellers can ask to book.') : t('host.avail_off', 'Not available right now. Your listings show as paused.')} />
+            )}
+            {pausedAll && (
+              // Undoing the business-wide pause turns every listing back on; each can then be paused on its own.
+              <p className="ag-small -mt-1">{t('hostProfile.unpause_note', 'Switching this on turns every listing back on. Then pause any one on its card below.')}</p>
+            )}
+            {/* TEMPORARY(legal-pause): hidden while delivery is paused; the saved setting is kept and returns with it. */}
+            {deliveryOn && sellsLocally && (
+              <div>
+                <Toggle on={form.home_delivery} onChange={(v) => set({ home_delivery: v })} testid="profile-home-delivery"
+                  label={type === 'shop' ? t('hostProfile.home_delivery_shop') : t('hostProfile.home_delivery')}
+                  note={type === 'shop' ? t('hostProfile.home_delivery_shop_note') : t('hostProfile.home_delivery_cafe_note')} />
+              </div>
+            )}
+          </Box>
+        )}
+
+        {/* Every listing the business runs, of any kind (a shop that also lets rooms or drives guests),
+            in one place, grouped by kind; the listings come first because most edits are to one of them. */}
+        <Box as="section" id="listings" className="ag-host-props scroll-mt-20" data-testid="profile-properties">
+          <div>
+            <div className="flex items-baseline justify-between gap-3">
+              <h2>{t('host.your_listings', 'Your listings')}</h2>
+              {/* The fuller view: each listing's status, offers, photos and requests as cards. */}
+              <Link to="/my-listings" className="ag-seeall shrink-0" data-testid="profile-see-listings">{t('home.see_all', 'See all')}</Link>
             </div>
-          )}
+            <p className="ag-small">{t('hostProfile.listings_note', 'Tap one to edit its prices, details and photos.')}</p>
+          </div>
+          {listingGroups.map(([kind, group]) => (
+            <div key={kind} className="grid gap-2" data-testid={`profile-listings-${kind}`}>
+              {/* The kind is named only when there is more than one, so a one-kind business reads as before. */}
+              {listingGroups.length > 1 && <span className="ag-eyebrow">{t(`ob.wz.t_${kind}`, { defaultValue: kind })} · {group.length}</span>}
+              {group.map((l) => {
+                const pics = Array.isArray(l.extras?.images) ? l.extras.images.length : 0;
+                const on = l.extras?.available !== false;
+                return (
+                  // The card opens the listing's page; its Taking bookings switch sits beside it, not inside the link.
+                  <div key={l.id} className="ag-host-listing" data-testid="profile-listing">
+                    <Link to={listingPath(l)} className="main">
+                      {l.image ? <img src={l.image} alt="" className="pic" /> : <span className="pic" aria-hidden="true" />}
+                      <span className="txt">
+                        <b>{l.title}</b>
+                        <span className="ag-small">{l.location}{Number(l.price) > 0 ? ` · ${t('host.from', 'From')} ₹${Number(l.price).toLocaleString('en-IN')}` : ''}</span>
+                        <span className={`ag-small${on ? '' : ' !text-[var(--fail)]'}`}>
+                          {on ? `${t('hostProfile.photos')} · ${pics}` : t('host.paused', 'Not taking bookings')}
+                        </span>
+                      </span>
+                      <CaretRight className="chev" aria-hidden="true" />
+                    </Link>
+                    <label className="ag-host-ltoggle" title={t('host.taking', 'Taking bookings')}>
+                      <input type="checkbox" role="switch" checked={on} disabled={switching === l.id}
+                        aria-label={`${t('host.taking', 'Taking bookings')}: ${l.title}`}
+                        onChange={(e) => setListingTaking(l, e.target.checked)} data-testid={`profile-listing-taking-${l.id}`} />
+                    </label>
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+          {/* Two ways to add, both the dashboard's guided steps: another of the business's own kind
+              (the kind already picked, so it starts at the place), or a listing of any kind (it asks first). */}
+          <div className="ag-row">
+            {type && (
+              <ButtonLink to={`/provider/onboard?add=1&type=${type}&step=1`} icon={<Icon name={type === 'driver' ? 'car' : 'home'} />} data-testid="profile-add-another">
+                {t(`hostProfile.add_another_${type}`, 'Add another property')}
+              </ButtonLink>
+            )}
+            <ButtonLink to="/provider/onboard?add=1" icon={<Icon name="plus" />} data-testid="profile-add-listing">
+              {t('pd.add_listing', 'Add listing')}
+            </ButtonLink>
+            {/* Posting news about the listings to the feed (it used to sit on My Listings). */}
+            <ButtonLink to="/feed" variant="text" data-testid="post-update-cta">{t('pd.post_update')}</ButtonLink>
+          </div>
         </Box>
 
-        <Section title={t('hostProfile.about_you')} id="about">
-          <AvatarUploader src={form.host_avatar} initial={(form.host_name || form.business_name || '?').charAt(0).toUpperCase()}
-            uploading={uploading === 'host_avatar'} onFile={uploadFile('host_avatar')} onRemove={() => set({ host_avatar: '' })}
-            label={type === 'homestay' ? t('hostProfile.owner_photo') : t('hostProfile.your_photo')} />
+        {/* The business itself: its name and how guests reach it. */}
+        <Fold title={t('pd.business', 'Business')} summary={[form.business_name, form.contact_phone].filter(Boolean).join(' · ')} testid="profile-business">
           <TextField label={nameLabel} value={form.business_name} onChange={(e) => set({ business_name: e.target.value })} />
           {type === 'shop' && (
             <TextField label={t('hostProfile.shop_kind')} value={form.shop_kind} onChange={(e) => set({ shop_kind: e.target.value })}
               placeholder={t('hostProfile.shop_kind_ph')} data-testid="profile-shop-kind" />
-          )}
-          {(type === 'homestay' || type === 'guide' || type === 'cafe' || type === 'shop') && (
-            <TextField label={type === 'homestay' ? `${t('hostProfile.host_name')} *` : type === 'guide' ? t('hostProfile.your_name') : `${t('hostProfile.owner_name')} *`}
-              value={form.host_name} onChange={(e) => set({ host_name: e.target.value })} data-testid="profile-host-name" />
           )}
           <div className="grid gap-4 sm:grid-cols-2">
             <TextField label={t('hostProfile.phone')} value={form.contact_phone} onChange={(e) => set({ contact_phone: e.target.value })} inputMode="tel" />
@@ -570,30 +564,54 @@ export default function ProviderProfile() {
               )}
             </div>
           </div>
+          <Group label={t('hostProfile.cover')}>
+            <div className="flex flex-wrap items-center gap-3">
+              {form.cover
+                ? <img src={form.cover} alt="" className="aspect-[16/9] w-44 rounded-[18px] border border-[var(--warmline)] object-cover" />
+                : <div className="aspect-[16/9] w-44 rounded-[18px] border-2 border-dashed border-[var(--outline)]" />}
+              <label className="ag-btn sm cursor-pointer">
+                <span>{uploading === 'cover' ? t('common.loading') : t('hostProfile.change_cover')}</span>
+                <input type="file" accept="image/*" className="sr-only" onChange={uploadCover} data-testid="profile-cover-input" />
+              </label>
+            </div>
+          </Group>
+        </Fold>
+
+        {/* The person behind it: what travellers read and watch before they ask. */}
+        <Fold title={t('hostProfile.about_you')} id="about" open={needsAbout || hash === 'about'}
+          summary={[form.host_name, langs.join(', ')].filter(Boolean).join(' · ')} testid="profile-about">
+          <AvatarUploader src={form.host_avatar} initial={(form.host_name || form.business_name || '?').charAt(0).toUpperCase()}
+            uploading={uploading === 'host_avatar'} onFile={uploadAvatar} onRemove={() => set({ host_avatar: '' })}
+            label={type === 'homestay' ? t('hostProfile.owner_photo') : t('hostProfile.your_photo')} />
+          {(type === 'homestay' || type === 'guide' || sellsLocally) && (
+            <TextField label={type === 'homestay' ? `${t('hostProfile.host_name')} *` : type === 'guide' ? t('hostProfile.your_name') : `${t('hostProfile.owner_name')} *`}
+              value={form.host_name} onChange={(e) => set({ host_name: e.target.value })} data-testid="profile-host-name" />
+          )}
           {/* Tap to pick: the four languages the app itself speaks. One saved earlier outside them stays as a pill. */}
           <div data-testid="profile-languages">
             <Group label={t('hostProfile.languages')}>
-              <MultiChips options={languageOptions(splitLangs(form.languages))} selected={splitLangs(form.languages)}
+              <MultiChips options={languageOptions(langs)} selected={langs}
                 onChange={(v) => set({ languages: v.join(', ') })} label={(o) => t(`hostProfile.lang_${o.toLowerCase()}`, o)} />
             </Group>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
+          {/* Experience, and a guide's age and gender, share one row instead of a half-empty one each. */}
+          <div className={`grid gap-4 ${type === 'guide' ? 'sm:grid-cols-3' : 'sm:max-w-[16rem]'}`}>
             <SelectField label={t('hostProfile.experience')} value={String(form.experience_years ?? '')} onChange={(e) => set({ experience_years: e.target.value })} data-testid="profile-experience">
               <option value="">{t('hostProfile.seats_pick', 'Choose')}</option>
               {experienceOptions(form.experience_years).map((n) => (
                 <option key={n} value={String(n)}>{n === 0 ? t('hostProfile.exp_new', 'Less than a year') : t('hostProfile.exp_n', { count: n })}</option>
               ))}
             </SelectField>
+            {type === 'guide' && (
+              <>
+                <TextField label={t('hostProfile.age')} type="number" min={18} max={90} value={form.age} onChange={(e) => set({ age: e.target.value })} />
+                <SelectField label={t('hostProfile.gender')} value={form.gender} onChange={(e) => set({ gender: e.target.value })}>
+                  <option value="">—</option>
+                  {['male', 'female', 'other'].map((g) => <option key={g} value={g}>{t(`profile.gender_${g}`)}</option>)}
+                </SelectField>
+              </>
+            )}
           </div>
-          {type === 'guide' && (
-            <div className="grid gap-4 sm:grid-cols-2">
-              <TextField label={t('hostProfile.age')} type="number" min={18} max={90} value={form.age} onChange={(e) => set({ age: e.target.value })} />
-              <SelectField label={t('hostProfile.gender')} value={form.gender} onChange={(e) => set({ gender: e.target.value })}>
-                <option value="">—</option>
-                {['male', 'female', 'other'].map((g) => <option key={g} value={g}>{t(`profile.gender_${g}`)}</option>)}
-              </SelectField>
-            </div>
-          )}
           <TextArea label={t('hostProfile.bio')} rows={4} value={form.host_bio} onChange={(e) => set({ host_bio: e.target.value })} />
           <div data-testid="profile-video">
             <Group label={t('hostProfile.video')} hint={t('hostProfile.video_hint')}>
@@ -615,153 +633,50 @@ export default function ProviderProfile() {
               </div>
             </Group>
           </div>
-        </Section>
-
-        {/* provider.js "Your properties": each listing with Edit, and Add. A driver's vehicles sit
-            inside the vehicle section below instead, so all of it is in one place. */}
-        {type !== 'driver' && (
-          <Box as="section" className="ag-host-props" data-testid="profile-properties">
-            <h2>{t('host.your_properties', 'Your properties')}</h2>
-            {listingRows}
-          </Box>
-        )}
-
-        {type === 'driver' && (
-          <Section title={t('hostProfile.vehicle')} testid="profile-driver" id="prices">
-            <div className="grid gap-4 sm:grid-cols-3">
-              <TextField label={t('hostProfile.vehicle_number')} value={form.vehicle_number} onChange={(e) => set({ vehicle_number: e.target.value })} placeholder="WB 74 A 1234" />
-              <TextField label={t('hostProfile.license_number')} value={form.license_number} onChange={(e) => set({ license_number: e.target.value })} />
-              {/* A pick, not typing: the server takes 1-30 (lib/hostProfile.ts). */}
-              <SelectField label={t('hostProfile.seats')} value={String(form.seats ?? '')} onChange={(e) => set({ seats: e.target.value })} data-testid="profile-seats">
-                <option value="">{t('hostProfile.seats_pick', 'Choose')}</option>
-                {SEAT_OPTIONS.map((n) => <option key={n} value={String(n)}>{t('hostProfile.seats_n', { count: n })}</option>)}
-              </SelectField>
-            </div>
-            <LicenceUpload />
-            <p className="ag-small">{t('hostProfile.vehicle_docs_note')}</p>
-            {/* Add or remove routes here, then set each one's charge below (as in the listing editor). */}
-            <Group label={t('el.routes_covered')}>
-              <RouteListEditor routes={form.routes} onChange={(routes: any) => set({ routes })} emptyNote={t('hostProfile.routes_empty')} />
-            </Group>
-            <Group label={t('hostProfile.routes')}>
-              <RouteFareTable routes={form.routes} onChange={(routes: any) => set({ routes })} emptyNote={t('hostProfile.routes_empty')} />
-            </Group>
-            <div className="ag-host-props grid gap-3 border-t border-[var(--hairline)] pt-4" data-testid="profile-properties">
-              <span className="text-sm font-medium text-[var(--ink-strong)]">{t('host.your_vehicles', 'Your vehicles')}</span>
-              {listingRows}
-            </div>
-          </Section>
-        )}
-
-        {type === 'homestay' && (
-          <Section title={t('hostProfile.rooms_food')} note={t('hostProfile.rooms_food_note')} testid="profile-homestay" id="prices">
-            {/* Each property keeps its own rooms, food, occupancy and amenities; pick which one to edit. */}
-            {homes.length > 1 && (
-              <div className="grid gap-4 sm:grid-cols-2">
-                <SelectField label={t('hostProfile.property')} disabled={propertyEdited}
-                  hint={propertyEdited ? t('hostProfile.property_save_first') : t('hostProfile.property_hint')}
-                  value={propertyId || homes[0].id} onChange={(e) => pickProperty(e.target.value)} data-testid="profile-property">
-                  {homes.map((l) => <option key={l.id} value={l.id}>{l.title}{l.location ? ` · ${l.location}` : ''}</option>)}
-                </SelectField>
-              </div>
-            )}
-            <Group label={t('profile.rooms')}>
-              <PricedEditor rows={form.rooms} onChange={(rooms) => setProperty({ rooms })} units={['night']} unitLabel={unitLabel}
-                namePlaceholder={t('hostProfile.room_ph')} addLabel={t('hostProfile.add_room')} testid="profile-rooms" sleeps />
-            </Group>
-            <Group label={t('profile.meals')}>
-              <PricedEditor rows={form.meals} onChange={(meals) => setProperty({ meals })} units={['meal', 'day', 'head']} unitLabel={unitLabel}
-                namePlaceholder={t('hostProfile.meal_ph')} addLabel={t('hostProfile.add_meal')} testid="profile-meals" />
-            </Group>
-            {/* Rooms that say what they sleep decide the guest occupancy (saved with the profile); else the host types it. */}
-            {roomsCapacity(form.rooms) > 0 ? (
-              <TextField label={t('hostProfile.capacity')} hint={t('hostProfile.capacity_from_rooms')} value={String(roomsCapacity(form.rooms))}
-                readOnly className="sm:max-w-[12rem]" data-testid="profile-capacity-rooms" />
-            ) : (
-              <TextField label={t('hostProfile.capacity')} type="number" min={1} max={100} value={form.capacity} onChange={(e) => setProperty({ capacity: e.target.value })} className="sm:max-w-[12rem]" />
-            )}
-            <Group label={t('hostProfile.amenities')}>
-              <AmenityPicker presets={HOMESTAY_AMENITIES} selected={form.amenities} onChange={(amenities: string[]) => setProperty({ amenities })} />
-            </Group>
-            <Group label={t('hostProfile.recommended_drivers')}>
-              <DriverPicker selected={form.recommended_drivers} onChange={(recommended_drivers) => set({ recommended_drivers })} />
-            </Group>
-          </Section>
-        )}
+        </Fold>
 
         {type === 'guide' && (
-          <Section title={t('hostProfile.guiding')} testid="profile-guide" id="prices">
+          <Fold title={t('hostProfile.guiding')} summary={form.guide_types.map((g: string) => t(`profile.guide_type_${g}`)).join(', ')} testid="profile-guide">
             <Group label={t('hostProfile.guide_type')}>
               <MultiChips options={GUIDE_TYPES} selected={form.guide_types} onChange={(guide_types) => set({ guide_types })} label={(o) => t(`profile.guide_type_${o}`)} />
-            </Group>
-            <Group label={`${t('hostProfile.services')} *`}>
-              <PricedEditor rows={form.services} onChange={(services) => set({ services })} units={['day', 'trip', 'hour', 'person']} unitLabel={unitLabel}
-                namePlaceholder={t('hostProfile.service_ph')} addLabel={t('hostProfile.add_service')} testid="profile-services" />
             </Group>
             <Group label={t('hostProfile.seasons')}>
               <MultiChips options={SEASONS} selected={form.seasons} onChange={(seasons) => set({ seasons })} label={(o) => t(`profile.season_${o}`)} />
             </Group>
-          </Section>
+          </Fold>
         )}
 
-        {type === 'cafe' && (
-          <Section title={t('hostProfile.menu')} note={t('hostProfile.menu_note')} testid="profile-cafe" id="menu">
-            <PricedEditor rows={form.menu} onChange={(menu) => set({ menu })} units={MENU_UNITS} unitLabel={unitLabel}
-              namePlaceholder={t('hostProfile.menu_ph')} addLabel={t('hostProfile.add_menu')} testid="profile-menu" />
-            <Group label={t('hostProfile.amenities')}>
-              <AmenityPicker presets={CAFE_AMENITIES} selected={form.amenities} onChange={(amenities: string[]) => set({ amenities })} />
-            </Group>
-            <TextField label={t('hostProfile.opening_hours')} value={form.opening_hours || ''} onChange={(e) => set({ opening_hours: e.target.value })} maxLength={120}
-              placeholder={t('hostProfile.opening_hours_ph')} data-testid="profile-opening-hours" />
-            <TextField label={t('hostProfile.capacity_cafe')} type="number" min={1} max={500} value={form.capacity} onChange={(e) => set({ capacity: e.target.value })}
-              className="sm:max-w-[12rem]" data-testid="profile-capacity" />
-            <Group label={t('hostProfile.recommended_drivers')}>
-              <DriverPicker selected={form.recommended_drivers} onChange={(recommended_drivers) => set({ recommended_drivers })} />
-            </Group>
-          </Section>
-        )}
-
-        {type === 'shop' && (
-          <Section title={t('hostProfile.goods')} note={t('hostProfile.goods_note')} testid="profile-shop" id="menu">
-            <PricedEditor rows={form.goods} onChange={(goods) => set({ goods })} units={GOODS_UNITS} unitLabel={unitLabel}
-              namePlaceholder={t('hostProfile.goods_ph')} addLabel={t('hostProfile.add_goods')} testid="profile-goods"
-              max={MAX_GOODS} fullNote={t('hostProfile.goods_full')} />
-            <TextField label={t('hostProfile.opening_hours')} value={form.opening_hours || ''} onChange={(e) => set({ opening_hours: e.target.value })} maxLength={120}
-              placeholder={t('hostProfile.opening_hours_ph')} data-testid="profile-opening-hours" />
-            <TextField label={t('hostProfile.capacity_shop')} type="number" min={1} max={500} value={form.capacity} onChange={(e) => set({ capacity: e.target.value })}
-              className="sm:max-w-[12rem]" data-testid="profile-capacity" />
-            <Group label={t('hostProfile.recommended_drivers')}>
-              <DriverPicker selected={form.recommended_drivers} onChange={(recommended_drivers) => set({ recommended_drivers })} />
-            </Group>
-          </Section>
-        )}
-
-        <Section id="photos" title={t('hostProfile.photos')} note={photoGoal ? t(photosNote, { count: photoGoal }) : t('hostProfile.photos_note')}>
-          <Group label={t('hostProfile.cover')}>
-            <div className="flex flex-wrap items-center gap-3">
-              {form.cover
-                ? <img src={form.cover} alt="" className="aspect-[16/9] w-44 rounded-[18px] border border-[var(--warmline)] object-cover" />
-                : <div className="aspect-[16/9] w-44 rounded-[18px] border-2 border-dashed border-[var(--outline)]" />}
-              <label className="ag-btn sm cursor-pointer">
-                <span>{uploading === 'cover' ? t('common.loading') : t('hostProfile.change_cover')}</span>
-                <input type="file" accept="image/*" className="sr-only" onChange={upload('cover')} />
-              </label>
+        {/* A driver's own papers: the same for every vehicle they list. */}
+        {type === 'driver' && (
+          <Fold title={t('hostProfile.vehicle')} summary={[form.vehicle_number, form.license_number].filter(Boolean).join(' · ')} testid="profile-driver">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <TextField label={t('hostProfile.vehicle_number')} value={form.vehicle_number} onChange={(e) => set({ vehicle_number: e.target.value })} placeholder="WB 74 A 1234" />
+              <TextField label={t('hostProfile.license_number')} value={form.license_number} onChange={(e) => set({ license_number: e.target.value })} />
             </div>
-          </Group>
-          <Group label={galleryLabel} hint={type === 'homestay' ? t('photoKind.hint') : undefined}>
-            <GalleryUploader images={form.images} uploading={uploading === 'images'} onFilesSelected={uploadGallery}
-              onRemove={(i) => updateForm((f: any) => ({ ...f, images: f.images.filter((_: string, j: number) => j !== i) }))}
-              {...(type === 'homestay' ? {
-                kinds: form.photo_kinds,
-                onKind: (url: string, kind: string) => updateForm((f: any) => ({ ...f, photo_kinds: { ...f.photo_kinds, [url]: kind } })),
-              } : {})} />
-          </Group>
-        </Section>
+            <LicenceUpload />
+            <p className="ag-small">{t('hostProfile.vehicle_docs_note')}</p>
+          </Fold>
+        )}
+
+        {recommendsDrivers && (
+          <Fold title={t('hostProfile.recommended_drivers')} summary={t('hostProfile.drivers_selected', { count: form.recommended_drivers.length })} testid="profile-recommended">
+            <DriverPicker selected={form.recommended_drivers} onChange={(recommended_drivers) => set({ recommended_drivers })} />
+          </Fold>
+        )}
 
         <OwnersSection onLeft={async () => { await refreshProvider(); nav('/'); }} />
 
-        {/* Save, as the prototype's "Save profile" button, with what happened next to it. */}
-        <div className="ag-host-saverow">
+        {/* Invite another host (it used to sit on My Listings). */}
+        <InviteHostLink />
+
+        {/* Log out and Delete account, the page's last two actions, as on the Account tab. */}
+        <SignOutButton className="mt-2" />
+      </div>
+
+      {/* Save, as the prototype's "Save profile" button, in a bar that stays above the tab bar
+          (the item page's .ag-bookbar), so it is in reach from every card. */}
+      <div ref={saveBarRef} className="ag-bookbar ag-host-savebar" data-testid="profile-savebar">
+        <div className="ag-wrap">
           {msg?.ok ? (
             <div className="ag-host-saverow" data-testid="profile-saved-actions">
               <p className="msg text-[var(--ok)]">{msg.text}</p>
@@ -770,31 +685,15 @@ export default function ProviderProfile() {
             </div>
           ) : (
             <>
-              {/* The page's main action, so it uses the filled primary button like the wizard's Next. */}
-              <Button variant="primary" go onClick={save} disabled={busy || !!uploading} data-testid="profile-save">{busy ? t('common.loading') : t('hostProfile.save')}</Button>
               <p className={`msg ${msg ? 'text-[var(--fail)]' : 'text-[var(--ink-muted)]'}`} role={msg ? 'alert' : undefined} data-testid="profile-msg">
                 {msg ? msg.text : t('hostProfile.save_hint')}
               </p>
+              {/* The page's main action, so it uses the filled primary button like the wizard's Next. */}
+              <Button variant="primary" go onClick={save} disabled={busy || !!uploading} data-testid="profile-save">{busy ? t('common.loading') : t('hostProfile.save')}</Button>
             </>
           )}
         </div>
-
-        {/* The prototype's "Live preview" card; tapping it opens the full page preview. */}
-        <button type="button" className="ag-box ag-host-preview" onClick={() => setShowPreview(true)} data-testid="profile-preview-open">
-          <span className="ag-eyebrow">{t('miniSite.preview_title')}</span>
-          {p?.page_path && <span className="url">{`${window.location.host}${p.page_path}`}</span>}
-          <h2>{form.business_name}</h2>
-          <span className="ag-small">{t(`ob.wz.t_${type}`, { defaultValue: type })} · {p?.location}</span>
-          {p?.created_at && <span className="ag-small">{t('host.joined', 'Joined aangan {{date}}', { date: new Date(p.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) })}</span>}
-          <span className={`ag-host-tag${p?.badges?.verified ? ' ok' : ''}`}>{p?.badges?.verified ? t('host.verified', 'Verified') : t('host.new_on', 'New on aangan')}</span>
-        </button>
-
-        <SignOutButton />
       </div>
-
-      {editListing && <EditListingModal listing={editListing} onClose={() => setEditListing(null)} onSave={loadListings} />}
-      <ListingFormModal open={addListing} onClose={() => setAddListing(false)}
-        onSubmit={async (values: any) => { await api.post('/listings', values); await loadListings(); }} />
 
       {/* Live preview of the host's mini website (the board's "profiles look like websites"), full screen. */}
       {showPreview && (
