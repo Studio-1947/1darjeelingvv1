@@ -10,7 +10,6 @@ import { PALETTES, accentOf, mix, useTheme } from '@/lib/theme';
 import { Box, Button, ButtonA, ButtonLink, PageHead, Status } from '@/components/ag';
 import { Icon, type IconName } from '@/components/ag/Icon';
 import Wordmark from '@/components/Wordmark';
-import SignOutButton from '@/components/SignOutButton';
 import TravellerPanels, { Avatar } from '@/components/TravellerPanels';
 import { BusinessModeNotice } from '@/components/TravellerOnly';
 import { COMPANY } from '@/constants/company';
@@ -292,9 +291,6 @@ export default function TouristDashboard() {
           )}
         </section>
         </>)}
-
-        {/* Log out and Delete account: the last two actions on the Account tab (SignOutButton's own home). */}
-        {user && <SignOutButton />}
 
         <AccountFoot />
       </div>
