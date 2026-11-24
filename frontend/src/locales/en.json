@@ -116,6 +116,7 @@
     "privacy_link": "privacy policy",
     "error": "Payment could not be completed. Please try again.",
     "paid_title": "Membership payment done",
+    "paid_note": "aangan pass active",
     "paid_body": "{{total}} received. Your aangan pass is active until {{until}}.",
     "paid_body_nodate": "{{total}} received. Your aangan pass is active.",
     "paid_continue": "Continue",

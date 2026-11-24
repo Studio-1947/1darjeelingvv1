@@ -248,8 +248,26 @@ html[data-mode="dark"] .ag-account-tdtile > svg.i, html[data-mode="dark"] .ag-ac
 @keyframes ag-paydone-burst { 0% { opacity: 1; transform: rotate(var(--a)) translateY(0); } 100% { opacity: 0; transform: rotate(var(--a)) translateY(-64px); } }
 @keyframes ag-paydone-wiggle { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-14deg); } 60% { transform: rotate(10deg); } }
 @keyframes ag-paydone-up { from { opacity: 0; transform: translateY(8px); } }
+/* celebrate: a purchase. Confetti bursts up from the icon and falls, a light sweeps the card once,
+   the ring pulses twice and the icon glows. */
+.ag-paydone.celebrate::before { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(105deg, transparent 35%, rgb(255 255 255 / .14) 50%, transparent 65%); transform: translateX(-100%); animation: ag-paydone-sweep 1.2s .7s ease-in-out both; }
+.ag-paydone.celebrate .big { box-shadow: 0 0 0 0 color-mix(in srgb, var(--r) 45%, transparent); animation: ag-paydone-pop .5s .15s cubic-bezier(.3,1.6,.5,1) both, ag-paydone-glow 1.6s .7s ease-out both; }
+.ag-paydone.celebrate .big::after { animation-iteration-count: 2; }
+.ag-paydone .confetti { position: absolute; top: 72px; left: 50%; width: 0; height: 0; pointer-events: none; }
+.ag-paydone .confetti i { position: absolute; width: 8px; height: 12px; margin: -6px -4px; border-radius: 2px; background: var(--r); opacity: 0; animation: ag-paydone-confetti 1.8s var(--d) cubic-bezier(.2,.7,.4,1) both; }
+.ag-paydone .confetti i:nth-child(3n) { background: var(--ok); width: 7px; height: 7px; border-radius: 50%; }
+.ag-paydone .confetti i:nth-child(3n+1) { background: var(--ink7); width: 6px; height: 10px; }
+.ag-paydone .confetti i:nth-child(5n) { background: color-mix(in srgb, var(--r) 55%, #fff); }
+@keyframes ag-paydone-confetti {
+  0% { opacity: 1; transform: translate(0, 0) rotate(0); }
+  35% { opacity: 1; transform: translate(var(--x), var(--y)) rotate(var(--rot)); }
+  100% { opacity: 0; transform: translate(calc(var(--x) * 1.35), calc(var(--y) + 260px)) rotate(calc(var(--rot) * 3)); }
+}
+@keyframes ag-paydone-sweep { to { transform: translateX(100%); } }
+@keyframes ag-paydone-glow { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--r) 45%, transparent); } 100% { box-shadow: 0 0 0 28px transparent; } }
 @media (prefers-reduced-motion: reduce) {
   .ag-paydone, .ag-paydone *, .ag-paydone .big::after { animation: none !important; }
+  .ag-paydone .confetti, .ag-paydone.celebrate::before { display: none; }
   .ag-paydone.tick .big svg.i { stroke-dashoffset: 0; }
   .ag-paydone .burst { display: none; }
 }
