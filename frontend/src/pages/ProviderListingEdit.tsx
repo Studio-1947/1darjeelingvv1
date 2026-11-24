@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { CaretLeft, Upload } from '@phosphor-icons/react';
+import { CaretLeft, Eye, Upload } from '@phosphor-icons/react';
 import api from '@/lib/api';
+import { apiError } from '@/lib/plans';
 import { useAuth } from '@/context/AuthContext';
 import { useSeo } from '@/components/Seo';
 import { uploadImage, uploadImages } from '@/lib/uploadImage';
@@ -103,6 +104,7 @@ export default function ProviderListingEdit() {
   const [state, setState] = useState<'loading' | 'ready' | 'missing' | 'failed'>('loading');
   const [form, setForm] = useState<Form | null>(null);
   const [busy, setBusy] = useState(false);
+  const [switching, setSwitching] = useState(false);
   const [uploading, setUploading] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   useSeo({ title: listing?.title || t('lf.edit_title') });
@@ -189,6 +191,30 @@ export default function ProviderListingEdit() {
   if (!form || !listing) return <div className="ag-wrap"><div className="ag-main"><p className="ag-small">{t('common.loading')}</p></div></div>;
 
   const type: string = listing.type;
+  const taking = listing.extras?.available !== false;
+  const setTaking = async (on: boolean) => {
+    setSwitching(true);
+    try {
+      await api.patch(`/listings/${listing.id}`, { extras: { ...(listing.extras || {}), available: on } });
+      setListing((l: any) => ({ ...l, extras: { ...(l.extras || {}), available: on } }));
+    } catch (e: any) {
+      setMsg({ ok: false, text: e?.response?.data?.detail || t('ui.providerProfile.could_not_save') });
+    } finally {
+      setSwitching(false);
+    }
+  };
+  const remove = async () => {
+    if (!window.confirm(t('pd.delete_confirm', 'Delete this listing? This cannot be undone.'))) return;
+    setBusy(true);
+    try {
+      await api.delete(`/listings/${listing.id}`);
+      nav('/provider/profile#listings', { replace: true });
+    } catch (e: any) {
+      // Refused while guests have open or upcoming bookings on it; the server says what to close first.
+      setMsg({ ok: false, text: apiError(e, t('pd.delete_failed', 'Could not delete this listing.')) });
+      setBusy(false);
+    }
+  };
   const unitLabel = (u: string) => t(`profile.unit_${u}`);
   const photoGoal = photoGoalFor(type);
   const photosNote = type === 'driver' ? 'hostProfile.photos_note_driver' : type === 'cafe' ? 'hostProfile.photos_note_cafe'
@@ -299,7 +325,21 @@ export default function ProviderListingEdit() {
           <p className="ag-host-typeline mt-3">{t(`ob.wz.t_${type}`, { defaultValue: type })}</p>
           <h1 className="ag-host-tabh">{listing.title}</h1>
           <p className="ag-small mt-3">{listing.location}</p>
+          <ButtonLink to={`/listing/${listing.id}`} size="sm" className="mt-3" icon={<Eye />} data-testid="listing-view">{t('common.view')}</ButtonLink>
         </div>
+
+        {/* This listing's own Taking bookings switch (the one the server checks), saved at once. */}
+        <label className="ag-box ag-host-switch" data-testid="listing-taking">
+          <span>
+            <b>{t('host.taking', 'Taking bookings')}</b>
+            <span className="ag-small">
+              {/* As the dashboard's explainer reads it: "On this listing shows…", "Off it stays…". */}
+              <b className={taking ? 'text-[var(--ok)]' : 'text-[var(--fail)]'}>{taking ? t('host.on', 'On') : t('host.off', 'Off')}</b>{' '}
+              {taking ? t('host.tg_on', 'this listing shows to travellers and they can ask to book.') : t('host.tg_off', 'it stays on your website, but travellers cannot book it (full, closed for the season, or on a break).')}
+            </span>
+          </span>
+          <input type="checkbox" role="switch" checked={taking} disabled={switching || busy} onChange={(e) => setTaking(e.target.checked)} data-testid="listing-taking-switch" />
+        </label>
 
         <Fold title={t('hostProfile.details', 'Details')} summary={[form.title, form.location].filter(Boolean).join(' · ')} id="details" testid="listing-details">
           <div className="grid gap-4 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
@@ -427,6 +467,9 @@ export default function ProviderListingEdit() {
             {type === 'homestay' && <span className="text-xs text-[var(--ink-muted)]">{t('photoKind.hint')}</span>}
           </div>
         </Fold>
+
+        {/* Removing the listing (it used to be on My Listings). The server refuses while guests have open bookings on it. */}
+        <Button variant="stop" className="self-start" onClick={remove} disabled={busy || switching} data-testid="listing-delete">{t('common.delete')}</Button>
       </div>
 
       {/* Save, in the same bar as the profile's, above the tab bar. */}
@@ -443,7 +486,7 @@ export default function ProviderListingEdit() {
               <p className={`msg ${msg ? 'text-[var(--fail)]' : 'text-[var(--ink-muted)]'}`} role={msg ? 'alert' : undefined} data-testid="listing-msg">
                 {msg ? msg.text : t('hostProfile.save_hint')}
               </p>
-              <Button variant="primary" go onClick={save} disabled={busy || !!uploading} data-testid="listing-save">{busy ? t('common.loading') : t('listing.save', 'Save')}</Button>
+              <Button variant="primary" go onClick={save} disabled={busy || switching || !!uploading} data-testid="listing-save">{busy ? t('common.loading') : t('listing.save', 'Save')}</Button>
             </>
           )}
         </div>

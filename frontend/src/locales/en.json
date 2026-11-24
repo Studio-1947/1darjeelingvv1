@@ -2425,6 +2425,7 @@
     "required_done": "Everything needed for approval is filled in.",
     "details": "Details",
     "listings_note": "Tap one to edit its prices, details and photos.",
+    "unpause_note": "Switching this on turns every listing back on. Then pause any one on its card below.",
     "add_another_homestay": "Add another property",
     "add_another_driver": "Add another vehicle",
     "add_another_cafe": "Add another cafe",

@@ -80,7 +80,7 @@ export default function MyTrips() {
           <Box tone="blush" className="!flex-row items-center flex-wrap">
             <span className="ag-micon"><Icon name="bag" /></span>
             <span className="flex-1 min-w-[180px] text-sm text-[var(--ink-strong)]">{t('ui.myTrips.host_banner')}</span>
-            <ButtonLink to="/my-listings" size="sm" go>{t('ui.myTrips.go_to_listings')}</ButtonLink>
+            <ButtonLink to="/my-listings" size="sm" go>{t('host.your_listings', 'Your listings')}</ButtonLink>
           </Box>
         )}
 

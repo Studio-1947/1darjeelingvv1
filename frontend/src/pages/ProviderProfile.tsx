@@ -11,6 +11,9 @@ import AvatarUploader from '@/components/provider/AvatarUploader';
 import LicenceUpload from '@/components/provider/LicenceUpload';
 import { useAppStatus } from '@/context/AppStatus'; // TEMPORARY(legal-pause)
 import OwnersSection from '@/components/provider/OwnersSection';
+import HostPlanCard from '@/components/provider/dashboard/HostPlanCard';
+import InviteHostLink from '@/components/provider/InviteHostLink';
+import SignOutButton from '@/components/SignOutButton';
 import HostMiniSite, { type MiniSiteData } from '@/components/provider/HostMiniSite';
 import Fold from '@/components/provider/Fold';
 import { useSeo } from '@/components/Seo';
@@ -140,6 +143,7 @@ export default function ProviderProfile() {
   const [stats, setStats] = useState<{ review_count?: number; average_rating?: number } | null>(null);
   const [showPreview, setShowPreview] = useState(false);
   const [myListings, setMyListings] = useState<any[] | null>(null);
+  const [switching, setSwitching] = useState<string | null>(null);
   const loadListings = (): Promise<any[]> => api.get('/bookings/provider')
     .then((r) => { const ls = r.data.listings || []; setMyListings(ls); return ls; })
     .catch(() => { setMyListings([]); return []; });
@@ -166,10 +170,12 @@ export default function ProviderProfile() {
     checkBusiness();
   }, [authLoading, user?.role, provider, checkBusiness]);
 
+  // The provider as last loaded (a plan renewal refreshes it); the form is built once per business,
+  // so a renewal on the plan card does not wipe edits typed below it.
+  useEffect(() => { if (provider) setP(provider); }, [provider]);
   useEffect(() => {
     if (!provider) return;
     const e = provider.extras || {};
-    setP(provider);
     setForm({
       business_name: provider.business_name || '',
       contact_phone: provider.contact_phone || '',
@@ -198,7 +204,8 @@ export default function ProviderProfile() {
       // shop
       shop_kind: e.shop_kind || '',
     });
-  }, [provider]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per business, see above
+  }, [provider?.id]);
 
   const type: string = p?.business_type || '';
   const missing: { key: string; label: string; min?: number; have?: number }[] = p?.profile_missing || [];
@@ -231,7 +238,7 @@ export default function ProviderProfile() {
       if (first) nav(listingPath(first, hash), { replace: true });
       return;
     }
-    if (hash !== 'about' && hash !== 'listings') return;
+    if (hash !== 'about' && hash !== 'listings' && hash !== 'plan') return;
     handledHash.current = hash;
     window.requestAnimationFrame(() => document.getElementById(hash)?.scrollIntoView({ block: 'start', behavior: 'smooth' }));
   }, [form, hash, myListings, first, nav]);
@@ -255,6 +262,19 @@ export default function ProviderProfile() {
     // Once a host makes another edit, the previous success state is no longer current.
     setMsg((current) => current?.ok ? null : current);
     setForm((f: any) => ({ ...f, ...patch }));
+  };
+
+  // Each listing's own Taking bookings switch, saved at once (the server checks only this one), as on the dashboard.
+  const setListingTaking = async (l: any, on: boolean) => {
+    setSwitching(l.id);
+    try {
+      await api.patch(`/listings/${l.id}`, { extras: { ...(l.extras || {}), available: on } });
+      await loadListings();
+    } catch (e: any) {
+      setMsg({ ok: false, text: e?.response?.data?.detail || t('ui.providerProfile.could_not_save') });
+    } finally {
+      setSwitching(null);
+    }
   };
 
   const uploadCover = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -298,7 +318,6 @@ export default function ProviderProfile() {
     const profile: Record<string, unknown> = {
       host_avatar: form.host_avatar,
       whatsapp: form.sameWhatsapp ? '' : form.whatsapp.trim(),
-      available: form.available,
       languages: form.languages.split(',').map((s: string) => s.trim()).filter(Boolean),
       host_bio: form.host_bio,
       intro_video: form.intro_video.trim(),
@@ -306,6 +325,9 @@ export default function ProviderProfile() {
       social: {},
     };
     if (num(form.experience_years) !== undefined) profile.experience_years = num(form.experience_years);
+    // `available` is copied onto every listing by the server, so it is sent only to undo a
+    // business-wide pause; otherwise a profile save would switch each paused listing back on.
+    if (p?.extras?.available === false) profile.available = form.available;
     if (type === 'driver') {
       Object.assign(profile, { vehicle_number: form.vehicle_number.trim(), license_number: form.license_number.trim() });
     } else if (type === 'homestay') {
@@ -385,6 +407,8 @@ export default function ProviderProfile() {
   const sellsLocally = type === 'cafe' || type === 'shop';
   const recommendsDrivers = type === 'homestay' || sellsLocally;
   const needsAbout = missing.some((m) => m.key === 'host_name');
+  // Saved as paused for the whole business (the old business-wide switch), not just edited off here.
+  const pausedAll = p?.extras?.available === false;
   const langs = splitLangs(form.languages);
 
   return (
@@ -432,25 +456,42 @@ export default function ProviderProfile() {
           </Box>
         )}
 
-        <Box as="section" className="ag-host-switches">
-          <Toggle on={form.available} onChange={(v) => set({ available: v })} testid="profile-available"
-            label={t('hostProfile.available_on')}
-            note={t('hostProfile.available_note')} />
-          {/* TEMPORARY(legal-pause): hidden while delivery is paused; the saved setting is kept and returns with it. */}
-          {deliveryOn && sellsLocally && (
-            <div>
-              <Toggle on={form.home_delivery} onChange={(v) => set({ home_delivery: v })} testid="profile-home-delivery"
-                label={type === 'shop' ? t('hostProfile.home_delivery_shop') : t('hostProfile.home_delivery')}
-                note={type === 'shop' ? t('hostProfile.home_delivery_shop_note') : t('hostProfile.home_delivery_cafe_note')} />
-            </div>
-          )}
-        </Box>
+        {/* The membership: what it costs, when it ends, renewing (it used to sit on My Listings). */}
+        <HostPlanCard provider={p} user={user} onRenewed={async () => { await refreshProvider(); await loadListings(); }} />
+
+        {/* Taking bookings is per listing (each card below). The business-wide switch shows only for a
+            host who paused everything with it, so they can undo it, as on the dashboard (decision 2026-11-24). */}
+        {(pausedAll || (deliveryOn && sellsLocally)) && (
+          <Box as="section" className="ag-host-switches">
+            {pausedAll && (
+              <Toggle on={form.available} onChange={(v) => set({ available: v })} testid="profile-available"
+                label={t('host.taking', 'Taking bookings')}
+                note={form.available ? t('host.avail_on', 'Available. Travellers can ask to book.') : t('host.avail_off', 'Not available right now. Your listings show as paused.')} />
+            )}
+            {pausedAll && (
+              // Undoing the business-wide pause turns every listing back on; each can then be paused on its own.
+              <p className="ag-small -mt-1">{t('hostProfile.unpause_note', 'Switching this on turns every listing back on. Then pause any one on its card below.')}</p>
+            )}
+            {/* TEMPORARY(legal-pause): hidden while delivery is paused; the saved setting is kept and returns with it. */}
+            {deliveryOn && sellsLocally && (
+              <div>
+                <Toggle on={form.home_delivery} onChange={(v) => set({ home_delivery: v })} testid="profile-home-delivery"
+                  label={type === 'shop' ? t('hostProfile.home_delivery_shop') : t('hostProfile.home_delivery')}
+                  note={type === 'shop' ? t('hostProfile.home_delivery_shop_note') : t('hostProfile.home_delivery_cafe_note')} />
+              </div>
+            )}
+          </Box>
+        )}
 
         {/* Every listing the business runs, of any kind (a shop that also lets rooms or drives guests),
             in one place, grouped by kind; the listings come first because most edits are to one of them. */}
         <Box as="section" id="listings" className="ag-host-props scroll-mt-20" data-testid="profile-properties">
           <div>
-            <h2>{t('host.your_listings', 'Your listings')}</h2>
+            <div className="flex items-baseline justify-between gap-3">
+              <h2>{t('host.your_listings', 'Your listings')}</h2>
+              {/* The fuller view: each listing's status, offers, photos and requests as cards. */}
+              <Link to="/my-listings" className="ag-seeall shrink-0" data-testid="profile-see-listings">{t('home.see_all', 'See all')}</Link>
+            </div>
             <p className="ag-small">{t('hostProfile.listings_note', 'Tap one to edit its prices, details and photos.')}</p>
           </div>
           {listingGroups.map(([kind, group]) => (
@@ -459,16 +500,27 @@ export default function ProviderProfile() {
               {listingGroups.length > 1 && <span className="ag-eyebrow">{t(`ob.wz.t_${kind}`, { defaultValue: kind })} · {group.length}</span>}
               {group.map((l) => {
                 const pics = Array.isArray(l.extras?.images) ? l.extras.images.length : 0;
+                const on = l.extras?.available !== false;
                 return (
-                  <Link key={l.id} to={listingPath(l)} className="ag-host-listing" data-testid="profile-listing">
-                    {l.image ? <img src={l.image} alt="" className="pic" /> : <span className="pic" aria-hidden="true" />}
-                    <span className="txt">
-                      <b>{l.title}</b>
-                      <span className="ag-small">{l.location}{Number(l.price) > 0 ? ` · ${t('host.from', 'From')} ₹${Number(l.price).toLocaleString('en-IN')}` : ''}</span>
-                      <span className="ag-small">{t('hostProfile.photos')} · {pics}</span>
-                    </span>
-                    <CaretRight className="chev" aria-hidden="true" />
-                  </Link>
+                  // The card opens the listing's page; its Taking bookings switch sits beside it, not inside the link.
+                  <div key={l.id} className="ag-host-listing" data-testid="profile-listing">
+                    <Link to={listingPath(l)} className="main">
+                      {l.image ? <img src={l.image} alt="" className="pic" /> : <span className="pic" aria-hidden="true" />}
+                      <span className="txt">
+                        <b>{l.title}</b>
+                        <span className="ag-small">{l.location}{Number(l.price) > 0 ? ` · ${t('host.from', 'From')} ₹${Number(l.price).toLocaleString('en-IN')}` : ''}</span>
+                        <span className={`ag-small${on ? '' : ' !text-[var(--fail)]'}`}>
+                          {on ? `${t('hostProfile.photos')} · ${pics}` : t('host.paused', 'Not taking bookings')}
+                        </span>
+                      </span>
+                      <CaretRight className="chev" aria-hidden="true" />
+                    </Link>
+                    <label className="ag-host-ltoggle" title={t('host.taking', 'Taking bookings')}>
+                      <input type="checkbox" role="switch" checked={on} disabled={switching === l.id}
+                        aria-label={`${t('host.taking', 'Taking bookings')}: ${l.title}`}
+                        onChange={(e) => setListingTaking(l, e.target.checked)} data-testid={`profile-listing-taking-${l.id}`} />
+                    </label>
+                  </div>
                 );
               })}
             </div>
@@ -484,6 +536,8 @@ export default function ProviderProfile() {
             <ButtonLink to="/provider/onboard?add=1" icon={<Icon name="plus" />} data-testid="profile-add-listing">
               {t('pd.add_listing', 'Add listing')}
             </ButtonLink>
+            {/* Posting news about the listings to the feed (it used to sit on My Listings). */}
+            <ButtonLink to="/feed" variant="text" data-testid="post-update-cta">{t('pd.post_update')}</ButtonLink>
           </div>
         </Box>
 
@@ -611,6 +665,12 @@ export default function ProviderProfile() {
         )}
 
         <OwnersSection onLeft={async () => { await refreshProvider(); nav('/'); }} />
+
+        {/* Invite another host (it used to sit on My Listings). */}
+        <InviteHostLink />
+
+        {/* Log out and Delete account, the page's last two actions, as on the Account tab. */}
+        <SignOutButton className="mt-2" />
       </div>
 
       {/* Save, as the prototype's "Save profile" button, in a bar that stays above the tab bar

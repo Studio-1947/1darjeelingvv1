@@ -468,10 +468,11 @@ function ProviderDashboardPage() {
                       {provider.page_path && (
                         <ButtonLink to={provider.page_path} go icon={<Icon name="globe" />} data-testid={i === 0 ? 'host-page-open' : undefined}>{t('host.site', 'Website')}</ButtonLink>
                       )}
-                      <ButtonLink to="/provider/profile" go icon={<Icon name="person" />}>{t('common.edit')}</ButtonLink>
-                      {(type === 'cafe' || type === 'shop') && (
-                        <ButtonLink to="/provider/profile#menu" go icon={<Icon name="cup" />} data-testid={i === 0 ? 'host-menu-open' : undefined}>
-                          {t('host.menu_n', 'Menu · {{count}}', { count: (Array.isArray(provider.extras?.[type === 'cafe' ? 'menu' : 'goods']) ? provider.extras[type === 'cafe' ? 'menu' : 'goods'].length : 0) })}
+                      {/* Edit and Menu open this listing's own page (its menu or goods are its own, 2026-11-24). */}
+                      <ButtonLink to={`/provider/listings/${l.id}`} go icon={<Icon name="person" />}>{t('common.edit')}</ButtonLink>
+                      {(l.type === 'cafe' || l.type === 'shop') && (
+                        <ButtonLink to={`/provider/listings/${l.id}#menu`} go icon={<Icon name="cup" />} data-testid={i === 0 ? 'host-menu-open' : undefined}>
+                          {t('host.menu_n', 'Menu · {{count}}', { count: (Array.isArray(l.extras?.[l.type === 'cafe' ? 'menu' : 'goods']) ? l.extras[l.type === 'cafe' ? 'menu' : 'goods'].length : 0) })}
                         </ButtonLink>
                       )}
                       <Button icon={<Icon name="t_trip" />} onClick={() => open('bookings')} data-testid={i === 0 ? 'tab-bookings' : undefined}>

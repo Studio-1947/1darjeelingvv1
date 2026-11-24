@@ -21,7 +21,7 @@ const PUBLIC = ['/', '/explore', '/spots', '/homestays', '/drivers', '/guides', 
   '/search', '/search?q=momo', '/feed', '/login', '/about', '/privacy', '/terms', '/refunds', '/contact', '/responsible',
   '/policies', '/delete-account', '/provider/onboard'];
 const TRAVELLER = ['/dashboard', '/dashboard?s=tdash', '/my-trips', '/saved', '/profile/edit', '/profile/edit?setup=1', '/support', '/explore', '/feed'];
-const HOST = ['/provider/dashboard', '/my-listings', '/provider/profile', '/feed', '/profile/edit'];
+const HOST = ['/provider/dashboard', '/provider/profile', '/feed', '/profile/edit'];
 
 // What each role must be able to reach on a phone, and where: [page, selector, label].
 const MUST_REACH = {

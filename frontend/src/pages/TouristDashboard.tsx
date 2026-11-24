@@ -10,6 +10,7 @@ import { PALETTES, accentOf, mix, useTheme } from '@/lib/theme';
 import { Box, Button, ButtonA, ButtonLink, PageHead, Status } from '@/components/ag';
 import { Icon, type IconName } from '@/components/ag/Icon';
 import Wordmark from '@/components/Wordmark';
+import SignOutButton from '@/components/SignOutButton';
 import TravellerPanels, { Avatar } from '@/components/TravellerPanels';
 import { BusinessModeNotice } from '@/components/TravellerOnly';
 import { COMPANY } from '@/constants/company';
@@ -204,6 +205,7 @@ export default function TouristDashboard() {
               <Link to="/provider/profile" data-testid="account-business-profile">
                 <Row icon="bag" title={t('ui.account.biz_profile', 'Business profile')} sub={provider?.business_name || undefined} />
               </Link>
+              {/* Every listing as a card with its status, offers, photos and requests (2026-11-24). */}
               <Link to="/my-listings" data-testid="account-my-listings">
                 <Row icon="home" title={t('nav.my_listings', 'My Listings')} />
               </Link>
@@ -227,7 +229,7 @@ export default function TouristDashboard() {
             <Row icon="t_trip" title={t('ui.account.tdash', 'Traveller dashboard')} />
           </Link>}
           {biz ? (
-            <Link to="/my-listings#plan" data-testid="account-plan">
+            <Link to="/provider/profile#plan" data-testid="account-plan">
               <Row icon="badge" title={t('ui.account.biz_member', 'Business membership')} sub={planSub} />
             </Link>
           ) : (
@@ -290,6 +292,9 @@ export default function TouristDashboard() {
           )}
         </section>
         </>)}
+
+        {/* Log out and Delete account: the last two actions on the Account tab (SignOutButton's own home). */}
+        {user && <SignOutButton />}
 
         <AccountFoot />
       </div>
