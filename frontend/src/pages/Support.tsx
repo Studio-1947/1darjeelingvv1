@@ -92,8 +92,10 @@ export default function Support() {
             body={until
               ? t('support.paid_body', { total: rupees(paid), until })
               : t('support.paid_body_nodate', { total: rupees(paid) })}
+            note={t('support.paid_note', 'aangan pass active')}
+            celebrate
           >
-            <Button go onClick={() => (onward ? nav(destination, { replace: true }) : setPaid(null))} data-testid="payment-done-next">
+            <Button variant="primary" go onClick={() => (onward ? nav(destination, { replace: true }) : setPaid(null))} data-testid="payment-done-next">
               {t(onward ? 'support.paid_continue' : 'support.paid_card', onward ? 'Continue' : 'See my membership')}
             </Button>
           </PaymentDoneCard>
