@@ -260,3 +260,6 @@
 
 /* A booking opened from search or a notification (?s=bookings&b=<id>): marked for a moment. */
 .ag-host-trip-found { box-shadow: 0 0 0 3px var(--r) !important; transition: box-shadow .3s; }
+
+/* Feedback form: scrolled to on open, kept clear of the fixed tab bar */
+.ag-host-feedback { scroll-margin-bottom: calc(var(--tabbar-h) + 16px); }

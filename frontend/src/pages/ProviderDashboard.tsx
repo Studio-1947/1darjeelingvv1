@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { CaretDown } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { missingLabel } from '@/lib/serverText';
@@ -71,6 +72,14 @@ function ProviderDashboardPage() {
   const [feedbackMessage, setFeedbackMessage] = useState('');
   const [sendingFeedback, setSendingFeedback] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const feedbackRef = useRef<HTMLFormElement>(null);
+  // Opened at the foot of the page: bring the whole form into view above the tab bar, cursor in the box.
+  useEffect(() => {
+    const form = feedbackRef.current;
+    if (!feedbackOpen || !form) return;
+    form.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    form.querySelector('textarea')?.focus({ preventScroll: true });
+  }, [feedbackOpen]);
   const [tgPop, setTgPop] = useState(false);
   const [switching, setSwitching] = useState<string | null>(null);
 
@@ -292,8 +301,14 @@ function ProviderDashboardPage() {
   const feedbackBlock = (
     <div data-testid="host-feedback">
       {feedbackOpen ? (
-        <form className="ag-box" onSubmit={sendFeedback}>
-          <h2>{t('pd.feedback_title')}</h2>
+        <form ref={feedbackRef} className="ag-box ag-host-feedback" onSubmit={sendFeedback}>
+          <div className="flex items-center justify-between gap-2">
+            <h2>{t('pd.feedback_title')}</h2>
+            <button type="button" className="ag-host-rowic" onClick={() => setFeedbackOpen(false)}
+              aria-expanded="true" aria-label={t('owners.cancel')} title={t('owners.cancel')} data-testid="host-feedback-close">
+              <CaretDown size={16} weight="bold" className="rotate-180" aria-hidden="true" />
+            </button>
+          </div>
           <TextArea value={feedbackMessage} onChange={(event) => setFeedbackMessage(event.target.value)} minLength={10} maxLength={2000} required
             placeholder={t('pd.feedback_ph')} aria-label={t('pd.feedback_title')} />
           <div className="ag-row">
@@ -305,7 +320,9 @@ function ProviderDashboardPage() {
           {feedback[0] && <p className="ag-small">{t('pd.feedback_latest', { status: feedback[0].status })}</p>}
         </form>
       ) : (
-        <Button variant="text" onClick={() => setFeedbackOpen(true)} data-testid="host-feedback-open">{t('pd.feedback_open')}</Button>
+        <Button variant="text" onClick={() => setFeedbackOpen(true)} aria-expanded="false" data-testid="host-feedback-open">
+          {t('pd.feedback_open')} <CaretDown size={14} weight="bold" className="inline align-middle" aria-hidden="true" />
+        </Button>
       )}
     </div>
   );
