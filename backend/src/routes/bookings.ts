@@ -12,8 +12,8 @@ import { acceptedCutoff, findBlockingBooking, holdCutoff, isDateExclusive, lockB
 import { checkBookingRequest, hasStartDatePassed, MAX_OPEN_REQUESTS, PAST_DATE_DETAIL } from '../lib/bookingRules';
 import { notifyBookingAccepted, notifyBookingCancelled } from '../lib/notifications';
 import { routeParam } from '../lib/routeParam';
-import { isListingHostLapsed } from '../lib/hostPlan';
-import { GRACE_PAUSED_CODE, GRACE_PAUSED_DETAIL, isGracePaused } from '../lib/hostGrace';
+import { isListingGracePaused, isListingPlanLapsed, listingPlanShape } from '../lib/listingPlan';
+import { GRACE_PAUSED_CODE, GRACE_PAUSED_DETAIL } from '../lib/hostGrace';
 import { settleBookingConfirmation } from '../lib/bookingConfirmation';
 import { addHostNotification, addInAppNotification } from '../lib/inApp';
 import { releaseVoucherForBooking } from '../lib/vouchers';
@@ -215,14 +215,14 @@ router.post('/', authenticateToken, requireTravellerMode, async (req: Request, r
   if (CONTACT_ONLY_TYPES.has(listing.type)) {
     return res.status(400).json({ detail: 'This kind of listing is contact-only and cannot be booked' });
   }
-  // A host whose yearly plan has lapsed is not taking bookings until they renew. Their listing is
+  // A listing whose yearly plan has lapsed is not taking bookings until it is renewed. It is
   // already out of the public feed; this covers a guest holding an old link.
-  if (await isListingHostLapsed(listing.providerId)) {
+  if (isListingPlanLapsed(listing)) {
     return res.status(409).json({ detail: 'This listing is not taking bookings right now' });
   }
   // A host whose free start is used up takes no new requests until they pay. Requests already
   // made can still be accepted and confirmed (lib/hostGrace.ts), so this is checked here only.
-  if (await isGracePaused(listing.providerId)) {
+  if (await isListingGracePaused(listing.id)) {
     return res.status(409).json({ detail: GRACE_PAUSED_DETAIL, code: GRACE_PAUSED_CODE });
   }
   // A guide booking names the services asked for; only the guide's own services count.
@@ -582,7 +582,9 @@ router.get('/provider', authenticateToken, async (req: Request, res: Response) =
     .from(schema.listings)
     .where(inArray(schema.listings.providerId, possibleProviderIds));
 
-  const listingsMap = myListings.map(l => ({
+  // Each listing carries its own membership (lib/listingPlan.ts): the dashboard's membership card.
+  const listingsMap = await Promise.all(myListings.map(async (l) => ({
+    plan: await listingPlanShape(l),
     id: l.id,
     title: l.title,
     type: l.type,
@@ -594,7 +596,7 @@ router.get('/provider', authenticateToken, async (req: Request, res: Response) =
     provider_id: l.providerId,
     extras: l.extras,
     created_at: l.createdAt
-  }));
+  })));
 
   const listingIds = myListings.map(l => l.id);
   if (listingIds.length === 0) {
@@ -687,7 +689,7 @@ router.get('/provider', authenticateToken, async (req: Request, res: Response) =
  *   patch:
  *     summary: Cancel a booking (by the traveller who made it, the provider who owns the listing, or an admin)
  *     description: >
- *       Cancels at once. The ₹1.18 app convenience fee that sent the request is not refunded. Records who cancelled, the reason and
+ *       Cancels at once. The ₹1 app convenience fee that sent the request is not refunded. Records who cancelled, the reason and
  *       note, whether it was late (a guest, under 24 h before the trip, on a booking the host had
  *       accepted) and whether it was a host declining a request. The web asks a guest with a
  *       confirmed booking to use POST /bookings/{id}/cancel-request instead.
@@ -872,7 +874,7 @@ router.patch('/:id/confirm', authenticateToken, async (req: Request, res: Respon
 
   for (const other of outcome.declined) {
     await releaseVoucherForBooking(db, other.id);
-    // The ₹1.18 that sent it is an app convenience fee for reaching the host: it is not refunded.
+    // The ₹1 that sent it is an app convenience fee for reaching the host: it is not refunded.
     await addInAppNotification(other.userId, {
       kind: 'booking_cancelled',
       title: 'Those dates are no longer free',
@@ -1063,9 +1065,9 @@ router.post('/:id/checkout', authenticateToken, async (req: Request, res: Respon
     if (hasStartDatePassed(booking.checkIn)) {
       return res.status(409).json({ detail: PAST_DATE_DETAIL, code: 'date_in_past' });
     }
-    const [listing] = await db.select({ providerId: schema.listings.providerId })
+    const [listing] = await db.select({ providerId: schema.listings.providerId, type: schema.listings.type, planExpiresAt: schema.listings.planExpiresAt, planGrace: schema.listings.planGrace })
       .from(schema.listings).where(eq(schema.listings.id, booking.listingId)).limit(1);
-    if (listing && (await isListingHostLapsed(listing.providerId))) {
+    if (listing && isListingPlanLapsed(listing)) {
       return res.status(409).json({ detail: 'This listing is not taking bookings right now' });
     }
     // Confirming is free: the ₹1 (without the pass) was paid when the request was sent.
@@ -1143,7 +1145,7 @@ router.patch('/:id/cancel', authenticateToken, async (req: Request, res: Respons
   // guest received nothing for it, so it goes back; a confirmed stay keeps its discount spent.
   if (wasStatus !== 'confirmed') await releaseVoucherForBooking(db, booking.id);
 
-  // The ₹1.18 paid to send the request is an app convenience fee: paid to use the app to reach the
+  // The ₹1 paid to send the request is an app convenience fee: paid to use the app to reach the
   // host, not a booking payment, so it is not refunded whoever cancels or why (Terms 3, Refunds 2).
   // The team can still refund one by hand from the admin console (POST /admin/payments/:id/refund).
   const refunded = false;

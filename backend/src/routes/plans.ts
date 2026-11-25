@@ -9,7 +9,7 @@ import { planPostRights } from '../lib/feedRights';
 import { rateLimiter } from '../middleware/rateLimiter';
 import { routeParam } from '../lib/routeParam';
 import { checkNameLike, looksLikeGibberish, tidyText } from '../lib/contentRules';
-import { isListingHostLapsed } from '../lib/hostPlan';
+import { isListingPlanLapsed } from '../lib/listingPlan';
 import { addDays, isIsoDate, todayInIndia } from '../lib/bookingRules';
 import { addInAppNotification } from '../lib/inApp';
 
@@ -152,11 +152,11 @@ async function checkListing(value: unknown, type: 'homestay' | 'driver'): Promis
   if (value === undefined || value === null || value === '') return { value: null };
   const label = type === 'homestay' ? 'stay_listing_id' : 'driver_listing_id';
   if (typeof value !== 'string') return { error: `${label} must be a listing id` };
-  const [l] = await db.select({ id: schema.listings.id, type: schema.listings.type, providerId: schema.listings.providerId })
+  const [l] = await db.select({ id: schema.listings.id, type: schema.listings.type, providerId: schema.listings.providerId, planExpiresAt: schema.listings.planExpiresAt, planGrace: schema.listings.planGrace })
     .from(schema.listings).where(eq(schema.listings.id, value)).limit(1);
   if (!l) return { error: `${label}: that listing does not exist` };
   if (l.type !== type) return { error: `${label} must be a ${type} listing` };
-  if (await isListingHostLapsed(l.providerId)) return { error: `${label}: that ${type} is not taking guests right now` };
+  if (isListingPlanLapsed(l)) return { error: `${label}: that ${type} is not taking guests right now` };
   return { value: l.id };
 }
 

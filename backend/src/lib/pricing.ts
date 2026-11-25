@@ -7,10 +7,10 @@ import { AMOUNTS, GST_RATE_PERCENT, PLATFORM_FEE_PERCENT, PASS_RENEWAL_BASE, GST
  *
  *   homestay, driver or guide, each year  ₹499 + ₹89.82 GST = ₹588.82
  *   cafe, each year                       ₹99  + ₹17.82 GST = ₹116.82
- *   request fee                           ₹1   + ₹0.18 GST  = ₹1.18
  *
- * The aangan pass already includes GST (`gst_included`): ₹1 the first year
- * (₹0.85 + ₹0.15 GST), ₹12 every year after (₹10.17 + ₹1.83 GST).
+ * The traveller's prices already include GST (`gst_included`): the request fee is a flat ₹1
+ * (₹0.85 + ₹0.15 GST, since 2026-11-25), and the aangan pass ₹1 the first year (₹0.85 + ₹0.15 GST),
+ * ₹12 every year after (₹10.17 + ₹1.83 GST).
  *
  * Both apps show these lines before the payment opens, and the payments row keeps a copy, so a
  * receipt still matches what was paid if the rates change later.

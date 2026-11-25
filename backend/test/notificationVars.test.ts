@@ -132,7 +132,7 @@ describe('booking_cancelled_guest', () => {
     await notifyBookingCancelled(booking(), '+919876543210', 'Asha Rai', false);
 
     expect(latest('booking_cancelled_guest').vars.refund).toBe(
-      'The ₹1.18 app convenience fee paid to send the request is not refundable.'
+      'The ₹1 app convenience fee paid to send the request is not refundable.'
     );
   });
 });

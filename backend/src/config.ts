@@ -371,8 +371,9 @@ export const rzpClient = RAZORPAY_KEY_SECRET ? new Razorpay({
 // base (lib/pricing.ts), e.g. ₹499 + ₹89.82 = ₹588.82.
 // No platform / payment gateway fee is charged (removed 2026-11-23, owner's decision). The rate
 // stays as a setting at 0 so payment rows keep the same breakup shape (platform_fee: 0).
-// The aangan pass is the exception: its price already includes GST, so a traveller pays exactly
-// ₹1, then ₹12 (user decision 2026-11-08). See GST_INCLUDED_FLOWS.
+// The traveller's prices are the exception: they already include GST, so a traveller pays exactly
+// ₹1 for the pass, then ₹12 (user decision 2026-11-08), and ₹1 to send a request (2026-11-25).
+// See GST_INCLUDED_FLOWS.
 export const GST_RATE_PERCENT = 18;
 export const PLATFORM_FEE_PERCENT = 0;
 
@@ -397,6 +398,11 @@ export const AMOUNTS: Record<string, number> = {
   booking_commission: 100,
   provider_registration: 49900,
   provider_renewal: 49900,
+  // One listing's year (user decision 2026-11-25, lib/listingPlan.ts): the first year and each
+  // year after. The order route prices it by the listing's own type (₹99 for a cafe), like the
+  // business plan above, which older app versions still pay and which now buys the first listing's year.
+  listing_plan: 49900,
+  listing_renewal: 49900,
 };
 
 // The yearly host plan for cafes and restaurants, in paise, first year and every year after.
@@ -407,7 +413,8 @@ export const FREE_HOST_TYPES: ReadonlySet<string> = new Set(['shop']);
 
 // Flows whose price already includes GST: the traveller pays the
 // price on the card and nothing more.
-export const GST_INCLUDED_FLOWS: ReadonlySet<string> = new Set(['platform_support']);
+// The traveller's request fee too (user decision 2026-11-25): a flat ₹1, GST inside it, nothing added.
+export const GST_INCLUDED_FLOWS: ReadonlySet<string> = new Set(['platform_support', 'booking_commission']);
 
 // The aangan pass after its first year. Same flow (platform_support); the server picks this
 // price for anyone who has held a pass before (lib/pricing.ts passBreakupFor).

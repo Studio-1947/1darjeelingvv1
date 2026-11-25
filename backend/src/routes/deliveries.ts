@@ -7,8 +7,8 @@ import { rateLimiter } from '../middleware/rateLimiter';
 import { requireTravellerMode } from '../middleware/mode';
 import { addHostNotification, addInAppNotification } from '../lib/inApp';
 import { ownListingIds } from '../lib/hostAccess';
-import { isListingHostLapsed } from '../lib/hostPlan';
-import { GRACE_PAUSED_CODE, GRACE_PAUSED_DETAIL, isGracePaused, noteGraceProgress } from '../lib/hostGrace';
+import { isListingGracePaused, isListingPlanLapsed } from '../lib/listingPlan';
+import { GRACE_PAUSED_CODE, GRACE_PAUSED_DETAIL, noteGraceProgress } from '../lib/hostGrace';
 import { isPlausiblePhone } from '../lib/phone';
 import { homeDeliveryEnabled } from '../config';
 
@@ -46,8 +46,8 @@ router.post('/', authenticateToken, requireTravellerMode, rateLimiter(20, 60 * 6
   if (!['cafe', 'shop'].includes(listing.type) || listing.extras?.home_delivery !== true) {
     return res.status(400).json({ detail: 'This place does not offer home delivery' });
   }
-  if (await isListingHostLapsed(listing.providerId)) return res.status(409).json({ detail: 'This place is not taking requests right now' });
-  if (await isGracePaused(listing.providerId)) return res.status(409).json({ detail: GRACE_PAUSED_DETAIL, code: GRACE_PAUSED_CODE });
+  if (isListingPlanLapsed(listing)) return res.status(409).json({ detail: 'This place is not taking requests right now' });
+  if (await isListingGracePaused(listing.id)) return res.status(409).json({ detail: GRACE_PAUSED_DETAIL, code: GRACE_PAUSED_CODE });
   if (listing.extras?.available === false) return res.status(409).json({ detail: 'This place is not taking requests right now', code: 'unavailable' });
 
   const list = Array.isArray(items) ? items : [];

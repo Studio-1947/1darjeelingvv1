@@ -11,6 +11,7 @@ import KycSection from '@/components/provider/dashboard/KycSection';
 import VerificationTracker from '@/components/provider/dashboard/VerificationTracker';
 import NextStepCard from '@/components/provider/dashboard/NextStepCard';
 import { HostPassLine } from '@/components/provider/dashboard/HostPlanCard';
+import ListingMembershipCard from '@/components/provider/dashboard/ListingMembershipCard';
 import ListingFormModal from '@/components/ListingFormModal';
 import { DeliveryRequestsPanel, HostReviewsCard } from '@/components/provider/dashboard/HostExtras';
 import { isFinished, isOngoing, isUpcoming, sumGuests, waShare } from '@/lib/tripMessages';
@@ -43,6 +44,20 @@ function dayPart(hour = new Date().getHours()): 'morning' | 'afternoon' | 'eveni
  * Taking bookings switch, the next step, WhatsApp help, then share (Switch to Traveller is at the top, by the status).
  * Bookings and Documents open as their own screens with "Back to overview" (S.bz.full).
  */
+/**
+ * "See all" beside "Your listings" (opens /my-listings). Off since 2026-11-25: the dashboard's own
+ * type and status filters cover it. Set to true to bring the link back; the page itself still exists.
+ */
+const SHOW_SEE_ALL_LISTINGS = false;
+
+/** What a listing needs from the host right now, for the dashboard's filter. */
+type ListingState = 'on' | 'paused' | 'due';
+function listingState(l: any): ListingState {
+  const plan = l.plan;
+  if (plan?.needed && (plan.lapsed || plan.grace?.paused)) return 'due';
+  return l.extras?.available === false ? 'paused' : 'on';
+}
+
 function ProviderDashboardPage() {
   const { t } = useTranslation();
   useSeo({ title: t('provider.dashboard_title'), noindex: true });
@@ -58,6 +73,9 @@ function ProviderDashboardPage() {
   const [stats, setStats] = useState<any>({ total: 0, confirmed: 0, pending: 0, accepted: 0, revenue: 0 });
   const [bookings, setBookings] = useState<any[]>([]);
   const [listings, setListings] = useState<any[]>([]);
+  // Filters on "Your listings", right on the dashboard: by type and by state, together.
+  const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [stateFilter, setStateFilter] = useState<ListingState | 'all'>('all');
   // The Bookings and Documents screens live in the URL (?s=bookings), so the Bookings tab, Back and reloads land on them.
   const [params, setParams] = useSearchParams();
   const sParam = params.get('s');
@@ -482,9 +500,49 @@ function ProviderDashboardPage() {
         </p>
 
         <section className="ag-host-sec">
-          <SecHead title={<>{t('host.your_listings', 'Your listings')} <span className="n">{listings.length}</span></>} action={<SeeAll to="/my-listings" data-testid="host-see-listings">{t('home.see_all', 'See all')}</SeeAll>} />
+          <SecHead title={<>{t('host.your_listings', 'Your listings')} <span className="n">{listings.length}</span></>} action={SHOW_SEE_ALL_LISTINGS ? <SeeAll to="/my-listings" data-testid="host-see-listings">{t('home.see_all', 'See all')}</SeeAll> : undefined} />
+          {listings.length > 1 && (() => {
+            // Only the types and states this host actually has, each with its count.
+            const types = [...new Set(listings.map((l) => l.type))];
+            const states = (['on', 'paused', 'due'] as ListingState[]).filter((st) => listings.some((l) => listingState(l) === st));
+            const stateLabel: Record<ListingState, string> = {
+              on: t('host.f_on', 'Taking bookings'), paused: t('host.f_paused', 'Paused'), due: t('host.f_due', 'Pay due'),
+            };
+            return (
+              <div className="ag-host-filters" data-testid="host-listing-filters">
+                {types.length > 1 && (
+                  <Chips scroll aria-label={t('host.f_type', 'Filter by type')}>
+                    <Chip on={typeFilter === 'all'} onClick={() => setTypeFilter('all')} data-testid="host-filter-type-all">
+                      {t('ui.providerDashboard.all_listings')} ({listings.length})
+                    </Chip>
+                    {types.map((ty) => (
+                      <Chip key={ty} on={typeFilter === ty} onClick={() => setTypeFilter(ty)} data-testid={`host-filter-type-${ty}`}>
+                        {typeLabel(ty)} ({listings.filter((l) => l.type === ty).length})
+                      </Chip>
+                    ))}
+                  </Chips>
+                )}
+                {states.length > 1 && (
+                  <Chips scroll aria-label={t('host.f_state', 'Filter by status')}>
+                    <Chip on={stateFilter === 'all'} onClick={() => setStateFilter('all')} data-testid="host-filter-state-all">{t('host.f_all', 'Any status')}</Chip>
+                    {states.map((st) => (
+                      <Chip key={st} on={stateFilter === st} onClick={() => setStateFilter(st)} data-testid={`host-filter-state-${st}`}>
+                        {stateLabel[st]} ({listings.filter((l) => listingState(l) === st).length})
+                      </Chip>
+                    ))}
+                  </Chips>
+                )}
+              </div>
+            );
+          })()}
           <div className="ag-host-lgrid">
-            {listings.map((l, i) => {
+            {listings.filter((l) => (typeFilter === 'all' || l.type === typeFilter) && (stateFilter === 'all' || listingState(l) === stateFilter)).length === 0 && listings.length > 0 && (
+              <p className="ag-small col-span-2" data-testid="host-filter-empty">
+                {t('host.f_none', 'No listings match these filters.')}{' '}
+                <button type="button" className="ag-seeall" onClick={() => { setTypeFilter('all'); setStateFilter('all'); }}>{t('host.f_clear', 'Show all')}</button>
+              </p>
+            )}
+            {listings.filter((l) => (typeFilter === 'all' || l.type === typeFilter) && (stateFilter === 'all' || listingState(l) === stateFilter)).map((l, i) => {
               const on = l.extras?.available !== false;
               return (
                 <div key={l.id} className="ag-host-lcard" data-testid={`host-listing-${l.id}`}>
@@ -496,7 +554,10 @@ function ProviderDashboardPage() {
                     <span className="ag-host-gtag"><Icon name={BAND_ICON[l.type] || 'home'} />{typeLabel(l.type)}</span>
                     <b>{l.title}</b>
                     <span className="ag-small">{l.location}{Number(l.price) > 0 ? ` · ${t('host.from', 'From')} ₹${Number(l.price).toLocaleString('en-IN')}` : ''}</span>
-                    {i === 0 && <HostPassLine provider={provider} user={user} onRenewed={async () => { await refresh(); await loadDashboard(); }} />}
+                    {/* Each listing's own membership card (one yearly membership per listing, 2026-11-25). */}
+                    {l.plan
+                      ? <ListingMembershipCard listing={l} typeLabel={typeLabel(l.type)} provider={provider} user={user} onPaid={async () => { await refresh(); await loadDashboard(); }} />
+                      : i === 0 && <HostPassLine provider={provider} user={user} onRenewed={async () => { await refresh(); await loadDashboard(); }} />}
                     <div className="ag-host-lacts">
                       {provider.page_path && (
                         <ButtonLink to={provider.page_path} go icon={<Icon name="globe" />} data-testid={i === 0 ? 'host-page-open' : undefined}>{t('host.site', 'Website')}</ButtonLink>

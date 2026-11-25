@@ -73,6 +73,8 @@ describe('Route Estimator API (/api/routes/estimate)', () => {
     await addDriver(a.providerId, [{ route: 'NJP to Darjeeling', price: 3200, unit: 'trip' }, { route: 'Full day hire', price: 1800, unit: 'day' }]);
     await addDriver(b.providerId, [{ route: 'Darjeeling - NJP', price: 2600, unit: 'trip' }, { route: 'NJP to Darjeeling via Mirik', price: 4000, unit: 'trip' }]);
     await addDriver(lapsed.providerId, [{ route: 'NJP to Darjeeling', price: 900, unit: 'trip' }]);
+    // Plans are per listing: the lapsed driver's listings have their own year passed too.
+    await db.update(schema.listings).set({ planExpiresAt: '2020-01-01T00:00:00.000Z', planGrace: false }).where(eq(schema.listings.providerId, lapsed.providerId));
 
     const res = await request(app).get('/api/routes/estimate?from=NJP Railway Station&to=Darjeeling Town (Chowk Bazaar / Clubside)');
     expect(res.status).toBe(200);

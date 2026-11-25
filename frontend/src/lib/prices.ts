@@ -7,7 +7,7 @@ import api from '@/lib/api';
  *     each + 18% GST (₹588.82 / ₹116.82). No platform fee is charged (removed 2026-11-23).
  *   - aangan pass: ₹1 for the first year, then ₹12 a year. GST is already in that price, so the
  *     traveller pays exactly ₹1 or ₹12.
- *   - Request fee (no pass): ₹1 + GST (₹1.18).
+ *   - Request fee (no pass): a flat ₹1, GST included (since 2026-11-25).
  *
  * The server owns the numbers (GET /payments/prices, backend/src/lib/pricing.ts); the fallback below
  * is the same rule, so the breakup still shows if that call fails. The app has the same file
@@ -41,7 +41,7 @@ const BASES: Record<PricedFlow, number> = {
 };
 
 /** Prices that already include GST. */
-const GST_INCLUDED: PricedFlow[] = ['platform_support', 'platform_support_renewal'];
+const GST_INCLUDED: PricedFlow[] = ['platform_support', 'platform_support_renewal', 'booking_commission'];
 
 /** Cafes pay the ₹99 plan; homestays, drivers and guides the ₹499 one; local shops list free. */
 const SMALL_HOST_TYPES = ['cafe'];

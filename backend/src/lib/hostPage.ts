@@ -2,6 +2,7 @@ import { inArray, or, eq } from 'drizzle-orm';
 import { db, schema } from '../db';
 import { canSeeProviderPhone, listExtras, publicSocial } from './listingContact';
 import { isHostPlanLive } from './hostPlan';
+import { isListingPlanLapsed } from './listingPlan';
 import { pagePath } from './providerSlug';
 import { homeDeliveryEnabled } from '../config';
 import { themeOf } from './hostProfile';
@@ -100,7 +101,21 @@ export async function buildHostPage(provider: Provider, viewer: Viewer) {
     contact: phoneOk
       ? { phone: provider.contactPhone, whatsapp: e.whatsapp || provider.contactPhone, locked: false }
       : { phone: null, whatsapp: null, locked: true },
-    listings: listings.map((l) => ({ id: l.id, title: l.title, type: l.type, location: l.location, price: l.price, image: l.image, extras: listExtras(l.type, l.extras) })),
+    // Each service with what a traveller needs to choose it: what it is, where, the price, its own
+    // rating, whether it is taking bookings, and whether its yearly plan is live (per listing,
+    // lib/listingPlan.ts: the route hides lapsed ones from everyone but the host).
+    listings: listings.map((l) => {
+      const own = reviews.filter((r) => r.listingId === l.id);
+      return {
+        id: l.id, title: l.title, type: l.type, location: l.location, price: l.price, image: l.image,
+        description: l.description,
+        extras: listExtras(l.type, l.extras),
+        available: (l.extras as Record<string, unknown> | null)?.available !== false,
+        live: !isListingPlanLapsed(l),
+        rating: own.length ? Math.round((own.reduce((a, r) => a + r.rating, 0) / own.length) * 10) / 10 : 0,
+        review_count: own.length,
+      };
+    }),
     reviews: reviews
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
       .slice(0, 6)

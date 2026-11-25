@@ -1,0 +1,105 @@
+/*
+ * One set of button states for the whole app (2026-11-25). The shared .ag-btn / .ag-chip / .ag-seg
+ * styles in aangan.css set the language; page stylesheets had grown their own buttons that skipped
+ * it (no hover, no pressed, a different fade when disabled, a fainter focus ring, three different
+ * "saved" hearts, pills in four colours). Loaded after every page stylesheet (index.css), so these
+ * rules bring each button role into line without restyling what makes a page its own.
+ *
+ *   hover     outlined: accent edge + tint wash · filled: the pressed (darker) accent
+ *   pressed   a small press-in (scale .96), the same everywhere
+ *   focus     the app's one ring (aangan.css :focus-visible, 3px accent) — never a fainter one
+ *   disabled  faded to 45%, no pointer, as .ag-btn
+ *   selected  pills: accent fill, white text · option cards: accent edge, tint fill
+ */
+
+/* ---------- round icon buttons, outlined (save, share, copy, back, arrows) ---------- */
+:is(.ag-iconbtn:not(.tint), .ag-host-rowic:not(.go), .ag-listing-rowic, .ag-crumbs-back, .ag-home-heart, .ag-category-heart, .ag-listing-striparrow) {
+  border: 1px solid var(--outline);
+  transition: border-color .15s, background-color .15s, transform .1s;
+}
+@media (hover: hover) {
+  :is(.ag-iconbtn:not(.tint), .ag-host-rowic:not(.go), .ag-listing-rowic, .ag-crumbs-back, .ag-home-heart, .ag-category-heart, .ag-listing-striparrow):hover {
+    border-color: var(--r); background-color: var(--r-tint);
+  }
+}
+/* Saved: the accent edge and a filled accent icon, the same heart on every page. (A plain
+   .ag-iconbtn.on stays red: it also marks Delete and Muted, which are not "saved".) */
+:is(.ag-listing-rowic, .ag-home-heart, .ag-category-heart).on, .ag-iconbtn.on[aria-pressed="true"] { color: var(--r); border-color: var(--r); }
+:is(.ag-listing-rowic, .ag-home-heart, .ag-category-heart).on svg, .ag-iconbtn.on[aria-pressed="true"] svg { fill: currentColor; }
+
+/* ---------- round buttons, filled (search, play, go) ---------- */
+:is(.ag-home-round, .ag-feed-ttplay, .ag-host-rowic.go, .ag-loginbtn) { transition: background-color .15s, transform .1s; }
+@media (hover: hover) {
+  :is(.ag-home-round, .ag-feed-ttplay, .ag-host-rowic.go, .ag-loginbtn):hover { background-color: var(--r-press); border-color: var(--r-press); }
+}
+/* The search button kept a 30% ring of its own; it uses the app's ring like everything else. */
+.ag-home-round:focus-visible { outline: 3px solid var(--r); outline-offset: 2px; }
+
+/* ---------- round buttons, soft (steppers, tinted icon buttons) ---------- */
+:is(.ag-onboard-stepper .round, .ag-plan-round, .ag-iconbtn.tint) { transition: background-color .15s, transform .1s; }
+@media (hover: hover) {
+  :is(.ag-onboard-stepper .round, .ag-plan-round, .ag-iconbtn.tint):hover:not(:disabled) { background-color: var(--blush2); }
+}
+
+/* ---------- pills and chips: one look, one set of states ---------- */
+/* Unselected: white with the outline edge, as .ag-chip. (Heights stay per page: dense rows use 36px.) */
+:is(.ag-category-svpill, .ag-category-myloc, .ag-category-fpanel .ag-chip, .ag-onboard-pchip:not(.addown), .ag-onboard-chip, .ag-home-ftonal, .ag-feed-wxpill:not(.act)) {
+  border: 1px solid var(--outline); background: var(--surface); color: var(--ink-strong);
+}
+:is(.ag-chip, .ag-category-svpill, .ag-category-myloc, .ag-onboard-pchip, .ag-onboard-chip, .ag-home-ftonal, .ag-feed-wxpill, .ag-feed-fchip, .ag-account-langs button) {
+  transition: border-color .15s, background-color .15s, color .15s, transform .1s;
+}
+@media (hover: hover) {
+  :is(.ag-chip, .ag-category-svpill, .ag-category-myloc, .ag-onboard-pchip, .ag-onboard-chip, .ag-home-ftonal, .ag-feed-wxpill, .ag-feed-fchip, .ag-account-langs button):hover:not(:disabled):not([aria-pressed="true"]):not([aria-selected="true"]):not(.on) {
+    border-color: var(--r);
+  }
+}
+/* Selected: the accent fill with white text, everywhere. */
+:is(.ag-category-svpill, .ag-category-fpanel .ag-chip, .ag-onboard-pchip, .ag-onboard-chip, .ag-feed-wxpill:not(.act))[aria-pressed="true"],
+:is(.ag-category-myloc, .ag-home-ftonal).on {
+  background: var(--r); border-color: var(--r); color: var(--on-r);
+}
+/* A count inside a pill reads on both states (white on a 25% wash was 2.7:1). */
+.ag-category-svpill .svn { background: var(--soft); color: var(--ink-strong); }
+.ag-category-svpill[aria-pressed="true"] .svn { background: #fff; color: var(--r); }
+
+/* ---------- option cards and tiles ---------- */
+@media (hover: hover) {
+  :is(.ag-option, .ag-onboard-chopt, .ag-onboard-tile, .ag-plan-opt, .ag-plan-loc, .ag-tile, .ag-host-add):hover:not(:disabled) { border-color: var(--r); }
+  :is(.ag-menu > a, .ag-menu > button, .ag-account-menu > a, .ag-account-menu > button):hover { background-color: var(--soft); }
+}
+:is(.ag-option, .ag-onboard-chopt, .ag-onboard-tile, .ag-plan-opt, .ag-tile) { transition: border-color .15s, background-color .15s, transform .1s; }
+/* Radio rings read as controls (3.45:1), like .ag-option's dot (was the hairline, 1.27:1). */
+.ag-onboard-tile .radio, .ag-onboard-chopt .rdot { border-color: var(--control-off); }
+.ag-onboard-tile[aria-checked="true"] .radio, .ag-onboard-chopt[aria-checked="true"] .rdot { border-color: var(--r); }
+
+/* ---------- pressed: the same small press-in for every button ---------- */
+:is(.ag-iconbtn, .ag-host-rowic, .ag-listing-rowic, .ag-crumbs-back, .ag-home-heart, .ag-category-heart,
+    .ag-home-round, .ag-feed-ttplay, .ag-loginbtn, .ag-onboard-stepper .round, .ag-plan-round,
+    .ag-chip, .ag-category-svpill, .ag-category-myloc, .ag-onboard-pchip, .ag-onboard-chip, .ag-home-ftonal,
+    .ag-feed-wxpill, .ag-feed-fchip, .ag-account-langs button, .ag-home-redbtn, .ag-home-softbtn, .ag-seg > button, .ag-btn):active:not(:disabled) {
+  transform: scale(.96);
+}
+:is(.ag-option, .ag-onboard-chopt, .ag-onboard-tile, .ag-plan-opt, .ag-tile, .ag-host-add):active:not(:disabled) { transform: scale(.98); }
+/* The striparrow is positioned with a transform; keep it centred while pressed. */
+.ag-listing-striparrow:active { transform: translateY(-50%) scale(.94); }
+
+/* ---------- disabled: one fade, no pointer ---------- */
+:is(.ag-iconbtn, .ag-host-rowic, .ag-listing-rowic, .ag-home-round, .ag-feed-ttplay, .ag-loginbtn,
+    .ag-onboard-stepper .round, .ag-plan-round, .ag-chip, .ag-category-svpill, .ag-category-myloc,
+    .ag-onboard-pchip, .ag-onboard-chip, .ag-home-ftonal, .ag-feed-wxpill, .ag-home-redbtn, .ag-home-softbtn,
+    .ag-option, .ag-onboard-chopt, .ag-plan-opt, .ag-seg > button, .ag-seeall):is(:disabled, [aria-disabled="true"]) {
+  opacity: .45; cursor: default; transform: none;
+}
+
+/* Someone who asked for less motion gets the colour changes only. */
+@media (prefers-reduced-motion: reduce) {
+  :is(.ag-iconbtn, .ag-host-rowic, .ag-listing-rowic, .ag-crumbs-back, .ag-home-heart, .ag-category-heart,
+      .ag-home-round, .ag-feed-ttplay, .ag-loginbtn, .ag-onboard-stepper .round, .ag-plan-round, .ag-chip,
+      .ag-category-svpill, .ag-category-myloc, .ag-onboard-pchip, .ag-onboard-chip, .ag-home-ftonal, .ag-feed-wxpill,
+      .ag-feed-fchip, .ag-account-langs button, .ag-home-redbtn, .ag-home-softbtn, .ag-seg > button, .ag-option,
+      .ag-onboard-chopt, .ag-onboard-tile, .ag-plan-opt, .ag-tile, .ag-host-add, .ag-btn):active { transform: none; }
+}
+
+/* .ag-btn already darkens on hover and press (aangan.css); it presses in like the rest. */
+.ag-btn { transition: border-color .15s, transform .1s; }

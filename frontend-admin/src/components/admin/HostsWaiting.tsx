@@ -16,6 +16,23 @@ interface WaitingHost {
   profile_missing: ({ key: string; label: string } | string)[];
   documents: { doc_type: string; label: string; required: boolean; state: string }[];
   profile_left: { key: string; label: string }[];
+  /** Each listing and its own yearly membership (backend lib/listingPlan.ts listingPlanShape). */
+  listings?: { id: string; title: string; type: string; plan: ListingPlan }[];
+}
+
+type ListingPlan =
+  | { needed: false; free: boolean }
+  | { needed: true; member: boolean; lapsed: boolean; on_free_start: boolean; grace: { used: number; limit: number; paused: boolean } | null; expires_at: string | null; member_no: string | null };
+
+/** One listing's membership in a few words, and how loud to show it. */
+function planChip(plan: ListingPlan): { text: string; cls: string } {
+  if (plan.needed === false) return { text: (plan as { free: boolean }).free ? 'Free (shop)' : 'No plan', cls: 'bg-mist text-ink-soft' };
+  const p = plan as Extract<ListingPlan, { needed: true }>;
+  const date = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '');
+  if (p.member) return { text: `Member ${p.member_no || ''} · until ${date(p.expires_at)}`.replace('  ', ' '), cls: 'bg-pine/10 text-pine' };
+  if (p.lapsed) return { text: `Lapsed ${date(p.expires_at)}`, cls: 'bg-flag/10 text-flag' };
+  if (p.grace) return { text: p.grace.paused ? `Free start used up (${p.grace.limit}/${p.grace.limit}) · pay due` : `Free start · ${p.grace.used}/${p.grace.limit} bookings`, cls: p.grace.paused ? 'bg-flag/10 text-flag' : 'bg-gold/15 text-gold-dark' };
+  return { text: 'Not paid', cls: 'bg-gold/15 text-gold-dark' };
 }
 
 /** Each step: what it means, whose turn it is, and the nudge to send the host. */
@@ -117,6 +134,21 @@ export default function HostsWaiting({ refreshKey = 0 }: { refreshKey?: number }
                   {items.length > 0 && (
                     <ul className="mt-1.5 text-xs text-ink list-disc pl-4 space-y-0.5">
                       {items.map((i, idx) => <li key={`${idx}-${i}`}>{i}</li>)}
+                    </ul>
+                  )}
+                  {/* Plans are per listing: each listing's own membership. */}
+                  {(h.listings?.length ?? 0) > 0 && (
+                    <ul className="mt-2 flex flex-col gap-1" data-testid={`waiting-listings-${h.provider_id}`}>
+                      {h.listings!.map((l) => {
+                        const chip = planChip(l.plan);
+                        return (
+                          <li key={l.id} className="flex flex-wrap items-center gap-2 text-xs">
+                            <span className="text-ink">{l.title}</span>
+                            <span className="text-ink-soft capitalize">· {l.type}</span>
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${chip.cls}`}>{chip.text}</span>
+                          </li>
+                        );
+                      })}
                     </ul>
                   )}
                 </div>

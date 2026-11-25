@@ -3,7 +3,7 @@ import { rateLimiter } from '../middleware/rateLimiter';
 import { db } from '../db';
 import { listings } from '../schema';
 import { and, eq } from 'drizzle-orm';
-import { hostPlanVisibility } from '../lib/hostPlan';
+import { listingPlanVisibility } from '../lib/listingPlan';
 import { routesOf } from '../lib/bookingDetails';
 
 const router = Router();
@@ -207,7 +207,7 @@ router.get('/estimate', async (req: Request, res: Response) => {
     const drivers = await db
       .select({ extras: listings.extras })
       .from(listings)
-      .where(and(eq(listings.type, 'driver'), hostPlanVisibility()));
+      .where(and(eq(listings.type, 'driver'), listingPlanVisibility()));
     driverCount = drivers.length;
     driverFares = driverFaresFor(from, to, drivers.map((d) => d.extras));
   } catch (e) {

@@ -8,6 +8,8 @@
 @import './styles/screens/account.css';
 @import './styles/screens/listing.css';
 @import './styles/screens/host.css';
+/* Last: one set of button states over every page's own buttons (styles/states.css). */
+@import './styles/states.css';
 
 @tailwind base;
 @tailwind components;

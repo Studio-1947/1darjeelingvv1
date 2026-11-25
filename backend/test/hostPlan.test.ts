@@ -83,10 +83,14 @@ async function providerMe(token: string) {
   return res.body.provider;
 }
 
+/** Sets when the paid year ends, on the business and (plans are per listing now) on each of its listings. */
+async function setPlanEnd(providerId: string, iso: string) {
+  await db.update(schema.providers).set({ planExpiresAt: iso }).where(eq(schema.providers.id, providerId));
+  await db.update(schema.listings).set({ planExpiresAt: iso, planGrace: false }).where(eq(schema.listings.providerId, providerId));
+}
+
 async function lapse(providerId: string) {
-  await db.update(schema.providers)
-    .set({ planExpiresAt: new Date(Date.now() - DAY_MS).toISOString() })
-    .where(eq(schema.providers.id, providerId));
+  await setPlanEnd(providerId, new Date(Date.now() - DAY_MS).toISOString());
 }
 
 async function listingOf(providerId: string) {
@@ -142,7 +146,7 @@ describe('host plan: ₹499 a year (₹99 for cafes, shops and guides)', () => {
   it('renews for ₹499 (₹588.82) inside the last 30 days and adds a year on top of what is left', async () => {
     const { token, providerId } = await onboardActiveProvider({ name: 'Window Renewer' });
     const endsInTenDays = new Date(Date.now() + 10 * DAY_MS).toISOString();
-    await db.update(schema.providers).set({ planExpiresAt: endsInTenDays }).where(eq(schema.providers.id, providerId));
+    await setPlanEnd(providerId, endsInTenDays);
 
     const { order, complete } = await pay(token, 'provider_renewal', providerId);
     expect(order.status).toBe(200);
