@@ -241,3 +241,6 @@
 .ag-host-fix { display: inline-flex; align-items: center; gap: 4px; margin-top: 2px; color: var(--r); font: 600 14px/20px var(--font); text-decoration: none; }
 .ag-host-fix svg.i { width: 14px; height: 14px; }
 .ag-host-fix:hover { text-decoration: underline; }
+
+/* A booking opened from search or a notification (?s=bookings&b=<id>): marked for a moment. */
+.ag-host-trip-found { box-shadow: 0 0 0 3px var(--r) !important; transition: box-shadow .3s; }

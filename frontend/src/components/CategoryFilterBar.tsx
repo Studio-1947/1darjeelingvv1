@@ -27,6 +27,10 @@ export interface CategoryFilterBarProps {
   nearSlot?: React.ReactNode;
   /** Why "My location" did not work (permission off, no position), shown under it. */
   nearError?: string;
+  /** A voice search ended: the words it searched for ('' when nothing was heard, null when cancelled). */
+  onVoiceDone?: (text: string | null) => void;
+  /** A voice search started listening. */
+  onVoiceStart?: () => void;
   /** Extra rows (guests) shown after the distance rows. */
   children?: React.ReactNode;
 }
@@ -85,45 +89,184 @@ function useTypewriter(words: string[]) {
   return text;
 }
 
-type Rec = { start: () => void; stop: () => void; lang: string; interimResults: boolean; maxAlternatives: number; onresult: ((ev: any) => void) | null; onend: (() => void) | null; onerror: (() => void) | null };
+type Rec = {
+  start: () => void; stop: () => void; abort: () => void;
+  lang: string; interimResults: boolean; maxAlternatives: number;
+  onresult: ((ev: any) => void) | null; onend: (() => void) | null; onerror: ((ev: any) => void) | null;
+  onsoundstart: (() => void) | null; onspeechstart: (() => void) | null;
+};
 const VOICE_LANG: Record<string, string> = { en: 'en-IN', hi: 'hi-IN', ne: 'ne-NP', bn: 'bn-IN' };
 
-/** Voice search through the browser's own speech recognition (Chrome, Safari). */
-function useVoice(onText: (text: string) => void) {
+/** Why a voice search ended without words: shown under the search row with a way to try again. */
+export type VoiceError = 'unsupported' | 'blocked' | 'nomic' | 'nospeech' | 'network';
+
+/**
+ * Voice search through the browser's own speech recognition (Chrome, Safari).
+ * `hearing` turns on once the mic picks up sound, so the recording panel can show it is live.
+ * `onDone` gets the final words ('' when nothing was heard, null when cancelled).
+ */
+function useVoice(onText: (text: string) => void, onDone?: (text: string | null) => void, onStart?: () => void) {
   const { i18n } = useTranslation();
   const rec = useRef<Rec | null>(null);
   const [listening, setListening] = useState(false);
-  const [unsupported, setUnsupported] = useState(false);
-  useEffect(() => () => { try { rec.current?.stop(); } catch { /* already stopped */ } }, []);
-  useEffect(() => {
-    if (!unsupported) return undefined;
-    const timer = setTimeout(() => setUnsupported(false), 2500);
-    return () => clearTimeout(timer);
-  }, [unsupported]);
-  const toggle = () => {
+  const [hearing, setHearing] = useState(false);
+  const [heard, setHeard] = useState('');
+  const [error, setError] = useState<VoiceError | null>(null);
+  // Leaving the page mid-recording: stop quietly, nothing after unmount.
+  useEffect(() => () => {
+    const r = rec.current;
+    if (!r) return;
+    r.onresult = null; r.onerror = null; r.onend = null; r.onsoundstart = null; r.onspeechstart = null;
+    try { r.abort(); } catch { /* already stopped */ }
+  }, []);
+
+  // What the search box held before listening, put back if the traveller cancels.
+  const before = useRef('');
+  const start = (current = '') => {
     const w = window as any;
     const SR = w.SpeechRecognition || w.webkitSpeechRecognition;
-    if (!SR) { setUnsupported(true); return; }
-    if (rec.current) { try { rec.current.stop(); } catch { /* ignore */ } rec.current = null; setListening(false); return; }
+    setError(null);
+    if (!SR) { setError('unsupported'); return; }
+    if (rec.current) return;
+    before.current = current;
+    onStart?.();
     const r: Rec = new SR();
+    let words = '';
+    let failed: VoiceError | null = null;
     r.lang = VOICE_LANG[(i18n.language || 'en').slice(0, 2)] || 'en-IN';
     r.interimResults = true;
     r.maxAlternatives = 1;
-    r.onresult = (ev: any) => onText(Array.from(ev.results as ArrayLike<any>).map((x: any) => x[0].transcript).join(' ').trim());
-    r.onend = () => { rec.current = null; setListening(false); };
-    r.onerror = r.onend;
+    r.onsoundstart = () => setHearing(true);
+    r.onspeechstart = () => setHearing(true);
+    r.onresult = (ev: any) => {
+      words = Array.from(ev.results as ArrayLike<any>).map((x: any) => x[0].transcript).join(' ').trim();
+      setHeard(words);
+      onText(words);
+    };
+    r.onerror = (ev: any) => {
+      const code = ev?.error;
+      if (code === 'aborted') return;
+      failed = code === 'not-allowed' || code === 'service-not-allowed' ? 'blocked'
+        : code === 'audio-capture' ? 'nomic'
+          : code === 'network' ? 'network'
+            : 'nospeech';
+    };
+    r.onend = () => {
+      rec.current = null;
+      setListening(false);
+      setHearing(false);
+      if (failed && !words) setError(failed);
+      else if (!words) setError('nospeech');
+      onDone?.(words);
+    };
     rec.current = r;
+    setHeard('');
+    setHearing(false);
     setListening(true);
-    try { r.start(); } catch { r.onend?.(); }
+    try { r.start(); } catch { rec.current = null; setListening(false); setError('nospeech'); }
   };
-  return { listening, unsupported, toggle };
+  /** Stop and keep what was said so far. */
+  const stop = () => { try { rec.current?.stop(); } catch { /* ignore */ } };
+  /** Stop and throw the words away. */
+  const cancel = () => {
+    const r = rec.current;
+    if (!r) return;
+    rec.current = null;
+    r.onresult = null; r.onerror = null; r.onend = null;
+    try { r.abort(); } catch { /* ignore */ }
+    setListening(false);
+    setHearing(false);
+    setHeard('');
+    onText(before.current);
+    onDone?.(null);
+  };
+  const toggle = (current = '') => (rec.current ? stop() : start(current));
+  return { listening, hearing, heard, error, clearError: () => setError(null), start, stop, cancel, toggle };
+}
+export { useVoice };
+export type Voice = ReturnType<typeof useVoice>;
+
+/**
+ * The voice search's recording panel while the mic is on, and the line that says why it stopped
+ * without words. Shared by the category bar and the search sheet (components/SearchSheet.tsx).
+ * Focus follows the recording: onto Stop when the panel opens, back to the mic when it closes
+ * (the button that had it is gone), unless focus has already moved on elsewhere.
+ */
+export function VoicePanel({ voice, micRef, current }: { voice: Voice; micRef: React.RefObject<HTMLButtonElement>; current: string }) {
+  const { t } = useTranslation();
+  const stopRef = useRef<HTMLButtonElement>(null);
+  const wasListening = useRef(false);
+  useEffect(() => {
+    if (voice.listening) stopRef.current?.focus();
+    else if (wasListening.current) {
+      const at = document.activeElement;
+      if (!at || at === document.body) micRef.current?.focus();
+    }
+    wasListening.current = voice.listening;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [voice.listening]);
+  const dismissError = () => { voice.clearError(); micRef.current?.focus(); };
+  const voiceErr: Record<VoiceError, string> = {
+    unsupported: t('category.novoice', 'Voice search needs Chrome or Safari with a microphone.'),
+    blocked: t('category.voice_blocked', 'The microphone is off for aangan. Allow it in your browser settings and try again.'),
+    nomic: t('category.voice_nomic', 'No microphone found on this device.'),
+    nospeech: t('category.voice_nospeech', 'We didn’t hear anything. Tap the mic and speak again.'),
+    network: t('category.voice_network', 'Voice search needs the internet. Check your connection and try again.'),
+  };
+
+  if (voice.listening) {
+    return (
+      <div
+        className={cx('ag-box ag-category-rec', voice.hearing && 'live')}
+        data-testid="voice-recording"
+        // Escape cancels, as Cancel does; kept to the panel so it never closes anything else.
+        onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); voice.cancel(); } }}
+      >
+        <span className="recmic" aria-hidden="true"><Icon name="mic" /></span>
+        <span className="recwave" aria-hidden="true">{[0, 1, 2, 3, 4, 5, 6].map((i) => <i key={i} />)}</span>
+        <p className="rectext" data-testid="voice-heard">
+          {voice.heard ? `“${voice.heard}”` : t('category.voice_ready', 'Speak now')}
+        </p>
+        <p className="ag-small m-0" role="status">{t('category.listening', 'Listening… say a place, a homestay or a dish')}</p>
+        <div className="recact">
+          <button type="button" className="ag-btn text" onClick={voice.cancel} data-testid="voice-cancel">
+            {t('common.cancel', 'Cancel')}
+          </button>
+          <button ref={stopRef} type="button" className="ag-btn primary" onClick={voice.stop} data-testid="voice-stop">
+            {voice.heard && <Icon name="search" />}
+            <span>{voice.heard ? t('category.search_btn', 'Search') : t('category.voice_stop', 'Stop')}</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
+  if (!voice.error) return null;
+  return (
+    <div className="ag-category-recerr" data-testid="voice-error">
+      <p className="ag-err m-0" role="alert">{voiceErr[voice.error]}</p>
+      {voice.error !== 'unsupported' && voice.error !== 'nomic' && (
+        <button type="button" className="ag-btn text" onClick={() => voice.start(current)} data-testid="voice-retry">
+          <Icon name="mic" /> <span>{t('common.retry', 'Try again')}</span>
+        </button>
+      )}
+      <button type="button" className="clear" onClick={dismissError} aria-label={t('common.close', 'Close')}>
+        <Icon name="x" />
+      </button>
+    </div>
+  );
+}
+
+/** What the search page can ask of the bar: listen again after a voice search found nothing, or type instead. */
+export interface CategoryFilterBarHandle {
+  startVoice: () => void;
+  focusSearch: () => void;
 }
 
 /**
  * A category list's search and filters, the prototype's way: the search pill with its filter and
  * voice buttons beside it, and the filter panel that the filter button opens under them.
  */
-export default function CategoryFilterBar({
+const CategoryFilterBar = React.forwardRef<CategoryFilterBarHandle, CategoryFilterBarProps>(function CategoryFilterBar({
   categoryType,
   searchQuery,
   onSearchChange,
@@ -142,12 +285,20 @@ export default function CategoryFilterBar({
   extraActive,
   nearSlot,
   nearError,
+  onVoiceStart,
+  onVoiceDone,
   children,
-}: CategoryFilterBarProps) {
+}, ref) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const word = useTypewriter(TW_WORDS.map(([k, d]) => t(k, d)));
-  const voice = useVoice(onSearchChange);
+  const voice = useVoice(onSearchChange, onVoiceDone, onVoiceStart);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const micRef = useRef<HTMLButtonElement>(null);
+  React.useImperativeHandle(ref, () => ({
+    startVoice: () => voice.start(searchQuery),
+    focusSearch: () => { voice.clearError(); inputRef.current?.focus(); inputRef.current?.select(); },
+  }));
 
   const filtersOn =
     selectedLocation !== 'All Locations' ||
@@ -167,6 +318,7 @@ export default function CategoryFilterBar({
           <Icon name="search" />
           <span className="qbox">
             <input
+              ref={inputRef}
               type="search"
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
@@ -198,25 +350,21 @@ export default function CategoryFilterBar({
             {filtersOn && <span className="fdot" aria-hidden="true" />}
           </button>
           <button
+            ref={micRef}
             type="button"
             className={cx('vbtn', voice.listening && 'on')}
             aria-pressed={voice.listening}
             aria-label={t('category.voice', 'Voice search')}
             title={t('category.voice', 'Voice search')}
-            onClick={voice.toggle}
+            onClick={() => voice.toggle(searchQuery)}
             data-testid="category-voice"
           >
             <Icon name="mic" />
           </button>
         </span>
       </div>
-      {(voice.listening || voice.unsupported) && (
-        <p className="ag-small ag-category-listen" role="status">
-          {voice.listening
-            ? t('category.listening', 'Listening… say a place, a homestay or a dish')
-            : t('category.novoice', 'Voice search needs Chrome or Safari with a microphone.')}
-        </p>
-      )}
+
+      <VoicePanel voice={voice} micRef={micRef} current={searchQuery} />
 
       {open && (
         <div className="ag-box ag-category-fpanel" id="category-filter-panel" data-testid="category-filter-panel">
@@ -318,4 +466,6 @@ export default function CategoryFilterBar({
       )}
     </div>
   );
-}
+});
+
+export default CategoryFilterBar;

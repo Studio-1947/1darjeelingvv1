@@ -7,6 +7,7 @@ import { ensureBucketsExist } from './lib/s3';
 import { PORT, log } from './config';
 import { startRequestExpiry } from './lib/requestExpiry';
 import { startGraceSweep } from './lib/hostGrace';
+import { refreshSearchIndex } from './lib/searchIndex';
 
 
 const server = app.listen(PORT, () => {
@@ -30,6 +31,11 @@ const server = app.listen(PORT, () => {
   startRequestExpiry();
   // Hosts on the free start hear when their 3rd booking is completed (lib/hostGrace.ts).
   startGraceSweep();
+  // Read every new or changed listing into the search index now, so the first search after a
+  // deploy does not wait for it (each search also does this for what changed since).
+  refreshSearchIndex()
+    .then((n) => { if (n) log.info(`Search index: ${n} listings read.`); })
+    .catch((e) => log.error(`Search index refresh failed; searches will retry it: ${e?.message || e}`));
 });
 
 process.on('SIGTERM', () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { webLinkTarget } from './notificationLink';
+import { noteTarget, webLinkTarget } from './notificationLink';
 
 describe('webLinkTarget', () => {
   it('maps screen keys to website pages', () => {
@@ -20,5 +20,18 @@ describe('webLinkTarget', () => {
     expect(webLinkTarget('mystery', false)).toBeNull();
     expect(webLinkTarget('javascript:alert(1)', false)).toBeNull();
     expect(webLinkTarget('http://example.org', false)).toBeNull();
+  });
+});
+
+describe('noteTarget', () => {
+  it('opens a host booking notice at that booking', () => {
+    expect(noteTarget({ kind: 'booking_request', ref_id: 'b1' }, true)).toEqual({ kind: 'route', to: '/provider/dashboard?s=bookings&b=b1' });
+    expect(noteTarget({ kind: 'booking_request', ref_id: 'b1' }, false)).toEqual({ kind: 'route', to: '/my-trips' });
+  });
+  it('prefers the screen the team chose, then the kind', () => {
+    expect(noteTarget({ kind: 'booking_request', link: 'feed' }, true)).toEqual({ kind: 'route', to: '/feed' });
+    expect(noteTarget({ kind: 'plan_joined', ref_id: 'p9' }, false)).toEqual({ kind: 'route', to: '/plan/p9' });
+    expect(noteTarget({ kind: 'plan_cancelled', ref_id: 'p9' }, false)).toEqual({ kind: 'route', to: '/feed' });
+    expect(noteTarget({ kind: 'announcement' }, false)).toBeNull();
   });
 });

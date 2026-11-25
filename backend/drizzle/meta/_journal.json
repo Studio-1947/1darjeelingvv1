@@ -302,6 +302,13 @@
       "when": 1795436898737,
       "tag": "0042_host_gstin",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1795583408617,
+      "tag": "0043_search_index",
+      "breakpoints": true
     }
   ]
 }

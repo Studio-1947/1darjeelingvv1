@@ -27,7 +27,32 @@
 .ag-category-sact .vbtn svg.i { width: 24px; height: 24px; }
 .ag-category-sact .vbtn.on { background: var(--r-tint); animation: ag-category-pulse 1.2s ease-in-out infinite; }
 @keyframes ag-category-pulse { 50% { box-shadow: 0 0 0 6px rgb(var(--r-rgb) / .15); } }
-.ag-category-listen { margin: 0; text-align: center; }
+
+/* ---------- voice search: the recording panel while the mic is on ---------- */
+.ag-category-rec { align-items: center; text-align: center; gap: 10px; padding: 20px 16px 14px; }
+.ag-category-rec .recmic { position: relative; display: grid; place-items: center; width: 64px; height: 64px; border-radius: 50%; background: var(--r); color: var(--on-r); }
+.ag-category-rec .recmic svg.i { width: 28px; height: 28px; }
+.ag-category-rec .recmic::before, .ag-category-rec .recmic::after { content: ''; position: absolute; inset: 0; border-radius: 50%; background: rgb(var(--r-rgb) / .22); z-index: -1; animation: ag-category-ring 1.8s ease-out infinite; }
+.ag-category-rec .recmic::after { animation-delay: .9s; }
+.ag-category-rec .recmic { isolation: isolate; }
+@keyframes ag-category-ring { from { transform: scale(1); opacity: 1; } to { transform: scale(1.9); opacity: 0; } }
+.ag-category-rec .recwave { display: flex; align-items: center; justify-content: center; gap: 4px; height: 28px; }
+.ag-category-rec .recwave i { width: 4px; height: 26px; border-radius: 2px; background: rgb(var(--r-rgb) / .35); transform: scaleY(.23); transition: background .2s; }
+.ag-category-rec.live .recwave i { background: var(--r); animation: ag-category-wave 0.9s ease-in-out infinite; }
+.ag-category-rec.live .recwave i:nth-child(2n) { animation-delay: .15s; }
+.ag-category-rec.live .recwave i:nth-child(3n) { animation-delay: .3s; }
+.ag-category-rec.live .recwave i:nth-child(4) { animation-delay: .45s; }
+@keyframes ag-category-wave { 0%, 100% { transform: scaleY(.23); } 50% { transform: scaleY(1); } }
+.ag-category-rec .rectext { margin: 0; min-height: 28px; color: var(--ink-strong); font: 500 20px/28px var(--font); letter-spacing: -.01em; overflow-wrap: anywhere; }
+.ag-category-rec .recact { display: flex; gap: 8px; justify-content: center; margin-top: 4px; }
+.ag-category-rec .recact .ag-btn > svg.i { width: 18px; height: 18px; }
+.ag-category-recerr { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ag-category-recerr .ag-err { flex: 1 1 200px; }
+.ag-category-recerr .ag-btn svg.i { width: 18px; height: 18px; }
+.ag-category-recerr .clear { border: 0; background: none; color: var(--ink-muted); cursor: pointer; width: 36px; height: 36px; padding: 0; display: grid; place-items: center; border-radius: 50%; }
+.ag-category-recerr .clear svg.i { width: 18px; height: 18px; }
+.ag-category-novoice { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 50%; background: var(--r-tint); color: var(--r); }
+.ag-category-novoice svg.i { width: 24px; height: 24px; }
 
 /* ---------- the filter panel the filter button opens ---------- */
 .ag-category-fpanel { margin-top: 0; }
@@ -142,7 +167,9 @@ html[data-mode="dark"] .ag-category-stick.free svg { fill: #EAD9A6; }
 .ag-category-rsbox .ag-btn.primary > svg.i { width: 18px; height: 18px; color: var(--on-r); }
 
 @media (prefers-reduced-motion: reduce) {
-  .ag-category-search .qph::after, .ag-category-sact .vbtn.on { animation: none; }
+  .ag-category-search .qph::after, .ag-category-sact .vbtn.on,
+  .ag-category-rec .recmic::before, .ag-category-rec .recmic::after, .ag-category-rec.live .recwave i { animation: none; }
+  .ag-category-rec.live .recwave i { transform: scaleY(.6); }
 }
 
 /* Dark mode: Clear filters in the panel reads at 4.5:1 or better. */
@@ -170,3 +197,8 @@ html[data-mode="dark"] .ag-category-reset { color: var(--ink-strong); text-decor
 .ag-category-spot .info, .ag-category-spot .ag-category-stick { z-index: 2; }
 .ag-category-spot .loc { opacity: 1; text-shadow: 0 1px 3px rgb(0 0 0 / .9); }
 .ag-category-spot b { text-shadow: 0 1px 3px rgb(0 0 0 / .9), 0 0 12px rgb(0 0 0 / .5); }
+
+/* ---------- the search sheet (components/SearchSheet.tsx): search from any page ---------- */
+.ag-search-sheet { min-height: min(86svh, 720px); gap: 14px; }
+.ag-search-sheet .ag-category-searchrow { margin: 0; }
+@media (min-width: 640px) { .ag-search-sheet { min-height: min(72svh, 640px); } }

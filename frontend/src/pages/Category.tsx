@@ -8,7 +8,7 @@ import SuggestPlace from '@/components/spots/SuggestPlace';
 import api from '@/lib/api';
 import Seo from '@/components/Seo';
 import { GridTileSkeleton, ListRowSkeleton, repeat } from '@/components/skeletons';
-import CategoryFilterBar, { type SortOrder } from '@/components/CategoryFilterBar';
+import CategoryFilterBar, { type CategoryFilterBarHandle, type SortOrder } from '@/components/CategoryFilterBar';
 import { contentFor } from '@/lib/listingContent';
 import { normalizeRoutes, routeForTrip, tripMatch } from '@/lib/routeFares';
 import { readTrip, hasTrip, tripSuffix } from '@/lib/tripParams';
@@ -19,6 +19,7 @@ import { Icon } from '@/components/ag/Icon';
 import { ListRow } from '@/components/home/cards';
 import { CatSpotCard, CatStayCard } from '@/components/ListingCard';
 import { typeMatches } from '@/components/home/HomeFilterPanel';
+import { useListingSearch } from '@/hooks/useListingSearch';
 import { useAppStatus } from '@/context/AppStatus'; // TEMPORARY(legal-pause)
 
 const TYPE_MAP = {
@@ -145,6 +146,11 @@ function CategoryPage({ typeOverride }: { typeOverride?: string }) {
 
   // Interactive Filter & Search states
   const [searchQuery, setSearchQuery] = useState(q);
+  // The words the last voice search heard, while they are still the search: an empty list then
+  // asks "did we hear you right?" and offers to speak again or type.
+  const [voiceQuery, setVoiceQuery] = useState('');
+  const barRef = useRef<CategoryFilterBarHandle>(null);
+  const voiceBefore = useRef('');
   const [selectedLocation, setSelectedLocation] = useState(() => sp.get('loc') || 'All Locations');
   const [sortOrder, setSortOrder] = useState<SortOrder>(() => (SORTS.has(sp.get('sort') || '') ? sp.get('sort') : 'recommended') as SortOrder);
   const [maxPrice, setMaxPrice] = useState<number | undefined>(() => Number(sp.get('max')) || undefined);
@@ -212,20 +218,23 @@ function CategoryPage({ typeOverride }: { typeOverride?: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedLocation, maxPrice, selectedCab, entryFilter, kind, delivers, sortOrder, near, radius]);
 
-  // Smart search (server lib/search.ts): reads intent, budget, local spellings and typos and ranks
-  // the results. Asked a moment after typing stops; until it answers, the plain match below shows.
-  const [smart, setSmart] = useState<{ q: string; items: any[]; search: SearchInterpretation | null; next: number | null } | null>(null);
-  useEffect(() => {
-    const term = searchQuery.trim();
-    if (!term) { setSmart(null); return; }
-    let cancelled = false;
-    const timer = setTimeout(() => {
-      api.get('/listings', { params: { q: term, type: apiType, limit: pageSize, ...dayParam } })
-        .then((r) => { if (!cancelled) setSmart({ q: term, items: keepType(r.data.items || []), search: r.data.search || null, next: r.data.next_offset ?? null }); })
-        .catch(() => { if (!cancelled) setSmart(null); });
-    }, 250);
-    return () => { cancelled = true; clearTimeout(timer); };
-  }, [searchQuery, type, availableOn]);
+  // Smart search (server lib/searchIndex.ts): reads intent, budget, local spellings and typos and
+  // ranks the results. Asked once typing pauses (hooks/useListingSearch: debounced, cancelled when
+  // the words change, cached); the last answer stays on screen while the next one loads. A single
+  // Latin letter is not sent: the plain match below shows for it.
+  const sq = useListingSearch(searchQuery, { type: apiType, limit: pageSize, ...dayParam });
+  // Pages after the first ("Load more"), for the list and words they were loaded for (listKey|words).
+  const [extra, setExtra] = useState<{ q: string; items: any[]; next: number | null } | null>(null);
+  const smart = useMemo<{ q: string; items: any[]; search: SearchInterpretation | null; next: number | null } | null>(() => {
+    const d = sq.data;
+    if (!d) return null;
+    const more = extra && extra.q === `${listKey.current}|${d.q}` ? extra : null;
+    const first = d.items || [];
+    const have = new Set(first.map((it: any) => it.id));
+    const later = (more?.items || []).filter((it: any) => !have.has(it.id));
+    return { q: d.q, items: keepType([...first, ...later]), search: d.search || null, next: more ? more.next : d.next_offset };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sq.data, extra, type, availableOn]);
 
   useEffect(() => {
     let cancelled = false;
@@ -262,7 +271,8 @@ function CategoryPage({ typeOverride }: { typeOverride?: string }) {
     let list = [...baseResults];
 
     const term = searchQuery.trim();
-    if (term && smart?.q === term) {
+    // The smart answer, or while the next one loads the previous one (dimmed below).
+    if (term && smart) {
       // Server order is best match first; a driver trip still narrows it to the route.
       list = (type === 'driver' && routeTrip)
         ? smart.items.filter((it) => matchOf(it) !== 'no')
@@ -370,11 +380,15 @@ function CategoryPage({ typeOverride }: { typeOverride?: string }) {
   // Any filter on: an empty list then means "nothing matches these filters", not "nothing here".
   const filtering = selectedLocation !== 'All Locations' || !!maxPrice || selectedCab !== 'all' || entryFilter !== 'all'
     || !!kind || delivers || !!near || trip.guests > 1;
-  // Typed words wait for the smart search; until it answers, show the loading state, not "nothing found".
-  const smartPending = !!searchQuery.trim() && smart?.q !== searchQuery.trim();
+  // Typed words wait for the smart search; until it answers, never "nothing found": the previous
+  // answer stays (dimmed) when there is one, the loading state shows when there is not.
+  const smartPending = !!searchQuery.trim() && sq.enabled && !sq.fresh && !sq.failed;
+  const showStale = smartPending && !!smart && smart.items.length > 0;
+  // The search could not be asked (offline, server down): say so, with Try again.
+  const smartFailed = !!searchQuery.trim() && sq.enabled && sq.failed;
 
   // The next page of whichever list is on screen: the search results, or the plain list.
-  const fromSmart = !!searchQuery.trim() && smart?.q === searchQuery.trim();
+  const fromSmart = !!searchQuery.trim() && sq.fresh;
   const moreFrom = fromSmart ? smart?.next ?? null : nextOffset;
   const more = async () => {
     if (moreFrom == null || loadingMore) return;
@@ -397,7 +411,11 @@ function CategoryPage({ typeOverride }: { typeOverride?: string }) {
         const have = new Set(list.map((it) => it.id));
         return [...list, ...page.filter((it: any) => !have.has(it.id))];
       };
-      if (fromSmart) setSmart((s) => (s && s.q === term ? { ...s, items: append(s.items), next } : s));
+      if (fromSmart) {
+        const have = new Set((smart?.items || []).map((it) => it.id));
+        const k = `${key}|${term}`;
+        setExtra((e) => ({ q: k, items: [...(e && e.q === k ? e.items : []), ...page.filter((it: any) => !have.has(it.id))], next }));
+      }
       else { setItems((list) => append(list) as any); setNextOffset(next); }
     } catch {
       toast.error(t('category.load_more_failed', 'Could not load more. Check your connection.'));
@@ -475,6 +493,30 @@ function CategoryPage({ typeOverride }: { typeOverride?: string }) {
     </div>
   );
 
+  // Nothing matched what the mic heard: say what we heard, ask if it was right, and offer to speak
+  // again or type it (the speech engine often mishears local names - Ghum, Lepchajagat).
+  const heardByVoice = !!voiceQuery && voiceQuery === searchQuery.trim();
+  const voiceNoMatch = (
+    <Box className="ag-category-empty" data-testid="voice-no-results">
+      <span className="ag-category-novoice" aria-hidden="true"><Icon name="mic" /></span>
+      <p className="m-0">{t('category.voice_none', 'No results for “{{query}}”.', { query: voiceQuery })}</p>
+      <p className="ag-small m-0">{t('category.voice_ask', 'Did we hear you right? Say it again, or type it instead.')}</p>
+      <div className="ag-row justify-center">
+        <Button onClick={() => barRef.current?.startVoice()} icon={<Icon name="mic" />} data-testid="voice-again">
+          {t('category.voice_again', 'Speak again')}
+        </Button>
+        <Button onClick={() => { setVoiceQuery(''); barRef.current?.focusSearch(); }} icon={<Icon name="search" />} data-testid="voice-type">
+          {t('category.voice_type', 'Type instead')}
+        </Button>
+      </div>
+      {type && (
+        <ButtonLink to={`/search?q=${encodeURIComponent(voiceQuery)}`} go icon={<Icon name="search" />} data-testid="search-all-categories">
+          {t('category.search_all')}
+        </ButtonLink>
+      )}
+    </Box>
+  );
+
   const countLine = loading || smartPending ? t('common.loading') : t('category.results', { count: noExact ? 0 : results.length });
 
   return (
@@ -516,10 +558,15 @@ function CategoryPage({ typeOverride }: { typeOverride?: string }) {
         )}
 
         <CategoryFilterBar
+          ref={barRef}
           categoryType={type}
           searchQuery={searchQuery}
+          onVoiceStart={() => { voiceBefore.current = voiceQuery; setVoiceQuery(''); }}
+          // Cancelled (null): the search went back to what it was, and so does this.
+          onVoiceDone={(text) => setVoiceQuery(text === null ? voiceBefore.current : text.trim())}
           onSearchChange={(v: string) => {
             setSearchQuery(v);
+            if (voiceQuery && v.trim() !== voiceQuery) setVoiceQuery('');
             if (!v.trim() && q) setSp((prev) => { const next = new URLSearchParams(prev); next.delete('q'); return next; }, { replace: true });
           }}
           selectedLocation={selectedLocation}
@@ -578,7 +625,7 @@ function CategoryPage({ typeOverride }: { typeOverride?: string }) {
           )}
         </CategoryFilterBar>
 
-        {smart?.search && smart.q === searchQuery.trim() && (
+        {smart?.search && sq.fresh && (
           <SearchUnderstood search={smart.search} fixedType={type} onUse={(text) => {
             // The corrected words become the search itself, heading and address included.
             if (q) setSp((prev) => { const next = new URLSearchParams(prev); next.set('q', text); return next; });
@@ -626,7 +673,15 @@ function CategoryPage({ typeOverride }: { typeOverride?: string }) {
 
         <p className={searching || filtering ? 'ag-small m-0' : 'sr-only'} role="status" data-testid="category-count">{countLine}</p>
 
-        {loading || smartPending ? (
+        {smartFailed ? (
+          <div className="ag-category-recerr" data-testid="search-failed">
+            <p className="ag-err m-0" role="alert">{t('search.failed', 'Could not search right now. Check your connection.')}</p>
+            <Button variant="text" onClick={sq.retry} data-testid="search-retry">{t('common.retry', 'Try again')}</Button>
+          </div>
+        ) : showStale && !loading ? (
+          // The previous answer, while the one for the new words loads.
+          <div className="opacity-60 transition-opacity" aria-busy="true" data-testid="search-stale">{resultsOf(results)}</div>
+        ) : loading || smartPending ? (
           asRows ? (
             <div className="flex flex-col gap-2.5">{repeat(5, (i) => <ListRowSkeleton key={i} />)}</div>
           ) : (
@@ -639,6 +694,8 @@ function CategoryPage({ typeOverride }: { typeOverride?: string }) {
                 <p className="m-0">{t('category.none_filtered', 'Nothing matches these filters.')}</p>
                 <Button onClick={resetFilters} icon={<Icon name="close" />} data-testid="category-clear-filters">{t('category.clear', 'Clear filters')}</Button>
               </Box>
+            ) : heardByVoice ? (
+              voiceNoMatch
             ) : searching ? (
               <Box className="ag-category-empty">
                 <p className="m-0">
@@ -668,9 +725,11 @@ function CategoryPage({ typeOverride }: { typeOverride?: string }) {
           </div>
         ) : noExact ? (
           <div data-testid="search-no-exact" className="flex flex-col gap-4">
-            <Box className="ag-category-empty">
-              <p className="m-0">{t('category.none', 'Nothing found. Try another place or word.')}</p>
-            </Box>
+            {heardByVoice ? voiceNoMatch : (
+              <Box className="ag-category-empty">
+                <p className="m-0">{t('category.none', 'Nothing found. Try another place or word.')}</p>
+              </Box>
+            )}
             <section aria-labelledby="no-exact-h">
               <SecHead id="no-exact-h" title={t('search.no_exact_other', 'No exact match. Other {{kind}}:', { kind: otherKind })} />
               {resultsOf(results)}

@@ -1,4 +1,5 @@
 import { pgTable, text, integer, boolean, numeric, jsonb, doublePrecision, uniqueIndex, index, primaryKey } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 
 export const users = pgTable('users', {
   id: text('id').primaryKey(),
@@ -262,7 +263,28 @@ export const listings = pgTable('listings', {
   providerId: text('provider_id').notNull(), // text (can be user_id or provider_id)
   extras: jsonb('extras').$type<Record<string, any>>().default({}).notNull(),
   createdAt: text('created_at').notNull(),
-});
+  // The search words below need reading again (lib/searchIndex.ts). True for a new listing; a
+  // database trigger (migration 0043) sets it again whenever the title, place, tags, profile or
+  // description change, so no write path has to remember.
+  searchStale: boolean('search_stale').default(true).notNull(),
+}, (t) => ({
+  searchStaleIdx: index('listings_search_stale_idx').on(t.id).where(sql`${t.searchStale}`),
+}));
+
+/**
+ * The search index (lib/searchIndex.ts): each listing's words, read once the way lib/search.ts
+ * reads them (local spellings, Hindi/Nepali/Bengali words, profile strings), so a search fetches
+ * only the listings holding a matching word (GIN on `words`) and scores them without re-reading.
+ * `fields` keeps the words per field for the weights; `v` is the reading's version.
+ */
+export const listingSearch = pgTable('listing_search', {
+  listingId: text('listing_id').primaryKey().references(() => listings.id, { onDelete: 'cascade' }),
+  words: text('words').array().notNull(),
+  fields: jsonb('fields').$type<Record<string, string[]>>().notNull(),
+  v: integer('v').notNull(),
+}, (t) => ({
+  wordsIdx: index('listing_search_words_gin').using('gin', t.words),
+}));
 
 export const bookings = pgTable('bookings', {
   id: text('id').primaryKey(),

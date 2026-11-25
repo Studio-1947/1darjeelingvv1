@@ -8,6 +8,7 @@ import api from '@/lib/api';
 import { Icon } from '@/components/ag/Icon';
 import { Status } from '@/components/ag';
 import { useMode } from '@/lib/theme';
+import SearchSheet from '@/components/SearchSheet';
 
 /** When the bell last asked for the unread count (shared across page changes). */
 let lastUnreadCheck = 0;
@@ -74,15 +75,11 @@ export default function Header() {
   const homeSearchAway = useHomeSearchScrolledAway(onHome);
   const showSearch = !onHome || homeSearchAway;
 
-  const search = () => {
-    const box = document.querySelector<HTMLElement>('[data-home-search]');
-    if (onHome && box) {
-      box.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      window.setTimeout(() => box.querySelector<HTMLInputElement>('input')?.focus(), 350);
-    } else {
-      navigate('/search');
-    }
-  };
+  // Search from any page (components/SearchSheet): every category for a traveller, a business's own
+  // bookings, listings and notifications in host mode. Closed by a page change (a result was opened).
+  const [searchOpen, setSearchOpen] = React.useState(false);
+  React.useEffect(() => { setSearchOpen(false); }, [pathname, query]);
+  const search = () => setSearchOpen(true);
 
   return (
     <header className="ag-header" data-testid="site-header">
@@ -133,6 +130,7 @@ export default function Header() {
           )}
         </div>
       </div>
+      {searchOpen && <SearchSheet onClose={() => setSearchOpen(false)} />}
     </header>
   );
 }

@@ -5,7 +5,7 @@ import { noteText } from '@/lib/serverText';
 import { Checks, CircleNotch as Loader2 } from '@phosphor-icons/react';
 import { Icon } from '@/components/ag/Icon';
 import { Box, Button, ButtonLink, MenuIcon, PageHead } from '@/components/ag';
-import { webLinkTarget } from '@/lib/notificationLink';
+import { isBookingNote, noteTarget } from '@/lib/notificationLink';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { useSeo } from '@/components/Seo';
@@ -59,23 +59,18 @@ export default function Notifications() {
     window.dispatchEvent(new Event('aangan:notifications'));
   };
 
-  // A booking notice leads to where that booking is handled; a team message to its chosen screen.
-  const isBooking = (kind?: string) => !!kind && (kind.startsWith('booking_') || kind.startsWith('cancel_request'));
+  // A booking notice leads to where that booking is handled; a team message to its chosen screen
+  // (lib/notificationLink noteTarget, shared with the search sheet).
+  const isBooking = isBookingNote;
   const open = async (n: Note) => {
     if (n.unread) {
       await api.patch(`/notifications/${n.id}/read`).catch(() => {});
       setItems((list) => (list || []).map((x) => (x.id === n.id ? { ...x, unread: false } : x)));
       window.dispatchEvent(new Event('aangan:notifications'));
     }
-    // A message from the team opens the screen it was sent with.
-    const target = webLinkTarget(n.link, isHostMode);
+    const target = noteTarget(n, isHostMode);
     if (target?.kind === 'route') nav(target.to);
     else if (target?.kind === 'external') window.open(target.href, '_blank', 'noopener,noreferrer');
-    else if (isBooking(n.kind)) nav(isHostMode ? '/provider/dashboard?s=bookings' : '/my-trips');
-    else if (n.kind?.startsWith('delivery')) nav(isHostMode ? '/provider/dashboard' : '/my-trips');
-    else if (n.kind === 'place_suggestion_live' && n.ref_id) nav(`/listing/${n.ref_id}`);
-    else if (n.kind?.startsWith('place_suggestion')) nav('/#my-suggestions');
-    else if (n.kind?.startsWith('plan_')) nav(n.kind === 'plan_cancelled' || !n.ref_id ? '/feed' : `/plan/${n.ref_id}`);
   };
 
   const unread = !!items && items.some((n) => n.unread);

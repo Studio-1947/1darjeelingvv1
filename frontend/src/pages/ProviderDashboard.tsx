@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { missingLabel } from '@/lib/serverText';
 import { toast } from 'sonner';
 import api from '@/lib/api';
@@ -102,6 +102,24 @@ function ProviderDashboardPage() {
       }
     })();
   }, [user, authLoading, nav, loadDashboard]);
+
+  // A booking opened from the search sheet or a notification (?s=bookings&b=<id>): show every
+  // listing's bookings, bring that card into view and mark it for a moment.
+  const focusBooking = params.get('b');
+  // The visit's key, so opening the same booking again (same address) still finds and marks it.
+  const visit = useLocation().key;
+  useEffect(() => {
+    if (!focusBooking || loading || view !== 'bookings') return undefined;
+    setActiveListingId(null);
+    const timer = window.setTimeout(() => {
+      const card = document.querySelector<HTMLElement>(`[data-testid="booking-${CSS.escape(focusBooking)}"]`);
+      if (!card) return;
+      card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      card.classList.add('ag-host-trip-found');
+      window.setTimeout(() => card.classList.remove('ag-host-trip-found'), 2400);
+    }, 60);
+    return () => window.clearTimeout(timer);
+  }, [focusBooking, loading, view, visit]);
 
   // Tracks whether the component is still mounted, so a KYC refresh that resolves after
   // unmount never calls setState.

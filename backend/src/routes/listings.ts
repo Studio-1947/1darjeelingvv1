@@ -17,7 +17,8 @@ import { routeParam } from '../lib/routeParam';
 import { blockedRanges, isDateExclusive } from '../lib/bookingAvailability';
 import { myActiveProvider, myProvider } from '../lib/hostAccess';
 import { HOST_APPROVAL_TYPES } from '../lib/bookingApproval';
-import { rank, type Interpretation } from '../lib/search';
+import { type Interpretation } from '../lib/search';
+import { searchListings } from '../lib/searchIndex';
 import { isIsoDate, maxGuestsFor } from '../lib/bookingRules';
 import { checkNameLike } from '../lib/contentRules';
 import { listingCover } from '../lib/listingCover';
@@ -283,12 +284,18 @@ router.get('/', async (req: Request, res: Response) => {
   let search: Interpretation | null = null;
   let total: number;
   if (term) {
-    const all = await db.select().from(schema.listings).where(and(...conditions));
-    const visible = await providerFlags(all.map((i) => i.providerId));
-    const ranked = rank(all, term, {
+    // Through the search index (lib/searchIndex.ts): only the listings holding a matching word are
+    // read, then ranked exactly as lib/search.ts ranks them.
+    const ranked = await searchListings({
+      term,
       type: type ?? null,
+      conditions,
+      cacheKey: `${type || ''}|${availableOn || ''}`,
       // A small lift for verified, active hosts; never enough to beat a better match.
-      boost: (l) => (visible.get(l.providerId) ? 0.5 : 0),
+      boostFor: async (rows) => {
+        const visible = await providerFlags(rows.map((i) => i.providerId));
+        return (l) => (visible.get(l.providerId) ? 0.5 : 0);
+      },
     });
     total = ranked.results.length;
     items = ranked.results.slice(offset, offset + limit).map((r) => r.item);
