@@ -485,7 +485,9 @@ function CategoryPage({ typeOverride }: { typeOverride?: string }) {
 
   // A result opened from a search: for the search log (lib/searchLog.ts), with its place in the list.
   const openedFrom = (list: any[]) => (e: React.MouseEvent) => {
-    const tile = (e.target as HTMLElement).closest('[data-testid^="grid-tile-"]');
+    // Only a tap that opens the listing (its link), not the Save heart on the card.
+    const link = (e.target as HTMLElement).closest('a[href]');
+    const tile = link?.closest('[data-testid^="grid-tile-"]');
     const id = tile?.getAttribute('data-testid')?.slice('grid-tile-'.length);
     if (id) searchLog.opened(id, list.findIndex((it) => it.id === id) + 1);
   };
@@ -511,9 +513,10 @@ function CategoryPage({ typeOverride }: { typeOverride?: string }) {
     type: type || null,
     surface: 'category',
     source: heardByVoice ? 'voice' : 'typed',
-    results: noExact ? 0 : results.length,
+    // What the search found (the server's count, as the header search sends), not one page of it.
+    results: noExact ? 0 : (sq.fresh ? (sq.data?.total ?? results.length) : results.length),
     fallback: !!smart?.search?.fallback,
-  } : null, !loading && !smartPending && !smartFailed && (sq.fresh || !sq.enabled));
+  } : null, !loading && !smartPending && !smartFailed && sq.fresh);
   const voiceNoMatch = (
     <Box className="ag-category-empty" data-testid="voice-no-results">
       <span className="ag-category-novoice" aria-hidden="true"><Icon name="mic" /></span>

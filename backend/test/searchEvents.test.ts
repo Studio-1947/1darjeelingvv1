@@ -23,6 +23,8 @@ describe('the search log', () => {
     expect(res.status).toBe(201);
     const [row] = await db.select().from(schema.searchEvents).where(eq(schema.searchEvents.id, res.body.id));
     expect(row).toMatchObject({ q: 'Ghoom Monastery', qNorm: 'ghum monastery', type: 'spot', results: 3, session: S });
+    // Kept to the hour only.
+    expect(row.createdAt).toMatch(/T\d\d:00:00\.000Z$/);
     expect(Object.keys(row)).not.toContain('userId');
 
     await request(app).patch(`/api/search-events/${res.body.id}/opened`).send({ session: 'someone_elses_visit', listing_id: 'l9', rank: 1 });
@@ -40,6 +42,7 @@ describe('the search log', () => {
   it('reports top searches and what found nothing, to admins only', async () => {
     await send({ q: 'Sittong homestay', type: 'homestay', results: 0 });
     await send({ q: 'sittong homestay', type: 'homestay', results: 0, source: 'voice' });
+    await send({ q: 'taxi to nowhere', type: 'driver', results: 0, fallback: true });
     const hit = await send({ q: 'ghum', results: 4 });
     await request(app).patch(`/api/search-events/${hit.body.id}/opened`).send({ session: S, listing_id: 'l1', rank: 1 });
 
@@ -47,7 +50,8 @@ describe('the search log', () => {
     const admin = await loginAdmin();
     const res = await request(app).get('/api/admin/search-insights').query({ days: 30 }).set({ Authorization: `Bearer ${admin}` });
     expect(res.status).toBe(200);
-    expect(res.body.totals).toMatchObject({ searches: 3, sessions: 1, zero: 2, opened: 1, voice: 1 });
+    // A fallback search is sent with 0 results: it counts once in "missing", never twice.
+    expect(res.body.totals).toMatchObject({ searches: 4, sessions: 1, zero: 3, fallback: 1, missing: 3, opened: 1, voice: 1 });
     expect(res.body.missing[0]).toMatchObject({ q: 'sittong homestay', n: 2, type: 'homestay' });
     expect(res.body.top[0]).toMatchObject({ q: 'sittong homestay', n: 2 });
     expect(res.body.keep_days).toBe(SEARCH_LOG_DAYS);

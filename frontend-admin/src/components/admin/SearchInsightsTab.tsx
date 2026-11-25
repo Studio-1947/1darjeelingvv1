@@ -1,18 +1,19 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AlertCircle, Loader2, Mic, MousePointerClick, RefreshCw, Search, Users } from 'lucide-react';
 import api from '@/lib/api';
 import StatCard from '@/components/admin/StatCard';
 
-const TYPES = ['', 'homestay', 'driver', 'guide', 'cafe', 'shop', 'spot', 'event'] as const;
+const TYPES = ['', 'homestay', 'driver', 'guide', 'cafe', 'shop', 'food', 'spot', 'biodiversity', 'event'] as const;
 const TYPE_LABEL: Record<string, string> = {
-  '': 'Everything', homestay: 'Homestays', driver: 'Drivers', guide: 'Guides', cafe: 'Cafes', shop: 'Shops', spot: 'Places', event: 'Festivals',
+  '': 'Everything', homestay: 'Homestays', driver: 'Drivers', guide: 'Guides', cafe: 'Cafes', shop: 'Shops', food: 'Food', spot: 'Places', biodiversity: 'Nature', event: 'Festivals',
 };
 const DAYS = [7, 30, 90, 180] as const;
 
 interface Report {
   days: number;
   keep_days: number;
-  totals: { searches: number; sessions: number; zero: number; fallback: number; opened: number; voice: number };
+  /** missing: found nothing or only similar listings, each search once. */
+  totals: { searches: number; sessions: number; zero: number; fallback: number; missing: number; opened: number; voice: number };
   top: { q: string; n: number; avg_results: number; opened: number }[];
   missing: { q: string; n: number; type: string; fallback: boolean; last_at: string }[];
   by_type: { type: string; n: number; missing: number }[];
@@ -33,16 +34,19 @@ export default function SearchInsightsTab() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  // The latest request only: a slow answer for an older filter never replaces a newer one.
+  const latest = useRef(0);
   const load = useCallback(async () => {
+    const at = ++latest.current;
     setLoading(true);
     setError('');
     try {
       const { data: d } = await api.get('/admin/search-insights', { params: { days, type: type || undefined } });
-      setData(d);
+      if (at === latest.current) setData(d);
     } catch (e: any) {
-      setError(e?.response?.data?.detail || 'Could not load the search insights');
+      if (at === latest.current) setError(e?.response?.data?.detail || 'Could not load the search insights');
     } finally {
-      setLoading(false);
+      if (at === latest.current) setLoading(false);
     }
   }, [days, type]);
   useEffect(() => { load(); }, [load]);
@@ -86,7 +90,7 @@ export default function SearchInsightsTab() {
           <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6" data-testid="search-totals">
             <StatCard label="Searches" value={t.searches} icon={Search} color="text-orange-500 bg-orange-50" />
             <StatCard label="Visits searching" value={t.sessions} icon={Users} color="text-blue-500 bg-blue-50" />
-            <StatCard label="Found nothing" value={pct(t.zero + t.fallback, t.searches)} icon={AlertCircle} color="text-flag bg-flag/10" />
+            <StatCard label="Found nothing" value={pct(t.missing, t.searches)} icon={AlertCircle} color="text-flag bg-flag/10" />
             <StatCard label="Opened a result" value={pct(t.opened, t.searches)} icon={MousePointerClick} color="text-pine bg-pine/10" />
             <StatCard label="Spoken" value={pct(t.voice, t.searches)} icon={Mic} color="text-emerald-600 bg-emerald-50" />
           </div>

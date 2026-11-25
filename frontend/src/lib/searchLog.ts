@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import api from '@/lib/api';
+import { API_BASE } from '@/lib/api';
 
 /**
  * The search log (server routes/searchEvents.ts), as the Privacy Policy describes it (1.5, 6):
@@ -60,13 +60,31 @@ export type SearchLogInput = {
   fallback?: boolean;
 };
 
+/**
+ * Sent without the sign-in token or any other header the app adds (plain fetch, not the api
+ * client): the log is anonymous, so nothing about the account goes with it. keepalive lets the
+ * record of an opened result finish while the page moves to the listing.
+ */
+async function post(path: string, body: unknown, method = 'POST'): Promise<any> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method, keepalive: true, credentials: 'omit',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(String(res.status));
+  return res.status === 204 ? null : res.json();
+}
+
+/** Searches already sent this visit, so reopening the sheet does not count the same search again. */
+const sentThisVisit = new Map<string, Promise<string | null>>();
+
 async function send(input: SearchLogInput): Promise<string | null> {
   const q = scrubQuery(input.q);
   const session = visit();
   if (!q || !session) return null;
   ga('search', { search_term: q });
   try {
-    const { data } = await api.post('/search-events', { ...input, q, session, type: input.type || undefined });
+    const data = await post('/search-events', { ...input, q, session, type: input.type || undefined });
     return data?.id || null;
   } catch {
     return null; // Never in the way of searching.
@@ -80,14 +98,13 @@ async function send(input: SearchLogInput): Promise<string | null> {
  * search, a business searching its own data) or the browser refuses tracking.
  */
 export function useSearchLog(input: SearchLogInput | null, ready: boolean) {
-  const sent = useRef(new Map<string, Promise<string | null>>());
   const current = useRef<{ key: string; input: SearchLogInput } | null>(null);
   const key = input ? `${input.surface}|${input.type || ''}|${scrubQuery(input.q).toLowerCase()}` : '';
   current.current = input && ready ? { key, input } : null;
 
   const log = (k: string, i: SearchLogInput) => {
-    let p = sent.current.get(k);
-    if (!p) { p = send(i); sent.current.set(k, p); }
+    let p = sentThisVisit.get(k);
+    if (!p) { p = send(i); sentThisVisit.set(k, p); }
     return p;
   };
 
@@ -105,7 +122,7 @@ export function useSearchLog(input: SearchLogInput | null, ready: boolean) {
       if (!at || trackingRefused()) return;
       ga('select_item', { item_list_name: 'search', items: [{ item_id: listingId, index: rank }] });
       void log(at.key, at.input).then((id) => {
-        if (id) api.patch(`/search-events/${id}/opened`, { session: visit(), listing_id: listingId, rank }).catch(() => {});
+        if (id) post(`/search-events/${id}/opened`, { session: visit(), listing_id: listingId, rank }, 'PATCH').catch(() => {});
       });
     },
   };

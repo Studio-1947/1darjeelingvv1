@@ -5,20 +5,28 @@
  *
  *   - no user id, phone or IP; only a random code for one browser visit (`session`)
  *   - numbers of 5+ digits (phones, PINs, booking codes) and email addresses removed from the words
- *   - deleted after SEARCH_LOG_DAYS (180 by default) by the sweep below
+ *   - the time kept to the hour only, so a search cannot be matched to a server access log entry
+ *   - deleted after SEARCH_LOG_DAYS (180) by the sweep below
  */
 import { lt, sql } from 'drizzle-orm';
 import { db, schema } from '../db';
 import { log } from '../config';
 import { words } from './search';
 
-/** How long a search is kept. The Privacy Policy states this number: change both together. */
-export const SEARCH_LOG_DAYS = (() => {
-  const n = Number(process.env.SEARCH_LOG_DAYS);
-  return Number.isFinite(n) && n >= 1 && n <= 365 ? Math.floor(n) : 180;
-})();
+/**
+ * How long a search is kept. Fixed here, not a setting: the Privacy Policy (section 6) states this
+ * number, so a change is a code change made together with the policy text.
+ */
+export const SEARCH_LOG_DAYS = 180;
 
 export const SEARCH_Q_MAX = 120;
+
+/** The hour a search was made ("2026-11-25T10:00:00.000Z"): all the log keeps of when. */
+export function searchHour(now = new Date()): string {
+  const d = new Date(now);
+  d.setUTCMinutes(0, 0, 0);
+  return d.toISOString();
+}
 
 /** The words as kept: no email addresses, no long numbers, trimmed. Empty when nothing is left. */
 export function scrubQuery(q: string): string {
@@ -63,6 +71,7 @@ export async function searchInsights(days: number, type?: string | null) {
            count(distinct session)::int as sessions,
            count(*) filter (where results = 0)::int as zero,
            count(*) filter (where fallback)::int as fallback,
+           count(*) filter (where results = 0 or fallback)::int as missing,
            count(*) filter (where opened_listing_id is not null)::int as opened,
            count(*) filter (where source = 'voice')::int as voice
     from ${schema.searchEvents} where ${where}`)).rows as any[];

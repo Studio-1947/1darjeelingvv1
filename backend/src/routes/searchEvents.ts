@@ -5,7 +5,7 @@ import { db, schema } from '../db';
 import { authenticateToken, requireAdmin } from '../middleware/auth';
 import { rateLimiter } from '../middleware/rateLimiter';
 import { routeParam } from '../lib/routeParam';
-import { normQuery, scrubQuery, searchInsights } from '../lib/searchEvents';
+import { normQuery, scrubQuery, searchHour, searchInsights } from '../lib/searchEvents';
 
 /**
  * The search log (lib/searchEvents.ts): the website sends a search once its results have settled
@@ -17,7 +17,8 @@ import { normQuery, scrubQuery, searchInsights } from '../lib/searchEvents';
  *   GET   /api/admin/search-insights?days=30&type=homestay
  */
 const router = Router();
-const log = rateLimiter(60, 60 * 1000, 'search_events');
+// A person searching sends a few a minute; 30 keeps one address from flooding the report.
+const log = rateLimiter(30, 60 * 1000, 'search_events');
 
 const SESSION = /^[A-Za-z0-9_-]{8,64}$/;
 const TYPES = new Set(['spot', 'homestay', 'driver', 'guide', 'shop', 'cafe', 'event', 'biodiversity', 'food']);
@@ -39,7 +40,7 @@ router.post('/search-events', log, async (req: Request, res: Response) => {
     source: b.source === 'voice' ? 'voice' : 'typed',
     results,
     fallback: b.fallback === true,
-    createdAt: new Date().toISOString(),
+    createdAt: searchHour(),
   });
   res.status(201).json({ id });
 });
