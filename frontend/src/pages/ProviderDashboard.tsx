@@ -487,8 +487,12 @@ function ProviderDashboardPage() {
   return (
     <div className="ag-wrap">
       <div className="ag-main">
-        <PageHead eyebrow={`${typeLabel(type)} · ${provider.location || ''}`} title={provider.business_name || provider.extras?.host_name}
-          sub={greetName ? <span data-testid="host-greeting">{t(`host.greet_${dayPart()}`, { name: greetName })}</span> : undefined} />
+        {/* The greeting comes first, above the business's type and name. */}
+        <div className="ag-pagehead">
+          {greetName && <p className="ag-host-greet" data-testid="host-greeting">{t(`host.greet_${dayPart()}`, { name: greetName })}</p>}
+          <span className="ag-eyebrow">{`${typeLabel(type)} · ${provider.location || ''}`}</span>
+          <h1>{provider.business_name || provider.extras?.host_name}</h1>
+        </div>
         <p className="ag-host-status flex flex-wrap items-center gap-2">
           {/* Paid but not yet approved reads "Pending review"; listings are still private. */}
           <Status tone={live ? 'ok' : 'pending'} data-testid="provider-status">

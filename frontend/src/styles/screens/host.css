@@ -4,6 +4,8 @@
    Colours only from the theme variables, so a Theme colour change re-tints all of it. */
 
 /* ---------- page bits ---------- */
+/* "Good morning, Rabi": the dashboard's first line, above the business type and name. */
+.ag-host-greet { margin: 0 0 6px; font: 500 18px/24px var(--font); letter-spacing: -.01em; color: var(--ink-strong); }
 .ag-host-status { margin: -6px 0 8px; }
 .ag-host-sec { display: flex; flex-direction: column; }
 .ag-host-sec > .ag-sechead { margin: 12px 0 10px; }
