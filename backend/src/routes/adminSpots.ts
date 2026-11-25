@@ -309,6 +309,10 @@ export async function createSpot(body: any): Promise<
     extras,
     createdAt: new Date().toISOString(),
     searchStale: true,
+    // A spot has no plan (lib/listingPlan.ts).
+    planExpiresAt: null,
+    planGrace: false,
+    memberNo: null,
   };
 
   await db.insert(schema.listings).values(row);

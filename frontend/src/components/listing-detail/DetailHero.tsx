@@ -9,7 +9,7 @@ import { useFavorites } from '@/context/FavoritesContext';
 import { useLoginGate } from '@/components/LoginGate';
 import type { ShareOutcome } from '@/lib/share';
 import PhotoViewer, { type ViewerPhoto } from '@/components/PhotoViewer';
-import { CaretLeft, CaretRight } from '@phosphor-icons/react';
+import { CaretLeft, CaretRight, CrownSimple } from '@phosphor-icons/react';
 
 /** The prototype's guide kinds (gtypeTag): its label key and icon. */
 const GUIDE_TAG: Record<string, string> = {
@@ -68,9 +68,15 @@ export default function DetailHero({ item, photos, stripLabel, stripTestid = 'de
           </span>
         )}
         {item.location && <p className="ag-listing-place"><Icon name="pin" /> {item.location}</p>}
-        {(item.provider_verified || rated) && (
+        {(item.provider_verified || item.provider_member || rated) && (
           <p className="ag-listing-row">
             {item.provider_verified && <span className="ag-listing-tag ok">{t('listing.verified', 'Verified')}</span>}
+            {/* This listing's own yearly membership (one per listing, 2026-11-25), with its card number. */}
+            {item.provider_member && (
+              <span className="ag-listing-tag inline-flex items-center gap-1" data-testid="listing-member" title={item.member_no ? `${t('miniSite.member')} · ${item.member_no}` : undefined}>
+                <CrownSimple size={13} weight="fill" aria-hidden="true" />{t('miniSite.member')}
+              </span>
+            )}
             {rated && (
               <>
                 <a href="#reviews" className="ag-listing-starline" aria-label={t('reviews.out_of_5', { value: Number(item.rating).toFixed(1) })}>

@@ -5,6 +5,7 @@ import { db, schema } from '../db';
 import { addHostNotification } from './inApp';
 import { isCompleted, todayInIndia } from './travellerDashboard';
 import { listingCover } from './listingCover';
+import { listingGraceState, newListingPlan } from './listingPlan';
 
 type Provider = typeof schema.providers.$inferSelect;
 type Executor = Pick<typeof db, 'select' | 'update' | 'insert'>;
@@ -72,38 +73,42 @@ export const GRACE_PAUSED_DETAIL = 'This host is not taking new bookings right n
 export const GRACE_PAUSED_CODE = 'host_plan_required';
 
 /**
- * Tells the host once the free start has run out. Bookings complete when their last day passes,
- * not on a tap, so this runs from the sweep below as well as after a delivery or a confirmation
- * (a booking with no date is complete at once). Sent once per host: a note already there stops a
- * second one. Never throws.
+ * Tells the host once a listing's free start has run out (plans are per listing, lib/listingPlan.ts).
+ * Bookings complete when their last day passes, not on a tap, so this runs from the sweep below as
+ * well as after a delivery or a confirmation (a booking with no date is complete at once). Sent
+ * once per listing: a note already there stops a second one. Never throws.
  */
 export async function noteGraceProgress(listingProviderId: string | null | undefined): Promise<void> {
   if (!listingProviderId) return;
   try {
-    const [p] = await db.select().from(schema.providers).where(eq(schema.providers.id, listingProviderId)).limit(1);
-    const state = await graceStateFor(p);
-    if (!state || !state.paused) return;
-    const [already] = await db.select({ id: schema.notifications.id }).from(schema.notifications)
-      .where(and(eq(schema.notifications.kind, 'host_grace_ended'), eq(schema.notifications.refId, listingProviderId)))
-      .limit(1);
-    if (already) return;
-    await addHostNotification(listingProviderId, {
-      kind: 'host_grace_ended',
-      title: 'Your free bookings are used up',
-      body: `${state.limit} guests have now completed their bookings with you on aangan. Pay for your host plan to keep taking new bookings. Guests already booked are not affected.`,
-      msg: { key: 'grace_ended', params: { count: state.limit } },
-      refId: listingProviderId,
-    });
+    const onGrace = await db.select({ id: schema.listings.id, type: schema.listings.type, title: schema.listings.title, planGrace: schema.listings.planGrace })
+      .from(schema.listings)
+      .where(and(eq(schema.listings.providerId, listingProviderId), eq(schema.listings.planGrace, true)));
+    for (const l of onGrace) {
+      const state = await listingGraceState(l);
+      if (!state || !state.paused) continue;
+      const [already] = await db.select({ id: schema.notifications.id }).from(schema.notifications)
+        .where(and(eq(schema.notifications.kind, 'host_grace_ended'), eq(schema.notifications.refId, l.id)))
+        .limit(1);
+      if (already) continue;
+      await addHostNotification(listingProviderId, {
+        kind: 'host_grace_ended',
+        title: `Free bookings used up: ${l.title}`,
+        body: `${state.limit} guests have now completed their bookings at ${l.title} on aangan. Pay for its yearly membership to keep taking new bookings there. Guests already booked are not affected.`,
+        msg: { key: 'grace_ended', params: { count: state.limit } },
+        refId: l.id,
+      });
+    }
   } catch {
     /* a missed note must not fail the booking */
   }
 }
 
-/** Checks every host on the free start and tells those who have just run out. */
+/** Checks every business with a listing on its free start and tells those that have just run out. */
 export async function sweepGraceEnded(): Promise<void> {
-  const onGrace = await db.select({ id: schema.providers.id }).from(schema.providers)
-    .where(and(eq(schema.providers.status, 'active'), eq(schema.providers.grace, true)));
-  for (const p of onGrace) await noteGraceProgress(p.id);
+  const rows = await db.selectDistinct({ id: schema.listings.providerId }).from(schema.listings)
+    .where(eq(schema.listings.planGrace, true));
+  for (const r of rows) await noteGraceProgress(r.id);
 }
 
 /** Runs the sweep now and every 30 minutes, like the request expiry. Never throws. */
@@ -134,5 +139,7 @@ export async function publishFirstListing(tx: Executor, p: Provider): Promise<vo
     providerId: p.id,
     extras: p.extras || {},
     createdAt: new Date().toISOString(),
+    // On its own free start; paying the first year settles it at once (routes/payments.ts).
+    ...newListingPlan(p.businessType),
   });
 }

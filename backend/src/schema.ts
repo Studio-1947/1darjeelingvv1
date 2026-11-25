@@ -284,6 +284,13 @@ export const listings = pgTable('listings', {
   // database trigger (migration 0043) sets it again whenever the title, place, tags, profile or
   // description change, so no write path has to remember.
   searchStale: boolean('search_stale').default(true).notNull(),
+  // Each listing's own yearly membership (user decision 2026-11-25; lib/listingPlan.ts): when its
+  // paid year ends, whether it is still on its free start, and the number on its membership card
+  // (given on its first payment). A listing is hidden from the public only once its own year has
+  // passed; one with no expiry (a spot, a shop, a free start) is not.
+  planExpiresAt: text('plan_expires_at'),
+  planGrace: boolean('plan_grace').default(false).notNull(),
+  memberNo: text('member_no').unique(),
 }, (t) => ({
   searchStaleIdx: index('listings_search_stale_idx').on(t.id).where(sql`${t.searchStale}`),
 }));

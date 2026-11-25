@@ -69,6 +69,8 @@ describe('Route Estimator API (/api/routes/estimate)', () => {
     const b = await onboardActiveProvider({ name: 'Fare Driver B', businessType: 'driver' });
     const lapsed = await onboardActiveProvider({ name: 'Fare Driver C', businessType: 'driver' });
     await db.update(schema.providers).set({ planExpiresAt: '2020-01-01T00:00:00.000Z' }).where(eq(schema.providers.id, lapsed.providerId));
+    // Plans are per listing: the driver's own year has passed too.
+    await db.update(schema.listings).set({ planExpiresAt: '2020-01-01T00:00:00.000Z', planGrace: false }).where(eq(schema.listings.providerId, lapsed.providerId));
 
     await addDriver(a.providerId, [{ route: 'NJP to Darjeeling', price: 3200, unit: 'trip' }, { route: 'Full day hire', price: 1800, unit: 'day' }]);
     await addDriver(b.providerId, [{ route: 'Darjeeling - NJP', price: 2600, unit: 'trip' }, { route: 'NJP to Darjeeling via Mirik', price: 4000, unit: 'trip' }]);

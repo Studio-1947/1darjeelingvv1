@@ -397,6 +397,11 @@ export const AMOUNTS: Record<string, number> = {
   booking_commission: 100,
   provider_registration: 49900,
   provider_renewal: 49900,
+  // One listing's year (user decision 2026-11-25, lib/listingPlan.ts): the first year and each
+  // year after. The order route prices it by the listing's own type (₹99 for a cafe), like the
+  // business plan above, which older app versions still pay and which now buys the first listing's year.
+  listing_plan: 49900,
+  listing_renewal: 49900,
 };
 
 // The yearly host plan for cafes and restaurants, in paise, first year and every year after.

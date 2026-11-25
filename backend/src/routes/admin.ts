@@ -18,7 +18,7 @@ import { notifyHostVerification } from '../lib/notifications';
 import { deleteListingsOwnedBy, deleteKycFilesOwnedBy, deleteAccount, DELETED_ACCOUNT_ID } from '../lib/accountCleanup';
 import { listUnreturnedPayments, refundPayment } from '../lib/refunds';
 import { routeParam } from '../lib/routeParam';
-import { hostPlanVisibility } from '../lib/hostPlan';
+import { listingPlanVisibility } from '../lib/listingPlan';
 import { publicSpotVisibility } from '../lib/spots';
 
 const router = Router();
@@ -128,7 +128,7 @@ router.get('/admin/stats', authenticateToken, requireAdmin, async (req: Request,
   const paymentsCount = await db.select({ value: count() }).from(schema.payments).where(eq(schema.payments.status, 'paid'));
   // What travellers can book right now: the same visibility GET /listings applies, business kinds only.
   const activeServices = await db.select({ value: count() }).from(schema.listings).where(and(
-    publicSpotVisibility(), hostPlanVisibility(),
+    publicSpotVisibility(), listingPlanVisibility(),
     inArray(schema.listings.type, ['homestay', 'driver', 'guide', 'cafe', 'shop']),
   ));
   const paidBookings = await db.select({ value: count() }).from(schema.payments)

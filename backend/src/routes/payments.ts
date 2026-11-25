@@ -8,9 +8,10 @@ import { rateLimiter } from '../middleware/rateLimiter';
 import { parseGstInput, type GstBilling } from '../lib/gstin';
 import { AMOUNTS, FREE_HOST_TYPES, GST_RATE_PERCENT, PLATFORM_FEE_PERCENT, HOST_RENEWAL_WINDOW_DAYS, MOCK_PAYMENTS, rzpClient, RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, RAZORPAY_WEBHOOK_SECRET, IS_PROD, log } from '../config';
 import { computeSupportPassExpiry, isExemptFromSupport, isSupportActive } from '../lib/support';
-import { computeHostPlanExpiry, isHostPlanLive, isListingHostLapsed } from '../lib/hostPlan';
+import { computeHostPlanExpiry, isHostPlanLive } from '../lib/hostPlan';
 import { serializeProvider } from '../lib/providerShape';
 import { publishFirstListing } from '../lib/hostGrace';
+import { isListingMember, listingPlanBreakup, needsPlan, settleListingPlan } from '../lib/listingPlan';
 import { sendAwaitingRequest, AWAITING_FEE } from '../lib/bookingSend';
 import { settleBookingConfirmation } from '../lib/bookingConfirmation';
 import { isAwaitingHost } from '../lib/bookingApproval';
@@ -22,7 +23,7 @@ const router = Router();
 
 // What a settlement writes through: the shared pool, or the transaction settlePaymentOnce opens so
 // the paid flag and the entitlement it buys commit together or not at all.
-type Executor = Pick<typeof db, 'select' | 'update' | 'insert'>;
+type Executor = Pick<typeof db, 'select' | 'update' | 'insert' | 'execute'>;
 
 // Common after-payment trigger side effects function
 async function handlePaymentSuccess(
@@ -54,17 +55,30 @@ async function handlePaymentSuccess(
 
     const [p] = await tx.select().from(schema.providers).where(eq(schema.providers.id, referenceId)).limit(1);
     if (p && !wasOnGrace) await publishFirstListing(tx, p);
-    return p ? serializeProvider(p) : null;
+    // Plans are per listing now (lib/listingPlan.ts): the business plan, which older app versions
+    // still pay, buys the year of one listing, the oldest still on its free start.
+    const target = await legacyPlanListing(tx, referenceId, 'first');
+    if (target) await settleListingPlan(tx, target);
+    const [after] = await tx.select().from(schema.providers).where(eq(schema.providers.id, referenceId)).limit(1);
+    return after ? serializeProvider(after) : null;
   } else if (flow === 'provider_renewal') {
     // Another year at the same price. Extends from the current expiry when renewing early, from now when
     // the plan has already lapsed, so the host's listings come back the moment this settles.
     const [p] = await tx.select().from(schema.providers).where(eq(schema.providers.id, referenceId)).limit(1);
     if (!p) return null;
-    const [renewed] = await tx.update(schema.providers)
+    await tx.update(schema.providers)
       .set({ planExpiresAt: computeHostPlanExpiry(p.planExpiresAt) })
-      .where(eq(schema.providers.id, referenceId))
-      .returning();
-    return serializeProvider(renewed);
+      .where(eq(schema.providers.id, referenceId));
+    // From an older app: renews the paid listing whose year ends first.
+    const target = await legacyPlanListing(tx, referenceId, 'renewal');
+    if (target) await settleListingPlan(tx, target);
+    const [renewed] = await tx.select().from(schema.providers).where(eq(schema.providers.id, referenceId)).limit(1);
+    return renewed ? serializeProvider(renewed) : null;
+  } else if (flow === 'listing_plan' || flow === 'listing_renewal') {
+    // One listing's year (first or another): its free start ends, its year starts or extends, and
+    // it gets its membership card number the first time (lib/listingPlan.ts).
+    const l = await settleListingPlan(tx, referenceId);
+    return l ? { listing_id: l.id, plan_expires_at: l.planExpiresAt, member_no: l.memberNo } : null;
   } else if (flow === 'booking_commission') {
     // The ₹1 fee of a traveller without the pass: paying it sends their saved request to the
     // host (lib/bookingSend.ts), and refunds it if the request cannot go out after all.
@@ -105,6 +119,21 @@ async function handlePaymentSuccess(
 }
 
 type PaymentRow = typeof schema.payments.$inferSelect;
+
+/**
+ * The listing an older app's business-plan payment pays for: for a first year, the oldest listing
+ * still on its free start (else the oldest that takes a plan); for a renewal, the paid listing
+ * whose year ends first.
+ */
+async function legacyPlanListing(tx: Executor, providerId: string, kind: 'first' | 'renewal'): Promise<string | null> {
+  const rows = (await tx.select({ id: schema.listings.id, type: schema.listings.type, planGrace: schema.listings.planGrace, planExpiresAt: schema.listings.planExpiresAt, createdAt: schema.listings.createdAt })
+    .from(schema.listings).where(eq(schema.listings.providerId, providerId)))
+    .filter((r) => needsPlan(r.type))
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  if (kind === 'first') return (rows.find((r) => r.planGrace) || rows.find((r) => !r.planExpiresAt) || rows[0])?.id ?? null;
+  const paid = rows.filter((r) => !r.planGrace && r.planExpiresAt).sort((a, b) => (a.planExpiresAt as string).localeCompare(b.planExpiresAt as string));
+  return paid[0]?.id ?? null;
+}
 
 /**
  * Checks that `referenceId` names something the caller actually owns and may pay for.
@@ -154,6 +183,41 @@ async function assertOwnsReference(
           return {
             status: 409,
             detail: `Your host plan is already active. Renewal opens ${HOST_RENEWAL_WINDOW_DAYS} days before it ends, on ${from}.`,
+          };
+        }
+      }
+    }
+    return null;
+  }
+
+  if (flow === 'listing_plan' || flow === 'listing_renewal') {
+    const [listing] = await db.select().from(schema.listings).where(eq(schema.listings.id, referenceId)).limit(1);
+    if (!listing) return { status: 404, detail: 'Listing not found' };
+    const [provider] = await db.select().from(schema.providers).where(eq(schema.providers.id, listing.providerId)).limit(1);
+    if (!provider || provider.userId !== userId) {
+      return { status: 403, detail: 'You can only pay for your own listing' };
+    }
+    if (!needsPlan(listing.type)) {
+      return { status: 409, detail: 'This listing is free. There is nothing to pay.', code: 'free_listing' };
+    }
+    if (provider.status === 'suspended') {
+      return { status: 403, detail: 'This business is suspended. Contact support.' };
+    }
+    // The first year is paid once: on the free start, or a listing that never had a year.
+    if (flow === 'listing_plan' && !listing.planGrace && listing.planExpiresAt) {
+      return { status: 409, detail: 'This listing already has its year. Renew it instead.', code: 'already_paid' };
+    }
+    if (flow === 'listing_renewal') {
+      if (listing.planGrace || !listing.planExpiresAt) {
+        return { status: 409, detail: 'This listing is on its free start. Pay for its first year instead.', code: 'on_grace' };
+      }
+      if (isListingMember(listing)) {
+        const opensAt = Date.parse(listing.planExpiresAt) - HOST_RENEWAL_WINDOW_DAYS * 24 * 60 * 60 * 1000;
+        if (Date.now() < opensAt) {
+          const from = new Date(opensAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' });
+          return {
+            status: 409,
+            detail: `This listing's year is already active. Renewal opens ${HOST_RENEWAL_WINDOW_DAYS} days before it ends, on ${from}.`,
           };
         }
       }
@@ -278,8 +342,8 @@ async function settlePaymentOnce(payment: PaymentRow, gatewayPaymentId: string) 
  *             type: object
  *             required: [flow, reference_id]
  *             properties:
- *               flow: { type: string, enum: [provider_registration, provider_renewal, platform_support, donation] }
- *               reference_id: { type: string, description: "Provider id (provider_registration, provider_renewal), or the caller's own user id (platform_support, donation)" }
+ *               flow: { type: string, enum: [listing_plan, listing_renewal, provider_registration, provider_renewal, platform_support, donation] }
+ *               reference_id: { type: string, description: "Listing id (listing_plan, listing_renewal), provider id (provider_registration, provider_renewal), or the caller's own user id (platform_support, donation)" }
  *               amount: { type: integer, description: "Amount in paise. ONLY read for flow=donation, where it must be an integer between 1000 (₹10) and 10000000 (₹1,00,000). Ignored for every other flow, whose price is fixed server-side." }
  *               gst:
  *                 description: "Host plan flows only. { gstin, legal_name } invoices the plan to that GST registration and saves it on the business; null clears it (not GST-registered); omitted keeps what is saved. An invalid GSTIN is a 400 with code invalid_gstin."
@@ -434,17 +498,27 @@ router.post('/order', authenticateToken, async (req: Request, res: Response) => 
   // A GST-registered host can have the plan invoiced to their GSTIN (lib/gstin.ts): `gst` in the
   // body saves it on the business (null clears it), and the order records who it is billed to.
   let billing: GstBilling | null = null;
-  if (flow === 'provider_registration' || flow === 'provider_renewal') {
+  const hostPlanFlow = flow === 'provider_registration' || flow === 'provider_renewal';
+  const listingFlow = flow === 'listing_plan' || flow === 'listing_renewal';
+  if (hostPlanFlow || listingFlow) {
     const gstInput = parseGstInput(req.body.gst);
     if ('error' in gstInput) return res.status(400).json({ detail: gstInput.error, code: 'invalid_gstin' });
+    // A listing's year is priced by the listing's own type and billed to its business.
+    let providerId = reference_id as string;
+    if (listingFlow) {
+      const [l] = await db.select({ type: schema.listings.type, providerId: schema.listings.providerId })
+        .from(schema.listings).where(eq(schema.listings.id, reference_id)).limit(1);
+      providerId = l?.providerId ?? '';
+      breakup = listingPlanBreakup(l?.type, flow);
+    }
     const [p] = await db.select({ businessType: schema.providers.businessType, gstin: schema.providers.gstin, gstLegalName: schema.providers.gstLegalName })
-      .from(schema.providers).where(eq(schema.providers.id, reference_id)).limit(1);
-    breakup = hostPlanBreakup(p?.businessType, flow);
-    amount = breakup.total;
+      .from(schema.providers).where(eq(schema.providers.id, providerId)).limit(1);
+    if (hostPlanFlow) breakup = hostPlanBreakup(p?.businessType, flow);
+    amount = breakup!.total;
     if (gstInput.value !== undefined) {
       await db.update(schema.providers)
         .set({ gstin: gstInput.value?.gstin ?? null, gstLegalName: gstInput.value?.legal_name ?? null })
-        .where(eq(schema.providers.id, reference_id));
+        .where(eq(schema.providers.id, providerId));
       billing = gstInput.value;
     } else if (p?.gstin && p.gstLegalName) {
       billing = { gstin: p.gstin, legal_name: p.gstLegalName, state_code: p.gstin.slice(0, 2) };
@@ -476,7 +550,7 @@ router.post('/order', authenticateToken, async (req: Request, res: Response) => 
         )).orderBy(desc(schema.payments.createdAt)).limit(1);
         if (open?.orderId) {
           // The host may have added or changed their GSTIN since the order was made.
-          if (flow === 'provider_registration' || flow === 'provider_renewal') {
+          if (hostPlanFlow || listingFlow) {
             await tx.update(schema.payments).set({ billing }).where(eq(schema.payments.id, open.id));
           }
           return { order: { id: open.orderId, amount, currency: 'INR' } as any, reused: true };
@@ -546,7 +620,7 @@ router.post('/order', authenticateToken, async (req: Request, res: Response) => 
  *             required: [order_id, flow, reference_id]
  *             properties:
  *               order_id: { type: string }
- *               flow: { type: string, enum: [provider_registration, provider_renewal, platform_support, donation] }
+ *               flow: { type: string, enum: [listing_plan, listing_renewal, provider_registration, provider_renewal, platform_support, donation] }
  *               reference_id: { type: string }
  *     responses:
  *       200:
@@ -634,7 +708,7 @@ router.post('/mock/complete', authenticateToken, rateLimiter(10, 60 * 1000, 'moc
  *               razorpay_order_id: { type: string }
  *               razorpay_payment_id: { type: string }
  *               razorpay_signature: { type: string }
- *               flow: { type: string, enum: [provider_registration, provider_renewal, platform_support, donation] }
+ *               flow: { type: string, enum: [listing_plan, listing_renewal, provider_registration, provider_renewal, platform_support, donation] }
  *               reference_id: { type: string }
  *     responses:
  *       200:

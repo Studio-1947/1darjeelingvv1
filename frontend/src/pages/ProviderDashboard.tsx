@@ -11,6 +11,7 @@ import KycSection from '@/components/provider/dashboard/KycSection';
 import VerificationTracker from '@/components/provider/dashboard/VerificationTracker';
 import NextStepCard from '@/components/provider/dashboard/NextStepCard';
 import { HostPassLine } from '@/components/provider/dashboard/HostPlanCard';
+import ListingMembershipCard from '@/components/provider/dashboard/ListingMembershipCard';
 import ListingFormModal from '@/components/ListingFormModal';
 import { DeliveryRequestsPanel, HostReviewsCard } from '@/components/provider/dashboard/HostExtras';
 import { isFinished, isOngoing, isUpcoming, sumGuests, waShare } from '@/lib/tripMessages';
@@ -496,7 +497,10 @@ function ProviderDashboardPage() {
                     <span className="ag-host-gtag"><Icon name={BAND_ICON[l.type] || 'home'} />{typeLabel(l.type)}</span>
                     <b>{l.title}</b>
                     <span className="ag-small">{l.location}{Number(l.price) > 0 ? ` · ${t('host.from', 'From')} ₹${Number(l.price).toLocaleString('en-IN')}` : ''}</span>
-                    {i === 0 && <HostPassLine provider={provider} user={user} onRenewed={async () => { await refresh(); await loadDashboard(); }} />}
+                    {/* Each listing's own membership card (one yearly membership per listing, 2026-11-25). */}
+                    {l.plan
+                      ? <ListingMembershipCard listing={l} typeLabel={typeLabel(l.type)} provider={provider} user={user} onPaid={async () => { await refresh(); await loadDashboard(); }} />
+                      : i === 0 && <HostPassLine provider={provider} user={user} onRenewed={async () => { await refresh(); await loadDashboard(); }} />}
                     <div className="ag-host-lacts">
                       {provider.page_path && (
                         <ButtonLink to={provider.page_path} go icon={<Icon name="globe" />} data-testid={i === 0 ? 'host-page-open' : undefined}>{t('host.site', 'Website')}</ButtonLink>

@@ -1,8 +1,7 @@
 import { hostCard } from '../lib/hostCard';
 import { Router, Request, Response } from 'express';
 import { MAX_PRICE } from '../lib/priceCap';
-import { hostPlanVisibility, isListingHostLapsed } from '../lib/hostPlan';
-import { isGracePaused } from '../lib/hostGrace';
+import { isListingGracePaused, isListingMember, isListingPlanLapsed, listingPlanVisibility, newListingPlan } from '../lib/listingPlan';
 import { v4 as uuidv4 } from 'uuid';
 import { db, schema } from '../db';
 import { eq, and, inArray, sql, asc } from 'drizzle-orm';
@@ -254,7 +253,7 @@ router.get('/', async (req: Request, res: Response) => {
   // Draft spots must never surface on a public read  this route has no auth, so the
   // predicate is unconditional here and admins get their drafts from /admin/spots instead.
   // Nor may a lapsed host's listings: they leave the feed until the host renews (lib/hostPlan.ts).
-  const conditions = [publicSpotVisibility(), hostPlanVisibility()];
+  const conditions = [publicSpotVisibility(), listingPlanVisibility()];
   if (type) {
     conditions.push(eq(schema.listings.type, type));
   }
@@ -386,7 +385,7 @@ async function providerFlags(ids: string[]): Promise<Map<string, boolean>> {
 router.get('/count', async (_req: Request, res: Response) => {
   const [row] = await db.select({ n: sql<number>`count(*)::int` })
     .from(schema.listings)
-    .where(and(publicSpotVisibility(), hostPlanVisibility()));
+    .where(and(publicSpotVisibility(), listingPlanVisibility()));
   res.set('Cache-Control', 'public, max-age=300');
   return res.json({ count: row?.n ?? 0 });
 });
@@ -432,7 +431,7 @@ router.get('/:id', async (req: Request, res: Response) => {
   // host (or a co-owner) can still open it, so "View" on their dashboard shows their own page
   // with a "not live yet" note instead of an error.
   const viewer = await optionalUser(req);
-  const notLive = await isListingHostLapsed(item.providerId);
+  const notLive = isListingPlanLapsed(item);
   if (notLive) {
     const own = viewer ? (await myProvider(viewer.id))?.id === item.providerId : false;
     if (!own) return res.status(404).json({ detail: 'Not found' });
@@ -493,13 +492,15 @@ router.get('/:id', async (req: Request, res: Response) => {
     // Name and photo only, the same as the cards (lib/hostCard.ts); never a phone.
     host: hostCard(provider?.extras, item.extras),
     host_page_path: provider?.slug ? `/${provider.businessType}/${provider.slug}` : null,
-    provider_member: provider ? provider.status === 'active' && !!provider.planExpiresAt && Date.parse(provider.planExpiresAt) > Date.now() : false,
+    // This listing's own membership (lib/listingPlan.ts): the Member badge and its card number.
+    provider_member: !!provider && provider.status === 'active' && isListingMember(item),
+    member_no: !!provider && provider.status === 'active' && isListingMember(item) ? item.memberNo : null,
     // Booking it sends the host a request to accept first (lib/bookingApproval.ts), so the button
     // says "Request to book". Team-run listings with no host account still confirm at once.
     request_to_book: HOST_APPROVAL_TYPES.has(item.type) && !!provider,
-    // The host's free start is used up and they have not paid yet: the page stays up, but new
-    // bookings and delivery requests are refused (lib/hostGrace.ts), so the button is turned off.
-    bookings_paused: await isGracePaused(item.providerId),
+    // This listing's free start is used up and its first year is not paid yet: the page stays up,
+    // but new bookings and delivery requests are refused (lib/listingPlan.ts), so the button is off.
+    bookings_paused: await isListingGracePaused(item.id),
   };
 
   res.json({ item: itemReturn });
@@ -608,7 +609,9 @@ router.post('/', authenticateToken, async (req: Request, res: Response) => {
     tags: Array.isArray(tags) ? tags.map((tag: string) => tag.trim()) : [],
     providerId,
     extras: storedExtras,
-    createdAt: new Date().toISOString()
+    createdAt: new Date().toISOString(),
+    // Each listing that takes a plan starts on its own free start (lib/listingPlan.ts).
+    ...newListingPlan(type),
   };
 
   // A host who has already confirmed their pin should not have to do it again for each listing they
