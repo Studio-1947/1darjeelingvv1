@@ -156,6 +156,18 @@
     "food": "Foods & Shops"
   },
   "search": {
+    "hint": "Search homestays, drivers, places, cafes and shops, all at once.",
+    "results": "Results",
+    "see_all": "See all results",
+    "recent": "Recent searches",
+    "failed": "Could not search right now. Check your connection.",
+    "more_letters": "Type one more letter to search.",
+    "host_title": "Search your business",
+    "host_ph": "Guest, booking, listing or date",
+    "host_hint": "Find a booking by the guest’s name, the listing or the date, a listing by its name, or a notification.",
+    "host_none": "Nothing in your bookings, listings or notifications matches “{{query}}”.",
+    "host_listings": "Your listings",
+    "more_n": "+{{count}} more. Add a word to narrow it.",
     "did_you_mean": "Did you mean",
     "under": "under {{price}}",
     "cheapest_first": "cheapest first",
@@ -167,6 +179,18 @@
     "tag": "TRANSIT & REFERENCE FARES",
     "from": "Pickup Location",
     "to": "Drop Destination"
+  },
+  "crumb": {
+    "nav": "Breadcrumb",
+    "documents": "Documents",
+    "listing": "Listing",
+    "business": "Business",
+    "plan": "Trip plan",
+    "about": "About",
+    "edit_profile": "Edit profile",
+    "my_listings": "My listings",
+    "onboard": "List your business",
+    "not_found": "Page not found"
   },
   "common": {
     "price_on_request": "Ask for price",
@@ -595,7 +619,7 @@
   },
   "privacy": {
     "title": "Privacy Policy",
-    "updated": "Last updated: 23 November 2026",
+    "updated": "Last updated: 25 November 2026",
     "email_label": "Email:",
     "phone_label": "Phone:",
     "address_label": "Address:",
@@ -643,7 +667,9 @@
             "items": [
               "Device location, only when you allow it, to show places near you or the weather, or to check a business location. We store a business's verified pin, not travellers' locations.",
               "A push-notification token for your phone, if you allow notifications in the app.",
-              "Usage data through Google Analytics on www.aanganerp.in (pages viewed, approximate location from your IP address, device and browser type), and technical error reports.",
+              "Usage data through Google Analytics on www.aanganerp.in (pages viewed, searches made and results opened, approximate location from your IP address, device and browser type), and technical error reports.",
+              "What you search for on the website: the words you type or say (phone numbers, other long numbers and email addresses are removed first), the category you searched in, how many results it found, which result you opened, and when. It is kept with a random code for that one browser visit and the hour it was made. The record holds no name, phone number, account or IP address, and it is sent without your sign-in, so it is not linked to you; keeping only the hour means it cannot be matched to our access logs either. It is not collected at all if your browser sends a Do Not Track or Global Privacy Control signal. Search words are kept as typed, so please do not type personal details such as a name or address into search. A business’s searches of its own bookings, listings and notifications are never kept.",
+              "Voice search, only when you tap the microphone and allow it: your browser’s own speech recognition turns what you say into text, and your browser’s maker (Google in Chrome, Apple in Safari) handles your voice under its own privacy policy. We receive only the text, never the recording.",
               "Our servers keep standard access logs (IP address, browser, time and page requested) to keep the service secure."
             ]
           }
@@ -658,6 +684,7 @@
           "To take fees and passes, and to issue refunds.",
           "To answer support requests, investigate reports and keep the Platform safe from fraud and abuse.",
           "To understand how the Platform is used and fix problems.",
+          "To improve search, and to find the places and services travellers look for that are not listed yet. Our reports from searches count them (for example, how often a place was searched and not found) and never identify anyone.",
           "To meet our legal obligations, including tax and consumer-protection rules."
         ],
         "note": "We do not sell your personal data, and we do not use it for advertising."
@@ -679,19 +706,20 @@
           "Hosts, when you send them a request: your name, phone number and the details of the request, so they can answer it. Hosts must use these only for your booking.",
           "Travellers, about a host: the public listing, the host's or driver's name and profile photo, and reviews. A homestay, driver or guide's phone number, WhatsApp and social links open only to a traveller whose booking with them is confirmed. Cafés and shops show their numbers publicly.",
           "Other users: your name, profile photo, reviews, posts, comments and trip plans that you choose to publish.",
-          "Our service providers, who process data for us under contract: Interakt and Meta (WhatsApp sign-in codes and booking messages), Razorpay (payments), Expo and Google Firebase (push notifications), Google Analytics (site usage), Sentry (error reports), OpenStreetMap and Open-Meteo (maps, addresses and weather), Google Fonts, and our hosting provider. Voice search uses your browser's speech service (in Chrome, Google's).",
+          "Our service providers, who process data for us under contract: Interakt and Meta (WhatsApp sign-in codes and booking messages), Razorpay (payments), Expo and Google Firebase (app push notifications), your browser's push service if you turn on notifications on the website (Google for Chrome and Edge, Mozilla for Firefox, Apple for Safari; they carry an encrypted message and cannot read it), Google Analytics (site usage and searches), Sentry (error reports), OpenStreetMap and Open-Meteo (maps, addresses and weather), Google Fonts, and our hosting provider. Voice search uses your browser's speech service (in Chrome, Google's).",
           "Authorities, when the law requires it, or to protect someone's safety.",
           "A buyer or successor, if the business is transferred, under this same policy."
         ]
       },
       {
         "h": "5. WhatsApp and Notifications",
-        "p": "We send your sign-in code on WhatsApp, and messages about your bookings (a new request, accepted, confirmed, cancelled, verification results) on WhatsApp, in the app and as push notifications. These are about your account and bookings only; we do not send promotions on WhatsApp without asking you first. You can turn push notifications off in your phone's settings."
+        "p": "We send your sign-in code on WhatsApp, and messages about your bookings (a new request, accepted, confirmed, cancelled, verification results) on WhatsApp, in the app and as push notifications (on your phone, or in your browser if you turn them on on the website's Notifications page). These are about your account and bookings only; we do not send promotions on WhatsApp without asking you first. You can turn push notifications off in your phone's or browser's settings, or on the Notifications page; signing out of the website turns them off in that browser."
       },
       {
         "h": "6. How Long We Keep It",
         "items": [
           "Sign-in codes: valid for 10 minutes, and deleted as soon as they are used.",
+          "Searches: 180 days, then deleted automatically. Because they are never linked to your account, they cannot be looked up or deleted with it; they leave when the 180 days are over.",
           "A request saved but never sent is closed after 24 hours. A request the host does not answer closes by itself.",
           "Your account, bookings, payments, reviews and posts: for as long as your account exists. When you delete your account, they are deleted, including verification documents and listings.",
           "Database backups are kept for 14 days and then overwritten, so deleted data leaves the backups within that time."
@@ -1040,7 +1068,22 @@
     "source": "Forecast data: Open-Meteo",
     "search": "Search location",
     "search_ph": "Search a town, village or spot…",
-    "search_none": "No match. Try another name or place."
+    "search_none": "No match. Try another name or place.",
+    "tomorrow": "Tomorrow",
+    "peak_title": "Kanchenjunga at sunrise",
+    "peak_line_clear": "Likely clear",
+    "peak_line_partly": "Partly hidden by cloud",
+    "peak_line_hidden": "Likely hidden by cloud",
+    "peak_cloud": "{{n}}% morning cloud",
+    "peak_note": "Mountain view estimated from the 5–8 am cloud forecast.",
+    "now": "Now",
+    "feels": "Feels like {{n}}°",
+    "humidity": "Humidity",
+    "wind": "Wind",
+    "uv": "UV",
+    "sunrise": "Sunrise",
+    "sunset": "Sunset",
+    "days": "Next five days"
   },
   "filter": {
     "search_placeholder": "Search by name, landmark or keyword…",
@@ -1111,6 +1154,16 @@
     "voice": "Voice search",
     "listening": "Listening… say a place, a homestay or a dish",
     "novoice": "Voice search needs Chrome or Safari with a microphone.",
+    "voice_ready": "Speak now",
+    "voice_stop": "Stop",
+    "voice_blocked": "The microphone is off for aangan. Allow it in your browser settings and try again.",
+    "voice_nomic": "No microphone found on this device.",
+    "voice_nospeech": "We didn’t hear anything. Tap the mic and speak again.",
+    "voice_network": "Voice search needs the internet. Check your connection and try again.",
+    "voice_none": "No results for “{{query}}”.",
+    "voice_ask": "Did we hear you right? Say it again, or type it instead.",
+    "voice_again": "Speak again",
+    "voice_type": "Type instead",
     "any_place": "Any place",
     "cheap": "Cheapest first",
     "search_btn": "Search",
@@ -2351,6 +2404,7 @@
     "unblocked": "{{name}} is unblocked."
   },
   "business_gate": {
+    "page_preview_edit": "Your view: edit your page and listings here. Travellers see Ask to book.",
     "not_live": "Only you can see this page. Travellers will see it once your plan is active and your documents are verified.",
     "title": "You're in Business mode",
     "body": "Business mode is for running your own listing. To explore and book places on aangan, switch to Traveller.",
@@ -2359,7 +2413,7 @@
     "preview": "Your own view of this listing. Booking is turned off while you're in Business mode.",
     "view_as": "View as",
     "view_owner": "Your view",
-    "view_traveller": "As a traveller",
+    "view_traveller": "Guest view",
     "preview_traveller": "This is exactly what travellers see. Book now only works for them, not here.",
     "page_preview": "Your own view of your page. Ask to book is hidden here; travellers see it.",
     "page_preview_traveller": "This is exactly what travellers see on your page.",
@@ -3373,7 +3427,7 @@
       "country_code": "Country calling code",
       "who": "How will you use aangan?",
       "lead": "No password needed. We send a one-time code to your phone.",
-      "nameq": "What should we call you?",
+      "nameq": "Your name",
       "nameonly": "No password needed. Just tell us your name.",
       "name": "Your name",
       "wa": "Continue with WhatsApp",
@@ -3487,7 +3541,17 @@
     },
     "notes": {
       "eyebrow": "Updates",
-      "none": "No notifications yet."
+      "none": "No notifications yet.",
+      "push_off_h": "Get notified in this browser",
+      "push_off_s": "Booking requests and replies, as they happen.",
+      "push_on": "Turn on",
+      "push_on_h": "Notifications are on in this browser",
+      "push_on_s": "Turn them off here or in your browser settings.",
+      "push_off": "Turn off",
+      "push_denied_h": "Notifications are blocked",
+      "push_denied_s": "Allow notifications for this site in your browser settings, then come back.",
+      "push_failed": "Could not turn them on. Try again.",
+      "push_off_failed": "Could not turn them off. Try again."
     }
   },
   "planner": {
@@ -3700,6 +3764,8 @@
     }
   },
   "host": {
+    "edit_page": "Edit page",
+    "edit": "Edit",
     "add_more": "Add more listings",
     "add_property": "Add a property",
     "add_vehicle": "Add a vehicle",
@@ -3721,6 +3787,15 @@
     "journey": "Booking status",
     "live": "Live on aangan",
     "live_note": "You are live. Travellers can find and book you.",
+    "stat_new": "New\nrequests",
+    "stat_upcoming": "Upcoming\nbookings",
+    "stat_completed": "Completed\nbookings",
+    "stat_earned": "Earned\nmoney",
+    "n_more_one": "+{{count}} more",
+    "n_more_other": "+{{count}} more",
+    "greet_morning": "Good morning, {{name}}",
+    "greet_afternoon": "Good afternoon, {{name}}",
+    "greet_evening": "Good evening, {{name}}",
     "my_site": "My website",
     "new": "New requests",
     "new_on": "New on aangan",
@@ -4145,7 +4220,9 @@
     "and": "On Android",
     "and1": "Open this page in Chrome.",
     "and2": "Tap the three dots at the top right.",
-    "and3": "Tap \"Install app\" or \"Add to Home screen\"."
+    "and3": "Tap \"Install app\" or \"Add to Home screen\".",
+    "now": "Use it as an app today",
+    "ios_push": "Then open aangan from your Home Screen to turn on notifications."
   },
   "maintenance": {
     "eyebrow": "Back soon",

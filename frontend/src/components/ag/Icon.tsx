@@ -46,6 +46,8 @@ export const ICONS = {
   "filter": "M4 6h16M7 12h10M10 18h4",
   "x": "M6 6l12 12M18 6L6 18",
   "t_home": "M4 11l8-6 8 6v8h-5v-5h-6v5H4z",
+  // Not in the prototype: the business Dashboard tab (four panels), drawn on the same 24-unit grid.
+  "t_dash": "M4 5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1zM14 5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1zM14 13a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1zM4 17a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z",
   "t_feed": "M5 6h14M5 12h14M5 18h9",
   "t_trip": "M4 7.5A1.5 1.5 0 0 1 5.5 6h13A1.5 1.5 0 0 1 20 7.5V10a2 2 0 0 0 0 4v2.5a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 16.5V14a2 2 0 0 0 0-4zM14 6.5v2M14 11v2M14 15.5v2",
   "t_saved": "M12 19s-6.5-4-6.5-9a3.5 3.5 0 0 1 6.5-1.8A3.5 3.5 0 0 1 18.5 10c0 5-6.5 9-6.5 9z",

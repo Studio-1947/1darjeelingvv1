@@ -246,19 +246,35 @@ const FIELDS = [
   { key: 'description', weight: 1 },
 ] as const;
 
-type Indexed<T extends SearchableListing = SearchableListing> = { listing: T; fields: Record<(typeof FIELDS)[number]['key'], string[]> };
+/** A listing's words per field, as matching reads them. Stored by lib/searchIndex.ts. */
+export type SearchFields = Record<(typeof FIELDS)[number]['key'], string[]>;
+export type Indexed<T extends SearchableListing = SearchableListing> = { listing: T; fields: SearchFields };
+
+/**
+ * The version of how a listing is read into words. Bump it when normalize, the aliases, the
+ * Hindi/Nepali/Bengali words or extrasText change: every stored reading is then made again.
+ */
+export const SEARCH_INDEX_VERSION = 1;
+
+export function indexFields(listing: SearchableListing): SearchFields {
+  return {
+    title: words(listing.title),
+    location: words(listing.location),
+    tags: (listing.tags || []).flatMap((t) => words(t)),
+    extras: words(extrasText(listing.extras)),
+    description: words(listing.description),
+  };
+}
 
 export function index<T extends SearchableListing>(listing: T): Indexed<T> {
-  return {
-    listing,
-    fields: {
-      title: words(listing.title),
-      location: words(listing.location),
-      tags: (listing.tags || []).flatMap((t) => words(t)),
-      extras: words(extrasText(listing.extras)),
-      description: words(listing.description),
-    },
-  };
+  return { listing, fields: indexFields(listing) };
+}
+
+/** Every distinct word a listing holds, across its fields: what the GIN index looks up. */
+export function allWords(fields: SearchFields): string[] {
+  const out = new Set<string>();
+  for (const f of FIELDS) for (const w of fields[f.key] || []) out.add(w);
+  return [...out];
 }
 
 /** "2000", "2d000" (2,000), "2d5k" (2.5k), "3k" -> rupees; NaN otherwise. */
@@ -324,10 +340,81 @@ export function interpret(query: string, fixedType?: string | null): Omit<Interp
 
 export interface ScoredListing<T> { item: T; score: number }
 
+/** Step 1 of a search: the kind of place, budget and words, read against the words listings use. */
+export function readSearch(query: string, fixedType: string | null | undefined, known: (w: string) => boolean) {
+  const base = read(query, fixedType ?? null, known);
+  return { base, wanted: (fixedType || base.type) as string | null };
+}
+export type SearchReading = ReturnType<typeof readSearch>;
+
+/**
+ * Step 2: the words to match, corrected against the words of the listings in play (the pool: the
+ * kind and budget asked for), and which listing words each one matches. Those are all a listing
+ * can be found by, so the database fetches only the listings holding one (lib/searchIndex.ts) -
+ * unless the search matches on kind or budget alone, or falls back to every listing of the kind.
+ */
+export function planSearch(reading: SearchReading, poolVocab: Iterable<string>) {
+  const { base, wanted } = reading;
+  // Alphabetical, so a correction with two equally close words picks the same one every time.
+  const vocabList = [...new Set(poolVocab)].sort();
+  const vocab = new Set(vocabList);
+
+  // A word that matches nothing exactly but is close to a known word is corrected, for the
+  // "Did you mean" line and so the correction is what gets matched.
+  const fixes = new Map<string, string>(base.fixes);
+  const terms = base.terms.map((t) => {
+    if (REGION.has(t)) return t;
+    // A plural of a known word ("tours" where listings say "tour") is known too, not a typo of another word.
+    if (vocab.has(t) || vocab.has(t + 's') || (t.endsWith('s') && vocab.has(t.slice(0, -1)))
+      || (t.length >= 3 && vocabList.some((w) => w.startsWith(t)))) return t;
+    const typos = allowedTypos(t);
+    if (!typos) return t;
+    let best: string | null = null;
+    let bestD = typos + 1;
+    for (const w of vocabList) {
+      if (Math.abs(w.length - t.length) > typos) continue;
+      const d = editDistance(t, w, typos);
+      if (d < bestD) { best = w; bestD = d; }
+    }
+    if (best) { fixes.set(t, best); return best; }
+    return t;
+  });
+
+  // "Darjeeling" next to anything else only lifts the listings naming it; on its own it must match.
+  const specific = terms.filter((t) => !REGION.has(t));
+  const required = new Set(
+    specific.length || wanted || base.max_price != null || base.cheapest_first ? specific : terms,
+  );
+  const need = terms.filter((t) => required.has(t)).length;
+
+  // Every listing word some term matches: a listing holding none of them scores nothing.
+  const matchWords = new Set<string>();
+  for (const t of terms) for (const w of vocabList) if (wordMatch(t, w)) matchWords.add(w);
+
+  return {
+    reading, terms, fixes, required, need, matchWords,
+    /** Kind and/or budget only: every listing in the pool is a result. */
+    wholePool: required.size === 0,
+    /** Nothing to match, no kind of place and no budget (a phone number, a lone "the"). */
+    empty: need === 0 && !wanted && base.max_price == null && !base.cheapest_first,
+    /** Whether a search with no hits lists the whole kind instead (see scoreSearch). */
+    mayFallBack: need > 0 && !!wanted && base.kinds.has(wanted as SearchType) && !terms.some((t) => TYPE_WORDS[t]),
+  };
+}
+export type SearchPlan = ReturnType<typeof planSearch>;
+
+/** The interpretation of a search with no results at all (planSearch's `empty`). */
+export function emptyInterpretation(plan: SearchPlan): Interpretation {
+  return { type: null, max_price: null, cheapest_first: false, terms: plan.terms, corrected: null, fallback: false };
+}
+
 /**
  * Ranks listings for a query. Every word must match somewhere for a full match; when nothing
  * matches every word, listings matching most of them are returned instead, so a long query still
  * finds something useful. Returns the interpretation too, for "Showing ..." and "Did you mean".
+ *
+ * In memory, over the listings given. The listings route searches through the database index
+ * instead (lib/searchIndex.ts), with the same three steps and so the same results.
  */
 export function rank<T extends SearchableListing>(
   listings: T[],
@@ -349,40 +436,34 @@ export function rank<T extends SearchableListing>(
     }
     return everyWord.has(w) || everyWord.has(w + 's');
   };
-  const base = read(query, opts.type ?? null, known);
-  const wanted = opts.type || base.type;
-  const pool = listings
-    .filter((l) => !wanted || l.type === wanted)
-    .filter((l) => base.max_price == null || (l.price != null && l.price > 0 && l.price <= base.max_price));
-  const indexed = pool.map(indexOf);
+  const reading = readSearch(query, opts.type, known);
+  const pool = listings.filter(inPool(reading)).map(indexOf);
+  const vocab: string[] = [];
+  for (const ix of pool) for (const f of FIELDS) vocab.push(...ix.fields[f.key]);
+  const plan = planSearch(reading, vocab);
+  if (plan.empty) return { results: [], interpretation: emptyInterpretation(plan) };
+  return scoreSearch(plan, query, pool, opts.boost);
+}
 
-  // A word that matches nothing exactly but is close to a known word is corrected, for the
-  // "Did you mean" line and so the correction is what gets matched.
-  const vocab = new Set<string>();
-  for (const ix of indexed) for (const f of FIELDS) for (const w of ix.fields[f.key]) vocab.add(w);
-  const fixes = new Map<string, string>(base.fixes);
-  const terms = base.terms.map((t) => {
-    if (REGION.has(t)) return t;
-    if (vocab.has(t) || vocab.has(t + 's') || [...vocab].some((w) => w.startsWith(t) && t.length >= 3)) return t;
-    const typos = allowedTypos(t);
-    if (!typos) return t;
-    let best: string | null = null;
-    let bestD = typos + 1;
-    for (const w of vocab) {
-      if (Math.abs(w.length - t.length) > typos) continue;
-      const d = editDistance(t, w, typos);
-      if (d < bestD) { best = w; bestD = d; }
-    }
-    if (best) { fixes.set(t, best); return best; }
-    return t;
-  });
+/** Whether a listing is of the kind and within the budget the search asked for. */
+export function inPool(reading: SearchReading) {
+  const { base, wanted } = reading;
+  return (l: SearchableListing) => (!wanted || l.type === wanted)
+    && (base.max_price == null || (l.price != null && l.price > 0 && l.price <= base.max_price));
+}
 
-  // "Darjeeling" next to anything else only lifts the listings naming it; on its own it must match.
-  const specific = terms.filter((t) => !REGION.has(t));
-  const required = new Set(
-    specific.length || wanted || base.max_price != null || base.cheapest_first ? specific : terms,
-  );
-
+/**
+ * Step 3: scores and orders the listings given. Exact when they are the whole pool, and when they
+ * are every pool listing holding one of `plan.matchWords` - unless the result is empty and
+ * `plan.mayFallBack`, when the whole pool is needed to list the kind instead.
+ */
+export function scoreSearch<T extends SearchableListing>(
+  plan: SearchPlan,
+  query: string,
+  indexed: Indexed<T>[],
+  boost?: (item: T) => number,
+): { results: ScoredListing<T>[]; interpretation: Interpretation } {
+  const { reading: { base, wanted }, terms, fixes, required, need } = plan;
   const scored: { item: T; score: number; matched: number }[] = [];
   for (const ix of indexed) {
     let score = 0;
@@ -407,16 +488,10 @@ export function rank<T extends SearchableListing>(
     scored.push({ item: ix.listing, score, matched });
   }
   const boosted = (s: { item: T; score: number; matched: number }) =>
-    ({ ...s, score: s.score + (opts.boost?.(s.item) ?? 0) });
+    ({ ...s, score: s.score + (boost?.(s.item) ?? 0) });
 
-  const need = terms.filter((t) => required.has(t)).length;
   // Nothing to match, no kind of place and no budget (a phone number, a lone "the"): no results.
-  if (need === 0 && !wanted && base.max_price == null && !base.cheapest_first) {
-    return {
-      results: [],
-      interpretation: { type: null, max_price: null, cheapest_first: false, terms, corrected: null, fallback: false },
-    };
-  }
+  if (plan.empty) return { results: [], interpretation: emptyInterpretation(plan) };
   let hits = scored.filter((s) => s.matched === need && (need === 0 || s.score > 0));
   if (!hits.length && need > 1) {
     const most = Math.max(0, ...scored.map((s) => s.matched));
@@ -427,15 +502,15 @@ export function rank<T extends SearchableListing>(
   // the query itself named the kind: a nonsense search on the homestays page (type fixed by the
   // page, no kind word) still finds nothing, and so does a word for another kind ("momo" there).
   let fallback = false;
-  if (!hits.length && need > 0 && wanted && base.kinds.has(wanted as SearchType) && !terms.some((t) => TYPE_WORDS[t])) {
+  if (!hits.length && plan.mayFallBack) {
     hits = scored.map((s) => ({ ...s, score: 1 }));
     fallback = hits.length > 0;
   }
   hits = hits.map(boosted);
   const price = (x: T) => (x.price && x.price > 0 ? x.price : Number.MAX_SAFE_INTEGER);
   hits.sort(base.cheapest_first
-    ? (a, b) => price(a.item) - price(b.item) || b.score - a.score
-    : (a, b) => b.score - a.score || a.item.title.localeCompare(b.item.title));
+    ? (a, b) => price(a.item) - price(b.item) || b.score - a.score || a.item.id.localeCompare(b.item.id)
+    : (a, b) => b.score - a.score || a.item.title.localeCompare(b.item.title) || a.item.id.localeCompare(b.item.id));
 
   return {
     results: hits.map(({ item, score }) => ({ item, score })),

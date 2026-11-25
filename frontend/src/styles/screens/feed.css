@@ -68,6 +68,24 @@
 .ag-feed-wxcol svg.i { width: 22px; height: 22px; }
 .ag-feed-wxcol b { font: 500 15px/18px var(--font); }
 .ag-feed-wxcol i { font-style: normal; opacity: .7; }
+/* Day details (humidity, wind, UV, sunrise, sunset): one row, scrolls sideways on small phones */
+.ag-feed-wxfacts { position: relative; z-index: 1; display: grid; grid-template-columns: repeat(5, minmax(64px, 1fr)); gap: 4px; margin: 4px 0 12px; overflow-x: auto; scrollbar-width: none; }
+.ag-feed-wxfacts::-webkit-scrollbar { display: none; }
+.ag-feed-wxfacts > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ag-feed-wxfacts dt { display: flex; align-items: center; gap: 4px; font: 500 11px/14px var(--font); opacity: .75; }
+.ag-feed-wxfacts dt svg { flex: none; width: 13px; height: 13px; }
+.ag-feed-wxfacts dd { margin: 0; font: 600 14px/18px var(--font); white-space: nowrap; }
+.ag-feed-wxfeel { font-weight: 400; opacity: .8; }
+/* Kanchenjunga at the chosen day's sunrise: one line; a small mark under each day in the strip */
+.ag-feed-wxpeak { position: relative; z-index: 1; display: flex; align-items: center; gap: 8px; margin: 0 0 12px; font: 500 13px/18px var(--font); }
+.ag-feed-wxpeak > svg.i { flex: none; width: 18px; height: 18px; }
+.ag-feed-wxpeak b { font-weight: 600; }
+.ag-feed-wxpeak.hidden > svg.i, .ag-feed-wxmt.hidden { opacity: .35; }
+.ag-feed-wxpeak.partly > svg.i, .ag-feed-wxmt.partly { opacity: .65; }
+.ag-feed-wxcol { border: 0; background: transparent; color: inherit; cursor: pointer; }
+.ag-feed-wxmt { position: relative; display: inline-flex; }
+.ag-feed-wxmt svg.i { width: 14px !important; height: 14px !important; }
+.ag-feed-wxmt.hidden::after { content: ""; position: absolute; left: -1px; right: -1px; top: 50%; height: 1.5px; background: currentColor; transform: rotate(-35deg); }
 .ag-feed-wxmsg { position: relative; z-index: 1; margin: 8px 0; font: 500 15px/22px var(--font); }
 .ag-feed-wxretry { position: relative; z-index: 1; align-self: flex-start; background: transparent; color: #fff; border-color: rgb(255 255 255 / .6); }
 

@@ -35,6 +35,7 @@ import { roomOpen } from '@/lib/roomFit';
 import { useAuth } from '@/context/AuthContext';
 import { BusinessModeNotice } from '@/components/TravellerOnly';
 import { stayPrice } from '@/lib/stayPrice';
+import { useCrumbTitle } from '@/components/PageBack';
 
 /**
  * Public listing page, laid out as the prototype's item view: photo, photo strip, name, place,
@@ -51,6 +52,7 @@ export default function ListingDetail() {
   const { hash } = useLocation();
   const [params, setParams] = useSearchParams();
   const [item, setItem] = useState(null);
+  useCrumbTitle((item as any)?.title, (item as any)?.type);
   const [loading, setLoading] = useState(true);
   // A host looking at their own listing: 'owner' (their view, booking off) or 'traveller' (what a traveller sees).
   const [viewAs, setViewAs] = useState<'owner' | 'traveller'>('owner');
@@ -109,7 +111,7 @@ export default function ListingDetail() {
   // On the business side a host sees only their own listing, as a preview with booking off.
   const ownPreview = isHostMode && !!provider && item.provider_id === provider.id;
   if (isHostMode && !ownPreview) return <BusinessModeNotice />;
-  // The host's own view. Switched to "As a traveller", the page shows what a traveller sees (the host
+  // The host's own view. Switched to "Guest view", the page shows what a traveller sees (the host
   // line, the request fee line, Book now), but Book now only says it is a preview.
   const ownerView = ownPreview && viewAs === 'owner';
   const travellerPreview = ownPreview && viewAs === 'traveller';
@@ -237,7 +239,7 @@ export default function ListingDetail() {
             <Seg<'owner' | 'traveller'> value={viewAs} onChange={setViewAs} label={t('business_gate.view_as', 'View as')} className="self-start"
               options={[
                 { value: 'owner', label: t('business_gate.view_owner', 'Your view'), testId: 'view-as-owner' },
-                { value: 'traveller', label: t('business_gate.view_traveller', 'As a traveller'), testId: 'view-as-traveller' },
+                { value: 'traveller', label: t('business_gate.view_traveller', 'Guest view'), testId: 'view-as-traveller' },
               ]} />
             <p className="ag-small !text-[var(--ink-strong)]">
               {ownerView ? t('business_gate.preview') : t('business_gate.preview_traveller', 'This is exactly what travellers see. Book now only works for them, not here.')}

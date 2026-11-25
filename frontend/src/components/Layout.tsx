@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import BottomNav from '@/components/BottomNav';
+import PageBack, { CrumbProvider } from '@/components/PageBack';
 import { Toaster } from 'sonner';
 
 export default function Layout({ children }) {
@@ -26,7 +27,7 @@ export default function Layout({ children }) {
       <Header />
       {/* tabIndex={-1} so the skip link can actually move focus here; browsers
           will not focus a plain <main> and the link would only scroll. */}
-      <main id="main" tabIndex={-1} className="flex-1 focus:outline-none pb-[var(--tabbar-h)]">{children}</main>
+      <main id="main" tabIndex={-1} className="flex-1 focus:outline-none pb-[var(--tabbar-h)]"><CrumbProvider><PageBack />{children}</CrumbProvider></main>
       <Footer />
       <BottomNav />
       <Toaster position="top-center" richColors closeButton />

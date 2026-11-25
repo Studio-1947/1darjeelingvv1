@@ -4,12 +4,14 @@ import api from '@/lib/api';
 import { useTranslation } from 'react-i18next';
 import Seo from '@/components/Seo';
 import { PageHead, SecHead } from '@/components/ag';
+import { useCrumbTitle } from '@/components/PageBack';
 
 /** Old /business/<id> address: forwards to the host's page, or shows the business and its listings. */
 export default function PublicBusiness() {
   const { t } = useTranslation();
   const { id = '' } = useParams();
   const [data, setData] = useState<any>(null);
+  useCrumbTitle(data?.business?.name);
   useEffect(() => { api.get(`/providers/public/${id}`).then((r) => setData(r.data)).catch(() => setData(false)); }, [id]);
   if (data === null) return <div className="ag-wrap"><div className="ag-main"><p className="ag-small">{t('ui.publicBusiness.loading')}</p></div></div>;
   if (!data) return <div className="ag-wrap"><div className="ag-main"><PageHead title={t('ui.publicBusiness.not_found')} /></div></div>;

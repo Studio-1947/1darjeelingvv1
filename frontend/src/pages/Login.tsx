@@ -296,7 +296,7 @@ export default function Login() {
           <form onSubmit={createAccount} className="flex flex-col gap-4" data-testid="login-step-3">
             <PageHead title={t('ui.login.details_h', 'One last step')} sub={t('ui.login.details_s', 'This is a new account. Tell us your name to finish.')} />
             <Status tone="ok" className="self-start" data-testid="login-verified"><Icon name="check" /> {t('ui.login.verified', 'Number verified')} · {canonicalPhone}</Status>
-            <TextField label={t('ui.login.nameq', 'What should we call you?')} value={name} onChange={(e) => setName(e.target.value)}
+            <TextField label={t('ui.login.nameq', 'Your name')} value={name} onChange={(e) => setName(e.target.value)}
               autoComplete="name" required maxLength={80} autoFocus data-testid="login-name" />
             <TextField label={t('auth.referral_label')} value={referral} onChange={(e) => setReferral(e.target.value.toUpperCase().slice(0, 20))}
               data-testid="login-referral" placeholder="ANG26-XXXXXX" autoCapitalize="characters" autoComplete="off" className="[&_input]:tracking-wider" />

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { CircleNotch as Loader2 } from '@phosphor-icons/react';
+import { CircleNotch as Loader2, Drop, Sun, SunHorizon, Wind } from '@phosphor-icons/react';
 import { parseDate } from '@/lib/dates';
 import api from '@/lib/api';
 import { Icon, type IconName } from '@/components/ag/Icon';
@@ -12,6 +12,39 @@ interface DayForecast {
   tempMin: number;
   /** Highest chance of rain that day, in %. */
   rain: number | null;
+  /** Sunrise and sunset, local "HH:MM". */
+  sunrise: string | null;
+  sunset: string | null;
+  /** Mean humidity (%), strongest wind (km/h), highest UV index. */
+  humidity: number | null;
+  wind: number | null;
+  uv: number | null;
+  /** Mean cloud cover from 5 to 8 am (the sunrise window), in %. */
+  dawnCloud: number | null;
+  /** Today only: the reading right now. */
+  now?: { temp: number; feels: number; humidity: number; wind: number; code: number };
+}
+
+/** Kanchenjunga at sunrise, predicted from the morning's cloud cover. */
+type Peak = 'clear' | 'partly' | 'hidden';
+
+/**
+ * Low morning cloud is what decides whether the range shows at dawn. A foggy, wet or stormy morning
+ * hides it whatever the cloud figure says (the forecast code covers the whole day, so it only ever
+ * makes the answer worse, never better).
+ */
+function peakOf(d: DayForecast): Peak | null {
+  if (d.dawnCloud == null) return null;
+  const k = kindOf(d.code);
+  if (k === 'fog' || k === 'storm' || (k === 'rain' && (d.rain ?? 0) >= 60)) return 'hidden';
+  if (d.dawnCloud <= 25) return 'clear';
+  if (d.dawnCloud <= 60) return 'partly';
+  return 'hidden';
+}
+
+/** Where Kanchenjunga can be seen at all: the Darjeeling hills, Kalimpong and Sikkim. */
+function seesPeak(lat: number, lng: number) {
+  return lat >= 26.7 && lat <= 27.9 && lng >= 87.9 && lng <= 88.95;
 }
 
 // Open-Meteo's forecast endpoint is free, keyless and explicitly fine to call
@@ -41,12 +74,17 @@ function kindOf(code: number): Kind {
   return 'rain';
 }
 
+const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? Math.round(v) : null);
+const hhmm = (v: unknown) => (typeof v === 'string' ? v.slice(11, 16) : null);
+
 /** One forecast per point, in the order asked. Open-Meteo answers several points in one call. */
 async function fetchForecasts(points: Array<{ lat: number; lng: number }>): Promise<DayForecast[][]> {
   const lat = points.map((p) => p.lat).join(',');
   const lng = points.map((p) => p.lng).join(',');
+  const daily = 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset,relative_humidity_2m_mean,wind_speed_10m_max,uv_index_max';
+  const current = 'temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code';
   const res = await fetch(
-    `${FORECAST_URL}?latitude=${lat}&longitude=${lng}&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=Asia%2FKolkata&forecast_days=${DAYS}`,
+    `${FORECAST_URL}?latitude=${lat}&longitude=${lng}&daily=${daily}&current=${current}&hourly=cloud_cover&timezone=Asia%2FKolkata&forecast_days=${DAYS}`,
   );
   if (!res.ok) throw new Error(`forecast ${res.status}`);
   const body = await res.json();
@@ -54,13 +92,41 @@ async function fetchForecasts(points: Array<{ lat: number; lng: number }>): Prom
   return list.map((fc) => {
     const d = fc?.daily;
     if (!d?.time?.length) return [];
-    return d.time.map((date: string, i: number) => ({
-      date,
-      code: d.weather_code?.[i] ?? 3,
-      tempMax: Math.round(d.temperature_2m_max[i]),
-      tempMin: Math.round(d.temperature_2m_min[i]),
-      rain: d.precipitation_probability_max?.[i] ?? null,
-    }));
+    // Hourly cloud cover, by "YYYY-MM-DD", for the hours of the sunrise window.
+    const dawn: Record<string, number[]> = {};
+    const ht: string[] = fc?.hourly?.time || [];
+    ht.forEach((stamp, i) => {
+      const hour = Number(stamp.slice(11, 13));
+      const v = fc.hourly.cloud_cover?.[i];
+      if (hour >= 5 && hour <= 8 && typeof v === 'number') (dawn[stamp.slice(0, 10)] ||= []).push(v);
+    });
+    const c = fc?.current;
+    const now = c && typeof c.temperature_2m === 'number'
+      ? {
+        temp: Math.round(c.temperature_2m),
+        feels: Math.round(c.apparent_temperature ?? c.temperature_2m),
+        humidity: num(c.relative_humidity_2m) ?? 0,
+        wind: num(c.wind_speed_10m) ?? 0,
+        code: Number(c.weather_code ?? d.weather_code?.[0] ?? 3),
+      }
+      : undefined;
+    return d.time.map((date: string, i: number) => {
+      const cl = dawn[date];
+      return {
+        date,
+        code: d.weather_code?.[i] ?? 3,
+        tempMax: Math.round(d.temperature_2m_max[i]),
+        tempMin: Math.round(d.temperature_2m_min[i]),
+        rain: d.precipitation_probability_max?.[i] ?? null,
+        sunrise: hhmm(d.sunrise?.[i]),
+        sunset: hhmm(d.sunset?.[i]),
+        humidity: num(d.relative_humidity_2m_mean?.[i]),
+        wind: num(d.wind_speed_10m_max?.[i]),
+        uv: num(d.uv_index_max?.[i]),
+        dawnCloud: cl?.length ? Math.round(cl.reduce((a, b) => a + b, 0) / cl.length) : null,
+        ...(i === 0 && now ? { now } : {}),
+      };
+    });
   });
 }
 
@@ -74,41 +140,97 @@ function SkyMessage({ title, children, testId }: { title: React.ReactNode; child
   );
 }
 
-/** Today large over the sky's colour, then five days in a frosted strip. */
-function ForecastView({ place, days, testId }: { place: string; days: DayForecast[]; testId?: string }) {
+/**
+ * One card: the chosen day large (today by default, showing right now), its details in one row,
+ * Kanchenjunga at that day's sunrise in hill places, then the five days. Each day is a button that
+ * fills the top; the small mountain under a day is its sunrise view (solid clear, faint partly,
+ * crossed out hidden).
+ */
+function ForecastView({ place, days, peak = false, testId }: { place: string; days: DayForecast[]; peak?: boolean; testId?: string }) {
   const { t, i18n } = useTranslation();
-  const today = days[0];
-  const k0 = kindOf(today.code);
+  const [sel, setSel] = useState(0);
+  useEffect(() => { setSel(0); }, [place]);
+  const lang = i18n.language || 'en';
+  const day = days[Math.min(sel, days.length - 1)];
+  const now = sel === 0 ? day.now : undefined;
+  const k = kindOf(now?.code ?? day.code);
+  const dayName = (d: DayForecast, i: number) => {
+    if (i === 0) return t('weather.today');
+    if (i === 1) return t('weather.tomorrow', 'Tomorrow');
+    const dt = parseDate(d.date);
+    return dt ? dt.toLocaleDateString(lang, { weekday: 'long' }) : d.date;
+  };
+  const clock = (d: DayForecast, v: string | null) => (v ? new Date(`${d.date}T${v}:00`).toLocaleTimeString(lang, { hour: 'numeric', minute: '2-digit' }) : '–');
+  const pk = peak ? peakOf(day) : null;
+  const peakWord = (p: Peak) => ({
+    clear: t('weather.peak_line_clear', 'Likely clear'),
+    partly: t('weather.peak_line_partly', 'Partly hidden by cloud'),
+    hidden: t('weather.peak_line_hidden', 'Likely hidden by cloud'),
+  }[p]);
+
+  const facts: Array<{ icon: React.ReactNode; label: string; value: string }> = [
+    { icon: <Drop aria-hidden="true" />, label: t('weather.humidity', 'Humidity'), value: `${now?.humidity ?? day.humidity ?? '–'}%` },
+    { icon: <Wind aria-hidden="true" />, label: t('weather.wind', 'Wind'), value: `${now?.wind ?? day.wind ?? '–'} km/h` },
+    { icon: <Sun aria-hidden="true" />, label: t('weather.uv', 'UV'), value: day.uv != null ? String(day.uv) : '–' },
+    { icon: <SunHorizon aria-hidden="true" />, label: t('weather.sunrise', 'Sunrise'), value: clock(day, day.sunrise) },
+    { icon: <SunHorizon aria-hidden="true" weight="fill" />, label: t('weather.sunset', 'Sunset'), value: clock(day, day.sunset) },
+  ];
+
   return (
-    <div className={`ag-feed-wx wx-${k0}`} data-testid={testId}>
+    <div className={`ag-feed-wx wx-${k}`} data-testid={testId}>
       <div className="ag-feed-wxtop">
         <span className="ag-feed-wxeye min-w-0"><Icon name="pin" /> <span className="truncate">{place}</span></span>
-        <span className="ag-feed-wxeye">{t('weather.today')}</span>
+        <span className="ag-feed-wxeye" data-testid="weather-day-name">{now ? t('weather.now', 'Now') : dayName(day, sel)}</span>
       </div>
       <div className="ag-feed-wxnow">
         <div className="min-w-0">
-          <b className="ag-feed-wxtemp tabular-nums">{today.tempMax}°</b>
-          <p className="ag-feed-wxcond">{t(`weather.conditions.${CONDITION[k0]}`)}</p>
+          <b className="ag-feed-wxtemp tabular-nums">{now ? now.temp : day.tempMax}°</b>
+          <p className="ag-feed-wxcond">
+            {t(`weather.conditions.${CONDITION[k]}`)}
+            {now && <span className="ag-feed-wxfeel"> · {t('weather.feels', 'Feels like {{n}}°', { n: now.feels })}</span>}
+          </p>
           <p className="ag-feed-wxhl">
-            H {today.tempMax}° · L {today.tempMin}°
-            {today.rain != null && (<> · <Icon name="rain" /> {today.rain}%</>)}
+            H {day.tempMax}° · L {day.tempMin}°
+            {day.rain != null && (<> · <Icon name="rain" /> {day.rain}%</>)}
           </p>
         </div>
-        <span className="ag-feed-wxbig" aria-hidden="true"><Icon name={ICON[k0]} /></span>
+        <span className="ag-feed-wxbig" aria-hidden="true"><Icon name={ICON[k]} /></span>
       </div>
-      <div className="ag-feed-wxstrip">
+
+      <dl className="ag-feed-wxfacts" data-testid="weather-facts">
+        {facts.map((f) => (
+          <div key={f.label}><dt>{f.icon}<span>{f.label}</span></dt><dd className="tabular-nums">{f.value}</dd></div>
+        ))}
+      </dl>
+
+      {pk && (
+        <p className={`ag-feed-wxpeak ${pk}`} data-testid="weather-peak-next"
+          title={day.dawnCloud != null ? t('weather.peak_cloud', '{{n}}% morning cloud', { n: day.dawnCloud }) : undefined}>
+          <Icon name="mountain" />
+          <span><b>{t('weather.peak_title', 'Kanchenjunga at sunrise')}</b> · {peakWord(pk)}</span>
+        </p>
+      )}
+
+      <div className="ag-feed-wxstrip" role="group" aria-label={t('weather.days', 'Next five days')}>
         {days.map((d, i) => {
-          const k = kindOf(d.code);
+          const dk = kindOf(d.code);
           const dt = parseDate(d.date);
-          const label = i === 0 ? t('weather.today') : dt ? dt.toLocaleDateString(i18n.language || 'en', { weekday: 'short' }) : d.date;
+          const label = i === 0 ? t('weather.today') : dt ? dt.toLocaleDateString(lang, { weekday: 'short' }) : d.date;
+          const dp = peak ? peakOf(d) : null;
           return (
-            <div key={d.date} data-testid={`weather-forecast-day-${d.date}`} title={t(`weather.conditions.${CONDITION[k]}`)}
-              className={`ag-feed-wxcol${i === 0 ? ' on' : ''}`}>
+            <button type="button" key={d.date} data-testid={`weather-forecast-day-${d.date}`} aria-pressed={sel === i}
+              title={t(`weather.conditions.${CONDITION[dk]}`)} onClick={() => setSel(i)}
+              className={`ag-feed-wxcol${sel === i ? ' on' : ''}`}>
               <span className="truncate max-w-full">{label}</span>
-              <Icon name={ICON[k]} title={t(`weather.conditions.${CONDITION[k]}`)} />
+              <Icon name={ICON[dk]} title={t(`weather.conditions.${CONDITION[dk]}`)} />
               <b className="tabular-nums">{d.tempMax}°</b>
               <i className="tabular-nums">{d.tempMin}°</i>
-            </div>
+              {dp && (
+                <span className={`ag-feed-wxmt ${dp}`} data-testid={`weather-peak-${d.date}`}>
+                  <Icon name="mountain" /><span className="sr-only">{t('weather.peak_title', 'Kanchenjunga at sunrise')}: {peakWord(dp)}</span>
+                </span>
+              )}
+            </button>
           );
         })}
       </div>
@@ -123,6 +245,7 @@ function ForecastView({ place, days, testId }: { place: string; days: DayForecas
 export default function WeatherForecast({ query }: { query: string }) {
   const { t } = useTranslation();
   const [placeName, setPlaceName] = useState('');
+  const [seen, setSeen] = useState(false);
   const [days, setDays] = useState<DayForecast[]>([]);
   const [loading, setLoading] = useState(false);
   const [notFound, setNotFound] = useState(false);
@@ -161,6 +284,7 @@ export default function WeatherForecast({ query }: { query: string }) {
           return;
         }
         setPlaceName(String(hit.display_name || '').split(',')[0].trim());
+        setSeen(seesPeak(Number(hit.lat), Number(hit.lon)));
         setDays(fc);
       } catch {
         if (!cancelled) {
@@ -191,12 +315,13 @@ export default function WeatherForecast({ query }: { query: string }) {
       </SkyMessage>
     );
   }
-  return <ForecastView place={placeName} days={days} testId="weather-forecast" />;
+  return <ForecastView place={placeName} days={days} peak={seen} testId="weather-forecast" />;
 }
 
 /* ---------- the Feed's weather box: the hill towns, one tap each ---------- */
 
-type Town = { name: string; lat: number; lng: number; custom?: boolean };
+/** `place`: for My location, the town the phone is in (from the backend's reverse geocoder). */
+type Town = { name: string; lat: number; lng: number; custom?: boolean; place?: string };
 const TOWNS: Town[] = [
   { name: 'Darjeeling', lat: 27.041, lng: 88.2663 },
   { name: 'Ghum', lat: 27.0087, lng: 88.253 },
@@ -303,7 +428,16 @@ export function HillWeather() {
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         setBusy('');
-        addPlace({ name: myName, lat: +pos.coords.latitude.toFixed(3), lng: +pos.coords.longitude.toFixed(3) }, 'me');
+        const lat = +pos.coords.latitude.toFixed(3);
+        const lng = +pos.coords.longitude.toFixed(3);
+        addPlace({ name: myName, lat, lng }, 'me');
+        // Name the place alongside the forecast: "Road, Town" comes back; the town is what people know.
+        api.get('/geocode/reverse', { params: { lat, lon: lng } })
+          .then(({ data: r }) => {
+            const town = String(r?.name || '').split(',').map((x) => x.trim()).filter(Boolean).pop();
+            if (town) setTowns((all) => all.map((x) => (x.custom && x.name === myName ? { ...x, place: town } : x)));
+          })
+          .catch(() => { /* the chip stays "My location" */ });
       },
       () => { setBusy(''); setLocFailed(true); },
       { timeout: 8000 },
@@ -323,7 +457,7 @@ export function HillWeather() {
   return (
     <section className="flex flex-col" data-testid="feed-weather" aria-label={t('feed.kind_weather', 'Weather')}>
       {days.length > 0 ? (
-        <ForecastView place={towns[sel].name} days={days} testId="weather-forecast" />
+        <ForecastView place={towns[sel].place ? `${towns[sel].name} · ${towns[sel].place}` : towns[sel].name} days={days} peak={seesPeak(towns[sel].lat, towns[sel].lng)} testId="weather-forecast" />
       ) : (
         <SkyMessage title={t('feed.kind_weather', 'Weather')} testId="weather-forecast">
           {failed ? (
@@ -350,7 +484,7 @@ export function HillWeather() {
           return (
             <button type="button" key={town.name} className="ag-feed-wxpill" aria-pressed={sel === i} onClick={() => setSel(i)}
               disabled={!first} data-testid={`weather-place-${i}`}>
-              <Icon name={first ? ICON[kindOf(first.code)] : 'cloud'} /><span>{town.name}</span>{first && <b>{first.tempMax}°</b>}
+              <Icon name={first ? ICON[kindOf(first.code)] : 'cloud'} /><span>{town.place ? `${town.name} · ${town.place}` : town.name}</span>{first && <b>{first.tempMax}°</b>}
             </button>
           );
         })}
@@ -392,7 +526,10 @@ export function HillWeather() {
       {(oneFailed || locFailed) && (
         <p className="ag-small m-0 mt-2">{locFailed ? t('ob.wz.noloc') : t('weather.failed', 'Could not load the forecast. Check your internet.')}</p>
       )}
-      <p className="ag-feed-wxsrc">{t('weather.source', 'Forecast data: Open-Meteo')}</p>
+      <p className="ag-feed-wxsrc">
+        {t('weather.source', 'Forecast data: Open-Meteo')}
+        {towns[sel] && seesPeak(towns[sel].lat, towns[sel].lng) && <> · {t('weather.peak_note', 'Mountain view estimated from the 5–8 am cloud forecast.')}</>}
+      </p>
     </section>
   );
 }

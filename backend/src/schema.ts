@@ -1,4 +1,5 @@
 import { pgTable, text, integer, boolean, numeric, jsonb, doublePrecision, uniqueIndex, index, primaryKey } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 
 export const users = pgTable('users', {
   id: text('id').primaryKey(),
@@ -102,6 +103,23 @@ export const pushTokens = pgTable('push_tokens', {
   updatedAt: text('updated_at').notNull(),
 }, (t) => ({
   userIdx: index('push_tokens_user_id_idx').on(t.userId),
+}));
+
+/**
+ * Browsers that turned on notifications on the website, one row per browser (a Web Push
+ * subscription). lib/webPush.ts sends the same notifications to them as lib/push.ts sends to phones.
+ * The endpoint is the push service's address for that browser; p256dh and auth are its keys.
+ */
+export const webPushSubscriptions = pgTable('web_push_subscriptions', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  endpoint: text('endpoint').notNull().unique(),
+  p256dh: text('p256dh').notNull(),
+  auth: text('auth').notNull(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+}, (t) => ({
+  userIdx: index('web_push_subscriptions_user_id_idx').on(t.userId),
 }));
 
 /**
@@ -262,7 +280,58 @@ export const listings = pgTable('listings', {
   providerId: text('provider_id').notNull(), // text (can be user_id or provider_id)
   extras: jsonb('extras').$type<Record<string, any>>().default({}).notNull(),
   createdAt: text('created_at').notNull(),
-});
+  // The search words below need reading again (lib/searchIndex.ts). True for a new listing; a
+  // database trigger (migration 0043) sets it again whenever the title, place, tags, profile or
+  // description change, so no write path has to remember.
+  searchStale: boolean('search_stale').default(true).notNull(),
+}, (t) => ({
+  searchStaleIdx: index('listings_search_stale_idx').on(t.id).where(sql`${t.searchStale}`),
+}));
+
+/**
+ * The search index (lib/searchIndex.ts): each listing's words, read once the way lib/search.ts
+ * reads them (local spellings, Hindi/Nepali/Bengali words, profile strings), so a search fetches
+ * only the listings holding a matching word (GIN on `words`) and scores them without re-reading.
+ * `fields` keeps the words per field for the weights; `v` is the reading's version.
+ */
+export const listingSearch = pgTable('listing_search', {
+  listingId: text('listing_id').primaryKey().references(() => listings.id, { onDelete: 'cascade' }),
+  words: text('words').array().notNull(),
+  fields: jsonb('fields').$type<Record<string, string[]>>().notNull(),
+  v: integer('v').notNull(),
+}, (t) => ({
+  wordsIdx: index('listing_search_words_gin').using('gin', t.words),
+}));
+
+/**
+ * What travellers search for (routes/searchEvents.ts), for the admin Search insights: the words
+ * (numbers and email addresses removed), where, how many results, and the result opened, if any.
+ * Anonymous by design: `session` is a random code for one browser visit, never a user id, phone or
+ * IP. Deleted after SEARCH_LOG_DAYS (lib/searchEvents.ts sweep). A business's searches of its own
+ * bookings are never sent (they hold guests' names).
+ */
+export const searchEvents = pgTable('search_events', {
+  id: text('id').primaryKey(),
+  session: text('session').notNull(),
+  q: text('q').notNull(),
+  /** The words as search reads them (lower case, no punctuation), to count "Ghum" and "ghum" as one. */
+  qNorm: text('q_norm').notNull(),
+  /** The category page searched on; null for a search across everything. */
+  type: text('type'),
+  /** 'category' (a category or /search page) or 'sheet' (the header search). */
+  surface: text('surface').notNull(),
+  /** 'typed' or 'voice'. */
+  source: text('source').notNull(),
+  results: integer('results').notNull(),
+  /** No listing matched; the kind asked for was listed instead (lib/search.ts fallback). */
+  fallback: boolean('fallback').default(false).notNull(),
+  openedListingId: text('opened_listing_id'),
+  /** 1 for the first result. */
+  openedRank: integer('opened_rank'),
+  createdAt: text('created_at').notNull(),
+}, (t) => ({
+  createdIdx: index('search_events_created_at_idx').on(t.createdAt),
+}));
 
 export const bookings = pgTable('bookings', {
   id: text('id').primaryKey(),

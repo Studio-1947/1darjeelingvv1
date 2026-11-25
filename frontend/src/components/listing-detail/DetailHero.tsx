@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import SmartImg from '@/components/SmartImg';
 import { listingImage } from '@/lib/listingContent';
@@ -8,6 +8,8 @@ import { Link } from 'react-router-dom';
 import { useFavorites } from '@/context/FavoritesContext';
 import { useLoginGate } from '@/components/LoginGate';
 import type { ShareOutcome } from '@/lib/share';
+import PhotoViewer, { type ViewerPhoto } from '@/components/PhotoViewer';
+import { CaretLeft, CaretRight } from '@phosphor-icons/react';
 
 /** The prototype's guide kinds (gtypeTag): its label key and icon. */
 const GUIDE_TAG: Record<string, string> = {
@@ -16,7 +18,8 @@ const GUIDE_TAG: Record<string, string> = {
 
 /**
  * Top of the listing page (prototype V.item): the 16:10 photo, the photo strip, then the name, the
- * guide kind, the place, the verified tag with the rating, and the host line.
+ * guide kind, the place, the verified tag with the rating, and the host line. Tapping the big photo
+ * or any photo in the strip opens it full screen.
  */
 export default function DetailHero({ item, photos, stripLabel, stripTestid = 'detail-photos', host }: {
   item: any;
@@ -30,20 +33,30 @@ export default function DetailHero({ item, photos, stripLabel, stripTestid = 'de
   const heroSrc = listingImage(item, 1440, 900);
   const rated = Number(item.review_count) > 0;
   const guideKinds: string[] = item.type === 'guide' && Array.isArray(item.extras?.guide_types) ? item.extras.guide_types : [];
+  // The full-screen viewer browses the big photo and the strip together, from the one tapped.
+  const gallery: ViewerPhoto[] = [
+    { src: heroSrc, alt: item.title },
+    ...photos.filter((p) => p.src !== heroSrc).map((p, i) => ({ src: p.src, alt: t('detail.gallery_alt', { index: i + 1 }) + (item?.title ? ` · ${item.title}` : '') })),
+  ];
+  const [zoomAt, setZoomAt] = useState<number | null>(null);
+  const openPhoto = (src: string) => setZoomAt(Math.max(0, gallery.findIndex((g) => g.src === src)));
 
   return (
     <>
       <span className="ag-listing-hero" data-testid="detail-hero">
         <SmartImg src={heroSrc} alt={item.title} className="w-full h-full" />
+        <button type="button" className="absolute inset-0 cursor-zoom-in" onClick={() => setZoomAt(0)}
+          aria-label={t('miniSite.view_photo', 'View photo')} data-testid="detail-hero-zoom" />
       </span>
 
       {photos.length > 0 && (
-        <div className="ag-listing-strip" role="list" aria-label={stripLabel || t('listing.photos', 'Photos')} data-testid={stripTestid}>
+        <PhotoStrip label={stripLabel || t('listing.photos', 'Photos')} testid={stripTestid}>
           {photos.map((p, i) => (
             <StripTile key={p.src + i} src={p.src} tag={p.tag} testid={p.groupTestid}
-              alt={t('detail.gallery_alt', { index: i + 1 }) + (item?.title ? ` · ${item.title}` : '')} />
+              alt={t('detail.gallery_alt', { index: i + 1 }) + (item?.title ? ` · ${item.title}` : '')}
+              onOpen={openPhoto} />
           ))}
-        </div>
+        </PhotoStrip>
       )}
 
       <div className="ag-listing-stack">
@@ -70,18 +83,67 @@ export default function DetailHero({ item, photos, stripLabel, stripTestid = 'de
         )}
         {host}
       </div>
+
+      {zoomAt != null && <PhotoViewer photos={gallery} index={zoomAt} caption={item.title} onClose={() => setZoomAt(null)} testid="detail-photo-viewer" />}
     </>
   );
 }
 
-/** One photo of the strip; a photo that fails to load leaves the strip instead of showing a blank tile. */
-function StripTile({ src, alt, tag, testid }: { src: string; alt: string; tag?: string; testid?: string }) {
+/**
+ * The photo strip with ‹ › arrows over its ends, each shown only while there is more to scroll that
+ * way (a finger still swipes it; the arrows are for a mouse and for seeing that there is more).
+ */
+function PhotoStrip({ label, testid, children }: { label: string; testid: string; children: React.ReactNode }) {
+  const { t } = useTranslation();
+  const ref = useRef<HTMLDivElement>(null);
+  const [ends, setEnds] = useState({ left: false, right: false });
+  const measure = useCallback(() => {
+    const el = ref.current;
+    if (!el) return;
+    setEnds({ left: el.scrollLeft > 4, right: el.scrollLeft + el.clientWidth < el.scrollWidth - 4 });
+  }, []);
+  useEffect(() => {
+    measure();
+    const el = ref.current;
+    el?.addEventListener('scroll', measure, { passive: true });
+    window.addEventListener('resize', measure);
+    // Photos load after the first measure and widen the strip.
+    const late = window.setTimeout(measure, 600);
+    return () => { el?.removeEventListener('scroll', measure); window.removeEventListener('resize', measure); window.clearTimeout(late); };
+  }, [measure, children]);
+  const scroll = (dir: number) => ref.current?.scrollBy({ left: dir * Math.max(160, (ref.current.clientWidth || 300) * 0.8), behavior: 'smooth' });
+  return (
+    <div className="ag-listing-stripwrap">
+      <div ref={ref} className="ag-listing-strip" role="list" aria-label={label} data-testid={testid}>{children}</div>
+      {ends.left && (
+        <button type="button" className="ag-listing-striparrow left" onClick={() => scroll(-1)} data-testid={`${testid}-prev`}
+          aria-label={t('common.previous', 'Previous')} title={t('common.previous', 'Previous')}>
+          <CaretLeft weight="bold" aria-hidden="true" />
+        </button>
+      )}
+      {ends.right && (
+        <button type="button" className="ag-listing-striparrow right" onClick={() => scroll(1)} data-testid={`${testid}-next`}
+          aria-label={t('common.next', 'Next')} title={t('common.next', 'Next')}>
+          <CaretRight weight="bold" aria-hidden="true" />
+        </button>
+      )}
+    </div>
+  );
+}
+
+/**
+ * One photo of the strip, a button that opens it full screen. A photo that fails to load leaves the
+ * strip instead of showing a blank tile.
+ */
+function StripTile({ src, alt, tag, testid, onOpen }: { src: string; alt: string; tag?: string; testid?: string; onOpen: (src: string) => void }) {
   const [failed, setFailed] = useState(false);
   if (failed) return null;
   return (
     <div role="listitem" data-testid={testid}>
-      <img src={src} alt={alt} loading="lazy" decoding="async" onError={() => setFailed(true)} />
-      {tag && <span className="ag-listing-tag">{tag}</span>}
+      <button type="button" className="block h-full w-full cursor-zoom-in p-0" onClick={() => onOpen(src)} aria-label={alt}>
+        <img src={src} alt="" loading="lazy" decoding="async" onError={() => setFailed(true)} />
+      </button>
+      {tag && <span className="ag-listing-tag pointer-events-none">{tag}</span>}
     </div>
   );
 }

@@ -308,6 +308,7 @@ export async function createSpot(body: any): Promise<
     providerId: SPOT_PROVIDER_ID,
     extras,
     createdAt: new Date().toISOString(),
+    searchStale: true,
   };
 
   await db.insert(schema.listings).values(row);

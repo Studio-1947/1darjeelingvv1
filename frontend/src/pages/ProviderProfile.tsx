@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { missingLabel } from '@/lib/serverText';
-import { MagnifyingGlass, Eye, X, VideoCamera, Check, CaretRight } from '@phosphor-icons/react';
+import { MagnifyingGlass, Eye, X, Check, CaretRight } from '@phosphor-icons/react';
 import { Icon } from '@/components/ag/Icon';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
@@ -292,23 +292,6 @@ export default function ProviderProfile() {
     catch (err) { setMsg({ ok: false, text: typeof err === 'string' ? err : t('kyc.uploadFailed') }); }
     finally { setUploading(null); }
   };
-  // The intro video is an uploaded file travellers play on the page, not a link.
-  const uploadVideo = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = '';
-    if (!file) return;
-    if (file.size > 25 * 1024 * 1024) { setMsg({ ok: false, text: t('hostProfile.video_too_big') }); return; }
-    setUploading('video');
-    try {
-      const { data } = await api.post('/providers/me/intro-video', file, { headers: { 'Content-Type': file.type || 'video/mp4' } });
-      set({ intro_video: data.url });
-    } catch (err: any) {
-      setMsg({ ok: false, text: err?.response?.data?.detail || t('hostProfile.video_failed') });
-    } finally {
-      setUploading(null);
-    }
-  };
-
   const save = async () => {
     if (!form) return;
     setBusy(true);
@@ -320,7 +303,8 @@ export default function ProviderProfile() {
       whatsapp: form.sameWhatsapp ? '' : form.whatsapp.trim(),
       languages: form.languages.split(',').map((s: string) => s.trim()).filter(Boolean),
       host_bio: form.host_bio,
-      intro_video: form.intro_video.trim(),
+      // The intro video is no longer offered; saving clears one a host uploaded before.
+      intro_video: '',
       // Social links are no longer asked for; saving clears any a host added before.
       social: {},
     };
@@ -396,7 +380,6 @@ export default function ProviderProfile() {
     reviewCount: stats?.review_count ?? 0,
     location: p?.location,
     about: form.host_bio,
-    video: form.intro_video,
     languages: String(form.languages || '').split(',').map((x: string) => x.trim()).filter(Boolean),
     items: previewItems,
     gallery: Array.isArray(fe.images) ? fe.images : [],
@@ -613,26 +596,6 @@ export default function ProviderProfile() {
             )}
           </div>
           <TextArea label={t('hostProfile.bio')} rows={4} value={form.host_bio} onChange={(e) => set({ host_bio: e.target.value })} />
-          <div data-testid="profile-video">
-            <Group label={t('hostProfile.video')} hint={t('hostProfile.video_hint')}>
-              {form.intro_video && /\.(mp4|mov|webm)(\?|$)|\/videos\//i.test(form.intro_video) ? (
-                <video src={form.intro_video} controls playsInline preload="metadata" className="aspect-video w-full max-w-sm rounded-[18px] bg-black" />
-              ) : form.intro_video ? (
-                <a href={form.intro_video} target="_blank" rel="noreferrer" className="ag-seeall self-start">{t('hostProfile.video_old_link')}</a>
-              ) : null}
-              <div className="ag-row">
-                {/* A label styled as a small button, so the file picker opens from it. */}
-                <label className="ag-btn sm cursor-pointer">
-                  <VideoCamera />
-                  <span>{uploading === 'video' ? t('hostProfile.video_uploading') : form.intro_video ? t('hostProfile.video_replace') : t('hostProfile.video_upload')}</span>
-                  <input type="file" accept="video/mp4,video/quicktime,video/webm" className="sr-only" onChange={uploadVideo} data-testid="profile-video-input" />
-                </label>
-                {form.intro_video && (
-                  <Button variant="stop" size="sm" onClick={() => set({ intro_video: '' })}>{t('hostProfile.video_remove')}</Button>
-                )}
-              </div>
-            </Group>
-          </div>
         </Fold>
 
         {type === 'guide' && (

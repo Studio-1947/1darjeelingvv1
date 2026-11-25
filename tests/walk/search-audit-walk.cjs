@@ -578,13 +578,13 @@ function expectFor(list, { near = false, radius = null, maxPrice, loc, sort = 'r
     await go(page, '/homestays'); await ready(page); await openPanel(page);
     await tid(page, 'filter-price-1500').click(); await tid(page, 'category-filter-apply').click();
     await tid(page, 'category-search-input').fill('ghum'); await ids(page);
+    // It opens the search sheet (components/SearchSheet.tsx) over the page, starting empty.
     await tid(page, 'header-search').click();
-    await page.waitForURL(/\/search$/, { timeout: 8000 });
-    shown = await ready(page);
-    const boxNow = await tid(page, 'category-search-input').inputValue();
-    const allFx = Object.values(FX).flat().length;
+    await tid(page, 'search-sheet').waitFor({ timeout: 8000 });
+    const boxNow = await tid(page, 'search-sheet-input').inputValue();
     const fh = await shot(page, 'header-search-leak');
-    ok(boxNow === '' && shown.length === allFx, 'B', 'header search button from /homestays opens a fresh /search', `box still says "${boxNow}", ${shown.length} of ${allFx} shown: the homestay search words and ₹1,500 cap carry over (Header.tsx:86 navigate('/search') re-renders the same Category) ${fh}`);
+    ok(boxNow === '', 'B', 'header search button from /homestays opens a fresh search', `the sheet's box says "${boxNow}": the homestay search words carried over ${fh}`);
+    await page.keyboard.press('Escape');
     // Category to category through history (in-app links reuse the same component).
     await go(page, '/homestays'); await ready(page); await openPanel(page);
     await tid(page, 'filter-price-1500').click();

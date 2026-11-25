@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { CaretLeft, Eye, Upload } from '@phosphor-icons/react';
+import { Eye, Upload } from '@phosphor-icons/react';
 import api from '@/lib/api';
 import { apiError } from '@/lib/plans';
 import { useAuth } from '@/context/AuthContext';
@@ -19,6 +19,7 @@ import ChipToggleGroup, { toggleIn } from '@/components/provider/ChipToggleGroup
 import { RouteListEditor, RouteFareTable } from '@/components/provider/RouteEditor';
 import Fold from '@/components/provider/Fold';
 import { Button, ButtonLink, SelectField, TextArea, TextField } from '@/components/ag';
+import { useCrumbTitle } from '@/components/PageBack';
 
 /**
  * One listing's own editor (/provider/listings/:id), opened from the Business profile's list of
@@ -101,6 +102,7 @@ export default function ProviderListingEdit() {
   const { user, loading: authLoading, provider, refreshProvider } = useAuth();
 
   const [listing, setListing] = useState<any>(null);
+  useCrumbTitle(listing?.title);
   const [state, setState] = useState<'loading' | 'ready' | 'missing' | 'failed'>('loading');
   const [form, setForm] = useState<Form | null>(null);
   const [busy, setBusy] = useState(false);
@@ -319,10 +321,7 @@ export default function ProviderListingEdit() {
     <div className="ag-wrap">
       <div className="ag-main pb-[calc(var(--page-cta-h)+24px)]" data-testid="listing-edit">
         <div>
-          <Link to="/provider/profile" className="ag-seeall inline-flex items-center gap-1" data-testid="listing-edit-back">
-            <CaretLeft aria-hidden="true" />{t('hostProfile.title')}
-          </Link>
-          <p className="ag-host-typeline mt-3">{t(`ob.wz.t_${type}`, { defaultValue: type })}</p>
+          <p className="ag-host-typeline">{t(`ob.wz.t_${type}`, { defaultValue: type })}</p>
           <h1 className="ag-host-tabh">{listing.title}</h1>
           <p className="ag-small mt-3">{listing.location}</p>
           <ButtonLink to={`/listing/${listing.id}`} size="sm" className="mt-3" icon={<Eye />} data-testid="listing-view">{t('common.view')}</ButtonLink>

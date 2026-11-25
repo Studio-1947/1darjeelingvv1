@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback, use
 import i18n, { isLangCode, setLanguage } from '@/i18n';
 import api, { setRequestSide } from '@/lib/api';
 import { asHostType, type Audience, type HostType } from '@/lib/audience';
+import { forgetPush } from '@/lib/webPush';
 
 const AuthCtx = createContext(null);
 
@@ -98,6 +99,8 @@ export function AuthProvider({ children }) {
   }, [setMode]);
 
   const logout = useCallback(() => {
+    // This browser's notifications belonged to that account; the next person here must not get them.
+    void forgetPush();
     localStorage.removeItem('token');
     setMode('tourist');
     setUser(null);

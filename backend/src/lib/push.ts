@@ -2,9 +2,11 @@ import { eq, inArray } from 'drizzle-orm';
 
 import { db, schema } from '../db';
 import { EXPO_ACCESS_TOKEN, PUSH_ENABLED, log } from '../config';
+import { sendWebPushToUser } from './webPush';
 
 /**
- * Phone notifications through Expo's push service.
+ * Phone notifications through Expo's push service (and, through lib/webPush.ts, to browsers that
+ * turned notifications on for the website).
  *
  * The app has registered push tokens (POST /users/me/push-token) for a long time, but nothing ever
  * sent to them, so a host only learnt about a booking by opening the app. Every in-app notification
@@ -100,8 +102,13 @@ export async function sendPushMessages(messages: { to: string; content: PushCont
   return result;
 }
 
+/** One notification to every phone this person signed in on, and every browser they turned notifications on in. */
 export async function sendPushToUser(userId: string, n: PushContent): Promise<void> {
   if (!PUSH_ENABLED || !userId) return;
+  await Promise.all([sendExpoToUser(userId, n), sendWebPushToUser(userId, n)]);
+}
+
+async function sendExpoToUser(userId: string, n: PushContent): Promise<void> {
   try {
     const rows = await db
       .select({ token: schema.pushTokens.token })

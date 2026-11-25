@@ -3,18 +3,16 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/context/AuthContext';
 import Wordmark from '@/components/Wordmark';
-import useGoBack from '@/hooks/useGoBack';
 import api from '@/lib/api';
 import { Icon } from '@/components/ag/Icon';
 import { Status } from '@/components/ag';
 import { useMode } from '@/lib/theme';
+import SearchSheet from '@/components/SearchSheet';
+import { TAB_ROOTS } from '@/components/PageBack';
 
 /** When the bell last asked for the unread count (shared across page changes). */
 let lastUnreadCheck = 0;
 let lastUnreadCount = 0;
-
-/** Roots of the tab bar: nothing to go back to from these. */
-const ROOTS = ['/', '/feed', '/my-trips', '/saved', '/dashboard', '/provider/dashboard'];
 
 /** On Home the search button appears once the page's own search box has scrolled under the bar. */
 function useHomeSearchScrolledAway(active: boolean) {
@@ -34,7 +32,7 @@ function useHomeSearchScrolledAway(active: boolean) {
 
 /**
  * Top bar, as the red /7 prototype draws it (app.js render()):
- * Back on every screen except the tab roots; the full wordmark always; then Search (everywhere but
+ * The full wordmark always (the way back is on the page itself, components/PageBack); then Search (everywhere but
  * Home, where it appears once the home search has scrolled away), the theme switch, the bell (always),
  * and Log in (tab roots, signed out). Getting the app lives on the notifications page (GetAppCard).
  */
@@ -43,7 +41,6 @@ export default function Header() {
   const { user } = useAuth();
   const { pathname, search: query } = useLocation();
   const navigate = useNavigate();
-  const goBack = useGoBack();
   const [mode, setMode] = useMode();
 
   // Unread notifications, for the badge on the bell. Re-read on every page change and when the
@@ -68,31 +65,21 @@ export default function Header() {
     return () => { window.clearInterval(every); window.removeEventListener('aangan:notifications', read); };
   }, [user?.id, pathname]);
 
-  // A sub-screen inside a tab root (e.g. /dashboard?s=language) gets Back, as in the prototype.
-  const isRoot = ROOTS.includes(pathname) && !new URLSearchParams(query).get('s');
+  // Log in shows on the tab roots only (a sub-screen such as /dashboard?s=language is not one).
+  const isRoot = TAB_ROOTS.includes(pathname) && !new URLSearchParams(query).get('s');
   const onHome = pathname === '/';
   const homeSearchAway = useHomeSearchScrolledAway(onHome);
   const showSearch = !onHome || homeSearchAway;
 
-  const search = () => {
-    const box = document.querySelector<HTMLElement>('[data-home-search]');
-    if (onHome && box) {
-      box.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      window.setTimeout(() => box.querySelector<HTMLInputElement>('input')?.focus(), 350);
-    } else {
-      navigate('/search');
-    }
-  };
+  // Search from any page (components/SearchSheet): every category for a traveller, a business's own
+  // bookings, listings and notifications in host mode. Closed by a page change (a result was opened).
+  const [searchOpen, setSearchOpen] = React.useState(false);
+  React.useEffect(() => { setSearchOpen(false); }, [pathname, query]);
+  const search = () => setSearchOpen(true);
 
   return (
     <header className="ag-header" data-testid="site-header">
       <div className="ag-wrap">
-        {!isRoot && (
-          <button type="button" className="ag-iconbtn" onClick={goBack} aria-label={t('common.back')} data-testid="header-back">
-            <Icon name="back" />
-          </button>
-        )}
-
         <Link to="/" className="ag-brand gap-2" data-testid="brand-link" aria-label={`${t('brand', 'aangan')} ${t('ui.header.beta', 'Beta')}`}>
           <Wordmark className="word" still />
           {/* Early days: says so plainly, next to the name, on every screen. */}
@@ -133,6 +120,7 @@ export default function Header() {
           )}
         </div>
       </div>
+      {searchOpen && <SearchSheet onClose={() => setSearchOpen(false)} />}
     </header>
   );
 }

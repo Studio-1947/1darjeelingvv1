@@ -25,6 +25,10 @@ export default defineConfig({
       // test/pausedFeatures.test.ts switches them off.
       HOME_DELIVERY: 'true',
       DONATIONS: 'true',
+      // A throwaway pair, only so the website-notification routes can be exercised. Nothing is ever
+      // sent under APP_ENV=test (config.ts WEB_PUSH_ENABLED).
+      VAPID_PUBLIC_KEY: 'BOU_hAnskgTQPklx9L3cz45TFb0DCbudOxSbw8aur_kfhJSU7t-4nqZ0YtJCibXIjP1vp1XXJSfHylQbxubNOlU',
+      VAPID_PRIVATE_KEY: 'YCAuGD6hclvsGMcmzfoRX517RYAAYOw4v9ZGDa4R0E8',
     },
     setupFiles: ['./test/setup.ts'],
   },

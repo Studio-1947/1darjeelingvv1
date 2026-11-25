@@ -12,6 +12,7 @@ import ReportDialog, { ReportTarget } from '@/components/listing-detail/ReportDi
 import '@/styles/screens/plans.css';
 import { answerRequest, apiError, dayDate, deletePlan, fetchPlan, updatePlan, type TripPlan } from '@/lib/plans';
 import VerifyToPost from '@/components/feed/VerifyToPost';
+import { useCrumbTitle } from '@/components/PageBack';
 
 /**
  * One trip plan (/plan/:id, the link "Share" sends): the card with Ask to join, the day notes and
@@ -24,6 +25,7 @@ export default function PlanDetail() {
   const { user } = useAuth();
   const nav = useNavigate();
   const [plan, setPlan] = useState<TripPlan | null>(null);
+  useCrumbTitle(plan?.title);
   const [state, setState] = useState<'loading' | 'missing' | 'error' | 'ok'>('loading');
   const [busy, setBusy] = useState<string | null>(null);
   const [report, setReport] = useState<ReportTarget | null>(null);

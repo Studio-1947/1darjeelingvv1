@@ -11,7 +11,7 @@ function Stars({ value, size = 15 }: { value: number; size?: number }) {
   return (
     <span className="inline-flex items-center gap-0.5" aria-hidden="true">
       {[1, 2, 3, 4, 5].map((i) => (
-        <Star key={i} size={size} weight={i <= value ? 'fill' : 'regular'} className={i <= value ? 'text-[var(--star)]' : 'text-[var(--outline)]'} />
+        <Star key={i} size={size} weight={i <= value ? 'fill' : 'regular'} className={i <= value ? 'text-[var(--star)]' : 'text-[var(--ink-faint)]'} />
       ))}
     </span>
   );

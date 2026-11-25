@@ -1,21 +1,26 @@
 import React, { useEffect, useState } from 'react';
 import { Link, Navigate, useLocation, useParams } from 'react-router-dom';
 import { Icon } from '@/components/ag/Icon';
-import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import api from '@/lib/api';
 import Seo from '@/components/Seo';
 import HostMiniSite from '@/components/provider/HostMiniSite';
 import { themeVars, useMode } from '@/lib/theme';
 import DeliveryRequestButton from '@/components/DeliveryRequestButton';
-import { waShare } from '@/lib/tripMessages';
-import { Box, Button, ButtonA, ButtonLink, PageHead, Seg } from '@/components/ag';
+import { Box, ButtonA, ButtonLink, PageHead, Seg } from '@/components/ag';
 import SmartImg from '@/components/SmartImg';
+import { useCrumbTitle } from '@/components/PageBack';
+import { useFavorites } from '@/context/FavoritesContext';
+import { useLoginGate } from '@/components/LoginGate';
 
 /**
  * A host's public page, aanganerp.in/<type>/<business-name> (board: "Profile - all profiles should
  * look like individual websites"). The same mini-site the host sees as a live preview while
- * editing, now with working Call / WhatsApp / Direction, their listings to book, and reviews.
+ * editing, with the address to copy, the actions under the name, their listings and reviews.
+ *
+ * Two ways for the host to see their own page: "Your view" is for editing (Edit page, each listing
+ * opens its editor, no booking), "Guest view" is exactly what travellers get (Ask to book,
+ * Save, Share, and Direction for a homestay).
  */
 export default function HostPage() {
   // Re-render when dark mode is switched, so the business colour follows it.
@@ -28,6 +33,9 @@ export default function HostPage() {
   const [moved, setMoved] = useState<string | null>(null);
   // The host looking at their own page: their view (Ask to book off) or exactly what a traveller sees.
   const [viewAs, setViewAs] = useState<'owner' | 'traveller'>('owner');
+  const { isFavorite, toggle } = useFavorites();
+  const { requireAuth } = useLoginGate();
+  useCrumbTitle(data?.page?.name, type);
 
   useEffect(() => {
     let live = true;
@@ -59,17 +67,17 @@ export default function HostPage() {
   const own = data.own === true;
   const ownerView = own && viewAs === 'owner';
   const url = `${window.location.origin}${page.path || pathname}`;
-  const direction = page.latitude && page.longitude
+  // Direction only for a homestay (people travel to it; a driver or guide comes to them), and only
+  // for travellers: the host does not need directions to their own place.
+  const direction = type !== 'homestay' || ownerView ? null : page.latitude && page.longitude
     ? `https://www.google.com/maps/dir/?api=1&destination=${page.latitude},${page.longitude}`
     : page.location ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${page.name} ${page.location}`)}` : null;
-  const share = async () => {
-    const text = t('ui.hostPage.share_text', { name: page.name, url });
-    try {
-      if (navigator.share) await navigator.share({ title: page.name, text, url });
-      else { await navigator.clipboard.writeText(url); toast.success(t('ui.hostPage.link_copied')); }
-    } catch { /* closed */ }
+  const first = listings[0];
+  const liked = !!first && isFavorite(first.id);
+  const save = () => {
+    if (!first || !requireAuth('save')) return;
+    toggle(first.id).catch(() => {});
   };
-
   return (
     // The whole page in the business's own colour (profile.theme), when the host picked one.
     <div className="ag-wrap ag-listing" style={themeVars(page.theme, colourMode)}>
@@ -82,49 +90,66 @@ export default function HostPage() {
         )}
         <HostMiniSite
           data={page}
-          actions={{ direction }}
-          nameAside={own && (
-            <Seg<'owner' | 'traveller'> value={viewAs} onChange={setViewAs} label={t('business_gate.view_as', 'View as')}
-              options={[
-                { value: 'owner', label: t('business_gate.view_owner', 'Your view'), testId: 'page-view-as-owner' },
-                { value: 'traveller', label: t('business_gate.view_traveller', 'As a traveller'), testId: 'page-view-as-traveller' },
-              ]} />
+          copyUrl={url}
+          underAddress={own && (
+            <div className="flex flex-col gap-1.5" data-testid="own-page-preview">
+              <Seg<'owner' | 'traveller'> value={viewAs} onChange={setViewAs} label={t('business_gate.view_as', 'View as')} className="self-start"
+                options={[
+                  { value: 'owner', label: t('business_gate.view_owner', 'Your view'), testId: 'page-view-as-owner' },
+                  { value: 'traveller', label: t('business_gate.view_traveller', 'Guest view'), testId: 'page-view-as-traveller' },
+                ]} />
+              <p className="ag-small">
+                {ownerView
+                  ? t('business_gate.page_preview_edit', 'Your view: edit your page and listings here. Travellers see Ask to book.')
+                  : t('business_gate.page_preview_traveller', 'This is exactly what travellers see on your page.')}
+              </p>
+            </div>
+          )}
+          actions={(
+            <div className="ag-listing-acts" data-testid="host-page-actions">
+              {ownerView ? (
+                <ButtonLink variant="primary" go size="sm" to="/provider/profile" data-testid="host-page-edit">
+                  {t('host.edit_page', 'Edit page')}
+                </ButtonLink>
+              ) : (
+                <>
+                  {first && (
+                    <ButtonLink variant="primary" go size="sm" to={`/listing/${first.id}`} data-testid="host-page-book">
+                      {t('listing.book', 'Ask to book')}
+                    </ButtonLink>
+                  )}
+                  {page.homeDelivery && first && <DeliveryRequestButton listing={{ ...first, extras: { ...first.extras, home_delivery: true } }} />}
+                  {direction && (
+                    <ButtonA variant="tonal" href={direction} target="_blank" rel="noreferrer" icon={<Icon name="pin" />} data-testid="mini-site-direction">
+                      {t('miniSite.direction')}
+                    </ButtonA>
+                  )}
+                  {first && (
+                    <button type="button" className={`ag-listing-rowic${liked ? ' on' : ''}`} aria-pressed={liked} onClick={save}
+                      aria-label={liked ? t('listing.saved', 'Saved') : t('listing.save', 'Save')} title={liked ? t('listing.saved', 'Saved') : t('listing.save', 'Save')}
+                      data-testid="host-page-save">
+                      <Icon name="heart" />
+                    </button>
+                  )}
+                </>
+              )}
+              {/* Share and Copy sit on the address pill above. */}
+            </div>
           )}
         />
-        {own && (
-          <p className="ag-small !text-[var(--ink-strong)]" data-testid="own-page-preview">
-            {ownerView
-              ? t('business_gate.page_preview', "Your own view of your page. Ask to book is hidden here; travellers see it.")
-              : t('business_gate.page_preview_traveller', 'This is exactly what travellers see on your page.')}
-          </p>
-        )}
-
-        {/* The prototype's action row (site.js): Ask to book, home delivery, share. */}
-        <div className="ag-listing-acts">
-          {!ownerView && listings[0] && (
-            <ButtonLink variant="primary" go size="sm" to={`/listing/${listings[0].id}`} data-testid="host-page-book">
-              {t('listing.book', 'Ask to book')}
-            </ButtonLink>
-          )}
-          {!ownerView && page.homeDelivery && listings[0] && <DeliveryRequestButton listing={{ ...listings[0], extras: { ...listings[0].extras, home_delivery: true } }} />}
-          <button type="button" className="ag-listing-rowic" onClick={share} data-testid="host-page-share"
-            aria-label={t('ui.hostPage.share')} title={t('ui.hostPage.share')}>
-            <Icon name="share" />
-          </button>
-        </div>
 
         {listings.length > 0 && (
           <section className="flex flex-col gap-2.5">
             <h2 className="m-0 text-[18px] leading-6 font-medium text-[var(--ink-strong)]">{t('ui.hostPage.book_with', { name: page.name })}</h2>
             <div className="grid grid-cols-2 gap-2.5">
               {listings.map((l: any) => (
-                <Link key={l.id} to={`/listing/${l.id}`} data-testid={`host-page-listing-${l.id}`}
+                <Link key={l.id} to={ownerView ? `/provider/listings/${l.id}` : `/listing/${l.id}`} data-testid={`host-page-listing-${l.id}`}
                   className="relative block aspect-square rounded-[16px] overflow-hidden bg-[var(--creme2)] no-underline">
                   {l.image && <SmartImg src={l.image} alt="" className="absolute inset-0 w-full h-full object-cover" />}
                   <span className="absolute inset-x-0 bottom-0 p-2.5 flex flex-col text-white bg-gradient-to-t from-black/70 to-transparent">
                     <span className="text-[13px] leading-4 font-medium line-clamp-2">{l.title}</span>
                     {Number(l.price) > 0 && <b className="text-[13px] leading-5 font-semibold">₹{Number(l.price).toLocaleString('en-IN')}</b>}
-                    <span className="mt-0.5 inline-flex items-center gap-1 text-[12px] leading-4">{t('ui.hostPage.view_and_book')} <Icon name="arrowne" size={12} /></span>
+                    <span className="mt-0.5 inline-flex items-center gap-1 text-[12px] leading-4">{ownerView ? t('host.edit', 'Edit') : t('ui.hostPage.view_and_book')} <Icon name="arrowne" size={12} /></span>
                   </span>
                 </Link>
               ))}
@@ -145,18 +170,6 @@ export default function HostPage() {
           ))}
         </Box>
 
-        {/* The prototype's website box: the address, Copy link and share (WhatsApp as well). */}
-        <Box tone="blush" data-testid="host-page-website">
-          <span className="ag-eyebrow">{t('listing.pf_site', 'Website')}</span>
-          <p className="m-0 text-[16px] leading-6 text-[var(--ink7)] break-all">{url.replace(/^https?:\/\//, '')}</p>
-          <div className="ag-row">
-            <Button size="sm" onClick={() => { navigator.clipboard?.writeText(url).then(() => toast.success(t('ui.hostPage.link_copied'))).catch(() => {}); }}
-              data-testid="host-page-copy">{t('listing.copylink', 'Copy link')}</Button>
-            <ButtonA size="sm" href={waShare(t('ui.hostPage.share_text', { name: page.name, url }))} target="_blank" rel="noreferrer" icon={<Icon name="wa" />}>
-              {t('ui.hostPage.share_whatsapp')}
-            </ButtonA>
-          </div>
-        </Box>
       </div>
     </div>
   );

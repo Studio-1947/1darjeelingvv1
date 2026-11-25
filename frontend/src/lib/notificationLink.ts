@@ -40,3 +40,25 @@ export function webLinkTarget(
   }
   return null;
 }
+
+/** A booking notice (request, acceptance, cancellation): opens where that booking is handled. */
+export const isBookingNote = (kind?: string) => !!kind && (kind.startsWith('booking_') || kind.startsWith('cancel_request'));
+
+/**
+ * Where tapping a notification goes, on the Notifications page and in the search sheet alike:
+ * the team's chosen screen first, then by what the notice is about.
+ */
+export function noteTarget(
+  n: { kind?: string; ref_id?: string | null; link?: string | null },
+  isHostMode: boolean,
+): LinkTarget {
+  const target = webLinkTarget(n.link, isHostMode);
+  if (target) return target;
+  const to = (path: string): LinkTarget => ({ kind: 'route', to: path });
+  if (isBookingNote(n.kind)) return to(isHostMode ? `/provider/dashboard?s=bookings${n.ref_id ? `&b=${encodeURIComponent(n.ref_id)}` : ''}` : '/my-trips');
+  if (n.kind?.startsWith('delivery')) return to(isHostMode ? '/provider/dashboard' : '/my-trips');
+  if (n.kind === 'place_suggestion_live' && n.ref_id) return to(`/listing/${n.ref_id}`);
+  if (n.kind?.startsWith('place_suggestion')) return to('/#my-suggestions');
+  if (n.kind?.startsWith('plan_')) return to(n.kind === 'plan_cancelled' || !n.ref_id ? '/feed' : `/plan/${n.ref_id}`);
+  return null;
+}

@@ -10,6 +10,19 @@ import CancelSheet, { reasonLine } from '@/components/CancelSheet';
 /** The icon of each business type, as the prototype's booking band and type tag draw it. */
 export const BAND_ICON: Record<string, IconName> = { homestay: 'home', driver: 'car', guide: 'trek', cafe: 'cup', shop: 'bag' };
 
+/** Where a booking stands, as the host reads it: on its card and in the search sheet. */
+export function BookingStatus({ b }: { b: any }) {
+  const { t } = useTranslation();
+  // The prototype's stages: -1 cancelled, 0 asked, 1 host said yes, 2 confirmed, 3 completed.
+  const s = b.status === 'cancelled' ? -1 : b.completed ? 3 : b.status === 'confirmed' ? 2 : b.status === 'accepted' ? 1 : 0;
+  if (b.status === 'cancelled' && b.cancel_reason === 'no_show') return <Status tone="no">{t('host.st_no_show', 'Guest did not come')}</Status>;
+  if (s < 0) return <Status tone="no">{t('host.st_cancelled', 'Cancelled')}</Status>;
+  if (s === 3) return <Status tone="ok">{t('host.st_done', 'Completed')}</Status>;
+  if (s === 2) return <Status tone="ok">{t('booking.status.confirmed', { defaultValue: 'Confirmed' })}</Status>;
+  if (s === 1) return <Status tone="ok">{t('host.st_acc', 'You accepted')}</Status>;
+  return <Status>{b.awaiting_host ? t('host.st_sent', 'Request sent') : t('booking.status.pending_payment', { defaultValue: 'Waiting for payment' })}</Status>;
+}
+
 /**
  * One booking request, drawn as the prototype's host booking card (bookings.js bookingCard):
  * a "Homestay booked" band, the name and status, the dates and amount, the journey
@@ -93,12 +106,7 @@ export default function BookingCard({ b, onCancel, onAccept, onCancelRequest, on
   const s = b.status === 'cancelled' ? -1 : b.completed ? 3 : b.status === 'confirmed' ? 2 : b.status === 'accepted' ? 1 : 0;
   const type = b.listing_type || b.listing?.type || 'homestay';
   const noShow = b.status === 'cancelled' && b.cancel_reason === 'no_show';
-  const status = noShow ? <Status tone="no">{t('host.st_no_show', 'Guest did not come')}</Status>
-    : s < 0 ? <Status tone="no">{t('host.st_cancelled', 'Cancelled')}</Status>
-    : s === 3 ? <Status tone="ok">{t('host.st_done', 'Completed')}</Status>
-    : s === 2 ? <Status tone="ok">{t('booking.status.confirmed', { defaultValue: 'Confirmed' })}</Status>
-    : s === 1 ? <Status tone="ok">{t('host.st_acc', 'You accepted')}</Status>
-    : <Status>{b.awaiting_host ? t('host.st_sent', 'Request sent') : t('booking.status.pending_payment', { defaultValue: 'Waiting for payment' })}</Status>;
+  const status = <BookingStatus b={b} />;
   const phone = b.customer?.phone || '';
   const digits = phone.replace(/\D/g, '');
   const amount = Number(b.amount) || 0;

@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { CaretDown } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { missingLabel } from '@/lib/serverText';
 import { toast } from 'sonner';
 import api from '@/lib/api';
@@ -8,6 +9,7 @@ import { useAuth } from '@/context/AuthContext';
 import BookingCard, { BAND_ICON } from '@/components/provider/dashboard/BookingCard';
 import KycSection from '@/components/provider/dashboard/KycSection';
 import VerificationTracker from '@/components/provider/dashboard/VerificationTracker';
+import NextStepCard from '@/components/provider/dashboard/NextStepCard';
 import { HostPassLine } from '@/components/provider/dashboard/HostPlanCard';
 import ListingFormModal from '@/components/ListingFormModal';
 import { DeliveryRequestsPanel, HostReviewsCard } from '@/components/provider/dashboard/HostExtras';
@@ -27,11 +29,18 @@ type View = 'main' | 'bookings' | 'documents';
 const TGSEEN = 'ag-host-tgseen';
 const HELP_WA = '919093277919';
 
+/** Morning 5–11, afternoon 12–16, evening otherwise ("Good night" is a goodbye, so late hours say evening). */
+function dayPart(hour = new Date().getHours()): 'morning' | 'afternoon' | 'evening' {
+  if (hour >= 5 && hour < 12) return 'morning';
+  if (hour >= 12 && hour < 17) return 'afternoon';
+  return 'evening';
+}
+
 /**
  * The business dashboard, as the prototype's simple dashboard (dash.js): who and where, the status,
  * "Your listings" cards (photo, type, price, the yearly pass, Website / Edit / Bookings /
  * Verification and a Taking bookings switch), "Business overview" figures, the business-wide
- * Taking bookings switch, the next step, WhatsApp help, then share and Switch to Traveller.
+ * Taking bookings switch, the next step, WhatsApp help, then share (Switch to Traveller is at the top, by the status).
  * Bookings and Documents open as their own screens with "Back to overview" (S.bz.full).
  */
 function ProviderDashboardPage() {
@@ -63,6 +72,14 @@ function ProviderDashboardPage() {
   const [feedbackMessage, setFeedbackMessage] = useState('');
   const [sendingFeedback, setSendingFeedback] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const feedbackRef = useRef<HTMLFormElement>(null);
+  // Opened at the foot of the page: bring the whole form into view above the tab bar, cursor in the box.
+  useEffect(() => {
+    const form = feedbackRef.current;
+    if (!feedbackOpen || !form) return;
+    form.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    form.querySelector('textarea')?.focus({ preventScroll: true });
+  }, [feedbackOpen]);
   const [tgPop, setTgPop] = useState(false);
   const [switching, setSwitching] = useState<string | null>(null);
 
@@ -102,6 +119,24 @@ function ProviderDashboardPage() {
       }
     })();
   }, [user, authLoading, nav, loadDashboard]);
+
+  // A booking opened from the search sheet or a notification (?s=bookings&b=<id>): show every
+  // listing's bookings, bring that card into view and mark it for a moment.
+  const focusBooking = params.get('b');
+  // The visit's key, so opening the same booking again (same address) still finds and marks it.
+  const visit = useLocation().key;
+  useEffect(() => {
+    if (!focusBooking || loading || view !== 'bookings') return undefined;
+    setActiveListingId(null);
+    const timer = window.setTimeout(() => {
+      const card = document.querySelector<HTMLElement>(`[data-testid="booking-${CSS.escape(focusBooking)}"]`);
+      if (!card) return;
+      card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      card.classList.add('ag-host-trip-found');
+      window.setTimeout(() => card.classList.remove('ag-host-trip-found'), 2400);
+    }, 60);
+    return () => window.clearTimeout(timer);
+  }, [focusBooking, loading, view, visit]);
 
   // Tracks whether the component is still mounted, so a KYC refresh that resolves after
   // unmount never calls setState.
@@ -256,18 +291,19 @@ function ProviderDashboardPage() {
     count: kycItems.filter((c) => c.required).length || (type === 'homestay' || type === 'driver' ? 3 : 2),
   });
 
-  const backBtn = (
-    <Button className="ag-host-back" icon={<Icon name="back" />} onClick={() => open('main')} data-testid="host-back">
-      {t('host.back', 'Back to overview')}
-    </Button>
-  );
 
   // Feedback for the aangan team (board: host dashboard "Feedback"), closed until asked for.
   const feedbackBlock = (
     <div data-testid="host-feedback">
       {feedbackOpen ? (
-        <form className="ag-box" onSubmit={sendFeedback}>
-          <h2>{t('pd.feedback_title')}</h2>
+        <form ref={feedbackRef} className="ag-box ag-host-feedback" onSubmit={sendFeedback}>
+          <div className="flex items-center justify-between gap-2">
+            <h2>{t('pd.feedback_title')}</h2>
+            <button type="button" className="ag-host-rowic" onClick={() => setFeedbackOpen(false)}
+              aria-expanded="true" aria-label={t('owners.cancel')} title={t('owners.cancel')} data-testid="host-feedback-close">
+              <CaretDown size={16} weight="bold" className="rotate-180" aria-hidden="true" />
+            </button>
+          </div>
           <TextArea value={feedbackMessage} onChange={(event) => setFeedbackMessage(event.target.value)} minLength={10} maxLength={2000} required
             placeholder={t('pd.feedback_ph')} aria-label={t('pd.feedback_title')} />
           <div className="ag-row">
@@ -279,7 +315,9 @@ function ProviderDashboardPage() {
           {feedback[0] && <p className="ag-small">{t('pd.feedback_latest', { status: feedback[0].status })}</p>}
         </form>
       ) : (
-        <Button variant="text" onClick={() => setFeedbackOpen(true)} data-testid="host-feedback-open">{t('pd.feedback_open')}</Button>
+        <Button variant="text" onClick={() => setFeedbackOpen(true)} aria-expanded="false" data-testid="host-feedback-open">
+          {t('pd.feedback_open')} <CaretDown size={14} weight="bold" className="inline align-middle" aria-hidden="true" />
+        </Button>
       )}
     </div>
   );
@@ -297,7 +335,6 @@ function ProviderDashboardPage() {
     return (
       <div className="ag-wrap">
         <div className="ag-main">
-          {backBtn}
           <h1 className="ag-host-tabh">{t('host.bookings', 'Bookings')}</h1>
           <p className="ag-small">{t('host.bookings_s', 'Requests from travellers for your listings. Answer within 48 hours.')}</p>
           {listings.length > 1 && (
@@ -368,7 +405,6 @@ function ProviderDashboardPage() {
     return (
       <div className="ag-wrap">
         <div className="ag-main">
-          {backBtn}
           <h1 className="ag-host-tabh">{docsLabel}</h1>
           <p className="ag-small" data-testid="docs-intro">{t('host.docs_s', 'A photo of your ID and a photo of your place. That is all we need to check you.')}</p>
           <KycSection onProfileChange={setKycProfile} />
@@ -400,6 +436,9 @@ function ProviderDashboardPage() {
     try { await navigator.clipboard.writeText(pageUrl); toast.success(t('ui.hostExtras.link_copied')); } catch { /* ignore */ }
   };
 
+  // Greets the host by first name, by the time on their own device. No name, no greeting.
+  const greetName = String(provider.extras?.host_name || user?.name || '').trim().split(/\s+/)[0] || '';
+
   // The next step: live, the live host whose profile still has gaps, or the verification steps.
   let nextStep: React.ReactNode = null;
   if (provider.approval_pending && kycProfile) {
@@ -409,28 +448,19 @@ function ProviderDashboardPage() {
     );
   } else if (missing.length) {
     nextStep = (
-      <Box as="section" className="ag-host-next" data-testid="dashboard-profile-card">
-        <span className="ag-eyebrow">{t('host.next', 'Next step')}</span>
-        <b>{t('host.finish', 'Finish your profile')}</b>
-        <ul className="ag-host-facts">
-          {missing.map((m) => <li key={m.key}><Icon name="plus" />{missingLabel(t, m, type)}</li>)}
-        </ul>
-        <div className="ag-host-two"><ButtonLink to="/provider/profile" go>{t('host.finish', 'Finish your profile')}</ButtonLink></div>
-      </Box>
+      <NextStepCard testId="dashboard-profile-card" percent={kycProfile?.completion_percent}
+        title={t('host.finish', 'Finish your profile')}
+        detail={<>{missingLabel(t, missing[0], type)}{missing.length > 1 && ` · ${t('host.n_more', { count: missing.length - 1 })}`}</>}
+        goLabel={t('host.finish', 'Finish your profile')} onGo={() => nav('/provider/profile')} />
     );
   } else if (kycProfile && kycProfile.completion_percent < 100) {
     // Hosts who were live before approval was required: what is left, or that it is with the team.
     const actionable = kycProfile.checklist.filter((c) => c.state === 'missing' || c.state === 'rejected').length;
     nextStep = (
-      <Box as="section" className="ag-host-next" data-testid="kyc-progress-card">
-        <span className="ag-eyebrow">{t('host.next', 'Next step')}</span>
-        <b>{actionable ? t('kyc.completeYourProfile') : t('kyc.underReviewTitle')}</b>
-        <p className="ag-small">{actionable ? t('kyc.remainingItems', { count: actionable }) : t('kyc.underReviewMessage')}</p>
-        <span className="ag-host-bar"><i style={{ width: `${kycProfile.completion_percent}%` }} /></span>
-        <div className="ag-host-two">
-          <Button go onClick={() => open('documents')} data-testid="kyc-complete-profile-cta">{actionable ? t('kyc.completeProfileCta') : t('kyc.viewStatusCta')}</Button>
-        </div>
-      </Box>
+      <NextStepCard testId="kyc-progress-card" percent={kycProfile.completion_percent}
+        title={actionable ? t('kyc.completeYourProfile') : t('kyc.underReviewTitle')}
+        detail={actionable ? t('kyc.remainingItems', { count: actionable }) : t('kyc.underReviewMessage')}
+        goLabel={actionable ? t('kyc.completeProfileCta') : t('kyc.viewStatusCta')} onGo={() => open('documents')} />
     );
   } else if (live) {
     nextStep = <Box className="ag-host-next ok"><Icon name="check" /><span>{t('host.live_note', 'You are live. Travellers can find and book you.')}</span></Box>;
@@ -439,13 +469,16 @@ function ProviderDashboardPage() {
   return (
     <div className="ag-wrap">
       <div className="ag-main">
-        <PageHead eyebrow={`${typeLabel(type)} · ${provider.location || ''}`} title={provider.business_name || provider.extras?.host_name} />
+        <PageHead eyebrow={`${typeLabel(type)} · ${provider.location || ''}`} title={provider.business_name || provider.extras?.host_name}
+          sub={greetName ? <span data-testid="host-greeting">{t(`host.greet_${dayPart()}`, { name: greetName })}</span> : undefined} />
         <p className="ag-host-status flex flex-wrap items-center gap-2">
           {/* Paid but not yet approved reads "Pending review"; listings are still private. */}
           <Status tone={live ? 'ok' : 'pending'} data-testid="provider-status">
             {live ? t('host.live', 'Live on aangan') : !active ? t('provider.pending') : t('provider.pending_review')}
           </Status>
           {kycProfile?.kyc_status === 'verified' && <VerifiedBadge size="md" />}
+          {/* At the top, so a host who wants to book a trip themselves finds it straight away. */}
+          <Button go size="sm" className="ml-auto" onClick={toTraveller} data-testid="switch-to-traveller">{t('pd.switch_traveller')}</Button>
         </p>
 
         <section className="ag-host-sec">
@@ -508,10 +541,10 @@ function ProviderDashboardPage() {
         <section className="ag-host-sec">
           <SecHead title={t('host.overview', 'Business overview')} />
           <div className="ag-host-stats" data-testid="host-figures">
-            <button type="button" className={`ag-host-stat${nNew ? ' hot' : ''}`} onClick={() => open('bookings')}><b>{nNew}</b><span>{t('host.new', 'New requests')}</span></button>
-            <button type="button" className="ag-host-stat" onClick={() => open('bookings')}><b>{nUp}</b><span>{t('host.upcoming', 'Upcoming')}</span></button>
-            <button type="button" className="ag-host-stat" onClick={() => open('bookings')}><b>{doneList.length}</b><span>{t('host.completed', 'Completed')}</span></button>
-            <button type="button" className="ag-host-stat" onClick={() => open('bookings')}><b>₹{earned.toLocaleString('en-IN')}</b><span>{t('host.earned', 'Earned')}</span></button>
+            <button type="button" className={`ag-host-stat${nNew ? ' hot' : ''}`} onClick={() => open('bookings')}><b>{nNew}</b><span>{t('host.stat_new', 'New\nrequests')}</span></button>
+            <button type="button" className="ag-host-stat" onClick={() => open('bookings')}><b>{nUp}</b><span>{t('host.stat_upcoming', 'Upcoming\nbookings')}</span></button>
+            <button type="button" className="ag-host-stat" onClick={() => open('bookings')}><b>{doneList.length}</b><span>{t('host.stat_completed', 'Completed\nbookings')}</span></button>
+            <button type="button" className="ag-host-stat" onClick={() => open('bookings')}><b>₹{earned.toLocaleString('en-IN')}</b><span>{t('host.stat_earned', 'Earned\nmoney')}</span></button>
           </div>
         </section>
 
@@ -564,7 +597,6 @@ function ProviderDashboardPage() {
               </span>
             </div>
           )}
-          <Button go onClick={toTraveller}>{t('pd.switch_traveller')}</Button>
         </div>
       </div>
 

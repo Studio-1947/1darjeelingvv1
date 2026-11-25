@@ -57,7 +57,7 @@
 .ag-host-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
 .ag-host-stat { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 12px 10px; border: 1px solid var(--hairline); border-radius: 14px; background: var(--surface); color: var(--ink-strong); text-align: left; cursor: pointer; min-width: 0; }
 .ag-host-stat b { font: 500 20px/24px var(--font); letter-spacing: -.01em; white-space: nowrap; }
-.ag-host-stat span { font: 500 11px/14px var(--font); color: var(--ink-muted); }
+.ag-host-stat span { font: 500 11px/14px var(--font); color: var(--ink-muted); white-space: pre-line; } /* "Upcoming\nbookings": two lines on every width */
 .ag-host-stat.hot { border-color: #F2994A; }
 .ag-host-stat.hot b { color: #F2994A; }
 .ag-host-figs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
@@ -81,6 +81,22 @@
 .ag-host-next .ag-small { margin: 2px 0 6px; }
 .ag-host-next.ok { flex-direction: row !important; align-items: center; gap: 12px !important; color: var(--r); font: 500 14px/20px var(--font); }
 .ag-host-next.ok > svg.i { width: 20px; height: 20px; }
+/* next step in two lines (NextStepCard): ring with n/4 or %, title + one line of detail, round buttons */
+.ag-host-step { gap: 10px !important; }
+.ag-host-step-row { display: flex; align-items: center; gap: 12px; width: 100%; min-width: 0; }
+.ag-host-ring { position: relative; flex: none; width: 48px; height: 48px; display: grid; place-items: center; color: var(--r); }
+.ag-host-ring svg { position: absolute; inset: 0; width: 48px; height: 48px; transform: rotate(-90deg); }
+.ag-host-ring circle { fill: none; stroke-width: 4; }
+.ag-host-ring .track { stroke: var(--hairline); }
+.ag-host-ring .fill { stroke: var(--r); stroke-linecap: round; transition: stroke-dashoffset .3s; }
+.ag-host-ring b { position: relative; font: 600 12px/1 var(--font); color: var(--ink-strong); }
+.ag-host-ring > svg.i { position: static; transform: none; width: 20px; height: 20px; }
+.ag-host-step-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.ag-host-step-text .ttl { display: block; padding: 0; border: 0; background: none; text-align: left; font: 500 16px/22px var(--font); letter-spacing: -.01em; color: var(--ink7); cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ag-host-step-text b.ttl { cursor: default; }
+.ag-host-step-text .ag-small { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ag-host-step-acts { flex: none; display: inline-flex; gap: 8px; }
+.ag-host-step-acts .ag-host-rowic.go { background: var(--r); border-color: var(--r); color: var(--on-r); }
 .ag-host-facts { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font: 400 14px/24px var(--font); color: var(--ink7); }
 .ag-host-facts li { display: flex; align-items: center; gap: 8px; }
 .ag-host-facts svg.i { width: 18px; height: 18px; color: var(--r); }
@@ -241,3 +257,9 @@
 .ag-host-fix { display: inline-flex; align-items: center; gap: 4px; margin-top: 2px; color: var(--r); font: 600 14px/20px var(--font); text-decoration: none; }
 .ag-host-fix svg.i { width: 14px; height: 14px; }
 .ag-host-fix:hover { text-decoration: underline; }
+
+/* A booking opened from search or a notification (?s=bookings&b=<id>): marked for a moment. */
+.ag-host-trip-found { box-shadow: 0 0 0 3px var(--r) !important; transition: box-shadow .3s; }
+
+/* Feedback form: scrolled to on open, kept clear of the fixed tab bar */
+.ag-host-feedback { scroll-margin-bottom: calc(var(--tabbar-h) + 16px); }
