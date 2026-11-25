@@ -3764,6 +3764,14 @@
     }
   },
   "host": {
+    "f_on": "Taking bookings",
+    "f_paused": "Paused",
+    "f_due": "Pay due",
+    "f_type": "Filter by type",
+    "f_state": "Filter by status",
+    "f_all": "Any status",
+    "f_none": "No listings match these filters.",
+    "f_clear": "Show all",
     "mcard_yearly": "Yearly pass {{price}}/year",
     "mcard_member": "aangan member",
     "mcard_valid": "Valid until {{date}}",

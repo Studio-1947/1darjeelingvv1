@@ -278,3 +278,6 @@
 
 /* Feedback form: scrolled to on open, kept clear of the fixed tab bar */
 .ag-host-feedback { scroll-margin-bottom: calc(var(--tabbar-h) + 16px); }
+
+/* Your listings: type and status filters, right on the dashboard (one row each, scrolls sideways) */
+.ag-host-filters { display: flex; flex-direction: column; gap: 8px; margin: 0 0 12px; min-width: 0; }
