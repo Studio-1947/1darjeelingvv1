@@ -29,11 +29,11 @@ export default function BottomNav() {
   const [avatarError, setAvatarError] = useState(false);
   useEffect(() => { setAvatarError(false); }, [avatar]);
 
-  // Hosts keep the traveller's five tabs, as in the prototype; My trip becomes Bookings and Home is
-  // the business dashboard. My listings is reached from the dashboard's "Your listings · See all".
+  // Hosts keep the traveller's five tabs, as in the prototype; My trip becomes Bookings and Home becomes
+  // Dashboard (the business's own screen, not the traveller home). My listings is reached from the dashboard's "Your listings · See all".
   const tabs: Tab[] = isHostMode
     ? [
-        { key: 'home', to: '/provider/dashboard', match: ['/provider/dashboard'], label: t('nav.home'), icon: 't_home' },
+        { key: 'home', to: '/provider/dashboard', match: ['/provider/dashboard'], label: t('nav.dashboard', 'Dashboard'), icon: 't_dash' },
         { key: 'feed', to: '/feed', match: ['/feed'], label: t('nav.feed_tab'), icon: 't_feed' },
         { key: 'trips', to: '/provider/dashboard?s=bookings', match: ['/provider/dashboard?s=bookings'], label: t('host.bookings_tab', 'Bookings'), icon: 't_trip' },
         { key: 'saved', to: '/saved', match: ['/saved'], label: t('nav.saved'), icon: 't_saved', badge: savedCount },

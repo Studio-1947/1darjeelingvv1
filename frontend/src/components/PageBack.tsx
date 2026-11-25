@@ -33,7 +33,7 @@ export function useCrumbTitle(title?: string | null, type?: string | null) {
 
 /** The trail for a page: every step from its tab root to the page itself (last, not a link). */
 function trail(t: TFunction, pathname: string, sub: string | null, host: boolean, name: PageName | null): Crumb[] {
-  const home: Crumb = { label: t('nav.home', 'Home'), to: host ? '/provider/dashboard' : '/' };
+  const home: Crumb = host ? { label: t('nav.dashboard', 'Dashboard'), to: '/provider/dashboard' } : { label: t('nav.home', 'Home'), to: '/' };
   const account: Crumb = { label: t('nav.account', 'Account'), to: '/dashboard' };
   const feed: Crumb = { label: t('nav.feed_tab', 'Feed'), to: '/feed' };
   const policies: Crumb = { label: t('policies.title', 'Policies'), to: '/policies' };
@@ -94,7 +94,7 @@ function trail(t: TFunction, pathname: string, sub: string | null, host: boolean
  * The page's breadcrumb, at the top of every screen under the bar (it replaced the round back
  * button that sat in the bar): a back arrow to the step above, then the trail from the tab root,
  * e.g. "‹  Home › Homestay › Soumic Palace". One component for traveller and business screens;
- * in business mode "Home" is the business dashboard, as on the tab bar. Tab roots have none.
+ * in business mode the root is "Dashboard", as on the tab bar. Tab roots have none.
  */
 export default function PageBack() {
   const { t } = useTranslation();
