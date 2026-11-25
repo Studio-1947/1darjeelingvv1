@@ -694,14 +694,14 @@
           "Hosts, when you send them a request: your name, phone number and the details of the request, so they can answer it. Hosts must use these only for your booking.",
           "Travellers, about a host: the public listing, the host's or driver's name and profile photo, and reviews. A homestay, driver or guide's phone number, WhatsApp and social links open only to a traveller whose booking with them is confirmed. Cafés and shops show their numbers publicly.",
           "Other users: your name, profile photo, reviews, posts, comments and trip plans that you choose to publish.",
-          "Our service providers, who process data for us under contract: Interakt and Meta (WhatsApp sign-in codes and booking messages), Razorpay (payments), Expo and Google Firebase (push notifications), Google Analytics (site usage and searches), Sentry (error reports), OpenStreetMap and Open-Meteo (maps, addresses and weather), Google Fonts, and our hosting provider. Voice search uses your browser's speech service (in Chrome, Google's).",
+          "Our service providers, who process data for us under contract: Interakt and Meta (WhatsApp sign-in codes and booking messages), Razorpay (payments), Expo and Google Firebase (app push notifications), your browser's push service if you turn on notifications on the website (Google for Chrome and Edge, Mozilla for Firefox, Apple for Safari; they carry an encrypted message and cannot read it), Google Analytics (site usage and searches), Sentry (error reports), OpenStreetMap and Open-Meteo (maps, addresses and weather), Google Fonts, and our hosting provider. Voice search uses your browser's speech service (in Chrome, Google's).",
           "Authorities, when the law requires it, or to protect someone's safety.",
           "A buyer or successor, if the business is transferred, under this same policy."
         ]
       },
       {
         "h": "5. WhatsApp and Notifications",
-        "p": "We send your sign-in code on WhatsApp, and messages about your bookings (a new request, accepted, confirmed, cancelled, verification results) on WhatsApp, in the app and as push notifications. These are about your account and bookings only; we do not send promotions on WhatsApp without asking you first. You can turn push notifications off in your phone's settings."
+        "p": "We send your sign-in code on WhatsApp, and messages about your bookings (a new request, accepted, confirmed, cancelled, verification results) on WhatsApp, in the app and as push notifications (on your phone, or in your browser if you turn them on on the website's Notifications page). These are about your account and bookings only; we do not send promotions on WhatsApp without asking you first. You can turn push notifications off in your phone's or browser's settings, or on the Notifications page; signing out of the website turns them off in that browser."
       },
       {
         "h": "6. How Long We Keep It",
@@ -3513,7 +3513,17 @@
     },
     "notes": {
       "eyebrow": "Updates",
-      "none": "No notifications yet."
+      "none": "No notifications yet.",
+      "push_off_h": "Get notified in this browser",
+      "push_off_s": "Booking requests and replies, as they happen.",
+      "push_on": "Turn on",
+      "push_on_h": "Notifications are on in this browser",
+      "push_on_s": "Turn them off here or in your browser settings.",
+      "push_off": "Turn off",
+      "push_denied_h": "Notifications are blocked",
+      "push_denied_s": "Allow notifications for this site in your browser settings, then come back.",
+      "push_failed": "Could not turn them on. Try again.",
+      "push_off_failed": "Could not turn them off. Try again."
     }
   },
   "planner": {
@@ -4171,7 +4181,9 @@
     "and": "On Android",
     "and1": "Open this page in Chrome.",
     "and2": "Tap the three dots at the top right.",
-    "and3": "Tap \"Install app\" or \"Add to Home screen\"."
+    "and3": "Tap \"Install app\" or \"Add to Home screen\".",
+    "now": "Use it as an app today",
+    "ios_push": "Then open aangan from your Home Screen to turn on notifications."
   },
   "maintenance": {
     "eyebrow": "Back soon",

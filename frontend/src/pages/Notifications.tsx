@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { noteText } from '@/lib/serverText';
@@ -11,6 +11,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useSeo } from '@/components/Seo';
 import { timeAgo } from '@/lib/timeAgo';
 import { GetAppCard } from '@/components/AppComingSoon';
+import { pushState, turnOffPush, turnOnPush, type PushState } from '@/lib/webPush';
 
 type Note = { id: string; kind: string; title: string; body: string; ref_id: string | null; link?: string | null; unread: boolean; created_at: string; msg?: { key: string; params?: Record<string, string | number> } | null };
 
@@ -29,6 +30,12 @@ export default function Notifications() {
     api.get('/notifications').then(({ data }) => setItems(data.items || [])).catch(() => setItems([]));
   }, []);
   useEffect(() => { if (user) load(); }, [user, load]);
+  // A notification arriving while this page is open (PushBridge) adds to the list.
+  useEffect(() => {
+    if (!user) return undefined;
+    window.addEventListener('aangan:push', load);
+    return () => window.removeEventListener('aangan:push', load);
+  }, [user, load]);
 
   // Signed out: the prototype's empty box (V.notes with nothing yet), with a quiet way to log in.
   if (!user) {
@@ -80,6 +87,7 @@ export default function Notifications() {
       <div className="ag-main">
         <PageHead eyebrow={t('ui.notes.eyebrow', 'Updates')} title={t('notes.title')} />
         <GetAppCard />
+        <PushCard />
         {unread && (
           <Button size="sm" icon={<Checks />} className="self-start" onClick={markAll} data-testid="notes-read-all">{t('notes.read_all')}</Button>
         )}
@@ -115,5 +123,76 @@ export default function Notifications() {
         )}
       </div>
     </div>
+  );
+}
+
+/**
+ * Notifications in this browser (src/lib/webPush.ts), under the Get-the-app card and built like it.
+ * Nothing shows where the browser cannot have them: development builds, a Safari tab on an iPhone
+ * (only a site added to the Home Screen can), or a server without keys.
+ */
+function PushCard() {
+  const { t } = useTranslation();
+  const [state, setState] = useState<PushState>('unsupported');
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState<'on' | 'off' | null>(null);
+  // After a toggle the button is replaced (or gone): keep keyboard focus in the card.
+  const actionRef = useRef<HTMLButtonElement>(null);
+  const titleRef = useRef<HTMLElement>(null);
+  const [refocus, setRefocus] = useState(false);
+  useEffect(() => {
+    if (!refocus || busy) return;
+    setRefocus(false);
+    (actionRef.current ?? titleRef.current)?.focus();
+  }, [refocus, busy, state]);
+  useEffect(() => {
+    let live = true;
+    pushState().then((s) => { if (live) setState(s); }).catch(() => {});
+    return () => { live = false; };
+  }, []);
+
+  if (state === 'unsupported') return null;
+
+  const run = async (which: 'on' | 'off') => {
+    setBusy(true);
+    setFailed(null);
+    try {
+      setState(await (which === 'on' ? turnOnPush() : turnOffPush()));
+    } catch {
+      setFailed(which);
+    } finally {
+      setBusy(false);
+      setRefocus(true);
+    }
+  };
+
+  const text = {
+    off: [t('ui.notes.push_off_h', 'Get notified in this browser'), t('ui.notes.push_off_s', 'Booking requests and replies, as they happen.')],
+    on: [t('ui.notes.push_on_h', 'Notifications are on in this browser'), t('ui.notes.push_on_s', 'Turn them off here or in your browser settings.')],
+    denied: [t('ui.notes.push_denied_h', 'Notifications are blocked'), t('ui.notes.push_denied_s', 'Allow notifications for this site in your browser settings, then come back.')],
+  }[state];
+
+  return (
+    <Box className="!flex-row items-center !gap-3.5" data-testid="notes-push" data-state={state}>
+      <MenuIcon><Icon name="bell" /></MenuIcon>
+      <span className="min-w-0 flex-1">
+        <b ref={titleRef} tabIndex={-1} className="block font-medium text-[var(--ink-strong)]">{text[0]}</b>
+        <span className="ag-small" aria-live="polite">
+          {failed === 'on' ? t('ui.notes.push_failed', 'Could not turn them on. Try again.')
+            : failed === 'off' ? t('ui.notes.push_off_failed', 'Could not turn them off. Try again.')
+              : text[1]}
+        </span>
+      </span>
+      {state === 'off' && (
+        <Button size="sm" icon={<Icon name="bell" />} ref={actionRef} onClick={() => run('on')} disabled={busy} className="flex-none" data-testid="notes-push-on">
+          {t('ui.notes.push_on', 'Turn on')}
+        </Button>
+      )}
+      {state === 'on' && (
+        <Button size="sm" variant="text" ref={actionRef} onClick={() => run('off')} disabled={busy} className="flex-none" data-testid="notes-push-off">
+          {t('ui.notes.push_off', 'Turn off')}
+        </Button>
+      )}
+    </Box>
   );
 }

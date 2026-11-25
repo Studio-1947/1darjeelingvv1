@@ -11,6 +11,8 @@ import App from "@/App";
 import { applyTheme, storedTheme } from "@/lib/theme";
 
 import * as serviceWorkerRegistration from "@/serviceWorkerRegistration";
+// Catches Chrome's one-time install offer at start, for the Get-the-app sheet.
+import "@/lib/installPrompt";
 
 // Paint the chosen theme colour before the first render, so there is no flash of the default red.
 applyTheme(storedTheme());

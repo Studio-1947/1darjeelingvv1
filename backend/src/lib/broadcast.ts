@@ -6,13 +6,14 @@ import { log } from '../config';
 import { HOST_TYPES } from './demoData';
 import { phoneKey } from './phone';
 import { sendPushMessages, tokensFor } from './push';
+import { sendWebPushMessages, webSubscriptionsFor } from './webPush';
 
 /**
  * Messages the team sends from the admin panel's Notifications page.
  *
  * One send writes a row to each recipient's Activity list (kind 'announcement', so it is there
- * even with phone notifications off or on the website) and pushes it to every phone they have
- * signed in on. The phone pushes go out after the request returns; the broadcast row records how
+ * even with phone notifications off) and pushes it to every phone they have signed in on and
+ * every browser they turned notifications on in. The phone pushes go out after the request returns; the broadcast row records how
  * many went, for the history list.
  */
 
@@ -106,11 +107,15 @@ export async function resolveAudience(who: Pick<BroadcastInput, 'audience' | 'bu
   return rows.map((r) => r.id);
 }
 
-/** How many people, and how many of their phones can get a push. */
+/**
+ * How many people, and how many of their devices can get a push: phones with the app, and
+ * browsers with notifications on. `with_app` counts the people reachable either way.
+ */
 export async function countAudience(who: Pick<BroadcastInput, 'audience' | 'businessType' | 'phone'>) {
   const ids = await resolveAudience(who);
-  const tokens = await tokensFor(ids);
-  return { people: ids.length, devices: tokens.length, with_app: new Set(tokens.map((t) => t.userId)).size };
+  const [tokens, subs] = await Promise.all([tokensFor(ids), webSubscriptionsFor(ids)]);
+  const reachable = new Set([...tokens.map((t) => t.userId), ...subs.map((s) => s.userId)]);
+  return { people: ids.length, devices: tokens.length + subs.length, phones: tokens.length, browsers: subs.length, with_app: reachable.size };
 }
 
 export type BroadcastRow = typeof schema.broadcasts.$inferSelect;
@@ -157,18 +162,17 @@ export async function sendBroadcast(input: BroadcastInput, adminId: string): Pro
 
   const pushes = (async () => {
     try {
-      const tokens = await tokensFor(ids);
-      const res = await sendPushMessages(
-        tokens.map((t) => ({
-          to: t.token,
-          content: {
-            title: input.title,
-            body: input.body,
-            data: { kind: 'announcement', refId: id, link: input.link, notificationId: noteIds.get(t.userId) },
-          },
-        })),
-        `broadcast ${id}`
-      );
+      const content = (userId: string) => ({
+        title: input.title,
+        body: input.body,
+        data: { kind: 'announcement', refId: id, link: input.link, notificationId: noteIds.get(userId) },
+      });
+      const [tokens, subs] = await Promise.all([tokensFor(ids), webSubscriptionsFor(ids)]);
+      const [phones, browsers] = await Promise.all([
+        sendPushMessages(tokens.map((t) => ({ to: t.token, content: content(t.userId) })), `broadcast ${id}`),
+        sendWebPushMessages(subs.map((s) => ({ to: s, content: content(s.userId) })), `broadcast ${id}`),
+      ]);
+      const res = { devices: phones.devices + browsers.devices, ok: phones.ok + browsers.ok, failed: phones.failed + browsers.failed };
       await db.update(schema.broadcasts)
         .set({ devices: res.devices, pushed: res.ok, pushFailed: res.failed, status: 'sent', finishedAt: new Date().toISOString() })
         .where(eq(schema.broadcasts.id, id));

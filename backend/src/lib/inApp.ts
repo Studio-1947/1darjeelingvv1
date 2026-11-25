@@ -13,7 +13,9 @@ import { hostUserIds } from './hostAccess';
  */
 export async function addInAppNotification(
   userId: string | null | undefined,
-  n: { kind: string; title: string; body: string; refId?: string | null; msg?: { key: string; params?: Record<string, string | number> } }
+  n: { kind: string; title: string; body: string; refId?: string | null; msg?: { key: string; params?: Record<string, string | number> } },
+  /** `host`: it is about the person's business, so a tap on the website opens the host side. */
+  opts: { host?: boolean } = {}
 ): Promise<void> {
   if (!userId) return;
   try {
@@ -31,7 +33,7 @@ export async function addInAppNotification(
     });
     // The same message to the person's phones. Not awaited: a push is a courtesy, and the request
     // that caused it (a booking, a payment) should not wait on Expo's servers.
-    void sendPushToUser(userId, { title: n.title, body: n.body, data: { kind: n.kind, refId: n.refId ?? null, notificationId: id } });
+    void sendPushToUser(userId, { title: n.title, body: n.body, data: { kind: n.kind, refId: n.refId ?? null, notificationId: id, ...(opts.host ? { host: true } : {}) } });
   } catch (err) {
     log.error(`[inapp] could not record "${n.kind}" for user ${userId}: ${(err as Error)?.message || err}`);
   }
@@ -74,5 +76,5 @@ export async function addHostNotification(
     const single = await resolveHostUserId(listingProviderId);
     ids = single ? [single] : [];
   }
-  for (const id of ids) await addInAppNotification(id, n);
+  for (const id of ids) await addInAppNotification(id, n, { host: true });
 }

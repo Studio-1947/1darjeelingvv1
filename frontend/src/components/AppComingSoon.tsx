@@ -5,11 +5,13 @@ import { X } from '@phosphor-icons/react';
 import { Box, Button, ButtonA, IconButton, Status } from '@/components/ag';
 import { Icon } from '@/components/ag/Icon';
 import { APP_STORE_URLS } from '@/constants/app';
+import { canPromptInstall, isStandalone, justInstalled, onInstallChange, promptInstall } from '@/lib/installPrompt';
 
 /*
  * Get the app: the aangan app for Android and iPhone is on its way. Each platform shows "Coming soon"
  * until its store link is set in constants/app.ts, then a Download button to that store.
- * (This used to offer installing the website from the browser; that is not the app, so it is gone.)
+ * Until then the sheet also shows how to add the website to the home screen, for this phone only
+ * (InstallSteps): one Install button where the browser offers it, otherwise the steps by hand.
  */
 
 export type Platform = 'android' | 'ios';
@@ -80,6 +82,7 @@ export default function AppComingSoon({ open, onClose }: { open: boolean; onClos
   // The person's own phone first.
   if (mine === 'ios') rows.reverse();
   const anyLive = rows.some((r) => APP_STORE_URLS[r.key]);
+  const allLive = rows.every((r) => APP_STORE_URLS[r.key]);
 
   return createPortal(
     <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center sm:p-4" role="presentation" data-testid="app-coming-soon">
@@ -122,11 +125,82 @@ export default function AppComingSoon({ open, onClose }: { open: boolean; onClos
           })}
         </ul>
 
+        {/* Both stores live: the real app, and nothing to add by hand. */}
+        {!allLive && <InstallSteps platform={mine} />}
+
         <Button variant="primary" block center className="mt-4" onClick={onClose} data-testid="app-coming-soon-ok">
           {t('appsoon.ok', 'OK')}
         </Button>
       </div>
     </div>,
     document.body,
+  );
+}
+
+/**
+ * Add aangan to the home screen now, for the phone this is: an iPhone gets the Safari steps, an
+ * Android phone one Install button where Chrome offers it (otherwise the Chrome steps), a computer
+ * the Install button or both sets. Inside the installed app it just says so.
+ */
+function InstallSteps({ platform }: { platform: Platform | null }) {
+  const { t } = useTranslation();
+  const [, redraw] = React.useReducer((n: number) => n + 1, 0);
+  React.useEffect(() => onInstallChange(redraw), []);
+
+  const steps = (key: 'ios' | 'and', title: string | null, lines: string[]) => (
+    <div className="flex flex-col gap-3" data-testid={`app-steps-${key}`}>
+      {title && <h4 className="m-0 font-medium text-[var(--ink-strong)]">{title}</h4>}
+      <ol className="ag-host-track">
+        {lines.map((line, i) => (
+          <li key={i}>
+            <span className="d" aria-hidden="true">{i + 1}</span>
+            <span className="min-w-0"><b>{line}</b></span>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+  const ios = (title: boolean) => steps('ios', title ? t('pwa.ios', 'On iPhone') : null, [
+    t('pwa.ios1', 'Open this page in Safari.'),
+    t('pwa.ios2', 'Tap the Share button (the square with an arrow).'),
+    t('pwa.ios3', 'Tap "Add to Home Screen", then Add.'),
+  ]);
+  const android = (title: boolean) => steps('and', title ? t('pwa.and', 'On Android') : null, [
+    t('pwa.and1', 'Open this page in Chrome.'),
+    t('pwa.and2', 'Tap the three dots at the top right.'),
+    t('pwa.and3', 'Tap "Install app" or "Add to Home screen".'),
+  ]);
+
+  let body: React.ReactNode;
+  const done = isStandalone() || justInstalled();
+  if (isStandalone()) {
+    body = <Status tone="ok" data-testid="app-in-app"><Icon name="check" /> {t('pwa.inapp', 'You are using the installed app.')}</Status>;
+  } else if (justInstalled()) {
+    body = <Status tone="ok" data-testid="app-installed"><Icon name="check" /> {t('pwa.done', 'Installed. Open aangan from your home screen.')}</Status>;
+  } else if (canPromptInstall()) {
+    body = (
+      <Button variant="primary" block center icon={<Icon name="download" />} onClick={promptInstall} data-testid="app-install">
+        {t('pwa.btn', 'Install app')}
+      </Button>
+    );
+  } else if (platform === 'ios') {
+    body = (
+      <>
+        {ios(false)}
+        <p className="ag-small m-0">{t('pwa.ios_push', 'Then open aangan from your Home Screen to turn on notifications.')}</p>
+      </>
+    );
+  } else if (platform === 'android') {
+    body = android(false);
+  } else {
+    body = <>{android(true)}{ios(true)}</>;
+  }
+
+  return (
+    <section className="mt-4 flex flex-col gap-3 text-left" aria-labelledby="app-install-title" data-testid="app-install-steps">
+      <h3 id="app-install-title" className="m-0 font-medium text-[var(--ink-strong)]">{t('pwa.now', 'Use it as an app today')}</h3>
+      {body}
+      {!done && <p className="ag-small m-0">{t('pwa.size', 'Under 1 MB to install. No app store needed.')}</p>}
+    </section>
   );
 }

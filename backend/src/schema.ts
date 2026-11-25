@@ -106,6 +106,23 @@ export const pushTokens = pgTable('push_tokens', {
 }));
 
 /**
+ * Browsers that turned on notifications on the website, one row per browser (a Web Push
+ * subscription). lib/webPush.ts sends the same notifications to them as lib/push.ts sends to phones.
+ * The endpoint is the push service's address for that browser; p256dh and auth are its keys.
+ */
+export const webPushSubscriptions = pgTable('web_push_subscriptions', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  endpoint: text('endpoint').notNull().unique(),
+  p256dh: text('p256dh').notNull(),
+  auth: text('auth').notNull(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+}, (t) => ({
+  userIdx: index('web_push_subscriptions_user_id_idx').on(t.userId),
+}));
+
+/**
  * Who invited whom, and what it bought them.
  *
  * One row per successful referral, written once at the moment the invited account is created.

@@ -2,6 +2,7 @@
 import { clientsClaim } from 'workbox-core';
 import { createHandlerBoundToURL, precacheAndRoute } from 'workbox-precaching';
 import { registerRoute } from 'workbox-routing';
+import { noteTarget } from './lib/notificationLink';
 
 declare const self: ServiceWorkerGlobalScope;
 
@@ -77,4 +78,63 @@ self.addEventListener('message', (event: ExtendableMessageEvent) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
+});
+
+/**
+ * Notifications, for people who turned them on (Notifications page, src/lib/webPush.ts).
+ *
+ * The server (backend/src/lib/webPush.ts) sends { title, body, data }, where data is what the
+ * in-app row carries: kind, refId, notificationId, a team message's link, and host when it is about
+ * the person's business. Every push must show a notification: browsers revoke the permission of
+ * sites that receive pushes silently.
+ */
+type PushData = { kind?: string; refId?: string | null; notificationId?: string; link?: string | null; host?: boolean };
+
+self.addEventListener('push', (event: PushEvent) => {
+  let msg: { title?: string; body?: string; data?: PushData } = {};
+  try {
+    msg = event.data?.json() ?? {};
+  } catch {
+    msg = { body: event.data?.text() };
+  }
+  const data = msg.data ?? {};
+  event.waitUntil((async () => {
+    await self.registration.showNotification(msg.title || 'aangan', {
+      body: msg.body || '',
+      icon: '/logo192.png',
+      // One notice per in-app row: a repeat replaces rather than stacks.
+      tag: data.notificationId,
+      data,
+    });
+    // Open pages refresh their bell count (PushBridge).
+    const wins = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    wins.forEach((w) => w.postMessage({ type: 'aangan:push' }));
+  })());
+});
+
+self.addEventListener('notificationclick', (event: NotificationEvent) => {
+  event.notification.close();
+  const data: PushData = event.notification.data ?? {};
+  const target = noteTarget({ kind: data.kind, ref_id: data.refId ?? null, link: data.link ?? null }, !!data.host);
+  event.waitUntil((async () => {
+    if (target?.kind === 'external') {
+      await self.clients.openWindow(target.href);
+      return;
+    }
+    const to = target?.kind === 'route' ? target.to : '/notifications';
+    const message = { type: 'aangan:push-open', to, id: data.notificationId ?? null, host: !!data.host };
+    // A tab of the site already open: bring it forward and let the app route inside it.
+    const wins = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    const win = wins.find((w) => new URL(w.url).origin === self.location.origin);
+    if (win) {
+      await win.focus().catch(() => undefined);
+      win.postMessage(message);
+      return;
+    }
+    // None open: start one there; PushBridge reads the note id off the address and marks it read.
+    const url = new URL(to, self.location.origin);
+    if (data.notificationId) url.searchParams.set('push_note', data.notificationId);
+    if (data.host) url.searchParams.set('push_host', '1');
+    await self.clients.openWindow(url.href);
+  })());
 });

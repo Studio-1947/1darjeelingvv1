@@ -9,6 +9,7 @@ import { FavoritesProvider } from '@/context/FavoritesContext';
 import PageErrorBoundary from '@/components/PageErrorBoundary';
 import Layout from '@/components/Layout';
 import ScrollToTop from '@/components/ScrollToTop';
+import PushBridge from '@/components/PushBridge';
 import { LoginGateProvider } from '@/components/LoginGate';
 import Policies from '@/pages/Policies';
 import { AppStatusGate, useAppStatus } from '@/context/AppStatus'; // TEMPORARY(legal-pause)
@@ -90,6 +91,7 @@ export default function App() {
       <FavoritesProvider>
         <BrowserRouter>
           <ScrollToTop />
+          <PushBridge />
           {/* TEMPORARY(legal-pause): the maintenance screen replaces the whole site while it is on. */}
           <AppStatusGate>
           <LoginGateProvider>

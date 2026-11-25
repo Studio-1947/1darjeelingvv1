@@ -33,7 +33,7 @@ type Broadcast = {
   created_at: string;
 };
 
-type Reach = { people: number; devices: number; with_app: number };
+type Reach = { people: number; devices: number; phones?: number; browsers?: number; with_app: number };
 
 const TITLE_MAX = 65;
 const BODY_MAX = 240;
@@ -325,7 +325,7 @@ export default function PushNotifications() {
                   : reach ? (
                     <span>
                       Reaches <b className="text-ink">{reach.people} {reach.people === 1 ? 'person' : 'people'}</b>
-                      {' · '}{reach.with_app} with the app and notifications on ({reach.devices} {reach.devices === 1 ? 'phone' : 'phones'})
+                      {' · '}{reach.with_app} with notifications on ({reach.phones ?? reach.devices} {(reach.phones ?? reach.devices) === 1 ? 'phone' : 'phones'}, {reach.browsers ?? 0} {reach.browsers === 1 ? 'browser' : 'browsers'})
                     </span>
                   ) : audience === 'person' ? <span>Type a number to find the person</span> : null}
             </div>
@@ -394,7 +394,7 @@ export default function PushNotifications() {
                   Send “{title.trim()}” to {reach?.people} {reach?.people === 1 ? 'person' : 'people'} ({AUDIENCE_LABEL({ ...who, business_type: who.business_type || null, phone: who.phone || null })})?
                 </div>
                 <p className="text-xs text-ink-soft mt-1">
-                  {reach?.devices || 0} {reach?.devices === 1 ? 'phone' : 'phones'} will buzz. Tapping it opens: {linkChoice === 'url' ? link : linkLabel(linkChoice || null)}. A sent message cannot be taken back.
+                  {reach?.devices || 0} {reach?.devices === 1 ? 'device' : 'devices'} (phones and browsers) will get it. Tapping it opens: {linkChoice === 'url' ? link : linkLabel(linkChoice || null)}. A sent message cannot be taken back.
                 </p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   <button type="button" onClick={send} disabled={sending}
@@ -452,7 +452,7 @@ export default function PushNotifications() {
                 </div>
                 <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
                   <Stat label="People" value={b.recipients} />
-                  <Stat label="Phones reached" value={b.status === 'sending' ? '…' : `${b.pushed}${b.devices ? ` of ${b.devices}` : ''}`} warn={b.push_failed > 0 ? `${b.push_failed} failed` : ''} />
+                  <Stat label="Devices reached" value={b.status === 'sending' ? '…' : `${b.pushed}${b.devices ? ` of ${b.devices}` : ''}`} warn={b.push_failed > 0 ? `${b.push_failed} failed` : ''} />
                   <Stat label="Opened" value={b.opened} />
                   <Stat label="Open rate" value={pct(b.opened, b.recipients)} />
                 </div>

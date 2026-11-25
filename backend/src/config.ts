@@ -538,6 +538,22 @@ export const PUSH_ENABLED =
   APP_ENV !== 'test' && process.env.PUSH_ENABLED?.trim().toLowerCase() !== 'false';
 export const EXPO_ACCESS_TOKEN = process.env.EXPO_ACCESS_TOKEN?.trim() || '';
 
+// ── Push notifications (website / PWA) ───────────────────────────────────
+// The same notifications, to browsers that turned them on (lib/webPush.ts). Needs a VAPID key pair,
+// made once with `npx web-push generate-vapid-keys` and never changed: a new pair silently cuts off
+// every browser that subscribed with the old one. VAPID_SUBJECT is a mailto: or https: address push
+// services can reach the team at. Without the keys the website simply does not offer notifications.
+export const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY?.trim() || '';
+export const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY?.trim() || '';
+export const VAPID_SUBJECT = process.env.VAPID_SUBJECT?.trim() || 'https://aanganerp.in';
+/** Keys present: the website offers notifications and keeps subscriptions. */
+export const WEB_PUSH_CONFIGURED = Boolean(VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY);
+/** And they are actually sent (never under APP_ENV=test, or with PUSH_ENABLED=false). */
+export const WEB_PUSH_ENABLED = PUSH_ENABLED && WEB_PUSH_CONFIGURED;
+if (IS_PROD && !WEB_PUSH_CONFIGURED) {
+  log.warn('[config] VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY not set: the website will not offer push notifications');
+}
+
 // ── Sign in with Apple ────────────────────────────────────────────────────
 // The token's audience: the iOS bundle id for the app, plus a Services ID if the website ever
 // offers Apple sign-in. Required by App Store guideline 4.8 because the app offers Google sign-in.
@@ -549,5 +565,5 @@ export const APPLE_AUDIENCES = (process.env.APPLE_CLIENT_IDS || 'io.aangan.app')
 
 log.info(
   `[config] notification channels  whatsapp/sms: ${NOTIFY_BOOKINGS ? 'on' : 'off'}, ` +
-  `email: ${NOTIFY_EMAIL ? 'on' : 'off (SMTP_HOST not set)'}, push: ${PUSH_ENABLED ? 'on' : 'off'}`
+  `email: ${NOTIFY_EMAIL ? 'on' : 'off (SMTP_HOST not set)'}, push: ${PUSH_ENABLED ? 'on' : 'off'}, web push: ${WEB_PUSH_ENABLED ? 'on' : 'off'}`
 );
