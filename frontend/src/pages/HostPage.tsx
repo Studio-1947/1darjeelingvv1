@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, Navigate, useLocation, useParams } from 'react-router-dom';
 import { Icon } from '@/components/ag/Icon';
-import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import api from '@/lib/api';
 import Seo from '@/components/Seo';
@@ -79,14 +78,6 @@ export default function HostPage() {
     if (!first || !requireAuth('save')) return;
     toggle(first.id).catch(() => {});
   };
-  const share = async () => {
-    const text = t('ui.hostPage.share_text', { name: page.name, url });
-    try {
-      if (navigator.share) await navigator.share({ title: page.name, text, url });
-      else { await navigator.clipboard.writeText(url); toast.success(t('ui.hostPage.link_copied')); }
-    } catch { /* closed */ }
-  };
-
   return (
     // The whole page in the business's own colour (profile.theme), when the host picked one.
     <div className="ag-wrap ag-listing" style={themeVars(page.theme, colourMode)}>
@@ -142,10 +133,7 @@ export default function HostPage() {
                   )}
                 </>
               )}
-              <button type="button" className="ag-listing-rowic" onClick={share} data-testid="host-page-share"
-                aria-label={t('ui.hostPage.share')} title={t('ui.hostPage.share')}>
-                <Icon name="share" />
-              </button>
+              {/* Share and Copy sit on the address pill above. */}
             </div>
           )}
         />

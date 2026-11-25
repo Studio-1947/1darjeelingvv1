@@ -40,7 +40,7 @@ function dayPart(hour = new Date().getHours()): 'morning' | 'afternoon' | 'eveni
  * The business dashboard, as the prototype's simple dashboard (dash.js): who and where, the status,
  * "Your listings" cards (photo, type, price, the yearly pass, Website / Edit / Bookings /
  * Verification and a Taking bookings switch), "Business overview" figures, the business-wide
- * Taking bookings switch, the next step, WhatsApp help, then share and Switch to Traveller.
+ * Taking bookings switch, the next step, WhatsApp help, then share (Switch to Traveller is at the top, by the status).
  * Bookings and Documents open as their own screens with "Back to overview" (S.bz.full).
  */
 function ProviderDashboardPage() {
@@ -477,6 +477,8 @@ function ProviderDashboardPage() {
             {live ? t('host.live', 'Live on aangan') : !active ? t('provider.pending') : t('provider.pending_review')}
           </Status>
           {kycProfile?.kyc_status === 'verified' && <VerifiedBadge size="md" />}
+          {/* At the top, so a host who wants to book a trip themselves finds it straight away. */}
+          <Button go size="sm" className="ml-auto" onClick={toTraveller} data-testid="switch-to-traveller">{t('pd.switch_traveller')}</Button>
         </p>
 
         <section className="ag-host-sec">
@@ -595,7 +597,6 @@ function ProviderDashboardPage() {
               </span>
             </div>
           )}
-          <Button go onClick={toTraveller}>{t('pd.switch_traveller')}</Button>
         </div>
       </div>
 
