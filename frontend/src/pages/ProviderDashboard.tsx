@@ -27,6 +27,13 @@ type View = 'main' | 'bookings' | 'documents';
 const TGSEEN = 'ag-host-tgseen';
 const HELP_WA = '919093277919';
 
+/** Morning 5–11, afternoon 12–16, evening otherwise ("Good night" is a goodbye, so late hours say evening). */
+function dayPart(hour = new Date().getHours()): 'morning' | 'afternoon' | 'evening' {
+  if (hour >= 5 && hour < 12) return 'morning';
+  if (hour >= 12 && hour < 17) return 'afternoon';
+  return 'evening';
+}
+
 /**
  * The business dashboard, as the prototype's simple dashboard (dash.js): who and where, the status,
  * "Your listings" cards (photo, type, price, the yearly pass, Website / Edit / Bookings /
@@ -418,6 +425,9 @@ function ProviderDashboardPage() {
     try { await navigator.clipboard.writeText(pageUrl); toast.success(t('ui.hostExtras.link_copied')); } catch { /* ignore */ }
   };
 
+  // Greets the host by first name, by the time on their own device. No name, no greeting.
+  const greetName = String(provider.extras?.host_name || user?.name || '').trim().split(/\s+/)[0] || '';
+
   // The next step: live, the live host whose profile still has gaps, or the verification steps.
   let nextStep: React.ReactNode = null;
   if (provider.approval_pending && kycProfile) {
@@ -457,7 +467,8 @@ function ProviderDashboardPage() {
   return (
     <div className="ag-wrap">
       <div className="ag-main">
-        <PageHead eyebrow={`${typeLabel(type)} · ${provider.location || ''}`} title={provider.business_name || provider.extras?.host_name} />
+        <PageHead eyebrow={`${typeLabel(type)} · ${provider.location || ''}`} title={provider.business_name || provider.extras?.host_name}
+          sub={greetName ? <span data-testid="host-greeting">{t(`host.greet_${dayPart()}`, { name: greetName })}</span> : undefined} />
         <p className="ag-host-status flex flex-wrap items-center gap-2">
           {/* Paid but not yet approved reads "Pending review"; listings are still private. */}
           <Status tone={live ? 'ok' : 'pending'} data-testid="provider-status">
