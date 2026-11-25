@@ -42,6 +42,7 @@
   --blush2: #F9D9D5;
   --hairline: #E4E4E4;
   --outline: #B8B8B8;
+  --control-off: #8A8A8A; /* a switch's off track, a radio's ring: 3.45:1 on white (WCAG 1.4.11) */
   --warmline: #F1E2D3;
   --warmshadow: 0 1px 2px rgb(120 60 30 / .06), 0 8px 22px rgb(150 70 40 / .08);
   --shadow-lg: 0 12px 32px rgb(23 23 37 / .12);
@@ -49,7 +50,7 @@
   /* status pairs: always shown next to a visible label */
   --ok: #15803D;      --ok-bg: #E7F7EC;
   --pending: #B45309; --pending-bg: #FFF6E5;
-  --fail: #D92D20;    --fail-bg: #FDECEA;  --fail-line: #F4C7C3;
+  --fail: #B42318;    --fail-bg: #FDECEA;  --fail-line: #F4C7C3;   /* #B42318: 5.75:1 on --fail-bg (was #D92D20, 4.22) */
   --star: #E60000;
 
   /* shape */
@@ -81,6 +82,7 @@ html[data-mode="dark"] {
   --ink-faint: #8A8A8A;
   --hairline: #2F2D2A;
   --outline: #3A3734;
+  --control-off: #2F2D2A;
   --warmline: #33302C;
   --r-tint: #2A1B1B;        --r-tint-rgb: 42 27 27;
   --creme-hi: #1F1D1B;
@@ -92,6 +94,7 @@ html[data-mode="dark"] {
   --warmshadow: 0 1px 2px rgb(0 0 0 / .3), 0 8px 22px rgb(0 0 0 / .35);
   --shadow-lg: 0 12px 32px rgb(0 0 0 / .5);
   --ok-bg: #12301F; --pending-bg: #33270F; --fail-bg: #3A1614;
+  --fail: #D92D20;   /* dark keeps the brighter red; the light one is darker for contrast */
   color-scheme: dark;
 }
 
@@ -161,6 +164,8 @@ svg.i { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-widt
   .ag-btn.primary .ag-go { width: 40px; height: 40px; background: #fff; border-color: #fff; color: var(--r); }
   .ag-btn.primary:hover .ag-go { background: #fff; color: var(--r-press); }
   .ag-btn.primary:active { background: var(--r-press); border-color: var(--r-press); }
+  /* Hover darkens a filled button (a white wash would lower the label's contrast). */
+  .ag-btn.primary::after { background: #000; }
   .ag-btn.tonal { background: var(--creme2); border-color: var(--creme2); color: var(--ink-strong); }
   .ag-btn.text { height: auto; min-height: 0; padding: 4px 2px; border: 0; background: transparent; color: var(--r); }
   .ag-btn.text::after { display: none; }
@@ -187,7 +192,8 @@ svg.i { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-widt
   .ag-chip.dashed { border-style: dashed; border-color: var(--r); }
   .ag-chip[aria-pressed="true"], .ag-chip[aria-selected="true"], .ag-chip.on { background: var(--r); border-color: var(--r); color: #fff; }
   .ag-chip[aria-pressed="true"] svg, .ag-chip[aria-selected="true"] svg, .ag-chip.on svg { color: #fff; }
-  .ag-chip .n { padding: 0 6px; border-radius: 8px; background: rgb(255 255 255 / .25); font-size: 12px; }
+  .ag-chip .n { padding: 0 6px; border-radius: 8px; background: var(--soft); color: var(--ink-strong); font-size: 12px; }
+  .ag-chip[aria-pressed="true"] .n, .ag-chip[aria-selected="true"] .n, .ag-chip.on .n { background: #fff; color: var(--r); }
 
   /* ---------- fields ---------- */
   .ag-field { display: flex; flex-direction: column; gap: 6px; font: 500 14px/20px var(--font); letter-spacing: .1px; color: var(--ink-strong); }
@@ -235,13 +241,13 @@ svg.i { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-widt
   /* segmented toggle (Business / Tourist, tabs inside a page) */
   .ag-seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; padding: 4px; border-radius: var(--pill); background: var(--soft); }
   .ag-seg > button { height: 40px; border: 0; border-radius: var(--pill); background: transparent; color: var(--ink-strong); font: 500 14px/20px var(--font); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 0 16px; white-space: nowrap; }
-  .ag-seg > button[aria-selected="true"] { background: var(--surface); color: var(--r); box-shadow: 0 2px 8px rgb(23 23 37 / .08); }
+  .ag-seg > button[aria-selected="true"] { background: var(--surface); color: var(--r); box-shadow: inset 0 0 0 1.5px var(--r), 0 2px 8px rgb(23 23 37 / .08); }
 
   /* status and tags */
   .ag-status { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 8px; font: 500 12px/16px var(--font); letter-spacing: .5px; background: var(--pending-bg); color: var(--pending); }
   .ag-status.ok { background: var(--ok-bg); color: var(--ok); }
   .ag-status.no { background: var(--fail-bg); color: var(--fail); }
-  .ag-status.info { background: var(--r-tint); color: var(--r); }
+  .ag-status.info { background: var(--r-tint); color: var(--r-press); }
 
   /* ---------- one-question-per-screen flows ---------- */
   .ag-steps { display: flex; gap: 6px; }
@@ -254,7 +260,7 @@ svg.i { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-widt
   .ag-option > svg { width: 24px; height: 24px; color: var(--r); flex: none; }
   .ag-option b { display: block; font-weight: 500; }
   .ag-option .ag-small { display: block; font-size: 13px; line-height: 18px; }
-  .ag-option .dot { margin-left: auto; width: 22px; height: 22px; flex: none; border-radius: 50%; border: 2px solid var(--outline); display: grid; place-items: center; color: #fff; }
+  .ag-option .dot { margin-left: auto; width: 22px; height: 22px; flex: none; border-radius: 50%; border: 2px solid var(--control-off); display: grid; place-items: center; color: #fff; }
   .ag-option .dot svg { width: 13px; height: 13px; }
   .ag-option[aria-pressed="true"], .ag-option[aria-checked="true"] { border-color: var(--r); background: var(--r-tint); }
   .ag-option[aria-pressed="true"] .dot, .ag-option[aria-checked="true"] .dot { background: var(--r); border-color: var(--r); }
@@ -285,7 +291,7 @@ svg.i { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-widt
   .ag-loginbtn { height: 40px; display: inline-flex; align-items: center; gap: 4px; padding: 0 12px 0 16px; border-radius: var(--pill); border: 0; background: var(--r); color: var(--on-r); font: 500 14px/20px var(--font); white-space: nowrap; text-decoration: none; cursor: pointer; }
   .ag-tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; width: 100%; max-width: var(--wmax); margin-inline: auto; background: rgb(var(--page-rgb) / .95); border-top: 1px solid var(--hairline); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); padding: 0 8px env(safe-area-inset-bottom, 0px); }
   .ag-tabbar .ag-wrap { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; padding-inline: 0; }
-  .ag-tab { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; height: 60px; padding: 6px 2px; border: 0; background: transparent; color: var(--ink-faint); font: 500 12px/16px var(--font); letter-spacing: .5px; text-decoration: none; }
+  .ag-tab { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; height: 60px; padding: 6px 2px; border: 0; background: transparent; color: var(--ink-muted); font: 500 12px/16px var(--font); letter-spacing: .5px; text-decoration: none; }
   .ag-tab .ind { position: relative; width: 48px; height: 28px; display: grid; place-items: center; }
   .ag-tab .ind svg { width: 24px; height: 24px; }
   .ag-tab[aria-current="page"] { color: var(--r); }

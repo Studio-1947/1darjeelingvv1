@@ -32,7 +32,7 @@
 .ag-host-badge.warn { background: #F2994A; color: #1b1b1b; }
 .ag-host-tgrow { display: inline-flex; align-items: center; gap: 8px; margin-left: auto; }
 .ag-host-ltoggle { display: inline-flex; align-items: center; cursor: pointer; }
-.ag-host-ltoggle input, .ag-host-switch input { -webkit-appearance: none; appearance: none; position: relative; flex: none; margin: 0; cursor: pointer; background: var(--hairline); transition: background .15s; }
+.ag-host-ltoggle input, .ag-host-switch input { -webkit-appearance: none; appearance: none; position: relative; flex: none; margin: 0; cursor: pointer; background: var(--control-off); transition: background .15s; }
 .ag-host-ltoggle input { width: 40px; height: 24px; border-radius: 12px; }
 .ag-host-ltoggle input::before { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: var(--surface); transition: left .15s; }
 .ag-host-ltoggle input:checked { background: var(--r); }
@@ -80,8 +80,13 @@
 .ag-host-figs .ag-host-stat { cursor: default; }
 
 /* "Taking bookings" switch rows (availbox, profile switches) */
-.ag-host-switch { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 48px; cursor: pointer; }
-.ag-host-switch b { font: 500 16px/24px var(--font); letter-spacing: -.01em; color: var(--ink7); }
+.ag-host-switch { display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 12px; min-height: 48px; cursor: pointer; }
+/* Also a card (.ag-box stacks its children): text on the left taking the room, the switch on the right. */
+.ag-box.ag-host-switch { flex-direction: row; align-items: center; }
+.ag-host-switch > span { flex: 1; min-width: 0; text-align: left; }
+.ag-host-switch > span > b { display: block; font: 500 16px/24px var(--font); letter-spacing: -.01em; color: var(--ink7); }
+/* "On" / "Off" inside the sentence: bold, at the sentence's own size. */
+.ag-host-switch .ag-small b { font: inherit; font-weight: 600; }
 .ag-host-switch .ag-small { display: block; }
 .ag-host-switch input { width: 52px; height: 32px; border-radius: 16px; }
 .ag-host-switch input::after { content: ""; position: absolute; top: 4px; left: 4px; width: 24px; height: 24px; border-radius: 50%; background: var(--surface); transition: transform .15s; }

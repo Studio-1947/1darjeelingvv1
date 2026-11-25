@@ -54,11 +54,37 @@ export function accentOf(key: string): string {
   return (PALETTES.find((p) => p.key === key) || PALETTES.find((p) => p.key === DEFAULT_THEME)!).accent;
 }
 
+const luminance = (hex: string) => {
+  const [r, g, b] = rgbOf(hex).map((v) => { const c = v / 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+};
+/** WCAG contrast ratio of two colours. */
+export const contrast = (a: string, b: string) => {
+  const [x, y] = [luminance(a), luminance(b)].sort((p, q) => q - p);
+  return (x + 0.05) / (y + 0.05);
+};
+
+/**
+ * In light mode, the accent darkened only as far as it takes for text in it (links, tabs, the
+ * selected chip, white labels on a primary button) to read at WCAG AA, 4.5:1, on white and on its own
+ * cards. A colour that already reads is left exactly as it is. Contrast check 2026-11-25: the default
+ * Mitti #947C47 was 4.0:1 on white; it shows as #856F40 in light mode and keeps #947C47 in dark mode,
+ * where the lighter colour is the readable one.
+ */
+export function readableOnLight(accent: string): string {
+  for (let t = 0; t <= 0.6; t += 0.01) {
+    const c = t ? mix(accent, '#0B0A08', t) : accent;
+    if (contrast(c, '#FFFFFF') >= 4.6 && contrast(c, mix(c, '#FFFFFF', 0.955)) >= 4.5) return c;
+  }
+  return mix(accent, '#0B0A08', 0.6);
+}
+
 /**
  * Variables for a non-default theme, derived the way palette.js shades a colour. In dark mode the
  * warm surfaces are the dark ones from aangan.css (html[data-mode=dark]) tinted by the colour instead.
  */
-function varsFor(accent: string, dark = false): Record<string, string> {
+function varsFor(picked: string, dark = false): Record<string, string> {
+  const accent = dark ? picked : readableOnLight(picked);
   const press = mix(accent, '#0B0A08', 0.32);
   const tint = dark ? mix(accent, '#131313', 0.8) : mix(accent, '#FFFFFF', 0.95);
   const cremeHi = dark ? mix(accent, '#1F1D1B', 0.9) : mix(accent, '#FFFFFF', 0.975);
