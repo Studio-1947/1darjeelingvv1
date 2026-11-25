@@ -180,6 +180,18 @@
     "from": "Pickup Location",
     "to": "Drop Destination"
   },
+  "crumb": {
+    "nav": "Breadcrumb",
+    "documents": "Documents",
+    "listing": "Listing",
+    "business": "Business",
+    "plan": "Trip plan",
+    "about": "About",
+    "edit_profile": "Edit profile",
+    "my_listings": "My listings",
+    "onboard": "List your business",
+    "not_found": "Page not found"
+  },
   "common": {
     "price_on_request": "Ask for price",
     "book_now": "Reserve",

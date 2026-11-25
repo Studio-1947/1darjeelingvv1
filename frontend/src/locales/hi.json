@@ -172,6 +172,9 @@
     "from": "पिकअप की जगह",
     "to": "ड्रॉप की जगह"
   },
+  "crumb": {
+    "nav": "Breadcrumb"
+  },
   "common": {
     "price_on_request": "कीमत पूछें",
     "book_now": "आरक्षित करें",

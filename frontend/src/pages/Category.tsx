@@ -15,6 +15,7 @@ import { readTrip, hasTrip, tripSuffix } from '@/lib/tripParams';
 import { formatDay, formatRange } from '@/lib/dates';
 import SearchUnderstood, { type SearchInterpretation } from '@/components/SearchUnderstood';
 import { Box, Button, ButtonLink, Chip, Chips, PageHead, SecHead, Status, cx } from '@/components/ag';
+import { CATEGORY_TITLE } from '@/lib/categoryNames';
 import { Icon } from '@/components/ag/Icon';
 import { ListRow } from '@/components/home/cards';
 import { CatSpotCard, CatStayCard } from '@/components/ListingCard';
@@ -65,16 +66,20 @@ const SPOT_TYPES = new Set(['spot', 'biodiversity']);
 const BOOKABLE = new Set(['homestay', 'driver', 'guide']);
 
 /** Page eyebrow and title per category, in the prototype's words. */
-const HEAD: Record<string, { eyebrow: [string, string]; title: [string, string] }> = {
-  homestay: { eyebrow: ['home.stay_local', 'Stay local'], title: ['home.tile.stays', 'Homestay'] },
-  driver: { eyebrow: ['home.eyebrow_cars', 'Ride local'], title: ['home.tile.cars', 'Car & Driver'] },
-  spot: { eyebrow: ['home.must_visit', 'Must visit'], title: ['home.tile.spots', 'Offbeat Places'] },
-  cafe: { eyebrow: ['home.eyebrow_eat', 'Eat local'], title: ['home.cafes_title', 'Cafes & Restaurants'] },
-  shop: { eyebrow: ['home.eyebrow_shop', 'Shop local'], title: ['home.shops_title', 'Local Shops'] },
-  guide: { eyebrow: ['home.eyebrow_guides', 'Go with a local'], title: ['home.tile.guides', 'Tour Guides'] },
-  event: { eyebrow: ['home.eyebrow_events', 'Celebrate'], title: ['home.tile.events', 'Festivals'] },
-  biodiversity: { eyebrow: ['home.eyebrow_nature', 'Wild side'], title: ['home.nature_title', 'Nature'] },
+const EYEBROW: Record<string, [string, string]> = {
+  homestay: ['home.stay_local', 'Stay local'],
+  driver: ['home.eyebrow_cars', 'Ride local'],
+  spot: ['home.must_visit', 'Must visit'],
+  cafe: ['home.eyebrow_eat', 'Eat local'],
+  shop: ['home.eyebrow_shop', 'Shop local'],
+  guide: ['home.eyebrow_guides', 'Go with a local'],
+  event: ['home.eyebrow_events', 'Celebrate'],
+  biodiversity: ['home.eyebrow_nature', 'Wild side'],
 };
+// Titles live in lib/categoryNames so the breadcrumb names each category the same way.
+const HEAD: Record<string, { eyebrow: [string, string]; title: [string, string] }> = Object.fromEntries(
+  Object.entries(EYEBROW).map(([k, eyebrow]) => [k, { eyebrow, title: CATEGORY_TITLE[k] }]),
+);
 
 /** Where distances on the cards are measured from until the traveller turns on My location. */
 const TOWN = placeFor('darjeeling') as { lat: number; lng: number };

@@ -172,6 +172,9 @@
     "from": "पिकअप गर्ने ठाउँ",
     "to": "झर्ने ठाउँ"
   },
+  "crumb": {
+    "nav": "Breadcrumb"
+  },
   "common": {
     "price_on_request": "मूल्य सोध्नुहोस्",
     "book_now": "बुक गर्नुहोस्",

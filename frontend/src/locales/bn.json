@@ -172,6 +172,9 @@
     "from": "পিকআপের জায়গা",
     "to": "নামার জায়গা"
   },
+  "crumb": {
+    "nav": "Breadcrumb"
+  },
   "common": {
     "price_on_request": "দাম জিজ্ঞেস করুন",
     "book_now": "বুক করুন",

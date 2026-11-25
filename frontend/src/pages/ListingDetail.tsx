@@ -35,6 +35,7 @@ import { roomOpen } from '@/lib/roomFit';
 import { useAuth } from '@/context/AuthContext';
 import { BusinessModeNotice } from '@/components/TravellerOnly';
 import { stayPrice } from '@/lib/stayPrice';
+import { useCrumbTitle } from '@/components/PageBack';
 
 /**
  * Public listing page, laid out as the prototype's item view: photo, photo strip, name, place,
@@ -51,6 +52,7 @@ export default function ListingDetail() {
   const { hash } = useLocation();
   const [params, setParams] = useSearchParams();
   const [item, setItem] = useState(null);
+  useCrumbTitle((item as any)?.title, (item as any)?.type);
   const [loading, setLoading] = useState(true);
   // A host looking at their own listing: 'owner' (their view, booking off) or 'traveller' (what a traveller sees).
   const [viewAs, setViewAs] = useState<'owner' | 'traveller'>('owner');

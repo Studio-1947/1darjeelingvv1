@@ -291,11 +291,6 @@ function ProviderDashboardPage() {
     count: kycItems.filter((c) => c.required).length || (type === 'homestay' || type === 'driver' ? 3 : 2),
   });
 
-  const backBtn = (
-    <Button className="ag-host-back" icon={<Icon name="back" />} onClick={() => open('main')} data-testid="host-back">
-      {t('host.back', 'Back to overview')}
-    </Button>
-  );
 
   // Feedback for the aangan team (board: host dashboard "Feedback"), closed until asked for.
   const feedbackBlock = (
@@ -340,7 +335,6 @@ function ProviderDashboardPage() {
     return (
       <div className="ag-wrap">
         <div className="ag-main">
-          {backBtn}
           <h1 className="ag-host-tabh">{t('host.bookings', 'Bookings')}</h1>
           <p className="ag-small">{t('host.bookings_s', 'Requests from travellers for your listings. Answer within 48 hours.')}</p>
           {listings.length > 1 && (
@@ -411,7 +405,6 @@ function ProviderDashboardPage() {
     return (
       <div className="ag-wrap">
         <div className="ag-main">
-          {backBtn}
           <h1 className="ag-host-tabh">{docsLabel}</h1>
           <p className="ag-small" data-testid="docs-intro">{t('host.docs_s', 'A photo of your ID and a photo of your place. That is all we need to check you.')}</p>
           <KycSection onProfileChange={setKycProfile} />

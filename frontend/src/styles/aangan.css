@@ -115,6 +115,17 @@ svg.i { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-widt
   .ag-pagehead h1 { margin: 0; font: 500 34px/38px var(--font); letter-spacing: -.03em; color: var(--ink7); text-wrap: balance; }
   .ag-sechead { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin: 16px 0 10px; }
   .ag-sechead h2 { margin: 0; font: 500 18px/24px var(--font); letter-spacing: -.01em; color: var(--ink-strong); }
+  /* Breadcrumb (components/PageBack): back arrow to the step above, then Home › … › this page */
+  .ag-crumbs { display: flex; align-items: center; gap: 10px; padding-top: 12px; margin-bottom: -8px; min-width: 0; }
+  .ag-crumbs-back { flex: none; width: 36px; height: 36px; display: grid; place-items: center; border: 1px solid var(--outline); border-radius: 50%; color: var(--ink-strong); background: var(--surface); }
+  .ag-crumbs-back svg { width: 16px; height: 16px; }
+  .ag-crumbs ol { display: flex; align-items: center; min-width: 0; margin: 0; padding: 0; list-style: none; font: 500 14px/20px var(--font); }
+  .ag-crumbs li { display: flex; align-items: center; min-width: 0; flex: none; }
+  .ag-crumbs li:last-child { flex: 0 1 auto; }
+  .ag-crumbs li a { color: var(--r); text-decoration: none; white-space: nowrap; padding-block: 8px; }
+  .ag-crumbs li a:hover { text-decoration: underline; }
+  .ag-crumbs li [aria-current] { color: var(--ink-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ag-crumbs .sep { flex: none; width: 12px; height: 12px; margin-inline: 6px; color: var(--ink-faint); }
   .ag-seeall { border: 0; background: transparent; color: var(--r); font: 600 14px/20px var(--font); padding: 6px 0; white-space: nowrap; cursor: pointer; text-decoration: none; }
   .ag-hero h1 { margin: 0; font: 500 40px/46px var(--font); letter-spacing: -.035em; color: var(--ink7); }
   .ag-hero p { margin: 12px 0 0; max-width: 520px; color: var(--ink7); font: 400 15px/22px var(--font); }
