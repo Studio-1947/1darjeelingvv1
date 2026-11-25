@@ -3192,6 +3192,10 @@
       "starting": "starting"
     },
     "hostPage": {
+      "services_one": "{{count}} service",
+      "services_other": "{{count}} services",
+      "per_night": "/ night",
+      "not_taking": "Not taking bookings",
       "missing_title": "This page is not available",
       "missing_body": "The host may not be taking guests right now.",
       "explore": "Explore aangan",

@@ -437,7 +437,9 @@ router.get('/page/:type/:slug', async (req: Request, res: Response) => {
     return res.status(404).json({ detail: 'Page not found', path: pagePath(provider.businessType, provider.slug) });
   }
   const page = await buildHostPage(provider, viewer);
-  res.json({ ...page, not_live: !hostIsPublic(provider), own });
+  // A listing whose own yearly plan has lapsed is not shown to travellers; its host still sees it.
+  const listings = own ? page.listings : page.listings.filter((l) => l.live);
+  res.json({ ...page, listings, not_live: !hostIsPublic(provider), own });
 });
 
 /**

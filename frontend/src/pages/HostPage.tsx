@@ -139,20 +139,13 @@ export default function HostPage() {
         />
 
         {listings.length > 0 && (
-          <section className="flex flex-col gap-2.5">
-            <h2 className="m-0 text-[18px] leading-6 font-medium text-[var(--ink-strong)]">{t('ui.hostPage.book_with', { name: page.name })}</h2>
-            <div className="grid grid-cols-2 gap-2.5">
-              {listings.map((l: any) => (
-                <Link key={l.id} to={ownerView ? `/provider/listings/${l.id}` : `/listing/${l.id}`} data-testid={`host-page-listing-${l.id}`}
-                  className="relative block aspect-square rounded-[16px] overflow-hidden bg-[var(--creme2)] no-underline">
-                  {l.image && <SmartImg src={l.image} alt="" className="absolute inset-0 w-full h-full object-cover" />}
-                  <span className="absolute inset-x-0 bottom-0 p-2.5 flex flex-col text-white bg-gradient-to-t from-black/70 to-transparent">
-                    <span className="text-[13px] leading-4 font-medium line-clamp-2">{l.title}</span>
-                    {Number(l.price) > 0 && <b className="text-[13px] leading-5 font-semibold">₹{Number(l.price).toLocaleString('en-IN')}</b>}
-                    <span className="mt-0.5 inline-flex items-center gap-1 text-[12px] leading-4">{ownerView ? t('host.edit', 'Edit') : t('ui.hostPage.view_and_book')} <Icon name="arrowne" size={12} /></span>
-                  </span>
-                </Link>
-              ))}
+          <section className="ag-hp-services" data-testid="host-page-services">
+            <div className="ag-hp-svchead">
+              <span className="ag-eyebrow">{t('ui.hostPage.services', { count: listings.length, defaultValue: '{{count}} services' })}</span>
+              <h2>{t('ui.hostPage.book_with', { name: page.name })}</h2>
+            </div>
+            <div className="ag-hp-svcgrid">
+              {listings.map((l: any) => <ServiceCard key={l.id} l={l} ownerView={ownerView} />)}
             </div>
           </section>
         )}
@@ -174,3 +167,45 @@ export default function HostPage() {
     </div>
   );
 }
+
+/**
+ * One service on a host's page: the photo, then what it is (type), its name, place and a short
+ * description, its rating, the price with its unit, whether it is taking bookings, and the action
+ * (View and book; Edit in the host's own view). Board: "Book with … more prominent, with what it is".
+ */
+function ServiceCard({ l, ownerView }: { l: any; ownerView: boolean }) {
+  const { t } = useTranslation();
+  const price = Number(l.price) || 0;
+  const unit = l.type === 'homestay' ? t('ui.hostPage.per_night', '/ night')
+    : (l.type === 'driver' || l.type === 'guide') ? t('common.per_day', '/ day') : '';
+  const to = ownerView ? `/provider/listings/${l.id}` : `/listing/${l.id}`;
+  const paused = l.available === false;
+  return (
+    <Link to={to} className="ag-hp-svc" data-testid={`host-page-listing-${l.id}`}>
+      <span className="pic">
+        {l.image ? <SmartImg src={l.image} alt="" className="h-full w-full object-cover" /> : <Icon name={TYPE_ICON[l.type] || 'home'} />}
+        <span className="type"><Icon name={TYPE_ICON[l.type] || 'home'} />{t(`ob.wz.t_${l.type}`, { defaultValue: l.type })}</span>
+      </span>
+      <span className="body">
+        <b className="name">{l.title}</b>
+        <span className="meta">
+          {l.location && <span className="inline-flex items-center gap-1"><Icon name="pin" size={13} />{l.location}</span>}
+          {l.review_count > 0 && <span className="inline-flex items-center gap-1"><Icon name="star" size={13} className="text-[var(--star)]" />{Number(l.rating).toFixed(1)} ({l.review_count})</span>}
+        </span>
+        {l.description && <span className="desc">{l.description}</span>}
+        <span className="foot">
+          <span className="price">
+            {price > 0 ? <><span className="ag-small">{t('listing.from', 'From')} </span><b>₹{price.toLocaleString('en-IN')}</b>{unit && <span className="ag-small"> {unit}</span>}</> : null}
+          </span>
+          {paused
+            ? <span className="state off">{t('ui.hostPage.not_taking', 'Not taking bookings')}</span>
+            : ownerView && l.live === false ? <span className="state off">{t('host.mcard_lapsed', 'Membership ended')}</span> : null}
+        </span>
+        <span className="cta">{ownerView ? t('host.edit', 'Edit') : t('ui.hostPage.view_and_book')}<Icon name="arrowne" size={14} /></span>
+      </span>
+    </Link>
+  );
+}
+
+/** The type's icon, as the dashboard draws it. */
+const TYPE_ICON: Record<string, any> = { homestay: 'home', driver: 'car', guide: 'trek', cafe: 'cup', shop: 'bag' };
