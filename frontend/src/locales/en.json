@@ -2404,6 +2404,7 @@
     "unblocked": "{{name}} is unblocked."
   },
   "business_gate": {
+    "page_preview_edit": "Your view: edit your page and listings here. Travellers see Ask to book.",
     "not_live": "Only you can see this page. Travellers will see it once your plan is active and your documents are verified.",
     "title": "You're in Business mode",
     "body": "Business mode is for running your own listing. To explore and book places on aangan, switch to Traveller.",
@@ -2412,7 +2413,7 @@
     "preview": "Your own view of this listing. Booking is turned off while you're in Business mode.",
     "view_as": "View as",
     "view_owner": "Your view",
-    "view_traveller": "As a traveller",
+    "view_traveller": "Guest view",
     "preview_traveller": "This is exactly what travellers see. Book now only works for them, not here.",
     "page_preview": "Your own view of your page. Ask to book is hidden here; travellers see it.",
     "page_preview_traveller": "This is exactly what travellers see on your page.",
@@ -3763,6 +3764,8 @@
     }
   },
   "host": {
+    "edit_page": "Edit page",
+    "edit": "Edit",
     "add_more": "Add more listings",
     "add_property": "Add a property",
     "add_vehicle": "Add a vehicle",

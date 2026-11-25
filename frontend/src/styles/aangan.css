@@ -234,7 +234,7 @@ svg.i { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-widt
 
   /* segmented toggle (Business / Tourist, tabs inside a page) */
   .ag-seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; padding: 4px; border-radius: var(--pill); background: var(--soft); }
-  .ag-seg > button { height: 40px; border: 0; border-radius: var(--pill); background: transparent; color: var(--ink-strong); font: 500 14px/20px var(--font); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+  .ag-seg > button { height: 40px; border: 0; border-radius: var(--pill); background: transparent; color: var(--ink-strong); font: 500 14px/20px var(--font); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 0 16px; white-space: nowrap; }
   .ag-seg > button[aria-selected="true"] { background: var(--surface); color: var(--r); box-shadow: 0 2px 8px rgb(23 23 37 / .08); }
 
   /* status and tags */

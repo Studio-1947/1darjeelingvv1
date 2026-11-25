@@ -53,10 +53,17 @@ function trail(t: TFunction, pathname: string, sub: string | null, host: boolean
   if (cat) return [home, here(t(...CATEGORY_TITLE[cat[0]]))];
   if (on('/listing/:id')) {
     const type = named?.type;
-    const parent = type && CATEGORY_PATH[type] && CATEGORY_TITLE[type] ? [{ label: t(...CATEGORY_TITLE[type]), to: CATEGORY_PATH[type] }] : [];
+    const parent = !host && type && CATEGORY_PATH[type] && CATEGORY_TITLE[type] ? [{ label: t(...CATEGORY_TITLE[type]), to: CATEGORY_PATH[type] }] : [];
     return [home, ...parent, here(named?.title || t('crumb.listing', 'Listing'))];
   }
   if (on('/business/:id')) return [home, here(named?.title || t('crumb.business', 'Business'))];
+  // A host's own website page, aanganerp.in/<type>/<name>: under its category for travellers (category
+  // pages are traveller-only, so a host's trail skips that step; the same for a listing above).
+  const site = ['driver', 'homestay', 'cafe', 'shop', 'guide'].find((ty) => on(`/${ty}/:slug`));
+  if (site) {
+    const parent = !host && CATEGORY_PATH[site] && CATEGORY_TITLE[site] ? [{ label: t(...CATEGORY_TITLE[site]), to: CATEGORY_PATH[site] }] : [];
+    return [home, ...parent, here(named?.title || t('crumb.business', 'Business'))];
+  }
   if (on('/provider/listings/:id')) return [account, { label: t('hostProfile.title', 'Business profile'), to: '/provider/profile' }, here(named?.title || t('crumb.listing', 'Listing'))];
   if (on('/plan/:id')) return [feed, { label: t('plans.plan_trip', 'Plan a trip'), to: '/plan' }, here(named?.title || t('crumb.plan', 'Trip plan'))];
 

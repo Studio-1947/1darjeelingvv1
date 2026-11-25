@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { PlayCircle } from '@phosphor-icons/react';
 import { Icon, type IconName } from '@/components/ag/Icon';
 import api from '@/lib/api';
-import { Box, ButtonA, SecHead, Status } from '@/components/ag';
+import { Box, SecHead, Status } from '@/components/ag';
 import { Section, PriceRow, PersonCard, MiniCard } from './primitives';
 import { roomFit, roomOpen } from '@/lib/roomFit';
 
@@ -13,8 +12,6 @@ import { roomFit, roomOpen } from '@/lib/roomFit';
  * facts every host can add about themselves. Each renders nothing when the host left it empty.
  */
 
-/** An uploaded intro video (played here) rather than an older YouTube or Instagram link. */
-const isVideoFile = (url: string) => /\.(mp4|mov|webm)(\?|$)/i.test(url) || /\/videos\//.test(url);
 
 /** A small line with a red icon (seasons, experience, delivery, hours). */
 function Line({ icon, children, testid }: { icon: IconName; children: React.ReactNode; testid?: string }) {
@@ -26,15 +23,14 @@ function Line({ icon, children, testid }: { icon: IconName; children: React.Reac
 }
 
 /**
- * Languages (prototype "Speaks" chips), years of experience and an intro video. Social media links
+ * Languages (prototype "Speaks" chips) and years of experience. Social media links
  * are no longer asked for or shown, so links saved before that are not shown either.
  */
 export function HostFacts({ extras, noLanguages }: { extras: any; noLanguages?: boolean }) {
   const { t } = useTranslation();
   const languages: string[] = !noLanguages && Array.isArray(extras?.languages) ? extras.languages : [];
   const years = Number(extras?.experience_years);
-  const video = typeof extras?.intro_video === 'string' && extras.intro_video ? extras.intro_video : '';
-  if (!languages.length && !(years > 0) && !video) return null;
+  if (!languages.length && !(years > 0)) return null;
   return (
     <div className="flex flex-col gap-3" data-testid="host-facts">
       {languages.length > 0 && (
@@ -44,14 +40,6 @@ export function HostFacts({ extras, noLanguages }: { extras: any; noLanguages?: 
         </div>
       )}
       {years > 0 && <Line icon="badge">{t('profile.experience_years', { count: years })}</Line>}
-      {video && isVideoFile(video) && (
-        <video src={video} controls playsInline preload="metadata" className="w-full rounded-[16px] bg-[var(--ink-strong)] aspect-video" data-testid="host-intro-video" />
-      )}
-      {video && !isVideoFile(video) && (
-        <div className="ag-row">
-          <ButtonA size="sm" href={video} target="_blank" rel="noreferrer" icon={<PlayCircle />}>{t('profile.watch_intro')}</ButtonA>
-        </div>
-      )}
     </div>
   );
 }
@@ -168,13 +156,13 @@ export function PriceListSection({ kind, rows, homeDelivery, capacity = 0, shopK
 
 /**
  * "Meet the owner" for a cafe or a shop: only what the owner filled in on their business profile
- * (no stand-in story), with their languages, experience and intro video.
+ * (no stand-in story), with their languages and experience.
  */
 export function OwnerSection({ item, verified }: { item: any; verified: boolean }) {
   const { t } = useTranslation();
   const e = item.extras || {};
   const name: string = e.host_name || '';
-  const hasAnything = name || e.host_bio || e.host_avatar || e.intro_video || (Array.isArray(e.languages) && e.languages.length) || Number(e.experience_years) > 0;
+  const hasAnything = name || e.host_bio || e.host_avatar || (Array.isArray(e.languages) && e.languages.length) || Number(e.experience_years) > 0;
   if (!hasAnything) return null;
   return (
     <PersonCard testid="detail-owner" title={t('detail.owner_title')} name={name || item.title} photo={e.host_avatar || undefined}
