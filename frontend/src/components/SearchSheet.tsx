@@ -16,6 +16,7 @@ import { noteText } from '@/lib/serverText';
 import { timeAgo } from '@/lib/timeAgo';
 import api from '@/lib/api';
 import { useListingSearch } from '@/hooks/useListingSearch';
+import { useSearchLog } from '@/lib/searchLog';
 
 /* ---------- recent searches (this device only) ---------- */
 
@@ -181,20 +182,26 @@ export default function SearchSheet({ onClose }: { onClose: () => void }) {
 
       {term && !voice.listening && (isHostMode
         ? <HostResults q={term} host={host} noMatch={noMatch} onPick={() => { remember(term); onClose(); }} />
-        : <TravellerResults q={term} noMatch={noMatch} onPick={() => { remember(term); onClose(); }} />)}
+        : <TravellerResults q={term} voice={heardByVoice} noMatch={noMatch} onPick={() => { remember(term); onClose(); }} />)}
     </Sheet>
   );
 }
 
 /* ---------- a traveller: every category, through the smart search ---------- */
 
-function TravellerResults({ q, noMatch, onPick }: { q: string; noMatch: React.ReactNode; onPick: () => void }) {
+function TravellerResults({ q, voice, noMatch, onPick }: { q: string; voice: boolean; noMatch: React.ReactNode; onPick: () => void }) {
   const { t } = useTranslation();
   // The same search as the category pages (hooks/useListingSearch): debounced, cancelled when the
   // words change, cached, the last answer kept while the next loads.
   const sq = useListingSearch(q, { limit: 8 });
   const d = sq.data;
   const state = d ? { q: d.q, items: d.items || [], fallback: !!d.search?.fallback, kind: d.search?.type as string | undefined } : null;
+  // The search log (lib/searchLog.ts): a traveller's settled search and the result opened. A
+  // business's searches of its own bookings are never logged (HostResults has none of this).
+  const searchLog = useSearchLog(state ? {
+    q, surface: 'sheet', source: voice ? 'voice' : 'typed',
+    results: state.fallback ? 0 : (d?.total ?? state.items.length), fallback: state.fallback,
+  } : null, sq.fresh);
 
   // One Latin letter: too little to search on. Say what to do rather than search everything.
   if (!sq.enabled) return <p className="ag-small m-0">{t('search.more_letters', 'Type one more letter to search.')}</p>;
@@ -213,8 +220,8 @@ function TravellerResults({ q, noMatch, onPick }: { q: string; noMatch: React.Re
           <SecHead title={t('search.no_exact_other', 'No exact match. Other {{kind}}:', { kind: t(`categories.${state.kind || 'shop'}`).toLocaleLowerCase() })} className="!mb-0" />
         </>
       )}
-      {state.items.map((it) => (
-        <div key={it.id} onClickCapture={onPick}>
+      {state.items.map((it, i) => (
+        <div key={it.id} onClickCapture={() => { searchLog.opened(it.id, i + 1); onPick(); }}>
           <ListRow it={it} href={`/listing/${it.id}`} testId={`search-sheet-hit-${it.id}`} />
         </div>
       ))}

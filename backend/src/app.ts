@@ -35,6 +35,7 @@ import appVersionRouter from './routes/appVersion';
 import reportsRouter from './routes/reports';
 import interaktWebhookRouter from './routes/interaktWebhook';
 import feedbackRouter from './routes/feedback';
+import searchEventsRouter from './routes/searchEvents';
 import deliveriesRouter from './routes/deliveries';
 import { rateLimiter } from './middleware/rateLimiter';
 import { antiScraper } from './middleware/antiScraper';
@@ -270,6 +271,7 @@ app.use('/api/weather', weatherRouter);
 app.use('/api/notifications', notificationsRouter);
 app.use('/api/promotions', promotionsRouter);
 app.use('/api', feedbackRouter);
+app.use('/api', searchEventsRouter); // The search log: /api/search-events, /api/admin/search-insights
 app.use('/api', placeSuggestionsRouter); // Suggest a place: /api/spots/suggestions, /api/admin/spots/suggestions
 app.use('/api', referralCampaignsRouter); // Admin referral codes and their report: /api/admin/referrals
 app.use('/api/app', appVersionRouter);

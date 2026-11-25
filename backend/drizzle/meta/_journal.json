@@ -309,6 +309,13 @@
       "when": 1795583408617,
       "tag": "0043_search_index",
       "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1795584924770,
+      "tag": "0044_search_events",
+      "breakpoints": true
     }
   ]
 }

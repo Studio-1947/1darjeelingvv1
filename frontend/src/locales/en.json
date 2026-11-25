@@ -607,7 +607,7 @@
   },
   "privacy": {
     "title": "Privacy Policy",
-    "updated": "Last updated: 23 November 2026",
+    "updated": "Last updated: 25 November 2026",
     "email_label": "Email:",
     "phone_label": "Phone:",
     "address_label": "Address:",
@@ -655,7 +655,9 @@
             "items": [
               "Device location, only when you allow it, to show places near you or the weather, or to check a business location. We store a business's verified pin, not travellers' locations.",
               "A push-notification token for your phone, if you allow notifications in the app.",
-              "Usage data through Google Analytics on www.aanganerp.in (pages viewed, approximate location from your IP address, device and browser type), and technical error reports.",
+              "Usage data through Google Analytics on www.aanganerp.in (pages viewed, searches made and results opened, approximate location from your IP address, device and browser type), and technical error reports.",
+              "What you search for on the website: the words you type or say (phone numbers, other long numbers and email addresses are removed first), the category you searched in, how many results it found, which result you opened, and when. It is kept with a random code for that one browser visit, never with your name, phone number, account or IP address, and it is not collected at all if your browser sends a Do Not Track or Global Privacy Control signal. A business’s searches of its own bookings, listings and notifications are never kept.",
+              "Voice search, only when you tap the microphone and allow it: your browser’s own speech recognition turns what you say into text, and your browser’s maker (Google in Chrome, Apple in Safari) handles your voice under its own privacy policy. We receive only the text, never the recording.",
               "Our servers keep standard access logs (IP address, browser, time and page requested) to keep the service secure."
             ]
           }
@@ -670,6 +672,7 @@
           "To take fees and passes, and to issue refunds.",
           "To answer support requests, investigate reports and keep the Platform safe from fraud and abuse.",
           "To understand how the Platform is used and fix problems.",
+          "To improve search, and to find the places and services travellers look for that are not listed yet. Our reports from searches count them (for example, how often a place was searched and not found) and never identify anyone.",
           "To meet our legal obligations, including tax and consumer-protection rules."
         ],
         "note": "We do not sell your personal data, and we do not use it for advertising."
@@ -691,7 +694,7 @@
           "Hosts, when you send them a request: your name, phone number and the details of the request, so they can answer it. Hosts must use these only for your booking.",
           "Travellers, about a host: the public listing, the host's or driver's name and profile photo, and reviews. A homestay, driver or guide's phone number, WhatsApp and social links open only to a traveller whose booking with them is confirmed. Cafés and shops show their numbers publicly.",
           "Other users: your name, profile photo, reviews, posts, comments and trip plans that you choose to publish.",
-          "Our service providers, who process data for us under contract: Interakt and Meta (WhatsApp sign-in codes and booking messages), Razorpay (payments), Expo and Google Firebase (push notifications), Google Analytics (site usage), Sentry (error reports), OpenStreetMap and Open-Meteo (maps, addresses and weather), Google Fonts, and our hosting provider. Voice search uses your browser's speech service (in Chrome, Google's).",
+          "Our service providers, who process data for us under contract: Interakt and Meta (WhatsApp sign-in codes and booking messages), Razorpay (payments), Expo and Google Firebase (push notifications), Google Analytics (site usage and searches), Sentry (error reports), OpenStreetMap and Open-Meteo (maps, addresses and weather), Google Fonts, and our hosting provider. Voice search uses your browser's speech service (in Chrome, Google's).",
           "Authorities, when the law requires it, or to protect someone's safety.",
           "A buyer or successor, if the business is transferred, under this same policy."
         ]
@@ -704,6 +707,7 @@
         "h": "6. How Long We Keep It",
         "items": [
           "Sign-in codes: valid for 10 minutes, and deleted as soon as they are used.",
+          "Searches: 180 days, then deleted automatically. Because they are never linked to your account, they cannot be looked up or deleted with it; they leave when the 180 days are over.",
           "A request saved but never sent is closed after 24 hours. A request the host does not answer closes by itself.",
           "Your account, bookings, payments, reviews and posts: for as long as your account exists. When you delete your account, they are deleted, including verification documents and listings.",
           "Database backups are kept for 14 days and then overwritten, so deleted data leaves the backups within that time."

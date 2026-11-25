@@ -20,6 +20,7 @@ import { ListRow } from '@/components/home/cards';
 import { CatSpotCard, CatStayCard } from '@/components/ListingCard';
 import { typeMatches } from '@/components/home/HomeFilterPanel';
 import { useListingSearch } from '@/hooks/useListingSearch';
+import { useSearchLog } from '@/lib/searchLog';
 import { useAppStatus } from '@/context/AppStatus'; // TEMPORARY(legal-pause)
 
 const TYPE_MAP = {
@@ -482,8 +483,14 @@ function CategoryPage({ typeOverride }: { typeOverride?: string }) {
     return <ListRow key={it.id} it={it} href={listingHref(it.id)} km={near ? it._km : undefined} testId={`grid-tile-${it.id}`} />;
   };
 
+  // A result opened from a search: for the search log (lib/searchLog.ts), with its place in the list.
+  const openedFrom = (list: any[]) => (e: React.MouseEvent) => {
+    const tile = (e.target as HTMLElement).closest('[data-testid^="grid-tile-"]');
+    const id = tile?.getAttribute('data-testid')?.slice('grid-tile-'.length);
+    if (id) searchLog.opened(id, list.findIndex((it) => it.id === id) + 1);
+  };
   const resultsOf = (list: any[]) => (
-    <div className={asRows ? 'flex flex-col gap-2.5' : 'ag-category-grid'} data-testid="category-results">
+    <div className={asRows ? 'flex flex-col gap-2.5' : 'ag-category-grid'} data-testid="category-results" onClickCapture={openedFrom(list)}>
       {list.map((it, i) => (
         <Fragment key={it.id}>
           {i === unlistedFrom && unlistedHeading}
@@ -496,6 +503,17 @@ function CategoryPage({ typeOverride }: { typeOverride?: string }) {
   // Nothing matched what the mic heard: say what we heard, ask if it was right, and offer to speak
   // again or type it (the speech engine often mishears local names - Ghum, Lepchajagat).
   const heardByVoice = !!voiceQuery && voiceQuery === searchQuery.trim();
+
+  // The search log (lib/searchLog.ts): the typed or spoken words once their results have settled,
+  // and the result opened. Anonymous; see the Privacy Policy, 1.5.
+  const searchLog = useSearchLog(searchQuery.trim() ? {
+    q: searchQuery.trim(),
+    type: type || null,
+    surface: 'category',
+    source: heardByVoice ? 'voice' : 'typed',
+    results: noExact ? 0 : results.length,
+    fallback: !!smart?.search?.fallback,
+  } : null, !loading && !smartPending && !smartFailed && (sq.fresh || !sq.enabled));
   const voiceNoMatch = (
     <Box className="ag-category-empty" data-testid="voice-no-results">
       <span className="ag-category-novoice" aria-hidden="true"><Icon name="mic" /></span>

@@ -286,6 +286,36 @@ export const listingSearch = pgTable('listing_search', {
   wordsIdx: index('listing_search_words_gin').using('gin', t.words),
 }));
 
+/**
+ * What travellers search for (routes/searchEvents.ts), for the admin Search insights: the words
+ * (numbers and email addresses removed), where, how many results, and the result opened, if any.
+ * Anonymous by design: `session` is a random code for one browser visit, never a user id, phone or
+ * IP. Deleted after SEARCH_LOG_DAYS (lib/searchEvents.ts sweep). A business's searches of its own
+ * bookings are never sent (they hold guests' names).
+ */
+export const searchEvents = pgTable('search_events', {
+  id: text('id').primaryKey(),
+  session: text('session').notNull(),
+  q: text('q').notNull(),
+  /** The words as search reads them (lower case, no punctuation), to count "Ghum" and "ghum" as one. */
+  qNorm: text('q_norm').notNull(),
+  /** The category page searched on; null for a search across everything. */
+  type: text('type'),
+  /** 'category' (a category or /search page) or 'sheet' (the header search). */
+  surface: text('surface').notNull(),
+  /** 'typed' or 'voice'. */
+  source: text('source').notNull(),
+  results: integer('results').notNull(),
+  /** No listing matched; the kind asked for was listed instead (lib/search.ts fallback). */
+  fallback: boolean('fallback').default(false).notNull(),
+  openedListingId: text('opened_listing_id'),
+  /** 1 for the first result. */
+  openedRank: integer('opened_rank'),
+  createdAt: text('created_at').notNull(),
+}, (t) => ({
+  createdIdx: index('search_events_created_at_idx').on(t.createdAt),
+}));
+
 export const bookings = pgTable('bookings', {
   id: text('id').primaryKey(),
   userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),

@@ -8,6 +8,7 @@ import { PORT, log } from './config';
 import { startRequestExpiry } from './lib/requestExpiry';
 import { startGraceSweep } from './lib/hostGrace';
 import { refreshSearchIndex } from './lib/searchIndex';
+import { startSearchEventSweep } from './lib/searchEvents';
 
 
 const server = app.listen(PORT, () => {
@@ -31,6 +32,8 @@ const server = app.listen(PORT, () => {
   startRequestExpiry();
   // Hosts on the free start hear when their 3rd booking is completed (lib/hostGrace.ts).
   startGraceSweep();
+  // Searches older than SEARCH_LOG_DAYS (180) are deleted, as the Privacy Policy says (lib/searchEvents.ts).
+  startSearchEventSweep();
   // Read every new or changed listing into the search index now, so the first search after a
   // deploy does not wait for it (each search also does this for what changed since).
   refreshSearchIndex()
