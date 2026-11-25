@@ -1,8 +1,8 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { missingLabel } from '@/lib/serverText';
-import { Box, Button, ButtonA } from '@/components/ag';
-import { Icon } from '@/components/ag/Icon';
+import { Box } from '@/components/ag';
+import NextStepCard from './NextStepCard';
 import { verificationSteps, type Headline, type VerificationStatus } from '@/lib/verificationSteps';
 
 /**
@@ -56,18 +56,24 @@ export default function VerificationTracker({ verification, paid, freeStart = fa
   const profileFirst = headline === 'send' && profileMissing.length > 0 && !!onOpenProfile;
   const body = profileFirst ? 'verify.body_profile' : headline === 'send' && freeStart ? 'verify.body_send_free' : bodyKey;
 
-  // The prototype's "Next step · n/4" box (dash.js sdnext): eyebrow, what to do, the bar, one button.
+  // The prototype's "Next step · n/4" box (dash.js sdnext), in two lines: the ring with n/4, what to
+  // do and one line of detail (the first thing the profile lacks, "+N more" for the rest).
+  const detail = profileFirst ? (
+    <span data-testid="verification-profile-missing">
+      {missingLabel(t, profileMissing[0], businessType)}
+      {profileMissing.length > 1 && ` · ${t('host.n_more', { count: profileMissing.length - 1 })}`}
+    </span>
+  ) : headline === 'reviewing' || headline === 'waiting'
+    // While the team checks, the phone matters more than the general wording.
+    ? t('verify.keep_phone_body', { phone: phone ? prettyPhone(phone) : t('verify.phone_missing') })
+    : t(body);
+  const canGo = profileFirst || headline !== 'pay';
   return (
-    <Box as="section" className="ag-host-next" data-testid="verification-tracker">
-      <span className="ag-eyebrow">{t('host.next', 'Next step')} · {done}/{total}</span>
-      <b>{profileFirst ? t('host.finish', 'Finish your profile') : t(titleKey)}</b>
-      {profileFirst ? (
-        <ul className="ag-host-facts" data-testid="verification-profile-missing">
-          {profileMissing.map((m) => <li key={m.key}><Icon name="plus" />{missingLabel(t, m, businessType)}</li>)}
-        </ul>
-      ) : (
-        <p className="ag-small">{t(body)}</p>
-      )}
+    <NextStepCard testId="verification-tracker" done={done} total={total}
+      title={profileFirst ? t('host.finish', 'Finish your profile') : t(titleKey)} detail={detail}
+      goLabel={profileFirst ? t('host.finish', 'Finish your profile') : cta}
+      onGo={canGo ? (profileFirst ? onOpenProfile : onOpen) : undefined}
+      supportPhone={verification?.support_phone}>
       {/* A required document to redo (changes), or an optional one the team turned down: either way, say which and why. */}
       {(headline === 'changes' || verification?.action_required) && (
         <Box tone="blush" flat className="w-full" data-testid="verification-action">
@@ -76,22 +82,6 @@ export default function VerificationTracker({ verification, paid, freeStart = fa
           {verification?.action_message && <p className="text-sm text-[var(--ink7)]">{verification.action_message}</p>}
         </Box>
       )}
-      {!profileFirst && headline !== 'live' && headline !== 'pay' && (
-        <p className="ag-small">{t('verify.keep_phone_body', { phone: phone ? prettyPhone(phone) : t('verify.phone_missing') })}</p>
-      )}
-      <span className="ag-host-bar" role="progressbar" aria-valuemin={0} aria-valuemax={total} aria-valuenow={done} aria-label={t('verify.progress')}>
-        <i style={{ width: `${(done / total) * 100}%` }} />
-      </span>
-      <div className="ag-host-two">
-        {(profileFirst || headline !== 'pay') && (
-          <Button go onClick={profileFirst ? onOpenProfile : onOpen} data-testid="verification-cta">
-            {profileFirst ? t('host.finish', 'Finish your profile') : cta}
-          </Button>
-        )}
-        {verification?.support_phone && (
-          <ButtonA variant="text" href={`tel:${verification.support_phone}`} icon={<Icon name="phone" />}>{t('verify.call_support')}</ButtonA>
-        )}
-      </div>
-    </Box>
+    </NextStepCard>
   );
 }

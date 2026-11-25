@@ -8,6 +8,7 @@ import { useAuth } from '@/context/AuthContext';
 import BookingCard, { BAND_ICON } from '@/components/provider/dashboard/BookingCard';
 import KycSection from '@/components/provider/dashboard/KycSection';
 import VerificationTracker from '@/components/provider/dashboard/VerificationTracker';
+import NextStepCard from '@/components/provider/dashboard/NextStepCard';
 import { HostPassLine } from '@/components/provider/dashboard/HostPlanCard';
 import ListingFormModal from '@/components/ListingFormModal';
 import { DeliveryRequestsPanel, HostReviewsCard } from '@/components/provider/dashboard/HostExtras';
@@ -437,28 +438,19 @@ function ProviderDashboardPage() {
     );
   } else if (missing.length) {
     nextStep = (
-      <Box as="section" className="ag-host-next" data-testid="dashboard-profile-card">
-        <span className="ag-eyebrow">{t('host.next', 'Next step')}</span>
-        <b>{t('host.finish', 'Finish your profile')}</b>
-        <ul className="ag-host-facts">
-          {missing.map((m) => <li key={m.key}><Icon name="plus" />{missingLabel(t, m, type)}</li>)}
-        </ul>
-        <div className="ag-host-two"><ButtonLink to="/provider/profile" go>{t('host.finish', 'Finish your profile')}</ButtonLink></div>
-      </Box>
+      <NextStepCard testId="dashboard-profile-card" percent={kycProfile?.completion_percent}
+        title={t('host.finish', 'Finish your profile')}
+        detail={<>{missingLabel(t, missing[0], type)}{missing.length > 1 && ` · ${t('host.n_more', { count: missing.length - 1 })}`}</>}
+        goLabel={t('host.finish', 'Finish your profile')} onGo={() => nav('/provider/profile')} />
     );
   } else if (kycProfile && kycProfile.completion_percent < 100) {
     // Hosts who were live before approval was required: what is left, or that it is with the team.
     const actionable = kycProfile.checklist.filter((c) => c.state === 'missing' || c.state === 'rejected').length;
     nextStep = (
-      <Box as="section" className="ag-host-next" data-testid="kyc-progress-card">
-        <span className="ag-eyebrow">{t('host.next', 'Next step')}</span>
-        <b>{actionable ? t('kyc.completeYourProfile') : t('kyc.underReviewTitle')}</b>
-        <p className="ag-small">{actionable ? t('kyc.remainingItems', { count: actionable }) : t('kyc.underReviewMessage')}</p>
-        <span className="ag-host-bar"><i style={{ width: `${kycProfile.completion_percent}%` }} /></span>
-        <div className="ag-host-two">
-          <Button go onClick={() => open('documents')} data-testid="kyc-complete-profile-cta">{actionable ? t('kyc.completeProfileCta') : t('kyc.viewStatusCta')}</Button>
-        </div>
-      </Box>
+      <NextStepCard testId="kyc-progress-card" percent={kycProfile.completion_percent}
+        title={actionable ? t('kyc.completeYourProfile') : t('kyc.underReviewTitle')}
+        detail={actionable ? t('kyc.remainingItems', { count: actionable }) : t('kyc.underReviewMessage')}
+        goLabel={actionable ? t('kyc.completeProfileCta') : t('kyc.viewStatusCta')} onGo={() => open('documents')} />
     );
   } else if (live) {
     nextStep = <Box className="ag-host-next ok"><Icon name="check" /><span>{t('host.live_note', 'You are live. Travellers can find and book you.')}</span></Box>;
@@ -537,10 +529,10 @@ function ProviderDashboardPage() {
         <section className="ag-host-sec">
           <SecHead title={t('host.overview', 'Business overview')} />
           <div className="ag-host-stats" data-testid="host-figures">
-            <button type="button" className={`ag-host-stat${nNew ? ' hot' : ''}`} onClick={() => open('bookings')}><b>{nNew}</b><span>{t('host.new', 'New requests')}</span></button>
-            <button type="button" className="ag-host-stat" onClick={() => open('bookings')}><b>{nUp}</b><span>{t('host.upcoming', 'Upcoming')}</span></button>
-            <button type="button" className="ag-host-stat" onClick={() => open('bookings')}><b>{doneList.length}</b><span>{t('host.completed', 'Completed')}</span></button>
-            <button type="button" className="ag-host-stat" onClick={() => open('bookings')}><b>₹{earned.toLocaleString('en-IN')}</b><span>{t('host.earned', 'Earned')}</span></button>
+            <button type="button" className={`ag-host-stat${nNew ? ' hot' : ''}`} onClick={() => open('bookings')}><b>{nNew}</b><span>{t('host.stat_new', 'New\nrequests')}</span></button>
+            <button type="button" className="ag-host-stat" onClick={() => open('bookings')}><b>{nUp}</b><span>{t('host.stat_upcoming', 'Upcoming\nbookings')}</span></button>
+            <button type="button" className="ag-host-stat" onClick={() => open('bookings')}><b>{doneList.length}</b><span>{t('host.stat_completed', 'Completed\nbookings')}</span></button>
+            <button type="button" className="ag-host-stat" onClick={() => open('bookings')}><b>₹{earned.toLocaleString('en-IN')}</b><span>{t('host.stat_earned', 'Earned\nmoney')}</span></button>
           </div>
         </section>
 
