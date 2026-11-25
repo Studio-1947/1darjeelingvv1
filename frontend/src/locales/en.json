@@ -1068,7 +1068,22 @@
     "source": "Forecast data: Open-Meteo",
     "search": "Search location",
     "search_ph": "Search a town, village or spot…",
-    "search_none": "No match. Try another name or place."
+    "search_none": "No match. Try another name or place.",
+    "tomorrow": "Tomorrow",
+    "peak_title": "Kanchenjunga at sunrise",
+    "peak_line_clear": "Likely clear",
+    "peak_line_partly": "Partly hidden by cloud",
+    "peak_line_hidden": "Likely hidden by cloud",
+    "peak_cloud": "{{n}}% morning cloud",
+    "peak_note": "Mountain view estimated from the 5–8 am cloud forecast.",
+    "now": "Now",
+    "feels": "Feels like {{n}}°",
+    "humidity": "Humidity",
+    "wind": "Wind",
+    "uv": "UV",
+    "sunrise": "Sunrise",
+    "sunset": "Sunset",
+    "days": "Next five days"
   },
   "filter": {
     "search_placeholder": "Search by name, landmark or keyword…",
