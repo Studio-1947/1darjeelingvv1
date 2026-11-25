@@ -13,6 +13,9 @@ describe('a listing hidden while its host waits for approval', () => {
     // Waiting for the document check no longer hides a listing; a lapsed plan still does.
     await db.update(schema.providers).set({ planExpiresAt: new Date(Date.now() - 60_000).toISOString() })
       .where(eq(schema.providers.id, host.providerId));
+    // Plans are per listing: the listing's own year has passed.
+    await db.update(schema.listings).set({ planExpiresAt: new Date(Date.now() - 60_000).toISOString(), planGrace: false })
+      .where(eq(schema.listings.providerId, host.providerId));
     const [listing] = await db.select().from(schema.listings).where(eq(schema.listings.providerId, host.providerId)).limit(1);
     expect(listing).toBeTruthy();
 

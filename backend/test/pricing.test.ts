@@ -14,7 +14,7 @@ describe('price breakup', () => {
   });
 
   it('adds GST, and no platform fee, to the booking fee and both host plans', () => {
-    expect(flowBreakup('booking_commission')).toMatchObject({ gst: 18, platform_fee: 0, total: 118 });
+    expect(flowBreakup('booking_commission')).toMatchObject({ base: 85, gst: 15, platform_fee: 0, total: 100, gst_included: true });
     expect(flowBreakup('provider_registration').total).toBe(58882);
     expect(flowBreakup('provider_renewal').total).toBe(58882);
   });
@@ -57,6 +57,6 @@ describe('price breakup', () => {
     expect(res.body.prices.host_plan_small.total).toBe(11682);
     expect(res.body.prices.platform_support.total).toBe(100);
     expect(res.body.prices.platform_support_renewal.total).toBe(100);
-    expect(res.body.prices.booking_commission.total).toBe(118);
+    expect(res.body.prices.booking_commission.total).toBe(100);
   });
 });

@@ -552,7 +552,6 @@ const asksToPay = (w: HostWizard) => !w.adding && !!w.d.type && w.d.type !== 'sh
 function ChargesSheet({ w, onConfirm, onClose }: { w: HostWizard; onConfirm: () => void; onClose: () => void }) {
   const { t, d, set } = w;
   const { grace_bookings } = useHostSignupInfo();
-  const plan = useHostPlanPrice(d.type || 'homestay');
   const gst = d.gst || { on: false, gstin: '', legalName: '' };
   const [gstTried, setGstTried] = useState(false);
   // Paying now: a GSTIN that is switched on has to be complete before the listing goes up.
@@ -586,7 +585,7 @@ function ChargesSheet({ w, onConfirm, onClose }: { w: HostWizard; onConfirm: () 
         <p className="ag-small m-0">{t('ob.wz.gst_note')}</p>
         {d.payWhen === 'now' && <GstDetails value={gst} onChange={(next) => set({ gst: next })} showErrors={gstTried} />}
         <NextButton onClick={confirm} data-autofocus data-testid="wz-charges-confirm">
-          {d.payWhen === 'now' ? t('ob.wz.put_pay', { price: rupees(plan.base) }) : t('ob.wz.put')}
+          {d.payWhen === 'now' ? t('ob.wz.put_pay') : t('ob.wz.put')}
         </NextButton>
       </div>
     </Sheet>
@@ -598,7 +597,6 @@ function ReviewStep({ w }: { w: HostWizard }) {
   const { t, d, busy, submit, startingPrice, offerLabels } = w;
   const from = startingPrice();
   const unit = d.type === 'homestay' ? t('ob.wz.night') : (d.type === 'driver' || d.type === 'guide') ? t('ob.wz.day') : '';
-  const plan = useHostPlanPrice(d.type || 'homestay');
   const icon = d.type ? TYPE_ICON[d.type] : 'home';
   const [asking, setAsking] = useState(false);
   // Paid types see only the pay button here; when to pay is chosen in the sheet it opens.
@@ -608,7 +606,7 @@ function ReviewStep({ w }: { w: HostWizard }) {
       cta={(
         <>
           <NextButton onClick={put} disabled={busy} data-testid="onboard-submit">
-            {busy ? t('common.loading') : asksToPay(w) ? t('ob.wz.put_pay', { price: rupees(plan.base) }) : t('ob.wz.put')}
+            {busy ? t('common.loading') : asksToPay(w) ? t('ob.wz.put_pay') : t('ob.wz.put')}
           </NextButton>
           {!w.adding && d.type === 'shop' && <FeeList type="shop" />}
         </>

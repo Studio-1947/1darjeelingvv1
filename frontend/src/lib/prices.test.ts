@@ -19,7 +19,7 @@ describe('price breakup (same rule as backend/src/lib/pricing.ts)', () => {
     expect(gstIncludedOf(1200)).toMatchObject({ base: 1017, gst: 183, total: 1200 });
   });
 
-  it('adds GST (no platform fee) to the ₹1 booking fee: ₹1.18', () => {
+  it('adds GST on top of a base (how host plans are priced; the ₹1 request fee has GST inside instead)', () => {
     expect(breakupOf(100)).toMatchObject({ gst: 18, platform_fee: 0, total: 118 });
   });
 

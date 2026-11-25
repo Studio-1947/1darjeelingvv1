@@ -18,7 +18,7 @@ import { notifyHostVerification } from '../lib/notifications';
 import { deleteListingsOwnedBy, deleteKycFilesOwnedBy, deleteAccount, DELETED_ACCOUNT_ID } from '../lib/accountCleanup';
 import { listUnreturnedPayments, refundPayment } from '../lib/refunds';
 import { routeParam } from '../lib/routeParam';
-import { listingPlanVisibility } from '../lib/listingPlan';
+import { listingPlanShape, listingPlanVisibility } from '../lib/listingPlan';
 import { publicSpotVisibility } from '../lib/spots';
 
 const router = Router();
@@ -518,9 +518,16 @@ router.get('/admin/hosts/waiting', authenticateToken, requireAdmin, async (_req:
       .from(schema.users).where(inArray(schema.users.id, [...new Set(providers.map((p) => p.userId))]))
     : [];
   const ownerById = new Map(owners.map((u) => [u.id, u]));
+  // Plans are per listing (lib/listingPlan.ts): each host's listings with their own membership.
+  const hostListings = providers.length
+    ? await db.select().from(schema.listings).where(inArray(schema.listings.providerId, providers.map((p) => p.id)))
+    : [];
   const hosts = [];
   for (const p of providers) {
     const r = await hostReadiness(p);
+    const listingPlans = await Promise.all(hostListings.filter((l) => l.providerId === p.id).map(async (l) => ({
+      id: l.id, title: l.title, type: l.type, plan: await listingPlanShape(l),
+    })));
     const owner = ownerById.get(p.userId);
     hosts.push({
       provider_id: p.id,
@@ -530,6 +537,7 @@ router.get('/admin/hosts/waiting', authenticateToken, requireAdmin, async (_req:
       phone: p.contactPhone || owner?.phone || null,
       plan_status: p.status,
       plan_expires_at: p.planExpiresAt,
+      listings: listingPlans,
       // Live on the free start: has not paid yet (lib/hostGrace.ts).
       on_free_start: p.status === 'active' && p.grace,
       kyc_status: r.kycStatus,

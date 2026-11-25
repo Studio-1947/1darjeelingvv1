@@ -38,9 +38,9 @@ describe('resolveAmount  fixed-price flows', () => {
     expect(ok(resolveAmount('provider_renewal', { amount: 1 }))).toBe(58882);
   });
 
-  it('prices the ₹1 booking fee (₹1.18 with GST, no platform fee) from the server, not the body', () => {
-    expect(ok(resolveAmount('booking_commission', {}))).toBe(118);
-    expect(ok(resolveAmount('booking_commission', { amount: 1 }))).toBe(118);
+  it('prices the ₹1 booking fee (GST included, nothing added) from the server, not the body', () => {
+    expect(ok(resolveAmount('booking_commission', {}))).toBe(100);
+    expect(ok(resolveAmount('booking_commission', { amount: 1 }))).toBe(100);
   });
 
   it('rejects an unknown flow', () => {

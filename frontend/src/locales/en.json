@@ -110,7 +110,7 @@
     "cta": "Take the pass · {{total}}",
     "reassurance": "Valid for one year. Nothing auto-charges.",
     "reassurance_gst": "Valid for one year, GST included. Nothing auto-charges.",
-    "skip": "Not now, I will pay the ₹1.18 convenience fee per request",
+    "skip": "Not now, I will pay the ₹1 convenience fee per request",
     "modal_title": "aangan pass",
     "modal_duration": "· valid for 1 year",
     "privacy_link": "privacy policy",
@@ -471,7 +471,7 @@
     "checkout": "Check-out",
     "guests": "Guests",
     "notes": "Notes (optional)",
-    "fee_note": "Free with the aangan pass (₹1 for the first year, then ₹12 a year, GST included), or a ₹1.18 app convenience fee for this request (₹1 + 18% GST).",
+    "fee_note": "Free with the aangan pass (₹1 for the first year, then ₹12 a year, GST included), or a ₹1 app convenience fee for this request (GST included).",
     "pay_confirm": "Confirm booking",
     "success": "Booking confirmed!",
     "status": {
@@ -1883,7 +1883,7 @@
       "plus": "Plus 100",
       "photos_added_one": "{{count}} photo added",
       "photos_added_other": "{{count}} photos added",
-      "put_pay": "Pay {{price}} and put my listing up",
+      "put_pay": "Pay and put my listing up",
       "in_title": "Your listing is up",
       "in_body": "Travellers can find it now. Next, finish your business profile and send your documents from the Business dashboard to get the Documents verified badge.",
       "in_paid": "Host plan payment done. Your first year is active.",
@@ -2069,7 +2069,7 @@
   },
   "terms": {
     "title": "Terms & Conditions",
-    "updated": "Last updated: 23 November 2026",
+    "updated": "Last updated: 25 November 2026",
     "intro": [
       "WBIN 1947 Studio LLP, under the name 1Darjeeling (\"we,\" \"us,\" \"our,\" or \"the Platform\"), operates www.aanganerp.in (the \"Site\"), a local marketplace and travel guide connecting visitors with homestays, drivers, cafés, shops and guides in and around Darjeeling. These Terms & Conditions govern your use of the Site.",
       "You accept these Terms by ticking \"I Agree\" when you sign in, which also confirms you are 18 or older. If you do not agree, please do not create an account or send requests."
@@ -2100,11 +2100,11 @@
         "sub": [
           {
             "h": "3.1 Traveller Pass — ₹1 for the first year, then ₹12 a year, GST included, optional",
-            "p": "The pass is optional. It costs ₹1 for the first year and ₹12 for each year after that, GST included, with nothing added on top. A payment gives a traveller account one year with a Member badge that hosts see on its requests. With an active pass, the app convenience fee (3.2) is waived; without it, each request costs ₹1.18. It does not renew automatically; after it expires, you may buy another one-year pass."
+            "p": "The pass is optional. It costs ₹1 for the first year and ₹12 for each year after that, GST included, with nothing added on top. A payment gives a traveller account one year with a Member badge that hosts see on its requests. With an active pass, the app convenience fee (3.2) is waived; without it, each request costs ₹1, GST included. It does not renew automatically; after it expires, you may buy another one-year pass."
           },
           {
-            "h": "3.2 App Convenience Fee — ₹1.18 per request without the pass, waived with it",
-            "p": "Sending a request to a business through the app costs a convenience fee of ₹1 plus 18% GST, ₹1.18 in all, paid to the Platform when you send it. No platform or payment-gateway fee is added. With an active Traveller Pass it is waived. The fee is only for using the app to reach the business. It is not a booking fee, deposit or advance: it does not pay for, reserve or guarantee any stay, ride, tour or goods, and it does not make us a party to any booking. Whether the business accepts your request and whether the booking goes ahead are matters between you and the business, and we are not liable for either. We make no further charge at any later step. The fee is non-refundable: it pays for the use of the app at the moment the request is sent. It is not refunded, whatever happens to the request: if the business declines it or does not answer, if its dates go to another traveller, if you withdraw or cancel it, or if the business or our team cancels it. The only exceptions are a payment error on our side: if you are charged but the request is never sent, or charged twice for the same request, that charge is refunded in full. What you pay for the stay, ride or goods themselves is paid directly to the business; we never receive it and take no share."
+            "h": "3.2 App Convenience Fee — ₹1 per request (GST included) without the pass, waived with it",
+            "p": "Sending a request to a business through the app costs a convenience fee of ₹1, GST included, paid to the Platform when you send it. No platform or payment-gateway fee is added. With an active Traveller Pass it is waived. The fee is only for using the app to reach the business. It is not a booking fee, deposit or advance: it does not pay for, reserve or guarantee any stay, ride, tour or goods, and it does not make us a party to any booking. Whether the business accepts your request and whether the booking goes ahead are matters between you and the business, and we are not liable for either. We make no further charge at any later step. The fee is non-refundable: it pays for the use of the app at the moment the request is sent. It is not refunded, whatever happens to the request: if the business declines it or does not answer, if its dates go to another traveller, if you withdraw or cancel it, or if the business or our team cancels it. The only exceptions are a payment error on our side: if you are charged but the request is never sent, or charged twice for the same request, that charge is refunded in full. What you pay for the stay, ride or goods themselves is paid directly to the business; we never receive it and take no share."
           },
           {
             "h": "3.3 Business Listing Plan — ₹499 a year for homestays, drivers and guides, ₹99 a year for cafés, each plus 18% GST; free until 2 completed bookings; local shops list free",
@@ -2116,7 +2116,7 @@
       {
         "h": "4. Bookings",
         "items": [
-          "A booking begins as a request. It reaches the business once it is sent: with the convenience fee waived under an active Traveller Pass, or for the ₹1.18 app convenience fee (3.2) without one. It is confirmed when you confirm it at checkout, at which point both you and the business are notified. There is no charge to confirm.",
+          "A booking begins as a request. It reaches the business once it is sent: with the convenience fee waived under an active Traveller Pass, or for the ₹1 app convenience fee (3.2) without one. It is confirmed when you confirm it at checkout, at which point both you and the business are notified. There is no charge to confirm.",
           "For homestays, confirmed dates are held exclusively. While a checkout is in progress, those dates are held briefly against other travellers so two people cannot pay for the same room; an abandoned checkout releases them again.",
           "If two travellers confirm the same homestay for the same dates at the same moment, only the first can be confirmed. The second booking is cancelled automatically and that traveller is told.",
           "A confirmed booking is a confirmed request to the business. We do not take any booking money: the price of the stay, ride, tour, meal or goods, any advance or deposit, check-in times, house rules and extra charges are agreed and settled directly between you and the business. We do not guarantee that a business accepts a request, honours a booking or provides what it offers, and we are not liable if it does not."
@@ -2195,7 +2195,7 @@
   },
   "refunds": {
     "title": "Refund & Cancellation Policy",
-    "updated": "Last updated: 23 November 2026",
+    "updated": "Last updated: 25 November 2026",
     "intro": [
       "This policy explains when money paid to aangan, a product of WBIN 1947 Studio LLP, is returned, how long it takes, and what falls outside it. It forms part of our Terms & Conditions.",
       "One distinction governs everything below. The fees listed in this policy are paid to the Platform, and this policy covers them. The price of your stay, ride, meal or purchase is paid directly to the local business, and that money is governed by the business's own terms. We never receive it and cannot refund it."
@@ -2206,7 +2206,7 @@
         "p": "A booking can be cancelled at any time before it takes place, from your dashboard, by the business, or by our team.",
         "items": [
           "A booking still awaiting payment can simply be cancelled: nothing has been charged.",
-          "A request or a confirmed booking can be cancelled by you, by the business, or by us. The ₹1.18 app convenience fee paid to send the request is not refunded, whoever cancels and whenever (see 3.1).",
+          "A request or a confirmed booking can be cancelled by you, by the business, or by us. The ₹1 app convenience fee paid to send the request is not refunded, whoever cancels and whenever (see 3.1).",
           "If the business cancels on you, we will help you find an alternative wherever we can."
         ]
       },
@@ -2214,7 +2214,7 @@
         "h": "2. Automatic Refunds",
         "p": "Some refunds need no request at all. The Platform issues them itself:",
         "items": [
-          "Requests that never went out: if you are charged the ₹1.18 app convenience fee but the request is not sent (for example its dates were taken while you were paying), that charge is refunded in full.",
+          "Requests that never went out: if you are charged the ₹1 app convenience fee but the request is not sent (for example its dates were taken while you were paying), that charge is refunded in full.",
           "Duplicate charges: if a technical fault charges you twice for one thing, the duplicate is refunded in full."
         ]
       },
@@ -2222,8 +2222,8 @@
         "h": "3. The Fees, One by One",
         "sub": [
           {
-            "h": "3.1 App Convenience Fee — ₹1.18 per request without the pass, waived with it",
-            "p": "Sending a request without an active Traveller Pass costs an app convenience fee of ₹1 plus 18% GST, ₹1.18 in all. With the pass it is waived, and there is no charge to confirm. It is a fee for using the app, not a payment for any booking, and we are not liable for whether a booking goes ahead. It is non-refundable. It is not refunded, whatever happens to the request: if the business declines it or does not answer, if its dates go to another traveller, if you withdraw or cancel it, or if the business or our team cancels it. The only exceptions are a payment error on our side: if you are charged but the request is never sent, or charged twice for the same request, that charge is refunded in full."
+            "h": "3.1 App Convenience Fee — ₹1 per request (GST included) without the pass, waived with it",
+            "p": "Sending a request without an active Traveller Pass costs an app convenience fee of ₹1, GST included. With the pass it is waived, and there is no charge to confirm. It is a fee for using the app, not a payment for any booking, and we are not liable for whether a booking goes ahead. It is non-refundable. It is not refunded, whatever happens to the request: if the business declines it or does not answer, if its dates go to another traveller, if you withdraw or cancel it, or if the business or our team cancels it. The only exceptions are a payment error on our side: if you are charged but the request is never sent, or charged twice for the same request, that charge is refunded in full."
           },
           {
             "h": "3.2 Traveller Pass — ₹1 for the first year, then ₹12 a year, GST included, optional",
@@ -2764,7 +2764,7 @@
     "step_ask": "Ask the host. Sending a request is free.",
     "refund_link": "Fees and refunds",
     "step_host": "The host checks availability and accepts. If they do not answer within 24 hours, the request closes and nothing is charged.",
-    "step_confirm": "You confirm it in My Trips (free with the aangan pass, or ₹1.18).",
+    "step_confirm": "You confirm it in My Trips (free with the aangan pass, or ₹1).",
     "step_contact": "You get the host's number to call or WhatsApp.",
     "go_trips": "Go to My Trips",
     "accepted_note": "The host accepted. Confirm it to lock it in.",

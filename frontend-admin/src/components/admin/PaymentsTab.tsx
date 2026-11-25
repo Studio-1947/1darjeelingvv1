@@ -55,8 +55,11 @@ const flowLabel = (pm: any) => {
   }
   return ({
     booking_commission: 'Booking fee (₹1)',
-    provider_registration: 'Host plan · first year',
-    provider_renewal: 'Host plan · renewal',
+    provider_registration: 'Host plan · first year (older app)',
+    provider_renewal: 'Host plan · renewal (older app)',
+    // One listing's yearly membership (plans are per listing since 2026-11-25).
+    listing_plan: 'Listing membership · first year',
+    listing_renewal: 'Listing membership · renewal',
     donation: 'Donation',
   } as Record<string, string>)[pm.flow] || pm.flow;
 };
