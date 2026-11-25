@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Chip, Chips, cx } from '@/components/ag';
 import { Icon } from '@/components/ag/Icon';
+import Sheet from '@/components/listing-detail/Sheet';
 
 export type SortOrder = 'recommended' | 'price_asc' | 'price_desc' | 'name_asc';
 
@@ -105,43 +106,58 @@ export type VoiceError = 'unsupported' | 'blocked' | 'nomic' | 'nospeech' | 'net
  * `hearing` turns on once the mic picks up sound, so the recording panel can show it is live.
  * `onDone` gets the final words ('' when nothing was heard, null when cancelled).
  */
+/** Quiet after the last word this long: the search is taken as finished and the pop-up closes. */
+const VOICE_PAUSE_MS = 1500;
+/** Nothing heard at all this long: stop (some Android browsers never end on their own). */
+const VOICE_IDLE_MS = 8000;
+
 function useVoice(onText: (text: string) => void, onDone?: (text: string | null) => void, onStart?: () => void) {
   const { i18n } = useTranslation();
   const rec = useRef<Rec | null>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const [listening, setListening] = useState(false);
   const [hearing, setHearing] = useState(false);
   const [heard, setHeard] = useState('');
   const [error, setError] = useState<VoiceError | null>(null);
+  const clearTimer = () => { if (timer.current) clearTimeout(timer.current); timer.current = undefined; };
   // Leaving the page mid-recording: stop quietly, nothing after unmount.
   useEffect(() => () => {
+    clearTimer();
     const r = rec.current;
     if (!r) return;
     r.onresult = null; r.onerror = null; r.onend = null; r.onsoundstart = null; r.onspeechstart = null;
     try { r.abort(); } catch { /* already stopped */ }
   }, []);
 
-  // What the search box held before listening, put back if the traveller cancels.
-  const before = useRef('');
-  const start = (current = '') => {
+  const start = (_current = '') => {
     const w = window as any;
     const SR = w.SpeechRecognition || w.webkitSpeechRecognition;
     setError(null);
     if (!SR) { setError('unsupported'); return; }
     if (rec.current) return;
-    before.current = current;
+    // Put the phone keyboard away: a focused search box keeps it open over the recording.
+    const at = document.activeElement as HTMLElement | null;
+    if (at && (at.tagName === 'INPUT' || at.tagName === 'TEXTAREA')) at.blur();
     onStart?.();
     const r: Rec = new SR();
     let words = '';
     let failed: VoiceError | null = null;
+    const stopAfter = (ms: number) => {
+      clearTimer();
+      timer.current = setTimeout(() => { try { r.stop(); } catch { /* already stopped */ } }, ms);
+    };
     r.lang = VOICE_LANG[(i18n.language || 'en').slice(0, 2)] || 'en-IN';
     r.interimResults = true;
     r.maxAlternatives = 1;
     r.onsoundstart = () => setHearing(true);
     r.onspeechstart = () => setHearing(true);
+    // The words show in the pop-up as they come; the search itself changes once, when it ends.
     r.onresult = (ev: any) => {
-      words = Array.from(ev.results as ArrayLike<any>).map((x: any) => x[0].transcript).join(' ').trim();
+      const list = Array.from(ev.results as ArrayLike<any>);
+      words = list.map((x: any) => x[0].transcript).join(' ').trim();
       setHeard(words);
-      onText(words);
+      const final = list.length > 0 && (list[list.length - 1] as any).isFinal;
+      stopAfter(final ? 300 : VOICE_PAUSE_MS);
     };
     r.onerror = (ev: any) => {
       const code = ev?.error;
@@ -152,32 +168,34 @@ function useVoice(onText: (text: string) => void, onDone?: (text: string | null)
             : 'nospeech';
     };
     r.onend = () => {
+      clearTimer();
       rec.current = null;
       setListening(false);
       setHearing(false);
       if (failed && !words) setError(failed);
       else if (!words) setError('nospeech');
+      if (words) onText(words);
       onDone?.(words);
     };
     rec.current = r;
     setHeard('');
     setHearing(false);
     setListening(true);
-    try { r.start(); } catch { rec.current = null; setListening(false); setError('nospeech'); }
+    try { r.start(); stopAfter(VOICE_IDLE_MS); } catch { clearTimer(); rec.current = null; setListening(false); setError('nospeech'); }
   };
   /** Stop and keep what was said so far. */
   const stop = () => { try { rec.current?.stop(); } catch { /* ignore */ } };
-  /** Stop and throw the words away. */
+  /** Stop and throw the words away (the search was never changed, so nothing to put back). */
   const cancel = () => {
     const r = rec.current;
     if (!r) return;
+    clearTimer();
     rec.current = null;
     r.onresult = null; r.onerror = null; r.onend = null;
     try { r.abort(); } catch { /* ignore */ }
     setListening(false);
     setHearing(false);
     setHeard('');
-    onText(before.current);
     onDone?.(null);
   };
   const toggle = (current = '') => (rec.current ? stop() : start(current));
@@ -194,11 +212,11 @@ export type Voice = ReturnType<typeof useVoice>;
  */
 export function VoicePanel({ voice, micRef, current }: { voice: Voice; micRef: React.RefObject<HTMLButtonElement>; current: string }) {
   const { t } = useTranslation();
-  const stopRef = useRef<HTMLButtonElement>(null);
   const wasListening = useRef(false);
   useEffect(() => {
-    if (voice.listening) stopRef.current?.focus();
-    else if (wasListening.current) {
+    // Opening: the pop-up (Sheet) puts focus on Stop. Closing: back to the mic, never the search
+    // box, so the keyboard stays down.
+    if (!voice.listening && wasListening.current) {
       const at = document.activeElement;
       if (!at || at === document.body) micRef.current?.focus();
     }
@@ -215,29 +233,28 @@ export function VoicePanel({ voice, micRef, current }: { voice: Voice; micRef: R
   };
 
   if (voice.listening) {
+    // A pop-up over the page. Escape, the backdrop and the close button cancel, as Cancel does; it
+    // closes by itself once the traveller stops speaking (useVoice), and the search then runs.
     return (
-      <div
-        className={cx('ag-box ag-category-rec', voice.hearing && 'live')}
-        data-testid="voice-recording"
-        // Escape cancels, as Cancel does; kept to the panel so it never closes anything else.
-        onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); voice.cancel(); } }}
-      >
-        <span className="recmic" aria-hidden="true"><Icon name="mic" /></span>
-        <span className="recwave" aria-hidden="true">{[0, 1, 2, 3, 4, 5, 6].map((i) => <i key={i} />)}</span>
-        <p className="rectext" data-testid="voice-heard">
-          {voice.heard ? `“${voice.heard}”` : t('category.voice_ready', 'Speak now')}
-        </p>
-        <p className="ag-small m-0" role="status">{t('category.listening', 'Listening… say a place, a homestay or a dish')}</p>
-        <div className="recact">
-          <button type="button" className="ag-btn text" onClick={voice.cancel} data-testid="voice-cancel">
-            {t('common.cancel', 'Cancel')}
-          </button>
-          <button ref={stopRef} type="button" className="ag-btn primary" onClick={voice.stop} data-testid="voice-stop">
-            {voice.heard && <Icon name="search" />}
-            <span>{voice.heard ? t('category.search_btn', 'Search') : t('category.voice_stop', 'Stop')}</span>
-          </button>
+      <Sheet onClose={voice.cancel} label={t('category.voice', 'Voice search')} testid="voice-modal" closeTestid="voice-close">
+        <div className={cx('ag-category-rec', voice.hearing && 'live')} data-testid="voice-recording">
+          <span className="recmic" aria-hidden="true"><Icon name="mic" /></span>
+          <span className="recwave" aria-hidden="true">{[0, 1, 2, 3, 4, 5, 6].map((i) => <i key={i} />)}</span>
+          <p className="rectext" data-testid="voice-heard">
+            {voice.heard ? `“${voice.heard}”` : t('category.voice_ready', 'Speak now')}
+          </p>
+          <p className="ag-small m-0" role="status">{t('category.listening', 'Listening… say a place, a homestay or a dish')}</p>
+          <div className="recact">
+            <button type="button" className="ag-btn text" onClick={voice.cancel} data-testid="voice-cancel">
+              {t('common.cancel', 'Cancel')}
+            </button>
+            <button data-autofocus type="button" className="ag-btn primary" onClick={voice.stop} data-testid="voice-stop">
+              {voice.heard && <Icon name="search" />}
+              <span>{voice.heard ? t('category.search_btn', 'Search') : t('category.voice_stop', 'Stop')}</span>
+            </button>
+          </div>
         </div>
-      </div>
+      </Sheet>
     );
   }
   if (!voice.error) return null;
