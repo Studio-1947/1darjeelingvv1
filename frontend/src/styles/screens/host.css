@@ -52,6 +52,8 @@
 .ag-host-pass b { font-weight: 600; }
 .ag-host-pass .acts { display: flex; flex-direction: column; gap: 6px; flex: none; }
 .ag-host-pass .ag-btn { height: 36px; min-height: 36px; padding: 0 14px; font-size: 13px; }
+/* Phones: the text gets the full width and Pay now drops below it, instead of squeezing beside it. */
+@media (max-width: 520px) { .ag-host-pass { flex-direction: column; align-items: flex-start; } }
 /* Each listing's membership card (ListingMembershipCard): state + card number, one line, Pay/Renew */
 .ag-host-mcard { position: relative; display: flex; flex-direction: column; gap: 6px; margin: 0 0 10px; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--hairline); background: var(--creme2); color: var(--ink7); overflow: hidden; }
 .ag-host-mcard.member { border-color: rgb(var(--r-rgb) / .45); background: linear-gradient(135deg, rgb(var(--r-rgb) / .22), rgb(var(--r-rgb) / .06) 60%, var(--creme2)); }
@@ -59,6 +61,8 @@
 .ag-host-mcard .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-width: 0; }
 .ag-host-mcard .brand { display: inline-flex; align-items: center; gap: 6px; font: 600 12px/16px var(--font); letter-spacing: .06em; text-transform: uppercase; color: var(--r); }
 .ag-host-mcard .brand svg.i { width: 16px; height: 16px; flex: none; }
+.ag-host-mcard .title { display: inline-flex; align-items: center; gap: 6px; min-width: 0; font: 600 14px/20px var(--font); color: var(--ink-strong); white-space: nowrap; }
+.ag-host-mcard .title svg.i { width: 16px; height: 16px; flex: none; color: var(--r); }
 .ag-host-mcard .no { font: 600 13px/16px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .08em; color: var(--ink-strong); white-space: nowrap; }
 .ag-host-mcard .line { margin: 0; font: 400 13px/18px var(--font); }
 .ag-host-mcard .line b { font-weight: 600; }

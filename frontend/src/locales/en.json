@@ -3764,6 +3764,7 @@
     }
   },
   "host": {
+    "mcard_yearly": "Yearly pass {{price}}/year",
     "mcard_member": "aangan member",
     "mcard_valid": "Valid until {{date}}",
     "mcard_ends_in_one": "ends in {{count}} day",
@@ -3771,9 +3772,9 @@
     "mcard_lapsed": "Membership ended",
     "mcard_lapsed_s": "Hidden from travellers since {{date}}. Renew to bring it back.",
     "mcard_free": "Free start",
-    "mcard_free_s": "{{used}} of {{limit}} free bookings used · then {{total}}/yr",
-    "mcard_free_paused": "{{limit}} free bookings used. New bookings wait until you pay {{total}}/yr.",
-    "mcard_price": "{{total}} a year, GST included",
+    "mcard_free_s": "Or pay after your first {{limit}} bookings · {{used}} of {{limit}} done",
+    "mcard_free_paused": "Your {{limit}} free bookings are done. Pay to take new bookings.",
+    "mcard_price": "GST is added when you pay.",
     "mcard_pay": "Pay {{total}}",
     "mcard_renew": "Renew · {{total}}",
     "mcard_pay_title": "Membership for {{name}}",

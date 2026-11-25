@@ -72,6 +72,8 @@ export default function ListingMembershipCard({ listing, typeLabel, provider, us
   const flow = firstYear ? 'listing_plan' : 'listing_renewal';
   const title = firstYear ? t('host.mcard_pay_title', 'Membership for {{name}}', { name: listing.title }) : t('pd.plan_renew_title');
   const total = rupees(plan.price.total);
+  // The yearly price as hosts know it (₹499 / ₹99); GST is shown in the pay sheet.
+  const yearly = t('host.mcard_yearly', 'Yearly pass {{price}}/year', { price: rupees(plan.price.base) });
 
   let state: string;
   let line: React.ReactNode;
@@ -82,13 +84,14 @@ export default function ListingMembershipCard({ listing, typeLabel, provider, us
     state = t('host.mcard_lapsed', 'Membership ended');
     line = <>{t('host.mcard_lapsed_s', 'Hidden from travellers since {{date}}. Renew to bring it back.', { date: until })}</>;
   } else if (plan.grace) {
-    state = t('host.mcard_free', 'Free start');
+    // "Yearly pass ₹499/year" on one line; the free start in one short line under it.
+    state = yearly;
     line = plan.grace.paused
-      ? <>{t('host.mcard_free_paused', '{{limit}} free bookings used. New bookings wait until you pay {{total}}/yr.', { limit: plan.grace.limit, total })}</>
-      : <>{t('host.mcard_free_s', '{{used}} of {{limit}} free bookings used · then {{total}}/yr', { used: plan.grace.used, limit: plan.grace.limit, total })}</>;
+      ? <>{t('host.mcard_free_paused', 'Your {{limit}} free bookings are done. Pay to take new bookings.', { limit: plan.grace.limit })}</>
+      : <>{t('host.mcard_free_s', 'Or pay after your first {{limit}} bookings · {{used}} of {{limit}} done', { used: plan.grace.used, limit: plan.grace.limit })}</>;
   } else {
-    state = t('host.mcard_free', 'Free start');
-    line = <>{t('host.mcard_price', '{{total}} a year, GST included', { total })}</>;
+    state = yearly;
+    line = <>{t('host.mcard_price', 'GST is added when you pay.')}</>;
   }
 
   const open = () => { setErr(''); setGst(gstDraftFrom(provider)); setGstTried(false); setConfirming(true); };
@@ -133,14 +136,14 @@ export default function ListingMembershipCard({ listing, typeLabel, provider, us
   return (
     <div className={cx('ag-host-mcard', plan.member && 'member', due && 'due')} data-testid={`membership-${listing.id}`}>
       <div className="row">
-        <span className="brand"><Icon name="badge" />{state}</span>
+        <span className={plan.member || plan.lapsed ? 'brand' : 'title'}><Icon name="badge" />{state}</span>
         {plan.member_no && <span className="no" data-testid={`membership-no-${listing.id}`}>{plan.member_no}</span>}
       </div>
       <p className="line">{line}</p>
       {canPay && (
         <Button size="sm" variant={due || soon || firstYear ? 'primary' : 'std'} className="self-start" onClick={open} disabled={busy}
           data-testid={`membership-pay-${listing.id}`}>
-          {busy ? t('pd.plan_renewing') : firstYear ? t('host.mcard_pay', 'Pay {{total}}', { total }) : t('host.mcard_renew', 'Renew · {{total}}', { total })}
+          {busy ? t('pd.plan_renewing') : firstYear ? t('host.pay_now', 'Pay now') : t('host.mcard_renew', 'Renew · {{total}}', { total })}
         </Button>
       )}
       {coOwner && (firstYear || plan.lapsed || soon) && <span className="ag-small">{t('owners.plan_main_owner')}</span>}

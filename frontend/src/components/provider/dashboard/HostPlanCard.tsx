@@ -257,15 +257,16 @@ export function HostPassLine({ provider, user, onRenewed }: { provider: any; use
     return <p className="ag-small m-0" data-testid="host-pass-line">{t('host.shop_free', 'Local shops list free')}</p>;
   }
   const coOwner = provider.access === 'co_owner';
-  const fee = <><b>{rupees(firstYear.base)}</b>{t('host.per_year', '/yr')}</>;
+  // "Yearly pass ₹499/year" on one line, the free start in one short line under it.
+  const yearly = <b className="whitespace-nowrap">{t('host.mcard_yearly', 'Yearly pass {{price}}/year', { price: rupees(firstYear.base) })}</b>;
   const due = lapsed || !!grace?.paused || (registrationPending && !grace && !notStarted);
   let text: React.ReactNode;
   if (grace) {
     text = grace.paused
-      ? <>{t('host.pass', 'Yearly pass')} {fee} · {t('host.pass_due', '{{limit}} bookings done · pass due', { limit: grace.limit })}</>
-      : <>{t('host.pass', 'Yearly pass')} {fee} · {t('host.pass_of', '{{used}} of {{limit}} bookings done · then pay', { used: grace.used, limit: grace.limit })}</>;
+      ? <>{yearly}<span className="basis-full">{t('host.mcard_free_paused', 'Your {{limit}} free bookings are done. Pay to take new bookings.', { limit: grace.limit })}</span></>
+      : <>{yearly}<span className="basis-full">{t('host.mcard_free_s', 'Or pay after your first {{limit}} bookings · {{used}} of {{limit}} done', { used: grace.used, limit: grace.limit })}</span></>;
   } else if (notStarted || registrationPending) {
-    text = <>{t('host.pass', 'Yearly pass')} {fee}</>;
+    text = <>{yearly}</>;
   } else if (lapsed) {
     text = <>{t('pd.plan_lapsed_title')}</>;
   } else {
