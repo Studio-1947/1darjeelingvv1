@@ -37,13 +37,10 @@
 .ag-category-rec .recmic::after { animation-delay: .9s; }
 .ag-category-rec .recmic { isolation: isolate; }
 @keyframes ag-category-ring { from { transform: scale(1); opacity: 1; } to { transform: scale(1.9); opacity: 0; } }
-.ag-category-rec .recwave { display: flex; align-items: center; justify-content: center; gap: 4px; height: 28px; }
-.ag-category-rec .recwave i { width: 4px; height: 26px; border-radius: 2px; background: rgb(var(--r-rgb) / .35); transform: scaleY(.23); transition: background .2s; }
-.ag-category-rec.live .recwave i { background: var(--r); animation: ag-category-wave 0.9s ease-in-out infinite; }
-.ag-category-rec.live .recwave i:nth-child(2n) { animation-delay: .15s; }
-.ag-category-rec.live .recwave i:nth-child(3n) { animation-delay: .3s; }
-.ag-category-rec.live .recwave i:nth-child(4) { animation-delay: .45s; }
-@keyframes ag-category-wave { 0%, 100% { transform: scaleY(.23); } 50% { transform: scaleY(1); } }
+/* The wave: its bars are scaled every frame from the voice's loudness (VoiceWave in CategoryFilterBar.tsx). */
+.ag-category-rec .recwave { display: flex; align-items: center; justify-content: center; gap: 3px; height: 48px; width: min(100%, 240px); }
+.ag-category-rec .recwave i { flex: 1 1 0; max-width: 5px; height: 48px; border-radius: 3px; background: rgb(var(--r-rgb) / .35); transform: scaleY(.08); transition: background .2s; will-change: transform; }
+.ag-category-rec.live .recwave i { background: var(--r); }
 .ag-category-rec .rectext { margin: 0; min-height: 28px; color: var(--ink-strong); font: 500 20px/28px var(--font); letter-spacing: -.01em; overflow-wrap: anywhere; }
 .ag-category-rec .recact { display: flex; gap: 8px; justify-content: center; margin-top: 4px; }
 .ag-category-rec .recact .ag-btn > svg.i { width: 18px; height: 18px; }
@@ -169,8 +166,9 @@ html[data-mode="dark"] .ag-category-stick.free svg { fill: #EAD9A6; }
 
 @media (prefers-reduced-motion: reduce) {
   .ag-category-search .qph::after, .ag-category-sact .vbtn.on,
-  .ag-category-rec .recmic::before, .ag-category-rec .recmic::after, .ag-category-rec.live .recwave i { animation: none; }
-  .ag-category-rec.live .recwave i { transform: scaleY(.6); }
+  .ag-category-rec .recmic::before, .ag-category-rec .recmic::after { animation: none; }
+  .ag-category-rec .recwave i { transform: scaleY(.3) !important; }
+  .ag-category-rec.live .recwave i { transform: scaleY(.6) !important; }
 }
 
 /* Dark mode: Clear filters in the panel reads at 4.5:1 or better. */
