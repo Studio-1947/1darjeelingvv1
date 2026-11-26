@@ -1113,7 +1113,19 @@
     "clear": "Clear filters",
     "near": "Near",
     "no_location": "Location is not available on this device.",
-    "location_denied": "Location is off for aangan. Allow it in your browser settings and try again."
+    "location_denied": "Location is off for aangan. Allow it in your browser settings and try again.",
+    "where": "Where",
+    "anywhere": "Anywhere",
+    "locating": "Finding you…",
+    "pick_town": "Pick a town",
+    "how_far": "How far from {{place}}",
+    "you": "you",
+    "km": "{{km}} km",
+    "what": "What",
+    "sort_by": "Sort by",
+    "best_match": "Best match",
+    "show_n_one": "Show {{count}} result",
+    "show_n_other": "Show {{count}} results"
   },
   "category": {
     "load_more_failed": "Could not load more. Check your connection.",
