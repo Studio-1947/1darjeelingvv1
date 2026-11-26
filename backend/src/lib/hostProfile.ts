@@ -302,8 +302,90 @@ export function profilePatchFrom(businessType: string, input: unknown): ProfileP
   return patch;
 }
 
+/**
+ * Details that describe one listing of a kind, wherever the business's own kind is (user decision
+ * 2026-11-26: a homestay that also lists a car keeps that car's numbers on the car's listing).
+ * Saved on the listing itself (routes/listings.ts update), checked by the same rules as the profile.
+ */
+export const LISTING_TYPE_FIELDS: Record<string, readonly string[]> = {
+  driver: ['vehicle_number', 'license_number'],
+  guide: ['guide_types', 'seasons'],
+};
+
+/**
+ * The type's own fields in a listing's new extras, checked and cleaned. Only values that changed are
+ * checked, so an older stored value never blocks an unrelated save. An error names the field.
+ */
+export function listingTypeFields(type: string, next: Record<string, unknown>, stored: Record<string, unknown> | null | undefined): ProfilePatch | ProfileError {
+  const keys = LISTING_TYPE_FIELDS[type] ?? [];
+  const changed = keys.filter((k) => next[k] !== undefined && JSON.stringify(next[k]) !== JSON.stringify(stored?.[k]));
+  if (!changed.length) return {};
+  return profilePatchFrom(type, Object.fromEntries(changed.map((k) => [k, next[k]])));
+}
+
+/**
+ * Every kind a business runs: the kind it signed up as, then each kind it lists. None of them is the
+ * "main" one (user decision 2026-11-26): a homestay that also lists a car is judged as both.
+ */
+export function kindsOf(businessType: string | null | undefined, listingTypes: readonly (string | null | undefined)[] = []): string[] {
+  const out: string[] = [];
+  for (const k of [businessType, ...listingTypes]) if (k && !out.includes(k)) out.push(k);
+  return out;
+}
+
+/** The fields that belong to one listing of this kind: its offers and photos, and its own details. */
+export function listingFieldsOf(kind: string): string[] {
+  return [...(PROPERTY_FIELDS[kind] ?? []), ...(LISTING_TYPE_FIELDS[kind] ?? [])];
+}
+
+/**
+ * profilePatchFrom for a business of several kinds: each field is checked by the rules of the first
+ * of `kinds` that knows it, so a driver business that also lists a homestay can save the host's name.
+ */
+export function profilePatchForKinds(kinds: readonly string[], input: unknown): ProfilePatch | ProfileError {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return { error: 'profile must be an object' };
+  const patch: ProfilePatch = {};
+  for (const [key, value] of Object.entries(input as Record<string, unknown>)) {
+    const rule = COMMON[key] ?? kinds.map((k) => BY_TYPE[k]?.[key]).find(Boolean);
+    if (!rule) return { error: `"${key}" is not part of this business's profile` };
+    const out = rule(value);
+    if (out && typeof out === 'object' && !Array.isArray(out) && 'error' in (out as object)) return out as ProfileError;
+    patch[key] = out;
+  }
+  return patch;
+}
+
+/**
+ * What the business still has to fill in, judged on every listing rather than the kind it signed up
+ * as: the host's name once (when it lists a homestay, cafe or shop), then each listing's own items
+ * (its photos, a guide's services), naming the listing. With no listings yet, the sign-up kind's.
+ */
+export function missingAcross(
+  businessType: string,
+  providerExtras: Record<string, any> | null | undefined,
+  listings: readonly { id: string; title: string; type: string; extras: unknown }[],
+): MissingItem[] {
+  if (!listings.length) return missingMandatory(businessType, providerExtras);
+  const out: MissingItem[] = [];
+  const premises = listings.find((l) => l.type === 'homestay') ?? listings.find((l) => (PREMISES_TYPES as readonly string[]).includes(l.type));
+  if (premises) {
+    const named = [providerExtras?.host_name, ...listings.map((l) => (l.extras as any)?.host_name)].some((v) => String(v ?? '').trim());
+    const ask = missingMandatory(premises.type, {}).find((m) => m.key === 'host_name');
+    if (!named && ask) out.push(ask);
+  }
+  for (const l of listings) {
+    const e = { ...((l.extras as Record<string, unknown>) || {}), host_name: 'named' };
+    for (const m of missingMandatory(l.type, e)) out.push({ ...m, listing_id: l.id, listing_title: l.title });
+  }
+  return out;
+}
+
 /** `label` is English; `min`/`have` let the website and app word it in the reader's language. */
-export type MissingItem = { key: string; label: string; min?: number; have?: number };
+export type MissingItem = {
+  key: string; label: string; min?: number; have?: number;
+  /** The listing it is missing on, when it is one listing's (its photos, its services). */
+  listing_id?: string; listing_title?: string;
+};
 
 /** What a new host still has to fill in before their documents can go for approval. */
 export function missingMandatory(businessType: string, extras: Record<string, any> | null | undefined): MissingItem[] {

@@ -1,7 +1,6 @@
 import React, { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import api from '@/lib/api';
-import { rupees, useHostPlanPrice } from '@/lib/prices';
 import { SUPPORTED_IMAGE_ACCEPT } from '@/lib/uploadImage';
 import { distanceTo, inListingRegion } from '@/lib/places';
 import AreasPicker from '@/components/provider/AreasPicker';
@@ -13,11 +12,9 @@ import { Icon, type IconName } from '@/components/ag/Icon';
 import { HelpWhatsApp, useHostSignupInfo } from '@/components/provider/onboard/QuickFill';
 import { HOST_TYPES, HUBS, MAX_GOODS, MAX_PHOTOS, OFFERS, PRESETS, QUICK_DISHES, SHOP_UNITS, type HostType, type HostWizard, type Place } from './useHostWizard';
 import { photoGoalFor } from '@/lib/photoGoal';
-import Sheet, { SheetHead } from '@/components/listing-detail/Sheet';
 import PaymentDoneCard from '@/components/PaymentDoneCard';
-import GstDetails from '@/components/provider/GstDetails';
-import { gstDraftError } from '@/lib/gstin';
 import ConsentCheck from '@/components/ConsentCheck';
+import AddListingInfo from './AddListingInfo';
 
 /** "Add your own" on the What do you give? step; the server takes up to 30 amenities of 60 characters. */
 const MAX_OWN_OFFERS = 8;
@@ -62,44 +59,10 @@ function Frame({ w, title, sub, children, cta }: { w: HostWizard; title: React.R
   );
 }
 
-/**
- * The fee lines, with real prices from the server. `plain` = dotted list inside the charges box.
- * With a `type` it shows only that business's charge; without one, every type's.
- */
-function FeeList({ plain, type }: { plain?: boolean; type?: HostType | '' }) {
-  const { t } = useTranslation();
-  const full = useHostPlanPrice('homestay');
-  const small = useHostPlanPrice('cafe');
-  const mine = useHostPlanPrice(type || 'homestay');
-  const { grace_bookings } = useHostSignupInfo();
-  const grace = t('ob.wz.fp_4', { count: grace_bookings, defaultValue: 'Pay now, or after your first {{count}} bookings' });
-  const free = type === 'shop';
-  const lines = type
-    ? [
-      free
-        ? t('ob.wz.fee_shop', 'Local shops: free')
-        : t('ob.wz.fee_one', { what: t(`ob.wz.t_${type}`), price: rupees(mine.base), defaultValue: '{{what}}: {{price}} a year' }),
-      // Inside the charges box the When to pay choice says this already.
-      ...(free || plain ? [] : [grace]),
-    ]
-    : [
-      t('ob.wz.fee_big', { price: rupees(full.base), defaultValue: 'Homestays, drivers and guides: {{price}} a year' }),
-      t('ob.wz.fee_cafe', { price: rupees(small.base), defaultValue: 'Cafes and restaurants: {{price}} a year' }),
-      t('ob.wz.fee_shop', 'Local shops: free'),
-      grace,
-    ];
-  const tick = plain ? null : <Icon name="check" />;
-  return (
-    <ul className={`ag-onboard-fees${plain ? ' plain' : ''}`} data-testid={plain ? 'wz-fees-box' : 'wz-fees'}>
-      {lines.map((l) => <li key={l}>{tick}<span>{l}</span></li>)}
-      {!free && <li className="hl">{tick}<span>{t('ob.wz.fp_5')}</span></li>}
-    </ul>
-  );
-}
-
 /* ---------- 1. What do you want to list? ---------- */
 function TypeStep({ w }: { w: HostWizard }) {
   const { t, d, set, setErr, pickType } = w;
+  const { grace_bookings } = useHostSignupInfo();
   return (
     <Frame w={w} title={t('ob.wz.what')} sub={t('ob.wz.onelist')}
       cta={(
@@ -119,6 +82,14 @@ function TypeStep({ w }: { w: HostWizard }) {
           </button>
         ))}
       </div>
+      {/* Nothing is paid while listing: the yearly pass is offered on the dashboard after the free start. */}
+      <Box tone="blush" flat data-testid="wz-free-band">
+        <b className="text-[var(--ink-strong)]">
+          {d.type === 'shop'
+            ? t('ob.wz.free_shop', 'List for free. Local shops never pay a yearly charge.')
+            : t('ob.wz.free_band', { count: grace_bookings, defaultValue: 'List for free. Pay after your first {{count}} bookings.' })}
+        </b>
+      </Box>
       {/* The same I Agree as the sign-in screen, asked of every host before their details are taken.
           A signed-out host finds it already ticked on the sign-in screen. */}
       <ConsentCheck checked={d.agreed} onChange={(on) => { set({ agreed: on }); if (on) setErr(''); }}
@@ -155,6 +126,29 @@ function PlaceStep({ w }: { w: HostWizard }) {
     }, 400);
     return () => window.clearTimeout(id);
   }, [q]);
+
+  // A pasted Google Maps link puts the pin exactly there (read by the backend; nothing is verified
+  // until the listing is put up, with the link and My location together when both are given).
+  const [linkState, setLinkState] = useState<'' | 'reading' | 'ok' | 'bad'>('');
+  // Homestays, cafes and shops have a place to confirm; drivers and guides go out to travellers.
+  const hasPlace = d.type === 'homestay' || d.type === 'cafe' || d.type === 'shop';
+  useEffect(() => {
+    const link = (d.mapsUrl || '').trim();
+    if (link.length < 8) { setLinkState(''); return undefined; }
+    setLinkState('reading');
+    const id = window.setTimeout(async () => {
+      try {
+        const { data } = await api.get('/geocode/maps-link', { params: { url: link } });
+        const n = ++seq.current;
+        set({ place: { name: nearbyName(data.latitude, data.longitude), lat: data.latitude, lng: data.longitude } });
+        setFocus((f) => f + 1);
+        void nameFromPin(data.latitude, data.longitude, n);
+        setLinkState('ok');
+      } catch { setLinkState('bad'); }
+    }, 600);
+    return () => window.clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [d.mapsUrl]);
 
   // No preset places before typing: the search and "my location" cover it. Typed text matches the
   // hubs straight away while the geocoder answers.
@@ -200,7 +194,7 @@ function PlaceStep({ w }: { w: HostWizard }) {
       // Location (GPS) is off; say so rather than telling a host in the hills they are outside them.
       if (!inListingRegion(lat, lng)) { setErr(t(accuracy > ROUGH_FIX_M ? 'ob.wz.loc_rough' : 'ob.wz.loc_outside')); return; }
       const n = ++seq.current;
-      set({ place: { name: nearbyName(lat, lng), lat, lng, accuracy: Math.round(accuracy) } });
+      set({ place: { name: nearbyName(lat, lng), lat, lng, accuracy: Math.round(accuracy) }, gps: { lat, lng, accuracy: Math.round(accuracy) } });
       setFocus((f) => f + 1);
       void nameFromPin(lat, lng, n);
     } catch (e) {
@@ -231,6 +225,10 @@ function PlaceStep({ w }: { w: HostWizard }) {
           </p>
         )}
       </div>
+      {hasPlace && <TextField label={t('lv.wz_link', 'Google Maps link (optional)')} value={d.mapsUrl || ''} onChange={(e) => set({ mapsUrl: e.target.value })}
+        placeholder="https://maps.app.goo.gl/..." inputMode="url" data-testid="wz-maps-link"
+        hint={linkState === 'bad' ? undefined : linkState === 'ok' ? t('lv.wz_link_ok', 'Pin moved to your Google Maps link.') : t('lv.wz_link_hint', 'Paste it to put the pin exactly on your place. With My location too, the link sets the spot.')}
+        error={linkState === 'bad' ? t('lv.wz_link_bad', 'Could not read that link. Copy it again from Google Maps.') : undefined} />}
       <div className="ag-onboard-pchips" role="list">
         {chips.map((p) => (
           <button key={`${p.name}${p.lat}`} type="button" className="ag-onboard-pchip" aria-pressed={pl?.name === p.name && pl.lat === p.lat}
@@ -344,7 +342,8 @@ function PriceStep({ w }: { w: HostWizard }) {
   const rooms = stay && d.roomsMode;
   const setRoom = (k: number, patch: Partial<{ name: string; price: string; occ: string }>) => set({ rooms: d.rooms.map((r, j) => (j === k ? { ...r, ...patch } : r)) });
   return (
-    <Frame w={w} title={stay ? t('ob.wz.prStay') : t('ob.wz.prDay')}>
+    // The question follows the toggle: one price is per person, a room's price is for the whole room.
+    <Frame w={w} title={rooms ? t('ob.wz.prRoom', 'Price for the room, per night') : stay ? t('ob.wz.prStay') : t('ob.wz.prDay')}>
       {stay && (
         <div className="ag-onboard-chips">
           <button type="button" className="ag-onboard-chip" aria-pressed={!rooms} onClick={() => set({ roomsMode: false })} data-testid="wz-price-one">{t('ob.wz.prOne')}</button>
@@ -558,108 +557,71 @@ function ExtrasStep({ w }: { w: HostWizard }) {
   );
 }
 
-/** Whether "Put it live" first asks when to pay: a new host listing a paid type (shops are free). */
-const asksToPay = (w: HostWizard) => !w.adding && !!w.d.type && w.d.type !== 'shop';
-
-/**
- * Opened by the last step's pay button: the picked type's charge and When to pay, Pay when listing
- * already chosen (useHostWizard). Its button follows the choice and puts the listing up.
- */
-function ChargesSheet({ w, onConfirm, onClose }: { w: HostWizard; onConfirm: () => void; onClose: () => void }) {
-  const { t, d, set } = w;
-  const { grace_bookings } = useHostSignupInfo();
-  const gst = d.gst || { on: false, gstin: '', legalName: '' };
-  const [gstTried, setGstTried] = useState(false);
-  // Paying now: a GSTIN that is switched on has to be complete before the listing goes up.
-  const confirm = () => {
-    if (d.payWhen === 'now' && gstDraftError(gst)) { setGstTried(true); return; }
-    onConfirm();
-  };
-  const pay: Array<{ k: 'now' | 'later'; icon: IconName; title: string; sub: string }> = [
-    { k: 'now', icon: 'bag', title: t('ob.wz.ch_now', 'Pay when listing'), sub: t('ob.wz.ch_nowS', 'Pay the yearly charge now and go live today.') },
-    {
-      k: 'later', icon: 't_trip',
-      title: t('ob.wz.ch_later', { count: grace_bookings, defaultValue: 'Pay after {{count}} bookings' }),
-      sub: t('ob.wz.ch_laterS', { count: grace_bookings, defaultValue: 'List free now, pay after your first {{count}} bookings.' }),
-    },
-  ];
-  return (
-    <Sheet onClose={onClose} labelledBy="wz-charges-title" testid="wz-charges" closeTestid="wz-charges-close">
-      <div className="flex flex-col gap-4">
-        <SheetHead id="wz-charges-title" eyebrow={<span data-testid="onboard-free-chip">{t('ob.wz.ch_eye')}</span>} title={t('ob.wz.ch_when')} />
-        <FeeList plain type={d.type} />
-        <div className="ag-onboard-chopts" role="radiogroup" aria-labelledby="wz-charges-title">
-          {pay.map((o) => (
-            <button key={o.k} type="button" role="radio" aria-checked={d.payWhen === o.k} className="ag-onboard-chopt"
-              onClick={() => set({ payWhen: o.k, payPicked: true })} data-testid={`plan-${o.k}`}>
-              <span className="top"><Icon name={o.icon} /><span className="rdot" aria-hidden="true" /></span>
-              <b>{o.title}</b>
-              <span className="ag-small">{o.sub}</span>
-            </button>
-          ))}
-        </div>
-        <p className="ag-small m-0">{t('ob.wz.gst_note')}</p>
-        {d.payWhen === 'now' && <GstDetails value={gst} onChange={(next) => set({ gst: next })} showErrors={gstTried} />}
-        <NextButton onClick={confirm} data-autofocus data-testid="wz-charges-confirm">
-          {d.payWhen === 'now' ? t('ob.wz.put_pay') : t('ob.wz.put')}
-        </NextButton>
-      </div>
-    </Sheet>
-  );
-}
-
 /* ---------- 6. Travellers will see this ---------- */
+/** "Put my listing up" puts it up straight away: nothing is paid here (the dashboard offers the yearly pass). */
 function ReviewStep({ w }: { w: HostWizard }) {
   const { t, d, busy, submit, startingPrice, offerLabels } = w;
   const from = startingPrice();
-  const unit = d.type === 'homestay' ? t('ob.wz.night') : (d.type === 'driver' || d.type === 'guide') ? t('ob.wz.day') : '';
+  // A homestay priced room by room shows its cheapest room, for the room.
+  const unit = d.type === 'homestay' ? (d.roomsMode ? t('ob.wz.room_night', 'room / night') : t('ob.wz.night')) : (d.type === 'driver' || d.type === 'guide') ? t('ob.wz.day') : '';
   const icon = d.type ? TYPE_ICON[d.type] : 'home';
-  const [asking, setAsking] = useState(false);
-  // Paid types see only the pay button here; when to pay is chosen in the sheet it opens.
-  const put = () => (asksToPay(w) ? setAsking(true) : submit());
   return (
     <Frame w={w} title={t('ob.wz.review')}
       cta={(
-        <>
-          <NextButton onClick={put} disabled={busy} data-testid="onboard-submit">
-            {busy ? t('common.loading') : asksToPay(w) ? t('ob.wz.put_pay') : t('ob.wz.put')}
-          </NextButton>
-          {!w.adding && d.type === 'shop' && <FeeList type="shop" />}
-        </>
+        <NextButton onClick={() => { void submit(); }} disabled={busy} data-testid="onboard-submit">
+          {busy ? t('common.loading') : t('ob.wz.put')}
+        </NextButton>
       )}>
-      <article className="ag-onboard-card">
-        <span className="pic" style={d.photos[0] ? { backgroundImage: `url(${d.photos[0]})` } : undefined}>
-          {d.photos[0] ? <span className="tag"><Icon name={icon} /></span> : <Icon name={icon} />}
-        </span>
-        <span className="body">
-          <span className="name">{d.name}</span>
-          <span className="ag-small">{d.place?.name}</span>
-          {from > 0 && <span><b className="price">₹{from.toLocaleString('en-IN')}</b> {unit && <span className="ag-small">{unit}</span>}</span>}
-        </span>
+      {/* One card: the listing as it shows in search, then what it offers, each part labelled. */}
+      <article className="ag-onboard-review" data-testid="wz-review-card">
+        <div className="ag-onboard-card">
+          <span className="pic" style={d.photos[0] ? { backgroundImage: `url(${d.photos[0]})` } : undefined}>
+            {d.photos[0] ? <span className="tag"><Icon name={icon} /></span> : <Icon name={icon} />}
+          </span>
+          <span className="body">
+            <span className="name">{d.name}</span>
+            <span className="ag-small">{d.place?.name}</span>
+            {from > 0 && <span><b className="price">₹{from.toLocaleString('en-IN')}</b> {unit && <span className="ag-small">{unit}</span>}</span>}
+          </span>
+        </div>
+        {offerLabels().length > 0 && (
+          <section className="part">
+            <h2 className="ag-eyebrow">{t('ob.wz.rv_offers', 'What you give')}</h2>
+            <ul className="ag-onboard-facts">
+              {offerLabels().map((l) => <li key={l}><Icon name="check" />{l}</li>)}
+            </ul>
+          </section>
+        )}
+        {d.type === 'driver' && d.areas.length > 0 && (
+          <section className="part">
+            <h2 className="ag-eyebrow">{t('ob.wz.rv_areas', 'Picks up from')}</h2>
+            <ul className="ag-onboard-facts" data-testid="wz-review-areas">
+              {d.areas.map((a) => <li key={a.name}><Icon name="pin" />{a.name}</li>)}
+            </ul>
+          </section>
+        )}
+        <section className="part">
+          <h2 className="ag-eyebrow">{t('ob.wz.rv_phone', 'WhatsApp number')}</h2>
+          <p className="ag-onboard-muted">+91 {d.phone}</p>
+        </section>
       </article>
-      {offerLabels().length > 0 && (
-        <ul className="ag-onboard-facts">
-          {offerLabels().map((l) => <li key={l}><Icon name="check" />{l}</li>)}
-        </ul>
-      )}
-      {d.type === 'driver' && d.areas.length > 0 && (
-        <ul className="ag-onboard-facts" aria-label={t('areas.chosen', 'Your pickup areas')} data-testid="wz-review-areas">
-          {d.areas.map((a) => <li key={a.name}><Icon name="pin" />{a.name}</li>)}
-        </ul>
-      )}
-      <p className="ag-onboard-muted">+91 {d.phone}</p>
-      {asking && <ChargesSheet w={w} onClose={() => setAsking(false)} onConfirm={() => { setAsking(false); void submit(); }} />}
     </Frame>
   );
 }
 
 /* ---------- done ---------- */
 function DoneStep({ w }: { w: HostWizard }) {
-  const { t, d, paidPlan } = w;
+  const { t, d, locationNote } = w;
   return (
     <section className="ag-main ag-onboard" data-testid="wz-done">
-      <PaymentDoneCard icon="party" title={t('ob.wz.in_title')} body={t('ob.wz.in_body')} testId="wz-done-card"
-        note={paidPlan ? t('ob.wz.in_paid', 'Host plan payment done. Your first year is active.') : undefined}>
+      {/* The place could not be confirmed at sign-up: it can be, on the listing's page. */}
+      {locationNote && (
+        <Box tone="blush" flat data-testid="wz-location-note">
+          <p className="text-sm text-[var(--ink-strong)]">{locationNote}</p>
+          <p className="ag-small">{t('lv.intro', 'Paste this place’s Google Maps link, use your location while you are there, or both. With both, the link sets the exact spot.')}</p>
+        </Box>
+      )}
+      <PaymentDoneCard icon="party" title={t('ob.wz.in_title')} body={t('ob.wz.in_body')} testId="wz-done-card">
         <ButtonLink go to="/provider/dashboard" data-testid="wz-dashboard">{t('ob.wz.biz')}</ButtonLink>
         <Button go onClick={() => window.location.assign("/provider/onboard?add=1")} icon={<Icon name="plus" />} data-testid="wz-another">{d.type === 'driver' ? t('ob.wz.addveh') : t('ob.wz.addprop')}</Button>
       </PaymentDoneCard>
@@ -672,8 +634,11 @@ export default function HostWizardScreens({ w }: { w: HostWizard }) {
   const screen = useMemo(() => w.step, [w.step]);
   const top = useRef<HTMLDivElement>(null);
   useEffect(() => { top.current?.querySelector<HTMLElement>('h1')?.focus?.({ preventScroll: true }); }, [screen]);
+  // A host adding another listing hears first that each listing pays its own yearly pass.
+  const [info, setInfo] = useState(() => w.adding && w.step !== 'done');
   return (
     <div className="ag-wrap" ref={top}>
+      {info && <AddListingInfo onContinue={() => setInfo(false)} onLeave={() => w.nav('/provider/dashboard')} />}
       {screen === 'type' && <TypeStep w={w} />}
       {screen === 'place' && <PlaceStep w={w} />}
       {screen === 'name' && <NameStep w={w} />}

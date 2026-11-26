@@ -23,6 +23,8 @@ import { checkNameLike } from '../lib/contentRules';
 import { listingCover } from '../lib/listingCover';
 import { openBookingsFor } from '../lib/accountCleanup';
 import { ratingsForListings } from '../lib/listingRatings';
+import { listingTypeFields } from '../lib/hostProfile';
+import { checkLocation, LocationCheckError, listingStamp } from '../lib/locationCheck';
 import { cleanAreas, driverQuality, rankDrivers, readDriverQuery, type TripMatch } from '../lib/driverMatch';
 import {
   SPOT_TYPE, SPOT_FORBIDDEN_MESSAGE, canWriteSpots, parseSpotExtras,
@@ -729,12 +731,12 @@ router.post('/', authenticateToken, async (req: Request, res: Response) => {
 });
 
 /**
- * POST /api/listings/:id/location/verify  { maps_url }
+ * POST /api/listings/:id/location/verify  { maps_url?, latitude?, longitude?, accuracy?, mocked? }
  *
- * Verifies the pin of ONE listing from a Google Maps link, for a host whose listings are in
- * different places (a homestay up the hill and a café in town). POST /providers/me/location/verify
- * stamps one pin on everything a provider owns, which is right for a single-site business and
- * wrong for the rest. Same parsing, same service-area check, same flag; only this listing moves.
+ * Confirms where ONE listing is (decision 2026-11-26: each listing verifies on its own), by a
+ * Google Maps link, the phone's location, or both (lib/locationCheck.ts: with both, the link sets
+ * the spot and a phone a little off never fails it). Only this listing moves. When it is the
+ * business's sign-up listing, the business row's pin follows, as the profile mirrors that listing.
  */
 router.post(
   '/:id/location/verify',
@@ -748,28 +750,37 @@ router.post(
       return res.status(403).json({ detail: 'You can only verify the location of your own listing' });
     }
 
-    let pin;
+    let result;
     try {
-      pin = await resolveMapsLink(req.body?.maps_url);
+      result = await checkLocation(req.body ?? {});
     } catch (err) {
-      if (err instanceof MapsLinkError) return res.status(400).json({ detail: err.message });
+      if (err instanceof LocationCheckError) return res.status(400).json({ detail: err.message });
       throw err;
     }
-    if (!inListingRegion(pin)) {
-      return res.status(400).json({
-        detail: 'That pin is outside India. Check you picked the right place in Google Maps.',
-      });
-    }
 
-    const verifiedAt = new Date().toISOString();
     const [updated] = await db.update(schema.listings)
       .set({
-        latitude: pin.latitude,
-        longitude: pin.longitude,
-        extras: { ...(listing.extras || {}), location_verified: { verified_at: verifiedAt, source: 'google_maps_link' } },
+        latitude: result.latitude,
+        longitude: result.longitude,
+        extras: { ...(listing.extras || {}), location_verified: listingStamp(result) },
       })
       .where(eq(schema.listings.id, listing.id))
       .returning();
+
+    // The business row mirrors its sign-up listing (the oldest of the kind it signed up as).
+    const [owner] = await db.select().from(schema.providers).where(eq(schema.providers.id, listing.providerId)).limit(1);
+    if (owner) {
+      const [first] = await db.select({ id: schema.listings.id }).from(schema.listings)
+        .where(and(eq(schema.listings.providerId, owner.id), eq(schema.listings.type, owner.businessType)))
+        .orderBy(asc(schema.listings.createdAt), asc(schema.listings.id)).limit(1);
+      if (first?.id === listing.id) {
+        await db.update(schema.providers).set({
+          latitude: result.latitude,
+          longitude: result.longitude,
+          extras: { ...(owner.extras || {}), location_verification: result },
+        }).where(eq(schema.providers.id, owner.id));
+      }
+    }
 
     // A homestay is only "verified" once a pin is, so the status is worked out again now.
     await recomputeKycStatus(listing.providerId);
@@ -779,8 +790,11 @@ router.post(
         verified: true,
         latitude: updated.latitude,
         longitude: updated.longitude,
-        maps_url: googleMapsUrl(pin),
-        verified_at: verifiedAt,
+        maps_url: result.maps_url,
+        verified_at: result.verified_at,
+        source: result.source,
+        ...(result.accuracy_m !== undefined ? { accuracy_m: result.accuracy_m } : {}),
+        ...(result.gps_gap_m !== undefined ? { gps_gap_m: result.gps_gap_m } : {}),
       },
     });
   }
@@ -872,6 +886,13 @@ const updateListingHandler = async (req: Request, res: Response) => {
   // to reach the database and produce a listing with an unplottable pin.
   for (const axis of ['latitude', 'longitude'] as const) {
     if (updateFields[axis] !== undefined) updateFields[axis] = coord(updateFields[axis]);
+  }
+
+  // A car's numbers and a guide's kinds and seasons, kept on that listing (lib/hostProfile.ts).
+  if (updateFields.extras && typeof updateFields.extras === 'object' && !Array.isArray(updateFields.extras)) {
+    const own = listingTypeFields(listing.type, updateFields.extras, listing.extras as Record<string, unknown>);
+    if ('error' in own) return res.status(400).json({ detail: own.error });
+    updateFields.extras = { ...updateFields.extras, ...own };
   }
 
   // The verified-location flag is server-granted. A client-supplied extras object never carries

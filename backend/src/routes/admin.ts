@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { businessMissing } from '../lib/businessMissing';
 import { travellerDashboard } from '../lib/travellerDashboard';
 import { missingMandatory } from '../lib/hostProfile';
 import { v4 as uuidv4 } from 'uuid';
@@ -622,6 +623,8 @@ router.get('/admin/kyc', authenticateToken, requireAdmin, async (req: Request, r
     ? await db.select().from(schema.providers).where(inArray(schema.providers.id, providerIds))
     : [];
   const pById = new Map(providers.map(p => [p.id, p]));
+  // Mandatory items each host has not filled in yet, over all their listings (lib/businessMissing.ts).
+  const missingByProvider = new Map(await Promise.all(providers.map(async (p) => [p.id, await businessMissing(p)] as const)));
   const userIds = [...new Set(providers.map(p => p.userId))];
   const users = userIds.length
     ? await db.select().from(schema.users).where(inArray(schema.users.id, userIds))
@@ -642,7 +645,7 @@ router.get('/admin/kyc', authenticateToken, requireAdmin, async (req: Request, r
       business_name: p?.businessName || null,
       business_type: p?.businessType || null,
       // Mandatory profile items this host has not filled in yet (lib/hostProfile.ts).
-      profile_missing: p ? missingMandatory(p.businessType, p.extras) : [],
+      profile_missing: p ? missingByProvider.get(p.id) ?? [] : [],
       owner_name: u?.name || null,
       file_url: `/api/providers/kyc/${d.id}/file`,
     };

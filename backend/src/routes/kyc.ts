@@ -1,4 +1,6 @@
 import { Router, Request, Response } from 'express';
+import { businessUploadBlockers, uploadBlockers } from '../lib/businessMissing';
+import { missingAcross } from '../lib/hostProfile';
 import { missingMandatory } from '../lib/hostProfile';
 import { v4 as uuidv4 } from 'uuid';
 import path from 'path';
@@ -151,6 +153,8 @@ export async function recomputeKycStatus(providerId: string): Promise<string> {
       hasListingDescription,
       listingLocationSources,
       listingTypes: providerListings.map(l => l.type),
+      listingLocations: [...providerListings].sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)))
+        .map(l => ({ id: l.id, type: l.type, verified: !!(l.extras as any)?.location_verified })),
     },
     docs.map(d => ({ docType: d.docType, status: d.status as any }))
   );
@@ -191,17 +195,20 @@ export async function hostReadiness(provider: typeof schema.providers.$inferSele
       hasListingDescription,
       listingLocationSources,
       listingTypes: providerListings.map(l => l.type),
+      listingLocations: [...providerListings].sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)))
+        .map(l => ({ id: l.id, type: l.type, verified: !!(l.extras as any)?.location_verified })),
     },
     docs.map(d => ({ docType: d.docType, status: d.status as any }))
   );
-  const profileMissing = missingMandatory(provider.businessType, provider.extras);
+  const profileMissing = missingAcross(provider.businessType, provider.extras as Record<string, any>,
+    [...providerListings].sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt))));
   const requiredDocs = checklist.filter(c => c.kind === 'kyc' && c.required);
   const profileLeft = checklist.filter(c => c.kind === 'profile' && c.state !== 'done');
   // The one thing holding this host up, in the order they have to be done.
   const nextStep =
     kycStatus === 'verified' ? 'live'
       : provider.status !== 'active' ? 'pay_plan'
-        : profileMissing.length ? 'finish_profile'
+        : uploadBlockers(profileMissing, providerListings.map((l) => l.id)).length ? 'finish_profile'
           : requiredDocs.some(c => c.state === 'rejected') ? 'fix_rejected'
             : requiredDocs.some(c => c.state === 'missing') ? 'upload_documents'
               : requiredDocs.some(c => c.state === 'in_review') ? 'review_documents'
@@ -354,7 +361,7 @@ router.post('/me/kyc', authenticateToken, async (req: Request, res: Response) =>
   // A new host sends documents for approval only once the mandatory parts of their profile are in
   // (lib/hostProfile.ts). Hosts who were live before approval existed are not held back.
   if (provider.approvalRequired) {
-    const missing = missingMandatory(provider.businessType, provider.extras);
+    const missing = await businessUploadBlockers(provider);
     if (missing.length) {
       return res.status(409).json({
         detail: `Finish your profile before sending documents for approval: ${missing.map((m) => m.label).join('; ')}`,
@@ -404,7 +411,7 @@ router.post('/me/kyc/video', authenticateToken, async (req: Request, res: Respon
   // A new host sends documents for approval only once the mandatory parts of their profile are in
   // (lib/hostProfile.ts). Hosts who were live before approval existed are not held back.
   if (provider.approvalRequired) {
-    const missing = missingMandatory(provider.businessType, provider.extras);
+    const missing = await businessUploadBlockers(provider);
     if (missing.length) {
       return res.status(409).json({
         detail: `Finish your profile before sending documents for approval: ${missing.map((m) => m.label).join('; ')}`,

@@ -228,7 +228,7 @@ export default function TouristDashboard() {
             <Row icon="t_trip" title={t('ui.account.tdash', 'Traveller dashboard')} />
           </Link>}
           {biz ? (
-            <Link to="/provider/profile#plan" data-testid="account-plan">
+            <Link to="/provider/dashboard" data-testid="account-plan">
               <Row icon="badge" title={t('ui.account.biz_member', 'Business membership')} sub={planSub} />
             </Link>
           ) : (

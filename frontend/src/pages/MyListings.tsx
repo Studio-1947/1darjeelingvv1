@@ -43,7 +43,8 @@ export default function MyListings() {
   }, [authLoading, user, provider, nav, refreshProvider]);
 
   // An old link to the membership card (/my-listings#plan): the card lives on the Business profile now.
-  useEffect(() => { if (hash === '#plan') nav('/provider/profile#plan', { replace: true }); }, [hash, nav]);
+  // Memberships are per listing, on the dashboard's listing cards.
+  useEffect(() => { if (hash === '#plan') nav('/provider/dashboard', { replace: true }); }, [hash, nav]);
 
   const load = useCallback(() => api.get('/bookings/provider')
     .then((r) => { setListings(r.data.listings || []); setBookings(r.data.items || []); })

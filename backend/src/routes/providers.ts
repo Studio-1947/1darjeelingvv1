@@ -1,11 +1,13 @@
 import { Router, Request, Response } from 'express';
+import { businessMissing } from '../lib/businessMissing';
+import { asksLocationCheck, checkLocation, LocationCheckError } from '../lib/locationCheck';
 import { MAX_PRICE } from '../lib/priceCap';
 import { listExtras } from '../lib/listingContact';
 import { assignSlug, pagePath, PAGE_TYPES } from '../lib/providerSlug';
 import { buildHostPage, hostBadges, hostIsPublic } from '../lib/hostPage';
 import { hostStats } from '../lib/hostStats';
 import { optionalUser } from '../middleware/auth';
-import { missingMandatory, profileKeysFor, profilePatchFrom, PROPERTY_FIELDS, startingPriceFor, themeOf } from '../lib/hostProfile';
+import { kindsOf, listingFieldsOf, missingMandatory, profileKeysFor, profilePatchForKinds, profilePatchFrom, PROPERTY_FIELDS, startingPriceFor, themeOf } from '../lib/hostProfile';
 import { isHostApprovalPending, isHostPlanLive } from '../lib/hostPlan';
 import { graceStateFor, publishFirstListing } from '../lib/hostGrace';
 import { hostPlanBreakup } from '../lib/pricing';
@@ -260,6 +262,26 @@ router.post('/onboard', authenticateToken, async (req: Request, res: Response) =
   await db.update(schema.users).set({ role: 'provider' }).where(eq(schema.users.id, req.user.id));
   provider.slug = await assignSlug(provider.id, provider.businessName);
 
+  // The place, confirmed at sign-up (lib/locationCheck.ts): a Google Maps link, the phone's location,
+  // or both. It lands on the business row and on the first listing when that is published
+  // (lib/hostGrace.ts publishFirstListing). A check that fails never blocks signing up: the host is
+  // told why and can verify on the listing later.
+  let locationCheckError: string | null = null;
+  if (asksLocationCheck(req.body?.location_check)) {
+    try {
+      const result = await checkLocation(req.body.location_check);
+      const [checked] = await db.update(schema.providers).set({
+        latitude: result.latitude,
+        longitude: result.longitude,
+        extras: { ...(provider.extras || {}), location_verification: result },
+      }).where(eq(schema.providers.id, provider.id)).returning();
+      provider = { ...checked, slug: provider.slug };
+    } catch (err) {
+      if (!(err instanceof LocationCheckError)) throw err;
+      locationCheckError = err.message;
+    }
+  }
+
   const providerReturn = {
     id: provider.id,
     user_id: provider.userId,
@@ -277,7 +299,7 @@ router.post('/onboard', authenticateToken, async (req: Request, res: Response) =
     created_at: provider.createdAt
   };
 
-  res.json({ provider: providerReturn });
+  res.json({ provider: providerReturn, ...(locationCheckError ? { location_check_error: locationCheckError } : {}) });
 });
 
 /**
@@ -342,7 +364,7 @@ router.get('/me', authenticateToken, async (req: Request, res: Response) => {
     kyc_status: provider.kycStatus,
     approval_pending: isHostApprovalPending(provider),
     // What a new host still has to fill in before their documents can go for approval.
-    profile_missing: missingMandatory(provider.businessType, provider.extras),
+    profile_missing: await businessMissing(provider),
     // The free start: bookings used so far, the limit, and whether new bookings are paused until
     // the host pays (lib/hostGrace.ts). Null once the host has paid.
     grace: await graceStateFor(provider),
@@ -475,7 +497,7 @@ router.get('/me/stats', authenticateToken, async (req: Request, res: Response) =
   const me = (await hostAccessFor(req.user.id))?.provider;
   const extra = await hostStats(listingIds, {
     verified: me ? hostBadges(me).verified : false,
-    profileComplete: me ? missingMandatory(me.businessType, me.extras).length === 0 : false,
+    profileComplete: me ? (await businessMissing(me)).length === 0 : false,
   });
   res.json({
     ...extra,
@@ -511,8 +533,8 @@ router.get('/me/stats', authenticateToken, async (req: Request, res: Response) =
  * POST /api/providers/me/location/verify  { maps_url }
  *
  * The host pastes the Google Maps link for their place (or "lat, lng"). We read the pin out of
- * it, check it falls inside the area aangan serves, and save it on the provider and on every
- * listing they own, flagged as verified. The flag can only be set here; listing and provider
+ * it, check it falls inside the area aangan serves, and save it on the provider and on its
+ * sign-up listing, flagged as verified (each other listing verifies its own place). The flag can only be set here; listing and provider
  * edits cannot grant it, and moving a pin by hand clears it.
  */
 router.post(
@@ -554,8 +576,12 @@ router.post(
           extras: { ...(provider.extras || {}), location_verification: verification },
         })
         .where(eq(schema.providers.id, provider.id));
-      const owned = await tx.select().from(schema.listings).where(eq(schema.listings.providerId, provider.id));
-      for (const listing of owned) {
+      // Only the business's sign-up listing moves: every other listing verifies its own place
+      // (POST /listings/:id/location/verify, decision 2026-11-26).
+      const owned = (await tx.select().from(schema.listings).where(eq(schema.listings.providerId, provider.id)))
+        .sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)));
+      const signUp = owned.find((l) => l.type === provider.businessType) ?? owned[0];
+      for (const listing of signUp ? [signUp] : []) {
         await tx
           .update(schema.listings)
           .set({
@@ -581,7 +607,7 @@ export const LIVE_CAPTURE_MAX_ACCURACY_M = 100;
  * POST /api/providers/me/location/live  { latitude, longitude, accuracy }
  *
  * The host's phone reports where it is, standing in their café or shop, and that becomes the
- * verified pin on the provider and on every listing they own. It is the proof a pasted Google Maps
+ * verified pin on the provider and on its sign-up listing (each other listing verifies its own). It is the proof a pasted Google Maps
  * link cannot give: the link shows a place the host chose, the capture shows where they actually are.
  *
  * The server cannot see the GPS, so it checks what it can: the position is inside the area aangan
@@ -640,8 +666,12 @@ router.post(
           extras: { ...(provider.extras || {}), location_verification: verification },
         })
         .where(eq(schema.providers.id, provider.id));
-      const owned = await tx.select().from(schema.listings).where(eq(schema.listings.providerId, provider.id));
-      for (const listing of owned) {
+      // Only the business's sign-up listing moves: every other listing verifies its own place
+      // (POST /listings/:id/location/verify, decision 2026-11-26).
+      const owned = (await tx.select().from(schema.listings).where(eq(schema.listings.providerId, provider.id)))
+        .sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)));
+      const signUp = owned.find((l) => l.type === provider.businessType) ?? owned[0];
+      for (const listing of signUp ? [signUp] : []) {
         await tx
           .update(schema.listings)
           .set({
@@ -739,21 +769,27 @@ router.patch('/me', authenticateToken, async (req: Request, res: Response) => {
     }
     targetId = body.listing_id;
   }
-  const propKeys = PROPERTY_FIELDS[provider.businessType] ?? [];
+  // No kind is the business's "main" one (decision 2026-11-26): a field is checked by the rules of
+  // any kind the business runs, and one listing's fields are those of that listing's own kind.
+  const target = own.find((l) => l.id === targetId) ?? null;
+  const targetKind = target?.type ?? provider.businessType;
+  const kinds = kindsOf(targetKind, [provider.businessType, ...own.map((l) => l.type)]);
+  const propKeys = listingFieldsOf(targetKind);
   const perProperty = propKeys.length > 0;
   let profilePatch: Record<string, unknown> | null = null;
   let businessPatch: Record<string, unknown> = {};
   let propertyPatch: Record<string, unknown> = {};
   if (body.profile !== undefined) {
-    const checked = profilePatchFrom(provider.businessType, body.profile);
+    const checked = profilePatchForKinds(kinds, body.profile);
     if ('error' in checked) return res.status(400).json({ detail: checked.error });
     profilePatch = checked;
     businessPatch = Object.fromEntries(Object.entries(checked).filter(([k]) => !propKeys.includes(k)));
     propertyPatch = Object.fromEntries(Object.entries(checked).filter(([k]) => propKeys.includes(k)));
-    const onFirst = targetId === firstId;
+    // The business row mirrors its first listing of the kind it signed up as.
+    const onFirst = targetId === firstId && targetKind === provider.businessType;
     const extras = { ...(set.extras ?? provider.extras ?? {}), ...businessPatch, ...(onFirst ? propertyPatch : {}) };
     set.extras = extras;
-    const derived = startingPriceFor(provider.businessType, extras);
+    const derived = onFirst ? startingPriceFor(provider.businessType, extras) : null;
     if (derived !== null && body.price_from === undefined && (onFirst || !perProperty)) set.priceFrom = derived;
   }
   if (body.cover_image !== undefined) {
@@ -789,7 +825,7 @@ router.patch('/me', authenticateToken, async (req: Request, res: Response) => {
         if (set.priceFrom !== undefined) next.price = set.priceFrom;
       } else if (profilePatch && l.id === targetId) {
         // This property's own "from" price: a typed one, else its cheapest room.
-        const price = body.price_from !== undefined ? set.priceFrom : startingPriceFor(provider.businessType, next.extras as Record<string, unknown>);
+        const price = body.price_from !== undefined ? set.priceFrom : startingPriceFor(l.type, next.extras as Record<string, unknown>);
         if (price !== null && price !== undefined) next.price = price;
       }
       if (Object.keys(next).length) await db.update(schema.listings).set(next).where(eq(schema.listings.id, l.id));
@@ -824,7 +860,7 @@ router.patch('/me', authenticateToken, async (req: Request, res: Response) => {
       plan_active: updated.status === 'active' && (!updated.planExpiresAt || Date.parse(updated.planExpiresAt) > Date.now()),
       kyc_status: updated.kycStatus,
       approval_pending: isHostApprovalPending(updated),
-      profile_missing: missingMandatory(updated.businessType, updated.extras),
+      profile_missing: await businessMissing(updated),
     },
   });
 });

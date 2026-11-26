@@ -6,8 +6,11 @@ import { IconButton } from '@/components/ag';
 /**
  * Photo grid with an "add photos" tile and a remove button on each image.
  * Presentational - the caller owns the upload (see lib/uploadImage).
+ * With `onMakeCover`, the first photo is the listing's cover (tagged so) and every other photo can
+ * be moved to the front: a listing has no cover of its own besides its photos (decision 2026-11-26;
+ * the one separate cover is the business's, on the Business profile).
  */
-export default function GalleryUploader({ images, uploading, onFilesSelected, onRemove, kinds, onKind }: {
+export default function GalleryUploader({ images, uploading, onFilesSelected, onRemove, kinds, onKind, onMakeCover }: {
   images: string[];
   uploading: boolean;
   onFilesSelected: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -15,6 +18,8 @@ export default function GalleryUploader({ images, uploading, onFilesSelected, on
   /** Homestays: what each photo shows (front, outside, room, other), keyed by URL. */
   kinds?: Record<string, string>;
   onKind?: (url: string, kind: string) => void;
+  /** Move this photo to the front, making it the cover. */
+  onMakeCover?: (index: number) => void;
 }) {
   const { t } = useTranslation();
   return (
@@ -22,6 +27,16 @@ export default function GalleryUploader({ images, uploading, onFilesSelected, on
       {images.map((url, i) => (
         <div key={i} className="relative aspect-[4/3] overflow-hidden rounded-[18px] border border-[var(--warmline)] bg-[var(--creme2)]">
           <img src={url} alt={t('widgets.photo_alt', { index: i + 1 })} className="h-full w-full object-cover" />
+          {onMakeCover && (i === 0 ? (
+            <span className="absolute left-2 top-2 rounded-full bg-[rgb(0_0_0/.6)] px-2.5 py-1 text-xs font-semibold text-white" data-testid="photo-cover-tag">
+              {t('widgets.cover', 'Cover')}
+            </span>
+          ) : (
+            <button type="button" onClick={() => onMakeCover(i)} data-testid={`photo-make-cover-${i}`}
+              className="absolute left-2 top-2 min-h-8 rounded-full bg-[var(--surface)] px-3 text-xs font-medium text-[var(--ink-strong)] hover:text-[var(--r)]">
+              {t('widgets.make_cover', 'Make cover')}
+            </button>
+          ))}
           {onKind && (
             <select
               value={kinds?.[url] || ''}

@@ -21,6 +21,7 @@ import adminMaintenanceRouter from './routes/adminMaintenance';
 import adminSettingsRouter from './routes/adminSettings';
 import adminBroadcastsRouter from './routes/adminBroadcasts';
 import geocodeRouter from './routes/geocode';
+import mapsLinkPreviewRouter from './routes/mapsLinkPreview';
 import mapTilesRouter from './routes/mapTiles';
 import kycRouter from './routes/kyc';
 import favoritesRouter from './routes/favorites';
@@ -265,6 +266,8 @@ app.use('/api/plans', plansRouter); // Trip plans in the Feed
 app.use('/api/payments', paymentsRouter);
 app.use('/api/webhooks/interakt', interaktWebhookRouter);
 app.use('/api/geocode', geocodeRouter);
+// A pasted Google Maps link read into a pin, for the sign-up wizard (routes/mapsLinkPreview.ts).
+app.use('/api/geocode', mapsLinkPreviewRouter);
 app.use('/api/maps/tiles', mapTilesRouter);
 app.use('/api/routes', routeEstimatorRouter);
 app.use('/api/weather', weatherRouter);

@@ -32,17 +32,22 @@ describe('live location capture', () => {
     }
   });
 
-  it('turns the checklist row done for a cafe, and a pasted Google Maps link does not', async () => {
+  it('turns the checklist row done for a shop by a live capture', async () => {
     const { token } = await onboardActiveProvider({ name: 'Live Row', businessType: 'shop' });
     const before = (await profile(token)).checklist.find((c: any) => c.key === 'location');
     expect(before.state).toBe('missing');
     expect(before.action).toBe('live_capture');
 
+    await captureLiveLocation(token);
+    expect((await profile(token)).checklist.find((c: any) => c.key === 'location').state).toBe('done');
+  });
+
+  // Decision 2026-11-26: a phone is often a little off, so a pasted Google Maps link verifies a
+  // shop or cafe too.
+  it('turns the checklist row done for a shop by a pasted Google Maps link as well', async () => {
+    const { token } = await onboardActiveProvider({ name: 'Link Row', businessType: 'shop' });
     await request(app).post('/api/providers/me/location/verify').set('Authorization', `Bearer ${token}`)
       .send({ maps_url: 'https://www.google.com/maps/@27.036,88.2627,17z' });
-    expect((await profile(token)).checklist.find((c: any) => c.key === 'location').state).toBe('missing');
-
-    await captureLiveLocation(token);
     expect((await profile(token)).checklist.find((c: any) => c.key === 'location').state).toBe('done');
   });
 

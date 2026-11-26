@@ -146,14 +146,16 @@ describe('a homestay is verified only with its documents AND a confirmed pin', (
     expect((await profile(token)).kyc_status).toBe('partial');
   });
 
-  it('does not let a pasted Google Maps link stand in for a cafe live capture', async () => {
+  // Decision 2026-11-26: a pasted Google Maps link verifies a cafe too (a phone is often a little off).
+  it('lets a pasted Google Maps link verify a cafe, as a live capture does', async () => {
     const admin = await loginAdmin();
     const { token, providerId } = await onboardActiveProvider({ name: 'Link Cafe', businessType: 'cafe', awaitingApproval: true });
     await uploadAll(token);
     await approveAll(admin, providerId);
+    expect((await profile(token)).kyc_status).toBe('partial');
     await request(app).post('/api/providers/me/location/verify')
       .set('Authorization', `Bearer ${token}`).send({ maps_url: IN_DARJEELING });
-    expect((await profile(token)).kyc_status).toBe('partial');
+    expect((await profile(token)).kyc_status).toBe('verified');
   });
 });
 
@@ -179,5 +181,38 @@ describe('a homestay business that also lists a shop', () => {
     const up = await request(app).post('/api/providers/me/kyc').set('Authorization', `Bearer ${token}`)
       .send({ doc_type: 'premises_photo_front', file: PNG_DATA_URL, filename: 'front.png' });
     expect(up.status).toBe(200);
+  });
+});
+
+describe('each listing verifies its own place (decision 2026-11-26)', () => {
+  it('verifying one listing never moves another, and both ways and a rough phone are accepted', async () => {
+    const { token } = await onboardActiveProvider({ name: 'Hill And Town', awaitingApproval: true });
+    const auth = { Authorization: `Bearer ${token}` };
+    const shop = await request(app).post('/api/listings').set(auth)
+      .send({ title: 'Town shop', type: 'shop', description: 'Tea and woollens in Mirik bazaar', location: 'Mirik', price: 100, latitude: 26.887, longitude: 88.187 });
+    expect(shop.status).toBe(200);
+    const shopId = shop.body.item.id;
+    const before = (await request(app).get('/api/bookings/provider').set(auth)).body.listings;
+    const stay = before.find((l: any) => l.type === 'homestay');
+
+    // The homestay by its Google Maps link: only the homestay moves.
+    const a = await request(app).post(`/api/listings/${stay.id}/location/verify`).set(auth).send({ maps_url: IN_DARJEELING });
+    expect(a.status).toBe(200);
+    // The shop by a link and a rough phone 300 m away: verified on the link's pin, not refused.
+    const b = await request(app).post(`/api/listings/${shopId}/location/verify`).set(auth)
+      .send({ maps_url: '26.8870, 88.1870', latitude: 26.8897, longitude: 88.187, accuracy: 350 });
+    expect(b.status).toBe(200);
+    expect(b.body.location).toMatchObject({ source: 'maps_link_on_site', latitude: 26.887 });
+
+    const rows = await db.select().from(schema.listings);
+    const s = rows.find((l) => l.id === stay.id)!;
+    const sh = rows.find((l) => l.id === shopId)!;
+    expect([s.latitude, s.longitude]).toEqual([27.036, 88.2627]);
+    expect([sh.latitude, sh.longitude]).toEqual([26.887, 88.187]);
+    expect((s.extras as any).location_verified.source).toBe('google_maps_link');
+
+    // The checklist's location row is done once both places are.
+    const row = (await profile(token)).checklist.find((c: any) => c.key === 'location');
+    expect(row.state).toBe('done');
   });
 });

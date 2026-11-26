@@ -1469,6 +1469,8 @@
     "upload_photo": "Upload Photo",
     "add_photos": "Add Photos",
     "photo_alt": "Photo {{index}}",
+    "cover": "Cover",
+    "make_cover": "Make cover",
     "photos_added_one": "{{count}} photo added. Hover any photo to remove it.",
     "photos_added_other": "{{count}} photos added. Hover any photo to remove it.",
     "add_custom_amenity": "Add Custom Amenity",
@@ -1609,6 +1611,18 @@
     "starting_price_note": "from your cheapest route"
   },
   "ob": {
+    "add": {
+      "eye": "Adding a listing",
+      "title": "Every listing has its own yearly pass",
+      "p_own": "Each listing has its own page, its own bookings and its own membership card.",
+      "p_free": "Every new listing starts free: its first {{count}} bookings cost nothing.",
+      "p_price": "After that, it needs its own yearly pass: {{big}}/year for a homestay, driver or guide, {{small}}/year for a cafe or restaurant. GST is added when you pay.",
+      "p_shop": "Local shops are always free.",
+      "p_apart": "Your other listings are not affected. If one pass ends, only that listing is hidden.",
+      "p_free_pay": "Nothing to pay now. Pay any time from the listing’s card on your dashboard.",
+      "ok": "Got it, add a listing",
+      "leave": "Not now"
+    },
     "check": {
       "still_to_fill": "Fill these in to continue:",
       "about_you": "A few lines about you",
@@ -1835,6 +1849,13 @@
       "prDay": "Price for one day",
       "prOne": "One price",
       "prRooms": "Price per room",
+      "prRoom": "Price for the room, per night",
+      "rv_offers": "What you give",
+      "rv_areas": "Picks up from",
+      "rv_phone": "WhatsApp number",
+      "room_night": "room / night",
+      "free_band": "List for free. Pay after your first {{count}} bookings.",
+      "free_shop": "List for free. Local shops never pay a yearly charge.",
       "prEditS": "Tap the amount to type any price.",
       "roomsS2": "Add each room with its price per night and how many guests it sleeps.",
       "rnShort": "Room name",
@@ -2473,6 +2494,8 @@
     "capacity_shop": "Room for {{count}} customers at a time"
   },
   "hostProfile": {
+    "more": "More settings",
+    "listings_note_all": "Tap one to edit its prices, photos, membership and its own details.",
     "opening_hours": "Opening hours",
     "opening_hours_ph": "e.g. 8 am - 9 pm, closed Tuesday",
     "title": "Business profile",
@@ -2558,6 +2581,7 @@
     "photos_note_homestay": "At least {{count}} photos: rooms indoors and outdoors, a front selfie outside, and the front of the homestay.",
     "cover": "Cover photo",
     "change_cover": "Change cover",
+    "first_is_cover": "The first photo is the cover travellers see on this listing. Tap Make cover to change it.",
     "gallery": "Gallery",
     "save": "Save profile",
     "save_hint": "Changes show on your listing once saved.",
@@ -3744,8 +3768,8 @@
       "description": "Add a description (20+ characters)",
       "photos": "Add at least one photo",
       "price": "Set a starting price",
-      "location_maps_link": "Verify your location with a Google Maps link",
-      "location_live_capture": "Capture your location while you are at your premises",
+      "location_maps_link": "Verify your location with a Google Maps link or your phone's location",
+      "location_live_capture": "Verify your location with a Google Maps link or your phone's location",
       "location_pin": "Pin your location on the map"
     },
     "doc": {
@@ -3791,6 +3815,10 @@
     "mcard_free": "Free start",
     "mcard_free_s": "Or pay after your first {{limit}} bookings · {{used}} of {{limit}} done",
     "mcard_free_paused": "Your {{limit}} free bookings are done. Pay to take new bookings.",
+    "mcard_cheer": "Your listing is up. Your first {{limit}} bookings are free",
+    "mcard_cheer_s": "{{used}} of {{limit}} done. After that, the yearly pass is {{price}}/year. Pay any time.",
+    "mcard_cheer_done": "Well done, your first {{limit}} bookings are complete",
+    "mcard_cheer_done_s": "Keep the bookings coming with the yearly pass: {{price}}/year.",
     "mcard_price": "GST is added when you pay.",
     "mcard_pay": "Pay {{total}}",
     "mcard_renew": "Renew · {{total}}",
@@ -4279,5 +4307,25 @@
     "search": "Find a town, station or village",
     "nearby": "Near your base",
     "none": "No place found. Try the nearest town."
+  },
+  "lv": {
+    "title": "Location",
+    "done": "Verified",
+    "todo": "Not verified yet",
+    "intro": "Paste this place's Google Maps link, use your location while you are there, or both. With both, the link sets the exact spot.",
+    "link": "Google Maps link",
+    "mine": "Use my location",
+    "again": "Read my location again",
+    "got": "Got your location (within {{m}} m)",
+    "verify": "Verify this place",
+    "verified": "Verified by {{how}} on {{when}}. Verify again if the place moved.",
+    "by_phone": "your phone's location",
+    "by_both": "its Google Maps link and your phone",
+    "by_link": "its Google Maps link",
+    "far": "Your phone was {{km}} km from the Google Maps pin, so we used the link. Check the pin is your place.",
+    "wz_link": "Google Maps link (optional)",
+    "wz_link_hint": "Paste it to put the pin exactly on your place. With My location too, the link sets the spot.",
+    "wz_link_bad": "Could not read that link. Copy it again from Google Maps.",
+    "wz_link_ok": "Pin moved to your Google Maps link."
   }
 }
