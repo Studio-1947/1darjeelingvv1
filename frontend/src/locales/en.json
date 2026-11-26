@@ -1627,11 +1627,9 @@
     "add": {
       "eye": "Adding a listing",
       "title": "Every listing has its own yearly pass",
-      "p_own": "Each listing has its own page, its own bookings and its own membership card.",
-      "p_free": "Every new listing starts free: its first {{count}} bookings cost nothing.",
-      "p_price": "After that, it needs its own yearly pass: {{big}}/year for a homestay, driver or guide, {{small}}/year for a cafe or restaurant. GST is added when you pay.",
-      "p_shop": "Local shops are always free.",
-      "p_apart": "Your other listings are not affected. If one pass ends, only that listing is hidden.",
+      "p_fee": "The yearly pass is a platform fee for being listed on aangan. It is not a booking charge: we never charge you per booking and take no commission, so whatever your guests pay stays with you.",
+      "p_cost": "A new listing is free until it has had its first {{count}} bookings. After that, its pass is {{big}} a year for a homestay, driver or guide, or {{small}} a year for a cafe or restaurant, plus GST. Local shops are always free.",
+      "p_each": "Each listing has its own page, its own bookings and its own pass, so your other listings are not affected. If one pass ends, only that listing is hidden.",
       "p_free_pay": "Nothing to pay now. Pay any time from the listing’s card on your dashboard.",
       "ok": "Got it, add a listing",
       "leave": "Not now"
