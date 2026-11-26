@@ -81,12 +81,12 @@ const ok = (c, m, x = '') => { console.log(`${c ? 'OK  ' : 'FAIL'} ${m}${x ? ' |
         await p.locator('[data-testid="filter-cab-all"]:visible').first().click().catch(() => {});
       }
       // Sort by price.
-      const sort = p.locator('[data-testid="category-sort-select"]:visible').first();
-      if (await sort.count()) {
-        await sort.selectOption('price_asc');
+      const sort = (v) => p.locator(`[data-testid="category-sort-${v}"]:visible`).first();
+      if (await sort('price_asc').count()) {
+        await sort('price_asc').click();
         const prices = (await firstLines()).map((l) => { const m = l.match(/₹\s?([\d,]+)/); return m ? Number(m[1].replace(/,/g, '')) : 0; }).filter((x) => x > 0);
         ok(prices.every((x, i) => i === 0 || x >= prices[i - 1]), `${path}: sort by price, low to high`, prices.slice(0, 6).join(', '));
-        await sort.selectOption('recommended');
+        await sort('recommended').click();
       }
       const sideways = await p.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
       ok(!sideways, `${path}: no sideways scroll`);

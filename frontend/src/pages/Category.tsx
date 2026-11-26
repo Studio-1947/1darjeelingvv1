@@ -9,7 +9,7 @@ import SuggestPlace from '@/components/spots/SuggestPlace';
 import api from '@/lib/api';
 import Seo from '@/components/Seo';
 import { GridTileSkeleton, ListRowSkeleton, repeat } from '@/components/skeletons';
-import CategoryFilterBar, { type CategoryFilterBarHandle, type SortOrder } from '@/components/CategoryFilterBar';
+import CategoryFilterBar, { FGroup, type CategoryFilterBarHandle, type SortOrder } from '@/components/CategoryFilterBar';
 import { contentFor } from '@/lib/listingContent';
 import { normalizeRoutes, routeForTrip, tripMatch } from '@/lib/routeFares';
 import { readTrip, hasTrip, tripSuffix } from '@/lib/tripParams';
@@ -211,6 +211,8 @@ function CategoryPage({ typeOverride }: { typeOverride?: string }) {
   // Filters handed over by the home filter panel (?near=me|<place>&within=<km>&sort=price_asc): read once
   // when the page opens; after that the filters drive the address, not the other way round.
   const nearParam = sp.get('near') || '';
+  // The town distances are measured from, when Home handed one over ('' for the traveller's own spot).
+  const nearTown = near && sp.get('near') && sp.get('near') !== 'me' ? String(sp.get('near')) : '';
   const withinParam = Number(sp.get('within')) || 0;
   const sortParam = sp.get('sort') || '';
   useEffect(() => {
@@ -641,46 +643,43 @@ function CategoryPage({ typeOverride }: { typeOverride?: string }) {
           onReset={resetFilters}
           totalCount={results.length}
           extraActive={!!near || (type === 'homestay' && trip.guests > 1) || delivers || !!kind}
+          nearOn={!!near}
+          onNearOff={() => { setNear(null); setRadius(null); }}
           nearSlot={(
-            <button type="button" className={cx('ag-category-myloc', near && 'on')} aria-pressed={!!near}
-              onClick={near ? () => { setNear(null); setRadius(null); } : locate} disabled={locating} data-testid="near-me-toggle">
+            // A town handed over by Home (?near=Ghum) is named, not passed off as "My location".
+            <Chip on={!!near} className="ag-category-myloc"
+              onClick={near ? () => { setNear(null); setRadius(null); } : () => { setSelectedLocation('All Locations'); locate(); }}
+              disabled={locating} data-testid="near-me-toggle">
               <Icon name="locate" />
-              {locating ? t('ui.category.finding_you') : t('category.myloc', 'My location')}
-            </button>
+              {locating ? t('ui.category.finding_you') : nearTown || t('category.myloc', 'My location')}
+            </Chip>
           )}
           nearError={locErr}
         >
           {near && (
-            <div className="ag-category-frow" data-testid="near-me">
-              <span className="flex justify-between gap-2">
-                <span>{t('category.within', 'Within')}</span>
-                <b>{radius ? t('ui.category.within_km', { km: radius }) : t('ui.category.any_distance')}</b>
-              </span>
-              <Chips scroll role="group" aria-label={t('category.within', 'Within')}>
+            <div data-testid="near-me">
+              <FGroup legend={t('filter.how_far', { place: nearTown || t('filter.you', 'you'), defaultValue: 'How far from {{place}}' })}>
                 {[null, 5, 10, 25].map((km) => (
                   <Chip key={String(km)} on={radius === km} onClick={() => setRadius(km)} data-testid={`near-${km ?? 'any'}`}>
-                    {km ? `${km} km` : t('ui.category.any_distance')}
+                    {km ? t('filter.km', { km, defaultValue: '{{km}} km' }) : t('ui.category.any_distance')}
                   </Chip>
                 ))}
-              </Chips>
+              </FGroup>
             </div>
           )}
 
           {type === 'homestay' && (
-            <div className="ag-category-frow">
-              <span>{t('filter.guests', 'Guests')}</span>
-              <Chips scroll data-testid="guest-filter" role="group" aria-label={t('filter.guests', 'Guests')}>
-                {[1, 2, 4, 6, 8].map((n) => {
-                  const on = n === 1 ? trip.guests <= 1 : trip.guests === n;
-                  return (
-                    <Chip key={n} on={on} data-testid={`guest-filter-${n}`}
-                      onClick={() => setSp((prev) => { const next = new URLSearchParams(prev); if (n === 1) next.delete('guests'); else next.set('guests', String(n)); return next; })}>
-                      {n === 1 ? t('filter.any', 'Any') : `${n}+`}
-                    </Chip>
-                  );
-                })}
-              </Chips>
-            </div>
+            <FGroup legend={t('filter.guests', 'Guests')} testId="guest-filter">
+              {[1, 2, 4, 6, 8].map((n) => {
+                const on = n === 1 ? trip.guests <= 1 : trip.guests === n;
+                return (
+                  <Chip key={n} on={on} data-testid={`guest-filter-${n}`}
+                    onClick={() => setSp((prev) => { const next = new URLSearchParams(prev); if (n === 1) next.delete('guests'); else next.set('guests', String(n)); return next; })}>
+                    {n === 1 ? t('filter.any', 'Any') : `${n}+`}
+                  </Chip>
+                );
+              })}
+            </FGroup>
           )}
         </CategoryFilterBar>
 
@@ -715,7 +714,7 @@ function CategoryPage({ typeOverride }: { typeOverride?: string }) {
           <Chips scroll role="group" aria-label={t('category.applied', 'Filters on')} data-testid="category-applied">
             {[
               selectedLocation !== 'All Locations' && { k: 'loc', label: selectedLocation, off: () => setSelectedLocation('All Locations') },
-              !!near && { k: 'near', label: radius ? `${t('filter.within', 'Within')} ${radius} km` : (sp.get('near') && sp.get('near') !== 'me' ? sp.get('near') : t('filter.my_location', 'My location')), off: () => { setNear(null); setRadius(null); } },
+              !!near && { k: 'near', label: radius ? `${t('filter.within', 'Within')} ${radius} km` : (nearTown || t('filter.my_location', 'My location')), off: () => { setNear(null); setRadius(null); } },
               !!maxPrice && { k: 'max', label: `≤ ₹${maxPrice.toLocaleString('en-IN')}`, off: () => setMaxPrice(undefined) },
               selectedCab !== 'all' && { k: 'cab', label: selectedCab === 'suv' ? t('ui.categoryFilterBar.cab_suv') : t('ui.categoryFilterBar.cab_hatchback'), off: () => setSelectedCab('all') },
               entryFilter !== 'all' && { k: 'entry', label: entryFilter === 'free' ? t('category.free_entry', 'Free entry') : t('category.paid_entry', 'Paid entry'), off: () => setEntryFilter('all') },

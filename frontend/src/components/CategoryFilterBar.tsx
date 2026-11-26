@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Chip, Chips, cx } from '@/components/ag';
+import { Chip, cx } from '@/components/ag';
 import { Icon } from '@/components/ag/Icon';
 import Sheet from '@/components/listing-detail/Sheet';
 
@@ -28,6 +28,10 @@ export interface CategoryFilterBarProps {
   nearSlot?: React.ReactNode;
   /** Why "My location" did not work (permission off, no position), shown under it. */
   nearError?: string;
+  /** Distances are measured from the traveller (or a place handed over by Home). */
+  nearOn?: boolean;
+  /** Stop measuring from there: "Anywhere" or a town was picked. */
+  onNearOff?: () => void;
   /** A voice search ended: the words it searched for ('' when nothing was heard, null when cancelled). */
   onVoiceDone?: (text: string | null) => void;
   /** A voice search started listening. */
@@ -50,6 +54,24 @@ const REGION_HUBS = [
   'Takdah',
   'Lepchajagat',
 ];
+
+/** Sort by, in the Home panel's words: [order, key, fallback]. */
+const SORTS: [SortOrder, string, string][] = [
+  ['recommended', 'filter.best_match', 'Best match'],
+  ['price_asc', 'filter.cheapest_first', 'Cheapest first'],
+  ['price_desc', 'filter.sort_price_desc', 'Price: High to Low'],
+  ['name_asc', 'filter.sort_name_asc', 'Name: A – Z'],
+];
+
+/** One labelled question in the filter panel, its answers a wrapping row of chips. */
+export function FGroup({ legend, testId, children }: { legend: React.ReactNode; testId?: string; children: React.ReactNode }) {
+  return (
+    <fieldset className="ag-category-fgroup" data-testid={testId}>
+      <legend>{legend}</legend>
+      <div className="chips">{children}</div>
+    </fieldset>
+  );
+}
 
 /** The words the empty search field types out, one after another (prototype v7 typewriter). */
 const TW_WORDS: [string, string][] = [
@@ -428,6 +450,8 @@ const CategoryFilterBar = React.forwardRef<CategoryFilterBarHandle, CategoryFilt
   extraActive,
   nearSlot,
   nearError,
+  nearOn = false,
+  onNearOff,
   onVoiceStart,
   onVoiceDone,
   children,
@@ -450,6 +474,8 @@ const CategoryFilterBar = React.forwardRef<CategoryFilterBarHandle, CategoryFilt
     (!!selectedCab && selectedCab !== 'all') ||
     entryFilter !== 'all' ||
     !!extraActive;
+
+  const town = selectedLocation !== 'All Locations' ? selectedLocation : '';
 
   // Board: stays and drivers filter by price. A driver's rate is per trip or day.
   const priceCaps = categoryType === 'driver' ? [undefined, 1000, 2500, 5000] : [undefined, 1500, 3000, 5000];
@@ -510,94 +536,85 @@ const CategoryFilterBar = React.forwardRef<CategoryFilterBarHandle, CategoryFilt
       <VoicePanel voice={voice} micRef={micRef} current={searchQuery} />
 
       {open && (
+        // The Home filter panel's shape (components/home/HomeFilterPanel.tsx): one labelled question
+        // per group, its answers a row of chips with exactly one on.
         <div className="ag-box ag-category-fpanel" id="category-filter-panel" data-testid="category-filter-panel">
-          <div className="two">
+          <FGroup legend={t('filter.where', 'Where')}>
+            <Chip on={!town && !nearOn} onClick={() => { onLocationChange('All Locations'); onNearOff?.(); }} data-testid="category-anywhere">
+              {t('filter.anywhere', 'Anywhere')}
+            </Chip>
             {nearSlot}
             <select
-              className="ag-category-sel"
-              aria-label={t('ui.categoryFilterBar.location_hub')}
+              className={cx('ag-category-sel', town && 'on')}
+              aria-label={t('filter.pick_town', 'Pick a town')}
               value={selectedLocation}
-              onChange={(e) => onLocationChange(e.target.value)}
+              // A town and My location are two answers to one question: picking one drops the other.
+              onChange={(e) => { onLocationChange(e.target.value); if (e.target.value !== 'All Locations') onNearOff?.(); }}
               data-testid="category-location-select"
             >
               {REGION_HUBS.map((loc) => (
                 <option key={loc} value={loc}>
-                  {loc === 'All Locations' ? t('category.any_place', 'Any place') : loc}
+                  {loc === 'All Locations' ? t('filter.pick_town', 'Pick a town') : loc}
                 </option>
               ))}
             </select>
-          </div>
+          </FGroup>
           {nearError && <p className="ag-err m-0" role="alert" data-testid="near-me-error">{nearError}</p>}
 
           {children}
 
           {(categoryType === 'homestay' || categoryType === 'driver') && onMaxPriceChange && (
-            <div className="ag-category-frow">
-              <span>{t('ui.categoryFilterBar.max_rate').replace(/:\s*$/, '')}</span>
-              <Chips scroll data-testid="filter-price-row" role="group" aria-label={t('ui.categoryFilterBar.max_rate')}>
-                {priceCaps.map((val) => (
-                  <Chip key={String(val)} on={maxPrice === val} onClick={() => onMaxPriceChange(val)} data-testid={`filter-price-${val || 'any'}`}>
-                    {val === undefined
-                      ? t('ui.categoryFilterBar.any_rate')
-                      : t('ui.categoryFilterBar.under_amount', { amount: val.toLocaleString('en-IN') })}
-                  </Chip>
-                ))}
-              </Chips>
-            </div>
+            <FGroup legend={t('ui.categoryFilterBar.max_rate').replace(/:\s*$/, '')} testId="filter-price-row">
+              {priceCaps.map((val) => (
+                <Chip key={String(val)} on={maxPrice === val} onClick={() => onMaxPriceChange(val)} data-testid={`filter-price-${val || 'any'}`}>
+                  {val === undefined
+                    ? t('ui.categoryFilterBar.any_rate')
+                    : t('ui.categoryFilterBar.under_amount', { amount: val.toLocaleString('en-IN') })}
+                </Chip>
+              ))}
+            </FGroup>
           )}
 
           {categoryType === 'driver' && onCabChange && (
-            <div className="ag-category-frow">
-              <span>{t('ui.categoryFilterBar.cab_type').replace(/:\s*$/, '')}</span>
-              <Chips scroll role="group" aria-label={t('ui.categoryFilterBar.cab_type')}>
-                {[
-                  { label: t('ui.categoryFilterBar.cab_all'), val: 'all' },
-                  { label: t('ui.categoryFilterBar.cab_hatchback'), val: 'hatchback' },
-                  { label: t('ui.categoryFilterBar.cab_suv'), val: 'suv' },
-                ].map((c) => (
-                  <Chip key={c.val} on={(selectedCab || 'all') === c.val} onClick={() => onCabChange(c.val)} data-testid={`filter-cab-${c.val}`}>
-                    {c.label}
-                  </Chip>
-                ))}
-              </Chips>
-            </div>
+            <FGroup legend={t('ui.categoryFilterBar.cab_type').replace(/:\s*$/, '')}>
+              {[
+                { label: t('ui.categoryFilterBar.cab_all'), val: 'all' },
+                { label: t('ui.categoryFilterBar.cab_hatchback'), val: 'hatchback' },
+                { label: t('ui.categoryFilterBar.cab_suv'), val: 'suv' },
+              ].map((c) => (
+                <Chip key={c.val} on={(selectedCab || 'all') === c.val} onClick={() => onCabChange(c.val)} data-testid={`filter-cab-${c.val}`}>
+                  {c.label}
+                </Chip>
+              ))}
+            </FGroup>
           )}
 
           {categoryType === 'spot' && onEntryFilterChange && (
-            <div className="ag-category-frow">
-              <span>{t('ui.categoryFilterBar.entry').replace(/:\s*$/, '')}</span>
-              <Chips scroll role="group" aria-label={t('ui.categoryFilterBar.entry')}>
-                {[
-                  { label: t('ui.categoryFilterBar.entry_all'), val: 'all' },
-                  { label: t('ui.categoryFilterBar.entry_free'), val: 'free' },
-                  { label: t('ui.categoryFilterBar.entry_paid'), val: 'paid' },
-                ].map((e) => (
-                  <Chip key={e.val} on={entryFilter === e.val} onClick={() => onEntryFilterChange(e.val)} data-testid={`filter-entry-${e.val}`}>
-                    {e.label}
-                  </Chip>
-                ))}
-              </Chips>
-            </div>
+            <FGroup legend={t('ui.categoryFilterBar.entry').replace(/:\s*$/, '')}>
+              {[
+                { label: t('ui.categoryFilterBar.entry_all'), val: 'all' },
+                { label: t('ui.categoryFilterBar.entry_free'), val: 'free' },
+                { label: t('ui.categoryFilterBar.entry_paid'), val: 'paid' },
+              ].map((e) => (
+                <Chip key={e.val} on={entryFilter === e.val} onClick={() => onEntryFilterChange(e.val)} data-testid={`filter-entry-${e.val}`}>
+                  {e.label}
+                </Chip>
+              ))}
+            </FGroup>
           )}
 
-          <select
-            className="ag-category-sel"
-            aria-label={t('ui.categoryFilterBar.sort_order')}
-            value={sortOrder}
-            onChange={(e) => onSortChange(e.target.value as SortOrder)}
-            data-testid="category-sort-select"
-          >
-            <option value="recommended">{t('filter.sort_recommended', 'Featured / Popular')}</option>
-            <option value="price_asc">{t('category.cheap', 'Cheapest first')}</option>
-            <option value="price_desc">{t('filter.sort_price_desc', 'Price: High to Low')}</option>
-            <option value="name_asc">{t('filter.sort_name_asc', 'Name: A – Z')}</option>
-          </select>
+          <FGroup legend={t('filter.sort_by', 'Sort by')} testId="category-sort">
+            {SORTS.map(([val, key, fallback]) => (
+              <Chip key={val} on={sortOrder === val} onClick={() => onSortChange(val)} data-testid={`category-sort-${val}`}>
+                {t(key, fallback)}
+              </Chip>
+            ))}
+          </FGroup>
 
           <div className="ag-category-fgo">
             <button type="button" className="ag-btn primary ag-category-fsearch" onClick={() => setOpen(false)} data-testid="category-filter-apply">
               <Icon name="search" />
-              <span>{t('category.search_btn', 'Search')}</span>
-              <span className="fcount">{totalCount}</span>
+              <span>{t('filter.show_n', { count: totalCount, defaultValue: 'Show {{count}} results' })}</span>
             </button>
             {filtersOn && (
               <button type="button" className="ag-btn text ag-category-reset" onClick={onReset} data-testid="category-reset-btn">

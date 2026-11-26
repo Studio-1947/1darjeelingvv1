@@ -53,24 +53,25 @@
 .ag-category-novoice svg.i { width: 24px; height: 24px; }
 
 /* ---------- the filter panel the filter button opens ---------- */
-.ag-category-fpanel { margin-top: 0; }
-.ag-category-fpanel .two { display: flex; flex-direction: column; gap: 8px; }
-.ag-category-myloc { align-self: flex-start; height: 44px; display: inline-flex; align-items: center; gap: 10px; padding: 0 16px; border: 0; border-radius: var(--pill); background: var(--creme2); color: var(--ink-strong); font: 500 14px/20px var(--font); letter-spacing: .1px; cursor: pointer; }
-.ag-category-myloc svg.i { width: 18px; height: 18px; color: var(--r); }
-.ag-category-myloc.on { background: var(--r); color: var(--on-r); }
-.ag-category-myloc.on svg.i { color: var(--on-r); }
-.ag-category-myloc:disabled { opacity: .6; cursor: default; }
-.ag-category-sel { appearance: none; width: 100%; height: 40px; padding: 0 40px 0 14px; border: 1px solid var(--outline); border-radius: var(--pill); color: var(--ink-strong); font: 500 14px/20px var(--font); letter-spacing: .5px;
-  background: var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23111' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 14px center / 16px; }
+.ag-category-fpanel { margin-top: 0; display: flex; flex-direction: column; gap: 12px; padding: 16px; border-radius: var(--r-card); border: 1px solid var(--warmline); background: linear-gradient(180deg, var(--creme-hi), var(--creme)); box-shadow: var(--warmshadow); }
+/* As the Home filter panel (home.css .ag-home-fgroup): one labelled question per group, its answers a row of chips. */
+.ag-category-fgroup { display: flex; flex-direction: column; gap: 8px; min-width: 0; margin: 0; padding: 0; border: 0; }
+.ag-category-fgroup legend { padding: 0; margin-bottom: 8px; font: 600 12px/16px var(--font); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-muted); }
+.ag-category-fgroup .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.ag-category-fpanel .ag-chip { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 14px; border: 1px solid var(--blush2); border-radius: var(--pill); background: var(--r-tint); color: var(--ink-strong); font: 500 14px/20px var(--font); letter-spacing: .1px; }
+.ag-category-fpanel .ag-chip[aria-pressed="true"] { background: var(--r); border-color: var(--r); color: var(--on-r); }
+.ag-category-fpanel .ag-chip svg.i { width: 18px; height: 18px; color: var(--r); }
+.ag-category-fpanel .ag-chip[aria-pressed="true"] svg.i { color: var(--on-r); }
+.ag-category-fpanel .ag-chip:disabled { opacity: .7; cursor: progress; }
+.ag-category-sel { appearance: none; width: auto; max-width: 100%; height: 40px; padding: 0 40px 0 14px; border: 1px solid var(--blush2); border-radius: var(--pill); background-color: var(--r-tint); color: var(--ink-strong); font: 500 14px/20px var(--font); letter-spacing: .5px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%23111%27 stroke-width=%272%27 stroke-linecap=%27round%27%3E%3Cpath d=%27M6 9l6 6 6-6%27/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; background-size: 16px; }
+.ag-category-sel.on { background-color: var(--r); border-color: var(--r); color: var(--on-r);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%23fff%27 stroke-width=%272%27 stroke-linecap=%27round%27%3E%3Cpath d=%27M6 9l6 6 6-6%27/%3E%3C/svg%3E"); }
+.ag-category-sel option { color: var(--ink-strong); background: var(--surface); }
 .ag-category-sel:focus { border-color: var(--r); outline: 2px solid var(--r-tint); }
-.ag-category-frow { display: flex; flex-direction: column; gap: 6px; font: 500 14px/20px var(--font); letter-spacing: .1px; color: var(--ink7); }
-.ag-category-frow b { font-weight: 500; color: var(--ink7); }
-.ag-category-fpanel .ag-chip { height: 36px; padding: 0 14px; border: 0; background: var(--creme2); font-size: 13px; }
-.ag-category-fpanel .ag-chip[aria-pressed="true"] { background: var(--r); color: var(--on-r); }
 .ag-category-fgo { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .ag-category-fsearch { height: 52px; min-height: 52px; padding: 0 22px 0 16px; font-size: 15px; }
 .ag-category-fsearch > svg.i { width: 18px; height: 18px; color: var(--on-r); }
-.ag-category-fsearch .fcount { min-width: 24px; height: 24px; padding: 0 7px; border-radius: 12px; display: inline-grid; place-items: center; background: #fff; color: var(--r); font: 600 13px/1 var(--font); }
 
 /* kind chips on spots, Delivers on cafes and shops (prototype .svpill) */
 .ag-category-pills { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin: -4px -16px 0; padding: 2px 16px; }
