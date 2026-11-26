@@ -22,6 +22,7 @@ import { useLoginGate } from '@/components/LoginGate';
 import FaceImg from '@/components/FaceImg';
 import HostLine, { hasHost } from '@/components/HostLine';
 import { stayPrice } from '@/lib/stayPrice';
+import { cafeForTwo } from '@/lib/cafePrice';
 
 type Km = { km: number; approx: boolean } | null | undefined;
 
@@ -37,6 +38,9 @@ export function priceParts(it: any, t: TFunction): { amount?: string; unit?: str
       unit: t(stay.perRoom ? 'common.per_room_night' : 'common.per_head'),
     };
   }
+  // A cafe: a meal for two from its whole menu, not its cheapest dish (lib/cafePrice.ts).
+  const two = cafeForTwo(it);
+  if (two) return { amount: `₹${two.toLocaleString('en-IN')}`, unit: t('common.for_two', 'for two') };
   if (Number(it.price) > 0) {
     const amount = `₹${Number(it.price).toLocaleString('en-IN')}`;
     if (it.type === 'driver') return { amount, unit: t('common.per_day') };
