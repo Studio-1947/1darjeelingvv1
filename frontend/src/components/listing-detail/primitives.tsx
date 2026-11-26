@@ -6,6 +6,7 @@ import SmartImg from '@/components/SmartImg';
 import { listingImage } from '@/lib/listingContent';
 import { Box, cx } from '@/components/ag';
 import { stayPrice } from '@/lib/stayPrice';
+import { cafeForTwo } from '@/lib/cafePrice';
 
 /**
  * One block of the listing page (red /7 item view): a Box with an h2, inside the 720px column.
@@ -133,8 +134,10 @@ export function MiniCard({ item, badge }: { item: any; badge?: string }) {
   const { t } = useTranslation();
   // A homestay leads with its cheapest room when it has priced rooms (lib/stayPrice.ts).
   const stay = item.type === 'homestay' ? stayPrice(item) : null;
-  const price = stay ? stay.price : Number(item.price);
-  const unit = stay ? t(stay.perRoom ? 'common.per_room_night' : 'common.per_head') : item.type === 'driver' || item.type === 'guide' ? t('common.per_day') : '';
+  // A cafe: a meal for two from its whole menu (lib/cafePrice.ts).
+  const two = cafeForTwo(item);
+  const price = stay ? stay.price : two || Number(item.price);
+  const unit = stay ? t(stay.perRoom ? 'common.per_room_night' : 'common.per_head') : two ? t('common.for_two', 'for two') : item.type === 'driver' || item.type === 'guide' ? t('common.per_day') : '';
   return (
     <Link to={`/listing/${item.id}`} className="ag-card flex flex-col">
       <span className="relative block">

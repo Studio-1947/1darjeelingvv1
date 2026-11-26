@@ -35,6 +35,7 @@ import { roomOpen } from '@/lib/roomFit';
 import { useAuth } from '@/context/AuthContext';
 import { BusinessModeNotice } from '@/components/TravellerOnly';
 import { stayPrice } from '@/lib/stayPrice';
+import { cafeForTwo } from '@/lib/cafePrice';
 import { useCrumbTitle } from '@/components/PageBack';
 
 /**
@@ -196,6 +197,7 @@ export default function ListingDetail() {
   const personSrc = host.avatar || personImageFor(item);
   const roomCount = Array.isArray(item.extras?.rooms) ? item.extras.rooms.length : 0;
   const stay = item.type === 'homestay' ? stayPrice(item) : null;
+  const forTwo = cafeForTwo(item);
   const showHost = !place && !ownerView && (host.known || !!item.host_page_path);
   const delivery = !ownPreview && ['cafe', 'shop'].includes(item.type) && !item.bookings_paused && item.extras?.home_delivery;
   const spotFacts = isSpot && spotInfo.highlights.length > 0
@@ -279,6 +281,12 @@ export default function ListingDetail() {
             {stay.from && <span className="ag-small">{t('listing.from', 'From')} </span>}
             <span className="price">₹{stay.price.toLocaleString('en-IN')}</span>
             <span className="ag-small"> {t(stay.perRoom ? 'common.per_room_night' : 'common.per_head')}</span>
+          </p>
+        ) : forTwo > 0 ? (
+          // A cafe: a meal for two from its whole menu (lib/cafePrice.ts); the menu lists each dish.
+          <p className="ag-listing-lead">
+            <span className="price">₹{forTwo.toLocaleString('en-IN')}</span>
+            <span className="ag-small"> {t('common.for_two', 'for two')}</span>
           </p>
         ) : Number(item.price) > 0 ? (
           <p className="ag-listing-lead">

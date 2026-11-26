@@ -12,6 +12,7 @@ import { Icon, type IconName } from '@/components/ag/Icon';
 import { HelpWhatsApp, useHostSignupInfo } from '@/components/provider/onboard/QuickFill';
 import { HOST_TYPES, HUBS, MAX_GOODS, MAX_PHOTOS, OFFERS, PRESETS, QUICK_DISHES, SHOP_UNITS, type HostType, type HostWizard, type Place } from './useHostWizard';
 import { photoGoalFor } from '@/lib/photoGoal';
+import { costForTwo } from '@/lib/cafePrice';
 import PaymentDoneCard from '@/components/PaymentDoneCard';
 import ConsentCheck from '@/components/ConsentCheck';
 import AddListingInfo from './AddListingInfo';
@@ -561,9 +562,11 @@ function ExtrasStep({ w }: { w: HostWizard }) {
 /** "Put my listing up" puts it up straight away: nothing is paid here (the dashboard offers the yearly pass). */
 function ReviewStep({ w }: { w: HostWizard }) {
   const { t, d, busy, submit, startingPrice, offerLabels } = w;
-  const from = startingPrice();
+  // A cafe shows a meal for two from its whole menu (lib/cafePrice.ts), as its card will.
+  const forTwo = d.type === 'cafe' ? costForTwo(d.menu) : 0;
+  const from = forTwo || startingPrice();
   // A homestay priced room by room shows its cheapest room, for the room.
-  const unit = d.type === 'homestay' ? (d.roomsMode ? t('ob.wz.room_night', 'room / night') : t('ob.wz.night')) : (d.type === 'driver' || d.type === 'guide') ? t('ob.wz.day') : '';
+  const unit = forTwo ? t('common.for_two', 'for two') : d.type === 'homestay' ? (d.roomsMode ? t('ob.wz.room_night', 'room / night') : t('ob.wz.night')) : (d.type === 'driver' || d.type === 'guide') ? t('ob.wz.day') : '';
   const icon = d.type ? TYPE_ICON[d.type] : 'home';
   return (
     <Frame w={w} title={t('ob.wz.review')}

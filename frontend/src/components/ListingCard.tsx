@@ -10,6 +10,7 @@ import { kmLabel } from '@/lib/places';
 import { contentFor, listingImage, listingImageBackups } from '@/lib/listingContent';
 import { optionLabel } from '@/lib/optionLabel';
 import { priceParts } from '@/components/home/cards';
+import { cafeForTwo } from '@/lib/cafePrice';
 import { useFavorites } from '@/context/FavoritesContext';
 import { useLoginGate } from '@/components/LoginGate';
 import HostLine, { hasHost } from '@/components/HostLine';
@@ -104,6 +105,9 @@ function featOf(it: any, t: TFunction): string {
   const e = it.extras || {};
   const first = (a: unknown) => (Array.isArray(a) ? a.find((x) => x && (typeof x === 'string' || x.name)) : undefined);
   if (it.type === 'cafe' || it.type === 'shop') {
+    // A cafe with a priced menu: a meal for two (lib/cafePrice.ts), as the food apps show it.
+    const two = cafeForTwo(it);
+    if (two) return `₹${two.toLocaleString('en-IN')} ${t('common.for_two', 'for two')}`;
     if (Number(it.price) > 0) {
       const amount = `₹${Number(it.price).toLocaleString('en-IN')}`;
       return it.type === 'cafe' ? t('category.meals_from', { amount, defaultValue: 'Meals from {{amount}}' }) : `${t('common.starting_from')} ${amount}`;
