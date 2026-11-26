@@ -30,8 +30,9 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
  * Each listing's membership card on the dashboard (user decision 2026-11-25: one yearly membership
- * per listing). Paid: "aangan member", the type, valid until, the card number. On the free start:
- * bookings used of the free ones, then the yearly price. Lapsed: says so, with Renew. A local shop
+ * per listing). Paid: "aangan member", the type, valid until, the card number. On the free start
+ * (every listing starts there: sign-up asks for no payment): the good news first, then bookings used
+ * of the free ones and the yearly price. Lapsed: says so, with Renew. A local shop
  * lists free. Pay opens the same confirm sheet as before (price, optional GSTIN), for this listing.
  */
 export default function ListingMembershipCard({ listing, typeLabel, provider, user, onPaid }: {
@@ -84,11 +85,17 @@ export default function ListingMembershipCard({ listing, typeLabel, provider, us
     state = t('host.mcard_lapsed', 'Membership ended');
     line = <>{t('host.mcard_lapsed_s', 'Hidden from travellers since {{date}}. Renew to bring it back.', { date: until })}</>;
   } else if (plan.grace) {
-    // "Yearly pass ₹499/year" on one line; the free start in one short line under it.
-    state = yearly;
-    line = plan.grace.paused
-      ? <>{t('host.mcard_free_paused', 'Your {{limit}} free bookings are done. Pay to take new bookings.', { limit: plan.grace.limit })}</>
-      : <>{t('host.mcard_free_s', 'Or pay after your first {{limit}} bookings · {{used}} of {{limit}} done', { used: plan.grace.used, limit: plan.grace.limit })}</>;
+    // Sign-up asks for no payment, so this card is where the pass is first offered: it opens with
+    // the good news (the free start, or the free bookings used well), and the price comes after.
+    const { used, limit } = plan.grace;
+    const price = rupees(plan.price.base);
+    if (plan.grace.paused) {
+      state = t('host.mcard_cheer_done', 'Well done, your first {{limit}} bookings are complete', { limit });
+      line = <>{t('host.mcard_cheer_done_s', 'Keep the bookings coming with the yearly pass: {{price}}/year.', { price })}</>;
+    } else {
+      state = t('host.mcard_cheer', 'Your listing is up. Your first {{limit}} bookings are free', { limit });
+      line = <>{t('host.mcard_cheer_s', '{{used}} of {{limit}} done. After that, the yearly pass is {{price}}/year. Pay any time.', { used, limit, price })}</>;
+    }
   } else {
     state = yearly;
     line = <>{t('host.mcard_price', 'GST is added when you pay.')}</>;

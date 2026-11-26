@@ -10,6 +10,7 @@ import { uploadImage } from '@/lib/uploadImage';
 import AvatarUploader from '@/components/provider/AvatarUploader';
 import { useAppStatus } from '@/context/AppStatus'; // TEMPORARY(legal-pause)
 import InviteHostLink from '@/components/provider/InviteHostLink';
+import SignOutButton from '@/components/SignOutButton';
 import MultiChips from '@/components/provider/MultiChips';
 import Fold from '@/components/provider/Fold';
 import { useSeo } from '@/components/Seo';
@@ -532,6 +533,9 @@ export default function ProviderProfile() {
           )}
           <InviteHostLink />
         </Fold>
+
+        {/* Log out and Delete account, the page's last two actions, as on the Account tab. */}
+        <SignOutButton className="mt-2" />
       </div>
 
       {/* Save, as the prototype's "Save profile" button, in a bar that stays above the tab bar

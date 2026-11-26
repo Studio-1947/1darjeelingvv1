@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { gstDraftError, gstPayload, type GstDraft } from '@/lib/gstin';
-import api, { createPaymentOrder, completeMockPayment, payWithRazorpay } from '@/lib/api';
+import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { imageProblem, uploadImage } from '@/lib/uploadImage';
 import { readHostLink } from '@/lib/hostQuickFill';
@@ -11,14 +10,15 @@ import { nameProblem } from '@/lib/contentRules';
 import { inListingRegion } from '@/lib/places';
 import type { Area } from '@/components/provider/AreasPicker';
 import { setLoginPrefill } from '@/components/ConsentCheck';
+import { useCrumbBack } from '@/components/PageBack';
 
 /*
  * Host onboarding, one question per screen (Aangan 2.0 wizard, provider.js):
  *   type -> place -> name and number -> price (homestay, driver, guide) | menu (cafe, shop)
  *   -> what you give + photos -> review -> done.
  * The step lives in the URL (?step=n) so the header Back steps back one question. Answers are
- * kept in sessionStorage so a refresh does not lose them. Submitting uses the same backend calls
- * as before: POST /providers/onboard, then /providers/me/start-free or the registration payment.
+ * kept in sessionStorage so a refresh does not lose them. Submitting is POST /providers/onboard,
+ * then /providers/me/start-free: nothing is paid here; the yearly pass is offered on the dashboard.
  *
  * As in the prototype, the wizard opens without signing in. Sign-in is asked once, at "Put it live"
  * (Log in, then straight back to the review step). Photos picked before that stay in the page as
@@ -86,11 +86,6 @@ export const stepsFor = (ty: HostType | ''): StepKey[] => [
 
 type Draft = {
   type: HostType | '';
-  payWhen: 'later' | 'now';
-  /** True once the host taps a When to pay option; until then the default applies. */
-  payPicked?: boolean;
-  /** Paying now: the optional GST registration the first year is invoiced to (lib/gstin.ts). */
-  gst?: GstDraft;
   place: Place | null;
   /** Optional: the place's Google Maps link, which also confirms it (backend lib/locationCheck.ts). */
   mapsUrl?: string;
@@ -171,11 +166,6 @@ export function useHostWizard() {
     const ty = (HOST_TYPES as readonly string[]).includes(link.type || '') ? (link.type as HostType) : (saved.type || '');
     return {
       type: ty,
-      // Pay when listing is the default. A saved choice counts only if the host tapped it: the draft is
-      // written as soon as the wizard opens, so older drafts hold the old default ('later'), not a choice.
-      payWhen: saved.payPicked && saved.payWhen ? saved.payWhen : 'now',
-      payPicked: !!saved.payPicked,
-      gst: saved.gst || { on: false, gstin: '', legalName: '' },
       place: saved.place || null,
       mapsUrl: saved.mapsUrl || '',
       gps: saved.gps || null,
@@ -231,14 +221,22 @@ export function useHostWizard() {
   const step: StepKey | 'done' = done ? 'done' : steps[i];
 
   const [err, setErr] = useState('');
-  // The first year was just paid on the way to the done screen (it says so there).
-  const [paidPlan, setPaidPlan] = useState(false);
   // The step that can fix what the server refused at "Put it live" (a business name, the place),
   // so the error can offer to go straight there instead of Back, Back, Back.
   const [fixAt, setFixAt] = useState<StepKey | null>(null);
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [payModal, setPayModal] = useState<null | { amount: number; order: any; providerId: string }>(null);
+
+  // The breadcrumb's back arrow goes one question back, as the header Back does; only the first
+  // question (and the done screen) leaves it on Account.
+  const prevStep = useMemo(() => {
+    if (done || i <= 0) return null;
+    const prev = new URLSearchParams(params);
+    prev.set('step', String(i - 1));
+    return `${location.pathname}?${prev}`;
+  }, [done, i, params, location.pathname]);
+  // Read out as "Back: Step 4 / 6".
+  useCrumbBack(prevStep, t('ob.wz.step', { n: i, total: steps.length }));
 
   const goTo = useCallback((n: number | 'done') => {
     setErr('');
@@ -403,8 +401,7 @@ export function useHostWizard() {
     }
   };
 
-  const finish = async (paid = false) => {
-    setPaidPlan(paid);
+  const finish = async () => {
     try { sessionStorage.removeItem(draftKey); } catch { /* private mode */ }
     await refresh();
     goTo('done');
@@ -472,29 +469,10 @@ export function useHostWizard() {
         ...(locationCheck() ? { location_check: locationCheck() } : {}),
       });
       if (data.location_check_error) setLocationNote(String(data.location_check_error));
-      const providerId = data.provider.id;
-      if (d.payWhen === 'later' || d.type === 'shop') {
-        await api.post('/providers/me/start-free');
-        await finish();
-        return;
-      }
-      const orderRes = await createPaymentOrder({
-        flow: 'provider_registration', reference_id: providerId,
-        gst: d.gst && !gstDraftError(d.gst) ? gstPayload(d.gst) : null,
-      });
-      if (orderRes.mock) {
-        setPayModal({ amount: orderRes.amount, order: orderRes.order, providerId });
-      } else {
-        await payWithRazorpay({
-          order: orderRes.order,
-          key_id: orderRes.key_id,
-          flow: 'provider_registration',
-          reference_id: providerId,
-          description: 'aangan host plan · first year',
-          prefill: { contact: user.phone, name: user.name },
-        });
-        await finish(true);
-      }
+      // Nothing is paid while signing up: the listing goes up on its free start, and the yearly
+      // pass is offered afterwards on the dashboard's membership card (ListingMembershipCard).
+      await api.post('/providers/me/start-free');
+      await finish();
     } catch (e: any) {
       const detail: string = e?.response?.data?.detail || '';
       setErr(detail || e?.message || t('ui.useProviderOnboard.failed'));
@@ -516,16 +494,9 @@ export function useHostWizard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, step, draftKey]);
 
-  const finishMockPayment = async () => {
-    if (!payModal) return;
-    await completeMockPayment({ order_id: payModal.order.id, flow: 'provider_registration', reference_id: payModal.providerId });
-    setPayModal(null);
-    await finish(true);
-  };
-
   return {
     t, user, nav, d, set, pickType, steps, i, step, err, setErr, fixAt, busy, uploading, next, back, goTo, adding, locationNote,
-    addPhotos, photoUrl, startingPrice, offerLabels, submit, payModal, setPayModal, finishMockPayment, paidPlan,
+    addPhotos, photoUrl, startingPrice, offerLabels, submit,
   };
 }
 

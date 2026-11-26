@@ -13,12 +13,32 @@ type Crumb = { label: string; to?: string };
 /** What a page with a name from the server tells the breadcrumb: its title, and a listing's type. */
 type PageName = { path: string; title?: string; type?: string };
 
-const CrumbCtx = createContext<{ name: PageName | null; setName: (n: PageName | null) => void }>({ name: null, setName: () => {} });
+/** Where the back arrow goes instead of the parent crumb (a step-by-step page's previous step). */
+type BackTo = { path: string; to: string; label: string };
+
+const CrumbCtx = createContext<{
+  name: PageName | null; setName: (n: PageName | null) => void;
+  back: BackTo | null; setBack: (b: BackTo | null) => void;
+}>({ name: null, setName: () => {}, back: null, setBack: () => {} });
 
 export function CrumbProvider({ children }: { children: React.ReactNode }) {
   const [name, setName] = useState<PageName | null>(null);
-  const value = useMemo(() => ({ name, setName }), [name]);
+  const [back, setBack] = useState<BackTo | null>(null);
+  const value = useMemo(() => ({ name, setName, back, setBack }), [name, back]);
   return <CrumbCtx.Provider value={value}>{children}</CrumbCtx.Provider>;
+}
+
+/**
+ * A page made of steps (the host sign-up wizard) points the back arrow at its previous step;
+ * `to` null leaves the arrow on the parent crumb (the first step).
+ */
+export function useCrumbBack(to: string | null, label: string) {
+  const { setBack } = useContext(CrumbCtx);
+  const { pathname } = useLocation();
+  useEffect(() => {
+    setBack(to ? { path: pathname, to, label } : null);
+    return () => setBack(null);
+  }, [pathname, to, label, setBack]);
 }
 
 /** A page whose name comes from the server (a listing, a business, a trip plan) names its last crumb. */
@@ -107,13 +127,14 @@ export default function PageBack() {
   const { t } = useTranslation();
   const { pathname, search } = useLocation();
   const { isHostMode } = useAuth();
-  const { name } = useContext(CrumbCtx);
+  const { name, back } = useContext(CrumbCtx);
   const sub = new URLSearchParams(search).get('s');
 
   if (TAB_ROOTS.includes(pathname) && !sub) return null;
 
   const crumbs = trail(t, pathname, sub, !!isHostMode, name);
-  const parent = [...crumbs].reverse().find((c) => c.to);
+  const step = back && back.path === pathname ? back : null;
+  const parent = step ? { to: step.to, label: step.label } : [...crumbs].reverse().find((c) => c.to);
 
   return (
     <div className="ag-wrap">
