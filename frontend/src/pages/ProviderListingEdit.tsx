@@ -1,12 +1,12 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Eye, Upload } from '@phosphor-icons/react';
+import { Eye } from '@phosphor-icons/react';
 import api from '@/lib/api';
 import { apiError } from '@/lib/plans';
 import { useAuth } from '@/context/AuthContext';
 import { useSeo } from '@/components/Seo';
-import { uploadImage, uploadImages } from '@/lib/uploadImage';
+import { uploadImages } from '@/lib/uploadImage';
 import { photoGoalFor } from '@/lib/photoGoal';
 import { roomFit, roomsCapacity } from '@/lib/roomFit';
 import { normalizeRoutes, startingPriceFrom } from '@/lib/routeFares';
@@ -104,7 +104,10 @@ function formFrom(l: any, business?: any) {
     guide_types: (Array.isArray(own('guide_types')) ? own('guide_types') : []) as string[],
     seasons: (Array.isArray(own('seasons')) ? own('seasons') : []) as string[],
     amenities: (Array.isArray(e.amenities) ? e.amenities : []) as string[],
-    images: (Array.isArray(e.images) ? e.images : []) as string[],
+    // The first photo is the cover. A cover uploaded on its own before 2026-11-26 (not among the
+    // photos) goes first, so it stays the cover.
+    images: ((imgs: string[]) => (l?.image && !imgs.includes(l.image) ? [l.image, ...imgs] : imgs))(
+      Array.isArray(e.images) ? e.images : []) as string[],
     photo_kinds: (e.photo_kinds && typeof e.photo_kinds === 'object' ? e.photo_kinds : {}) as Record<string, string>,
   };
 }
@@ -178,15 +181,6 @@ export default function ProviderListingEdit() {
     setForm((f) => (f ? { ...f, ...patch } : f));
   };
 
-  const uploadCover = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = '';
-    if (!file) return;
-    setUploading('cover');
-    try { set({ image: await uploadImage(file) }); }
-    catch (err) { setMsg({ ok: false, text: typeof err === 'string' ? err : t('kyc.uploadFailed') }); }
-    finally { setUploading(null); }
-  };
   const uploadGallery = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files?.length) return;
@@ -310,7 +304,8 @@ export default function ProviderListingEdit() {
         price,
         location: form.location.trim(),
         description: form.description.trim(),
-        image: form.image,
+        // The first photo is the cover; a listing with no photos keeps the picture it had.
+        image: form.images[0] || form.image,
         tags: type === 'homestay' ? form.tags : (listing.tags || []),
         extras: {
           ...(listing.extras || {}),
@@ -509,23 +504,14 @@ export default function ProviderListingEdit() {
 
         <Fold id="photos" title={t('hostProfile.photos')} summary={galleryLabel} open={hash === 'photos'} testid="listing-photos">
           <p className="ag-small -mt-2">{photoGoal ? t(photosNote, { count: photoGoal }) : t('hostProfile.photos_note')}</p>
-          <div className="grid gap-2">
-            <span className="text-sm font-medium text-[var(--ink-strong)]">{t('hostProfile.cover')}</span>
-            <div className="flex flex-wrap items-center gap-3">
-              {form.image
-                ? <img src={form.image} alt="" className="aspect-[16/9] w-44 rounded-[18px] border border-[var(--warmline)] object-cover" />
-                : <div className="aspect-[16/9] w-44 rounded-[18px] border-2 border-dashed border-[var(--outline)]" />}
-              <label className="ag-btn sm cursor-pointer">
-                <Upload />
-                <span>{uploading === 'cover' ? t('common.loading') : t('hostProfile.change_cover')}</span>
-                <input type="file" accept="image/*" className="sr-only" onChange={uploadCover} />
-              </label>
-            </div>
-          </div>
+          {/* No cover upload of its own: the listing's first photo is its cover (the card travellers
+              see). The one separate cover is the business's, on the Business profile. */}
           <div className="grid gap-2">
             <span className="text-sm font-medium text-[var(--ink-strong)]">{galleryLabel}</span>
+            <span className="text-xs text-[var(--ink-muted)]">{t('hostProfile.first_is_cover', 'The first photo is the cover travellers see on this listing. Tap Make cover to change it.')}</span>
             <GalleryUploader images={form.images} uploading={uploading === 'images'} onFilesSelected={uploadGallery}
               onRemove={(i) => setForm((f) => (f ? { ...f, images: f.images.filter((_, j) => j !== i) } : f))}
+              onMakeCover={(i) => setForm((f) => (f ? { ...f, images: [f.images[i], ...f.images.filter((_, j) => j !== i)] } : f))}
               {...(type === 'homestay' ? {
                 kinds: form.photo_kinds,
                 onKind: (url: string, kind: string) => setForm((f) => (f ? { ...f, photo_kinds: { ...f.photo_kinds, [url]: kind } } : f)),
