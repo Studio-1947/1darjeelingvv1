@@ -156,6 +156,29 @@ function PlaceStep({ w }: { w: HostWizard }) {
     return () => window.clearTimeout(id);
   }, [q]);
 
+  // A pasted Google Maps link puts the pin exactly there (read by the backend; nothing is verified
+  // until the listing is put up, with the link and My location together when both are given).
+  const [linkState, setLinkState] = useState<'' | 'reading' | 'ok' | 'bad'>('');
+  // Homestays, cafes and shops have a place to confirm; drivers and guides go out to travellers.
+  const hasPlace = d.type === 'homestay' || d.type === 'cafe' || d.type === 'shop';
+  useEffect(() => {
+    const link = (d.mapsUrl || '').trim();
+    if (link.length < 8) { setLinkState(''); return undefined; }
+    setLinkState('reading');
+    const id = window.setTimeout(async () => {
+      try {
+        const { data } = await api.get('/geocode/maps-link', { params: { url: link } });
+        const n = ++seq.current;
+        set({ place: { name: nearbyName(data.latitude, data.longitude), lat: data.latitude, lng: data.longitude } });
+        setFocus((f) => f + 1);
+        void nameFromPin(data.latitude, data.longitude, n);
+        setLinkState('ok');
+      } catch { setLinkState('bad'); }
+    }, 600);
+    return () => window.clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [d.mapsUrl]);
+
   // No preset places before typing: the search and "my location" cover it. Typed text matches the
   // hubs straight away while the geocoder answers.
   const hubs = q.trim() ? HUBS.filter((h) => h.name.toLowerCase().includes(q.trim().toLowerCase())) : [];
@@ -200,7 +223,7 @@ function PlaceStep({ w }: { w: HostWizard }) {
       // Location (GPS) is off; say so rather than telling a host in the hills they are outside them.
       if (!inListingRegion(lat, lng)) { setErr(t(accuracy > ROUGH_FIX_M ? 'ob.wz.loc_rough' : 'ob.wz.loc_outside')); return; }
       const n = ++seq.current;
-      set({ place: { name: nearbyName(lat, lng), lat, lng, accuracy: Math.round(accuracy) } });
+      set({ place: { name: nearbyName(lat, lng), lat, lng, accuracy: Math.round(accuracy) }, gps: { lat, lng, accuracy: Math.round(accuracy) } });
       setFocus((f) => f + 1);
       void nameFromPin(lat, lng, n);
     } catch (e) {
@@ -231,6 +254,10 @@ function PlaceStep({ w }: { w: HostWizard }) {
           </p>
         )}
       </div>
+      {hasPlace && <TextField label={t('lv.wz_link', 'Google Maps link (optional)')} value={d.mapsUrl || ''} onChange={(e) => set({ mapsUrl: e.target.value })}
+        placeholder="https://maps.app.goo.gl/..." inputMode="url" data-testid="wz-maps-link"
+        hint={linkState === 'bad' ? undefined : linkState === 'ok' ? t('lv.wz_link_ok', 'Pin moved to your Google Maps link.') : t('lv.wz_link_hint', 'Paste it to put the pin exactly on your place. With My location too, the link sets the spot.')}
+        error={linkState === 'bad' ? t('lv.wz_link_bad', 'Could not read that link. Copy it again from Google Maps.') : undefined} />}
       <div className="ag-onboard-pchips" role="list">
         {chips.map((p) => (
           <button key={`${p.name}${p.lat}`} type="button" className="ag-onboard-pchip" aria-pressed={pl?.name === p.name && pl.lat === p.lat}
@@ -655,9 +682,16 @@ function ReviewStep({ w }: { w: HostWizard }) {
 
 /* ---------- done ---------- */
 function DoneStep({ w }: { w: HostWizard }) {
-  const { t, d, paidPlan } = w;
+  const { t, d, paidPlan, locationNote } = w;
   return (
     <section className="ag-main ag-onboard" data-testid="wz-done">
+      {/* The place could not be confirmed at sign-up: it can be, on the listing's page. */}
+      {locationNote && (
+        <Box tone="blush" flat data-testid="wz-location-note">
+          <p className="text-sm text-[var(--ink-strong)]">{locationNote}</p>
+          <p className="ag-small">{t('lv.intro', 'Paste this place’s Google Maps link, use your location while you are there, or both. With both, the link sets the exact spot.')}</p>
+        </Box>
+      )}
       <PaymentDoneCard icon="party" title={t('ob.wz.in_title')} body={t('ob.wz.in_body')} testId="wz-done-card"
         note={paidPlan ? t('ob.wz.in_paid', 'Host plan payment done. Your first year is active.') : undefined}>
         <ButtonLink go to="/provider/dashboard" data-testid="wz-dashboard">{t('ob.wz.biz')}</ButtonLink>

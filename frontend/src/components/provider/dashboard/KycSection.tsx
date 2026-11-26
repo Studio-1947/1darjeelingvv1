@@ -144,7 +144,13 @@ export default function KycSection({ onProfileChange }: { onProfileChange?: (p: 
                         {t(`kyc.fix.${item.key}`, FIX_LABEL[item.key])} <Icon name="arrowne" />
                       </Link>
                     )}
-                    {item.action && item.state !== 'done' && (
+                    {/* Each listing verifies its own place, on its page (link, phone, or both). */}
+                    {item.action && item.state !== 'done' && item.listing_id && (
+                      <Link to={`/provider/listings/${item.listing_id}#location`} className="ag-host-fix" data-testid="kyc-fix-location">
+                        {t('lv.verify', 'Verify this place')} <Icon name="arrowne" />
+                      </Link>
+                    )}
+                    {item.action && item.state !== 'done' && !item.listing_id && (
                       <LocationCheck action={item.action} onDone={async () => { await load().catch(() => {}); }} />
                     )}
                   </div>

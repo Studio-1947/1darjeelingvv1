@@ -122,13 +122,15 @@ describe('computeCompletion', () => {
     expect(r.completionPercent).toBe(30);
   });
 
-  it('a shop location is only done once captured live, not by a pasted Google Maps pin', () => {
+  // Decision 2026-11-26: a Google Maps link and the phone's location both verify any place, since a
+  // phone is often a little off; a shop still opens on the live capture first.
+  it('a shop location is done by a pasted Google Maps pin as well as a live capture', () => {
     const viaLink = computeCompletion(
       { ...richProfile, extras: { location_verification: { source: 'google_maps_link' } } },
       []
     );
     const item = viaLink.checklist.find(c => c.key === 'location');
-    expect(item?.state).toBe('missing');
+    expect(item?.state).toBe('done');
     expect(item?.action).toBe('live_capture');
 
     const live = computeCompletion(richProfile, []);

@@ -14,6 +14,8 @@ export interface ChecklistItem {
   media?: 'video';
   /** The location check: a homestay pastes a Google Maps link, a café or shop captures it live. */
   action?: 'maps_link' | 'live_capture';
+  /** The location row: the listing whose place still needs verifying (each listing verifies its own). */
+  listing_id?: string;
 }
 export interface KycDoc {
   id: string;
@@ -133,6 +135,39 @@ export async function captureLiveLocation(): Promise<void> {
     await api.post('/providers/me/location/live', {
       latitude: pos.coords.latitude, longitude: pos.coords.longitude, accuracy: pos.coords.accuracy,
     });
+  } catch (err: any) {
+    throw toKycApiError(err, i18n.t('kyc.locationFailed'));
+  }
+}
+
+/** One fresh reading from the device: where the host stands, and how sure the phone is (metres). */
+export type PhoneFix = { latitude: number; longitude: number; accuracy: number };
+export async function readPhoneLocation(): Promise<PhoneFix> {
+  if (typeof navigator === 'undefined' || !navigator.geolocation) throw new KycApiError(i18n.t('kyc.locationNoGps'));
+  const pos = await new Promise<GeolocationPosition>((resolve, reject) =>
+    navigator.geolocation.getCurrentPosition(resolve, (e) => reject(new KycApiError(
+      e.code === e.PERMISSION_DENIED ? i18n.t('kyc.locationDenied') : i18n.t('kyc.locationSlow'),
+    )), { enableHighAccuracy: true, timeout: 25000, maximumAge: 0 }),
+  );
+  return { latitude: pos.coords.latitude, longitude: pos.coords.longitude, accuracy: pos.coords.accuracy };
+}
+
+export type ListingLocation = {
+  verified: true; latitude: number; longitude: number; verified_at: string;
+  source: 'google_maps_link' | 'live_capture' | 'maps_link_on_site'; accuracy_m?: number; gps_gap_m?: number;
+};
+
+/**
+ * Verify ONE listing's place (decision 2026-11-26) by a Google Maps link, the phone's reading, or
+ * both: with both, the link sets the spot and a phone a little off never fails it.
+ */
+export async function verifyListingLocation(listingId: string, check: { mapsUrl?: string; fix?: PhoneFix | null }): Promise<ListingLocation> {
+  try {
+    const { data } = await api.post(`/listings/${listingId}/location/verify`, {
+      ...(check.mapsUrl?.trim() ? { maps_url: check.mapsUrl.trim() } : {}),
+      ...(check.fix ? { latitude: check.fix.latitude, longitude: check.fix.longitude, accuracy: check.fix.accuracy } : {}),
+    });
+    return data.location;
   } catch (err: any) {
     throw toKycApiError(err, i18n.t('kyc.locationFailed'));
   }

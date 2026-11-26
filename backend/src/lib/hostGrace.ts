@@ -120,6 +120,20 @@ export function startGraceSweep(): NodeJS.Timeout {
   return timer;
 }
 
+/** The business extras as the first listing's, with a pin confirmed at sign-up stamped on it. */
+function verifiedFromSignUp(extras: unknown): Record<string, unknown> {
+  const e = { ...((extras as Record<string, unknown>) || {}) };
+  const v = e.location_verification as { verified_at?: string; source?: string; accuracy_m?: number; gps_gap_m?: number } | undefined;
+  if (v?.verified_at && v.source) {
+    e.location_verified = {
+      verified_at: v.verified_at, source: v.source,
+      ...(v.accuracy_m !== undefined ? { accuracy_m: v.accuracy_m } : {}),
+      ...(v.gps_gap_m !== undefined ? { gps_gap_m: v.gps_gap_m } : {}),
+    };
+  }
+  return e;
+}
+
 /**
  * Puts the host's first listing live, made from their profile. Used when the first year is paid
  * and when a host starts free; each runs once per host, so the listing is made once.
@@ -137,7 +151,8 @@ export async function publishFirstListing(tx: Executor, p: Provider): Promise<vo
     image: listingCover((p.images || [])[0], p.extras),
     tags: (p.extras as any)?.tags || [],
     providerId: p.id,
-    extras: p.extras || {},
+    // A place confirmed at sign-up (lib/locationCheck.ts) is this listing's verified pin.
+    extras: verifiedFromSignUp(p.extras),
     createdAt: new Date().toISOString(),
     // On its own free start; paying the first year settles it at once (routes/payments.ts).
     ...newListingPlan(p.businessType),

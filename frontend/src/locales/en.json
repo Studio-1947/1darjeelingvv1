@@ -2473,6 +2473,8 @@
     "capacity_shop": "Room for {{count}} customers at a time"
   },
   "hostProfile": {
+    "more": "More settings",
+    "listings_note_all": "Tap one to edit its prices, photos, membership and its own details.",
     "opening_hours": "Opening hours",
     "opening_hours_ph": "e.g. 8 am - 9 pm, closed Tuesday",
     "title": "Business profile",
@@ -3744,8 +3746,8 @@
       "description": "Add a description (20+ characters)",
       "photos": "Add at least one photo",
       "price": "Set a starting price",
-      "location_maps_link": "Verify your location with a Google Maps link",
-      "location_live_capture": "Capture your location while you are at your premises",
+      "location_maps_link": "Verify your location with a Google Maps link or your phone's location",
+      "location_live_capture": "Verify your location with a Google Maps link or your phone's location",
       "location_pin": "Pin your location on the map"
     },
     "doc": {
@@ -4279,5 +4281,25 @@
     "search": "Find a town, station or village",
     "nearby": "Near your base",
     "none": "No place found. Try the nearest town."
+  },
+  "lv": {
+    "title": "Location",
+    "done": "Verified",
+    "todo": "Not verified yet",
+    "intro": "Paste this place's Google Maps link, use your location while you are there, or both. With both, the link sets the exact spot.",
+    "link": "Google Maps link",
+    "mine": "Use my location",
+    "again": "Read my location again",
+    "got": "Got your location (within {{m}} m)",
+    "verify": "Verify this place",
+    "verified": "Verified by {{how}} on {{when}}. Verify again if the place moved.",
+    "by_phone": "your phone's location",
+    "by_both": "its Google Maps link and your phone",
+    "by_link": "its Google Maps link",
+    "far": "Your phone was {{km}} km from the Google Maps pin, so we used the link. Check the pin is your place.",
+    "wz_link": "Google Maps link (optional)",
+    "wz_link_hint": "Paste it to put the pin exactly on your place. With My location too, the link sets the spot.",
+    "wz_link_bad": "Could not read that link. Copy it again from Google Maps.",
+    "wz_link_ok": "Pin moved to your Google Maps link."
   }
 }

@@ -13,6 +13,8 @@ export type ChecklistItem = {
   media?: 'video';
   /** Set for the location row: how this business proves where it is, so a client opens the right flow. */
   action?: LocationMethod;
+  /** The location row: the first listing whose place is not verified yet, where it is fixed. */
+  listing_id?: string;
 };
 
 export type ProfileInput = {
@@ -29,20 +31,37 @@ export type ProfileInput = {
   listingLocationSources?: string[];
   /** The kinds of its listings: a business also sends the documents of each other kind it lists. */
   listingTypes?: string[];
+  /**
+   * Each listing and whether its own place is verified (decision 2026-11-26: every listing with a
+   * place, a homestay, cafe or shop, verifies on its own, by a Google Maps link or the phone's
+   * location). Oldest first.
+   */
+  listingLocations?: { id: string; type: string; verified: boolean }[];
 };
+
+const PLACE_KINDS = ['homestay', 'cafe', 'shop'];
+/** The listings that have a place to verify. */
+const placeListings = (p: ProfileInput) => (p.listingLocations ?? []).filter((l) => PLACE_KINDS.includes(l.type));
 
 /**
  * The pin was confirmed the way this kind of business has to confirm it, on the provider or on one
  * of its listings. A café's pasted Google Maps link does not count: it has to be captured live.
  */
 function locationVerified(p: ProfileInput): boolean {
+  // Listings known: one listing with a verified place is enough for the business to be verified; the
+  // rest still show as to do on the checklist. A link and the phone's location count alike.
+  const places = placeListings(p);
+  if (places.length) return places.some((l) => l.verified);
   const sources = [
     ...(p.extras?.location_verification?.source ? [p.extras.location_verification.source] : []),
     ...(p.listingLocationSources ?? []),
   ];
-  return locationMethodFor(p.businessType) === 'live_capture'
-    ? sources.includes('live_capture')
-    : sources.length > 0;
+  return sources.length > 0;
+}
+
+/** Whether this business has a place to verify at all (any listing, or its sign-up kind, with one). */
+function needsLocation(p: ProfileInput): boolean {
+  return placeListings(p).length > 0 || locationMethodFor(p.businessType) !== null;
 }
 
 export type DocInput = { docType: string; status: 'pending' | 'approved' | 'rejected' };
@@ -51,7 +70,7 @@ const PROFILE_WEIGHT = 40;
 const KYC_WEIGHT = 60;
 
 // Presence checks that make up the "profile richness" portion of the bar.
-function profileChecks(p: ProfileInput): { key: string; label: string; done: boolean; action?: LocationMethod }[] {
+function profileChecks(p: ProfileInput): { key: string; label: string; done: boolean; action?: LocationMethod; listing_id?: string }[] {
   const images = [
     ...(Array.isArray(p.images) ? p.images : []),
     ...(Array.isArray(p.extras?.images) ? p.extras.images : []),
@@ -62,7 +81,7 @@ function profileChecks(p: ProfileInput): { key: string; label: string; done: boo
   const descText = (p.description || p.extras?.host_bio || '').trim();
   const hasDesc = descText.length >= 20 || p.hasListingDescription === true;
 
-  const checks: { key: string; label: string; done: boolean; action?: LocationMethod }[] = [
+  const checks: { key: string; label: string; done: boolean; action?: LocationMethod; listing_id?: string }[] = [
     { key: 'description', label: 'Add a description (20+ characters)', done: hasDesc },
     { key: 'photos', label: 'Add at least one photo', done: hasPhoto },
     { key: 'price', label: 'Set a starting price', done: p.priceFrom > 0 },
@@ -72,23 +91,23 @@ function profileChecks(p: ProfileInput): { key: string; label: string; done: boo
   // never offers them a map picker (LocationPicker is homestay/cafe/shop only).
   // Listing the item for them would be permanently unachievable and would cap
   // their bar below 100% no matter what they do.
+  // Every listing with a place verifies its own (by a Google Maps link, the phone's location, or
+  // both): the row is done once each one is, and points at the first that is not.
+  const places = placeListings(p);
   const method = locationMethodFor(p.businessType);
-  if (method === 'maps_link') {
-    // For a homestay a pin typed in by hand is not enough: it has to be the one the host dropped on
-    // Google Maps and pasted back, which is what puts the "verified" stamp on the listing.
+  if (places.length) {
+    const todo = places.find((l) => !l.verified);
     checks.push({
       key: 'location',
-      label: 'Verify your location with a Google Maps link',
-      done: locationVerified(p),
-      action: 'maps_link',
+      label: places.length > 1
+        ? 'Verify the location of each place you list, with a Google Maps link or your phone’s location'
+        : 'Verify your location with a Google Maps link or your phone’s location',
+      done: !todo,
+      action: method ?? 'maps_link',
+      ...(todo ? { listing_id: todo.id } : {}),
     });
-  } else if (method === 'live_capture') {
-    checks.push({
-      key: 'location',
-      label: 'Capture your location while you are at your premises',
-      done: locationVerified(p),
-      action: 'live_capture',
-    });
+  } else if (method) {
+    checks.push({ key: 'location', label: 'Verify your location with a Google Maps link or your phone’s location', done: locationVerified(p), action: method });
   } else if (p.businessType !== 'driver' && p.businessType !== 'guide') {
     // Drivers and guides go to the traveller; neither has premises to pin.
     checks.push({
@@ -139,6 +158,7 @@ export function computeCompletion(
       required: true,
       state: (c.done ? 'done' : 'missing') as DocState,
       ...(c.action ? { action: c.action } : {}),
+      ...(c.listing_id ? { listing_id: c.listing_id } : {}),
     })),
     ...reqs.map(r => ({
       key: r.docType,
@@ -157,7 +177,7 @@ export function computeCompletion(
   } else if (requiredTypes.every(t => byType.get(t)?.status === 'approved')) {
     // Every document approved is not enough for a homestay until its pin is confirmed too; until
     // then something is still missing, so it reads as partial rather than verified.
-    kycStatus = locationMethodFor(profile.businessType) !== null && !locationVerified(profile) ? 'partial' : 'verified';
+    kycStatus = needsLocation(profile) && !locationVerified(profile) ? 'partial' : 'verified';
   } else if (requiredTypes.every(t => byType.has(t))) {
     kycStatus = 'submitted';
   } else if (docs.length > 0) {

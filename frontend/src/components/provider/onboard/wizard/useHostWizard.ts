@@ -92,6 +92,10 @@ type Draft = {
   /** Paying now: the optional GST registration the first year is invoiced to (lib/gstin.ts). */
   gst?: GstDraft;
   place: Place | null;
+  /** Optional: the place's Google Maps link, which also confirms it (backend lib/locationCheck.ts). */
+  mapsUrl?: string;
+  /** The phone's own reading, kept as read even if the pin is moved after (it confirms the spot). */
+  gps?: { lat: number; lng: number; accuracy: number } | null;
   name: string;
   phone: string;
   price: string;
@@ -173,6 +177,8 @@ export function useHostWizard() {
       payPicked: !!saved.payPicked,
       gst: saved.gst || { on: false, gstin: '', legalName: '' },
       place: saved.place || null,
+      mapsUrl: saved.mapsUrl || '',
+      gps: saved.gps || null,
       name: saved.name || '',
       phone: saved.phone || '',
       price: saved.price || '',
@@ -407,6 +413,17 @@ export function useHostWizard() {
   /** "Put my listing up": onboard, then go live free (pay later) or pay the first year now. */
   // One put-up at a time: a second tap, or the automatic one after signing in, while one is on its way.
   const putting = useRef(false);
+  /** The place's confirmation: the Google Maps link and/or the phone's reading, when the host gave them. */
+  const locationCheck = () => {
+    const link = (d.mapsUrl || '').trim();
+    const gps = d.gps;
+    if (!link && !gps) return null;
+    // Drivers and guides go out to travellers: there is no place of theirs to confirm.
+    if (d.type !== 'homestay' && d.type !== 'cafe' && d.type !== 'shop') return null;
+    return { ...(link ? { maps_url: link } : {}), ...(gps ? { latitude: gps.lat, longitude: gps.lng, accuracy: gps.accuracy } : {}) };
+  };
+  /** Why the place could not be confirmed (it can be verified on the listing later); shown on the last screen. */
+  const [locationNote, setLocationNote] = useState('');
   const submit = async () => {
     if (!d.type || !d.place) return;
     if (!user) { askToSignIn(i, true); return; }
@@ -421,7 +438,7 @@ export function useHostWizard() {
       const sent: Draft = { ...d, photos, menu };
       setD(sent);
       if (adding) {
-        await api.post('/listings', {
+        const { data: added } = await api.post('/listings', {
           title: d.name.trim(),
           type: d.type,
           description: describe(),
@@ -432,6 +449,12 @@ export function useHostWizard() {
           image: photos[0] || '',
           extras: extrasFor(sent),
         });
+        // This listing's own place, confirmed on its own (it never takes another listing's pin).
+        const check = locationCheck();
+        if (check && added?.item?.id) {
+          await api.post(`/listings/${added.item.id}/location/verify`, check)
+            .catch((e: any) => setLocationNote(e?.response?.data?.detail || ''));
+        }
         await finish();
         return;
       }
@@ -446,7 +469,9 @@ export function useHostWizard() {
         price_from: startingPrice(),
         images: photos.slice(0, 1),
         extras: extrasFor(sent),
+        ...(locationCheck() ? { location_check: locationCheck() } : {}),
       });
+      if (data.location_check_error) setLocationNote(String(data.location_check_error));
       const providerId = data.provider.id;
       if (d.payWhen === 'later' || d.type === 'shop') {
         await api.post('/providers/me/start-free');
@@ -499,7 +524,7 @@ export function useHostWizard() {
   };
 
   return {
-    t, user, nav, d, set, pickType, steps, i, step, err, setErr, fixAt, busy, uploading, next, back, goTo, adding,
+    t, user, nav, d, set, pickType, steps, i, step, err, setErr, fixAt, busy, uploading, next, back, goTo, adding, locationNote,
     addPhotos, photoUrl, startingPrice, offerLabels, submit, payModal, setPayModal, finishMockPayment, paidPlan,
   };
 }

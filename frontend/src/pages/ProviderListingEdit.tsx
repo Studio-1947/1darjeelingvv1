@@ -19,6 +19,11 @@ import ChipToggleGroup, { toggleIn } from '@/components/provider/ChipToggleGroup
 import { RouteListEditor, RouteFareTable } from '@/components/provider/RouteEditor';
 import AreasPicker, { type Area } from '@/components/provider/AreasPicker';
 import Fold from '@/components/provider/Fold';
+import LicenceUpload from '@/components/provider/LicenceUpload';
+import LocationVerify from '@/components/provider/LocationVerify';
+import OwnersSection from '@/components/provider/OwnersSection';
+import MultiChips, { GUIDE_TYPES, SEASONS } from '@/components/provider/MultiChips';
+import ListingMembershipCard from '@/components/provider/dashboard/ListingMembershipCard';
 import { Button, ButtonLink, SelectField, TextArea, TextField } from '@/components/ag';
 import { useCrumbTitle } from '@/components/PageBack';
 
@@ -26,8 +31,9 @@ import { useCrumbTitle } from '@/components/PageBack';
  * One listing's own editor (/provider/listings/:id), opened from the Business profile's list of
  * listings. A host can run several homestays, cafes, shops or vehicles, and each keeps its own
  * offers (rooms and food, menu, goods, services, routes), the details that go with them, and its
- * photos (user decision 2026-11-24; the server's PROPERTY_FIELDS). Business-wide things (name,
- * phone, about you, owners) stay on the profile.
+ * photos (user decision 2026-11-24; the server's PROPERTY_FIELDS). Since 2026-11-26 it also holds
+ * this listing's membership, a car's numbers and licence, a guide's kinds and seasons, and the
+ * business's co-owners, so the profile keeps only the business-wide basics (name, phone, about you).
  *
  * Saving writes the listing's details (PUT /listings/:id), then its offers and photos through the
  * profile save with `listing_id` (PATCH /providers/me), which checks every row as the profile always
@@ -64,8 +70,12 @@ function pricedPayload(rows: Priced[]) {
   });
 }
 
-function formFrom(l: any) {
+function formFrom(l: any, business?: any) {
   const e = l?.extras || {};
+  // A car's numbers and a guide's kinds and seasons: the listing's own, else (a listing of the
+  // business's own kind saved before 2026-11-26) the profile's.
+  const b = l?.type === business?.business_type ? business?.extras || {} : {};
+  const own = (k: string) => e[k] ?? b[k];
   return {
     title: l?.title || '',
     location: l?.location || '',
@@ -89,6 +99,10 @@ function formFrom(l: any) {
     // Older listings saved routes as bare strings: make them rows, as the route editor needs.
     routes: normalizeRoutes(e.routes),
     areas: (Array.isArray(e.areas) ? e.areas : []) as Area[],
+    vehicle_number: String(own('vehicle_number') || ''),
+    license_number: String(own('license_number') || ''),
+    guide_types: (Array.isArray(own('guide_types')) ? own('guide_types') : []) as string[],
+    seasons: (Array.isArray(own('seasons')) ? own('seasons') : []) as string[],
     amenities: (Array.isArray(e.amenities) ? e.amenities : []) as string[],
     images: (Array.isArray(e.images) ? e.images : []) as string[],
     photo_kinds: (e.photo_kinds && typeof e.photo_kinds === 'object' ? e.photo_kinds : {}) as Record<string, string>,
@@ -132,7 +146,7 @@ export default function ProviderListingEdit() {
   // Once per business: a save refreshes `provider`, and reloading here would drop edits typed since.
   useEffect(() => {
     if (!provider?.id) return;
-    load().then((l) => { if (l) setForm(formFrom(l)); });
+    load().then((l) => { if (l) setForm(formFrom(l, provider)); });
   }, [provider?.id, load]);
 
   // Links land on a part: the dashboard's Menu button (#menu) and the checklist's "Add" links
@@ -277,16 +291,15 @@ export default function ProviderListingEdit() {
       if (num(form.capacity) !== undefined) profile.capacity = num(form.capacity);
     } else if (type === 'guide') {
       profile.services = pricedPayload(form.services);
+      Object.assign(profile, { guide_types: form.guide_types, seasons: form.seasons });
     } else if (type === 'driver') {
       profile.routes = form.routes;
       profile.areas = form.areas;
+      Object.assign(profile, { vehicle_number: form.vehicle_number.trim(), license_number: form.license_number.trim() });
       if (num(form.seats) !== undefined) profile.seats = num(form.seats);
     }
-    // A listing of the business's own type saves its offers through the profile save, which checks
-    // every row and mirrors the first listing. A listing of another type (a homestay that also lists a
-    // cafe) would be refused there ("menu" is not part of a homestay profile), so it saves them on
-    // the listing itself, in one request, with the price its cheapest offer makes.
-    const ownType = type === provider?.business_type;
+    // Every listing saves its offers and its own kind's details through the profile save, which checks
+    // them by this listing's kind (no kind is the business's "main" one, decision 2026-11-26).
     const offerRows = (type === 'homestay' ? profile.rooms : type === 'driver' ? null : profile[({ cafe: 'menu', shop: 'goods', guide: 'services' } as Record<string, string>)[type]]) as { price: number }[] | null | undefined;
     const offerFrom = type === 'driver' ? startingPriceFrom(form.routes)
       : Math.min(...(offerRows || []).map((r) => r.price).filter((n) => n > 0), Infinity);
@@ -301,15 +314,14 @@ export default function ProviderListingEdit() {
         tags: type === 'homestay' ? form.tags : (listing.tags || []),
         extras: {
           ...(listing.extras || {}),
-          ...(ownType ? {} : profile),
           address: form.address.trim(),
           ...(type === 'homestay' ? { tags: form.tags } : {}),
           ...(type === 'driver' ? { car_model: form.car_model.trim(), vehicle_type: form.vehicle_type } : {}),
         },
       });
-      if (ownType) await api.patch('/providers/me', { listing_id: listing.id, profile });
+      await api.patch('/providers/me', { listing_id: listing.id, profile });
       const fresh = await load();
-      if (fresh) setForm(formFrom(fresh));
+      if (fresh) setForm(formFrom(fresh, provider));
       // The first listing is mirrored on the profile, whose checklist reads it.
       await refreshProvider();
       setMsg({ ok: true, text: t('hostProfile.listing_saved', 'Saved. Travellers see the changes on this listing.') });
@@ -342,6 +354,12 @@ export default function ProviderListingEdit() {
           </span>
           <input type="checkbox" role="switch" checked={taking} disabled={switching || busy} onChange={(e) => setTaking(e.target.checked)} data-testid="listing-taking-switch" />
         </label>
+
+        {/* This listing's own yearly membership (one per listing, decision 2026-11-25), as on the dashboard. */}
+        {listing.plan?.needed && (
+          <ListingMembershipCard listing={listing} typeLabel={t(`ob.wz.t_${type}`, { defaultValue: type })} provider={provider} user={user}
+            onPaid={async () => { await refreshProvider(); await load(); }} />
+        )}
 
         <Fold title={t('hostProfile.details', 'Details')} summary={[form.title, form.location].filter(Boolean).join(' · ')} id="details" testid="listing-details">
           <div className="grid gap-4 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
@@ -449,6 +467,46 @@ export default function ProviderListingEdit() {
           </Fold>
         )}
 
+        {/* Where this place is, confirmed on its own (decision 2026-11-26): a Google Maps link, the
+            phone's location, or both. Homestays, cafes and shops have a place; drivers and guides go out. */}
+        {(type === 'homestay' || type === 'cafe' || type === 'shop') && (
+          <Fold id="location" title={t('lv.title', 'Location')} open={hash === 'location' || !listing.extras?.location_verified}
+            summary={listing.extras?.location_verified ? t('lv.done', 'Verified') : t('lv.todo', 'Not verified yet')} testid="listing-location-fold">
+            <LocationVerify listingId={listing.id} stamp={listing.extras?.location_verified}
+              onVerified={async (loc) => {
+                setListing((l: any) => ({ ...l, latitude: loc.latitude, longitude: loc.longitude,
+                  extras: { ...(l.extras || {}), location_verified: { verified_at: loc.verified_at, source: loc.source, gps_gap_m: loc.gps_gap_m } } }));
+                await refreshProvider();
+              }} />
+          </Fold>
+        )}
+
+        {/* This car's papers: its number and the licence of whoever drives it. */}
+        {type === 'driver' && (
+          <Fold id="vehicle" title={t('hostProfile.vehicle')} summary={[form.vehicle_number, form.license_number].filter(Boolean).join(' · ')} open={hash === 'vehicle'} testid="listing-vehicle">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <TextField label={t('hostProfile.vehicle_number')} value={form.vehicle_number} onChange={(e) => set({ vehicle_number: e.target.value })} placeholder="WB 74 A 1234" data-testid="listing-vehicle-number" />
+              <TextField label={t('hostProfile.license_number')} value={form.license_number} onChange={(e) => set({ license_number: e.target.value })} data-testid="listing-license-number" />
+            </div>
+            <LicenceUpload />
+            <p className="ag-small">{t('hostProfile.vehicle_docs_note')}</p>
+          </Fold>
+        )}
+
+        {/* What this guiding service covers, and when. */}
+        {type === 'guide' && (
+          <Fold id="guiding" title={t('hostProfile.guiding')} summary={form.guide_types.map((g) => t(`profile.guide_type_${g}`)).join(', ')} open={hash === 'guiding'} testid="listing-guiding">
+            <div className="grid gap-2">
+              <span className="text-sm font-medium text-[var(--ink-strong)]">{t('hostProfile.guide_type')}</span>
+              <MultiChips options={GUIDE_TYPES} selected={form.guide_types} onChange={(guide_types) => set({ guide_types })} label={(o) => t(`profile.guide_type_${o}`)} />
+            </div>
+            <div className="grid gap-2">
+              <span className="text-sm font-medium text-[var(--ink-strong)]">{t('hostProfile.seasons')}</span>
+              <MultiChips options={SEASONS} selected={form.seasons} onChange={(seasons) => set({ seasons })} label={(o) => t(`profile.season_${o}`)} />
+            </div>
+          </Fold>
+        )}
+
         <Fold id="photos" title={t('hostProfile.photos')} summary={galleryLabel} open={hash === 'photos'} testid="listing-photos">
           <p className="ag-small -mt-2">{photoGoal ? t(photosNote, { count: photoGoal }) : t('hostProfile.photos_note')}</p>
           <div className="grid gap-2">
@@ -475,6 +533,9 @@ export default function ProviderListingEdit() {
             {type === 'homestay' && <span className="text-xs text-[var(--ink-muted)]">{t('photoKind.hint')}</span>}
           </div>
         </Fold>
+
+        {/* Co-owners run the whole business, so they are the same on every listing's page. */}
+        <OwnersSection onLeft={async () => { await refreshProvider(); nav('/'); }} />
 
         {/* Removing the listing (it used to be on My Listings). The server refuses while guests have open bookings on it. */}
         <Button variant="stop" className="self-start" onClick={remove} disabled={busy || switching} data-testid="listing-delete">{t('common.delete')}</Button>
