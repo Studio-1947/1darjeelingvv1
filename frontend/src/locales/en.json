@@ -1609,6 +1609,18 @@
     "starting_price_note": "from your cheapest route"
   },
   "ob": {
+    "add": {
+      "eye": "Adding a listing",
+      "title": "Every listing has its own yearly pass",
+      "p_own": "Each listing has its own page, its own bookings and its own membership card.",
+      "p_free": "Every new listing starts free: its first {{count}} bookings cost nothing.",
+      "p_price": "After that, it needs its own yearly pass: {{big}}/year for a homestay, driver or guide, {{small}}/year for a cafe or restaurant. GST is added when you pay.",
+      "p_shop": "Local shops are always free.",
+      "p_apart": "Your other listings are not affected. If one pass ends, only that listing is hidden.",
+      "p_free_pay": "Nothing to pay now. Pay any time from the listing’s card on your dashboard.",
+      "ok": "Got it, add a listing",
+      "leave": "Not now"
+    },
     "check": {
       "still_to_fill": "Fill these in to continue:",
       "about_you": "A few lines about you",

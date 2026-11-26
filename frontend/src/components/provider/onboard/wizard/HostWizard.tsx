@@ -14,6 +14,7 @@ import { HOST_TYPES, HUBS, MAX_GOODS, MAX_PHOTOS, OFFERS, PRESETS, QUICK_DISHES,
 import { photoGoalFor } from '@/lib/photoGoal';
 import PaymentDoneCard from '@/components/PaymentDoneCard';
 import ConsentCheck from '@/components/ConsentCheck';
+import AddListingInfo from './AddListingInfo';
 
 /** "Add your own" on the What do you give? step; the server takes up to 30 amenities of 60 characters. */
 const MAX_OWN_OFFERS = 8;
@@ -633,8 +634,11 @@ export default function HostWizardScreens({ w }: { w: HostWizard }) {
   const screen = useMemo(() => w.step, [w.step]);
   const top = useRef<HTMLDivElement>(null);
   useEffect(() => { top.current?.querySelector<HTMLElement>('h1')?.focus?.({ preventScroll: true }); }, [screen]);
+  // A host adding another listing hears first that each listing pays its own yearly pass.
+  const [info, setInfo] = useState(() => w.adding && w.step !== 'done');
   return (
     <div className="ag-wrap" ref={top}>
+      {info && <AddListingInfo onContinue={() => setInfo(false)} onLeave={() => w.nav('/provider/dashboard')} />}
       {screen === 'type' && <TypeStep w={w} />}
       {screen === 'place' && <PlaceStep w={w} />}
       {screen === 'name' && <NameStep w={w} />}
