@@ -323,7 +323,7 @@ function expectFor(list, { near = false, radius = null, maxPrice, loc, sort = 'r
         shown = await ids(page);
         want = expectFor(H, { near: true, radius: r });
         ok(same(shown, want), W, `within ${r} km: exactly the stays within ${r} km, nearest first`, `got [${names(H, shown)}] want [${names(H, want)}]`);
-        const fc = Number(await page.locator('[data-testid="category-filter-apply"] .fcount').textContent().catch(() => '-1'));
+        const fc = Number(((await page.locator('[data-testid="category-filter-apply"]').textContent().catch(() => '')) || '').match(/\d+/)?.[0] ?? -1);
         ok(fc === shown.length, W, `within ${r} km: the Search button's count matches the cards`, `${fc} vs ${shown.length}`);
       }
       await tid(page, 'near-any').click();
@@ -351,20 +351,20 @@ function expectFor(list, { near = false, radius = null, maxPrice, loc, sort = 'r
       if (roomy) ux('A', `homestay price filter reads only the listing's single price: "${roomy.title}" is ₹${roomy.price} (its per-head Family Room) yet its Valley Room is ₹${roomy.extras.rooms.map((r) => r.price).join('/₹')}; "Under ₹1,500" keeps it with no hint that most rooms cost more (Category.tsx:215)`);
       // Sort.
       for (const s of ['price_asc', 'price_desc', 'name_asc']) {
-        await tid(page, 'category-sort-select').selectOption(s);
+        await tid(page, `category-sort-${s}`).click();
         shown = await ids(page);
         want = expectFor(H, { sort: s });
         ok(same(shown, want), W, `sort ${s}: order holds`, `got [${names(H, shown).slice(0, 160)}]`);
       }
-      const opts = await tid(page, 'category-sort-select').locator('option').allTextContents();
+      const opts = await page.locator('[data-testid="category-sort"] button').allTextContents();
       if (!opts.some((o) => /rating|rated/i.test(o)) || !opts.some((o) => /new/i.test(o)) || !opts.some((o) => /near/i.test(o))) {
         ux('A', `sort offers only [${opts.join(' | ')}]: no Top rated, Newest or Nearest (nearest only by turning on My location); "Featured / Popular" is just the server's row order (CategoryFilterBar.tsx:296)`);
       }
       // Near me and Cheapest first together.
-      await nearOn(page); await tid(page, 'near-25').click(); await tid(page, 'category-sort-select').selectOption('price_asc');
+      await nearOn(page); await tid(page, 'near-25').click(); await tid(page, 'category-sort-price_asc').click();
       shown = await ids(page); want = expectFor(H, { near: true, radius: 25, sort: 'price_asc' });
       ok(same(shown, want), W, 'within 25 km + Cheapest first: cheapest of the near ones first', `got [${names(H, shown)}]`);
-      await tid(page, 'category-sort-select').selectOption('recommended');
+      await tid(page, 'category-sort-recommended').click();
       // Guests.
       for (const g of [4, 6, 8]) {
         await tid(page, `guest-filter-${g}`).click();
@@ -448,7 +448,7 @@ function expectFor(list, { near = false, radius = null, maxPrice, loc, sort = 'r
         await openPanel(page);
         const panelPrice = await page.locator('[data-testid^="filter-price-"]').count();
         if (!panelPrice) ux('A', `${p}: the filter panel has no price or Cheapest-first choice besides the sort select; cards show no price at all for cafes/shops (ListingCard.tsx:175), so "Cheapest first" sorts by a number the traveller never sees`);
-        await tid(page, 'category-sort-select').selectOption('price_asc'); shown = await ids(page);
+        await tid(page, 'category-sort-price_asc').click(); shown = await ids(page);
         ok(same(shown, expectFor(L, { delivers: true, sort: 'price_asc' })), 'A', `${p} Delivers + Cheapest first`, `got [${names(L, shown)}]`);
         await tid(page, 'category-delivers').click();
         await tid(page, 'category-reset-btn').click().catch(() => {});
@@ -457,7 +457,7 @@ function expectFor(list, { near = false, radius = null, maxPrice, loc, sort = 'r
       await go(page, '/guides'); await ready(page);
       await nearOn(page); await tid(page, 'near-5').click(); let shown = await ids(page);
       ok(same(shown, expectFor(G, { near: true, radius: 5 })), 'A', 'guides within 5 km: nearest first', `got [${names(G, shown)}]`);
-      await tid(page, 'near-any').click(); await tid(page, 'category-sort-select').selectOption('price_asc'); shown = await ids(page);
+      await tid(page, 'near-any').click(); await tid(page, 'category-sort-price_asc').click(); shown = await ids(page);
       ok(same(shown, expectFor(G, { near: true, sort: 'price_asc' })), 'A', 'guides Cheapest first: a guide with no rate is not "cheapest"', `got [${names(G, shown)}]`);
       await ctx.close();
     });
@@ -508,7 +508,7 @@ function expectFor(list, { near = false, radius = null, maxPrice, loc, sort = 'r
     await openPanel(page);
     await tid(page, 'category-location-select').selectOption('Darjeeling');
     await tid(page, 'filter-price-3000').click();
-    await tid(page, 'category-sort-select').selectOption('price_asc');
+    await tid(page, 'category-sort-price_asc').click();
     await tid(page, 'guest-filter-4').click();
     await tid(page, 'category-filter-apply').click();
     const want = expectFor(H, { loc: 'Darjeeling', maxPrice: 3000, sort: 'price_asc', guests: 4 });
