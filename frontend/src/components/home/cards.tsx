@@ -99,7 +99,7 @@ const firstText = (v: unknown): string => (Array.isArray(v) ? v.find((x) => type
 /**
  * Stays, drivers, guides, cafes and shops (the prototype's staycard): photo with the distance on it,
  * name, place, guests and rating, price, then a red button and a round heart.
- * `wide` lays the first card of a Home section across both columns, photo beside the text.
+ * `wide` lays a Home section card across both columns, photo beside the text (every stay and driver card).
  * `selfie` puts the driver's face (or initial) over the photo's corner.
  */
 export function StayCard({ it, href, km, testId, ctaTestId, saveTestId, ctaLabel, wide, selfie }: {

@@ -380,9 +380,9 @@ export default function Discover() {
           <Section id="home-stays-h" tone="band" eyebrow={t('home.stay_local')} title={t('home.tile.stays', 'Homestay')}
             action={<SeeAllLink to="/homestays">{seeAll}</SeeAllLink>}>
             <div className="ag-home-stays">
-              {loading && repeat(2, (i) => <StayTileSkeleton key={i} />)}
-              {stays.map((h, i) => (
-                <StayCard key={h.id} it={h} href={`/listing/${h.id}`} wide={i === 0} ctaLabel={t('cta.book_now')}
+              {loading && repeat(2, (i) => <div key={i} className="col-span-full"><StayTileSkeleton /></div>)}
+              {stays.map((h) => (
+                <StayCard key={h.id} it={h} href={`/listing/${h.id}`} wide ctaLabel={t('cta.book_now')}
                   testId={`stay-tile-${h.id}`} ctaTestId={`stay-book-${h.id}`} saveTestId={`stay-save-${h.id}`} />
               ))}
             </div>
@@ -402,8 +402,8 @@ export default function Discover() {
           action={<SeeAllLink to="/drivers" icon="search">{t('home.find_ride', 'Find a ride')}</SeeAllLink>}>
           {drivers.length > 0 && (
             <div className="ag-home-stays">
-              {drivers.map((d, i) => (
-                <StayCard key={d.id} it={d} href={`/listing/${d.id}`} wide={i === 0} selfie ctaLabel={t('cta.book_now')} testId={`driver-tile-${d.id}`} />
+              {drivers.map((d) => (
+                <StayCard key={d.id} it={d} href={`/listing/${d.id}`} wide selfie ctaLabel={t('cta.book_now')} testId={`driver-tile-${d.id}`} />
               ))}
             </div>
           )}
