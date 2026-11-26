@@ -4,6 +4,7 @@ import api from '@/lib/api';
 import { rupees, useHostPlanPrice } from '@/lib/prices';
 import { SUPPORTED_IMAGE_ACCEPT } from '@/lib/uploadImage';
 import { distanceTo, inListingRegion } from '@/lib/places';
+import AreasPicker from '@/components/provider/AreasPicker';
 import { nearestAreaLabel } from '@/lib/hostQuickFill';
 import { CircleNotch as Loader2 } from '@phosphor-icons/react';
 import { capPrice, isValidPhone, MAX_PRICE } from '@/lib/hostFormChecks';
@@ -398,6 +399,21 @@ function PriceStep({ w }: { w: HostWizard }) {
   );
 }
 
+/* ---------- 4, drivers. Where you pick travellers up ---------- */
+/**
+ * Optional: the base counts on its own. Each place added here means a ride search from it finds the
+ * driver first (backend lib/driverMatch.ts), not only one from where they live.
+ */
+function AreasStep({ w }: { w: HostWizard }) {
+  const { t, d, set } = w;
+  return (
+    <Frame w={w} title={t('areas.title', 'Where do you pick travellers up?')}
+      sub={t('areas.sub', { place: d.place?.name || '', defaultValue: 'Add the towns, stations and airports you go to. Travellers searching a ride from them find you first. {{place}} counts already.' })}>
+      <AreasPicker areas={d.areas} onChange={(areas) => set({ areas })} base={d.place} testid="wz-areas" wizard />
+    </Frame>
+  );
+}
+
 /* ---------- 4b. Your menu (cafe) / What you sell (shop) ---------- */
 /**
  * A café lists dishes (quick-add momos, thukpa...). A shop can be anything (groceries, a pharmacy,
@@ -626,6 +642,11 @@ function ReviewStep({ w }: { w: HostWizard }) {
           {offerLabels().map((l) => <li key={l}><Icon name="check" />{l}</li>)}
         </ul>
       )}
+      {d.type === 'driver' && d.areas.length > 0 && (
+        <ul className="ag-onboard-facts" aria-label={t('areas.chosen', 'Your pickup areas')} data-testid="wz-review-areas">
+          {d.areas.map((a) => <li key={a.name}><Icon name="pin" />{a.name}</li>)}
+        </ul>
+      )}
       <p className="ag-onboard-muted">+91 {d.phone}</p>
       {asking && <ChargesSheet w={w} onClose={() => setAsking(false)} onConfirm={() => { setAsking(false); void submit(); }} />}
     </Frame>
@@ -657,6 +678,7 @@ export default function HostWizardScreens({ w }: { w: HostWizard }) {
       {screen === 'place' && <PlaceStep w={w} />}
       {screen === 'name' && <NameStep w={w} />}
       {screen === 'price' && <PriceStep w={w} />}
+      {screen === 'areas' && <AreasStep w={w} />}
       {screen === 'menu' && <MenuStep w={w} />}
       {screen === 'extras' && <ExtrasStep w={w} />}
       {screen === 'review' && <ReviewStep w={w} />}

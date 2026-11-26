@@ -146,7 +146,17 @@ export function routeForTrip(fares: RouteFare[], from: string, to: string): Rout
 
 export type TripMatch = 'covers' | 'unlisted' | 'no';
 export function tripMatch(fares: RouteFare[], from: string, to: string): TripMatch {
-  if (routesCoverTrip(fares, from, to)) return 'covers';
-  return fares.length === 0 ? 'unlisted' : 'no';
+  if (!from.trim() && !to.trim()) return 'covers';
+  const real = fares.filter((f) => !isGenericRoute(f.route));
+  if (real.length && routesCoverTrip(real, from, to)) return 'covers';
+  return real.length === 0 ? 'unlisted' : 'no';
 }
+
+/**
+ * The route the sign-up wizard writes for every new driver (ob.wz.day_route, "Full day hire", in
+ * the language they signed up in). It names no place: a driver with only this route has listed no
+ * routes, rather than routes that miss the trip. Same list on the server (lib/driverMatch.ts).
+ */
+const GENERIC_ROUTES = ['Full day hire', 'पूरे दिन की बुकिंग', 'সারাদিনের ভাড়া', 'पूरा दिनको भाडा'].map((r) => r.toLowerCase());
+export const isGenericRoute = (route: string) => GENERIC_ROUTES.includes(route.trim().toLowerCase());
 

@@ -1,3 +1,4 @@
+import { cleanAreas } from './driverMatch';
 import { normaliseVehicleNumber } from './vehicleNumber';
 import { MAX_PRICE } from './priceCap';
 import { isPlausiblePhone } from './phone';
@@ -53,7 +54,7 @@ export const PROPERTY_FIELDS: Record<string, readonly string[]> = {
   cafe: ['menu', 'amenities', 'capacity', 'opening_hours', 'images'],
   shop: ['goods', 'capacity', 'opening_hours', 'images'],
   guide: ['services', 'images'],
-  driver: ['seats', 'routes', 'images'],
+  driver: ['seats', 'routes', 'areas', 'images'],
 };
 export const SOCIAL_KEYS = ['instagram', 'facebook', 'youtube', 'website'] as const;
 /**
@@ -185,6 +186,8 @@ const BY_TYPE: Record<string, Record<string, (v: unknown) => unknown | ProfileEr
       return !s || /^[A-Za-z0-9][A-Za-z0-9 \-/]{5,29}$/.test(s) ? s.toUpperCase() : { error: 'That driving licence number does not look right' };
     },
     seats: (v) => int(v, 1, 30, 'Passenger capacity'),
+    // Where the driver picks travellers up (lib/driverMatch.ts): names with their positions.
+    areas: (v) => cleanAreas(v) ?? { error: 'Areas you serve must be a list of places' },
     routes: (v) => list(v, 30, 'Routes', (x) => {
       if (typeof x === 'string') return x.trim() ? { route: x.trim(), price: 0, unit: 'trip' } : { error: 'A route cannot be empty' };
       const r = priced(['trip', 'day'], 'route', 'trip')(x);

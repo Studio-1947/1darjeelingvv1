@@ -43,3 +43,12 @@ describe('trip search knows the other names of a stop (persona test 2026-11-09)'
     expect(tripMatch(fare('Djamboree to Kalimpong'), 'Darjeeling', 'Kalimpong')).toBe('no');
   });
 });
+
+describe('the wizard\'s "Full day hire" route names no place', () => {
+  it('a driver with only it has no routes listed, not routes that miss the trip', () => {
+    const fare = (route: string): RouteFare[] => [{ route, price: 2500, unit: 'day' }];
+    expect(tripMatch(fare('Full day hire'), 'NJP', 'Darjeeling')).toBe('unlisted');
+    expect(tripMatch(fare('पूरे दिन की बुकिंग'), 'NJP', 'Darjeeling')).toBe('unlisted');
+    expect(tripMatch([...fare('Full day hire'), ...fare('Gangtok ↔ Lachung')], 'NJP', 'Darjeeling')).toBe('no');
+  });
+});

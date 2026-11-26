@@ -1,5 +1,6 @@
 import React, { Fragment, useEffect, useMemo, useRef, useState } from 'react';
-import { PLACES, distanceTo, placeFor } from '@/lib/places';
+import { PLACES, distanceTo, placeFor, roadKm } from '@/lib/places';
+import { rememberRidePoint } from '@/lib/lastRidePoint';
 import { useLocation, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
@@ -145,7 +146,6 @@ function CategoryPage({ typeOverride }: { typeOverride?: string }) {
   const [loadingMore, setLoadingMore] = useState(false);
   // Which list is current; a "load more" answer for an older type or day is dropped.
   const listKey = useRef('');
-  listKey.current = `${type}|${availableOn || ''}`;
   // Everything matching the query in *other* categories. Only fetched when the
   // scoped search comes back empty - see the effect below.
   const [elsewhere, setElsewhere] = useState([]);
@@ -188,6 +188,23 @@ function CategoryPage({ typeOverride }: { typeOverride?: string }) {
     );
   };
 
+  // Drivers: the trip, the place filter and My location go to the server (lib/driverMatch.ts),
+  // which weighs every driver and pages after, so a ride search never stops at the first page.
+  // The position is rounded to about a kilometre before it leaves the device.
+  const rideParams: Record<string, string | number> = type === 'driver' ? {
+    ...(from.trim() ? { from: from.trim() } : {}),
+    ...(to.trim() ? { to: to.trim() } : {}),
+    ...(selectedLocation !== 'All Locations' ? { place: selectedLocation } : {}),
+    ...(near ? { near_lat: near.lat.toFixed(2), near_lng: near.lng.toFixed(2), ...(radius ? { within: radius } : {}) } : {}),
+  } : {};
+  const listParams = { ...dayParam, ...rideParams };
+  // Home's Car & Driver section then starts from where this traveller rides (lib/lastRidePoint.ts).
+  useEffect(() => {
+    if (type === 'driver') rememberRidePoint(near ?? placeFor(from) ?? placeFor(to));
+  }, [type, near, from, to]);
+  const listParamsKey = JSON.stringify(listParams);
+  listKey.current = `${type}|${listParamsKey}`;
+
   useEffect(() => {
     setSearchQuery(q);
   }, [q]);
@@ -228,7 +245,7 @@ function CategoryPage({ typeOverride }: { typeOverride?: string }) {
   // ranks the results. Asked once typing pauses (hooks/useListingSearch: debounced, cancelled when
   // the words change, cached); the last answer stays on screen while the next one loads. A single
   // Latin letter is not sent: the plain match below shows for it.
-  const sq = useListingSearch(searchQuery, { type: apiType, limit: pageSize, ...dayParam });
+  const sq = useListingSearch(searchQuery, { type: apiType, limit: pageSize, ...listParams });
   // Pages after the first ("Load more"), for the list and words they were loaded for (listKey|words).
   const [extra, setExtra] = useState<{ q: string; items: any[]; next: number | null } | null>(null);
   const smart = useMemo<{ q: string; items: any[]; search: SearchInterpretation | null; next: number | null } | null>(() => {
@@ -240,18 +257,19 @@ function CategoryPage({ typeOverride }: { typeOverride?: string }) {
     const later = (more?.items || []).filter((it: any) => !have.has(it.id));
     return { q: d.q, items: keepType([...first, ...later]), search: d.search || null, next: more ? more.next : d.next_offset };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sq.data, extra, type, availableOn]);
+  }, [sq.data, extra, type, listParamsKey]);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setElsewhere([]);
     setNextOffset(null);
-    api.get('/listings', { params: { type: apiType, limit: pageSize, ...dayParam } })
+    api.get('/listings', { params: { type: apiType, limit: pageSize, ...listParams } })
       .then((r) => { if (!cancelled) { setItems(keepType(r.data.items || [])); setNextOffset(r.data.next_offset ?? null); } })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [type, availableOn]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [type, listParamsKey]);
 
   // Narrowed here rather than in the query: a driver's routes live in
   // `extras.routes` or - for the seeded drivers - only in the editorial map, so
@@ -260,7 +278,14 @@ function CategoryPage({ typeOverride }: { typeOverride?: string }) {
   // Drivers whose routes cover the trip first, then every other driver under "may also do this
   // trip": routes are free text and rarely complete, so leaving them out ended the region's most
   // common search (NJP → Darjeeling) on an empty page.
-  const matchOf = (it: any) => tripMatch(contentFor(it).routes || [], from, to);
+  // Drivers come back matched by the server (trip_match, lib/driverMatch.ts); the routes are read
+  // here only for a list that has not been (an older server).
+  const matchOf = (it: any) => it.trip_match
+    ?? ({ covers: 'covers', unlisted: 'unlisted', no: 'other' } as const)[tripMatch(contentFor(it).routes || [], from, to)];
+  const MATCH_RANK: Record<string, number> = { covers: 0, serves: 1, unlisted: 2, other: 3 };
+  // Where a driver's distance is measured from: the traveller, else the pickup, else the place.
+  const rideRef = useMemo(() => near ?? placeFor(from) ?? placeFor(to) ?? placeFor(selectedLocation !== 'All Locations' ? selectedLocation : ''), [near, from, to, selectedLocation]);
+  const isRide = type === 'driver';
   const baseResults = items;
 
   // The kind chips on spots and nature, with how many of each (prototype layout.js).
@@ -279,10 +304,8 @@ function CategoryPage({ typeOverride }: { typeOverride?: string }) {
     const term = searchQuery.trim();
     // The smart answer, or while the next one loads the previous one (dimmed below).
     if (term && smart) {
-      // Server order is best match first; a driver trip still narrows it to the route.
-      list = (type === 'driver' && routeTrip)
-        ? smart.items.filter((it) => matchOf(it) !== 'no')
-        : [...smart.items];
+      // Server order is best match first (for drivers, grouped by how they fit the trip).
+      list = [...smart.items];
     } else if (term) {
       const s = term.toLowerCase();
       list = list.filter(
@@ -293,7 +316,8 @@ function CategoryPage({ typeOverride }: { typeOverride?: string }) {
       );
     }
 
-    if (selectedLocation && selectedLocation !== 'All Locations') {
+    // Drivers: the server already kept only those who work at the place (base, areas or routes).
+    if (!isRide && selectedLocation && selectedLocation !== 'All Locations') {
       const keys = placeKeys(selectedLocation);
       list = list.filter((it) => { const at = squash(it.location || ''); return keys.some((k) => at.includes(k)); });
     }
@@ -322,7 +346,15 @@ function CategoryPage({ typeOverride }: { typeOverride?: string }) {
     if (kind) list = list.filter((it) => kindOf(it) === kind);
     if (delivers) list = list.filter((it) => (it.type === 'cafe' || it.type === 'shop') && it.extras?.home_delivery === true);
 
-    if (near) {
+    if (isRide) {
+      // Drivers: filtered and ordered by the server; its straight-line km becomes a road estimate.
+      list = list.map((it) => ({
+        ...it,
+        _km: it.distance_km != null && rideRef
+          ? { km: roadKm(Number(it.distance_km), rideRef, placeFor(it.location)), approx: true }
+          : distanceTo(rideRef ?? TOWN, it),
+      }));
+    } else if (near) {
       list = list
         // A map pin when there is one, otherwise the place the listing names (drivers, guides).
         .map((it) => ({ it, d: distanceTo(near, it) }))
@@ -349,14 +381,15 @@ function CategoryPage({ typeOverride }: { typeOverride?: string }) {
       list = list.filter((it) => !(Number(it.max_guests) > 0) || Number(it.max_guests) >= trip.guests);
     }
 
-    // A trip search lists the drivers who cover it first, in the chosen order, then the rest.
-    if (type === 'driver' && routeTrip) {
-      list = [...list.filter((it) => matchOf(it) === 'covers'), ...list.filter((it) => matchOf(it) !== 'covers')];
+    // A trip search lists the drivers who cover it first, then those who work at the pickup, then
+    // the rest, each group in the chosen order (stable sort).
+    if (isRide && routeTrip) {
+      list = list.map((it, i) => ({ it, i })).sort((a, b) => (MATCH_RANK[matchOf(a.it)] ?? 3) - (MATCH_RANK[matchOf(b.it)] ?? 3) || a.i - b.i).map(({ it }) => it);
     }
 
     return list;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [baseResults, searchQuery, smart, type, routeTrip, from, to, selectedLocation, maxPrice, selectedCab, entryFilter, kind, delivers, sortOrder, near, radius, trip.guests]);
+  }, [baseResults, searchQuery, smart, type, routeTrip, from, to, selectedLocation, maxPrice, selectedCab, entryFilter, kind, delivers, sortOrder, near, radius, trip.guests, rideRef]);
 
   // Where "may also do this trip" starts in a driver trip search (-1 when it does not apply).
   const unlistedFrom = (type === 'driver' && routeTrip) ? results.findIndex((it) => matchOf(it) !== 'covers') : -1;
@@ -407,7 +440,7 @@ function CategoryPage({ typeOverride }: { typeOverride?: string }) {
       let offset: number | null = moreFrom;
       let page: any[] = [];
       for (let tries = 0; offset != null && page.length === 0 && tries < 5; tries++) {
-        const r = await api.get('/listings', { params: { ...(fromSmart ? { q: term } : {}), type: apiType, limit: pageSize, offset, ...dayParam } });
+        const r = await api.get('/listings', { params: { ...(fromSmart ? { q: term } : {}), type: apiType, limit: pageSize, offset, ...listParams } });
         if (listKey.current !== key) return;
         page = keepType(r.data.items || []);
         offset = r.data.next_offset ?? null;

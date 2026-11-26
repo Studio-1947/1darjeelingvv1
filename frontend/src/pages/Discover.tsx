@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useHostSignupInfo } from '@/components/provider/onboard/QuickFill';
 import api from '@/lib/api';
+import { lastRidePoint } from '@/lib/lastRidePoint';
 import { sizedImage } from '@/lib/listingContent';
 import { pickRail } from '@/lib/homeRail';
 import Seo from '@/components/Seo';
@@ -304,7 +305,11 @@ export default function Discover() {
     let live = true;
     const kinds = Object.keys(PER) as Kind[];
     const isHost = (k: Kind) => HOST_KINDS.includes(k);
-    Promise.allSettled(kinds.map((type) => api.get('/listings', { params: { type, limit: isHost(type) ? HOST_PAGE : PER[type] } })))
+    // Drivers nearest where this traveller last looked for a ride, best first (lib/lastRidePoint.ts);
+    // with no such point, the best drivers anywhere.
+    const ride = lastRidePoint();
+    const near = ride ? { near_lat: ride.lat, near_lng: ride.lng } : {};
+    Promise.allSettled(kinds.map((type) => api.get('/listings', { params: { type, limit: isHost(type) ? HOST_PAGE : PER[type], ...(type === 'driver' ? near : {}) } })))
       .then((res) => {
         if (!live) return;
         const next: Partial<Record<Kind, any[]>> = {};
