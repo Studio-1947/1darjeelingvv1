@@ -23,6 +23,7 @@ import { checkNameLike } from '../lib/contentRules';
 import { listingCover } from '../lib/listingCover';
 import { openBookingsFor } from '../lib/accountCleanup';
 import { ratingsForListings } from '../lib/listingRatings';
+import { cleanAreas, driverQuality, rankDrivers, readDriverQuery, type TripMatch } from '../lib/driverMatch';
 import {
   SPOT_TYPE, SPOT_FORBIDDEN_MESSAGE, canWriteSpots, parseSpotExtras,
   isSpotPublished, publicSpotVisibility, spotOrdering, SpotValidationError,
@@ -41,6 +42,8 @@ const MAX_PAGE_SIZE = 200;
 const DEFAULT_PAGE_SIZE = 60;
 /** Upper bound for `offset`: paging deeper than this is a scrape, not a person scrolling. */
 const MAX_OFFSET = 10_000;
+/** A ride search weighs at most this many drivers (all of them, at today's numbers). */
+const MAX_RIDE_CANDIDATES = 2000;
 
 /**
  * Validates the caller-supplied columns of a listing payload. Returns an error message, or null.
@@ -96,6 +99,12 @@ function validateListingPayload(body: any, { partial }: { partial: boolean }): s
       if (rows.some((r: any) => r && typeof r === 'object' && Number(r.price) > MAX_PRICE)) {
         return `each ${key} price must be at most ${MAX_PRICE} rupees`;
       }
+    }
+    // A driver's areas served (lib/driverMatch.ts): stored cleaned, a name and a position each.
+    if (body.extras.areas !== undefined) {
+      const areas = cleanAreas(body.extras.areas);
+      if (!areas) return 'areas must be a list of places';
+      body.extras.areas = areas;
     }
   }
 
@@ -175,6 +184,29 @@ const router = Router();
  *         description: >
  *           Drivers only (with type=driver): YYYY-MM-DD. Leaves out drivers who switched
  *           availability off and drivers with an accepted or confirmed booking on that day.
+ *       - in: query
+ *         name: from
+ *         schema: { type: string }
+ *         description: Drivers only. Ride pickup place; drivers whose routes cover the trip come first.
+ *       - in: query
+ *         name: to
+ *         schema: { type: string }
+ *         description: Drivers only. Ride drop place.
+ *       - in: query
+ *         name: place
+ *         schema: { type: string }
+ *         description: Drivers only. Only drivers who work at this place (base, areas served or routes).
+ *       - in: query
+ *         name: near_lat
+ *         schema: { type: number }
+ *         description: Drivers only, with near_lng. Order by distance from this point.
+ *       - in: query
+ *         name: near_lng
+ *         schema: { type: number }
+ *       - in: query
+ *         name: within
+ *         schema: { type: number }
+ *         description: Drivers only, with near_lat/near_lng. Only drivers within this many km.
  *     responses:
  *       200:
  *         description: Matching listings
@@ -282,7 +314,43 @@ router.get('/', async (req: Request, res: Response) => {
   let items: (typeof schema.listings.$inferSelect)[];
   let search: Interpretation | null = null;
   let total: number;
-  if (term) {
+  // Drivers: the ride search (lib/driverMatch.ts) weighs every driver - trip, place, nearness,
+  // rating - and pages after, so a search never stops at the first page.
+  const rideQuery = type === 'driver' ? readDriverQuery(req.query as Record<string, unknown>) : null;
+  if (rideQuery && 'error' in rideQuery) {
+    return res.status(400).json({ detail: rideQuery.error, code: 'bad_ride_query' });
+  }
+  const rideHits = new Map<string, { match: TripMatch | null; km: number | null }>();
+  if (rideQuery) {
+    let rows: (typeof schema.listings.$inferSelect)[];
+    if (term) {
+      const ranked = await searchListings({
+        term,
+        type: type ?? null,
+        conditions,
+        cacheKey: `${type}|${availableOn || ''}`,
+        boostFor: async (found) => {
+          const visible = await providerFlags(found.map((i) => i.providerId));
+          return (l) => (visible.get(l.providerId) ? 0.5 : 0);
+        },
+      });
+      rows = ranked.results.map((r) => r.item);
+      search = ranked.interpretation;
+    } else {
+      rows = await db.select().from(schema.listings).where(and(...conditions))
+        .orderBy(asc(schema.listings.createdAt), asc(schema.listings.id)).limit(MAX_RIDE_CANDIDATES);
+    }
+    const [ratings, verified] = await Promise.all([
+      ratingsForListings(rows.map((r) => r.id)),
+      providerFlags(rows.map((r) => r.providerId)),
+    ]);
+    // Typed words: the best text match stays first within each trip group.
+    const hits = rankDrivers(rows, rideQuery, (l) => driverQuality(l, ratings.get(l.id), !!verified.get(l.providerId)), !!term);
+    total = hits.length;
+    const page = hits.slice(offset, offset + limit);
+    page.forEach((h) => rideHits.set(h.item.id, { match: h.match, km: h.km }));
+    items = page.map((h) => h.item);
+  } else if (term) {
     // Through the search index (lib/searchIndex.ts): only the listings holding a matching word are
     // read, then ranked exactly as lib/search.ts ranks them.
     const ranked = await searchListings({
@@ -349,6 +417,9 @@ router.get('/', async (req: Request, res: Response) => {
       provider_verified: provider?.kycStatus === 'verified' && provider?.status === 'active',
       // "Hosted by" on every card: the host's name and photo only (lib/hostCard.ts).
       host: hostCard(provider?.extras, item.extras),
+      // A ride search: how this driver fits the trip, and km (straight line) from the search's
+      // point to the nearest place they work from.
+      ...(rideHits.has(item.id) ? { trip_match: rideHits.get(item.id)!.match, distance_km: rideHits.get(item.id)!.km } : {}),
     };
   });
 

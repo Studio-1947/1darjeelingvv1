@@ -6,6 +6,7 @@ import { MapPin, SealCheck } from '@phosphor-icons/react';
 import SmartImg from '@/components/SmartImg';
 import { Status, cx } from '@/components/ag';
 import { Icon } from '@/components/ag/Icon';
+import { kmLabel } from '@/lib/places';
 import { contentFor, listingImage, listingImageBackups } from '@/lib/listingContent';
 import { optionLabel } from '@/lib/optionLabel';
 import { priceParts } from '@/components/home/cards';
@@ -48,13 +49,12 @@ export default function ListingCard({ item, badge = null }) {
 export type Km = { km: number; approx: boolean } | null | undefined;
 
 /**
- * The distance badge on a card, in the prototype's words: "under 1 km", "1.8 km", "19 km".
- * "≈" marks a distance taken from the place a listing names rather than its map pin.
+ * The distance badge on a card, in the prototype's words: "under 1 km", "≈ 1.8 km", "≈ 19 km".
+ * Always "≈": it is a road estimate (lib/places.ts roadKm); the number is kmLabel's.
  */
 export function catKm(d: { km: number; approx: boolean }, t: TFunction): string {
-  if (d.km < 1) return t('category.under1km', 'under 1 km');
-  const n = d.km < 10 ? Number(d.km.toFixed(1)) : Math.round(d.km);
-  return `${d.approx ? '≈ ' : ''}${n} km`;
+  // Same words as Home's cards (lib/places.ts kmLabel), so a listing reads the same on both.
+  return d.km < 1 ? t('category.under1km', 'under 1 km') : kmLabel(d);
 }
 
 /** The badge text, then " · " for screen readers (and the release walk, which reads "N km · "). */

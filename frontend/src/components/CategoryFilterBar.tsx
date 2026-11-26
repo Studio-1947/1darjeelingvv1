@@ -107,22 +107,73 @@ export type VoiceError = 'unsupported' | 'blocked' | 'nomic' | 'nospeech' | 'net
  * `onDone` gets the final words ('' when nothing was heard, null when cancelled).
  */
 /** Quiet after the last word this long: the search is taken as finished and the pop-up closes. */
-const VOICE_PAUSE_MS = 1500;
+const VOICE_PAUSE_MS = 1200;
+/** The browser's last word came in as final: search after this short beat. */
+const VOICE_FINAL_MS = 250;
+/** Asked to stop but the browser never says it ended (some phones): search with the words so far. */
+const VOICE_END_GRACE_MS = 1200;
 /** Nothing heard at all this long: stop (some Android browsers never end on their own). */
 const VOICE_IDLE_MS = 8000;
+
+/**
+ * How loud the voice is right now, for the wave. `mic` is the measured level (0–1) where the page
+ * can listen alongside the speech recognition (computers), -1 where it can't (phones share one mic
+ * badly between the two, so there the wave follows the speech events instead); `bump` jumps when
+ * words arrive and fades.
+ */
+export type VoiceEnergy = { mic: number; bump: number; hearing: boolean };
+
+/**
+ * Measure the mic's loudness into `energy.mic` while recognising. Computers only: on phones a
+ * second listener can leave the speech recognition deaf. Returns how to stop it.
+ */
+async function startMeter(energy: { current: VoiceEnergy }, stillOn: () => boolean): Promise<(() => void) | null> {
+  const w = window as any;
+  if (w.matchMedia?.('(pointer: coarse)').matches) return null;
+  const AC = w.AudioContext || w.webkitAudioContext;
+  if (!AC || !navigator.mediaDevices?.getUserMedia) return null;
+  let stream: MediaStream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+  } catch { return null; }
+  const close = (ctx?: AudioContext) => { stream.getTracks().forEach((tr) => tr.stop()); ctx?.close().catch(() => {}); };
+  if (!stillOn()) { close(); return null; }
+  const ctx: AudioContext = new AC();
+  const an = ctx.createAnalyser();
+  an.fftSize = 512;
+  ctx.createMediaStreamSource(stream).connect(an);
+  const buf = new Uint8Array(an.fftSize);
+  let raf = 0;
+  const read = () => {
+    an.getByteTimeDomainData(buf);
+    let sum = 0;
+    for (let i = 0; i < buf.length; i += 1) { const v = (buf[i] - 128) / 128; sum += v * v; }
+    // Speech sits around 0.02–0.2 RMS; spread that over the bar's height.
+    energy.current.mic = Math.min(1, Math.sqrt(sum / buf.length) * 6);
+    raf = requestAnimationFrame(read);
+  };
+  read();
+  return () => { cancelAnimationFrame(raf); close(ctx); energy.current.mic = -1; };
+}
 
 function useVoice(onText: (text: string) => void, onDone?: (text: string | null) => void, onStart?: () => void) {
   const { i18n } = useTranslation();
   const rec = useRef<Rec | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const meter = useRef<(() => void) | null>(null);
+  /** Stop now and search with the words so far (the pop-up's Stop / Search button). */
+  const endNow = useRef<(() => void) | null>(null);
+  const energy = useRef<VoiceEnergy>({ mic: -1, bump: 0, hearing: false });
   const [listening, setListening] = useState(false);
   const [hearing, setHearing] = useState(false);
   const [heard, setHeard] = useState('');
   const [error, setError] = useState<VoiceError | null>(null);
   const clearTimer = () => { if (timer.current) clearTimeout(timer.current); timer.current = undefined; };
+  const stopMeter = () => { meter.current?.(); meter.current = null; };
   // Leaving the page mid-recording: stop quietly, nothing after unmount.
   useEffect(() => () => {
     clearTimer();
+    stopMeter();
     const r = rec.current;
     if (!r) return;
     r.onresult = null; r.onerror = null; r.onend = null; r.onsoundstart = null; r.onspeechstart = null;
@@ -142,22 +193,51 @@ function useVoice(onText: (text: string) => void, onDone?: (text: string | null)
     const r: Rec = new SR();
     let words = '';
     let failed: VoiceError | null = null;
-    const stopAfter = (ms: number) => {
+    let done = false;
+    // The one way a recording ends with a result: the pop-up closes and the search runs. Called by
+    // the browser's end event, or by us as soon as the speech is over, whichever comes first.
+    const finish = () => {
+      if (done) return;
+      done = true;
       clearTimer();
-      timer.current = setTimeout(() => { try { r.stop(); } catch { /* already stopped */ } }, ms);
+      stopMeter();
+      if (rec.current === r) rec.current = null;
+      endNow.current = null;
+      r.onresult = null; r.onerror = null; r.onend = null; r.onsoundstart = null; r.onspeechstart = null;
+      energy.current.hearing = false;
+      setListening(false);
+      setHearing(false);
+      if (failed && !words) setError(failed);
+      else if (!words) setError('nospeech');
+      if (words) onText(words);
+      onDone?.(words);
     };
+    // Ask the browser to stop; if it never says it ended, finish anyway.
+    const stopThenFinish = () => {
+      clearTimer();
+      try { r.stop(); } catch { /* already stopped */ }
+      timer.current = setTimeout(finish, VOICE_END_GRACE_MS);
+    };
+    const stopAfter = (ms: number) => { clearTimer(); timer.current = setTimeout(stopThenFinish, ms); };
+    const hear = () => { energy.current.hearing = true; setHearing(true); };
     r.lang = VOICE_LANG[(i18n.language || 'en').slice(0, 2)] || 'en-IN';
     r.interimResults = true;
     r.maxAlternatives = 1;
-    r.onsoundstart = () => setHearing(true);
-    r.onspeechstart = () => setHearing(true);
+    r.onsoundstart = hear;
+    r.onspeechstart = hear;
     // The words show in the pop-up as they come; the search itself changes once, when it ends.
     r.onresult = (ev: any) => {
       const list = Array.from(ev.results as ArrayLike<any>);
       words = list.map((x: any) => x[0].transcript).join(' ').trim();
       setHeard(words);
+      hear();
+      energy.current.bump = Math.max(energy.current.bump, 0.85);
       const final = list.length > 0 && (list[list.length - 1] as any).isFinal;
-      stopAfter(final ? 300 : VOICE_PAUSE_MS);
+      // Final words: nothing more is coming, search now rather than wait for the browser to end.
+      if (final) {
+        clearTimer();
+        timer.current = setTimeout(() => { try { r.abort(); } catch { /* ignore */ } finish(); }, VOICE_FINAL_MS);
+      } else stopAfter(VOICE_PAUSE_MS);
     };
     r.onerror = (ev: any) => {
       const code = ev?.error;
@@ -167,39 +247,85 @@ function useVoice(onText: (text: string) => void, onDone?: (text: string | null)
           : code === 'network' ? 'network'
             : 'nospeech';
     };
-    r.onend = () => {
-      clearTimer();
-      rec.current = null;
-      setListening(false);
-      setHearing(false);
-      if (failed && !words) setError(failed);
-      else if (!words) setError('nospeech');
-      if (words) onText(words);
-      onDone?.(words);
-    };
+    r.onend = finish;
     rec.current = r;
+    endNow.current = () => {
+      if (!words) { stopThenFinish(); return; }
+      try { r.abort(); } catch { /* ignore */ }
+      finish();
+    };
+    energy.current = { mic: -1, bump: 0, hearing: false };
     setHeard('');
     setHearing(false);
     setListening(true);
-    try { r.start(); stopAfter(VOICE_IDLE_MS); } catch { clearTimer(); rec.current = null; setListening(false); setError('nospeech'); }
+    try {
+      r.start();
+      stopAfter(VOICE_IDLE_MS);
+      startMeter(energy, () => rec.current === r).then((off) => {
+        if (!off) return;
+        if (rec.current === r) meter.current = off; else off();
+      });
+    } catch { clearTimer(); rec.current = null; endNow.current = null; setListening(false); setError('nospeech'); }
   };
-  /** Stop and keep what was said so far. */
-  const stop = () => { try { rec.current?.stop(); } catch { /* ignore */ } };
+  /** Stop and search with what was said so far. */
+  const stop = () => endNow.current?.();
   /** Stop and throw the words away (the search was never changed, so nothing to put back). */
   const cancel = () => {
     const r = rec.current;
     if (!r) return;
     clearTimer();
+    stopMeter();
     rec.current = null;
-    r.onresult = null; r.onerror = null; r.onend = null;
+    endNow.current = null;
+    r.onresult = null; r.onerror = null; r.onend = null; r.onsoundstart = null; r.onspeechstart = null;
     try { r.abort(); } catch { /* ignore */ }
+    energy.current.hearing = false;
     setListening(false);
     setHearing(false);
     setHeard('');
     onDone?.(null);
   };
   const toggle = (current = '') => (rec.current ? stop() : start(current));
-  return { listening, hearing, heard, error, clearError: () => setError(null), start, stop, cancel, toggle };
+  return { listening, hearing, heard, error, energy, clearError: () => setError(null), start, stop, cancel, toggle };
+}
+
+const WAVE_BARS = 25;
+
+/**
+ * The recording's wave: bars that rise and fall with the voice, tallest in the middle. Drawn every
+ * frame straight onto the bars (no re-render). Still bars when motion is reduced (CSS).
+ */
+function VoiceWave({ energy }: { energy: React.MutableRefObject<VoiceEnergy> }) {
+  const box = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    const el = box.current;
+    if (!el || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return undefined;
+    const bars = Array.from(el.children) as HTMLElement[];
+    const mid = (bars.length - 1) / 2;
+    const shape = bars.map((_, i) => 0.3 + 0.7 * Math.cos(((i - mid) / mid) * (Math.PI / 2)));
+    let shown = 0;
+    let raf = 0;
+    const draw = (now: number) => {
+      const e = energy.current;
+      e.bump *= 0.93;
+      // Measured loudness where there is one; otherwise a steady sway while speech is heard.
+      const base = e.mic >= 0 ? e.mic : e.hearing ? 0.4 + 0.15 * Math.sin(now / 180) : 0.05;
+      const target = Math.max(base, e.bump);
+      shown += (target - shown) * (target > shown ? 0.35 : 0.12);
+      bars.forEach((b, i) => {
+        const ripple = 0.55 + 0.45 * Math.sin(now / 130 - i * 0.55);
+        b.style.transform = `scaleY(${Math.min(1, Math.max(0.08, 0.08 + shown * shape[i] * ripple))})`;
+      });
+      raf = requestAnimationFrame(draw);
+    };
+    raf = requestAnimationFrame(draw);
+    return () => cancelAnimationFrame(raf);
+  }, [energy]);
+  return (
+    <span ref={box} className="recwave" aria-hidden="true" data-testid="voice-wave">
+      {Array.from({ length: WAVE_BARS }, (_, i) => <i key={i} />)}
+    </span>
+  );
 }
 export { useVoice };
 export type Voice = ReturnType<typeof useVoice>;
@@ -239,7 +365,7 @@ export function VoicePanel({ voice, micRef, current }: { voice: Voice; micRef: R
       <Sheet onClose={voice.cancel} label={t('category.voice', 'Voice search')} testid="voice-modal" closeTestid="voice-close">
         <div className={cx('ag-category-rec', voice.hearing && 'live')} data-testid="voice-recording">
           <span className="recmic" aria-hidden="true"><Icon name="mic" /></span>
-          <span className="recwave" aria-hidden="true">{[0, 1, 2, 3, 4, 5, 6].map((i) => <i key={i} />)}</span>
+          <VoiceWave energy={voice.energy} />
           <p className="rectext" data-testid="voice-heard">
             {voice.heard ? `“${voice.heard}”` : t('category.voice_ready', 'Speak now')}
           </p>

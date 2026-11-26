@@ -9,6 +9,7 @@ import { readHostLink } from '@/lib/hostQuickFill';
 import { isValidPhone, MAX_PRICE, MIN_PRICE } from '@/lib/hostFormChecks';
 import { nameProblem } from '@/lib/contentRules';
 import { inListingRegion } from '@/lib/places';
+import type { Area } from '@/components/provider/AreasPicker';
 import { setLoginPrefill } from '@/components/ConsentCheck';
 
 /*
@@ -26,7 +27,7 @@ import { setLoginPrefill } from '@/components/ConsentCheck';
 
 export const HOST_TYPES = ['homestay', 'driver', 'guide', 'cafe', 'shop'] as const;
 export type HostType = (typeof HOST_TYPES)[number];
-export type StepKey = 'type' | 'place' | 'name' | 'price' | 'menu' | 'extras' | 'review';
+export type StepKey = 'type' | 'place' | 'name' | 'price' | 'areas' | 'menu' | 'extras' | 'review';
 /** `accuracy` (metres) is set when the place came from the phone's GPS. */
 export type Place = { name: string; lat: number; lng: number; accuracy?: number };
 export type Room = { name: string; price: string; /** guests the room sleeps */ occ?: string };
@@ -78,7 +79,10 @@ export const QUICK_DISHES = ['Veg momos', 'Chicken momos', 'Thukpa', 'Dal bhat t
 export const MAX_PHOTOS = 8;
 
 const isFood = (ty: HostType | '') => ty === 'cafe' || ty === 'shop';
-export const stepsFor = (ty: HostType | ''): StepKey[] => ['type', 'place', 'name', isFood(ty) ? 'menu' : 'price', 'extras', 'review'];
+/** Drivers also say where they pick travellers up (optional: their base counts on its own). */
+export const stepsFor = (ty: HostType | ''): StepKey[] => [
+  'type', 'place', 'name', isFood(ty) ? 'menu' : 'price', ...(ty === 'driver' ? ['areas' as const] : []), 'extras', 'review',
+];
 
 type Draft = {
   type: HostType | '';
@@ -95,6 +99,8 @@ type Draft = {
   rooms: Room[];
   menu: Dish[];
   offers: string[];
+  /** Drivers: the places they pick travellers up from (lib/driverMatch.ts on the server). */
+  areas: Area[];
   photos: string[];
   /** I Agree (Terms, Privacy Policy, 18+) ticked on the first step; required of every host. */
   agreed: boolean;
@@ -173,6 +179,7 @@ export function useHostWizard() {
       roomsMode: !!saved.roomsMode,
       rooms: saved.rooms || [],
       menu: saved.menu || [],
+      areas: Array.isArray(saved.areas) ? saved.areas : [],
       offers: saved.offers || [],
       photos: saved.photos || [],
       agreed: !!saved.agreed,
@@ -376,7 +383,7 @@ export function useHostWizard() {
           })() : {}),
         };
       case 'driver':
-        return { images, tags: offers, contact_phone: phone, routes: [{ route: t('ob.wz.day_route'), price: Number(d.price) || 0, unit: 'day' }] };
+        return { images, tags: offers, contact_phone: phone, routes: [{ route: t('ob.wz.day_route'), price: Number(d.price) || 0, unit: 'day' }], ...(d.areas.length ? { areas: d.areas } : {}) };
       case 'guide':
         return { host_name: d.name, images, tags: offers, contact_phone: phone, services: [{ name: t('ob.wz.day_service'), price: Number(d.price) || 0, unit: 'day' }] };
       case 'cafe':

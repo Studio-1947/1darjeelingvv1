@@ -17,6 +17,7 @@ import AmenityPicker from '@/components/provider/AmenityPicker';
 import GalleryUploader from '@/components/provider/GalleryUploader';
 import ChipToggleGroup, { toggleIn } from '@/components/provider/ChipToggleGroup';
 import { RouteListEditor, RouteFareTable } from '@/components/provider/RouteEditor';
+import AreasPicker, { type Area } from '@/components/provider/AreasPicker';
 import Fold from '@/components/provider/Fold';
 import { Button, ButtonLink, SelectField, TextArea, TextField } from '@/components/ag';
 import { useCrumbTitle } from '@/components/PageBack';
@@ -87,6 +88,7 @@ function formFrom(l: any) {
     seats: e.seats ?? '',
     // Older listings saved routes as bare strings: make them rows, as the route editor needs.
     routes: normalizeRoutes(e.routes),
+    areas: (Array.isArray(e.areas) ? e.areas : []) as Area[],
     amenities: (Array.isArray(e.amenities) ? e.amenities : []) as string[],
     images: (Array.isArray(e.images) ? e.images : []) as string[],
     photo_kinds: (e.photo_kinds && typeof e.photo_kinds === 'object' ? e.photo_kinds : {}) as Record<string, string>,
@@ -277,6 +279,7 @@ export default function ProviderListingEdit() {
       profile.services = pricedPayload(form.services);
     } else if (type === 'driver') {
       profile.routes = form.routes;
+      profile.areas = form.areas;
       if (num(form.seats) !== undefined) profile.seats = num(form.seats);
     }
     // A listing of the business's own type saves its offers through the profile save, which checks
@@ -428,6 +431,12 @@ export default function ProviderListingEdit() {
                 <div className="grid gap-2">
                   <span className="text-sm font-medium text-[var(--ink-strong)]">{t('hostProfile.routes')}</span>
                   <RouteFareTable routes={form.routes} onChange={(routes: any) => set({ routes })} emptyNote={t('hostProfile.routes_empty')} />
+                </div>
+                <div className="grid gap-2">
+                  <span className="text-sm font-medium text-[var(--ink-strong)]">{t('areas.chosen', 'Your pickup areas')}</span>
+                  <p className="ag-small">{t('areas.sub', { place: listing.location || '', defaultValue: 'Add the towns, stations and airports you go to. Travellers searching a ride from them find you first. {{place}} counts already.' })}</p>
+                  <AreasPicker areas={form.areas} onChange={(areas) => set({ areas })} testid="profile-areas"
+                    base={Number.isFinite(Number(listing.latitude)) && listing.latitude != null ? { lat: Number(listing.latitude), lng: Number(listing.longitude) } : null} />
                 </div>
               </>
             )}

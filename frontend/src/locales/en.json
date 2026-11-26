@@ -1133,7 +1133,7 @@
     "found_elsewhere_other": "{{count}} results for “{{query}}” in other categories",
     "found_elsewhere_note": "Not in this category, but it might be what you were looking for.",
     "trip_unlisted_title": "May also do this trip",
-    "trip_unlisted_body": "Their listed routes do not mention this trip yet. Ask them before you book.",
+    "trip_unlisted_body": "Drivers who work near your pickup, or who haven't listed this route yet. Ask them before you book.",
     "under1km": "under 1 km",
     "meals_from": "Meals from {{amount}}",
     "per_day": "per day",
@@ -4269,5 +4269,15 @@
     "legal_name_bad": "Enter the legal name registered with this GSTIN.",
     "saved_note": "Saved for your next renewal too. Turn this off if you are not GST-registered.",
     "pay_cta": "Pay {{total}}"
+  },
+  "areas": {
+    "title": "Where do you pick travellers up?",
+    "sub": "Add the towns, stations and airports you go to. Travellers searching a ride from them find you first. {{place}} counts already.",
+    "chosen": "Your pickup areas",
+    "remove": "Remove {{name}}",
+    "full": "That is the most a listing can have ({{max}}). Remove one to add another.",
+    "search": "Find a town, station or village",
+    "nearby": "Near your base",
+    "none": "No place found. Try the nearest town."
   }
 }

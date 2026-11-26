@@ -24,6 +24,8 @@ const ROOT_FILES = new Set([
   'favicon.ico',
   'logo192.png',
   'logo512.png',
+  'maskable-192.png',
+  'maskable-512.png',
   'apple-touch-icon.png',
   'error-shim.js',
   'loading.webp',
