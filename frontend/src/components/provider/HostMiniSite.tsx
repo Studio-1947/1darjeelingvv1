@@ -7,6 +7,17 @@ import { themeVars, useMode } from '@/lib/theme';
 import SmartImg from '@/components/SmartImg';
 import FaceImg from '@/components/FaceImg';
 import PhotoViewer, { type ViewerPhoto } from '@/components/PhotoViewer';
+import Sheet, { SheetHead } from '@/components/listing-detail/Sheet';
+
+/** One badge in the (i) modal: its mark, what it says, and a line under it. */
+function BadgeLine({ icon, title, body }: { icon: React.ReactNode; title: string; body: string }) {
+  return (
+    <p className="flex items-start gap-3 text-sm">
+      <span className="mt-0.5 flex-none" aria-hidden="true">{icon}</span>
+      <span><b className="font-medium text-[var(--ink-strong)]">{title}</b><br /><span className="ag-small">{body}</span></span>
+    </p>
+  );
+}
 
 /**
  * A host's mini website, laid out like the board's mock-up (Aangan Blue Print, "Profile: all
@@ -58,9 +69,10 @@ export function miniSiteSlug(name: string): string {
  * - copyUrl: the page's live address; the address pill gets a Copy button.
  * - underAddress: under the address, e.g. the owner's "Your view / Guest view" switch.
  * - actions: the action row, right under the name (Ask to book, Save, Share; Edit page for the owner).
+ * - ownerView: the host is looking at their own page ("Your view"); the badge info speaks to them.
  */
-export default function HostMiniSite({ data, copyUrl, underAddress, actions }: {
-  data: MiniSiteData; copyUrl?: string; underAddress?: React.ReactNode; actions?: React.ReactNode;
+export default function HostMiniSite({ data, copyUrl, underAddress, actions, ownerView = false }: {
+  data: MiniSiteData; copyUrl?: string; underAddress?: React.ReactNode; actions?: React.ReactNode; ownerView?: boolean;
 }) {
   // Re-render when dark mode is switched, so the business colour follows it.
   const [colourMode] = useMode();
@@ -160,30 +172,13 @@ export default function HostMiniSite({ data, copyUrl, underAddress, actions }: {
               <Status tone="info" data-testid="badge-member"><CrownSimple size={14} weight="fill" aria-hidden="true" /> {t('miniSite.member')}</Status>
             )}
             {(data.verified || data.member) && (
-              <button type="button" onClick={() => setBadgeInfo((v) => !v)} aria-expanded={badgeInfo} aria-controls={infoId}
+              <button type="button" onClick={() => setBadgeInfo(true)} aria-haspopup="dialog"
                 aria-label={t('miniSite.badges_info')} title={t('miniSite.badges_info')} data-testid="badge-info"
                 className="grid h-8 w-8 place-items-center rounded-full border border-[var(--hairline)] bg-[var(--surface)] text-[var(--ink-muted)] hover:text-[var(--ink-strong)]">
-                <Info size={18} weight={badgeInfo ? 'fill' : 'regular'} aria-hidden="true" />
+                <Info size={18} aria-hidden="true" />
               </button>
             )}
           </div>
-          {badgeInfo && (data.verified || data.member) && (
-            <Box flat id={infoId} className="!gap-2 text-sm" data-testid="badge-info-panel">
-              {data.verified && (
-                <p className="flex items-start gap-2">
-                  <SealCheck size={18} weight="fill" className="mt-0.5 flex-none text-sky-500" aria-hidden="true" />
-                  <span><b className="font-medium text-[var(--ink-strong)]">{t('miniSite.docs_verified')}</b><br /><span className="ag-small">{t('miniSite.docs_verified_body')}</span></span>
-                </p>
-              )}
-              <p className="flex items-start gap-2">
-                <CrownSimple size={18} weight={data.member ? 'fill' : 'regular'} className={cx('mt-0.5 flex-none', data.member ? 'text-[var(--r)]' : 'text-[var(--ink-muted)]')} aria-hidden="true" />
-                <span>
-                  <b className="font-medium text-[var(--ink-strong)]">{t(data.member ? 'miniSite.pass_active' : 'miniSite.pass_none')}</b><br />
-                  <span className="ag-small">{t(data.member ? 'miniSite.pass_active_body' : 'miniSite.pass_none_body')}</span>
-                </span>
-              </p>
-            </Box>
-          )}
           <p className="ag-small">
             {typeLabel}
             {data.experienceYears ? ` · ${t('profile.experience_years', { count: data.experienceYears })}` : ''}
@@ -206,6 +201,27 @@ export default function HostMiniSite({ data, copyUrl, underAddress, actions }: {
       </div>
 
       {actions}
+
+      {/* The (i): a modal, so opening it doesn't push the page down. The host reads about their own
+          badges; a traveller reads what the badges say about this host. */}
+      {badgeInfo && (data.verified || data.member) && (
+        <Sheet onClose={() => setBadgeInfo(false)} labelledBy={infoId} testid="badge-info-panel" closeTestid="badge-info-close">
+          <SheetHead id={infoId} title={t('miniSite.badges_info')} />
+          {data.verified && (
+            <BadgeLine icon={<SealCheck size={20} weight="fill" className="text-sky-500" />}
+              title={t(ownerView ? 'miniSite.badge_own_verified' : 'miniSite.badge_guest_verified')}
+              body={t(ownerView ? 'miniSite.badge_own_verified_body' : 'miniSite.badge_guest_verified_body')} />
+          )}
+          {data.member ? (
+            <BadgeLine icon={<CrownSimple size={20} weight="fill" className="text-[var(--r)]" />}
+              title={t(ownerView ? 'miniSite.badge_own_member' : 'miniSite.badge_guest_member')}
+              body={t(ownerView ? 'miniSite.badge_own_member_body' : 'miniSite.badge_guest_member_body')} />
+          ) : ownerView && (
+            <BadgeLine icon={<CrownSimple size={20} className="text-[var(--ink-muted)]" />}
+              title={t('miniSite.badge_own_none')} body={t('miniSite.badge_own_none_body')} />
+          )}
+        </Sheet>
+      )}
 
       {zoom && <PhotoViewer photos={zoom.photos} index={zoom.index} caption={data.hostName || data.name} onClose={() => setZoom(null)} testid="host-avatar-viewer" />}
 

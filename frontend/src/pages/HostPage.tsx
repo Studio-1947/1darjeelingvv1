@@ -91,6 +91,7 @@ export default function HostPage() {
         <HostMiniSite
           data={page}
           copyUrl={url}
+          ownerView={ownerView}
           underAddress={own && (
             <div className="flex flex-col gap-1.5" data-testid="own-page-preview">
               <Seg<'owner' | 'traveller'> value={viewAs} onChange={setViewAs} label={t('business_gate.view_as', 'View as')} className="self-start"
