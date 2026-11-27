@@ -18,7 +18,7 @@ export type DocRequirement = {
 // of the old required one, nobody who was verified before stops being verified.
 // The doc type keeps its old key ('aadhaar') so existing uploads still match, but we no longer ask for
 // Aadhaar: UIDAI is ending private storage of Aadhaar copies, so the label steers to other photo IDs.
-const PHOTO_ID: DocRequirement = { docType: 'aadhaar', label: 'Photo ID: voter ID, driving licence or passport', required: true };
+const PHOTO_ID: DocRequirement = { docType: 'aadhaar', label: 'ID proof', required: true };
 
 export const KYC_REQUIREMENTS: Record<string, DocRequirement[]> = {
   homestay: [
