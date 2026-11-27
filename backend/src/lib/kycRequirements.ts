@@ -24,9 +24,10 @@ export const KYC_REQUIREMENTS: Record<string, DocRequirement[]> = {
   homestay: [
     PHOTO_ID,
     { docType: 'property_photo_front', label: 'Photo of the property (front of the building)', required: true },
-    // The homestay's own papers (user decision 2026-11-19): its homestay registration certificate.
-    // Every homestay verified before had this approved, so none loses the Verified tick.
-    { docType: 'tourism_registration', label: 'Homestay registration certificate', required: true },
+    // The homestay's own papers (user decision 2026-11-19): its homestay registration certificate,
+    // or, for a host who runs a leased property, the lease (user decision 2026-11-27). One slot, either
+    // paper; the doc type key stays so earlier uploads still count.
+    { docType: 'tourism_registration', label: 'Homestay registration certificate or lease document', required: true },
   ],
   // Drivers: the licence, and a selfie beside the vehicle so the person and the car are tied together.
   driver: [

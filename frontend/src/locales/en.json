@@ -699,7 +699,7 @@
         "h": "3. Verification Documents",
         "p": "Hosts, drivers, guides, cafés and shops upload documents through the app or website only. We never ask for documents over WhatsApp or by email, and our staff do not collect them on their phones.",
         "items": [
-          "What we ask for: an ID proof, a photo of your place, homestay registration papers for homestays, and for drivers the driving licence and a selfie with the vehicle.",
+          "What we ask for: an ID proof, a photo of your place, homestay registration papers or a lease document for homestays, and for drivers the driving licence and a selfie with the vehicle.",
           "Documents are kept in private storage that is not reachable from the internet. Only our verification team and the owners of that business can open them.",
           "Checks are done by our own team. We do not currently use an outside KYC company; if we start to, we will name it here first.",
           "The badge a listing shows says exactly what was checked: \"Documents verified\" means our team has checked the documents remotely.",
@@ -3810,7 +3810,7 @@
       "property_photo_front": "Photo of the property (front of the building)",
       "property_photo_room": "Photo of a guest room",
       "property_proof": "Property proof (deed / rent / electricity bill)",
-      "tourism_registration": "Homestay registration certificate",
+      "tourism_registration": "Homestay registration certificate or lease document",
       "trade_license": "Shop & Establishment / trade licence",
       "vehicle_insurance": "Vehicle insurance",
       "vehicle_rc": "Vehicle registration (RC)",
