@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { roomFit, roomNightly, roomsCapacity, roomOpen } from './roomFit';
+import { roomFit, roomNightly, roomsCapacity, roomOpen, roomSpecKeys } from './roomFit';
 
 describe('room size and extra mattress', () => {
   it('takes what the room sleeps plus up to two extra mattresses', () => {
@@ -41,5 +41,14 @@ describe('roomOpen', () => {
     expect(roomOpen({ name: 'A', available: true })).toBe(true);
     expect(roomOpen({ name: 'A', available: false })).toBe(false);
     expect(roomOpen(null)).toBe(true);
+  });
+});
+
+describe('roomSpecKeys', () => {
+  it('names a room\'s bed, bathroom and food in order, and skips what is unknown or missing', () => {
+    expect(roomSpecKeys({ bed: 'double', bath: 'attached', food: 'breakfast' })).toEqual(['room.bed_double', 'room.bath_attached', 'room.food_breakfast']);
+    expect(roomSpecKeys({ food: 'none' })).toEqual(['room.food_none']);
+    expect(roomSpecKeys({ bed: 'king', bath: '' })).toEqual([]);
+    expect(roomSpecKeys(null)).toEqual([]);
   });
 });

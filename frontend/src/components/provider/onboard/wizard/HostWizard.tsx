@@ -1,16 +1,17 @@
-import React, { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import api from '@/lib/api';
 import { SUPPORTED_IMAGE_ACCEPT } from '@/lib/uploadImage';
 import { distanceTo, inListingRegion } from '@/lib/places';
 import AreasPicker from '@/components/provider/AreasPicker';
 import { nearestAreaLabel } from '@/lib/hostQuickFill';
-import { CircleNotch as Loader2 } from '@phosphor-icons/react';
+import { CaretDown, CircleNotch as Loader2 } from '@phosphor-icons/react';
 import { capPrice, isValidPhone, MAX_PRICE } from '@/lib/hostFormChecks';
+import { ROOM_BATHS, ROOM_BEDS, ROOM_FOODS, roomFit, roomsCapacity, roomSpecKeys } from '@/lib/roomFit';
 import { Box, Button, ButtonLink, FieldError, IconButton, StepBar, TextField } from '@/components/ag';
 import { Icon, type IconName } from '@/components/ag/Icon';
 import { HelpWhatsApp, useHostSignupInfo } from '@/components/provider/onboard/QuickFill';
-import { HOST_TYPES, HUBS, MAX_GOODS, MAX_PHOTOS, OFFERS, PRESETS, QUICK_DISHES, SHOP_UNITS, type HostType, type HostWizard, type Place } from './useHostWizard';
+import { HOST_TYPES, HUBS, MAX_GOODS, MAX_PHOTOS, OFFERS, PRESETS, QUICK_DISHES, SHOP_UNITS, type HostType, type HostWizard, type Place, type Room } from './useHostWizard';
 import { photoGoalFor } from '@/lib/photoGoal';
 import { costForTwo } from '@/lib/cafePrice';
 import PaymentDoneCard from '@/components/PaymentDoneCard';
@@ -337,73 +338,127 @@ function NameStep({ w }: { w: HostWizard }) {
   );
 }
 
-/* ---------- 4a. Price (homestay, driver, guide) ---------- */
+/* ---------- 4a. Price (driver, guide) or rooms (homestay) ---------- */
 function PriceStep({ w }: { w: HostWizard }) {
   const { t, d, set } = w;
+  if (d.type === 'homestay') return <RoomsStep w={w} />;
   const presets = (d.type && PRESETS[d.type]) || [];
   const n = Number(d.price) || 0;
   const bump = (by: number) => set({ price: String(Math.min(MAX_PRICE, Math.max(0, n + by))) });
-  const stay = d.type === 'homestay';
-  const rooms = stay && d.roomsMode;
-  const setRoom = (k: number, patch: Partial<{ name: string; price: string; occ: string }>) => set({ rooms: d.rooms.map((r, j) => (j === k ? { ...r, ...patch } : r)) });
   return (
-    // A homestay gets one fixed question; the toggle picks per person or per room, and a worked example says what it means.
-    <Frame w={w} title={stay ? t('ob.wz.prHow', 'How do you charge for a night?') : t('ob.wz.prDay')}>
-      {stay && (
-        <div className="ag-onboard-chips">
-          <button type="button" className="ag-onboard-chip" aria-pressed={!rooms} onClick={() => set({ roomsMode: false })} data-testid="wz-price-one">{t('ob.wz.prOne')}</button>
-          <button type="button" className="ag-onboard-chip" aria-pressed={rooms}
-            onClick={() => set({ roomsMode: true, rooms: d.rooms.length ? d.rooms : [{ name: t('ob.wz.rStd'), price: String(n || 1000), occ: '2' }] })} data-testid="wz-price-rooms">
-            {t('ob.wz.prRooms')}
-          </button>
+    <Frame w={w} title={t('ob.wz.prDay')}>
+      <Box>
+        <div className="ag-onboard-stepper">
+          <button type="button" className="round" aria-label={t('ob.wz.minus')} onClick={() => bump(-100)}>−</button>
+          <label className="ag-onboard-priceedit">
+            <span aria-hidden="true">₹</span>
+            <input type="number" inputMode="numeric" min={0} max={MAX_PRICE} step={50} value={d.price} aria-label={t('ob.wz.price')}
+              onChange={(e) => set({ price: capPrice(e.target.value) })} data-testid="onboard-price" />
+          </label>
+          <button type="button" className="round" aria-label={t('ob.wz.plus')} onClick={() => bump(100)}>+</button>
         </div>
-      )}
-      {!rooms ? (
-        <>
-          <Box>
-            <div className="ag-onboard-stepper">
-              <button type="button" className="round" aria-label={t('ob.wz.minus')} onClick={() => bump(-100)}>−</button>
-              <label className="ag-onboard-priceedit">
-                <span aria-hidden="true">₹</span>
-                <input type="number" inputMode="numeric" min={0} max={MAX_PRICE} step={50} value={d.price} aria-label={t('ob.wz.price')}
-                  onChange={(e) => set({ price: capPrice(e.target.value) })} data-testid="onboard-price" />
-              </label>
-              <button type="button" className="round" aria-label={t('ob.wz.plus')} onClick={() => bump(100)}>+</button>
+        <p className="ag-small text-center">{t('ob.wz.prEditS')}</p>
+      </Box>
+      <div className="ag-onboard-chips">
+        {presets.map((v) => (
+          <button key={v} type="button" className="ag-onboard-chip" aria-pressed={n === v} onClick={() => set({ price: String(v) })}>₹{v.toLocaleString('en-IN')}</button>
+        ))}
+      </div>
+    </Frame>
+  );
+}
+
+/** A labelled row of chips (labelled as a TextField is); tapping the chosen one again clears it when the answer is optional. */
+function Pick<V extends string | number>({ label, value, opts, onPick, clearable, testid }: {
+  label: string; value: V | undefined; opts: [V, string][]; onPick: (v: V | undefined) => void; clearable?: boolean; testid: string;
+}) {
+  const id = useId();
+  return (
+    <div className="ag-field" role="group" aria-labelledby={id}>
+      <span id={id}>{label}</span>
+      <div className="ag-onboard-chips">
+        {opts.map(([v, l]) => (
+          <button key={String(v)} type="button" className="ag-onboard-chip" aria-pressed={value === v}
+            onClick={() => onPick(clearable && value === v ? undefined : v)} data-testid={`${testid}-${v}`}>{l}</button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * A homestay is priced by its rooms only (user decision 2026-11-27; lib/roomFit.ts): each room one
+ * price a night for the whole room, what it sleeps, an optional extra mattress, and what it has.
+ */
+function RoomsStep({ w }: { w: HostWizard }) {
+  const { t, d, set } = w;
+  const setRoom = (k: number, patch: Partial<Room>) => set({ rooms: d.rooms.map((r, j) => (j === k ? { ...r, ...patch } : r)) });
+  return (
+    <Frame w={w} title={t('ob.wz.prHow', 'Your rooms and prices')}
+      sub={t('ob.wz.roomsSub', 'One price for the whole room, per night.')}>
+      {d.rooms.map((r, k) => {
+        const occ = Math.max(1, Math.floor(Number(r.occ)) || 0);
+        const extra = r.extra || 0;
+        // What the optional part already says, shown on its closed line ("+1 on extra mattress · Double bed").
+        const more = [extra ? t('listing.extra_mattress', { count: extra }) : '', ...roomSpecKeys(r).map((key) => t(key))].filter(Boolean);
+        return (
+          <Box key={k} data-testid={`wz-room-${k}`}>
+            <div className="flex items-center justify-between gap-2">
+              <span className="ag-lead">{t('ob.wz.roomN', { n: k + 1, defaultValue: 'Room {{n}}' })}</span>
+              {d.rooms.length > 1 && (
+                <IconButton label={t('ob.wz.remove')} className="ag-onboard-x" onClick={() => set({ rooms: d.rooms.filter((_, j) => j !== k) })}><Icon name="close" /></IconButton>
+              )}
             </div>
-            {stay && n > 0 && (
-              <p className="ag-small text-center" data-testid="wz-price-example">
-                {t('ob.wz.prPerHead', { one: `₹${n.toLocaleString('en-IN')}`, two: `₹${(n * 2).toLocaleString('en-IN')}`, defaultValue: 'Each guest pays {{one}} a night. 2 guests for 1 night pay {{two}}.' })}
-              </p>
-            )}
-            <p className="ag-small text-center">{t('ob.wz.prEditS')}</p>
+            <TextField label={t('ob.wz.rnShort')} value={r.name} placeholder={t('ob.wz.rStd')} maxLength={60}
+              onChange={(e) => setRoom(k, { name: e.target.value })} data-testid={`wz-room-name-${k}`} />
+            {/* The two answers every room needs, side by side. */}
+            <div className="grid grid-cols-2 items-end gap-3">
+              <TextField label={t('ob.wz.roomPrice', 'Price a night (₹)')} type="number" inputMode="numeric" min={0} max={MAX_PRICE}
+                value={r.price} onChange={(e) => setRoom(k, { price: capPrice(e.target.value) })} data-testid={`wz-room-price-${k}`} />
+              <div className="ag-field" role="group" aria-label={t('ob.wz.sleeps', 'Guests it sleeps')}>
+                <span>{t('ob.wz.sleeps', 'Guests it sleeps')}</span>
+                <div className="ag-onboard-stepper">
+                  <button type="button" className="round" aria-label={t('ob.wz.minus')} disabled={occ <= 1}
+                    onClick={() => setRoom(k, { occ: String(occ - 1) })}>−</button>
+                  <span className="ag-onboard-count" aria-live="polite" data-testid={`wz-room-occ-${k}`}>{occ}</span>
+                  <button type="button" className="round" aria-label={t('ob.wz.plus')} disabled={occ >= 20}
+                    onClick={() => setRoom(k, { occ: String(occ + 1) })}>+</button>
+                </div>
+              </div>
+            </div>
+            {/* Everything else is optional and starts closed (as the Account profile's "More about you"),
+                so a host can put a room up with just its name, price and size. Its line says what is set, so it
+                never needs to open by itself (an `open` tied to that would snap shut as a chip is cleared). */}
+            <details className="group" data-testid={`wz-room-more-${k}`}>
+              <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 text-sm font-medium text-[var(--r)] [&::-webkit-details-marker]:hidden">
+                <span className="flex min-w-0 flex-col">
+                  <span>{t('ob.wz.roomMore', 'More about this room')} <span className="font-normal text-[var(--ink-muted)]">{t('ui.editProfile.optional')}</span></span>
+                  {more.length > 0 && <span className="font-normal text-[var(--ink-muted)]">{more.join(' · ')}</span>}
+                </span>
+                <CaretDown size={14} weight="bold" className="flex-none transition-transform group-open:rotate-180" aria-hidden="true" />
+              </summary>
+              <div className="flex flex-col gap-4 pt-2">
+                <Pick label={t('ui.pricedEditor.extra_label')} value={extra} testid={`wz-room-extra-${k}`}
+                  opts={[[0, t('ui.pricedEditor.extra_none')], [1, '+1'], [2, '+2']]} onPick={(v) => setRoom(k, { extra: v || 0 })} />
+                {extra > 0 && (
+                  <TextField label={t('ui.pricedEditor.extra_price')} type="number" inputMode="numeric" min={0} max={MAX_PRICE}
+                    value={r.extraPrice || ''} onChange={(e) => setRoom(k, { extraPrice: capPrice(e.target.value) })}
+                    hint={t('ui.pricedEditor.extra_price_note')} data-testid={`wz-room-extra-price-${k}`} />
+                )}
+                <Pick label={t('room.bed_label')} value={r.bed} clearable testid={`wz-room-bed-${k}`}
+                  opts={ROOM_BEDS.map((o) => [o, t(`room.bed_${o}`)])} onPick={(v) => setRoom(k, { bed: v })} />
+                <Pick label={t('room.bath_label')} value={r.bath} clearable testid={`wz-room-bath-${k}`}
+                  opts={ROOM_BATHS.map((o) => [o, t(`room.bath_${o}`)])} onPick={(v) => setRoom(k, { bath: v })} />
+                <Pick label={t('room.food_label')} value={r.food} clearable testid={`wz-room-food-${k}`}
+                  opts={ROOM_FOODS.map((o) => [o, t(`room.food_${o}`)])} onPick={(v) => setRoom(k, { food: v })} />
+              </div>
+            </details>
           </Box>
-          <div className="ag-onboard-chips">
-            {presets.map((v) => (
-              <button key={v} type="button" className="ag-onboard-chip" aria-pressed={n === v} onClick={() => set({ price: String(v) })}>₹{v.toLocaleString('en-IN')}</button>
-            ))}
-          </div>
-        </>
-      ) : (
-        <Box>
-          <p className="ag-small">{t('ob.wz.roomsS2')}</p>
-          {d.rooms.map((r, k) => (
-            <div key={k} className="ag-onboard-roomrow">
-              <input className="ag-in" value={r.name} placeholder={t('ob.wz.rnShort')} aria-label={t('ob.wz.rnShort')}
-                onChange={(e) => setRoom(k, { name: e.target.value })} data-testid={`wz-room-name-${k}`} />
-              <label className="ag-onboard-roomin">₹
-                <input type="number" inputMode="numeric" min={0} max={MAX_PRICE} value={r.price} placeholder="0" aria-label={t('ob.wz.price')}
-                  onChange={(e) => setRoom(k, { price: capPrice(e.target.value) })} data-testid={`wz-room-price-${k}`} />
-              </label>
-              <label className="ag-onboard-roomin"><Icon name="person" />
-                <input type="number" inputMode="numeric" min={1} max={20} value={r.occ ?? '2'} aria-label={t('ob.wz.guests', 'Guests')}
-                  onChange={(e) => setRoom(k, { occ: e.target.value.replace(/[^\d]/g, '').slice(0, 2) })} data-testid={`wz-room-occ-${k}`} />
-              </label>
-              <IconButton label={t('ob.wz.remove')} className="ag-onboard-x" onClick={() => set({ rooms: d.rooms.filter((_, j) => j !== k) })}><Icon name="close" /></IconButton>
-            </div>
-          ))}
-          <Button className="self-start" icon={<Icon name="plus" />} onClick={() => set({ rooms: [...d.rooms, { name: '', price: '', occ: '2' }] })} data-testid="wz-add-room">{t('ob.wz.addroom')}</Button>
-        </Box>
-      )}
+        );
+      })}
+      <Button className="self-start" icon={<Icon name="plus" />} onClick={() => set({ rooms: [...d.rooms, { name: '', price: '', occ: '2' }] })} data-testid="wz-add-room">
+        {t('ob.wz.addroom')}
+      </Button>
     </Frame>
   );
 }
@@ -587,7 +642,7 @@ function ReviewStep({ w }: { w: HostWizard }) {
   const forTwo = d.type === 'cafe' ? costForTwo(d.menu) : 0;
   const from = forTwo || startingPrice();
   // A homestay priced room by room shows its cheapest room, for the room.
-  const unit = forTwo ? t('common.for_two', 'for two') : d.type === 'homestay' ? (d.roomsMode ? t('ob.wz.room_night', 'room / night') : t('ob.wz.night')) : (d.type === 'driver' || d.type === 'guide') ? t('ob.wz.day') : '';
+  const unit = forTwo ? t('common.for_two', 'for two') : d.type === 'homestay' ? t('ob.wz.room_night', 'room / night') : (d.type === 'driver' || d.type === 'guide') ? t('ob.wz.day') : '';
   const icon = d.type ? TYPE_ICON[d.type] : 'home';
   return (
     <Frame w={w} title={t('ob.wz.review')}
@@ -616,6 +671,8 @@ function ReviewStep({ w }: { w: HostWizard }) {
             </ul>
           </section>
         )}
+        {d.type === 'homestay' && <ReviewRooms w={w} />}
+        {(d.type === 'cafe' || d.type === 'shop') && <ReviewItems w={w} />}
         {d.type === 'driver' && d.areas.length > 0 && (
           <section className="part">
             <h2 className="ag-eyebrow">{t('ob.wz.rv_areas', 'Picks up from')}</h2>
@@ -630,6 +687,76 @@ function ReviewStep({ w }: { w: HostWizard }) {
         </section>
       </article>
     </Frame>
+  );
+}
+
+/** ₹ in Indian grouping, as every price on the review card. */
+const rupees = (n: number) => `₹${n.toLocaleString('en-IN')}`;
+
+/**
+ * A homestay's rooms on the review card: how many, how many guests the home sleeps, the price range
+ * and average a night, then each room with what it sleeps and has (the same rooms that are put up).
+ */
+function ReviewRooms({ w }: { w: HostWizard }) {
+  const { t, listedRooms } = w;
+  const rooms = listedRooms();
+  if (!rooms.length) return null;
+  const prices = rooms.map((r) => r.price);
+  const low = Math.min(...prices);
+  const high = Math.max(...prices);
+  const avg = Math.round(prices.reduce((a, b) => a + b, 0) / prices.length);
+  const guests = roomsCapacity(rooms);
+  return (
+    <section className="part" data-testid="wz-review-rooms">
+      <h2 className="ag-eyebrow">{t('ob.wz.rv_rooms', 'Rooms')}</h2>
+      <ul className="ag-onboard-facts">
+        <li><Icon name="home" />{t('ob.wz.rv_rooms_n', { count: rooms.length, defaultValue: '{{count}} rooms' })}</li>
+        {guests > 0 && <li><Icon name="person" />{t('ob.wz.rv_guests', { count: guests, defaultValue: 'Sleeps up to {{count}} guests' })}</li>}
+        {low !== high && (
+          <li data-testid="wz-review-avg">{t('ob.wz.rv_avg', { price: rupees(avg), defaultValue: 'Average {{price}} a night' })}</li>
+        )}
+      </ul>
+      {low !== high && (
+        <p className="ag-small">{t('ob.wz.rv_range', { low: rupees(low), high: rupees(high), defaultValue: 'From {{low}} to {{high}} a night, for the whole room.' })}</p>
+      )}
+      <ul className="ag-onboard-rvrooms">
+        {rooms.map((r, i) => {
+          const fit = roomFit(r);
+          const parts = [
+            fit.occ ? t('ui.pricedEditor.sleeps', { count: fit.occ }) : '',
+            fit.extraBeds ? `${t('listing.extra_mattress', { count: fit.extraBeds })}${fit.extraBedPrice ? ` (${rupees(fit.extraBedPrice)})` : ''}` : '',
+            ...roomSpecKeys(r).map((k) => t(k)),
+          ].filter(Boolean);
+          return (
+            <li key={i}>
+              <span className="row"><b>{r.name}</b><span><b>{rupees(r.price)}</b> <span className="ag-small">{t('ob.wz.room_night', 'room / night')}</span></span></span>
+              {parts.length > 0 && <span className="ag-small">{parts.join(' · ')}</span>}
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
+
+/** A cafe's menu or a shop's goods on the review card: each named item with its price. */
+function ReviewItems({ w }: { w: HostWizard }) {
+  const { t, d } = w;
+  const shop = d.type === 'shop';
+  // A shop puts up at most MAX_GOODS items (the payload slices the same way).
+  const items = d.menu.filter((m) => m.name.trim() && Number(m.price) > 0).slice(0, shop ? MAX_GOODS : undefined);
+  if (!items.length) return null;
+  return (
+    <section className="part" data-testid="wz-review-items">
+      <h2 className="ag-eyebrow">{shop ? t('ob.wz.sh_h') : t('ob.wz.mn_h')}</h2>
+      <ul className="ag-onboard-rvrooms">
+        {items.map((m, k) => (
+          <li key={k}>
+            <span className="row"><b>{m.name.trim()}</b><span><b>{rupees(Number(m.price))}</b> <span className="ag-small">{t(`profile.unit_${shop ? (m.unit || 'item') : 'plate'}`)}</span></span></span>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 

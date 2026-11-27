@@ -4,7 +4,7 @@ import { Icon, type IconName } from '@/components/ag/Icon';
 import api from '@/lib/api';
 import { Box, SecHead, Status } from '@/components/ag';
 import { Section, PriceRow, PersonCard, MiniCard } from './primitives';
-import { roomFit, roomOpen } from '@/lib/roomFit';
+import { roomFit, roomOpen, roomSpecKeys } from '@/lib/roomFit';
 
 /**
  * Sections for what hosts fill in on their business profile (backend lib/hostProfile.ts): the
@@ -100,7 +100,8 @@ export function RoomsFoodSection({ rooms, meals }: { rooms: Priced[]; meals: Pri
             const extra = fit.extraBeds > 0
               ? ` · ${t('listing.extra_mattress', { count: fit.extraBeds })}${fit.extraBedPrice > 0 ? ` (₹${fit.extraBedPrice.toLocaleString('en-IN')})` : ''}`
               : '';
-            const sizeText = size > 0 ? `${size} ${t('listing.ppl', 'people')}${extra}` : '';
+            // Then what the room has: "Double bed · Attached bathroom · Breakfast included".
+            const sizeText = [size > 0 ? `${size} ${t('listing.ppl', 'people')}${extra}` : '', ...roomSpecKeys(r).map((k) => t(k))].filter(Boolean).join(' · ');
             // A room the host has let outside the app is shown, marked full (lib/roomFit.ts roomOpen).
             const sub = roomOpen(r) ? (sizeText || undefined) : (
               <><Status tone="pending" className="mr-1.5" data-testid="detail-room-full">{t('listing.room_full', 'Full')}</Status>{sizeText}</>

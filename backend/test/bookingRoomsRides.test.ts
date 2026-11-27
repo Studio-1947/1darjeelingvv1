@@ -47,6 +47,18 @@ describe('room rule on the host profile', () => {
     expect(profilePatchFrom('homestay', { rooms: [{ name: 'X', price: 10, extra_beds: 1 }] })).toHaveProperty('error');
     expect(profilePatchFrom('homestay', { rooms: [{ name: 'X', price: 10, occ: 2, extra_beds: 1, extra_bed_price: 50001 }] })).toHaveProperty('error');
   });
+
+  it('keeps a room\'s bed, bathroom and food included when each is one of its list', () => {
+    const ok = profilePatchFrom('homestay', { rooms: [
+      { name: 'Valley Room', price: 2400, occ: 2, bed: 'double', bath: 'attached', food: 'breakfast' },
+      { name: 'Loft', price: 1800, occ: 3, bed: '', bath: null, food: 'none' },
+    ] }) as any;
+    expect(ok.rooms[0]).toEqual({ name: 'Valley Room', price: 2400, unit: 'night', occ: 2, bed: 'double', bath: 'attached', food: 'breakfast' });
+    expect(ok.rooms[1]).toEqual({ name: 'Loft', price: 1800, unit: 'night', occ: 3, food: 'none' });
+    expect(profilePatchFrom('homestay', { rooms: [{ name: 'X', price: 10, occ: 2, bed: 'king' }] })).toHaveProperty('error');
+    expect(profilePatchFrom('homestay', { rooms: [{ name: 'X', price: 10, occ: 2, bath: 'outside' }] })).toHaveProperty('error');
+    expect(profilePatchFrom('homestay', { rooms: [{ name: 'X', price: 10, occ: 2, food: 'lunch' }] })).toHaveProperty('error');
+  });
 });
 
 describe('booking amount with a room or a quoted fare', () => {

@@ -4,11 +4,14 @@ import { useTranslation } from 'react-i18next';
 import { Plus, Trash, Camera, CircleNotch as Loader2 } from '@phosphor-icons/react';
 import { uploadImage } from '@/lib/uploadImage';
 import { Button, IconButton } from '@/components/ag';
+import { ROOM_BATHS, ROOM_BEDS, ROOM_FOODS } from '@/lib/roomFit';
 
 export type Priced = {
   name: string; price: number | ''; unit: string; photo?: string;
   /** Homestay rooms only: people the room sleeps, extra mattresses (0-2) and what each extra person pays a night. */
   occ?: number | ''; extra_beds?: number; extra_bed_price?: number | '';
+  /** Homestay rooms only, each optional: bed, bathroom and the food the night includes (lib/roomFit.ts ROOM_*). */
+  bed?: string; bath?: string; food?: string;
   /** Homestay rooms only: false when the host has let the room outside the app (shown as full). */
   available?: boolean;
 };
@@ -101,6 +104,21 @@ export default function PricedEditor({ rows, onChange, units, unitLabel, namePla
                   <p className="ag-small">{t('ui.pricedEditor.extra_price_note')}</p>
                 </div>
               )}
+              {/* What the room has, each optional; the first option leaves it unsaid. */}
+              <div className="grid grid-cols-2 gap-2">
+                {([['bed', ROOM_BEDS], ['bath', ROOM_BATHS]] as const).map(([k, opts]) => (
+                  <select key={k} value={r[k] || ''} onChange={(e) => set(i, { [k]: e.target.value })}
+                    aria-label={t(`room.${k}_label`)} className="ag-in" data-testid={`${testid}-${k}-${i}`}>
+                    <option value="">{t(`room.${k}_label`)}: {t('room.not_set')}</option>
+                    {opts.map((o) => <option key={o} value={o}>{t(`room.${k}_${o}`)}</option>)}
+                  </select>
+                ))}
+              </div>
+              <select value={r.food || ''} onChange={(e) => set(i, { food: e.target.value })}
+                aria-label={t('room.food_label')} className="ag-in" data-testid={`${testid}-food-${i}`}>
+                <option value="">{t('room.food_label')}: {t('room.not_set')}</option>
+                {ROOM_FOODS.map((o) => <option key={o} value={o}>{t(`room.food_${o}`)}</option>)}
+              </select>
               {/* Let outside the app: switched off, the room shows as full and cannot be booked. */}
               <label className="ag-host-switch">
                 <span>

@@ -104,7 +104,7 @@ const j = async (m, p, body, token) => { const r = await fetch(API + p, { method
         await p.fill('[data-testid="wz-dish-price-0"]', '120');
         ok = await nextStep('menu');
       } else if (ok) {
-        await p.fill('[data-testid="onboard-price"]', '1800');
+        await p.fill('[data-testid="onboard-price"], [data-testid="wz-room-price-0"]', '1800');
         ok = await nextStep('price');
       }
       if (ok) {

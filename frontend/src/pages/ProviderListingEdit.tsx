@@ -8,7 +8,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useSeo } from '@/components/Seo';
 import { uploadImages } from '@/lib/uploadImage';
 import { photoGoalFor } from '@/lib/photoGoal';
-import { roomFit, roomsCapacity } from '@/lib/roomFit';
+import { ROOM_BATHS, ROOM_BEDS, ROOM_FOODS, roomFit, roomsCapacity } from '@/lib/roomFit';
 import { normalizeRoutes, startingPriceFrom } from '@/lib/routeFares';
 import { MAX_PRICE } from '@/lib/hostFormChecks';
 import { HOMESTAY_AMENITIES, CAFE_AMENITIES, HOMESTAY_TAGS, VEHICLE_TYPES } from '@/constants/listingOptions';
@@ -54,6 +54,9 @@ function pricedRows(rows: any[] | undefined, unit: string): Priced[] {
     ...(Number(r?.occ) > 0 ? { occ: Number(r.occ), extra_beds: Number(r?.extra_beds) || 0, extra_bed_price: Number(r?.extra_bed_price) || '' } : {}),
     // A room the host switched off (let outside the app) stays off.
     ...(r?.available === false ? { available: false } : {}),
+    // What the room has (bed, bathroom, food included), kept the same way.
+    // Only a value from its list (lib/roomFit.ts), so a stray one is not sent back for the server to refuse.
+    ...((ROOM_BEDS as readonly unknown[]).includes(r?.bed) ? { bed: r.bed } : {}), ...((ROOM_BATHS as readonly unknown[]).includes(r?.bath) ? { bath: r.bath } : {}), ...((ROOM_FOODS as readonly unknown[]).includes(r?.food) ? { food: r.food } : {}),
   }));
 }
 
@@ -66,6 +69,7 @@ function pricedPayload(rows: Priced[]) {
       ...(fit.occ ? { occ: fit.occ } : {}),
       ...(fit.extraBeds ? { extra_beds: fit.extraBeds, ...(fit.extraBedPrice ? { extra_bed_price: fit.extraBedPrice } : {}) } : {}),
       ...(r.available === false ? { available: false } : {}),
+      ...(r.bed ? { bed: r.bed } : {}), ...(r.bath ? { bath: r.bath } : {}), ...(r.food ? { food: r.food } : {}),
     };
   });
 }

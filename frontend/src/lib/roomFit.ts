@@ -37,3 +37,22 @@ export function roomNightly(r: any, guests: number): number {
   const { occ, extraBedPrice } = roomFit(r);
   return price + (occ ? Math.max(0, guests - occ) : 0) * extraBedPrice;
 }
+
+/**
+ * What a room has, each optional (user decision 2026-11-27): the bed, the bathroom, and the food its
+ * night price includes. The same lists as the server (backend lib/hostProfile.ts ROOM_BEDS...).
+ * Labels are `room.bed_*`, `room.bath_*`, `room.food_*`.
+ */
+export const ROOM_BEDS = ['double', 'twin', 'single', 'family'] as const;
+export const ROOM_BATHS = ['attached', 'shared'] as const;
+export const ROOM_FOODS = ['none', 'breakfast', 'all'] as const;
+
+/** The translation keys for what a room has, in the order a traveller reads them ("Double bed · Attached bathroom · Breakfast included"). */
+export function roomSpecKeys(r: any): string[] {
+  const out: string[] = [];
+  if ((ROOM_BEDS as readonly unknown[]).includes(r?.bed)) out.push(`room.bed_${r.bed}`);
+  if ((ROOM_BATHS as readonly unknown[]).includes(r?.bath)) out.push(`room.bath_${r.bath}`);
+  // "Room only" is said too: a traveller asking whether food comes with it gets an answer.
+  if ((ROOM_FOODS as readonly unknown[]).includes(r?.food)) out.push(`room.food_${r.food}`);
+  return out;
+}
