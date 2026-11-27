@@ -620,7 +620,7 @@
   },
   "privacy": {
     "title": "Privacy Policy",
-    "updated": "Last updated: 25 November 2026",
+    "updated": "Last updated: 27 November 2026",
     "email_label": "Email:",
     "phone_label": "Phone:",
     "address_label": "Address:",
@@ -694,7 +694,7 @@
         "h": "3. Verification Documents",
         "p": "Hosts, drivers, guides, cafés and shops upload documents through the app or website only. We never ask for documents over WhatsApp or by email, and our staff do not collect them on their phones.",
         "items": [
-          "What we ask for: an ID proof (please do not upload an Aadhaar card), a photo of your place, homestay registration papers for homestays, and for drivers the driving licence and a selfie with the vehicle.",
+          "What we ask for: an ID proof, a photo of your place, homestay registration papers for homestays, and for drivers the driving licence and a selfie with the vehicle.",
           "Documents are kept in private storage that is not reachable from the internet. Only our verification team and the owners of that business can open them.",
           "Checks are done by our own team. We do not currently use an outside KYC company; if we start to, we will name it here first.",
           "The badge a listing shows says exactly what was checked: \"Documents verified\" means our team has checked the documents remotely.",
