@@ -14,6 +14,7 @@
     "events": "Events",
     "biodiversity": "Biodiversity",
     "responsible": "Travel Responsibly",
+    "faq": "FAQ",
     "privacy": "Privacy",
     "provider": "For Providers",
     "login": "Log in",
@@ -4388,5 +4389,152 @@
     "remove_photo": "Remove photo {{n}}",
     "photos_n_one": "{{count}} photo",
     "photos_n_other": "{{count}} photos"
+  },
+  "faq": {
+    "title": "Frequently Asked Questions",
+    "eyebrow": "Help",
+    "lead": "Short answers for travellers and hosts. The policies have the full detail.",
+    "help_title": "Still have a question?",
+    "help_body": "Call or write to us and we will help.",
+    "sections": [
+      {
+        "h": "Using aangan",
+        "items": [
+          {
+            "q": "What is aangan?",
+            "a": "aangan is a local guide and booking-request app for the Darjeeling hills. Find homestays, local drivers, guides, cafés, shops, places to see and events, and send a request straight to the local business. aangan is in Beta."
+          },
+          {
+            "q": "Does it cost anything to look around?",
+            "a": "No. Browsing, searching, saving places and planning a trip are free. You pay aangan only to send a request without the aangan pass (₹1), for the optional pass, or, as a host, for a listing plan."
+          },
+          {
+            "q": "Which areas does aangan cover?",
+            "a": "Mainly the Darjeeling hills and the places around them. Local businesses from anywhere in India can list too."
+          }
+        ]
+      },
+      {
+        "h": "Booking",
+        "items": [
+          {
+            "q": "How does booking work?",
+            "a": "Open a listing, choose your dates or details and send a request. The host checks and accepts or declines. Once they accept, you confirm the booking, and both of you are told."
+          },
+          {
+            "q": "What is the ₹1 fee?",
+            "a": "Sending a request without the aangan pass costs a ₹1 app convenience fee, GST included. It pays for using the app to reach the business, not for the booking, and it is not refunded, even if the host declines or does not answer. If you are charged but the request never goes out, or charged twice, the money comes back automatically.",
+            "link": {
+              "to": "/refunds",
+              "label": "Refunds"
+            }
+          },
+          {
+            "q": "When do I get the host's phone number?",
+            "a": "When the booking is confirmed. Until then numbers stay hidden on both sides, so nobody is called or messaged before you both agree."
+          },
+          {
+            "q": "How long does a host have to answer?",
+            "a": "24 hours. If the host says no or does not answer in that time, the request closes and you can send one to another place."
+          },
+          {
+            "q": "Do I pay for my stay through aangan?",
+            "a": "No. The price of your stay, ride, meal or purchase, and any advance, is paid directly to the business, on their terms. aangan never receives that money, so it cannot refund it."
+          }
+        ]
+      },
+      {
+        "h": "aangan pass",
+        "items": [
+          {
+            "q": "What is the aangan pass?",
+            "a": "An optional pass (the policies call it the Traveller Pass): ₹1 for the first year, then ₹12 a year, GST included. With it, sending requests is free, and hosts see a Member badge on your requests."
+          },
+          {
+            "q": "Does the pass renew by itself?",
+            "a": "No. It lasts one year and never renews automatically, so there is nothing to cancel. You can end it at any time from Membership."
+          },
+          {
+            "q": "Can I get my money back for the pass?",
+            "a": "Yes, in full, if you ask within 7 days of paying. After that it is not refundable."
+          }
+        ]
+      },
+      {
+        "h": "Payments and refunds",
+        "items": [
+          {
+            "q": "When is money refunded automatically?",
+            "a": "When you are charged the ₹1 fee but the request is not sent (for example, its dates were taken while you were paying), and when a technical fault charges you twice. You do not need to ask."
+          },
+          {
+            "q": "How long does a refund take?",
+            "a": "It goes back to the way you paid, through Razorpay, and normally reaches you 5 to 7 working days after we issue it. If you ask us for a refund, we reply within 2 working days and decide within 7."
+          },
+          {
+            "q": "The host cancelled. Who refunds what I paid them?",
+            "a": "The host, under their own cancellation terms, since that money was paid to them. We can help you get in touch, and help you find another place where we can.",
+            "link": {
+              "to": "/refunds",
+              "label": "Refunds"
+            }
+          }
+        ]
+      },
+      {
+        "h": "Account and privacy",
+        "items": [
+          {
+            "q": "How do I sign in?",
+            "a": "With your mobile number. We send a one-time code by WhatsApp (or SMS); there are no passwords. You need to be 18 or older to have an account."
+          },
+          {
+            "q": "How do I delete my account?",
+            "a": "From the app or the website, in a few taps, or by writing to us at {{email}}. Deleting is permanent: your account, bookings, saved places, reviews and, for hosts, listings and documents are removed.",
+            "link": {
+              "to": "/delete-account",
+              "label": "Delete Account"
+            }
+          },
+          {
+            "q": "What do you do with my data?",
+            "a": "We use it to run your account, your requests and your payments, and we do not sell it. The Privacy Policy lists what we collect, who processes it for us and how long we keep it.",
+            "link": {
+              "to": "/privacy",
+              "label": "Privacy"
+            }
+          }
+        ]
+      },
+      {
+        "h": "For hosts",
+        "items": [
+          {
+            "q": "How do I list my business?",
+            "a": "Open List your business and follow the steps: your business, its location, photos, prices and your documents. Nothing is paid at sign-up.",
+            "link": {
+              "to": "/provider/onboard",
+              "label": "List your business"
+            }
+          },
+          {
+            "q": "What does listing cost?",
+            "a": "Listing is free until 2 of your bookings are completed. After that each listing needs a listing plan: ₹499 a year for a homestay, driver or guide, or ₹99 a year for a café, each plus 18% GST. Local shops list free."
+          },
+          {
+            "q": "Why do you check my documents?",
+            "a": "So travellers can trust every listing. Your documents are checked before your listing goes live. They are kept private and never shown on your listing."
+          },
+          {
+            "q": "What happens when I get a booking request?",
+            "a": "You see it on your Business dashboard and hear about it by WhatsApp or email. Accept or decline within 24 hours, or the request closes. Once the guest confirms, you both see each other's numbers."
+          },
+          {
+            "q": "Does the plan renew automatically?",
+            "a": "No. It lasts a year and never renews by itself. Within 7 days of paying, if your listing has not gone live that year, you can have the payment back in full."
+          }
+        ]
+      }
+    ]
   }
 }
