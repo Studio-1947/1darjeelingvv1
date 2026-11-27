@@ -28,6 +28,7 @@
   <!-- Editorial and informational pages. -->
   <url><loc>https://aanganerp.in/responsible</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://aanganerp.in/about</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://aanganerp.in/faq</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
   <url><loc>https://aanganerp.in/provider/onboard</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
 
   <!-- Policy pages. Low priority to a searcher, but they must be reachable and indexable:

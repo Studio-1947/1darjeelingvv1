@@ -39,11 +39,11 @@ describe('admin: hosts waiting to go live', () => {
     const admin = await loginAdmin();
     const host = await onboardActiveProvider({ name: 'Stepwise Stay', awaitingApproval: true });
 
-    // Paid, but the mandatory profile (8 photos, host name...) is not done yet.
+    // Paid, profile (8 photos, host name...) not done yet: documents can still go first (2026-11-27).
     let row = (await waiting(admin)).hosts.find((h: any) => h.provider_id === host.providerId);
     expect(row).toBeTruthy();
     expect(row.plan_status).toBe('active');
-    expect(row.next_step).toBe('finish_profile');
+    expect(row.next_step).toBe('upload_documents');
     expect(row.profile_missing.length).toBeGreaterThan(0);
     expect(row.phone).toBeTruthy();
 

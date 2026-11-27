@@ -108,6 +108,7 @@ function trail(t: TFunction, pathname: string, sub: string | null, name: PageNam
     '/notifications': [home, 'notes.title', 'Notifications'],
     '/donate': [home, 'donate.title', 'Support aangan'],
     '/about': [home, 'crumb.about', 'About'],
+    '/faq': [home, 'faq.title', 'Frequently Asked Questions'],
     '/policies': [home, 'policies.title', 'Policies'],
     '/plan': [feed, 'plans.plan_trip', 'Plan a trip'],
     '/support': [account, 'member.title_short', 'Membership'],

@@ -15,6 +15,7 @@ const LINKS: { to: string; key: string }[] = [
   { to: '/explore', key: 'nav.explore' },
   { to: '/provider/onboard', key: 'nav.provider' },
   { to: '/responsible', key: 'nav.responsible' },
+  { to: '/faq', key: 'nav.faq' },
   { to: '/privacy', key: 'nav.privacy' },
   { to: '/terms', key: 'nav.terms' },
   { to: '/refunds', key: 'nav.refunds' },
@@ -22,7 +23,7 @@ const LINKS: { to: string; key: string }[] = [
 ];
 
 /** Pages that end with the footer: the about, help and legal pages. */
-const FOOTER_PAGES = ['/about', '/responsible', '/privacy', '/terms', '/refunds', '/contact', '/policies', '/donate', '/delete-account'];
+const FOOTER_PAGES = ['/about', '/responsible', '/faq', '/privacy', '/terms', '/refunds', '/contact', '/policies', '/donate', '/delete-account'];
 
 export default function Footer() {
   const { t } = useTranslation();

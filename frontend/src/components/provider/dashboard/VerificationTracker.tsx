@@ -38,7 +38,7 @@ export default function VerificationTracker({ verification, paid, freeStart = fa
   paid: boolean;
   /** On the free start (pay later): the first step is done, but nothing was paid. */
   freeStart?: boolean;
-  /** What the business profile still lacks: documents are refused until it is complete. */
+  /** What the business profile still lacks: shown under the step, never in the way of sending documents. */
   profileMissing?: { key: string; label: string; min?: number; have?: number }[];
   businessType?: string;
   onOpenProfile?: () => void;
@@ -51,29 +51,30 @@ export default function VerificationTracker({ verification, paid, freeStart = fa
   const { done, total, headline } = verificationSteps(status, paid);
   const [titleKey, bodyKey] = HEADLINES[headline];
   const cta = headline === 'send' ? t('verify.cta_send') : headline === 'changes' ? t('verify.cta_changes') : t('verify.cta_view');
-  // Documents are refused until the profile is complete (server 409 profile_incomplete), so that
-  // comes first rather than a "Upload documents" button that cannot work yet (persona test 2026-11-09).
-  const profileFirst = headline === 'send' && profileMissing.length > 0 && !!onOpenProfile;
-  const body = profileFirst ? 'verify.body_profile' : headline === 'send' && freeStart ? 'verify.body_send_free' : bodyKey;
+  // Documents can go before the profile is finished (decision 2026-11-27), so "Send documents" stays
+  // the step; what the profile still lacks is a link on the card, not a step in the way.
+  const body = headline === 'send' && freeStart ? 'verify.body_send_free' : bodyKey;
 
   // The prototype's "Next step · n/4" box (dash.js sdnext), in two lines: the ring with n/4, what to
   // do and one line of detail (the first thing the profile lacks, "+N more" for the rest).
-  const detail = profileFirst ? (
-    <span data-testid="verification-profile-missing">
-      {missingLabel(t, profileMissing[0], businessType)}
-      {profileMissing.length > 1 && ` · ${t('host.n_more', { count: profileMissing.length - 1 })}`}
-    </span>
-  ) : headline === 'reviewing' || headline === 'waiting'
+  const detail = headline === 'reviewing' || headline === 'waiting'
     // While the team checks, the phone matters more than the general wording.
     ? t('verify.keep_phone_body', { phone: phone ? prettyPhone(phone) : t('verify.phone_missing') })
     : t(body);
-  const canGo = profileFirst || headline !== 'pay';
+  const canGo = headline !== 'pay';
   return (
     <NextStepCard testId="verification-tracker" done={done} total={total}
-      title={profileFirst ? t('host.finish', 'Finish your profile') : t(titleKey)} detail={detail}
-      goLabel={profileFirst ? t('host.finish', 'Finish your profile') : cta}
-      onGo={canGo ? (profileFirst ? onOpenProfile : onOpen) : undefined}
+      title={t(titleKey)} detail={detail}
+      goLabel={cta}
+      onGo={canGo ? onOpen : undefined}
       supportPhone={verification?.support_phone}>
+      {profileMissing.length > 0 && onOpenProfile && headline !== 'pay' && (
+        <button type="button" onClick={onOpenProfile} data-testid="verification-profile-missing"
+          className="text-left text-sm text-[var(--ink7)] underline underline-offset-2">
+          {missingLabel(t, profileMissing[0], businessType)}
+          {profileMissing.length > 1 && ` · ${t('host.n_more', { count: profileMissing.length - 1 })}`}
+        </button>
+      )}
       {/* A required document to redo (changes), or an optional one the team turned down: either way, say which and why. */}
       {(headline === 'changes' || verification?.action_required) && (
         <Box tone="blush" flat className="w-full" data-testid="verification-action">

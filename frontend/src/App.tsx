@@ -36,6 +36,7 @@ const Feed = lazy(() => import('@/pages/Feed'));
 const PlanTrip = lazy(() => import('@/pages/PlanTrip'));
 const PlanDetail = lazy(() => import('@/pages/PlanDetail'));
 const Responsible = lazy(() => import('@/pages/Responsible'));
+const Faq = lazy(() => import('@/pages/Faq'));
 const About = lazy(() => import('@/pages/About'));
 const Privacy = lazy(() => import('@/pages/Privacy'));
 const Terms = lazy(() => import('@/pages/Terms'));
@@ -132,6 +133,7 @@ export default function App() {
                     <Route path="/plan" element={<PlanTrip />} />
                     <Route path="/plan/:id" element={<PlanDetail />} />
                     <Route path="/responsible" element={<Responsible />} />
+                    <Route path="/faq" element={<Faq />} />
                     <Route path="/about" element={<About />} />
                     <Route path="/privacy" element={<Privacy />} />
                     {/* Razorpay will not activate a live account without a reachable Terms, Refund

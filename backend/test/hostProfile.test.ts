@@ -135,27 +135,15 @@ describe('PATCH /providers/me profile', () => {
   });
 });
 
-describe('mandatory items before approval', () => {
-  it('holds back a new host\'s documents until the mandatory profile is in, then lets them through', async () => {
+describe('documents before the profile is finished', () => {
+  it("takes a new host's documents even while photos and the host name are still missing", async () => {
     const { token } = await onboardActiveProvider({ name: 'New Homestay', businessType: 'homestay', awaitingApproval: true });
-    const blocked = await request(app).post('/api/providers/me/kyc').set('Authorization', `Bearer ${token}`)
-      .send({ doc_type: 'aadhaar', file: TINY_PNG, filename: 'aadhaar.png' });
-    expect(blocked.status).toBe(409);
-    expect(blocked.body.code).toBe('profile_incomplete');
-    expect(blocked.body.missing.map((m: { key: string }) => m.key).sort()).toEqual(['host_name', 'images']);
-
-    await request(app).patch('/api/providers/me').set('Authorization', `Bearer ${token}`)
-      .send({ profile: { host_name: 'Pema', images: photos(8) } });
-    const ok = await request(app).post('/api/providers/me/kyc').set('Authorization', `Bearer ${token}`)
-      .send({ doc_type: 'aadhaar', file: TINY_PNG, filename: 'aadhaar.png' });
-    expect(ok.status).toBe(200);
-  });
-
-  it('does not hold back a host who was already live', async () => {
-    const { token } = await onboardActiveProvider({ name: 'Old Homestay', businessType: 'homestay' });
     const res = await request(app).post('/api/providers/me/kyc').set('Authorization', `Bearer ${token}`)
       .send({ doc_type: 'aadhaar', file: TINY_PNG, filename: 'aadhaar.png' });
     expect(res.status).toBe(200);
+    // What is still missing stays on the host's checklist and the admin's list.
+    const me = await request(app).get('/api/providers/me').set('Authorization', `Bearer ${token}`);
+    expect(me.body.provider.profile_missing.map((m: { key: string }) => m.key).sort()).toEqual(['host_name', 'images']);
   });
 });
 
