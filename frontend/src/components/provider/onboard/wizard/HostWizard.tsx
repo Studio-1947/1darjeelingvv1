@@ -130,7 +130,8 @@ function PlaceStep({ w }: { w: HostWizard }) {
 
   // A pasted Google Maps link puts the pin exactly there (read by the backend; nothing is verified
   // until the listing is put up, with the link and My location together when both are given).
-  const [linkState, setLinkState] = useState<'' | 'reading' | 'ok' | 'bad'>('');
+  // 'share': a share.google link from Google Search, which has no pin (backend code share_link).
+  const [linkState, setLinkState] = useState<'' | 'reading' | 'ok' | 'bad' | 'share'>('');
   // Homestays, cafes and shops have a place to confirm; drivers and guides go out to travellers.
   const hasPlace = d.type === 'homestay' || d.type === 'cafe' || d.type === 'shop';
   useEffect(() => {
@@ -145,7 +146,9 @@ function PlaceStep({ w }: { w: HostWizard }) {
         setFocus((f) => f + 1);
         void nameFromPin(data.latitude, data.longitude, n);
         setLinkState('ok');
-      } catch { setLinkState('bad'); }
+      } catch (e) {
+        setLinkState((e as { response?: { data?: { code?: string } } })?.response?.data?.code === 'share_link' ? 'share' : 'bad');
+      }
     }, 600);
     return () => window.clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -228,8 +231,9 @@ function PlaceStep({ w }: { w: HostWizard }) {
       </div>
       {hasPlace && <TextField label={t('lv.wz_link', 'Google Maps link (optional)')} value={d.mapsUrl || ''} onChange={(e) => set({ mapsUrl: e.target.value })}
         placeholder="https://maps.app.goo.gl/..." inputMode="url" data-testid="wz-maps-link"
-        hint={linkState === 'bad' ? undefined : linkState === 'ok' ? t('lv.wz_link_ok', 'Pin moved to your Google Maps link.') : t('lv.wz_link_hint', 'Paste it to put the pin exactly on your place. With My location too, the link sets the spot.')}
-        error={linkState === 'bad' ? t('lv.wz_link_bad', 'Could not read that link. Copy it again from Google Maps.') : undefined} />}
+        hint={linkState === 'bad' || linkState === 'share' ? undefined : linkState === 'ok' ? t('lv.wz_link_ok', 'Pin moved to your Google Maps link.') : t('lv.wz_link_hint', 'Paste it to put the pin exactly on your place. With My location too, the link sets the spot.')}
+        error={linkState === 'share' ? t('lv.wz_link_share', 'This link is from Google Search and has no pin in it. In the Google Maps app, open your place, tap Share, and copy that link instead.')
+          : linkState === 'bad' ? t('lv.wz_link_bad', 'Could not read that link. Copy it again from Google Maps.') : undefined} />}
       <div className="ag-onboard-pchips" role="list">
         {chips.map((p) => (
           <button key={`${p.name}${p.lat}`} type="button" className="ag-onboard-pchip" aria-pressed={pl?.name === p.name && pl.lat === p.lat}

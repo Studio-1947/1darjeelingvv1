@@ -4343,6 +4343,7 @@
     "wz_link": "Google Maps link (optional)",
     "wz_link_hint": "Paste it to put the pin exactly on your place. With My location too, the link sets the spot.",
     "wz_link_bad": "Could not read that link. Copy it again from Google Maps.",
+    "wz_link_share": "This link is from Google Search and has no pin in it. In the Google Maps app, open your place, tap Share, and copy that link instead.",
     "wz_link_ok": "Pin moved to your Google Maps link."
   }
 }

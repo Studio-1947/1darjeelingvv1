@@ -280,7 +280,9 @@ svg.i { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-widt
   .ag-bookbar .ag-btn { margin-left: auto; min-width: 170px; height: 52px; min-height: 52px; }
 
   /* ---------- shell ---------- */
-  .ag-header { position: sticky; top: 0; z-index: 40; background: rgb(var(--page-rgb) / .92); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+  /* The installed app (iOS, black-translucent status bar) draws under the clock and notch, so the
+     bar pads itself down by the safe-area inset; its background still fills behind the status bar. */
+  .ag-header { position: sticky; top: 0; z-index: 40; padding-top: env(safe-area-inset-top, 0px); background: rgb(var(--page-rgb) / .92); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
   /* The bar runs the full width of the window, so the logo (with its Beta tag) sits in the top-left
      corner on a wide screen too, not at the edge of the 720px page column. */
   .ag-header .ag-wrap { display: flex; align-items: center; gap: 8px; min-height: 64px; padding-block: 8px; }

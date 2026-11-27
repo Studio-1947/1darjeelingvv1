@@ -7,11 +7,29 @@
  */
 
 export class MapsLinkError extends Error {
-  constructor(message: string) {
+  /** A reason the app can show in the host's language; unset for the plain errors. */
+  code?: 'share_link';
+  constructor(message: string, code?: 'share_link') {
     super(message);
     this.name = 'MapsLinkError';
+    this.code = code;
   }
 }
+
+/**
+ * `share.google/...` links (shared from the Google app or a Google Search result) open a Google
+ * Search page for the place, not a map. That page carries a place id but no coordinates, and it
+ * only renders with JavaScript, so there is no pin a server can read from it. Google Maps' own
+ * Share button gives a `maps.app.goo.gl` link, which does carry the pin.
+ */
+export function isGoogleSearchShareLink(url: URL): boolean {
+  if (url.hostname === 'share.google') return true;
+  const google = /^(www\.)?google\.(com|co\.in|in)$/.test(url.hostname);
+  return google && (url.pathname === '/share.google' || url.pathname === '/search');
+}
+
+export const SHARE_LINK_MESSAGE =
+  'This link is from Google Search and has no pin in it. In the Google Maps app, open your place, tap Share, and copy that link instead.';
 
 export type Pin = { latitude: number; longitude: number };
 
@@ -139,6 +157,7 @@ export async function resolveMapsLink(input: string, fetchFn: FetchFn = fetch): 
   } catch {
     throw new MapsLinkError('That does not look like a Google Maps link.');
   }
+  if (isGoogleSearchShareLink(url)) throw new MapsLinkError(SHARE_LINK_MESSAGE, 'share_link');
   if (!isGoogleMapsUrl(url)) throw new MapsLinkError('That is not a Google Maps link.');
 
   let current = url;
