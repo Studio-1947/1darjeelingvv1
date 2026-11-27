@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import './App.css';
 import '@/i18n';
-import { AuthProvider, useAuth } from '@/context/AuthContext';
+import { AuthProvider } from '@/context/AuthContext';
 import TravellerOnly from '@/components/TravellerOnly';
 import { FavoritesProvider } from '@/context/FavoritesContext';
 import PageErrorBoundary from '@/components/PageErrorBoundary';
@@ -51,12 +51,6 @@ const HostPage = lazy(() => import('@/pages/HostPage'));
 // than being cut off on a fast load.
 const SPLASH_MIN_VISIBLE_MS = 2100;
 
-/** Home is Discover for a traveller; on the business side it is the host's own dashboard. */
-function HomeForSide() {
-  const { isHostMode } = useAuth();
-  return isHostMode ? <Navigate to="/provider/dashboard" replace /> : <Discover />;
-}
-
 /** Shown while a page's code is loading. */
 function PageLoading() {
   const { t } = useTranslation();
@@ -99,17 +93,18 @@ export default function App() {
                 <PageErrorBoundary>
                 <Suspense fallback={<PageLoading />}>
                   <Routes>
-                    <Route path="/" element={<HomeForSide />} />
-                    <Route path="/spots" element={<TravellerOnly><Category typeOverride="spot" /></TravellerOnly>} />
-                    <Route path="/homestays" element={<TravellerOnly><Category typeOverride="homestay" /></TravellerOnly>} />
-                    <Route path="/drivers" element={<TravellerOnly><Category typeOverride="driver" /></TravellerOnly>} />
-                    <Route path="/guides" element={<TravellerOnly><Category typeOverride="guide" /></TravellerOnly>} />
-                    <Route path="/shops" element={<TravellerOnly><Category typeOverride="shop" /></TravellerOnly>} />
-                    <Route path="/cafes" element={<TravellerOnly><Category typeOverride="cafe" /></TravellerOnly>} />
-                    <Route path="/events" element={<TravellerOnly><Category typeOverride="event" /></TravellerOnly>} />
-                    <Route path="/biodiversity" element={<TravellerOnly><Category typeOverride="biodiversity" /></TravellerOnly>} />
-                    <Route path="/explore" element={<TravellerOnly><Explore /></TravellerOnly>} />
-                    <Route path="/search" element={<TravellerOnly><Category typeOverride={undefined} /></TravellerOnly>} />
+                    {/* Home is the same feed on both sides (2026-11-27): hosts in Business mode watch it too. */}
+                    <Route path="/" element={<Discover />} />
+                    <Route path="/spots" element={<Category typeOverride="spot" />} />
+                    <Route path="/homestays" element={<Category typeOverride="homestay" />} />
+                    <Route path="/drivers" element={<Category typeOverride="driver" />} />
+                    <Route path="/guides" element={<Category typeOverride="guide" />} />
+                    <Route path="/shops" element={<Category typeOverride="shop" />} />
+                    <Route path="/cafes" element={<Category typeOverride="cafe" />} />
+                    <Route path="/events" element={<Category typeOverride="event" />} />
+                    <Route path="/biodiversity" element={<Category typeOverride="biodiversity" />} />
+                    <Route path="/explore" element={<Explore />} />
+                    <Route path="/search" element={<Category typeOverride={undefined} />} />
                     <Route path="/listing/:id" element={<ListingDetail />} />
                     <Route path="/business/:id" element={<PublicBusiness />} />
                     {/* A host's own page: aanganerp.in/<type>/<business-name> (board). */}

@@ -20,7 +20,7 @@ export default function BottomNav() {
   const { pathname, search } = useLocation();
   // A tab matches its path, or its path plus query (?s=bookings); the bare path only when no sub-screen is open.
   const here = pathname + search;
-  const isActive = (m: string[]) => m.some((x) => (x.includes('?') ? here.startsWith(x) : pathname === x && !new URLSearchParams(search).get('s')));
+  const isActive = (m: string[]) => m.some((x) => (x.includes('?') ? here.startsWith(x) : x.endsWith('/') ? pathname.startsWith(x) && !here.startsWith('/provider/dashboard?s=bookings') : pathname === x && !new URLSearchParams(search).get('s')));
   const savedCount = useFavorites().ids.size;
   // In host mode the Account tab shows the business profile photo (provider.extras.host_avatar,
   // set on Account > Business profile), falling back to the traveller photo; same for the initial.
@@ -29,15 +29,16 @@ export default function BottomNav() {
   const [avatarError, setAvatarError] = useState(false);
   useEffect(() => { setAvatarError(false); }, [avatar]);
 
-  // Hosts keep the traveller's five tabs, as in the prototype; My trip becomes Bookings and Home becomes
-  // Dashboard (the business's own screen, not the traveller home). My listings is reached from the dashboard's "Your listings · See all".
+  // Hosts keep the traveller's five tabs, as in the prototype; My trip becomes Bookings. Home is the
+  // same Home feed on both sides (2026-11-27: hosts want to watch it); the Business dashboard opens
+  // from Account, so Account stays lit on the business pages.
   const tabs: Tab[] = isHostMode
     ? [
-        { key: 'home', to: '/provider/dashboard', match: ['/provider/dashboard'], label: t('nav.dashboard', 'Dashboard'), icon: 't_dash' },
+        { key: 'home', to: '/', match: ['/'], label: t('nav.home'), icon: 't_home' },
         { key: 'feed', to: '/feed', match: ['/feed'], label: t('nav.feed_tab'), icon: 't_feed' },
         { key: 'trips', to: '/provider/dashboard?s=bookings', match: ['/provider/dashboard?s=bookings'], label: t('host.bookings_tab', 'Bookings'), icon: 't_trip' },
         { key: 'saved', to: '/saved', match: ['/saved'], label: t('nav.saved'), icon: 't_saved', badge: savedCount },
-        { key: 'account', to: '/dashboard', match: ['/dashboard', '/provider/profile', '/my-listings'], label: t('nav.account'), icon: 't_me' },
+        { key: 'account', to: '/dashboard', match: ['/dashboard', '/provider/', '/my-listings'], label: t('nav.account'), icon: 't_me' },
       ]
     : [
         { key: 'home', to: '/', match: ['/'], label: t('nav.home'), icon: 't_home' },

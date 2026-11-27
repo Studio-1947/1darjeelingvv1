@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { useSwitchPrompt } from '@/components/TravellerOnly';
 import { fetchFavoriteIds, addFavorite, removeFavorite } from '@/lib/favorites';
 
 interface FavoritesValue {
@@ -28,6 +29,11 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
   // change (and without a stale closure) - updaters stay pure, which keeps StrictMode double-invoke safe.
   const idsRef = useRef(ids);
   useEffect(() => { idsRef.current = ids; }, [ids]);
+  // On the business side a heart asks to switch to Traveller first (Home and the places open there
+  // since 2026-11-27; saving stays a traveller's). Kept in a ref so `toggle` stays stable.
+  const switchFirst = useSwitchPrompt();
+  const switchRef = useRef(switchFirst);
+  switchRef.current = switchFirst;
 
   const refresh = useCallback(async () => {
     if (!user) { setIds(new Set()); return; }
@@ -44,6 +50,7 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => { refresh(); }, [refresh]);
 
   const toggle = useCallback(async (listingId: string) => {
+    if (switchRef.current('save')) return;
     const currentlyFav = idsRef.current.has(listingId);
     setIds(prev => {
       const next = new Set(prev);

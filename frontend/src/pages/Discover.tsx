@@ -12,6 +12,7 @@ import RouteEstimator from '@/components/RouteEstimator';
 import SuggestPlace from '@/components/spots/SuggestPlace';
 import { Icon, type IconName } from '@/components/ag/Icon';
 import { cx } from '@/components/ag';
+import { useAuth } from '@/context/AuthContext';
 import { GuideCard, ShopCard, SpotCard, StayCard } from '@/components/home/cards';
 import { SpotTileSkeleton, StayTileSkeleton, LoadingStatus, repeat } from '@/components/skeletons';
 
@@ -59,7 +60,10 @@ function Banners() {
   const fill = useRef<HTMLSpanElement>(null);
   const elapsed = useRef(0);
   const [at, setAt] = useState(0);
-  const count = SLIDES.length + 1;
+  // Business mode: a host already has a business, so the "List your business" slide is left out.
+  const { isHostMode } = useAuth();
+  const slides = isHostMode ? SLIDES.filter((s) => s.to !== '/provider/onboard') : SLIDES;
+  const count = slides.length + 1;
   const still = reducedMotion();
 
   useEffect(() => {
@@ -121,7 +125,7 @@ function Banners() {
             <source src="/video-hero/S_47_July_26_web_cover_video_e1wiyd.webm" type="video/webm" />
           </video>
         </div>
-        {SLIDES.map((s, i) => (
+        {slides.map((s, i) => (
           <Link key={s.to} to={s.to} className="slide" style={{ backgroundImage: `url(${s.img})` }} data-testid={`home-banner-${i + 1}`}>
             <span className="bt"><b>{t(s.title[0], s.title[1])}</b><span>{t(s.sub[0], s.sub[1])}</span></span>
           </Link>
@@ -230,6 +234,9 @@ function HostFreeNote({ testId }: { testId?: string }) {
 
 function JoinCard({ img, end }: { img: string; end?: boolean }) {
   const { t } = useTranslation();
+  // Home opens on the business side too (2026-11-27): a host there already runs a business.
+  const { isHostMode } = useAuth();
+  if (isHostMode) return null;
   return (
     <div className={cx('ag-home-join', end && 'end')} data-testid={end ? 'home-join-card-end' : 'home-join-card'}>
       <span className="joinimg" role="img" aria-label={t('home.join_title', 'List your Business')} style={{ backgroundImage: `url(${img})` }} />

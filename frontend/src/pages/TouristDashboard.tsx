@@ -201,6 +201,11 @@ export default function TouristDashboard() {
         <nav className="ag-box ag-account-menu" aria-label={t('nav.account')}>
           {biz && (
             <>
+              {/* Home is the Home feed on both sides (2026-11-27), so the dashboard opens from here. */}
+              <Link to="/provider/dashboard" data-testid="account-business-dashboard">
+                <Row icon="t_dash" title={t('ui.account.bdash', 'Business dashboard')}
+                  sub={live ? t('verify.step_live') : t('provider.pending_review')} />
+              </Link>
               <Link to="/provider/profile" data-testid="account-business-profile">
                 <Row icon="bag" title={t('ui.account.biz_profile', 'Business profile')} sub={provider?.business_name || undefined} />
               </Link>

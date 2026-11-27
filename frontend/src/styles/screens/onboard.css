@@ -39,6 +39,10 @@
 .ag-onboard-fees.plain li::before { content: ""; position: absolute; left: 2px; top: 8px; width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
 .ag-onboard-fees.plain li.hl { padding: 10px 12px; background: var(--blush2); }
 .ag-onboard-fees.plain li.hl::before { display: none; }
+/* Fee terms told as short paragraphs (AddListingInfo), the last one highlighted like .ag-onboard-fees li.hl. */
+.ag-onboard-prose { display: flex; flex-direction: column; gap: 12px; margin: 6px 0; }
+.ag-onboard-prose p { margin: 0; font: 500 14px/22px var(--font); color: var(--ink-strong); }
+.ag-onboard-prose p.hl { margin-top: 4px; padding: 10px 12px; border-radius: 12px; background: var(--r-tint); color: var(--r); font-weight: 600; line-height: 20px; }
 
 /* when to pay: two cards side by side */
 .ag-onboard-chopts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-items: stretch; }

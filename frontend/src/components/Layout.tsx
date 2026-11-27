@@ -5,6 +5,7 @@ import Footer from '@/components/Footer';
 import BottomNav from '@/components/BottomNav';
 import PageBack, { CrumbProvider } from '@/components/PageBack';
 import { Toaster } from 'sonner';
+import { SwitchPromptHost } from '@/components/TravellerOnly';
 
 export default function Layout({ children }) {
   const { t } = useTranslation();
@@ -31,6 +32,8 @@ export default function Layout({ children }) {
       <Footer />
       <BottomNav />
       <Toaster position="top-center" richColors closeButton />
+      {/* Business mode: Book now and the hearts ask to switch to Traveller here (one dialog for all). */}
+      <SwitchPromptHost />
     </div>
   );
 }
