@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { Storefront } from '@phosphor-icons/react';
 import { Box, Button, ButtonLink } from '@/components/ag';
 import { useAuth } from '@/context/AuthContext';
+import Sheet, { SheetHead } from '@/components/listing-detail/Sheet';
 
 /**
  * Pages that are only for travelling — saved places, trips, the pass. A host on the business side
@@ -17,23 +18,64 @@ export default function TravellerOnly({ children }: { children: React.ReactNode 
   return <BusinessModeNotice />;
 }
 
+type SwitchWhat = 'book' | 'save';
+const SWITCH_EVENT = 'aangan:switch-prompt';
+
 /**
  * On the business side, booking or saving a place asks to switch to Traveller first (the server
- * refuses both from Business mode, backend middleware/mode.ts). Returns true when it asked, so the
- * caller stops there.
+ * refuses both from Business mode, backend middleware/mode.ts). It opens SwitchPromptHost's dialog,
+ * which covers the page until it is answered. Returns true when it asked, so the caller stops there.
  */
 export function useSwitchPrompt() {
-  const { t } = useTranslation();
-  const { isHostMode, setMode } = useAuth();
-  return (what: 'book' | 'save'): boolean => {
+  const { isHostMode } = useAuth();
+  return (what: SwitchWhat): boolean => {
     if (!isHostMode) return false;
-    toast(what === 'book'
-      ? t('business_gate.book_switch', 'You are in Business mode. Switch to Traveller to book places.')
-      : t('business_gate.save_switch', 'You are in Business mode. Switch to Traveller to save places.'), {
-      action: { label: t('business_gate.switch', 'Switch to Traveller'), onClick: () => setMode('tourist') },
-    });
+    window.dispatchEvent(new CustomEvent<SwitchWhat>(SWITCH_EVENT, { detail: what }));
     return true;
   };
+}
+
+/**
+ * The "Switch to Traveller?" dialog (mounted once, in Layout): over the whole screen, so it cannot
+ * be missed, with OK to switch (the host stays on the same page, now as a traveller) or Not now.
+ */
+export function SwitchPromptHost() {
+  const { t } = useTranslation();
+  const { isHostMode, setMode } = useAuth();
+  const [what, setWhat] = React.useState<SwitchWhat | null>(null);
+  React.useEffect(() => {
+    const on = (e: Event) => setWhat((e as CustomEvent<SwitchWhat>).detail || 'book');
+    window.addEventListener(SWITCH_EVENT, on);
+    return () => window.removeEventListener(SWITCH_EVENT, on);
+  }, []);
+  // Switched some other way while it was open: nothing left to ask.
+  React.useEffect(() => { if (!isHostMode) setWhat(null); }, [isHostMode]);
+  if (!what) return null;
+  const close = () => setWhat(null);
+  const ok = () => {
+    setMode('tourist');
+    setWhat(null);
+    toast.success(t('business_gate.switched', 'You are now in Traveller mode.'));
+  };
+  return (
+    <Sheet onClose={close} labelledBy="switch-prompt-title" testid="switch-prompt" closeTestid="switch-prompt-close">
+      <div className="flex flex-col gap-4">
+        <span className="ag-micon !w-14 !h-14 [&_svg]:!w-7 [&_svg]:!h-7" aria-hidden="true"><Storefront /></span>
+        <SheetHead id="switch-prompt-title" title={t('business_gate.title', "You're in Business mode")} />
+        <p className="m-0 text-[15px] leading-[22px] text-[var(--ink-strong)]" data-testid="switch-prompt-body">
+          {what === 'book'
+            ? t('business_gate.modal_book', 'To book this place, switch to Traveller mode. Your business stays as it is, and you can switch back from Account at any time.')
+            : t('business_gate.modal_save', 'To save places, switch to Traveller mode. Your business stays as it is, and you can switch back from Account at any time.')}
+        </p>
+        <Button variant="primary" go block onClick={ok} data-autofocus data-testid="switch-prompt-ok">
+          {t('business_gate.ok_switch', 'OK, switch to Traveller')}
+        </Button>
+        <Button variant="text" className="self-center" onClick={close} data-testid="switch-prompt-later">
+          {t('ob.add.leave', 'Not now')}
+        </Button>
+      </div>
+    </Sheet>
+  );
 }
 
 /** Over a place opened on the business side: look around freely; booking waits for Traveller. */
