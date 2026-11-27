@@ -3399,6 +3399,12 @@
     "ride_near": "पास के ड्राइवर",
     "ppl_one": "1 व्यक्ति",
     "ppl_many": "{{count}} लोग",
+    "photos_uploading": "फ़ोटो अपलोड हो रही हैं…",
+    "photos_uploading_hint": "आपकी फ़ोटो अभी अपलोड हो रही हैं। पूरा होते ही सेव बटन चालू हो जाएगा।",
+    "see_photos_one": "कमरे की फ़ोटो देखें",
+    "see_photos_other": "कमरे की {{count}} फ़ोटो देखें",
+    "see_room_photos_one": "{{room}} की फ़ोटो देखें",
+    "see_room_photos_other": "{{room}} की {{count}} फ़ोटो देखें",
     "room_full": "भरा हुआ",
     "rooms_all_full": "अभी सभी कमरे भरे हुए हैं।",
     "sb_room": "कमरा",
@@ -3761,6 +3767,13 @@
     "food_none": "सिर्फ़ कमरा",
     "food_breakfast": "नाश्ता शामिल",
     "food_all": "तीनों समय का खाना शामिल",
-    "not_set": "नहीं चुना"
+    "not_set": "नहीं चुना",
+    "photos_label": "इस कमरे की फ़ोटो",
+    "photos_hint": "पहली फ़ोटो कवर बनेगी। बिस्तर, नज़ारा और बाथरूम दिखाएँ।",
+    "photos_over": "एक कमरे में ज़्यादा से ज़्यादा {{max}} फ़ोटो हो सकती हैं। बाकी छोड़ दी गईं।",
+    "cover": "कवर",
+    "remove_photo": "फ़ोटो {{n}} हटाएँ",
+    "photos_n_one": "{{count}} फ़ोटो",
+    "photos_n_other": "{{count}} फ़ोटो"
   }
 }

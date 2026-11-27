@@ -59,6 +59,24 @@ describe('room rule on the host profile', () => {
     expect(profilePatchFrom('homestay', { rooms: [{ name: 'X', price: 10, occ: 2, bath: 'outside' }] })).toHaveProperty('error');
     expect(profilePatchFrom('homestay', { rooms: [{ name: 'X', price: 10, occ: 2, food: 'lunch' }] })).toHaveProperty('error');
   });
+
+  it('keeps up to four photos of a room, the first also as its cover photo', () => {
+    const a = 'https://cdn.example.com/a.jpg';
+    const b = 'https://cdn.example.com/b.jpg';
+    const ok = profilePatchFrom('homestay', { rooms: [
+      { name: 'Valley Room', price: 2400, occ: 2, photos: [a, '', b, a] },
+      { name: 'Loft', price: 1800, occ: 2, photo: b },
+      { name: 'Box', price: 900, occ: 1, photo: a, photos: [] },
+    ] }) as any;
+    expect(ok.rooms[0]).toEqual({ name: 'Valley Room', price: 2400, unit: 'night', occ: 2, photos: [a, b], photo: a });
+    // An older client's single photo still works on its own.
+    expect(ok.rooms[1]).toEqual({ name: 'Loft', price: 1800, unit: 'night', occ: 2, photo: b });
+    // An empty list clears the room's photos.
+    expect(ok.rooms[2]).toEqual({ name: 'Box', price: 900, unit: 'night', occ: 1 });
+    expect(profilePatchFrom('homestay', { rooms: [{ name: 'X', price: 10, occ: 2, photos: [a, b, a + '1', b + '1', a + '2'] }] })).toHaveProperty('error');
+    expect(profilePatchFrom('homestay', { rooms: [{ name: 'X', price: 10, occ: 2, photos: ['not a url'] }] })).toHaveProperty('error');
+    expect(profilePatchFrom('homestay', { rooms: [{ name: 'X', price: 10, occ: 2, photos: a }] })).toHaveProperty('error');
+  });
 });
 
 describe('booking amount with a room or a quoted fare', () => {

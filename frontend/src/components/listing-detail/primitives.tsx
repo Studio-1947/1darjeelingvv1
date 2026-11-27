@@ -42,18 +42,34 @@ export function Section({ title, eyebrow, note, action, testid, id, className, t
 }
 
 /** A priced line (prototype `.sum` rows): name and a small line on the left, price and unit right. */
-export function PriceRow({ name, sub, price, unit, photo, testid }: {
+export function PriceRow({ name, sub, price, unit, photo, photoCount = 0, onPhoto, photoLabel, testid }: {
   name: React.ReactNode;
   sub?: React.ReactNode;
   price?: number;
   unit?: React.ReactNode;
   icon?: React.ReactNode;
   photo?: string;
+  /** How many photos sit behind `photo` (a room's set): shown on it when more than one. */
+  photoCount?: number;
+  /** Makes the photo a button that opens them (a room's photos in the viewer). */
+  onPhoto?: () => void;
+  /** The photo button's name, saying whose photos they are ("See Valley Room's 3 photos"). */
+  photoLabel?: string;
   testid?: string;
 }) {
+  const { t } = useTranslation();
+  const img = photo && <img src={photo} alt="" loading="lazy" className="w-12 h-12 rounded-[12px] object-cover flex-none bg-[var(--creme2)]" />;
   return (
     <div className="flex items-start gap-3 py-1.5 text-[16px] leading-6 text-[var(--ink7)]" data-testid={testid}>
-      {photo && <img src={photo} alt="" loading="lazy" className="w-12 h-12 rounded-[12px] object-cover flex-none bg-[var(--creme2)]" />}
+      {img && onPhoto ? (
+        <button type="button" onClick={onPhoto} className="relative flex-none rounded-[12px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--r)]" data-testid={testid ? `${testid}-photo` : undefined}
+          aria-label={photoLabel || t('listing.see_photos', { count: Math.max(1, photoCount), defaultValue: 'See photos' })}>
+          {img}
+          {photoCount > 1 && (
+            <span className="absolute bottom-0.5 right-0.5 rounded-full bg-black/60 px-1.5 text-[10px] font-medium leading-4 text-white" aria-hidden="true">{photoCount}</span>
+          )}
+        </button>
+      ) : img}
       <span className="flex-1 min-w-0">
         {name}
         {sub != null && <span className="ag-small block">{sub}</span>}

@@ -3399,6 +3399,12 @@
     "ride_near": "কাছের ড্রাইভার",
     "ppl_one": "১ জন",
     "ppl_many": "{{count}} জন",
+    "photos_uploading": "ছবি আপলোড হচ্ছে…",
+    "photos_uploading_hint": "আপনার ছবি এখনও আপলোড হচ্ছে। শেষ হলেই সেভ বোতাম চালু হবে।",
+    "see_photos_one": "ঘরের ছবি দেখুন",
+    "see_photos_other": "ঘরের {{count}}টি ছবি দেখুন",
+    "see_room_photos_one": "{{room}}-এর ছবি দেখুন",
+    "see_room_photos_other": "{{room}}-এর {{count}}টি ছবি দেখুন",
     "room_full": "ভর্তি",
     "rooms_all_full": "এখন সব ঘর ভর্তি।",
     "sb_room": "ঘর",
@@ -3761,6 +3767,13 @@
     "food_none": "শুধু ঘর",
     "food_breakfast": "জলখাবার সহ",
     "food_all": "সব বেলার খাবার সহ",
-    "not_set": "বাছা হয়নি"
+    "not_set": "বাছা হয়নি",
+    "photos_label": "এই ঘরের ছবি",
+    "photos_hint": "প্রথম ছবিটি কভার হবে। খাট, দৃশ্য আর বাথরুম দেখান।",
+    "photos_over": "একটি ঘরে সর্বোচ্চ {{max}}টি ছবি রাখা যায়। বাকিগুলো বাদ দেওয়া হলো।",
+    "cover": "কভার",
+    "remove_photo": "ছবি {{n}} সরান",
+    "photos_n_one": "{{count}}টি ছবি",
+    "photos_n_other": "{{count}}টি ছবি"
   }
 }

@@ -3392,6 +3392,12 @@
     "ride_near": "नजिकका ड्राइभर",
     "ppl_one": "१ जना",
     "ppl_many": "{{count}} जना",
+    "photos_uploading": "फोटो अपलोड हुँदैछ…",
+    "photos_uploading_hint": "तपाईंका फोटो अझै अपलोड हुँदैछन्। सकिएपछि सेभ बटन चल्छ।",
+    "see_photos_one": "कोठाको फोटो हेर्नुहोस्",
+    "see_photos_other": "कोठाका {{count}} फोटो हेर्नुहोस्",
+    "see_room_photos_one": "{{room}} को फोटो हेर्नुहोस्",
+    "see_room_photos_other": "{{room}} का {{count}} फोटो हेर्नुहोस्",
     "room_full": "भरिएको",
     "rooms_all_full": "अहिले सबै कोठा भरिएका छन्।",
     "sb_room": "कोठा",
@@ -3754,6 +3760,13 @@
     "food_none": "कोठा मात्र",
     "food_breakfast": "बिहानको खाजा सहित",
     "food_all": "सबै खाना सहित",
-    "not_set": "छानिएको छैन"
+    "not_set": "छानिएको छैन",
+    "photos_label": "यो कोठाका फोटो",
+    "photos_hint": "पहिलो फोटो कभर हुन्छ। ओछ्यान, दृश्य र बाथरूम देखाउनुहोस्।",
+    "photos_over": "एउटा कोठामा बढीमा {{max}} फोटो राख्न मिल्छ। बाँकी छोडिए।",
+    "cover": "कभर",
+    "remove_photo": "फोटो {{n}} हटाउनुहोस्",
+    "photos_n_one": "{{count}} फोटो",
+    "photos_n_other": "{{count}} फोटो"
   }
 }

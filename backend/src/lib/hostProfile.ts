@@ -42,6 +42,8 @@ export const MAX_GOODS = 10;
 export const MAX_ROOM_OCC = 50;
 /** Most extra guests a room can take on an extra mattress (user decision 2026-11-21: +1 or +2). */
 export const MAX_EXTRA_BEDS = 2;
+/** Most photos one homestay room can have (`photos`; the first is the cover). */
+export const MAX_ROOM_PHOTOS = 4;
 /**
  * What a homestay room has, each optional (user decision 2026-11-27, asked at sign-up and on the
  * listing page): the bed, the bathroom, and the food its night price includes ("none" = room only).
@@ -231,6 +233,18 @@ const BY_TYPE: Record<string, Record<string, (v: unknown) => unknown | ProfileEr
         const fee = int(e.extra_bed_price, 0, MAX_PRICE, 'Extra mattress price');
         if (typeof fee !== 'number') return fee;
         if (fee > 0) out = { ...out, extra_bed_price: fee };
+      }
+      // Up to MAX_ROOM_PHOTOS photos of the room (user decision 2026-11-27). The first is its cover and
+      // is also kept as `photo`, so whatever reads one photo (cards, older clients) still has it.
+      if (!blank('photos')) {
+        if (!Array.isArray(e.photos)) return { error: 'Room photos must be a list' };
+        const urls = e.photos.filter((u) => u !== '' && u !== null && u !== undefined);
+        if (urls.some((u) => !isUrl(u))) return { error: 'Each room photo must be an uploaded image' };
+        // Counted once each: the same photo sent twice is one photo.
+        const list = [...new Set(urls.map((u) => (u as string).trim()))];
+        if (list.length > MAX_ROOM_PHOTOS) return { error: `A room can have up to ${MAX_ROOM_PHOTOS} photos` };
+        if (list.length) out = { ...out, photos: list, photo: list[0] };
+        else delete out.photo;
       }
       // Bed, bathroom and food included: each one of its list, or left out.
       for (const [k, opts, label] of [['bed', ROOM_BEDS, 'Bed type'], ['bath', ROOM_BATHS, 'Bathroom'], ['food', ROOM_FOODS, 'Food included']] as const) {

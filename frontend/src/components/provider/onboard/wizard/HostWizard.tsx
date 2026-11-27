@@ -7,7 +7,8 @@ import AreasPicker from '@/components/provider/AreasPicker';
 import { nearestAreaLabel } from '@/lib/hostQuickFill';
 import { CaretDown, CircleNotch as Loader2 } from '@phosphor-icons/react';
 import { capPrice, isValidPhone, MAX_PRICE } from '@/lib/hostFormChecks';
-import { ROOM_BATHS, ROOM_BEDS, ROOM_FOODS, roomFit, roomsCapacity, roomSpecKeys } from '@/lib/roomFit';
+import { MAX_ROOM_PHOTOS, ROOM_BATHS, ROOM_BEDS, ROOM_FOODS, roomFit, roomPhotos, roomsCapacity, roomSpecKeys } from '@/lib/roomFit';
+import RoomPhotos from '@/components/provider/RoomPhotos';
 import { Box, Button, ButtonLink, FieldError, IconButton, StepBar, TextField } from '@/components/ag';
 import { Icon, type IconName } from '@/components/ag/Icon';
 import { HelpWhatsApp, useHostSignupInfo } from '@/components/provider/onboard/QuickFill';
@@ -392,6 +393,8 @@ function Pick<V extends string | number>({ label, value, opts, onPick, clearable
  */
 function RoomsStep({ w }: { w: HostWizard }) {
   const { t, d, set } = w;
+  // Rooms uploading photos right now: no room can be removed meanwhile, or a photo would land on the next one.
+  const [uploading, setUploading] = useState(0);
   const setRoom = (k: number, patch: Partial<Room>) => set({ rooms: d.rooms.map((r, j) => (j === k ? { ...r, ...patch } : r)) });
   return (
     <Frame w={w} title={t('ob.wz.prHow', 'Your rooms and prices')}
@@ -406,7 +409,7 @@ function RoomsStep({ w }: { w: HostWizard }) {
             <div className="flex items-center justify-between gap-2">
               <span className="ag-lead">{t('ob.wz.roomN', { n: k + 1, defaultValue: 'Room {{n}}' })}</span>
               {d.rooms.length > 1 && (
-                <IconButton label={t('ob.wz.remove')} className="ag-onboard-x" onClick={() => set({ rooms: d.rooms.filter((_, j) => j !== k) })}><Icon name="close" /></IconButton>
+                <IconButton label={t('ob.wz.remove')} className="ag-onboard-x" disabled={uploading > 0} onClick={() => set({ rooms: d.rooms.filter((_, j) => j !== k) })}><Icon name="close" /></IconButton>
               )}
             </div>
             <TextField label={t('ob.wz.rnShort')} value={r.name} placeholder={t('ob.wz.rStd')} maxLength={60}
@@ -426,6 +429,10 @@ function RoomsStep({ w }: { w: HostWizard }) {
                 </div>
               </div>
             </div>
+            {/* A room's own photos (up to 4): travellers tap a room to see them. */}
+            <RoomPhotos photos={r.photos || []} upload={w.photoUrl} testid={`wz-room-photos-${k}`} onBusy={(b) => setUploading((n) => n + (b ? 1 : -1))}
+              onAdd={(url) => set((prev) => ({ rooms: prev.rooms.map((x, j) => (j === k ? { ...x, photos: [...new Set([...(x.photos || []), url])].slice(0, MAX_ROOM_PHOTOS) } : x)) }))}
+              onRemove={(i) => setRoom(k, { photos: (r.photos || []).filter((_, j) => j !== i) })} />
             {/* Everything else is optional and starts closed (as the Account profile's "More about you"),
                 so a host can put a room up with just its name, price and size. Its line says what is set, so it
                 never needs to open by itself (an `open` tied to that would snap shut as a chip is cleared). */}
@@ -726,6 +733,7 @@ function ReviewRooms({ w }: { w: HostWizard }) {
             fit.occ ? t('ui.pricedEditor.sleeps', { count: fit.occ }) : '',
             fit.extraBeds ? `${t('listing.extra_mattress', { count: fit.extraBeds })}${fit.extraBedPrice ? ` (${rupees(fit.extraBedPrice)})` : ''}` : '',
             ...roomSpecKeys(r).map((k) => t(k)),
+            roomPhotos(r).length ? t('room.photos_n', { count: roomPhotos(r).length, defaultValue: '{{count}} photos' }) : '',
           ].filter(Boolean);
           return (
             <li key={i}>

@@ -3999,6 +3999,12 @@
     "ride_near": "Drivers nearby",
     "ppl_one": "1 person",
     "ppl_many": "{{count}} people",
+    "photos_uploading": "Uploading photos…",
+    "photos_uploading_hint": "Your photos are still uploading. Save turns on when they finish.",
+    "see_photos_one": "See the room's photo",
+    "see_photos_other": "See the room's {{count}} photos",
+    "see_room_photos_one": "See the photo of {{room}}",
+    "see_room_photos_other": "See {{count}} photos of {{room}}",
     "room_full": "Full",
     "rooms_all_full": "Every room is full right now.",
     "sb_room": "Room",
@@ -4373,6 +4379,13 @@
     "food_none": "Room only",
     "food_breakfast": "Breakfast included",
     "food_all": "All meals included",
-    "not_set": "not set"
+    "not_set": "not set",
+    "photos_label": "Photos of this room",
+    "photos_hint": "The first photo is the cover. Show the bed, the view and the bathroom.",
+    "photos_over": "A room can have up to {{max}} photos. The rest were left out.",
+    "cover": "Cover",
+    "remove_photo": "Remove photo {{n}}",
+    "photos_n_one": "{{count}} photo",
+    "photos_n_other": "{{count}} photos"
   }
 }

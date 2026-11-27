@@ -8,7 +8,7 @@ import { readHostLink } from '@/lib/hostQuickFill';
 import { isValidPhone, MAX_PRICE, MIN_PRICE } from '@/lib/hostFormChecks';
 import { nameProblem } from '@/lib/contentRules';
 import { inListingRegion } from '@/lib/places';
-import { roomsCapacity } from '@/lib/roomFit';
+import { MAX_ROOM_PHOTOS, roomsCapacity } from '@/lib/roomFit';
 import type { Area } from '@/components/provider/AreasPicker';
 import { setLoginPrefill } from '@/components/ConsentCheck';
 import { useCrumbBack } from '@/components/PageBack';
@@ -36,7 +36,7 @@ export type Place = { name: string; lat: number; lng: number; accuracy?: number 
  * up to two more on an extra mattress (each paying `extraPrice` a night, empty = free), and what it
  * has, each optional (lib/roomFit.ts ROOM_BEDS / ROOM_BATHS / ROOM_FOODS).
  */
-export type Room = { name: string; price: string; occ?: string; extra?: number; extraPrice?: string; bed?: string; bath?: string; food?: string };
+export type Room = { name: string; price: string; occ?: string; extra?: number; extraPrice?: string; bed?: string; bath?: string; food?: string; /** up to 4, the first is the cover */ photos?: string[] };
 /** The room a homestay starts with, priced from an older draft's one price when there is one. */
 export const firstRoom = (name: string, price?: string): Room => ({ name, price: price || '1500', occ: '2' });
 /** A café dish or a shop item. `unit` is a shop's (per kg, per pack...); a café's is always per plate. */
@@ -154,6 +154,7 @@ function loadDraft(key: string): Partial<Draft> {
     // After a reload the in-page photos are gone; drop their dead links.
     if (saved.photos) saved.photos = saved.photos.filter(usable);
     if (saved.menu) saved.menu = saved.menu.map((m) => (m.photo && !usable(m.photo) ? { ...m, photo: '' } : m));
+    if (saved.rooms) saved.rooms = saved.rooms.map((r) => (r.photos ? { ...r, photos: r.photos.filter(usable) } : r));
     return saved;
   } catch { return {}; }
 }
@@ -348,7 +349,7 @@ export function useHostWizard() {
    * Each keeps what it sleeps, its extra mattress and what it has, so a booking for it is capped and
    * priced there (lib/roomFit.ts, backend lib/hostProfile.ts). The review step shows these too.
    */
-  const listedRooms = () => d.rooms
+  const listedRooms = (draft: Draft = d) => draft.rooms
     .map((r, k) => ({ ...r, name: r.name.trim() || t('ob.wz.roomN', { n: k + 1, defaultValue: 'Room {{n}}' }) }))
     .filter((r) => Number(r.price) > 0)
     .map((r) => {
@@ -360,6 +361,8 @@ export function useHostWizard() {
         ...(occ > 0 ? { occ } : {}),
         ...(extra > 0 ? { extra_beds: extra, ...(extraPrice > 0 ? { extra_bed_price: extraPrice } : {}) } : {}),
         ...(r.bed ? { bed: r.bed } : {}), ...(r.bath ? { bath: r.bath } : {}), ...(r.food ? { food: r.food } : {}),
+        // The room's own photos, the first also as its cover `photo` (backend lib/hostProfile.ts).
+        ...(r.photos?.length ? { photos: r.photos.slice(0, MAX_ROOM_PHOTOS), photo: r.photos[0] } : {}),
       };
     });
 
@@ -406,7 +409,7 @@ export function useHostWizard() {
           amenities: offers,
           contact_phone: phone,
           ...(() => {
-            const rooms = listedRooms();
+            const rooms = listedRooms(d);
             // How many guests the home sleeps: the rooms added up, extra mattresses too (the board's "guest occupancy").
             const guests = roomsCapacity(rooms);
             return { rooms, ...(guests > 0 ? { capacity: guests } : {}) };
@@ -458,7 +461,9 @@ export function useHostWizard() {
       // Photos picked before signing in go up now.
       const photos = (await Promise.all(d.photos.map(hosted))).filter(Boolean);
       const menu = await Promise.all(d.menu.map(async (m) => (m.photo && isLocal(m.photo) ? { ...m, photo: await hosted(m.photo) } : m)));
-      const sent: Draft = { ...d, photos, menu };
+      // Room photos too, so a room never goes up with an in-page link the server refuses.
+      const rooms = await Promise.all(d.rooms.map(async (r) => (r.photos?.length ? { ...r, photos: (await Promise.all(r.photos.map(hosted))).filter(Boolean) } : r)));
+      const sent: Draft = { ...d, photos, menu, rooms };
       setD(sent);
       if (adding) {
         const { data: added } = await api.post('/listings', {

@@ -4,7 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { Plus, Trash, Camera, CircleNotch as Loader2 } from '@phosphor-icons/react';
 import { uploadImage } from '@/lib/uploadImage';
 import { Button, IconButton } from '@/components/ag';
-import { ROOM_BATHS, ROOM_BEDS, ROOM_FOODS } from '@/lib/roomFit';
+import { MAX_ROOM_PHOTOS, ROOM_BATHS, ROOM_BEDS, ROOM_FOODS, roomPhotos } from '@/lib/roomFit';
+import RoomPhotos from './RoomPhotos';
 
 export type Priced = {
   name: string; price: number | ''; unit: string; photo?: string;
@@ -12,6 +13,8 @@ export type Priced = {
   occ?: number | ''; extra_beds?: number; extra_bed_price?: number | '';
   /** Homestay rooms only, each optional: bed, bathroom and the food the night includes (lib/roomFit.ts ROOM_*). */
   bed?: string; bath?: string; food?: string;
+  /** Homestay rooms only: up to 4 photos, the first is the cover (and is kept as `photo`). */
+  photos?: string[];
   /** Homestay rooms only: false when the host has let the room outside the app (shown as full). */
   available?: boolean;
 };
@@ -21,17 +24,27 @@ const SLEEPS = Array.from({ length: 20 }, (_, i) => i + 1);
 const EXTRA_BEDS = [0, 1, 2];
 
 /** Rows of a name, a price and a unit: rooms, food, a guide's services. */
-export default function PricedEditor({ rows, onChange, units, unitLabel, namePlaceholder, addLabel, testid, max, fullNote, sleeps }: {
+export default function PricedEditor({ rows, onChange, units, unitLabel, namePlaceholder, addLabel, testid, max, fullNote, sleeps, onUploading }: {
   rows: Priced[]; onChange: (r: Priced[]) => void; units: string[]; unitLabel: (u: string) => string;
   namePlaceholder: string; addLabel: string; testid: string;
   /** Most rows allowed (a shop's goods stop at ten); the add button gives way to `fullNote`. */
   max?: number; fullNote?: string;
   /** Homestay rooms: each row also says how many it sleeps and how many more fit on an extra mattress. */
   sleeps?: boolean;
+  /** Told when any photo here starts or stops uploading, so the page can hold Save until it is done. */
+  onUploading?: (uploading: boolean) => void;
 }) {
   const { t } = useTranslation();
   const full = max !== undefined && rows.length >= max;
   const [busy, setBusy] = React.useState<number | null>(null);
+  // Rooms uploading photos: no row can be removed meanwhile, or a photo would land on the next one.
+  const [roomUploads, setRoomUploads] = React.useState(0);
+  const uploadingNow = busy !== null || roomUploads > 0;
+  const tell = React.useRef(onUploading);
+  tell.current = onUploading;
+  React.useEffect(() => { tell.current?.(uploadingNow); }, [uploadingNow]);
+  // Leaving the page mid-upload must not leave Save held for good.
+  React.useEffect(() => () => tell.current?.(false), []);
   // The rows as they are now, so a photo that finishes uploading lands on what the host typed meanwhile.
   const latest = React.useRef(rows);
   latest.current = rows;
@@ -50,7 +63,8 @@ export default function PricedEditor({ rows, onChange, units, unitLabel, namePla
       {rows.map((r, i) => (
         <div key={i} className="grid gap-2 rounded-[18px] border border-[var(--warmline)] bg-[var(--surface)] p-3">
           <div className="flex items-center gap-2">
-            <label className={`relative grid h-14 w-14 flex-none place-items-center overflow-hidden rounded-2xl bg-[var(--r-tint)] text-[var(--r)] ${busy !== null ? 'pointer-events-none' : 'cursor-pointer'}`}
+            {/* A room has its own row of photos below; other rows keep this one photo tile. */}
+            {!sleeps && <label className={`relative grid h-14 w-14 flex-none place-items-center overflow-hidden rounded-2xl bg-[var(--r-tint)] text-[var(--r)] ${busy !== null ? 'pointer-events-none' : 'cursor-pointer'}`}
               title={t('ui.pricedEditor.add_photo')} aria-label={t('ui.pricedEditor.add_photo')} aria-busy={busy === i}>
               {r.photo ? <img src={r.photo} alt="" className="h-full w-full object-cover" /> : busy !== i && <Camera size={20} />}
               {/* While it uploads, a spinner over the tile, as the avatar does. */}
@@ -62,10 +76,10 @@ export default function PricedEditor({ rows, onChange, units, unitLabel, namePla
               <span className="sr-only" role="status" aria-live="polite">{busy === i ? t('common.uploading') : ''}</span>
               <input type="file" accept="image/*" className="sr-only" disabled={busy !== null}
                 onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; pickPhoto(i, f); }} />
-            </label>
+            </label>}
             <input value={r.name} onChange={(e) => set(i, { name: e.target.value })} placeholder={namePlaceholder}
               aria-label={namePlaceholder} className="ag-in min-w-0 flex-1" />
-            <IconButton label={t('ui.pricedEditor.remove')} onClick={() => onChange(rows.filter((_, j) => j !== i))}>
+            <IconButton label={t('ui.pricedEditor.remove')} disabled={roomUploads > 0} onClick={() => onChange(rows.filter((_, j) => j !== i))}>
               <Trash />
             </IconButton>
           </div>
@@ -83,6 +97,13 @@ export default function PricedEditor({ rows, onChange, units, unitLabel, namePla
           </div>
           {sleeps && (
             <>
+              <RoomPhotos photos={roomPhotos(r)} upload={uploadImage} testid={`${testid}-photos-${i}`} onBusy={(b) => setRoomUploads((n) => n + (b ? 1 : -1))}
+                onAdd={(url) => onChange(latest.current.map((x, j) => {
+                  if (j !== i) return x;
+                  const list = [...new Set([...roomPhotos(x), url])].slice(0, MAX_ROOM_PHOTOS);
+                  return { ...x, photos: list, photo: list[0] };
+                }))}
+                onRemove={(k) => { const list = roomPhotos(r).filter((_, j) => j !== k); set(i, { photos: list, photo: list[0] }); }} />
               <div className="grid grid-cols-2 gap-2">
                 <select value={r.occ || ''} onChange={(e) => set(i, { occ: e.target.value ? Number(e.target.value) : '', ...(e.target.value ? {} : { extra_beds: 0 }) })}
                   aria-label={t('ui.pricedEditor.sleeps_label')} className="ag-in" data-testid={`${testid}-occ-${i}`}>

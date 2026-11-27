@@ -56,3 +56,13 @@ export function roomSpecKeys(r: any): string[] {
   if ((ROOM_FOODS as readonly unknown[]).includes(r?.food)) out.push(`room.food_${r.food}`);
   return out;
 }
+
+/** Most photos one room can have (backend lib/hostProfile.ts MAX_ROOM_PHOTOS). */
+export const MAX_ROOM_PHOTOS = 4;
+
+/** A room's photos, cover first: its `photos` list, else the single `photo` an older room was saved with. */
+export function roomPhotos(r: any): string[] {
+  const list = Array.isArray(r?.photos) ? r.photos.filter((u: unknown) => typeof u === 'string' && u.trim()) : [];
+  if (list.length) return list.slice(0, MAX_ROOM_PHOTOS);
+  return typeof r?.photo === 'string' && r.photo.trim() ? [r.photo] : [];
+}

@@ -4,7 +4,8 @@ import { Icon, type IconName } from '@/components/ag/Icon';
 import api from '@/lib/api';
 import { Box, SecHead, Status } from '@/components/ag';
 import { Section, PriceRow, PersonCard, MiniCard } from './primitives';
-import { roomFit, roomOpen, roomSpecKeys } from '@/lib/roomFit';
+import { roomFit, roomOpen, roomPhotos, roomSpecKeys } from '@/lib/roomFit';
+import PhotoViewer from '@/components/PhotoViewer';
 
 /**
  * Sections for what hosts fill in on their business profile (backend lib/hostProfile.ts): the
@@ -88,6 +89,8 @@ export function ServicesSection({ services }: { services: Priced[] }) {
 /** A homestay's rooms and food, each with its charge (prototype box "Rooms"). */
 export function RoomsFoodSection({ rooms, meals }: { rooms: Priced[]; meals: Priced[] }) {
   const { t } = useTranslation();
+  // The room whose photos are open in the viewer (each room has up to 4, lib/roomFit.ts roomPhotos).
+  const [zoom, setZoom] = useState<{ name: string; photos: string[] } | null>(null);
   if (!rooms.length && !meals.length) return null;
   return (
     <Section title={meals.length && !rooms.length ? t('profile.meals') : t('listing.rooms', 'Rooms')} testid="detail-rooms">
@@ -106,8 +109,12 @@ export function RoomsFoodSection({ rooms, meals }: { rooms: Priced[]; meals: Pri
             const sub = roomOpen(r) ? (sizeText || undefined) : (
               <><Status tone="pending" className="mr-1.5" data-testid="detail-room-full">{t('listing.room_full', 'Full')}</Status>{sizeText}</>
             );
+            // Tapping the room's cover opens all its photos (the count shows on the cover when more than one).
+            const photos = roomPhotos(r);
             return (
-              <PriceRow key={i} photo={r.photo} name={r.name} sub={sub}
+              <PriceRow key={i} photo={photos[0]} photoCount={photos.length} name={r.name} sub={sub} testid={`detail-room-${i}`}
+                onPhoto={photos.length ? () => setZoom({ name: r.name, photos }) : undefined}
+                photoLabel={t('listing.see_room_photos', { count: photos.length, room: r.name, defaultValue: 'See photos of {{room}}' })}
                 price={Number(r.price) || 0} unit={t('profile.unit_night')} />
             );
           })}
@@ -120,6 +127,10 @@ export function RoomsFoodSection({ rooms, meals }: { rooms: Priced[]; meals: Pri
             <PriceRow key={i} photo={m.photo} name={m.name} price={Number(m.price) || 0} unit={t(`profile.unit_${m.unit || 'meal'}`)} />
           ))}
         </div>
+      )}
+      {zoom && (
+        <PhotoViewer photos={zoom.photos.map((src) => ({ src, alt: zoom.name }))} caption={zoom.name}
+          onClose={() => setZoom(null)} testid="detail-room-viewer" />
       )}
     </Section>
   );
