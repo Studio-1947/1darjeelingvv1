@@ -347,8 +347,8 @@ function PriceStep({ w }: { w: HostWizard }) {
   const rooms = stay && d.roomsMode;
   const setRoom = (k: number, patch: Partial<{ name: string; price: string; occ: string }>) => set({ rooms: d.rooms.map((r, j) => (j === k ? { ...r, ...patch } : r)) });
   return (
-    // The question follows the toggle: one price is per person, a room's price is for the whole room.
-    <Frame w={w} title={rooms ? t('ob.wz.prRoom', 'Price for the room, per night') : stay ? t('ob.wz.prStay') : t('ob.wz.prDay')}>
+    // A homestay gets one fixed question; the toggle picks per person or per room, and a worked example says what it means.
+    <Frame w={w} title={stay ? t('ob.wz.prHow', 'How do you charge for a night?') : t('ob.wz.prDay')}>
       {stay && (
         <div className="ag-onboard-chips">
           <button type="button" className="ag-onboard-chip" aria-pressed={!rooms} onClick={() => set({ roomsMode: false })} data-testid="wz-price-one">{t('ob.wz.prOne')}</button>
@@ -370,6 +370,11 @@ function PriceStep({ w }: { w: HostWizard }) {
               </label>
               <button type="button" className="round" aria-label={t('ob.wz.plus')} onClick={() => bump(100)}>+</button>
             </div>
+            {stay && n > 0 && (
+              <p className="ag-small text-center" data-testid="wz-price-example">
+                {t('ob.wz.prPerHead', { one: `₹${n.toLocaleString('en-IN')}`, two: `₹${(n * 2).toLocaleString('en-IN')}`, defaultValue: 'Each guest pays {{one}} a night. 2 guests for 1 night pay {{two}}.' })}
+              </p>
+            )}
             <p className="ag-small text-center">{t('ob.wz.prEditS')}</p>
           </Box>
           <div className="ag-onboard-chips">
