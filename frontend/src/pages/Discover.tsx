@@ -12,6 +12,7 @@ import RouteEstimator from '@/components/RouteEstimator';
 import SuggestPlace from '@/components/spots/SuggestPlace';
 import { Icon, type IconName } from '@/components/ag/Icon';
 import { cx } from '@/components/ag';
+import { useAuth } from '@/context/AuthContext';
 import { GuideCard, ShopCard, SpotCard, StayCard } from '@/components/home/cards';
 import { SpotTileSkeleton, StayTileSkeleton, LoadingStatus, repeat } from '@/components/skeletons';
 
@@ -230,6 +231,9 @@ function HostFreeNote({ testId }: { testId?: string }) {
 
 function JoinCard({ img, end }: { img: string; end?: boolean }) {
   const { t } = useTranslation();
+  // Home opens on the business side too (2026-11-27): a host there already runs a business.
+  const { isHostMode } = useAuth();
+  if (isHostMode) return null;
   return (
     <div className={cx('ag-home-join', end && 'end')} data-testid={end ? 'home-join-card-end' : 'home-join-card'}>
       <span className="joinimg" role="img" aria-label={t('home.join_title', 'List your Business')} style={{ backgroundImage: `url(${img})` }} />

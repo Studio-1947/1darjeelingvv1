@@ -33,7 +33,7 @@ import {
 import { roomsOf, useBookingFlow } from '@/components/listing-detail/useBookingFlow';
 import { roomOpen } from '@/lib/roomFit';
 import { useAuth } from '@/context/AuthContext';
-import { BusinessModeNotice } from '@/components/TravellerOnly';
+import { BusinessBrowseNote, useSwitchPrompt } from '@/components/TravellerOnly';
 import { stayPrice } from '@/lib/stayPrice';
 import { cafeForTwo } from '@/lib/cafePrice';
 import { useCrumbTitle } from '@/components/PageBack';
@@ -59,6 +59,7 @@ export default function ListingDetail() {
   const [viewAs, setViewAs] = useState<'owner' | 'traveller'>('owner');
   const booking = useBookingFlow(item, id);
   const { isHostMode, provider } = useAuth();
+  const switchFirst = useSwitchPrompt();
   const step = Math.max(0, Math.floor(Number(params.get('book')) || 0));
 
   useEffect(() => {
@@ -109,9 +110,10 @@ export default function ListingDetail() {
     );
   }
 
-  // On the business side a host sees only their own listing, as a preview with booking off.
+  // On the business side a host's own listing opens as a preview with booking off; anyone else's
+  // opens to look at (2026-11-27), and Book now asks to switch to Traveller (useSwitchPrompt).
   const ownPreview = isHostMode && !!provider && item.provider_id === provider.id;
-  if (isHostMode && !ownPreview) return <BusinessModeNotice />;
+  const businessBrowse = isHostMode && !ownPreview;
   // The host's own view. Switched to "Guest view", the page shows what a traveller sees (the host
   // line, the request fee line, Book now), but Book now only says it is a preview.
   const ownerView = ownPreview && viewAs === 'owner';
@@ -167,7 +169,8 @@ export default function ListingDetail() {
     );
   }
 
-  if (step > 0 && bookable) {
+  // A link straight into the booking steps (?book=1) waits for Traveller on the business side.
+  if (step > 0 && bookable && !businessBrowse) {
     const total = bookingSteps(item.type);
     return (
       <div className="ag-wrap ag-listing">
@@ -199,7 +202,7 @@ export default function ListingDetail() {
   const stay = item.type === 'homestay' ? stayPrice(item) : null;
   const forTwo = cafeForTwo(item);
   const showHost = !place && !ownerView && (host.known || !!item.host_page_path);
-  const delivery = !ownPreview && ['cafe', 'shop'].includes(item.type) && !item.bookings_paused && item.extras?.home_delivery;
+  const delivery = !isHostMode && ['cafe', 'shop'].includes(item.type) && !item.bookings_paused && item.extras?.home_delivery;
   const spotFacts = isSpot && spotInfo.highlights.length > 0
     ? spotInfo.highlights.map((h: string) => ({ label: h }))
     : amenities.map((a) => ({ label: a.label, labelKey: a.labelKey }));
@@ -236,6 +239,7 @@ export default function ListingDetail() {
       />
 
       <div className="ag-main">
+        {businessBrowse && <BusinessBrowseNote />}
         {ownPreview && (
           <Box tone="blush" flat data-testid="own-listing-preview" className="!py-3 !gap-2">
             <Seg<'owner' | 'traveller'> value={viewAs} onChange={setViewAs} label={t('business_gate.view_as', 'View as')} className="self-start"
@@ -357,7 +361,7 @@ export default function ListingDetail() {
         <ReviewsSection item={item} />
       </div>
 
-      {bookable && <BookBar item={item} unit={unit} onBook={() => (travellerPreview ? toast(t('business_gate.preview_book', 'Preview only. Travellers start their request here.')) : goStep(1))} />}
+      {bookable && <BookBar item={item} unit={unit} onBook={() => (travellerPreview ? toast(t('business_gate.preview_book', 'Preview only. Travellers start their request here.')) : switchFirst('book') ? undefined : goStep(1))} />}
       {modals}
     </div>
   );
