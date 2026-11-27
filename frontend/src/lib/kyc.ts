@@ -22,6 +22,8 @@ export interface KycDoc {
   doc_type: string;
   status: string;
   rejection_reason: string | null;
+  /** image/jpeg, image/png, application/pdf or a video type. */
+  content_type?: string;
   uploaded_at: string;
   reviewed_at: string | null;
 }
@@ -83,7 +85,19 @@ export async function getMyProfile(): Promise<KycProfile> {
   }
 }
 
-export async function uploadKycDoc(docType: string, file: File): Promise<KycDoc> {
+/** Upload progress, 0–100, from the browser's own count of bytes sent. */
+export type OnProgress = (percent: number) => void;
+const progressOf = (onProgress?: OnProgress) => onProgress && ((e: { loaded: number; total?: number }) => {
+  if (e.total) onProgress(Math.min(100, Math.round((e.loaded / e.total) * 100)));
+});
+
+/** The owner's own uploaded file, for a thumbnail (GET /providers/kyc/:id/file is owner or admin only). */
+export async function fetchKycFile(docId: string): Promise<Blob> {
+  const { data } = await api.get(`/providers/kyc/${docId}/file`, { responseType: 'blob' });
+  return data;
+}
+
+export async function uploadKycDoc(docType: string, file: File, onProgress?: OnProgress): Promise<KycDoc> {
   // The backend caps stored files at 5 MB and answers an 8 MB overage with a bare 413 (no
   // `detail` body), which the caller can only show as the generic "Upload failed". Catch it
   // here instead so the provider gets an accurate, localized reason before we even upload.
@@ -92,7 +106,8 @@ export async function uploadKycDoc(docType: string, file: File): Promise<KycDoc>
   }
   const dataUrl = await toDataUrl(file);
   try {
-    const { data } = await api.post('/providers/me/kyc', { doc_type: docType, file: dataUrl, filename: file.name });
+    const { data } = await api.post('/providers/me/kyc', { doc_type: docType, file: dataUrl, filename: file.name },
+      { onUploadProgress: progressOf(onProgress) });
     return data.document;
   } catch (err: any) {
     throw toKycApiError(err, i18n.t('kyc.uploadFailed'));
@@ -102,11 +117,12 @@ export async function uploadKycDoc(docType: string, file: File): Promise<KycDoc>
 const MAX_VIDEO_BYTES = 25 * 1024 * 1024;
 
 /** A verification video (property, vehicle or premises clip): sent as the raw file. */
-export async function uploadKycVideo(docType: string, file: File): Promise<KycDoc> {
+export async function uploadKycVideo(docType: string, file: File, onProgress?: OnProgress): Promise<KycDoc> {
   if (file.size > MAX_VIDEO_BYTES) throw new KycApiError(i18n.t('kyc.videoTooLarge'));
   try {
     const { data } = await api.post(`/providers/me/kyc/video?doc_type=${encodeURIComponent(docType)}`, file, {
       headers: { 'Content-Type': file.type || 'video/mp4', 'X-Filename': file.name },
+      onUploadProgress: progressOf(onProgress),
     });
     return data.document;
   } catch (err: any) {
