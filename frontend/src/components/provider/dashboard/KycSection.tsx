@@ -1,12 +1,15 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { checklistLabel } from '@/lib/serverText';
 import { useAuth } from '@/context/AuthContext';
-import { CheckCircle as CheckCircle2, Clock, XCircle, Circle, MapPin } from '@phosphor-icons/react';
+import { CheckCircle as CheckCircle2, Clock, XCircle, Circle, MapPin, FilePdf } from '@phosphor-icons/react';
 import { Icon } from '@/components/ag/Icon';
 import { Box, Button, FieldError, Status, TextField } from '@/components/ag';
-import { getMyProfile, uploadKycDoc, uploadKycVideo, deleteKycDoc, KycApiError, KycProfile, ChecklistItem, verifyMapsLink, captureLiveLocation } from '@/lib/kyc';
+import { getMyProfile, uploadKycDoc, uploadKycVideo, deleteKycDoc, fetchKycFile, KycApiError, KycProfile, KycDoc, ChecklistItem, verifyMapsLink, captureLiveLocation } from '@/lib/kyc';
+
+/** The file a host just picked, shown straight away while it uploads (and after, without a refetch). */
+type LocalFile = { url: string; type: string };
 
 /** Where each listing item is fixed on the Business profile (a section id there), and its link text. */
 const FIX_AT: Record<string, string> = { description: 'about', photos: 'photos', price: 'prices' };
@@ -18,6 +21,18 @@ export default function KycSection({ onProfileChange }: { onProfileChange?: (p: 
   const [profile, setProfile] = useState<KycProfile | null>(null);
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Per document: how much of the upload has gone (0–100), and the picked file for its thumbnail.
+  const [progress, setProgress] = useState<Record<string, number>>({});
+  const [local, setLocal] = useState<Record<string, LocalFile>>({});
+  const localRef = useRef(local);
+  localRef.current = local;
+  useEffect(() => () => { Object.values(localRef.current).forEach((f) => URL.revokeObjectURL(f.url)); }, []);
+  const setLocalFile = (docType: string, file: LocalFile | null) => setLocal((prev) => {
+    if (prev[docType]) URL.revokeObjectURL(prev[docType].url);
+    const next = { ...prev };
+    if (file) next[docType] = file; else delete next[docType];
+    return next;
+  });
 
   // Initial-load state is tracked explicitly rather than inferred from `!profile`, so a
   // failed first load can render a proper error (or "not active yet") panel instead of
@@ -60,14 +75,27 @@ export default function KycSection({ onProfileChange }: { onProfileChange?: (p: 
     if (!file) return;
     setBusyKey(docType);
     setError(null);
+    setProgress((p) => ({ ...p, [docType]: 0 }));
+    const previous = localRef.current[docType];
+    // The thumbnail shows what was picked at once; the old one comes back if the upload fails.
+    const picked = { url: URL.createObjectURL(file), type: file.type };
+    setLocal((prev) => ({ ...prev, [docType]: picked }));
+    const onProgress = (pct: number) => setProgress((p) => ({ ...p, [docType]: pct }));
+    const done = () => {
+      setBusyKey(prev => (prev === docType ? null : prev));
+      setProgress((p) => { const next = { ...p }; delete next[docType]; return next; });
+    };
     try {
-      await (video ? uploadKycVideo(docType, file) : uploadKycDoc(docType, file));
+      await (video ? uploadKycVideo(docType, file, onProgress) : uploadKycDoc(docType, file, onProgress));
     } catch (e) {
       const err = e as KycApiError;
       setError(err?.message || t('kyc.uploadFailed'));
-      setBusyKey(prev => (prev === docType ? null : prev));
+      URL.revokeObjectURL(picked.url);
+      setLocal((prev) => { const next = { ...prev }; if (previous) next[docType] = previous; else delete next[docType]; return next; });
+      done();
       return;
     }
+    if (previous) URL.revokeObjectURL(previous.url);
     // The upload itself succeeded - a failure past this point is a reload problem, not an
     // upload problem, and must not be reported as "Upload failed" (that would invite a
     // needless duplicate upload of a document that's already saved).
@@ -76,7 +104,7 @@ export default function KycSection({ onProfileChange }: { onProfileChange?: (p: 
     } catch (e) {
       setError(t('kyc.reloadFailed'));
     } finally {
-      setBusyKey(prev => (prev === docType ? null : prev));
+      done();
     }
   };
 
@@ -85,6 +113,7 @@ export default function KycSection({ onProfileChange }: { onProfileChange?: (p: 
     setError(null);
     try {
       await deleteKycDoc(docType);
+      setLocalFile(docType, null);
       await load();
     } catch (e) {
       const err = e as KycApiError;
@@ -165,25 +194,38 @@ export default function KycSection({ onProfileChange }: { onProfileChange?: (p: 
         <h2>{t('kyc.verification')}</h2>
         {/* What the upload takes, before a host picks a file (the server's own limits, routes/kyc.ts). */}
         <p className="ag-small" data-testid="kyc-docs-help">{t('kyc.verificationHelp')}</p>
+        <ReviewBanner status={profile.verification?.status} allDone={kycItems.length > 0 && kycItems.every(i => i.state === 'done')} />
         <ul className="grid" data-testid="kyc-docs">
           {kycItems.map(item => {
             const m = stateMeta[item.state];
             const doc = profile.documents.find(d => d.doc_type === item.key);
+            const label = checklistLabel(t, item, businessType);
+            const pct = progress[item.key];
+            const uploading = busyKey === item.key && pct !== undefined;
             return (
-              <li key={item.key} className="ag-host-docrow">
+              <li key={item.key} className="ag-host-docrow" data-testid={`kyc-doc-${item.key}`}>
                 <div className="top">
-                  <div className="min-w-0">
-                    <b>{checklistLabel(t, item, businessType)}</b>
-                    <Status tone={m.tone}>{m.label}</Status>
-                    {item.media === 'video' && item.state === 'missing' && (
-                      <p className="ag-small mt-1">{t('kyc.videoHint')}</p>
-                    )}
+                  <div className="who">
+                    <DocThumb doc={doc} local={local[item.key]} video={item.media === 'video'} verified={item.state === 'done'} label={label} />
+                    <div className="min-w-0">
+                      <b>{label}</b>
+                      {/* While it uploads, the bar says how far; otherwise where the check is. */}
+                      {!uploading && (
+                        <Status tone={m.tone} data-testid={`kyc-doc-state-${item.key}`}>
+                          {item.state === 'done' ? <Icon name="check" size={14} /> : item.state === 'in_review' ? <Icon name="hourglass" size={14} /> : null}
+                          {m.label}
+                        </Status>
+                      )}
+                      {item.media === 'video' && item.state === 'missing' && !uploading && (
+                        <p className="ag-small mt-1">{t('kyc.videoHint')}</p>
+                      )}
+                    </div>
                   </div>
                   <div className="acts">
                     {/* A label styled as a button, so the file picker opens from it. */}
                     <label className="ag-btn ag-host-upl cursor-pointer">
                       <Icon name="download" />
-                      <span>{busyKey === item.key ? t('kyc.uploading') : (item.state === 'missing' ? t('kyc.upload') : t('kyc.replace'))}</span>
+                      <span>{busyKey === item.key ? (uploading && pct >= 100 ? t('kyc.saving', 'Saving…') : t('kyc.uploading')) : (item.state === 'missing' ? t('kyc.upload') : t('kyc.replace'))}</span>
                       <input
                         type="file"
                         accept={item.media === 'video' ? 'video/mp4,video/quicktime,video/webm' : 'image/jpeg,image/png,application/pdf'}
@@ -195,7 +237,8 @@ export default function KycSection({ onProfileChange }: { onProfileChange?: (p: 
                               ? t('kyc.uploadAriaLabel', { label: item.label })
                               : t('kyc.replaceAriaLabel', { label: item.label })
                         }
-                        disabled={busyKey === item.key}
+                        // One document at a time, so each upload keeps its own bar until it is saved.
+                        disabled={busyKey !== null}
                         onChange={e => {
                           const file = e.target.files?.[0];
                           // Reset so re-picking the identical file still fires onChange -
@@ -214,6 +257,13 @@ export default function KycSection({ onProfileChange }: { onProfileChange?: (p: 
                     )}
                   </div>
                 </div>
+                {uploading && (
+                  <div className="ag-host-pct" data-testid={`kyc-doc-progress-${item.key}`}>
+                    <span className="ag-host-bar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}
+                      aria-label={t('kyc.uploadingAriaLabel', { label })}><i style={{ width: `${pct}%` }} /></span>
+                    <b>{pct}%</b>
+                  </div>
+                )}
                 {item.state === 'rejected' && doc?.rejection_reason && (
                   <p className="text-sm text-[var(--fail)]">{t('kyc.rejectionReason', { reason: doc.rejection_reason })}</p>
                 )}
@@ -223,6 +273,79 @@ export default function KycSection({ onProfileChange }: { onProfileChange?: (p: 
         </ul>
       </Box>
     </>
+  );
+}
+
+/**
+ * Where the team's check is, above the documents: under review once they are sent, what to redo
+ * when a document is turned down, and a green tick once everything is verified.
+ */
+function ReviewBanner({ status, allDone }: { status?: NonNullable<KycProfile['verification']>['status']; allDone: boolean }) {
+  const { t } = useTranslation();
+  if (status === 'approved' || allDone) {
+    return (
+      <Status tone="ok" className="self-start" data-testid="kyc-review-verified">
+        <Icon name="check" /> {t('kyc.allVerified', 'All your documents are verified')}
+      </Status>
+    );
+  }
+  if (status === 'changes_requested') {
+    return (
+      <Box tone="blush" flat data-testid="kyc-review-changes">
+        <b className="text-[var(--ink-strong)]">{t('verify.title_changes')}</b>
+        <p className="ag-small">{t('verify.body_changes')}</p>
+      </Box>
+    );
+  }
+  if (status === 'submitted' || status === 'in_review') {
+    return (
+      <Box tone="blush" flat className="!flex-row !items-start" data-testid="kyc-review-pending">
+        <span className="ag-listing-ic40"><Icon name="hourglass" /></span>
+        <div className="grid gap-1">
+          <b className="text-[var(--ink-strong)]">{t('kyc.reviewTitle', 'Your documents are under review')}</b>
+          <p className="ag-small">{t('kyc.reviewBody', 'Our team is checking them. We will let you know when it is done. You do not need to do anything now.')}</p>
+        </div>
+      </Box>
+    );
+  }
+  return null;
+}
+
+/**
+ * A small tile showing what was uploaded: the photo itself, a PDF or video mark, or an empty slot.
+ * A photo already on the server is fetched with the owner's login (the file is private).
+ */
+function DocThumb({ doc, local, video, verified, label }: { doc?: KycDoc; local?: LocalFile; video: boolean; verified: boolean; label: string }) {
+  const { t } = useTranslation();
+  const [remote, setRemote] = useState<string | null>(null);
+  const serverImage = !local && !!doc && !!doc.content_type?.startsWith('image/');
+  useEffect(() => {
+    if (!serverImage || !doc) { setRemote(null); return undefined; }
+    let alive = true;
+    let made: string | null = null;
+    fetchKycFile(doc.id).then((blob) => {
+      if (!alive) return;
+      made = URL.createObjectURL(blob);
+      setRemote(made);
+    }).catch(() => { /* the tile stays plain; the status still says where the check is */ });
+    return () => { alive = false; setRemote(null); if (made) URL.revokeObjectURL(made); };
+  }, [serverImage, doc?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const type = local?.type || doc?.content_type || '';
+  const src = local && type.startsWith('image/') ? local.url : remote;
+  const empty = !doc && !local;
+  let inner: React.ReactNode = null;
+  if (empty) inner = <Icon name="plus" />;
+  else if (src) inner = <img src={src} alt={t('kyc.thumbAlt', { label, defaultValue: 'Your {{label}}' })} />;
+  else if (type === 'application/pdf') inner = <><FilePdf size={24} aria-hidden="true" /><span className="ext">PDF</span></>;
+  else if (video || type.startsWith('video/')) inner = <Icon name="play" />;
+  // A photo still loading, or one this login may not open (a co-owner): its file type, not a blank tile.
+  else if (type.startsWith('image/')) inner = <span className="ext">{type === 'image/png' ? 'PNG' : 'JPG'}</span>;
+  return (
+    <span className={`ag-host-docthumb${empty ? ' empty' : ''}`} data-testid="kyc-doc-thumb">
+      {inner}
+      {verified && <span className="tick" aria-hidden="true"><Icon name="check" /></span>}
+    </span>
   );
 }
 

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { CaretDown, Phone } from '@phosphor-icons/react';
+import { CaretDown, Phone, CircleNotch as Loader2 } from '@phosphor-icons/react';
 import { Icon } from '@/components/ag/Icon';
 import SignOutButton from '@/components/SignOutButton';
 import BlockedPeople from '@/components/BlockedPeople';
@@ -137,12 +137,20 @@ export default function EditProfile() {
         {/* Who you are */}
         <Box as="section">
           <div className="flex items-center gap-3 min-w-0">
-            <Avatar name={form.name} src={form.avatar} size={72} />
+            {/* While the photo goes up, a spinner over it (as AvatarUploader does on the business side). */}
+            <div className="relative flex-none overflow-hidden rounded-full">
+              <Avatar name={form.name} src={form.avatar} size={72} />
+              {uploading && (
+                <div className="absolute inset-0 grid place-items-center bg-black/45 text-white" data-testid="edit-photo-uploading">
+                  <Loader2 size={22} className="animate-spin" aria-hidden="true" />
+                </div>
+              )}
+            </div>
             <div className="min-w-0 flex flex-col gap-0.5">
               <h2 className="truncate !text-[18px]">{form.name.trim() || t('dashboard.traveller')}</h2>
-              <label className="ag-account-photo" data-testid="edit-photo">
-                <Icon name="download" /> {uploading ? t('common.uploading') : form.avatar ? t('ui.editProfile.change_photo') : t('ui.editProfile.add_photo')}
-                <input type="file" accept={SUPPORTED_IMAGE_ACCEPT} onChange={pickPhoto} className="hidden" />
+              <label className={`ag-account-photo${uploading ? ' pointer-events-none opacity-70' : ''}`} data-testid="edit-photo" aria-busy={uploading}>
+                {uploading ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Icon name="download" />} {uploading ? t('common.uploading') : form.avatar ? t('ui.editProfile.change_photo') : t('ui.editProfile.add_photo')}
+                <input type="file" accept={SUPPORTED_IMAGE_ACCEPT} onChange={pickPhoto} disabled={uploading} className="hidden" />
               </label>
             </div>
           </div>

@@ -101,3 +101,16 @@ describe('resolveMapsLink', () => {
     await expect(resolveMapsLink('https://www.google.com/maps/place/Somewhere')).rejects.toThrow(/No pin found/);
   });
 });
+
+describe('Google Search share links', () => {
+  const never = () => Promise.reject(new Error('must not fetch'));
+  it.each([
+    'https://share.google/k0Fz1vFP6bqfb3N31',
+    'https://www.google.com/share.google?q=k0Fz1vFP6bqfb3N31',
+    'https://www.google.com/search?kgmid=/g/11h227tgfp&q=Nawang+Homestay+2',
+  ])('explains that %s has no pin, without fetching it', async (link) => {
+    const err = await resolveMapsLink(link, never).catch((e) => e);
+    expect(err).toBeInstanceOf(MapsLinkError);
+    expect(err.code).toBe('share_link');
+  });
+});

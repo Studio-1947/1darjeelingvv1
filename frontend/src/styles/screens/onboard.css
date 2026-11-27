@@ -94,10 +94,12 @@
 .ag-onboard-priceedit input { width: 130px; padding: 2px 0; border: 0; border-bottom: 2px dashed var(--blush2); border-bottom-color: color-mix(in srgb, var(--r) 50%, transparent); background: transparent; color: var(--r); font: inherit; text-align: center; -moz-appearance: textfield; appearance: textfield; }
 .ag-onboard-priceedit input::-webkit-inner-spin-button, .ag-onboard-priceedit input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 .ag-onboard-priceedit input:focus { outline: none; border-bottom-color: var(--r); }
-.ag-onboard-roomrow { display: grid; grid-template-columns: minmax(0, 1fr) 92px 64px 36px; gap: 6px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--hairline); }
-.ag-onboard-roomrow .ag-in { height: 44px; padding: 0 12px; font-size: 14px; }
-.ag-onboard-roomin { display: flex; align-items: center; gap: 3px; height: 44px; padding: 0 8px; border: 1px solid var(--hairline); border-radius: 8px; background: var(--surface); color: var(--ink-muted); }
-.ag-onboard-roomin input { width: 100%; min-width: 0; border: 0; background: transparent; color: var(--ink-strong); font: 600 14px/20px var(--font); outline: none; }
+/* A count (guests a room sleeps) between the stepper buttons: plain, not styled as an amount. */
+/* Beside a field (half a room card), the stepper packs tight and stands as tall as the input next to it. */
+.ag-field .ag-onboard-stepper { gap: 4px; justify-content: flex-start; min-height: 56px; }
+.ag-field .ag-onboard-count { min-width: 28px; }
+.ag-onboard-stepper .round:disabled { opacity: .4; cursor: default; }
+.ag-onboard-count { min-width: 48px; text-align: center; font: 600 22px/1 var(--font); color: var(--ink-strong); font-variant-numeric: tabular-nums; }
 .ag-onboard-x.ag-iconbtn { width: 36px; height: 36px; border: 0; background: transparent; color: var(--ink-muted); }
 .ag-onboard-x.ag-iconbtn svg { width: 20px; height: 20px; }
 
@@ -137,6 +139,13 @@
 .ag-onboard-review .ag-onboard-facts { display: flex; flex-wrap: wrap; gap: 8px; }
 .ag-onboard-review .ag-onboard-facts li { gap: 6px; padding: 4px 12px 4px 10px; border-radius: var(--pill); background: var(--blush); color: var(--ink-strong); }
 .ag-onboard-review .ag-onboard-facts svg.i { width: 16px; height: 16px; }
+/* Rooms (or menu items) on the review card: name and price on one line, what it has under it. */
+.ag-onboard-rvrooms { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.ag-onboard-rvrooms li { display: flex; flex-direction: column; gap: 2px; padding: 10px 0; border-top: 1px solid var(--hairline); }
+.ag-onboard-rvrooms li:first-child { border-top: 0; padding-top: 0; }
+.ag-onboard-rvrooms .row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; color: var(--ink-strong); font: 400 15px/22px var(--font); }
+.ag-onboard-rvrooms .row > span { flex: none; }
+.ag-onboard-rvrooms .row > b { min-width: 0; overflow-wrap: anywhere; }
 .ag-onboard-card { display: grid; grid-template-columns: 104px minmax(0, 1fr); gap: 14px; align-items: center; padding: 10px; border: 1px solid var(--hairline); border-radius: 12px; background: var(--surface); }
 .ag-onboard-card .pic { position: relative; width: 104px; height: 104px; border-radius: 10px; background: var(--creme2) center / cover no-repeat; color: var(--r); display: grid; place-items: center; }
 .ag-onboard-card .pic > svg.i { width: 36px; height: 36px; }
@@ -167,4 +176,3 @@
 .ag-onboard-help:hover { text-decoration-color: currentColor; }
 .ag-onboard-help > span { text-wrap: balance; }
 .ag-onboard-help > svg.i { width: 18px; height: 18px; flex: none; color: var(--ok); }
-.ag-onboard-roomin svg.i { width: 14px; height: 14px; flex: none; }

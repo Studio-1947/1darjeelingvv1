@@ -31,6 +31,9 @@ export function imageProblem(file: File): string {
   return '';
 }
 
+/** How long one photo upload may take before it is given up (3 minutes). */
+export const UPLOAD_TIMEOUT_MS = 180_000;
+
 export async function uploadImage(file: File): Promise<string> {
   const problem = imageProblem(file);
   if (problem) throw problem;
@@ -41,9 +44,13 @@ export async function uploadImage(file: File): Promise<string> {
     reader.readAsDataURL(file);
   });
   try {
-    const res = await api.post('/listings/upload', { file: dataUrl, filename: file.name });
+    // An upload that never settles (a dropped connection) gives up after a while, so a form waiting on
+    // it (the listing editor holds Save while photos upload) is never stuck. Long enough for a 20 MB
+    // photo on a slow hill connection.
+    const res = await api.post('/listings/upload', { file: dataUrl, filename: file.name }, { timeout: UPLOAD_TIMEOUT_MS });
     return res.data.url;
   } catch (err: any) {
+    if (err?.code === 'ECONNABORTED' || err?.code === 'ETIMEDOUT') throw 'The upload took too long. Check your connection and try again.';
     const detail = err?.response?.data?.detail || '';
     if (/unsupported image type/i.test(detail)) throw UNSUPPORTED_IMAGE_MESSAGE;
     throw detail || 'Upload failed';

@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { missingLabel } from '@/lib/serverText';
-import { MagnifyingGlass, Check, CaretRight } from '@phosphor-icons/react';
+import { MagnifyingGlass, Check, CaretRight, CircleNotch as Loader2 } from '@phosphor-icons/react';
 import { Icon } from '@/components/ag/Icon';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
@@ -423,12 +423,20 @@ export default function ProviderProfile() {
           </div>
           <Group label={t('hostProfile.cover')}>
             <div className="flex flex-wrap items-center gap-3">
-              {form.cover
-                ? <img src={form.cover} alt="" className="aspect-[16/9] w-44 rounded-[18px] border border-[var(--warmline)] object-cover" />
-                : <div className="aspect-[16/9] w-44 rounded-[18px] border-2 border-dashed border-[var(--outline)]" />}
-              <label className="ag-btn sm cursor-pointer">
-                <span>{uploading === 'cover' ? t('common.loading') : t('hostProfile.change_cover')}</span>
-                <input type="file" accept="image/*" className="sr-only" onChange={uploadCover} data-testid="profile-cover-input" />
+              <div className="relative">
+                {form.cover
+                  ? <img src={form.cover} alt="" className="aspect-[16/9] w-44 rounded-[18px] border border-[var(--warmline)] object-cover" />
+                  : <div className="aspect-[16/9] w-44 rounded-[18px] border-2 border-dashed border-[var(--outline)]" />}
+                {uploading === 'cover' && (
+                  <div className="absolute inset-0 grid place-items-center rounded-[18px] bg-black/45 text-white" data-testid="profile-cover-uploading">
+                    <Loader2 size={24} className="animate-spin" aria-hidden="true" />
+                  </div>
+                )}
+              </div>
+              <label className={`ag-btn sm cursor-pointer${uploading === 'cover' ? ' pointer-events-none opacity-70' : ''}`} aria-busy={uploading === 'cover'}>
+                {uploading === 'cover' && <Loader2 className="animate-spin" aria-hidden="true" />}
+                <span>{uploading === 'cover' ? t('common.uploading') : t('hostProfile.change_cover')}</span>
+                <input type="file" accept="image/*" className="sr-only" onChange={uploadCover} disabled={uploading === 'cover'} data-testid="profile-cover-input" />
               </label>
             </div>
           </Group>

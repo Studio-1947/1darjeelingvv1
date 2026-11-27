@@ -20,7 +20,7 @@ router.get('/maps-link', rateLimiter(20, 60_000, 'maps-link'), async (req: Reque
     if (!inListingRegion(pin)) return res.status(400).json({ detail: 'That pin is outside India. Check you picked the right place in Google Maps.' });
     res.json({ latitude: pin.latitude, longitude: pin.longitude, maps_url: googleMapsUrl(pin) });
   } catch (err) {
-    if (err instanceof MapsLinkError) return res.status(400).json({ detail: err.message });
+    if (err instanceof MapsLinkError) return res.status(400).json({ detail: err.message, ...(err.code ? { code: err.code } : {}) });
     log.warn(`[maps-link] could not read a link: ${(err as Error).message}`);
     res.status(502).json({ detail: 'Could not read that link. Try again.' });
   }

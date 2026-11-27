@@ -8,7 +8,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useSeo } from '@/components/Seo';
 import { uploadImages } from '@/lib/uploadImage';
 import { photoGoalFor } from '@/lib/photoGoal';
-import { roomFit, roomsCapacity } from '@/lib/roomFit';
+import { ROOM_BATHS, ROOM_BEDS, ROOM_FOODS, roomFit, roomPhotos, roomsCapacity } from '@/lib/roomFit';
 import { normalizeRoutes, startingPriceFrom } from '@/lib/routeFares';
 import { MAX_PRICE } from '@/lib/hostFormChecks';
 import { HOMESTAY_AMENITIES, CAFE_AMENITIES, HOMESTAY_TAGS, VEHICLE_TYPES } from '@/constants/listingOptions';
@@ -54,6 +54,11 @@ function pricedRows(rows: any[] | undefined, unit: string): Priced[] {
     ...(Number(r?.occ) > 0 ? { occ: Number(r.occ), extra_beds: Number(r?.extra_beds) || 0, extra_bed_price: Number(r?.extra_bed_price) || '' } : {}),
     // A room the host switched off (let outside the app) stays off.
     ...(r?.available === false ? { available: false } : {}),
+    // What the room has (bed, bathroom, food included), kept the same way.
+    // Only a value from its list (lib/roomFit.ts), so a stray one is not sent back for the server to refuse.
+    // A room's photos (the first is its cover). An older room keeps its single `photo` until edited.
+    ...(Array.isArray(r?.photos) && r.photos.length ? { photos: roomPhotos(r) } : {}),
+    ...((ROOM_BEDS as readonly unknown[]).includes(r?.bed) ? { bed: r.bed } : {}), ...((ROOM_BATHS as readonly unknown[]).includes(r?.bath) ? { bath: r.bath } : {}), ...((ROOM_FOODS as readonly unknown[]).includes(r?.food) ? { food: r.food } : {}),
   }));
 }
 
@@ -66,6 +71,9 @@ function pricedPayload(rows: Priced[]) {
       ...(fit.occ ? { occ: fit.occ } : {}),
       ...(fit.extraBeds ? { extra_beds: fit.extraBeds, ...(fit.extraBedPrice ? { extra_bed_price: fit.extraBedPrice } : {}) } : {}),
       ...(r.available === false ? { available: false } : {}),
+      ...(r.bed ? { bed: r.bed } : {}), ...(r.bath ? { bath: r.bath } : {}), ...(r.food ? { food: r.food } : {}),
+      // A room sends its whole photo list (an empty one clears it); the server keeps the first as `photo`.
+      ...(r.photos ? { photos: r.photos } : {}),
     };
   });
 }
@@ -127,6 +135,11 @@ export default function ProviderListingEdit() {
   const [busy, setBusy] = useState(false);
   const [switching, setSwitching] = useState(false);
   const [uploading, setUploading] = useState<string | null>(null);
+  // Photos still uploading in a rooms / food / menu / goods / services list, by list. Save waits for
+  // them (and for the gallery), so a photo never misses the save it was added for.
+  const [rowUploads, setRowUploads] = useState<Record<string, boolean>>({});
+  const trackUploads = (list: string) => (on: boolean) => setRowUploads((p) => (!!p[list] === on ? p : { ...p, [list]: on }));
+  const photosUploading = !!uploading || Object.values(rowUploads).some(Boolean);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   useSeo({ title: listing?.title || t('lf.edit_title') });
 
@@ -252,6 +265,7 @@ export default function ProviderListingEdit() {
   const offer = offers[type];
 
   const save = async () => {
+    if (photosUploading) return;
     if (!form.title.trim() || !form.location.trim() || !form.description.trim()) {
       // Open Details (even if the host closed it again) and bring it into view.
       const details = document.getElementById('details') as HTMLDetailsElement | null;
@@ -394,12 +408,12 @@ export default function ProviderListingEdit() {
               <>
                 <div className="grid gap-2">
                   <span className="text-sm font-medium text-[var(--ink-strong)]">{t('profile.rooms')}</span>
-                  <PricedEditor rows={form.rooms} onChange={(rooms) => set({ rooms })} units={['night']} unitLabel={unitLabel}
+                  <PricedEditor rows={form.rooms} onChange={(rooms) => set({ rooms })} onUploading={trackUploads('rooms')} units={['night']} unitLabel={unitLabel}
                     namePlaceholder={t('hostProfile.room_ph')} addLabel={t('hostProfile.add_room')} testid="profile-rooms" sleeps />
                 </div>
                 <div className="grid gap-2">
                   <span className="text-sm font-medium text-[var(--ink-strong)]">{t('profile.meals')}</span>
-                  <PricedEditor rows={form.meals} onChange={(meals) => set({ meals })} units={['meal', 'day', 'head']} unitLabel={unitLabel}
+                  <PricedEditor rows={form.meals} onChange={(meals) => set({ meals })} onUploading={trackUploads('meals')} units={['meal', 'day', 'head']} unitLabel={unitLabel}
                     namePlaceholder={t('hostProfile.meal_ph')} addLabel={t('hostProfile.add_meal')} testid="profile-meals" />
                 </div>
                 {/* Rooms that say what they sleep decide the guest occupancy; else the host types it. */}
@@ -412,11 +426,11 @@ export default function ProviderListingEdit() {
               </>
             )}
             {type === 'cafe' && (
-              <PricedEditor rows={form.menu} onChange={(menu) => set({ menu })} units={MENU_UNITS} unitLabel={unitLabel}
+              <PricedEditor rows={form.menu} onChange={(menu) => set({ menu })} onUploading={trackUploads('menu')} units={MENU_UNITS} unitLabel={unitLabel}
                 namePlaceholder={t('hostProfile.menu_ph')} addLabel={t('hostProfile.add_menu')} testid="profile-menu" />
             )}
             {type === 'shop' && (
-              <PricedEditor rows={form.goods} onChange={(goods) => set({ goods })} units={GOODS_UNITS} unitLabel={unitLabel}
+              <PricedEditor rows={form.goods} onChange={(goods) => set({ goods })} onUploading={trackUploads('goods')} units={GOODS_UNITS} unitLabel={unitLabel}
                 namePlaceholder={t('hostProfile.goods_ph')} addLabel={t('hostProfile.add_goods')} testid="profile-goods"
                 max={MAX_GOODS} fullNote={t('hostProfile.goods_full')} />
             )}
@@ -429,7 +443,7 @@ export default function ProviderListingEdit() {
               </div>
             )}
             {type === 'guide' && (
-              <PricedEditor rows={form.services} onChange={(services) => set({ services })} units={['day', 'trip', 'hour', 'person']} unitLabel={unitLabel}
+              <PricedEditor rows={form.services} onChange={(services) => set({ services })} onUploading={trackUploads('services')} units={['day', 'trip', 'hour', 'person']} unitLabel={unitLabel}
                 namePlaceholder={t('hostProfile.service_ph')} addLabel={t('hostProfile.add_service')} testid="profile-services" />
             )}
             {type === 'driver' && (
@@ -538,10 +552,13 @@ export default function ProviderListingEdit() {
             </div>
           ) : (
             <>
-              <p className={`msg ${msg ? 'text-[var(--fail)]' : 'text-[var(--ink-muted)]'}`} role={msg ? 'alert' : undefined} data-testid="listing-msg">
-                {msg ? msg.text : t('hostProfile.save_hint')}
+              {/* While photos upload, the line says why Save is held, and is read out when it changes. */}
+              <p className={`msg ${msg ? 'text-[var(--fail)]' : 'text-[var(--ink-muted)]'}`} role={msg ? 'alert' : 'status'} aria-live={msg ? undefined : 'polite'} data-testid="listing-msg">
+                {msg ? msg.text : photosUploading ? t('listing.photos_uploading_hint', 'Your photos are still uploading. Save turns on when they finish.') : t('hostProfile.save_hint')}
               </p>
-              <Button variant="primary" go onClick={save} disabled={busy || switching || !!uploading} data-testid="listing-save">{busy ? t('common.loading') : t('listing.save', 'Save')}</Button>
+              <Button variant="primary" go onClick={save} disabled={busy || switching || photosUploading} data-testid="listing-save">
+                {busy ? t('common.loading') : photosUploading ? t('listing.photos_uploading', 'Uploading photos…') : t('listing.save', 'Save')}
+              </Button>
             </>
           )}
         </div>

@@ -10,6 +10,7 @@ import { rateLimiter } from '../middleware/rateLimiter';
 import { makeToken } from '../middleware/auth';
 import { toPublicUser } from '../lib/publicUser';
 import { APPLE_AUDIENCES, log } from '../config';
+import { metaContextFrom, sendMetaEvent } from '../lib/metaCapi';
 
 const router = Router();
 
@@ -135,6 +136,8 @@ router.post('/', rateLimiter(10, 60 * 1000, 'apple_auth'), async (req: Request, 
       referralCode: null,
     };
     await db.insert(schema.users).values(user);
+    // Ad measurement (lib/metaCapi.ts): not awaited, never throws.
+    sendMetaEvent({ name: 'CompleteRegistration', eventId: `signup_${user.id}`, user: { id: user.id, email: user.email }, ctx: metaContextFrom(req), customData: { method: 'apple', role: user.role } });
     log.info(`[auth/apple] created user ${user.id}`);
   }
 

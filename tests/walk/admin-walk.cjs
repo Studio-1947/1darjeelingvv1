@@ -169,7 +169,7 @@ async function onboardHost(type, opts = {}) {
       await p.fill('[data-testid="wz-dish-name-0"]', 'Veg momos');
       await p.fill('[data-testid="wz-dish-price-0"]', '120');
       ok = await nextStep('menu');
-    } else if (ok) { await p.fill('[data-testid="onboard-price"]', '1800'); ok = await nextStep('price'); }
+    } else if (ok) { await p.fill('[data-testid="onboard-price"], [data-testid="wz-room-price-0"]', '1800'); ok = await nextStep('price'); }
     if (ok) { await p.locator('[data-testid="wz-photos"]').setInputFiles(IMG.slice(0, 3)).catch(() => {}); await p.waitForTimeout(3000); ok = await nextStep('extras'); }
     if (!ok) { await snap('blocked'); throw new Error('wizard blocked'); }
     await p.locator('[data-testid="onboard-submit"]').click();

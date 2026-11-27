@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { CircleNotch as Loader2 } from '@phosphor-icons/react';
 import { Icon } from '@/components/ag/Icon';
 import { FieldError, Status } from '@/components/ag';
 import { getMyProfile, uploadKycDoc, KycApiError, KycDoc } from '@/lib/kyc';
@@ -42,8 +43,8 @@ export default function LicenceUpload() {
   return (
     <div className="grid gap-1.5" data-testid="profile-licence-upload">
       <div className="flex flex-wrap items-center gap-2">
-        <label className="ag-btn ag-host-upl cursor-pointer">
-          <Icon name="download" />
+        <label className="ag-btn ag-host-upl cursor-pointer" aria-busy={busy}>
+          {busy ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Icon name="download" />}
           <span>{busy ? t('kyc.uploading') : doc ? t('hostProfile.licence_replace', 'Replace licence photo') : t('hostProfile.licence_upload', 'Upload licence photo')}</span>
           <input type="file" accept="image/jpeg,image/png,application/pdf" className="sr-only" disabled={busy}
             aria-label={t('hostProfile.licence_upload', 'Upload licence photo')}

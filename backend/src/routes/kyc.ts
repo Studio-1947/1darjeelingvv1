@@ -78,6 +78,9 @@ function docOut(d: typeof schema.kycDocuments.$inferSelect) {
     doc_type: d.docType,
     status: d.status,
     rejection_reason: d.rejectionReason,
+    // So the Documents screen can show a photo's thumbnail and a tile for a PDF or video
+    // without downloading the file to find out what it is.
+    content_type: d.contentType,
     uploaded_at: d.uploadedAt,
     reviewed_at: d.reviewedAt,
   };

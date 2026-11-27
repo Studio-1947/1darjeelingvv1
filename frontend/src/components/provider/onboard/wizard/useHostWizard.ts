@@ -8,6 +8,7 @@ import { readHostLink } from '@/lib/hostQuickFill';
 import { isValidPhone, MAX_PRICE, MIN_PRICE } from '@/lib/hostFormChecks';
 import { nameProblem } from '@/lib/contentRules';
 import { inListingRegion } from '@/lib/places';
+import { MAX_ROOM_PHOTOS, roomsCapacity } from '@/lib/roomFit';
 import type { Area } from '@/components/provider/AreasPicker';
 import { setLoginPrefill } from '@/components/ConsentCheck';
 import { useCrumbBack } from '@/components/PageBack';
@@ -30,7 +31,14 @@ export type HostType = (typeof HOST_TYPES)[number];
 export type StepKey = 'type' | 'place' | 'name' | 'price' | 'areas' | 'menu' | 'extras' | 'review';
 /** `accuracy` (metres) is set when the place came from the phone's GPS. */
 export type Place = { name: string; lat: number; lng: number; accuracy?: number };
-export type Room = { name: string; price: string; /** guests the room sleeps */ occ?: string };
+/**
+ * A homestay room as the wizard holds it: one price a night for the whole room, the guests it sleeps,
+ * up to two more on an extra mattress (each paying `extraPrice` a night, empty = free), and what it
+ * has, each optional (lib/roomFit.ts ROOM_BEDS / ROOM_BATHS / ROOM_FOODS).
+ */
+export type Room = { name: string; price: string; occ?: string; extra?: number; extraPrice?: string; bed?: string; bath?: string; food?: string; /** up to 4, the first is the cover */ photos?: string[] };
+/** The room a homestay starts with, priced from an older draft's one price when there is one. */
+export const firstRoom = (name: string, price?: string): Room => ({ name, price: price || '1500', occ: '2' });
 /** A café dish or a shop item. `unit` is a shop's (per kg, per pack...); a café's is always per plate. */
 export type Dish = { name: string; price: string; photo?: string; unit?: string };
 
@@ -93,8 +101,8 @@ type Draft = {
   gps?: { lat: number; lng: number; accuracy: number } | null;
   name: string;
   phone: string;
+  /** Drivers' and guides' day price. A homestay is priced by its rooms only (user decision 2026-11-27). */
   price: string;
-  roomsMode: boolean;
   rooms: Room[];
   menu: Dish[];
   offers: string[];
@@ -146,6 +154,7 @@ function loadDraft(key: string): Partial<Draft> {
     // After a reload the in-page photos are gone; drop their dead links.
     if (saved.photos) saved.photos = saved.photos.filter(usable);
     if (saved.menu) saved.menu = saved.menu.map((m) => (m.photo && !usable(m.photo) ? { ...m, photo: '' } : m));
+    if (saved.rooms) saved.rooms = saved.rooms.map((r) => (r.photos ? { ...r, photos: r.photos.filter(usable) } : r));
     return saved;
   } catch { return {}; }
 }
@@ -172,8 +181,9 @@ export function useHostWizard() {
       name: saved.name || '',
       phone: saved.phone || '',
       price: saved.price || '',
-      roomsMode: !!saved.roomsMode,
-      rooms: saved.rooms || [],
+      // A homestay always has at least one room to fill in; an older draft's one price becomes its price.
+      // An older draft's room that never said what it sleeps starts at 2, as a new one does.
+      rooms: saved.rooms?.length ? saved.rooms.map((r: Room) => ({ ...r, occ: r.occ || '2' })) : ty === 'homestay' ? [firstRoom(t('ob.wz.rStd'), saved.price)] : [],
       menu: saved.menu || [],
       areas: Array.isArray(saved.areas) ? saved.areas : [],
       offers: saved.offers || [],
@@ -254,6 +264,7 @@ export function useHostWizard() {
       ...prev,
       type: ty,
       price: prev.type === ty && prev.price ? prev.price : String(PRESETS[ty]?.[2] ?? ''),
+      rooms: ty === 'homestay' && !prev.rooms.length ? [firstRoom(t('ob.wz.rStd'))] : prev.rooms,
       offers: prev.type === ty ? prev.offers : [],
       name: prev.type === ty ? prev.name : ((ty === 'driver' || ty === 'guide') ? (user?.name || '') : ''),
     }));
@@ -280,10 +291,13 @@ export function useHostWizard() {
         return '';
       }
       case 'price': {
-        if (d.type === 'homestay' && d.roomsMode) {
-          const ok = d.rooms.filter((r) => r.name.trim() && Number(r.price) > 0);
+        if (d.type === 'homestay') {
+          // A priced room left unnamed is still a room: it is put up as "Room 2" (see the payload).
+          const ok = d.rooms.filter((r) => Number(r.price) > 0);
           if (!ok.length) return t('ob.wz.needroom');
           if (ok.some((r) => Number(r.price) < MIN_PRICE || Number(r.price) > MAX_PRICE)) return t('ob.wz.price_range');
+          if (ok.some((r) => !(Number(r.occ) >= 1))) return t('ob.wz.needsleeps', 'Say how many guests each room sleeps.');
+          if (ok.some((r) => Number(r.extraPrice) > MAX_PRICE)) return t('ob.wz.price_range');
           return '';
         }
         const n = Number(d.price);
@@ -330,13 +344,35 @@ export function useHostWizard() {
     }
   };
 
+  /**
+   * A homestay's rooms as they will be put up: priced rooms only, an unnamed one called "Room 2".
+   * Each keeps what it sleeps, its extra mattress and what it has, so a booking for it is capped and
+   * priced there (lib/roomFit.ts, backend lib/hostProfile.ts). The review step shows these too.
+   */
+  const listedRooms = (draft: Draft = d) => draft.rooms
+    .map((r, k) => ({ ...r, name: r.name.trim() || t('ob.wz.roomN', { n: k + 1, defaultValue: 'Room {{n}}' }) }))
+    .filter((r) => Number(r.price) > 0)
+    .map((r) => {
+      const occ = Math.min(20, Math.floor(Number(r.occ)) || 0);
+      const extra = occ > 0 ? Math.min(2, Math.max(0, Number(r.extra) || 0)) : 0;
+      const extraPrice = Math.floor(Number(r.extraPrice)) || 0;
+      return {
+        name: r.name, price: Math.floor(Number(r.price)), unit: 'night',
+        ...(occ > 0 ? { occ } : {}),
+        ...(extra > 0 ? { extra_beds: extra, ...(extraPrice > 0 ? { extra_bed_price: extraPrice } : {}) } : {}),
+        ...(r.bed ? { bed: r.bed } : {}), ...(r.bath ? { bath: r.bath } : {}), ...(r.food ? { food: r.food } : {}),
+        // The room's own photos, the first also as its cover `photo` (backend lib/hostProfile.ts).
+        ...(r.photos?.length ? { photos: r.photos.slice(0, MAX_ROOM_PHOTOS), photo: r.photos[0] } : {}),
+      };
+    });
+
   /** Cheapest price the listing shows ("from"). */
   const startingPrice = (): number => {
     if (isFood(d.type)) {
       const p = d.menu.map((m) => Number(m.price)).filter((n) => n > 0);
       return p.length ? Math.min(...p) : 0;
     }
-    if (d.type === 'homestay' && d.roomsMode) {
+    if (d.type === 'homestay') {
       const p = d.rooms.map((r) => Number(r.price)).filter((n) => n > 0);
       return p.length ? Math.min(...p) : 0;
     }
@@ -372,19 +408,12 @@ export function useHostWizard() {
           images,
           amenities: offers,
           contact_phone: phone,
-          ...(d.roomsMode ? (() => {
-            const ok = d.rooms.filter((r) => r.name.trim() && Number(r.price) > 0);
-            // How many guests the home sleeps: the rooms added up (the board's "guest occupancy").
-            const guests = ok.reduce((n, r) => n + (Math.floor(Number(r.occ)) || 0), 0);
-            return {
-              // Each room keeps what it sleeps, so a booking for it is capped there (lib/roomFit.ts).
-              rooms: ok.map((r) => {
-                const occ = Math.floor(Number(r.occ)) || 0;
-                return { name: r.name.trim(), price: Number(r.price), unit: 'night', ...(occ > 0 ? { occ: Math.min(20, occ) } : {}) };
-              }),
-              ...(guests > 0 ? { capacity: Math.min(100, guests) } : {}),
-            };
-          })() : {}),
+          ...(() => {
+            const rooms = listedRooms(d);
+            // How many guests the home sleeps: the rooms added up, extra mattresses too (the board's "guest occupancy").
+            const guests = roomsCapacity(rooms);
+            return { rooms, ...(guests > 0 ? { capacity: guests } : {}) };
+          })(),
         };
       case 'driver':
         return { images, tags: offers, contact_phone: phone, routes: [{ route: t('ob.wz.day_route'), price: Number(d.price) || 0, unit: 'day' }], ...(d.areas.length ? { areas: d.areas } : {}) };
@@ -432,7 +461,9 @@ export function useHostWizard() {
       // Photos picked before signing in go up now.
       const photos = (await Promise.all(d.photos.map(hosted))).filter(Boolean);
       const menu = await Promise.all(d.menu.map(async (m) => (m.photo && isLocal(m.photo) ? { ...m, photo: await hosted(m.photo) } : m)));
-      const sent: Draft = { ...d, photos, menu };
+      // Room photos too, so a room never goes up with an in-page link the server refuses.
+      const rooms = await Promise.all(d.rooms.map(async (r) => (r.photos?.length ? { ...r, photos: (await Promise.all(r.photos.map(hosted))).filter(Boolean) } : r)));
+      const sent: Draft = { ...d, photos, menu, rooms };
       setD(sent);
       if (adding) {
         const { data: added } = await api.post('/listings', {
@@ -496,7 +527,7 @@ export function useHostWizard() {
 
   return {
     t, user, nav, d, set, pickType, steps, i, step, err, setErr, fixAt, busy, uploading, next, back, goTo, adding, locationNote,
-    addPhotos, photoUrl, startingPrice, offerLabels, submit,
+    addPhotos, photoUrl, startingPrice, offerLabels, listedRooms, submit,
   };
 }
 

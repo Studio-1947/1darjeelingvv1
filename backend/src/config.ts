@@ -249,6 +249,14 @@ if (IS_PROD && !process.env.MOCK_PAYMENTS?.trim()) {
   );
 }
 export const MOCK_PAYMENTS = process.env.MOCK_PAYMENTS ? process.env.MOCK_PAYMENTS.toLowerCase() === 'true' : true;
+
+// Meta Conversions API (lib/metaCapi.ts): sign-ups and payments reported to Meta from the server,
+// to measure Facebook/Instagram ads. Off while META_CAPI_TOKEN is empty, and always off outside
+// production. The pixel id is the same one frontend/public/meta-pixel-init.js loads.
+// META_CAPI_TEST_CODE (Events Manager → Test events) routes events to the test view only.
+export const META_CAPI_TOKEN = process.env.META_CAPI_TOKEN?.trim() || '';
+export const META_PIXEL_ID = process.env.META_PIXEL_ID?.trim() || '1453929830225082';
+export const META_CAPI_TEST_CODE = process.env.META_CAPI_TEST_CODE?.trim() || '';
 // Whether a confirmed booking tells the guest and the host about it.
 //
 // Refused as a silent default in production for the same reason MOCK_PAYMENTS is: for months
