@@ -1,7 +1,7 @@
 import React from 'react';
 import { MAX_PRICE } from '@/lib/hostFormChecks';
 import { useTranslation } from 'react-i18next';
-import { Plus, Trash, Camera } from '@phosphor-icons/react';
+import { Plus, Trash, Camera, CircleNotch as Loader2 } from '@phosphor-icons/react';
 import { uploadImage } from '@/lib/uploadImage';
 import { Button, IconButton } from '@/components/ag';
 
@@ -29,21 +29,36 @@ export default function PricedEditor({ rows, onChange, units, unitLabel, namePla
   const { t } = useTranslation();
   const full = max !== undefined && rows.length >= max;
   const [busy, setBusy] = React.useState<number | null>(null);
+  // The rows as they are now, so a photo that finishes uploading lands on what the host typed meanwhile.
+  const latest = React.useRef(rows);
+  latest.current = rows;
   const set = (i: number, patch: Partial<Priced>) => onChange(rows.map((r, j) => (j === i ? { ...r, ...patch } : r)));
+  // One photo at a time: each tile keeps its spinner until its own upload is done.
   const pickPhoto = async (i: number, file?: File) => {
-    if (!file) return;
+    if (!file || busy !== null) return;
     setBusy(i);
-    try { set(i, { photo: await uploadImage(file) }); } catch { /* the row keeps its old photo */ } finally { setBusy(null); }
+    try {
+      const photo = await uploadImage(file);
+      onChange(latest.current.map((r, j) => (j === i ? { ...r, photo } : r)));
+    } catch { /* the row keeps its old photo */ } finally { setBusy(null); }
   };
   return (
     <div className="grid gap-2.5" data-testid={testid}>
       {rows.map((r, i) => (
         <div key={i} className="grid gap-2 rounded-[18px] border border-[var(--warmline)] bg-[var(--surface)] p-3">
           <div className="flex items-center gap-2">
-            <label className="grid h-14 w-14 flex-none cursor-pointer place-items-center overflow-hidden rounded-2xl bg-[var(--r-tint)] text-[var(--r)]"
-              title={t('ui.pricedEditor.add_photo')} aria-label={t('ui.pricedEditor.add_photo')}>
-              {busy === i ? <span className="text-xs">…</span> : r.photo ? <img src={r.photo} alt="" className="h-full w-full object-cover" /> : <Camera size={20} />}
-              <input type="file" accept="image/*" className="sr-only" onChange={(e) => pickPhoto(i, e.target.files?.[0])} />
+            <label className={`relative grid h-14 w-14 flex-none place-items-center overflow-hidden rounded-2xl bg-[var(--r-tint)] text-[var(--r)] ${busy !== null ? 'pointer-events-none' : 'cursor-pointer'}`}
+              title={t('ui.pricedEditor.add_photo')} aria-label={t('ui.pricedEditor.add_photo')} aria-busy={busy === i}>
+              {r.photo ? <img src={r.photo} alt="" className="h-full w-full object-cover" /> : busy !== i && <Camera size={20} />}
+              {/* While it uploads, a spinner over the tile, as the avatar does. */}
+              {busy === i && (
+                <span className="absolute inset-0 grid place-items-center bg-black/45 text-white" data-testid={`${testid}-photo-uploading-${i}`}>
+                  <Loader2 size={20} className="animate-spin" aria-hidden="true" />
+                </span>
+              )}
+              <span className="sr-only" role="status" aria-live="polite">{busy === i ? t('common.uploading') : ''}</span>
+              <input type="file" accept="image/*" className="sr-only" disabled={busy !== null}
+                onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; pickPhoto(i, f); }} />
             </label>
             <input value={r.name} onChange={(e) => set(i, { name: e.target.value })} placeholder={namePlaceholder}
               aria-label={namePlaceholder} className="ag-in min-w-0 flex-1" />

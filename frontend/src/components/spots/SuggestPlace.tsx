@@ -6,6 +6,7 @@ import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { uploadImages, SUPPORTED_IMAGE_ACCEPT } from '@/lib/uploadImage';
 import { HUBS } from '@/components/home/HomeFilterPanel';
+import { CircleNotch as Loader2 } from '@phosphor-icons/react';
 import { Icon } from '@/components/ag/Icon';
 import { Status, cx } from '@/components/ag';
 
@@ -279,8 +280,8 @@ export default function SuggestPlace() {
               <span>{t('sugg.photos_login', 'Log in to add photos')}</span>
             </button>
           ) : photos.length < MAX_PHOTOS && (
-            <label className={cx('ag-home-ftonal self-start', uploading && 'opacity-60')}>
-              <Icon name="download" />
+            <label className={cx('ag-home-ftonal self-start', uploading && 'opacity-60')} aria-busy={uploading}>
+              {uploading ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Icon name="download" />}
               <span>{uploading ? t('sugg.uploading', 'Uploading…') : t('sugg.add_photos', 'Add photos')}</span>
               <input type="file" accept={SUPPORTED_IMAGE_ACCEPT} multiple className="sr-only" onChange={addPhotos} disabled={uploading}
                 data-testid="home-suggest-photos" />

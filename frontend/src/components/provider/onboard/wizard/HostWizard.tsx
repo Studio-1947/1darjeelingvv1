@@ -431,10 +431,14 @@ function MenuStep({ w }: { w: HostWizard }) {
   const full = shop && d.menu.length >= MAX_GOODS;
   const quick = shop ? [] : QUICK_DISHES.filter((q) => !d.menu.some((m) => m.name === q));
   const setDish = (k: number, patch: Partial<{ name: string; price: string; photo: string; unit: string }>) => set({ menu: d.menu.map((m, j) => (j === k ? { ...m, ...patch } : m)) });
+  // One photo at a time, and it lands on the menu as it is when the upload finishes (not as it was).
   const photo = async (k: number, f?: File) => {
-    if (!f) return;
+    if (!f || upAt !== null) return;
     setUpAt(k);
-    try { setDish(k, { photo: await photoUrl(f) }); } catch (e) { setErr(typeof e === 'string' ? e : t('kyc.uploadFailed')); } finally { setUpAt(null); }
+    try {
+      const url = await photoUrl(f);
+      set((prev) => ({ menu: prev.menu.map((m, j) => (j === k ? { ...m, photo: url } : m)) }));
+    } catch (e) { setErr(typeof e === 'string' ? e : t('kyc.uploadFailed')); } finally { setUpAt(null); }
   };
   return (
     <Frame w={w} title={shop ? t('ob.wz.sh_h') : t('ob.wz.mn_h')} sub={shop ? t('ob.wz.sh_s') : t('ob.wz.mn_s')}>
@@ -454,9 +458,17 @@ function MenuStep({ w }: { w: HostWizard }) {
         {d.menu.length === 0 && <p className="ag-small">{shop ? t('ob.wz.sh_need') : t('ob.wz.mn_need')}</p>}
         {d.menu.map((m, k) => (
           <div key={k} className="ag-onboard-mnrow">
-            <label className={`ag-onboard-mnph${m.photo ? ' has' : ''}`} style={m.photo ? { backgroundImage: `url(${m.photo})` } : undefined} title={t('ob.wz.photo')}>
-              {upAt === k ? <span className="ag-small">…</span> : !m.photo && <Icon name="plus" />}
-              <input type="file" accept={SUPPORTED_IMAGE_ACCEPT} className="sr-only" onChange={(e) => photo(k, e.target.files?.[0])} aria-label={t('ob.wz.photo')} />
+            <label className={`ag-onboard-mnph relative overflow-hidden${m.photo ? ' has' : ''}${upAt !== null ? ' pointer-events-none' : ''}`}
+              style={m.photo ? { backgroundImage: `url(${m.photo})` } : undefined} title={t('ob.wz.photo')} aria-busy={upAt === k}>
+              {upAt !== k && !m.photo && <Icon name="plus" />}
+              {upAt === k && (
+                <span className="absolute inset-0 grid place-items-center bg-black/45 text-white">
+                  <Loader2 className="animate-spin" aria-hidden="true" />
+                </span>
+              )}
+              <span className="sr-only" role="status" aria-live="polite">{upAt === k ? t('common.uploading') : ''}</span>
+              <input type="file" accept={SUPPORTED_IMAGE_ACCEPT} className="sr-only" disabled={upAt !== null}
+                onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; photo(k, f); }} aria-label={t('ob.wz.photo')} />
             </label>
             <div className={`fields${shop ? ' unit' : ''}`}>
               <input className="ag-in" value={m.name} maxLength={40} placeholder={shop ? t('ob.wz.sh_item') : t('ob.wz.mn_dish')} aria-label={shop ? t('ob.wz.sh_item') : t('ob.wz.mn_dish')}
@@ -548,9 +560,9 @@ function ExtrasStep({ w }: { w: HostWizard }) {
             </span>
           ))}
           {count < MAX_PHOTOS && (
-            <label className="add">
-              <Icon name="plus" />
-              <span>{uploading ? t('common.loading') : count ? t('ob.wz.addmore') : t('ob.wz.addphotos')}</span>
+            <label className="add" aria-busy={uploading}>
+              {uploading ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Icon name="plus" />}
+              <span>{uploading ? t('common.uploading') : count ? t('ob.wz.addmore') : t('ob.wz.addphotos')}</span>
               <input type="file" accept={SUPPORTED_IMAGE_ACCEPT} multiple className="sr-only" disabled={uploading}
                 onChange={(e) => { addPhotos(e.target.files); e.target.value = ''; }} data-testid="wz-photos" />
             </label>
