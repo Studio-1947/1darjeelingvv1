@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
+import { useSwitchPrompt } from '@/components/TravellerOnly';
 import { Button, IconButton, TextArea, TextField } from '@/components/ag';
 import { Icon } from '@/components/ag/Icon';
 import Sheet, { SheetHead } from '@/components/listing-detail/Sheet';
@@ -16,6 +17,8 @@ import Sheet, { SheetHead } from '@/components/listing-detail/Sheet';
 export default function DeliveryRequestButton({ listing }: { listing: any }) {
   const { t } = useTranslation();
   const { user } = useAuth();
+  // Business mode (a host's own site page opens there too): ask to switch before the form, not after.
+  const switchFirst = useSwitchPrompt();
   const nav = useNavigate();
   const [open, setOpen] = useState(false);
   const [qty, setQty] = useState<Record<string, number>>({});
@@ -37,6 +40,7 @@ export default function DeliveryRequestButton({ listing }: { listing: any }) {
 
   const start = () => {
     if (!user) { nav(`/login?next=${encodeURIComponent(window.location.pathname)}`); return; }
+    if (switchFirst('book')) return;
     setOpen(true);
   };
   const send = async () => {

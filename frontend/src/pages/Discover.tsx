@@ -60,7 +60,10 @@ function Banners() {
   const fill = useRef<HTMLSpanElement>(null);
   const elapsed = useRef(0);
   const [at, setAt] = useState(0);
-  const count = SLIDES.length + 1;
+  // Business mode: a host already has a business, so the "List your business" slide is left out.
+  const { isHostMode } = useAuth();
+  const slides = isHostMode ? SLIDES.filter((s) => s.to !== '/provider/onboard') : SLIDES;
+  const count = slides.length + 1;
   const still = reducedMotion();
 
   useEffect(() => {
@@ -122,7 +125,7 @@ function Banners() {
             <source src="/video-hero/S_47_July_26_web_cover_video_e1wiyd.webm" type="video/webm" />
           </video>
         </div>
-        {SLIDES.map((s, i) => (
+        {slides.map((s, i) => (
           <Link key={s.to} to={s.to} className="slide" style={{ backgroundImage: `url(${s.img})` }} data-testid={`home-banner-${i + 1}`}>
             <span className="bt"><b>{t(s.title[0], s.title[1])}</b><span>{t(s.sub[0], s.sub[1])}</span></span>
           </Link>

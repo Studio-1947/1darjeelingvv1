@@ -85,6 +85,9 @@ function trail(t: TFunction, pathname: string, sub: string | null, name: PageNam
     const parent = CATEGORY_PATH[site] && CATEGORY_TITLE[site] ? [{ label: t(...CATEGORY_TITLE[site]), to: CATEGORY_PATH[site] }] : [];
     return [home, ...parent, here(named?.title || t('crumb.business', 'Business'))];
   }
+  // The business's own pages sit under Account › Business dashboard, as the dashboard does.
+  if (pathname === '/provider/profile') return [account, biz, here(t('hostProfile.title', 'Business profile'))];
+  if (pathname === '/my-listings') return [account, biz, here(t('crumb.my_listings', 'My listings'))];
   if (on('/provider/listings/:id')) return [account, biz, { label: t('hostProfile.title', 'Business profile'), to: '/provider/profile' }, here(named?.title || t('crumb.listing', 'Listing'))];
   if (on('/plan/:id')) return [feed, { label: t('plans.plan_trip', 'Plan a trip'), to: '/plan' }, here(named?.title || t('crumb.plan', 'Trip plan'))];
 
@@ -110,8 +113,6 @@ function trail(t: TFunction, pathname: string, sub: string | null, name: PageNam
     '/support': [account, 'member.title_short', 'Membership'],
     '/theme': [account, 'theme.title', 'Theme colour'],
     '/profile/edit': [account, 'crumb.edit_profile', 'Edit profile'],
-    '/provider/profile': [biz, 'hostProfile.title', 'Business profile'],
-    '/my-listings': [biz, 'crumb.my_listings', 'My listings'],
     '/provider/onboard': [account, 'crumb.onboard', 'List your business'],
   };
   if (simple[pathname]) { const [parent, k, d] = simple[pathname]; return [parent, here(t(k, d))]; }
