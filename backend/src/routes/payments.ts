@@ -17,6 +17,7 @@ import { settleBookingConfirmation } from '../lib/bookingConfirmation';
 import { isAwaitingHost } from '../lib/bookingApproval';
 import { refundPaymentsFor } from '../lib/refunds';
 import { resolveAmount } from '../lib/payments';
+import { metaContextFrom, sendMetaEvent, type MetaRequestContext } from '../lib/metaCapi';
 import { hostPlanBreakup, passBreakupFor, priceList } from '../lib/pricing';
 
 const router = Router();
@@ -276,7 +277,37 @@ async function assertOwnsReference(
  *
  * Always uses the *stored* flow/referenceId (see INVESTIGATION.md §1.5)  never caller input.
  */
-async function settlePaymentOnce(payment: PaymentRow, gatewayPaymentId: string) {
+async function settlePaymentOnce(payment: PaymentRow, gatewayPaymentId: string, meta?: MetaRequestContext) {
+  const result = await settleOnce(payment, gatewayPaymentId);
+  if (!result.alreadySettled) void reportPurchase(payment, meta);
+  return result;
+}
+
+/**
+ * A real payment, settled just now, goes to Meta as a Purchase (lib/metaCapi.ts). Only the winner
+ * of the /verify-webhook race gets here, and the order id is the event id, so one order is one
+ * Purchase. Mock payments are not money and donations are not purchases. `meta` is the browser's
+ * request; the webhook has none, and metaCapi then skips it (website events only).
+ */
+async function reportPurchase(payment: PaymentRow, meta?: MetaRequestContext) {
+  if (payment.mock || payment.flow === 'donation') return;
+  try {
+    const [u] = await db.select({ id: schema.users.id, phone: schema.users.phone, email: schema.users.email })
+      .from(schema.users).where(eq(schema.users.id, payment.userId)).limit(1);
+    if (!u) return;
+    sendMetaEvent({
+      name: 'Purchase',
+      eventId: `order_${payment.orderId}`,
+      user: u,
+      ctx: meta,
+      customData: { currency: 'INR', value: payment.amount / 100, content_name: payment.flow, content_type: 'product' },
+    });
+  } catch (err) {
+    log.warn(`[meta-capi] purchase for ${payment.orderId} skipped: ${(err as Error).message}`);
+  }
+}
+
+async function settleOnce(payment: PaymentRow, gatewayPaymentId: string) {
   const markPaid = (ex: Executor) => ex.update(schema.payments)
     .set({ status: 'paid', paymentId: gatewayPaymentId, paidAt: new Date().toISOString() })
     .where(and(eq(schema.payments.orderId, payment.orderId), ne(schema.payments.status, 'paid')))
@@ -682,7 +713,8 @@ router.post('/mock/complete', authenticateToken, rateLimiter(10, 60 * 1000, 'moc
 
   const { alreadySettled, record } = await settlePaymentOnce(
     payment,
-    `mock_pay_${uuidv4().replace(/-/g, '').slice(0, 12)}`
+    `mock_pay_${uuidv4().replace(/-/g, '').slice(0, 12)}`,
+    metaContextFrom(req)
   );
   if (alreadySettled) {
     return res.json({ ok: true, already: true });
@@ -778,7 +810,7 @@ router.post('/verify', authenticateToken, async (req: Request, res: Response) =>
   }
 
   // May race the webhook for the same order  settlePaymentOnce makes that safe.
-  const { alreadySettled } = await settlePaymentOnce(payment, razorpay_payment_id);
+  const { alreadySettled } = await settlePaymentOnce(payment, razorpay_payment_id, metaContextFrom(req));
   res.json({ ok: true, status: 'paid', already: alreadySettled });
 });
 
@@ -798,7 +830,7 @@ router.get('/order/:orderId/status', authenticateToken, rateLimiter(120, 60 * 10
     const found: any = await rzpClient.orders.fetchPayments(orderId);
     const captured = (found?.items || []).find((p: any) => p?.status === 'captured' && p?.order_id === orderId);
     if (!captured) return res.json({ paid: false });
-    const { alreadySettled } = await settlePaymentOnce(payment, captured.id);
+    const { alreadySettled } = await settlePaymentOnce(payment, captured.id, metaContextFrom(req));
     log.info(`[order-status] order=${orderId} flow=${payment.flow} ${alreadySettled ? 'already settled' : 'settled by poll'}`);
     return res.json({ paid: true });
   } catch (err: any) {

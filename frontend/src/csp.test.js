@@ -25,6 +25,7 @@ const SNIPPET_DIR = path.join(REPO_ROOT, 'deploy', 'nginx', 'snippets');
 const INDEX_HTMLS = [path.join(__dirname, '..', 'index.html'), path.join(__dirname, '..', 'public', 'index.html')];
 const ADMIN_INDEX_HTML = path.join(REPO_ROOT, 'frontend-admin', 'index.html');
 const GTAG_INIT = path.join(__dirname, '..', 'public', 'gtag-init.js');
+const PIXEL_INIT = path.join(__dirname, '..', 'public', 'meta-pixel-init.js');
 
 /** Runs gtag-init.js as if the page were on `hostname`; returns the scripts it added. */
 function runGtagInit(hostname) {
@@ -49,6 +50,36 @@ describe('Google Analytics setup (public/gtag-init.js)', () => {
       const { added, win } = runGtagInit(host);
       expect(added, host).toEqual([]);
       expect(win.dataLayer, host).toBeUndefined();
+    }
+  });
+});
+
+/** Runs meta-pixel-init.js as if the page were on `hostname`; returns the scripts it added. */
+function runPixelInit(hostname) {
+  const added = [];
+  const win = { location: { hostname } };
+  const doc = { createElement: () => ({}), head: { appendChild: (el) => added.push(el) } };
+  new Function('window', 'document', fs.readFileSync(PIXEL_INIT, 'utf8'))(win, doc);
+  return { added, win };
+}
+
+describe('Meta Pixel setup (public/meta-pixel-init.js)', () => {
+  it('runs on the live site, with the init and the first PageView queued', () => {
+    for (const host of ['aanganerp.in', 'www.aanganerp.in']) {
+      const { added, win } = runPixelInit(host);
+      expect(added.map((s) => s.src)).toEqual(['https://connect.facebook.net/en_US/fbevents.js']);
+      expect(win.fbq.queue.map((args) => [...args])).toEqual([
+        ['init', '1453929830225082'],
+        ['track', 'PageView'],
+      ]);
+    }
+  });
+
+  it('does nothing anywhere else, so local runs and test walks stay out of the ad numbers', () => {
+    for (const host of ['localhost', '127.0.0.1', '192.168.1.6', 'staging.aanganerp.in', 'aanganerp.in.evil.com']) {
+      const { added, win } = runPixelInit(host);
+      expect(added, host).toEqual([]);
+      expect(win.fbq, host).toBeUndefined();
     }
   });
 });
@@ -155,6 +186,16 @@ describe('public SPA Content-Security-Policy', () => {
     const fromInit = [...fs.readFileSync(GTAG_INIT, 'utf8').matchAll(/src\s*=\s*['"](https:\/\/[^/'"]+)/g)].map((m) => m[1]);
     expect(fromInit).toEqual(['https://www.googletagmanager.com']);
     expect(fromInit.filter((origin) => !scriptSrc.includes(origin))).toEqual([]);
+    // The same for the Meta Pixel loader.
+    const fromPixel = [...fs.readFileSync(PIXEL_INIT, 'utf8').matchAll(/src\s*=\s*['"](https:\/\/[^/'"]+)/g)].map((m) => m[1]);
+    expect(fromPixel).toEqual(['https://connect.facebook.net']);
+    expect(fromPixel.filter((origin) => !scriptSrc.includes(origin))).toEqual([]);
+  });
+
+  it('lets the Meta Pixel report its events', () => {
+    expect(directiveSources(publicCsp, 'connect-src')).toContain('https://www.facebook.com');
+    // Its fallback is an image to www.facebook.com/tr, which the broad img-src already covers.
+    expect(directiveSources(publicCsp, 'img-src')).toContain('https:');
   });
 
   it('lets Google Analytics report its page views', () => {

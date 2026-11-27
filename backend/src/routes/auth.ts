@@ -17,6 +17,7 @@ import { hashOtp, verifyOtpHash } from '../lib/otpHash';
 import { claimCoOwnerInvites } from '../lib/hostAccess';
 import { cleanName } from '../lib/accountFields';
 import { findUserByPhone } from '../lib/findUserByPhone';
+import { metaContextFrom, sendMetaEvent } from '../lib/metaCapi';
 
 const router = Router();
 
@@ -383,6 +384,8 @@ router.post(
       referralCode: await generateReferralCode()
     };
     await db.insert(schema.users).values(user);
+    // Ad measurement (lib/metaCapi.ts): not awaited, never throws.
+    sendMetaEvent({ name: 'CompleteRegistration', eventId: `signup_${user.id}`, user: { id: user.id, phone: user.phone }, ctx: metaContextFrom(req), customData: { method: 'phone', role: user.role } });
 
     // A code only counts at signup, and only for the account that just came into existence 
     // that is the whole anti-abuse story, and it is enforced by a unique referee_id rather than

@@ -8,6 +8,7 @@ import { rateLimiter } from '../middleware/rateLimiter';
 import { makeToken } from '../middleware/auth';
 import { toPublicUser } from '../lib/publicUser';
 import { log } from '../config';
+import { metaContextFrom, sendMetaEvent } from '../lib/metaCapi';
 
 /** "a***@gmail.com": enough to tell accounts apart in a log, not enough to identify someone. */
 function maskEmail(email?: string | null): string {
@@ -149,6 +150,8 @@ router.post(
       };
 
       await db.insert(schema.users).values(user);
+      // Ad measurement (lib/metaCapi.ts): not awaited, never throws.
+      sendMetaEvent({ name: 'CompleteRegistration', eventId: `signup_${user.id}`, user: { id: user.id, email: user.email }, ctx: metaContextFrom(req), customData: { method: 'google', role: user.role } });
       // Masked like every other log line that names a person (BUG-17).
       log.info(`[auth/google] Created new user ${user.id} via Google (${maskEmail(payload.email)})`);
     } else {
