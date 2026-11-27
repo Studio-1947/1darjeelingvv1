@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import { uploadBlockers } from '../src/lib/businessMissing';
 import { kindsOf, listingTypeFields, missingAcross, profilePatchForKinds } from '../src/lib/hostProfile';
 
 describe('a listing keeps its own kind\'s details (decision 2026-11-26)', () => {
@@ -46,14 +45,3 @@ describe('no kind is the main one: a business is judged on every listing', () =>
   });
 });
 
-describe('sending documents needs the business-wide items and one finished listing', () => {
-  const name = { key: 'host_name', label: 'Add the host name' };
-  const photos = (id: string) => ({ key: 'images', label: 'Add photos', listing_id: id });
-  it('a finished listing lets documents go, with the others still unfinished', () => {
-    expect(uploadBlockers([photos('b')], ['a', 'b'])).toEqual([]);
-    expect(uploadBlockers([name, photos('b')], ['a', 'b'])).toEqual([name]);
-  });
-  it('no finished listing holds them back', () => {
-    expect(uploadBlockers([photos('a'), photos('b')], ['a', 'b'])).toHaveLength(2);
-  });
-});

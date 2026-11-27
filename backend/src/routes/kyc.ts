@@ -1,5 +1,4 @@
 import { Router, Request, Response } from 'express';
-import { businessUploadBlockers, uploadBlockers } from '../lib/businessMissing';
 import { missingAcross } from '../lib/hostProfile';
 import { missingMandatory } from '../lib/hostProfile';
 import { v4 as uuidv4 } from 'uuid';
@@ -211,12 +210,11 @@ export async function hostReadiness(provider: typeof schema.providers.$inferSele
   const nextStep =
     kycStatus === 'verified' ? 'live'
       : provider.status !== 'active' ? 'pay_plan'
-        : uploadBlockers(profileMissing, providerListings.map((l) => l.id)).length ? 'finish_profile'
-          : requiredDocs.some(c => c.state === 'rejected') ? 'fix_rejected'
-            : requiredDocs.some(c => c.state === 'missing') ? 'upload_documents'
-              : requiredDocs.some(c => c.state === 'in_review') ? 'review_documents'
-                : profileLeft.length ? (profileLeft.some(c => c.key === 'location') ? 'verify_location' : 'finish_profile')
-                  : 'review_documents';
+        : requiredDocs.some(c => c.state === 'rejected') ? 'fix_rejected'
+          : requiredDocs.some(c => c.state === 'missing') ? 'upload_documents'
+            : requiredDocs.some(c => c.state === 'in_review') ? 'review_documents'
+              : profileLeft.length ? (profileLeft.some(c => c.key === 'location') ? 'verify_location' : 'finish_profile')
+                : 'review_documents';
   return { docs, completionPercent, checklist, kycStatus, profileMissing, nextStep };
 }
 
@@ -361,19 +359,6 @@ router.post('/me/kyc', authenticateToken, async (req: Request, res: Response) =>
   if (!provider) return res.status(403).json({ detail: 'Only active providers can upload KYC documents' });
   if (provider.userId !== req.user.id) return res.status(403).json({ detail: OWNER_ONLY_DETAIL, code: 'owner_only' });
 
-  // A new host sends documents for approval only once the mandatory parts of their profile are in
-  // (lib/hostProfile.ts). Hosts who were live before approval existed are not held back.
-  if (provider.approvalRequired) {
-    const missing = await businessUploadBlockers(provider);
-    if (missing.length) {
-      return res.status(409).json({
-        detail: `Finish your profile before sending documents for approval: ${missing.map((m) => m.label).join('; ')}`,
-        code: 'profile_incomplete',
-        missing,
-      });
-    }
-  }
-
   const { doc_type, file, filename } = req.body || {};
   if (!doc_type || !file || !filename) {
     return res.status(400).json({ detail: 'doc_type, file, and filename are required' });
@@ -410,19 +395,6 @@ router.post('/me/kyc/video', authenticateToken, async (req: Request, res: Respon
   const provider = await ownActiveProvider(req.user.id);
   if (!provider) return res.status(403).json({ detail: 'Only active providers can upload KYC documents' });
   if (provider.userId !== req.user.id) return res.status(403).json({ detail: OWNER_ONLY_DETAIL, code: 'owner_only' });
-
-  // A new host sends documents for approval only once the mandatory parts of their profile are in
-  // (lib/hostProfile.ts). Hosts who were live before approval existed are not held back.
-  if (provider.approvalRequired) {
-    const missing = await businessUploadBlockers(provider);
-    if (missing.length) {
-      return res.status(409).json({
-        detail: `Finish your profile before sending documents for approval: ${missing.map((m) => m.label).join('; ')}`,
-        code: 'profile_incomplete',
-        missing,
-      });
-    }
-  }
 
   const doc_type = String(req.query.doc_type || '');
   const types = await kycTypesFor(provider);

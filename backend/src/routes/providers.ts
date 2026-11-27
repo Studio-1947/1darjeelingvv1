@@ -363,7 +363,8 @@ router.get('/me', authenticateToken, async (req: Request, res: Response) => {
     gst_legal_name: provider.gstLegalName ?? null,
     kyc_status: provider.kycStatus,
     approval_pending: isHostApprovalPending(provider),
-    // What a new host still has to fill in before their documents can go for approval.
+    // What the host's listings still lack (photos, the host's name). Shown as a checklist; it does not
+    // stop documents being sent (decision 2026-11-27).
     profile_missing: await businessMissing(provider),
     // The free start: bookings used so far, the limit, and whether new bookings are paused until
     // the host pays (lib/hostGrace.ts). Null once the host has paid.
